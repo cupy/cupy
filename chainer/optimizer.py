@@ -468,6 +468,11 @@ class GradientMethod(Optimizer):
         self._use_cleargrads = use
 
 
+def gpu_is_available(opt):
+    xp = cuda.get_array_module(opt.target.params())
+    return cuda.available and xp != numpy
+
+
 class WeightDecay(object):
 
     """Optimizer hook function for weight decay regularization.
@@ -488,7 +493,7 @@ class WeightDecay(object):
         self.rate = rate
 
     def __call__(self, opt):
-        if cuda.available:
+        if gpu_is_available(opt):
             kernel = cuda.elementwise(
                 'T p, T decay', 'T g', 'g += decay * p', 'weight_decay')
 
@@ -521,7 +526,7 @@ class Lasso(object):
         self.rate = rate
 
     def __call__(self, opt):
-        if cuda.available:
+        if gpu_is_available(opt):
             kernel = cuda.elementwise(
                 'T s, T decay', 'T g', 'g += decay * s', 'lasso')
 
@@ -601,7 +606,7 @@ class GradientNoise(object):
         self.noise_func = noise_func
 
     def __call__(self, opt):
-        if cuda.available:
+        if gpu_is_available(opt):
             kernel = cuda.elementwise(
                 'T noise', 'T g', 'g += noise', 'gradient_noise')
 
