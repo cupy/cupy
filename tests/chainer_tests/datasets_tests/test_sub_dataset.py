@@ -78,6 +78,15 @@ class TestSplitDataset(unittest.TestCase):
         reconst = sorted(set(subset1).union(subset2))
         self.assertEqual(reconst, original)
 
+        subset1a, subset2a = datasets.split_dataset_random(original, 2, seed=3)
+        reconst = sorted(set(subset1a).union(subset2a))
+        self.assertEqual(reconst, original)
+        subset1b, subset2b = datasets.split_dataset_random(original, 2, seed=3)
+        self.assertEqual(set(subset1a), set(subset1b))
+        self.assertEqual(set(subset2a), set(subset2b))
+        reconst = sorted(set(subset1a).union(subset2a))
+        self.assertEqual(reconst, original)
+
 
 class TestGetCrossValidationDatasets(unittest.TestCase):
 
@@ -164,6 +173,14 @@ class TestGetCrossValidationDatasets(unittest.TestCase):
         validation_union = sorted(
             list(cvs[0][1]) + list(cvs[1][1]) + list(cvs[2][1]))
         self.assertEqual(validation_union, original)
+
+        cvs_a = datasets.get_cross_validation_datasets_random(
+            original, 3, seed=5)
+        cvs_b = datasets.get_cross_validation_datasets_random(
+            original, 3, seed=5)
+        for (tr_a, te_a), (tr_b, te_b) in zip(cvs_a, cvs_b):
+            self.assertEqual(set(tr_a), set(tr_b))
+            self.assertEqual(set(te_a), set(te_b))
 
 
 testing.run_module(__name__, __file__)

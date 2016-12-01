@@ -6,6 +6,8 @@ Order statistics
 
 .. autofunction:: cupy.amin
 .. autofunction:: cupy.amax
+.. autofunction:: cupy.nanmin
+.. autofunction:: cupy.nanmax
 
 
 Means and variances

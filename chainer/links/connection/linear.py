@@ -21,7 +21,7 @@ class Linear(link.Link):
     does not hold a bias vector.
 
     Args:
-        in_size (int): Dimension of input vectors. If None, parameter
+        in_size (int): Dimension of input vectors. If ``None``, parameter
             initialization will be deferred until the first forward data pass
             at which time the size will be determined.
         out_size (int): Dimension of output vectors.
@@ -88,5 +88,5 @@ class Linear(link.Link):
         """
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
-                self._initialize_params(x.size // len(x.data))
+                self._initialize_params(x.size // x.shape[0])
         return linear.linear(x, self.W, self.b)

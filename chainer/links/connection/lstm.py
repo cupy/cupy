@@ -56,7 +56,7 @@ class StatelessLSTM(LSTMBase):
     hidden states.
 
     Args:
-        in_size (int): Dimension of input vectors. If None, parameter
+        in_size (int): Dimension of input vectors. If ``None``, parameter
             initialization will be deferred until the first forward data pass
             at which time the size will be determined.
         out_size (int): Dimensionality of output vectors.
@@ -82,7 +82,7 @@ class StatelessLSTM(LSTMBase):
 
         """
         if self.upward.has_uninitialized_params:
-            in_size = x.size // len(x.data)
+            in_size = x.size // x.shape[0]
             self.upward._initialize_params(in_size)
             self._initialize_params()
 
@@ -120,7 +120,7 @@ class LSTM(LSTMBase):
     applying the function.
 
     Args:
-        in_size (int): Dimension of input vectors. If None, parameter
+        in_size (int): Dimension of input vectors. If ``None``, parameter
             initialization will be deferred until the first forward data pass
             at which time the size will be determined.
         out_size (int): Dimensionality of output vectors.
@@ -216,7 +216,7 @@ class LSTM(LSTMBase):
 
         """
         if self.upward.has_uninitialized_params:
-            in_size = x.size // len(x.data)
+            in_size = x.size // x.shape[0]
             self.upward._initialize_params(in_size)
             self._initialize_params()
 

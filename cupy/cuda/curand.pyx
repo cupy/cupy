@@ -87,7 +87,7 @@ cpdef inline check_status(int status):
 # Generator
 ###############################################################################
 
-cpdef size_t createGenerator(int rng_type):
+cpdef size_t createGenerator(int rng_type) except *:
     cdef Generator generator
     with nogil:
         status = curandCreateGenerator(&generator, <RngType>rng_type)
@@ -100,7 +100,7 @@ cpdef destroyGenerator(size_t generator):
     check_status(status)
 
 
-cpdef int getVersion():
+cpdef int getVersion() except *:
     cdef int version
     status = curandGetVersion(&version)
     check_status(status)

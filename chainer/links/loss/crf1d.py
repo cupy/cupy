@@ -26,4 +26,17 @@ class CRF1d(link.Link):
         return crf1d.crf1d(self.cost, xs, ys)
 
     def argmax(self, xs):
+        """Computes a state that maximizes a joint probability.
+
+        Args:
+            xs (list of Variable): Input vector for each label.
+
+        Returns:
+            tuple: A tuple of :class:`~chainer.Variable` representing each
+                log-likelihood and a list representing the argmax path.
+
+        .. seealso:: See :func:`~chainer.frunctions.crf1d_argmax` for more
+           detail.
+
+        """
         return crf1d.argmax_crf1d(self.cost, xs)

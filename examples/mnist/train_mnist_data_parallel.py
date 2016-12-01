@@ -37,6 +37,8 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
+    chainer.cuda.get_device(args.gpu0).use()
+
     model = L.Classifier(train_mnist.MLP(args.unit, 10))
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
@@ -64,7 +66,7 @@ def main():
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy']))
+         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
     trainer.extend(extensions.ProgressBar())
 
     if args.resume:

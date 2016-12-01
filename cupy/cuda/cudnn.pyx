@@ -325,7 +325,7 @@ cpdef inline check_status(int status):
 # Version
 ###############################################################################
 
-cpdef size_t getVersion():
+cpdef size_t getVersion() except *:
     return cudnnGetVersion()
 
 
@@ -867,7 +867,7 @@ cpdef destroyDropoutDescriptor(size_t dropoutDesc):
     check_status(status)
 
 
-cpdef size_t dropoutGetStatesSize(size_t handle):
+cpdef size_t dropoutGetStatesSize(size_t handle) except *:
     cdef size_t sizeInBytes
     status = cudnnDropoutGetStatesSize(
         <Handle>handle, &sizeInBytes)

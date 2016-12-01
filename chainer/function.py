@@ -188,8 +188,10 @@ class Function(object):
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
 
-        hooks = collections.OrderedDict(chainer.get_function_hooks())
-        hooks.update(self.local_function_hooks)
+        hooks = chainer.get_function_hooks()
+        if self._n_local_function_hooks != 0:
+            hooks = collections.OrderedDict(hooks)
+            hooks.update(self.local_function_hooks)
         for hook in six.itervalues(hooks):
             hook.forward_preprocess(self, in_data)
         # Forward prop
@@ -242,6 +244,12 @@ class Function(object):
         if not hasattr(self, '_local_function_hooks'):
             self._local_function_hooks = collections.OrderedDict()
         return self._local_function_hooks
+
+    @property
+    def _n_local_function_hooks(self):
+        if hasattr(self, '_local_function_hooks'):
+            return len(self._local_function_hooks)
+        return 0
 
     @property
     def label(self):
@@ -433,8 +441,8 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             hook(~chainer.function.FunctionHook):
-                the function hook to be registered.
-            name(str): The name of the function hook.
+                Function hook to be registered.
+            name(str): Name of the function hook.
                 name must be unique among function hooks
                 registered to the function. If ``None``,
                 default name of the function hook is used.
@@ -452,7 +460,7 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             name(str): the name of the function hook
-            to be unregistered.
+                to be unregistered.
         """
         del self.local_function_hooks[name]
 

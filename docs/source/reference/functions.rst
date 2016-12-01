@@ -155,6 +155,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+squeeze
+~~~~~~~
+.. autofunction:: squeeze
+
 stack
 ~~~~~
 .. autofunction:: stack
@@ -162,6 +166,10 @@ stack
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
+
+tile
+~~~~
+.. autofunction:: tile
 
 transpose
 ~~~~~~~~~
@@ -199,6 +207,10 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+deconvolution_nd
+~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
+
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
@@ -218,6 +230,10 @@ Evaluation functions
 accuracy
 ~~~~~~~~
 .. autofunction:: accuracy
+
+binary_accuracy
+~~~~~~~~~~~~~~~
+.. autofunction:: binary_accuracy
 
 
 Loss functions
@@ -242,6 +258,7 @@ contrastive
 crf1d
 ~~~~~
 .. autofunction:: crf1d
+.. autofunction:: argmax_crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -262,6 +279,10 @@ hinge
 huber_loss
 ~~~~~~~~~~
 .. autofunction:: huber_loss
+
+mean_absolute_error
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: mean_absolute_error
 
 mean_squared_error
 ~~~~~~~~~~~~~~~~~~
@@ -418,6 +439,14 @@ sinh
 sqrt
 ~~~~
 .. autofunction:: sqrt
+
+square
+~~~~~~
+.. autofunction:: square
+
+squared_difference
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: squared_difference
 
 sum
 ~~~

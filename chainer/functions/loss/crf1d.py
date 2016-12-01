@@ -32,6 +32,10 @@ def crf1d(cost, xs, ys):
        lengths and transpose the sequences.
        For example, you have three input seuqnces:
 
+       >>> a1 = a2 = a3 = a4 = np.random.uniform(-1, 1, 3).astype('f')
+       >>> b1 = b2 = b3 = np.random.uniform(-1, 1, 3).astype('f')
+       >>> c1 = c2 = np.random.uniform(-1, 1, 3).astype('f')
+
        >>> a = [a1, a2, a3, a4]
        >>> b = [b1, b2, b3]
        >>> c = [c1, c2]
@@ -51,7 +55,10 @@ def crf1d(cost, xs, ys):
        You need to make label sequences in the same fashion.
        And then, call the function:
 
-       >>> F.crf1d(cost, xs, ys)
+       >>> cost = chainer.Variable(
+       ...     np.random.uniform(-1, 1, (3, 3)).astype('f'))
+       >>> ys = [np.zeros(x.shape[0:1], dtype='i') for x in xs]
+       >>> loss = F.crf1d(cost, xs, ys)
 
        It calculates sum of the negative log-likelihood of the three sequences.
 
@@ -65,7 +72,7 @@ def crf1d(cost, xs, ys):
             matrix, where :math:`B` is mini-batch size, :math:`K` is the number
             of labels.
             Note that :math:`B` s in all the variables are not necessary
-            the same, i.e., it accepts the input sequences with difference
+            the same, i.e., it accepts the input sequences with different
             lengths.
         ys (list of Variable): Expected output labels. It needs to have the
             same length as ``xs``. Each :class:`~chainer.Variable` holds a
@@ -127,6 +134,33 @@ def crf1d(cost, xs, ys):
 
 
 def argmax_crf1d(cost, xs):
+    """Computes a state that maximizes a joint probability of the given CRF.
+
+    Args:
+        cost (Variable): A :math:`K \\times K` matrix which holds transition
+            cost between two labels, where :math:`K` is the number of labels.
+        xs (list of Variable): Input vector for each label.
+            ``len(xs)`` denotes the length of the sequence,
+            and each :class:`~chainer.Variable` holds a :math:`B \\times K`
+            matrix, where :math:`B` is mini-batch size, :math:`K` is the number
+            of labels.
+            Note that :math:`B` s in all the variables are not necessary
+            the same, i.e., it accepts the input sequences with different
+            lengths.
+
+    Returns:
+        tuple: A tuple of :class:`~chainer.Variable` object ``s`` and a
+            :class:`list` ``ps``.
+            The shape of ``s`` is ``(B,)``, where ``B`` is the mini-batch size.
+            i-th element of ``s``, ``s[i]``, represents log-likelihood of i-th
+            data.
+            ``ps`` is a list of :class:`numpy.ndarray` or
+            :class:`cupy.ndarray`, and denotes the state that maximizes the
+            point probability.
+            ``len(ps)`` is equal to ``len(xs)``, and shape of each ``ps[i]`` is
+            the mini-batch size of the corresponding ``xs[i]``. That means,
+            ``ps[i].shape == xs[i].shape[0:1]``.
+    """
     alpha = xs[0]
     alphas = []
     max_inds = []
