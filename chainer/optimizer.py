@@ -468,11 +468,6 @@ class GradientMethod(Optimizer):
         self._use_cleargrads = use
 
 
-def gpu_is_available(opt):
-    xp = cuda.get_array_module(opt.target.params())
-    return cuda.available and xp != numpy
-
-
 class WeightDecay(object):
 
     """Optimizer hook function for weight decay regularization.
@@ -492,11 +487,11 @@ class WeightDecay(object):
     def __init__(self, rate):
         self.rate = rate
 
-    def __call__(self, opt):
-        if gpu_is_available(opt):
-            kernel = cuda.elementwise(
+    def kernel(self):
+        return cuda.elementwise(
                 'T p, T decay', 'T g', 'g += decay * p', 'weight_decay')
 
+    def __call__(self, opt):
         rate = self.rate
         for param in opt.target.params():
             p, g = param.data, param.grad
@@ -504,7 +499,7 @@ class WeightDecay(object):
                 if int(dev) == -1:
                     g += rate * p
                 else:
-                    kernel(p, rate, g)
+                    self.kernel()(p, rate, g)
 
 
 class Lasso(object):
@@ -525,11 +520,12 @@ class Lasso(object):
     def __init__(self, rate):
         self.rate = rate
 
-    def __call__(self, opt):
-        if gpu_is_available(opt):
-            kernel = cuda.elementwise(
+    def kernel(self):
+        return cuda.elementwise(
                 'T s, T decay', 'T g', 'g += decay * s', 'lasso')
 
+
+    def __call__(self, opt):
         rate = self.rate
         for param in opt.target.params():
             p, g = param.data, param.grad
@@ -539,7 +535,7 @@ class Lasso(object):
                 if int(dev) == -1:
                     g += rate * sign
                 else:
-                    kernel(sign, rate, g)
+                    self.kernel()(sign, rate, g)
 
 
 class GradientClipping(object):
@@ -605,11 +601,11 @@ class GradientNoise(object):
         self.eta = eta
         self.noise_func = noise_func
 
-    def __call__(self, opt):
-        if gpu_is_available(opt):
-            kernel = cuda.elementwise(
+    def kernel(self):
+        return cuda.elementwise(
                 'T noise', 'T g', 'g += noise', 'gradient_noise')
 
+    def __call__(self, opt):
         for param in opt.target.params():
             g = param.grad
             xp = cuda.get_array_module(g)
@@ -618,7 +614,7 @@ class GradientNoise(object):
                 if int(dev) == -1:
                     g += noise
                 else:
-                    kernel(noise, g)
+                    self.kernel()(noise, g)
 
 
 class GradientHardClipping(object):
