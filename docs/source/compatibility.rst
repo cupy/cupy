@@ -98,7 +98,7 @@ and how users enable or disable the warnings practically..
 
 .. note::
    It is up to developers if APIs should be annotated as experimental or not.
-   We recommend to make the APIs experimental if they implemnt large modules or
+   We recommend to make the APIs experimental if they implement large modules or
    make a decision from several design choices.
 
 
