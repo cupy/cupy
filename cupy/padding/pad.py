@@ -1,4 +1,5 @@
 import cupy
+import six
 
 
 def _prepend_const(arr, pad_amt, val, axis=-1):
@@ -91,7 +92,7 @@ def pad(array, pad_width, mode, **kwargs):
             kwargs[i] = _normalize_shape(narray, kwargs[i], cast_to_int=False)
     newmat = narray.copy()
     for axis, ((pad_before, pad_after), (before_val, after_val)) \
-            in enumerate(zip(pad_width, kwargs['constant_values'])):
+            in enumerate(six.moves.zip(pad_width, kwargs['constant_values'])):
         newmat = _prepend_const(newmat, pad_before, before_val, axis)
         newmat = _append_const(newmat, pad_after, after_val, axis)
     return newmat
