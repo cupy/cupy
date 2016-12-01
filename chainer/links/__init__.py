@@ -32,6 +32,7 @@ from chainer.links.normalization import batch_normalization  # NOQA
 
 
 # import class and function
+from chainer.links.activation.dropconnect import Dropconnect  # NOQA
 from chainer.links.activation.maxout import Maxout  # NOQA
 from chainer.links.activation.prelu import PReLU  # NOQA
 from chainer.links.connection.bias import Bias  # NOQA
