@@ -30,6 +30,11 @@ cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 
+    hostAllocDefault = 0
+    hostAllocPortable = 1
+    hostAllocMapped = 2
+    hostAllocWriteCombined = 4
+
     streamDefault = 0
     streamNonBlocking = 1
 
@@ -48,6 +53,8 @@ cpdef enum:
     CUDA_C_8I = 7  # 8 bit complex as a pair of signed integers
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
+
+    errorMemoryAllocation = 2
 
 
 ###############################################################################
@@ -84,7 +91,9 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 ###############################################################################
 
 cpdef size_t malloc(size_t size) except *
+cpdef size_t hostAlloc(size_t size, unsigned int flags) except *
 cpdef free(size_t ptr)
+cpdef freeHost(size_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,

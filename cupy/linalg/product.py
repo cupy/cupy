@@ -8,6 +8,9 @@ from cupy import core
 from cupy import internal
 
 
+matmul = core.matmul
+
+
 def dot(a, b, out=None):
     """Returns a dot product of two arrays.
 

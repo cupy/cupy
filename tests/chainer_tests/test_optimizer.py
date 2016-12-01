@@ -380,4 +380,42 @@ class TestGradientMethod(unittest.TestCase):
         self.check_clip_grads()
 
 
+class DummyOptimizer(chainer.GradientMethod):
+
+    def __init__(self, test):
+        self.test = test
+
+    def update_one(self, param, state):
+        # Confirm all grads are not None
+        self.test.assertIsNotNone(param.grad)
+
+
+class DummyHook(object):
+
+    name = 'Dummy'
+
+    def __init__(self, test):
+        self.test = test
+
+    def __call__(self, opt):
+        for param in opt.target.params():
+            # Confirm all grads are not None
+            self.test.assertIsNotNone(param.grad)
+
+
+class TestGradientMethodClearGrads(unittest.TestCase):
+
+    def setUp(self):
+        self.optimizer = DummyOptimizer(self)
+        self.target = SimpleLink(
+            np.arange(3).astype(np.float32),
+            np.arange(3).astype(np.float32))
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(DummyHook(self))
+
+    def test_update(self):
+        self.target.cleargrads()
+        self.optimizer.update()
+
+
 testing.run_module(__name__, __file__)

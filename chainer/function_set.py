@@ -73,8 +73,8 @@ class FunctionSet(link.Chain):
 
         .. admonition:: Example
 
-           >>> import chainer.links as L
-           >>> model = FunctionSet(l1=L.Linear(10, 10), l2=L.Linear(10, 10))
+           >>> model = chainer.FunctionSet(l1=L.Linear(10, 10),
+           ...                             l2=L.Linear(10, 10))
            >>> l1 = model['l1']  # equivalent to l1 = model.l1
 
         """

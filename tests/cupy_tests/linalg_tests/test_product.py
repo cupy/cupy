@@ -20,6 +20,9 @@ from cupy import testing
         ((3, 0), (0, 4)),
         ((2, 3, 0), (3, 0, 2)),
         ((0, 0), (0, 0)),
+        ((3,), (3,)),
+        ((2,), (2, 4)),
+        ((4, 2), (2,)),
     ],
     'trans_a': [True, False],
     'trans_b': [True, False],
@@ -57,10 +60,43 @@ class TestDot(unittest.TestCase):
             b = testing.shaped_arange(shape_b[::-1], xp, dtype_b).T
         else:
             b = testing.shaped_arange(shape_b, xp, dtype_b)
-        shape_c = shape_a[:-1] + shape_b[:-2] + shape_b[-1:]
+        if a.ndim == 0 or b.ndim == 0:
+            shape_c = shape_a + shape_b
+        else:
+            shape_c = shape_a[:-1] + shape_b[:-2] + shape_b[-1:]
         c = xp.empty(shape_c, dtype=dtype_c)
-        xp.dot(a, b, out=c)
+        out = xp.dot(a, b, out=c)
+        self.assertIs(out, c)
         return c
+
+
+@testing.parameterize(*testing.product({
+    'shape': [
+        ((), ()),
+        ((), (2, 4)),
+        ((4, 2), ()),
+    ],
+    'trans_a': [True, False],
+    'trans_b': [True, False],
+}))
+@testing.gpu
+class TestDotFor0Dim(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_dot(self, xp, dtype_a, dtype_b):
+        shape_a, shape_b = self.shape
+        if self.trans_a:
+            a = testing.shaped_arange(shape_a[::-1], xp, dtype_a).T
+        else:
+            a = testing.shaped_arange(shape_a, xp, dtype_a)
+        if self.trans_b:
+            b = testing.shaped_arange(shape_b[::-1], xp, dtype_b).T
+        else:
+            b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.dot(a, b)
 
 
 @testing.gpu

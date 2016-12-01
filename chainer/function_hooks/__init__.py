@@ -1,6 +1,7 @@
-from chainer.function_hooks import debug_print
-from chainer.function_hooks import timer
+from chainer.function_hooks import debug_print  # NOQA
+from chainer.function_hooks import timer  # NOQA
 
 
-PrintHook = debug_print.PrintHook
-TimerHook = timer.TimerHook
+# import class and function
+from chainer.function_hooks.debug_print import PrintHook  # NOQA
+from chainer.function_hooks.timer import TimerHook  # NOQA

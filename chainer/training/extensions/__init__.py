@@ -1,22 +1,23 @@
-from chainer.training.extensions import _snapshot
-from chainer.training.extensions import computational_graph
-from chainer.training.extensions import evaluator
-from chainer.training.extensions import exponential_shift
-from chainer.training.extensions import linear_shift
-from chainer.training.extensions import log_report
-from chainer.training.extensions import print_report
-from chainer.training.extensions import progress_bar
-from chainer.training.extensions import value_observation
+from chainer.training.extensions import _snapshot  # NOQA
+from chainer.training.extensions import computational_graph  # NOQA
+from chainer.training.extensions import evaluator  # NOQA
+from chainer.training.extensions import exponential_shift  # NOQA
+from chainer.training.extensions import linear_shift  # NOQA
+from chainer.training.extensions import log_report  # NOQA
+from chainer.training.extensions import print_report  # NOQA
+from chainer.training.extensions import progress_bar  # NOQA
+from chainer.training.extensions import value_observation  # NOQA
 
 
-dump_graph = computational_graph.dump_graph
-Evaluator = evaluator.Evaluator
-ExponentialShift = exponential_shift.ExponentialShift
-LinearShift = linear_shift.LinearShift
-LogReport = log_report.LogReport
-snapshot = _snapshot.snapshot
-snapshot_object = _snapshot.snapshot_object
-PrintReport = print_report.PrintReport
-ProgressBar = progress_bar.ProgressBar
-observe_value = value_observation.observe_value
-observe_lr = value_observation.observe_lr
+# import class and function
+from chainer.training.extensions._snapshot import snapshot  # NOQA
+from chainer.training.extensions._snapshot import snapshot_object  # NOQA
+from chainer.training.extensions.computational_graph import dump_graph  # NOQA
+from chainer.training.extensions.evaluator import Evaluator  # NOQA
+from chainer.training.extensions.exponential_shift import ExponentialShift  # NOQA
+from chainer.training.extensions.linear_shift import LinearShift  # NOQA
+from chainer.training.extensions.log_report import LogReport  # NOQA
+from chainer.training.extensions.print_report import PrintReport  # NOQA
+from chainer.training.extensions.progress_bar import ProgressBar  # NOQA
+from chainer.training.extensions.value_observation import observe_lr  # NOQA
+from chainer.training.extensions.value_observation import observe_value  # NOQA

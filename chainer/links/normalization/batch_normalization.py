@@ -35,9 +35,9 @@ class BatchNormalization(link.Link):
         decay (float): Decay rate of moving average. It is used on training.
         eps (float): Epsilon value for numerical stability.
         dtype (numpy.dtype): Type to use in computing.
-        use_gamma (bool): If `True`, use scaling parameter. Otherwise, use
+        use_gamma (bool): If ``True``, use scaling parameter. Otherwise, use
             unit(1) which makes no effect.
-        use_beta (bool): If `True`, use shifting parameter. Otherwise, use
+        use_beta (bool): If ``True``, use shifting parameter. Otherwise, use
             unit(0) which makes no effect.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
 
@@ -89,7 +89,7 @@ class BatchNormalization(link.Link):
         different running mode.
 
         Args:
-            x (Variable): An input variable.
+            x (Variable): Input variable.
             test (bool): If ``True``, BatchNormalization runs in testing mode;
                 it normalizes the input using pre-computed statistics.
             finetune (bool): If ``finetune`` is ``True`` and ``test`` is
@@ -126,8 +126,8 @@ class BatchNormalization(link.Link):
                 self.use_cudnn)
             ret = func(x, gamma, beta)
 
-            self.avg_mean = func.running_mean
-            self.avg_var = func.running_var
+            self.avg_mean[:] = func.running_mean
+            self.avg_var[:] = func.running_var
         else:
             # Use running average statistics or fine-tuned statistics.
             mean = variable.Variable(self.avg_mean, volatile='auto')

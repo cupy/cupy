@@ -16,12 +16,11 @@ _handles = {}
 
 
 def get_handle():
-    global _handles
-    device = cuda.Device()
-    handle = _handles.get(device.id, None)
-    if handle is None:
-        handle = cudnn.create()
-        _handles[device.id] = handle
+    dev = cuda.get_device_id()
+    if dev in _handles:
+        return _handles[dev]
+    handle = cudnn.create()
+    _handles[dev] = handle
     return handle
 
 
@@ -234,6 +233,11 @@ def create_dropout_descriptor(
     cudnn.setDropoutDescriptor(desc.value, handle, dropout,
                                states, state_size_in_bytes, seed)
     return desc
+
+
+def set_dropout_descriptor(desc, handle, dropout):
+    # When the fourth argument is NULL, random state is not updated.
+    cudnn.setDropoutDescriptor(desc.value, handle, dropout, 0, 0, 0)
 
 
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
