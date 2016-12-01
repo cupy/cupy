@@ -2,7 +2,7 @@ import chainer
 import warnings
 
 
-def experimental(api_name=None):
+def experimental(api_name):
     """A function for marking APIs as experimental.
 
     The developer of an API can mark it as *experimental* by calling
