@@ -1,12 +1,12 @@
-from chainer.serializers import hdf5
-from chainer.serializers import npz
+from chainer.serializers import hdf5  # NOQA
+from chainer.serializers import npz  # NOQA
 
-HDF5Serializer = hdf5.HDF5Serializer
-HDF5Deserializer = hdf5.HDF5Deserializer
-save_hdf5 = hdf5.save_hdf5
-load_hdf5 = hdf5.load_hdf5
 
-DictionarySerializer = npz.DictionarySerializer
-NpzDeserializer = npz.NpzDeserializer
-save_npz = npz.save_npz
-load_npz = npz.load_npz
+from chainer.serializers.hdf5 import HDF5Deserializer  # NOQA
+from chainer.serializers.hdf5 import HDF5Serializer  # NOQA
+from chainer.serializers.hdf5 import load_hdf5  # NOQA
+from chainer.serializers.hdf5 import save_hdf5  # NOQA
+from chainer.serializers.npz import DictionarySerializer  # NOQA
+from chainer.serializers.npz import load_npz  # NOQA
+from chainer.serializers.npz import NpzDeserializer  # NOQA
+from chainer.serializers.npz import save_npz  # NOQA

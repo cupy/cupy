@@ -95,7 +95,7 @@ class SoftmaxCrossEntropy(function.Function):
             y = self.y.copy()
         else:
             y = log_softmax._log_softmax(x, self.use_cudnn)
-            y = numpy.exp(y, out=y)
+            numpy.exp(y, out=y)
         if y.ndim == 2:
             gx = y
             gx[numpy.arange(len(t)), numpy.maximum(t, 0)] -= 1
