@@ -3,6 +3,8 @@
 
 #include "cupy_common.h"
 
+#ifndef CUPY_NO_CUDA
+
 namespace cupy {
 
 namespace thrust {
@@ -19,5 +21,28 @@ void stable_sort_@suff@(void *, ssize_t);
 } // namespace thrust
 
 } // namespace cupy
+
+#else // CUPY_NO_CUDA
+
+namespace cupy {
+
+namespace thrust {
+
+/**begin repeat
+ *
+ * #suff = byte, ubyte, short, ushort, int, uint, long, ulong, float, double#
+ */
+
+void stable_sort_@suff@(void *start, ssize_t num) {
+    return;
+}
+
+/**end repeat**/
+
+} // namespace thrust
+
+} // namespace cupy
+
+#endif // #ifndef CUPY_NO_CUDA
 
 #endif // INCLUDE_GUARD_CUPY_CUDA_THRUST_H

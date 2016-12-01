@@ -214,7 +214,7 @@ def parse_args():
     return arg_options
 
 
-def process_source_templates(extensions):
+def process_source_templates(extensions, no_cuda=False):
     """Process .src source templates to generate actual source files.
 
        Additionally, sources in extensions are replaced with actual file names
@@ -227,6 +227,12 @@ def process_source_templates(extensions):
        then the sources are replaced with:
 
            [thrust.pyx, cupy_thrust.cu]
+
+       If CUDA is not used in effect of ``no_cuda`` option, CUDA C files are
+       also removed from the sources so that stubs defined in header files
+       are used.
+
+           [thrust.pyx]
 
     """
     for extension in extensions:
@@ -248,6 +254,8 @@ def process_source_templates(extensions):
             if ext == '.src':
                 _, ext1 = os.path.splitext(base)
                 if ext1 == '.h':
+                    continue
+                if no_cuda and ext1 == '.cu':
                     continue
                 sources.append(base)
             else:
@@ -299,7 +307,7 @@ def get_ext_modules():
     use_cython = check_cython_version()
     extensions = make_extensions(arg_options, compiler, use_cython)
 
-    process_source_templates(extensions)
+    process_source_templates(extensions, arg_options['no_cuda'])
 
     if use_cython:
         extensions = cythonize(extensions, arg_options)
@@ -344,7 +352,6 @@ def customize_compiler_for_nvcc(compiler):
     nvcc_path = build.get_nvcc_path()
 
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
-        # TODO(takagi): In case that CUDA SDK is not installed, e.g. CI env.
         if os.path.splitext(src)[1] == '.cu':
             compiler.set_executable('compiler_so', nvcc_path)
             postargs = _nvcc_gencode_options() + ['--ptxas-options=-v',
