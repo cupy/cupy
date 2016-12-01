@@ -1,7 +1,11 @@
-from chainer import functions
+import chainer
+from chainer.functions.array import broadcast
+from chainer.functions.math import sqrt
+from chainer.functions.math import square
+from chainer.functions.math import sum
 from chainer import initializers
 from chainer import link
-from chainer import links
+from chainer.links.connection import scale
 
 
 class LayerNormalization(link.Chain):
@@ -19,7 +23,7 @@ class LayerNormalization(link.Chain):
 
     def __init__(self, size, eps=1e-6, initial_gamma=None, initial_beta=None):
         super(LayerNormalization, self).__init__(
-            scale=links.Scale(axis=1, W_shape=(size, ), bias_term=True),
+            scale=scale.Scale(axis=1, W_shape=(size, ), bias_term=True),
         )
         if initial_gamma is None:
             initial_gamma = initializers.One()
@@ -31,11 +35,11 @@ class LayerNormalization(link.Chain):
 
     def normalize(self, x):
         size = x.shape[1]
-        mean = functions.broadcast_to(
-            (functions.sum(x, axis=1) / size)[:, None],
+        mean = broadcast.broadcast_to(
+            (sum.sum(x, axis=1) / size)[:, None],
             x.shape)
-        std = functions.broadcast_to(functions.sqrt(
-            functions.sum(functions.square(x - mean), axis=1) / size)[:, None],
+        std = broadcast.broadcast_to(sqrt.sqrt(
+            sum.sum(square.square(x - mean), axis=1) / size)[:, None],
             x.shape) + self.eps
         return (x - mean) / std
 
