@@ -4,8 +4,8 @@ from chainer.utils import walker_alias  # NOQA
 
 
 # import class and function
-from chainer.utils.walker_alias import WalkerAlias  # NOQA
 from chainer.utils.experimental import experimental  # NOQA
+from chainer.utils.walker_alias import WalkerAlias  # NOQA
 
 
 def force_array(x, dtype=None):
