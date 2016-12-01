@@ -60,7 +60,7 @@ The interface can change in the future
     """
 
     if not chainer.disable_experimental_feature_warning:
-        warnings.warn('{} is an experimental API. '
+        warnings.warn('{} is experimental. '
                       'The interface can change in the future.'.format(
                           api_name),
                       FutureWarning)
