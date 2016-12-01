@@ -1,27 +1,25 @@
-import numpy
+from numpy.random import bytes   # NOQA
 
-from cupy.random import distributions
-from cupy.random import generator
-from cupy.random import sample as sample_
+from cupy.random import distributions  # NOQA
+from cupy.random import generator  # NOQA
+from cupy.random import sample as sample_  # NOQA
 
 
-rand = sample_.rand
-randn = sample_.randn
-random_sample = sample_.random_sample
-randint = sample_.randint
-random_integers = sample_.random_integers
-random = random_sample
-ranf = random_sample
-sample = random_sample
-bytes = numpy.random.bytes
-
-gumbel = distributions.gumbel
-lognormal = distributions.lognormal
-normal = distributions.normal
-standard_normal = distributions.standard_normal
-uniform = distributions.uniform
-
-RandomState = generator.RandomState
-get_random_state = generator.get_random_state
-seed = generator.seed
-reset_states = generator.reset_states
+# import class and function
+from cupy.random.distributions import gumbel  # NOQA
+from cupy.random.distributions import lognormal  # NOQA
+from cupy.random.distributions import normal  # NOQA
+from cupy.random.distributions import standard_normal  # NOQA
+from cupy.random.distributions import uniform  # NOQA
+from cupy.random.generator import get_random_state  # NOQA
+from cupy.random.generator import RandomState  # NOQA
+from cupy.random.generator import reset_states  # NOQA
+from cupy.random.generator import seed  # NOQA
+from cupy.random.sample import rand  # NOQA
+from cupy.random.sample import randint  # NOQA
+from cupy.random.sample import randn  # NOQA
+from cupy.random.sample import random_integers  # NOQA
+from cupy.random.sample import random_sample  # NOQA
+from cupy.random.sample import random_sample as random  # NOQA
+from cupy.random.sample import random_sample as ranf  # NOQA
+from cupy.random.sample import random_sample as sample  # NOQA

@@ -1,21 +1,17 @@
 import nose
 
-from chainer.testing import array
-from chainer.testing import helper
-from chainer.testing import parameterized
-from chainer.testing import unary_math_function_test
+from chainer.testing import array  # NOQA
+from chainer.testing import helper  # NOQA
+from chainer.testing import parameterized  # NOQA
+from chainer.testing import unary_math_function_test  # NOQA
 
 
-assert_allclose = array.assert_allclose
-
-parameterize = parameterized.parameterize
-product = parameterized.product
-product_dict = parameterized.product_dict
-
-unary_math_function_unittest = \
-    unary_math_function_test.unary_math_function_unittest
-
-with_requires = helper.with_requires
+from chainer.testing.array import assert_allclose  # NOQA
+from chainer.testing.helper import with_requires  # NOQA
+from chainer.testing.parameterized import parameterize  # NOQA
+from chainer.testing.parameterized import product  # NOQA
+from chainer.testing.parameterized import product_dict  # NOQA
+from chainer.testing.unary_math_function_test import unary_math_function_unittest  # NOQA
 
 
 def run_module(name, file):

@@ -1,10 +1,11 @@
 import numpy
 
-from chainer.utils import experimental as experimental_
-from chainer.utils import walker_alias
+from chainer.utils import walker_alias  # NOQA
 
-WalkerAlias = walker_alias.WalkerAlias
-experimental = experimental_.experimental
+
+# import class and function
+from chainer.utils.walker_alias import WalkerAlias  # NOQA
+from chainer.utils.experimental import experimental  # NOQA
 
 
 def force_array(x, dtype=None):

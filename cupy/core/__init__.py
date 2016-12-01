@@ -1,98 +1,51 @@
-from cupy.core import core
-from cupy.core import internal
-
-ndarray = core.ndarray
-
-get_size = internal.get_size
-complete_slice = internal.complete_slice
-
-ufunc = core.ufunc
-create_ufunc = core.create_ufunc
-ElementwiseKernel = core.ElementwiseKernel
-create_reduction_func = core.create_reduction_func
-ReductionKernel = core.ReductionKernel
+from cupy.core import core  # NOQA
+from cupy.core import internal  # NOQA
 
 
-# =============================================================================
-# Routines
-# =============================================================================
-
-elementwise_copy = core.elementwise_copy
-elementwise_copy_where = core.elementwise_copy_where
-
-divmod = core.divmod
-
-
-# -----------------------------------------------------------------------------
-# Array creation routines
-# -----------------------------------------------------------------------------
-
-array = core.array
-ascontiguousarray = core.ascontiguousarray
-
-
-# -----------------------------------------------------------------------------
-# Array manipulation routines
-# -----------------------------------------------------------------------------
-
-rollaxis = core.rollaxis
-broadcast = core.broadcast
-broadcast_to = core.broadcast_to
-concatenate = core.concatenate
-
-
-# -----------------------------------------------------------------------------
-# Binary operations
-# -----------------------------------------------------------------------------
-
-bitwise_and = core.bitwise_and
-bitwise_or = core.bitwise_or
-bitwise_xor = core.bitwise_xor
-invert = core.invert
-left_shift = core.left_shift
-right_shift = core.right_shift
-
-
-# -----------------------------------------------------------------------------
-# Linear algebra
-# -----------------------------------------------------------------------------
-
-dot = core.dot
-tensordot_core = core.tensordot_core
-matmul = core.matmul
-
-
-# -----------------------------------------------------------------------------
-# Logic functions
-# -----------------------------------------------------------------------------
-
-create_comparison = core.create_comparison
-
-greater = core.greater
-greater_equal = core.greater_equal
-less = core.less
-less_equal = core.less_equal
-equal = core.equal
-not_equal = core.not_equal
-
-
-# -----------------------------------------------------------------------------
-# Mathematical functions
-# -----------------------------------------------------------------------------
-
-add = core.add
-negative = core.negative
-multiply = core.multiply
-divide = core.divide
-power = core.power
-subtract = core.subtract
-true_divide = core.true_divide
-floor_divide = core.floor_divide
-remainder = core.remainder
-
-sqrt = core.sqrt
-absolute = core.absolute
-
-
-nanmax = core.nanmax
-nanmin = core.nanmin
+# import class and function
+from cupy.core.core import absolute  # NOQA
+from cupy.core.core import add  # NOQA
+from cupy.core.core import array  # NOQA
+from cupy.core.core import ascontiguousarray  # NOQA
+from cupy.core.core import bitwise_and  # NOQA
+from cupy.core.core import bitwise_or  # NOQA
+from cupy.core.core import bitwise_xor  # NOQA
+from cupy.core.core import broadcast  # NOQA
+from cupy.core.core import broadcast_to  # NOQA
+from cupy.core.core import concatenate  # NOQA
+from cupy.core.core import create_comparison  # NOQA
+from cupy.core.core import create_reduction_func  # NOQA
+from cupy.core.core import create_ufunc  # NOQA
+from cupy.core.core import divide  # NOQA
+from cupy.core.core import divmod  # NOQA
+from cupy.core.core import dot  # NOQA
+from cupy.core.core import elementwise_copy  # NOQA
+from cupy.core.core import elementwise_copy_where  # NOQA
+from cupy.core.core import ElementwiseKernel  # NOQA
+from cupy.core.core import equal  # NOQA
+from cupy.core.core import floor_divide  # NOQA
+from cupy.core.core import greater  # NOQA
+from cupy.core.core import greater_equal  # NOQA
+from cupy.core.core import invert  # NOQA
+from cupy.core.core import left_shift  # NOQA
+from cupy.core.core import less  # NOQA
+from cupy.core.core import less_equal  # NOQA
+from cupy.core.core import matmul  # NOQA
+from cupy.core.core import multiply  # NOQA
+from cupy.core.core import nanmax  # NOQA
+from cupy.core.core import nanmin  # NOQA
+from cupy.core.core import ndarray  # NOQA
+from cupy.core.core import negative  # NOQA
+from cupy.core.core import not_equal  # NOQA
+from cupy.core.core import power  # NOQA
+from cupy.core.core import ReductionKernel  # NOQA
+from cupy.core.core import remainder  # NOQA
+from cupy.core.core import right_shift  # NOQA
+from cupy.core.core import rollaxis  # NOQA
+from cupy.core.core import sqrt  # NOQA
+from cupy.core.core import subtract  # NOQA
+from cupy.core.core import tensordot_core  # NOQA
+from cupy.core.core import true_divide  # NOQA
+from cupy.core.core import ufunc  # NOQA
+from cupy.core.internal import complete_slice  # NOQA
+from cupy.core.internal import get_size  # NOQA
