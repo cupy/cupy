@@ -7,24 +7,52 @@ import threading
 from chainer import cuda  # NOQA
 from chainer import dataset  # NOQA
 from chainer import datasets  # NOQA
-from chainer import flag
-from chainer import function
-from chainer import function_set
+from chainer import flag  # NOQA
+from chainer import function  # NOQA
+from chainer import function_set  # NOQA
 from chainer import functions  # NOQA
-from chainer.functions import array
-from chainer.functions import basic_math
-from chainer import initializer
-from chainer import initializers
+from chainer import initializer  # NOQA
+from chainer import initializers  # NOQA
 from chainer import iterators  # NOQA
-from chainer import link
+from chainer import link  # NOQA
 from chainer import links  # NOQA
-from chainer import optimizer
+from chainer import optimizer  # NOQA
 from chainer import optimizers  # NOQA
-from chainer import reporter
-from chainer import serializer
+from chainer import reporter  # NOQA
+from chainer import serializer  # NOQA
 from chainer import serializers  # NOQA
 from chainer import training  # NOQA
-from chainer import variable
+from chainer import variable  # NOQA
+
+
+# import class and function
+from chainer.flag import AUTO  # NOQA
+from chainer.flag import Flag  # NOQA
+from chainer.flag import OFF  # NOQA
+from chainer.flag import ON  # NOQA
+from chainer.function import force_backprop_mode  # NOQA
+from chainer.function import Function  # NOQA
+from chainer.function import no_backprop_mode  # NOQA
+from chainer.function_set import FunctionSet  # NOQA
+from chainer.functions import array  # NOQA
+from chainer.functions import basic_math  # NOQA
+from chainer.initializer import Initializer  # NOQA
+from chainer.initializers import init_weight  # NOQA
+from chainer.link import Chain  # NOQA
+from chainer.link import ChainList  # NOQA
+from chainer.link import Link  # NOQA
+from chainer.optimizer import GradientMethod  # NOQA
+from chainer.optimizer import Optimizer  # NOQA
+from chainer.reporter import DictSummary  # NOQA
+from chainer.reporter import get_current_reporter  # NOQA
+from chainer.reporter import report  # NOQA
+from chainer.reporter import report_scope  # NOQA
+from chainer.reporter import Reporter  # NOQA
+from chainer.reporter import Summary  # NOQA
+from chainer.serializer import AbstractSerializer  # NOQA
+from chainer.serializer import Deserializer  # NOQA
+from chainer.serializer import Serializer  # NOQA
+from chainer.variable import Variable  # NOQA
 
 
 if sys.version_info[:3] == (3, 5, 0):
@@ -40,33 +68,6 @@ set 1 to CHAINER_PYTHON_350_FORCE environment variable."""
 
 
 __version__ = pkg_resources.get_distribution('chainer').version
-
-AbstractSerializer = serializer.AbstractSerializer
-Chain = link.Chain
-ChainList = link.ChainList
-Deserializer = serializer.Deserializer
-DictSummary = reporter.DictSummary
-Flag = flag.Flag
-force_backprop_mode = function.force_backprop_mode
-Function = function.Function
-no_backprop_mode = function.no_backprop_mode
-FunctionSet = function_set.FunctionSet
-GradientMethod = optimizer.GradientMethod
-Link = link.Link
-Optimizer = optimizer.Optimizer
-Reporter = reporter.Reporter
-Serializer = serializer.Serializer
-Summary = reporter.Summary
-Variable = variable.Variable
-Initializer = initializer.Initializer
-
-ON = flag.ON
-OFF = flag.OFF
-AUTO = flag.AUTO
-
-get_current_reporter = reporter.get_current_reporter
-report = reporter.report
-report_scope = reporter.report_scope
 
 
 thread_local = threading.local()
@@ -128,5 +129,3 @@ class DebugMode(object):
 
 basic_math.install_variable_arithmetics()
 array.get_item.install_variable_get_item()
-
-init_weight = initializers.init_weight

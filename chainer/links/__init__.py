@@ -1,66 +1,63 @@
 """Collection of :class:`~chainer.Link` implementations."""
 
-from chainer.links.activation import maxout
-from chainer.links.activation import prelu
-from chainer.links.connection import bias
-from chainer.links.connection import bilinear
-from chainer.links.connection import convolution_2d
-from chainer.links.connection import convolution_nd
-from chainer.links.connection import deconvolution_2d
-from chainer.links.connection import deconvolution_nd
-from chainer.links.connection import dilated_convolution_2d
-from chainer.links.connection import embed_id
-from chainer.links.connection import gru
-from chainer.links.connection import highway
-from chainer.links.connection import inception
-from chainer.links.connection import inceptionbn
-from chainer.links.connection import linear
-from chainer.links.connection import lstm
-from chainer.links.connection import mlp_convolution_2d
-from chainer.links.connection import n_step_lstm
-from chainer.links.connection import parameter
-from chainer.links.connection import peephole
-from chainer.links.connection import scale
-from chainer.links.connection import zoneoutlstm
-from chainer.links.loss import black_out
-from chainer.links.loss import crf1d
-from chainer.links.loss import hierarchical_softmax
-from chainer.links.loss import negative_sampling
-from chainer.links.model import classifier
-from chainer.links.normalization import batch_normalization
+from chainer.links.activation import maxout  # NOQA
+from chainer.links.activation import prelu  # NOQA
+from chainer.links.connection import bias  # NOQA
+from chainer.links.connection import bilinear  # NOQA
+from chainer.links.connection import convolution_2d  # NOQA
+from chainer.links.connection import convolution_nd  # NOQA
+from chainer.links.connection import deconvolution_2d  # NOQA
+from chainer.links.connection import deconvolution_nd  # NOQA
+from chainer.links.connection import dilated_convolution_2d  # NOQA
+from chainer.links.connection import embed_id  # NOQA
+from chainer.links.connection import gru  # NOQA
+from chainer.links.connection import highway  # NOQA
+from chainer.links.connection import inception  # NOQA
+from chainer.links.connection import inceptionbn  # NOQA
+from chainer.links.connection import linear  # NOQA
+from chainer.links.connection import lstm  # NOQA
+from chainer.links.connection import mlp_convolution_2d  # NOQA
+from chainer.links.connection import n_step_lstm  # NOQA
+from chainer.links.connection import parameter  # NOQA
+from chainer.links.connection import peephole  # NOQA
+from chainer.links.connection import scale  # NOQA
+from chainer.links.connection import zoneoutlstm  # NOQA
+from chainer.links.loss import black_out  # NOQA
+from chainer.links.loss import crf1d  # NOQA
+from chainer.links.loss import hierarchical_softmax  # NOQA
+from chainer.links.loss import negative_sampling  # NOQA
+from chainer.links.model import classifier  # NOQA
+from chainer.links.normalization import batch_normalization  # NOQA
 
 
-Maxout = maxout.Maxout
-PReLU = prelu.PReLU
-
-Bias = bias.Bias
-Bilinear = bilinear.Bilinear
-Convolution2D = convolution_2d.Convolution2D
-ConvolutionND = convolution_nd.ConvolutionND
-Deconvolution2D = deconvolution_2d.Deconvolution2D
-DeconvolutionND = deconvolution_nd.DeconvolutionND
-DilatedConvolution2D = dilated_convolution_2d.DilatedConvolution2D
-EmbedID = embed_id.EmbedID
-GRU = gru.GRU
-StatefulGRU = gru.StatefulGRU
-Highway = highway.Highway
-Inception = inception.Inception
-InceptionBN = inceptionbn.InceptionBN
-Linear = linear.Linear
-LSTM = lstm.LSTM
-StatelessLSTM = lstm.StatelessLSTM
-MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
-NStepLSTM = n_step_lstm.NStepLSTM
-Parameter = parameter.Parameter
-StatefulPeepholeLSTM = peephole.StatefulPeepholeLSTM
-Scale = scale.Scale
-StatefulZoneoutLSTM = zoneoutlstm.StatefulZoneoutLSTM
-
-BlackOut = black_out.BlackOut
-CRF1d = crf1d.CRF1d
-BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
-NegativeSampling = negative_sampling.NegativeSampling
-
-Classifier = classifier.Classifier
-
-BatchNormalization = batch_normalization.BatchNormalization
+# import class and function
+from chainer.links.activation.maxout import Maxout  # NOQA
+from chainer.links.activation.prelu import PReLU  # NOQA
+from chainer.links.connection.bias import Bias  # NOQA
+from chainer.links.connection.bilinear import Bilinear  # NOQA
+from chainer.links.connection.convolution_2d import Convolution2D  # NOQA
+from chainer.links.connection.convolution_nd import ConvolutionND  # NOQA
+from chainer.links.connection.deconvolution_2d import Deconvolution2D  # NOQA
+from chainer.links.connection.deconvolution_nd import DeconvolutionND  # NOQA
+from chainer.links.connection.dilated_convolution_2d import DilatedConvolution2D  # NOQA
+from chainer.links.connection.embed_id import EmbedID  # NOQA
+from chainer.links.connection.gru import GRU  # NOQA
+from chainer.links.connection.gru import StatefulGRU  # NOQA
+from chainer.links.connection.highway import Highway  # NOQA
+from chainer.links.connection.inception import Inception  # NOQA
+from chainer.links.connection.inceptionbn import InceptionBN  # NOQA
+from chainer.links.connection.linear import Linear  # NOQA
+from chainer.links.connection.lstm import LSTM  # NOQA
+from chainer.links.connection.lstm import StatelessLSTM  # NOQA
+from chainer.links.connection.mlp_convolution_2d import MLPConvolution2D  # NOQA
+from chainer.links.connection.n_step_lstm import NStepLSTM  # NOQA
+from chainer.links.connection.parameter import Parameter  # NOQA
+from chainer.links.connection.peephole import StatefulPeepholeLSTM  # NOQA
+from chainer.links.connection.scale import Scale  # NOQA
+from chainer.links.connection.zoneoutlstm import StatefulZoneoutLSTM  # NOQA
+from chainer.links.loss.black_out import BlackOut  # NOQA
+from chainer.links.loss.crf1d import CRF1d  # NOQA
+from chainer.links.loss.hierarchical_softmax import BinaryHierarchicalSoftmax  # NOQA
+from chainer.links.loss.negative_sampling import NegativeSampling  # NOQA
+from chainer.links.model.classifier import Classifier  # NOQA
+from chainer.links.normalization.batch_normalization import BatchNormalization  # NOQA
