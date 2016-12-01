@@ -78,6 +78,7 @@ class TestArrayAdvancedIndexingParametrizedTransp(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
     {'shape': (2, 3, 4),
      'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
+    {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingArrayClass(unittest.TestCase):
