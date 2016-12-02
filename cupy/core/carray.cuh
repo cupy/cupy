@@ -3,10 +3,6 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#ifdef _MSC_VER
-typedef ptrdiff_t ssize_t;
-#endif
-
 // float16
 class float16
 {
@@ -139,7 +135,7 @@ __device__ float16 nextafter(float16 x, float16 y) {return float16::nextafter(x,
 
 // CArray
 #define CUPY_FOR(i, n) \
-    for (ssize_t i = blockIdx.x * blockDim.x + threadIdx.x; \
+    for (ptrdiff_t i = blockIdx.x * blockDim.x + threadIdx.x; \
          i < (n); \
          i += blockDim.x * gridDim.x)
 
@@ -147,24 +143,24 @@ template <typename T, int ndim>
 class CArray {
 private:
   T* data_;
-  ssize_t size_;
-  ssize_t shape_[ndim];
-  ssize_t strides_[ndim];
+  ptrdiff_t size_;
+  ptrdiff_t shape_[ndim];
+  ptrdiff_t strides_[ndim];
 
 public:
-  __device__ ssize_t size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
-  __device__ const ssize_t* shape() const {
+  __device__ const ptrdiff_t* shape() const {
     return shape_;
   }
 
-  __device__ const ssize_t* strides() const {
+  __device__ const ptrdiff_t* strides() const {
     return strides_;
   }
 
-  __device__ T& operator[](const ssize_t* idx) {
+  __device__ T& operator[](const ptrdiff_t* idx) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {
       ptr += strides_[dim] * idx[dim];
@@ -172,11 +168,11 @@ public:
     return *reinterpret_cast<T*>(ptr);
   }
 
-  __device__ T operator[](const ssize_t* idx) const {
+  __device__ T operator[](const ptrdiff_t* idx) const {
     return (*const_cast<CArray<T, ndim>*>(this))[idx];
   }
 
-  __device__ T& operator[](ssize_t i) {
+  __device__ T& operator[](ptrdiff_t i) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
       ptr += strides_[dim] * (i % shape_[dim]);
@@ -189,7 +185,7 @@ public:
     return *reinterpret_cast<T*>(ptr);
   }
 
-  __device__ T operator[](ssize_t i) const {
+  __device__ T operator[](ptrdiff_t i) const {
     return (*const_cast<CArray<T, ndim>*>(this))[i];
   }
 };
@@ -198,26 +194,26 @@ template <typename T>
 class CArray<T, 0> {
 private:
   T* data_;
-  ssize_t size_;
+  ptrdiff_t size_;
 
 public:
-  __device__ ssize_t size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
-  __device__ T& operator[](const ssize_t* idx) {
+  __device__ T& operator[](const ptrdiff_t* idx) {
     return *reinterpret_cast<T*>(data_);
   }
 
-  __device__ T operator[](const ssize_t* idx) const {
+  __device__ T operator[](const ptrdiff_t* idx) const {
     return (*const_cast<CArray<T, 0>*>(this))[idx];
   }
 
-  __device__ T& operator[](ssize_t i) {
+  __device__ T& operator[](ptrdiff_t i) {
     return *reinterpret_cast<T*>(data_);
   }
 
-  __device__ T operator[](ssize_t i) const {
+  __device__ T operator[](ptrdiff_t i) const {
     return (*const_cast<CArray<T, 0>*>(this))[i];
   }
 };
@@ -225,19 +221,19 @@ public:
 template <int ndim>
 class CIndexer {
 private:
-  ssize_t size_;
-  ssize_t shape_[ndim];
-  ssize_t index_[ndim];
+  ptrdiff_t size_;
+  ptrdiff_t shape_[ndim];
+  ptrdiff_t index_[ndim];
 
 public:
-  __device__ ssize_t size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
-  __device__ void set(ssize_t i) {
-    ssize_t a = i;
-    for (ssize_t dim = ndim; --dim > 0; ) {
-      ssize_t s = shape_[dim];
+  __device__ void set(ptrdiff_t i) {
+    ptrdiff_t a = i;
+    for (ptrdiff_t dim = ndim; --dim > 0; ) {
+      ptrdiff_t s = shape_[dim];
       index_[dim] = (a % s);
       a /= s;
     }
@@ -246,7 +242,7 @@ public:
     }
   }
 
-  __device__ const ssize_t* get() const {
+  __device__ const ptrdiff_t* get() const {
     return index_;
   }
 };
@@ -254,17 +250,17 @@ public:
 template <>
 class CIndexer<0> {
 private:
-  ssize_t size_;
+  ptrdiff_t size_;
 
 public:
-  __device__ ssize_t size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
-  __device__ void set(ssize_t i) {
+  __device__ void set(ptrdiff_t i) {
   }
 
-  __device__ const ssize_t* get() const {
+  __device__ const ptrdiff_t* get() const {
     return NULL;
   }
 };
