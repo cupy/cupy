@@ -48,7 +48,7 @@ def experimental(api_name):
 The interface can change in the future.
 
     We can also make a whole class experimental. In that case,
-    we should call this function in its `__init__` method.
+    we should call this function in its ``__init__`` method.
 
     .. testcode::
 
