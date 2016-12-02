@@ -3,7 +3,7 @@ import warnings
 
 
 def experimental(api_name):
-    """A function for marking APIs as experimental.
+    """Declares that user is using an experimental feature.
 
     The developer of an API can mark it as *experimental* by calling
     this function. When users call experimental APIs, :class:`FutureWarning`
@@ -65,8 +65,8 @@ The interface can change in the future.
         ... FutureWarning: chainer.foo.C is an experimental API. \
 The interface can change in the future
 
-    If we want to mark ``__init__`` method only, rather than class itself.
-    It is recommended that we explicitly feed its API name.
+    If we want to mark ``__init__`` method only, rather than class itself,
+    it is recommended that we explicitly feed its API name.
 
     .. testcode::
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
