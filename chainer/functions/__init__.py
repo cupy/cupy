@@ -103,6 +103,7 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
+from chainer.functions.pooling import upsampling_2d
 from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
@@ -353,6 +354,9 @@ spatial_pyramid_pooling_2d = \
 
 Unpooling2D = unpooling_2d.Unpooling2D
 unpooling_2d = unpooling_2d.unpooling_2d
+
+Upsampling2D = upsampling_2d.Upsampling2D
+upsampling_2d = upsampling_2d.upsampling_2d
 
 Forget = forget.Forget
 forget = forget.forget
