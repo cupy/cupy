@@ -1,19 +1,21 @@
-from chainer.optimizers import ada_delta
-from chainer.optimizers import ada_grad
-from chainer.optimizers import adam
-from chainer.optimizers import momentum_sgd
-from chainer.optimizers import nesterov_ag
-from chainer.optimizers import rmsprop
-from chainer.optimizers import rmsprop_graves
-from chainer.optimizers import sgd
-from chainer.optimizers import smorms3
+from chainer.optimizers import ada_delta  # NOQA
+from chainer.optimizers import ada_grad  # NOQA
+from chainer.optimizers import adam  # NOQA
+from chainer.optimizers import momentum_sgd  # NOQA
+from chainer.optimizers import nesterov_ag  # NOQA
+from chainer.optimizers import rmsprop  # NOQA
+from chainer.optimizers import rmsprop_graves  # NOQA
+from chainer.optimizers import sgd  # NOQA
+from chainer.optimizers import smorms3  # NOQA
 
-AdaDelta = ada_delta.AdaDelta
-AdaGrad = ada_grad.AdaGrad
-Adam = adam.Adam
-MomentumSGD = momentum_sgd.MomentumSGD
-NesterovAG = nesterov_ag.NesterovAG
-RMSprop = rmsprop.RMSprop
-RMSpropGraves = rmsprop_graves.RMSpropGraves
-SGD = sgd.SGD
-SMORMS3 = smorms3.SMORMS3
+
+# import class and function
+from chainer.optimizers.ada_delta import AdaDelta  # NOQA
+from chainer.optimizers.ada_grad import AdaGrad  # NOQA
+from chainer.optimizers.adam import Adam  # NOQA
+from chainer.optimizers.momentum_sgd import MomentumSGD  # NOQA
+from chainer.optimizers.nesterov_ag import NesterovAG  # NOQA
+from chainer.optimizers.rmsprop import RMSprop  # NOQA
+from chainer.optimizers.rmsprop_graves import RMSpropGraves  # NOQA
+from chainer.optimizers.sgd import SGD  # NOQA
+from chainer.optimizers.smorms3 import SMORMS3  # NOQA

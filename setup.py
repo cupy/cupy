@@ -50,6 +50,7 @@ setup(
               'chainer.links.connection',
               'chainer.links.loss',
               'chainer.links.model',
+              'chainer.links.model.vision',
               'chainer.links.normalization',
               'chainer.optimizers',
               'chainer.serializers',
