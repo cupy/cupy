@@ -12,11 +12,17 @@ class LayerNormalization(link.Chain):
 
     """Layer normalization layer on outputs of linear functions.
 
-    This is a link of "Layer Normalization". This layer normalizes,
-    scales and shifts input units with :link:`~chainer.links.Scale`.
+    This is a link of "Layer Normalization". This layer
+    normalizes input units by statistics along the second axis,
+    scales and shifts them with :class:`~chainer.links.Scale`.
 
     Args:
         size (int): Size of input units.
+
+    Attributes:
+        scale (~chainer.links.Scale): Layer to scale and shift
+            units after normalization.
+        eps (float): Epsilon value for numerical stability.
 
     See: `Layer Normalization <https://arxiv.org/abs/1607.06450>`_
     """
