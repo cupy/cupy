@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import chainer
 from chainer import cuda
@@ -14,12 +13,7 @@ from chainer.utils import type_check
 
 
 @testing.parameterize(*(testing.product({
-    'volatile': ['on'],
-    'batchsize': [1, 5],
-    'size': [10, 100],
-    'dtype': [numpy.float32],
-}) + testing.product({
-    'volatile': ['off'],
+    'volatile': ['on', 'off'],
     'batchsize': [1, 5],
     'size': [10, 100],
     'dtype': [numpy.float32],

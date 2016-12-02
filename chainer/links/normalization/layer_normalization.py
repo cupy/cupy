@@ -1,10 +1,10 @@
-import chainer
+from chainer import initializers
+from chainer import link
+
 from chainer.functions.array import broadcast
 from chainer.functions.math import sqrt
 from chainer.functions.math import square
 from chainer.functions.math import sum
-from chainer import initializers
-from chainer import link
 from chainer.links.connection import scale
 
 
@@ -12,8 +12,8 @@ class LayerNormalization(link.Chain):
 
     """Layer normalization layer on outputs of linear functions.
 
-    This is a link of "Layer Normalization". This layer
-    normalizes, scales and shifts input units with :link:`~chainer.links.Scale`.
+    This is a link of "Layer Normalization". This layer normalizes,
+    scales and shifts input units with :link:`~chainer.links.Scale`.
 
     Args:
         size (int): Size of input units.
