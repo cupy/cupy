@@ -17,7 +17,9 @@ def experimental(api_name):
 
     .. testsetup::
 
+        import sys
         import warnings
+
         warnings.simplefilter('always')
 
         def wrapper(message, category, filename, lineno, file=None, line=None):
