@@ -1,7 +1,6 @@
 from __future__ import print_function
 from distutils import ccompiler
 from distutils import sysconfig
-from numpy.distutils import conv_template  # to process .src template files
 import os
 from os import path
 import re
@@ -32,7 +31,7 @@ MODULES = [
             # extensions to be built as well as the names of the Cython source
             # files with appending '.pyx' extension from which the extensions
             # are built.
-            'cupy.core.core',
+            ('cupy.core.core', ['cupy/cuda/cupy_thrust.cu']),
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',
@@ -45,8 +44,7 @@ MODULES = [
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.h.src',
-                                  'cupy/cuda/cupy_thrust.cu.src']),
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             'cupy.util',
         ],
         'include': [
@@ -101,10 +99,22 @@ def module_extension_name(file):
     return ensure_module_file(file)[0]
 
 
-def module_extension_sources(file, use_cython):
+def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
     ext = '.pyx' if use_cython else '.cpp'
     pyx = path.join(*pyx.split('.')) + ext
+
+    # If CUDA SDK is not available, remove CUDA C files from extension sources
+    # and use stubs defined in header files.
+    if no_cuda:
+        others1 = []
+        for source in others:
+            base, ext = os.path.splitext(source)
+            if ext == '.cu':
+                continue
+            others1.append(source)
+        others = others1
+
     return [pyx] + others
 
 
@@ -187,7 +197,7 @@ def make_extensions(options, compiler, use_cython):
 
         for f in module['file']:
             name = module_extension_name(f)
-            sources = module_extension_sources(f, use_cython)
+            sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
             ret.append(extension)
 
@@ -212,55 +222,6 @@ def parse_args():
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
     return arg_options
-
-
-def process_source_templates(extensions, no_cuda=False):
-    """Process .src source templates to generate actual source files.
-
-       Additionally, sources in extensions are replaced with actual file names
-       removing `.src` file extension except that C header files are just
-       removed from the sources. For example, an extension is assumed to have
-       the following sources:
-
-           [thrust.pyx, cupy_thrust.h.src, cupy_thrust.cu.src]
-
-       then the sources are replaced with:
-
-           [thrust.pyx, cupy_thrust.cu]
-
-       If CUDA is not used in effect of ``no_cuda`` option, CUDA C files are
-       also removed from the sources so that stubs defined in header files
-       are used.
-
-           [thrust.pyx]
-
-    """
-    for extension in extensions:
-
-        # Process source templates.
-        for source in extension.sources:
-            base, ext = os.path.splitext(source)
-            if ext == '.src':
-                print("processing source template '{}'".format(source))
-                outstr = conv_template.process_file(source)
-                fid = open(base, 'w')
-                fid.write(outstr)
-                fid.close()
-
-        # Replace extension sources.
-        sources = []
-        for source in extension.sources:
-            base, ext = os.path.splitext(source)
-            if ext == '.src':
-                _, ext1 = os.path.splitext(base)
-                if ext1 == '.h':
-                    continue
-                if no_cuda and ext1 == '.cu':
-                    continue
-                sources.append(base)
-            else:
-                sources.append(source)
-        extension.sources = sources
 
 
 def check_cython_version():
@@ -306,8 +267,6 @@ def get_ext_modules():
 
     use_cython = check_cython_version()
     extensions = make_extensions(arg_options, compiler, use_cython)
-
-    process_source_templates(extensions, arg_options['no_cuda'])
 
     if use_cython:
         extensions = cythonize(extensions, arg_options)

@@ -14,6 +14,7 @@ cimport cython
 from libcpp cimport vector
 
 from cupy.core cimport internal
+from cupy.cuda cimport common
 from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
@@ -649,25 +650,25 @@ cdef class ndarray:
         # TODO(takagi): Support float16 and bool
         dtype = self.dtype
         if dtype == numpy.int8:
-            thrust.stable_sort_byte(ptr, n)
+            thrust.stable_sort[common.cpy_byte](ptr, n)
         elif dtype == numpy.uint8:
-            thrust.stable_sort_ubyte(ptr, n)
+            thrust.stable_sort[common.cpy_ubyte](ptr, n)
         elif dtype == numpy.int16:
-            thrust.stable_sort_short(ptr, n)
+            thrust.stable_sort[common.cpy_short](ptr, n)
         elif dtype == numpy.uint16:
-            thrust.stable_sort_ushort(ptr, n)
+            thrust.stable_sort[common.cpy_ushort](ptr, n)
         elif dtype == numpy.int32:
-            thrust.stable_sort_int(ptr, n)
+            thrust.stable_sort[common.cpy_int](ptr, n)
         elif dtype == numpy.uint32:
-            thrust.stable_sort_uint(ptr, n)
+            thrust.stable_sort[common.cpy_uint](ptr, n)
         elif dtype == numpy.int64:
-            thrust.stable_sort_long(ptr, n)
+            thrust.stable_sort[common.cpy_long](ptr, n)
         elif dtype == numpy.uint64:
-            thrust.stable_sort_ulong(ptr, n)
+            thrust.stable_sort[common.cpy_ulong](ptr, n)
         elif dtype == numpy.float32:
-            thrust.stable_sort_float(ptr, n)
+            thrust.stable_sort[common.cpy_float](ptr, n)
         elif dtype == numpy.float64:
-            thrust.stable_sort_double(ptr, n)
+            thrust.stable_sort[common.cpy_double](ptr, n)
         else:
             msg = "Sorting arrays with dtype '{}' is not supported"
             raise TypeError(msg.format(dtype))
