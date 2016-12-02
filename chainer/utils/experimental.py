@@ -20,6 +20,16 @@ def experimental(api_name):
         import warnings
         warnings.simplefilter('always')
 
+        def wrapper(message, category, filename, lineno, file=None, line=None):
+            sys.stdout.write(warnings.formatwarning(message, category, filename, lineno))
+
+        showwarning_orig = warnings.showwarning
+        warnings.showwarning = wrapper
+
+    .. testcleanup::
+
+        warnings.showwarning = showwarning_orig
+
     .. testcode::
 
         from chainer.utils import experimental
