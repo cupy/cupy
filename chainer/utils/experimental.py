@@ -15,25 +15,21 @@ def experimental(api_name):
     The basic usage is to call it in the function or method we want to
     mark as experimental along with the API name.
 
-    .. testcode::
+    .. doctest::
         :hide:
 
-        import warnings
-        warnings.simplefilter('always')
+        >>> import warnings
+        ... warnings.simplefilter('always')
 
-
-    .. testcode::
-        from chainer.utils import experimental
-
-        def f(x):
-          experimental('chainer.foo.bar.f')
-          # concrete implementation of f follows
-
-        f(1)
-
-    .. testoutput::
-
-         FutureWarning: chainer.experimental.f is an experimental API. \
+    .. doctest::
+        >>> from chainer.utils import experimental
+        ...
+        ... def f(x):
+        ...  experimental('chainer.foo.bar.f')
+        ...  # concrete implementation of f follows
+        ...
+        ... f(1)
+        FutureWarning: chainer.experimental.f is an experimental API. \
 The interface can change in the future.
 
     We can also make a whole class experimental. In that case,
