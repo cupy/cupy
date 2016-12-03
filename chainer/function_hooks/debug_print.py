@@ -16,9 +16,10 @@ class PrintHook(function.FunctionHook):
     The basic usage is to use it with ``with`` statement.
 
     >>> import chainer, chainer.functions as F, chainer.links as L
+    ... from chainer import function_hooks
     ... l = L.Linear(10, 10)
     ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
-    ... with chainer.function_hooks.PrintHook():
+    ... with function_hooks.PrintHook():
     ...     y = l(x)
     ...     z = F.sum(y)
     ...     z.backward()

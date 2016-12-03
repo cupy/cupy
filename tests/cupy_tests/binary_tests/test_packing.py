@@ -1,3 +1,4 @@
+import numpy
 import unittest
 
 from cupy import testing
@@ -7,3 +8,30 @@ from cupy import testing
 class TestPacking(unittest.TestCase):
 
     _multiprocess_can_split_ = True
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def check_packbits(self, data, xp, dtype):
+        a = xp.array(data, dtype=dtype)
+        return xp.packbits(a)
+
+    @testing.numpy_cupy_array_equal()
+    def check_unpackbits(self, data, xp):
+        a = xp.array(data, dtype=xp.uint8)
+        return xp.unpackbits(a)
+
+    def test_packbits(self):
+        self.check_packbits([])
+        self.check_packbits([0])
+        self.check_packbits([1])
+        self.check_packbits([0, 1])
+        self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1])
+        self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1, 1])
+        self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2)
+
+    def test_unpackbits(self):
+        self.check_unpackbits([])
+        self.check_unpackbits([0])
+        self.check_unpackbits([1])
+        self.check_unpackbits([255])
+        self.check_unpackbits([100, 200, 123, 213])
