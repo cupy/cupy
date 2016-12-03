@@ -1,10 +1,13 @@
-import cupy
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+# class s_(object):
 
 import numpy
 
-import six
+import cupy
 
-# class s_(object):
+import six
 
 class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
