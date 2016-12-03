@@ -1,6 +1,6 @@
-import numpy
-
 import cupy
+
+import numpy
 
 import six
 
