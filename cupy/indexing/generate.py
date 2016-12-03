@@ -1,10 +1,13 @@
 # flake8: NOQA
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+
+# class s_(object):
+
 import numpy
 import cupy
 
 import six
-
 
 class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
@@ -34,18 +37,18 @@ class AxisConcatenator(object):
         ndmin = self.ndmin
         objs = []
         if isinstance(key, six.string_types):
-            return NotImplementedError
+            raise NotImplementedError('')
         if not isinstance(key, tuple):
             key = (key,)
 
         for k in six.moves.range(len(key)):
             if isinstance(key[k], slice):
-                return NotImplementedError
+                raise NotImplementedError('')
             elif isinstance(key[k], six.string_types):
                 if k != 0:
                     raise ValueError(
                     'special directives must be the first entry.')
-                return NotImplementedError
+                raise NotImplementedError('')
             else:
                 newobj = key[k]
                 tempobj = cupy.array(newobj, copy=False)
@@ -139,9 +142,6 @@ class RClass(AxisConcatenator):
         AxisConcatenator.__init__(self)
 
 r_ = RClass()
-
-# class s_(object):
-
 
 # TODO(okuta): Implement indices
 
