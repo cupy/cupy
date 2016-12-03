@@ -5,6 +5,7 @@
 # class s_(object):
 
 import numpy
+
 import cupy
 
 import six
