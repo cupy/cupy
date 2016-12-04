@@ -101,7 +101,7 @@ def log_softmax(x, use_cudnn=True):
     where :math:`i' = (i_1, i'_2, \\dots, i_d)`.
 
     .. math::
-        p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
+        p(x) = {\\exp(x) \\over \\sum_{x'} \\exp(x')}.
 
     This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
