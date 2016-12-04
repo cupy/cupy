@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from __future__ import division
 import ctypes
 import sys
