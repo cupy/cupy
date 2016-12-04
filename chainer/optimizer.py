@@ -109,7 +109,7 @@ class Optimizer(object):
                             if isinstance(value, numpy.ndarray):
                                 state[key] = cuda.to_gpu(value)
                             elif (isinstance(value, cupy.ndarray) and
-                                          value.device != dev):
+                                  value.device != dev):
                                 state[key] = cupy.copy(value)
 
     def init_state(self, param, state):
@@ -343,7 +343,7 @@ class Optimizer(object):
 
             with cuda.get_device(g_dst):
                 if (isinstance(g_src, cuda.ndarray) and
-                            g_dst.device != g_src.device):
+                        g_dst.device != g_src.device):
                     g_dst += cuda.copy(g_src, out_device=g_dst.device)
                 else:
                     g_dst += cuda.to_gpu(g_src)
