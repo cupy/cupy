@@ -11,6 +11,7 @@ from chainer.variable import Variable
 
 
 @unittest.skipUnless(resnet.available, 'Pillow is required')
+@attr.slow
 class TestResNet50Layers(unittest.TestCase):
 
     def setUp(self):
@@ -120,6 +121,7 @@ class TestResNet50Layers(unittest.TestCase):
 
 
 @unittest.skipUnless(resnet.available, 'Pillow is required')
+@attr.slow
 class TestVGG16Layers(unittest.TestCase):
 
     def setUp(self):
