@@ -48,10 +48,10 @@ def bernoulli_nll(x, y):
 
     .. math::
 
-        -B(x; p) = -\\sum_i {x_i \\log(p_i) + (1 - x_i)\\log(1 - p_i)},
+        -\\log B(x; p) = -\\sum_i {x_i \\log(p_i) - (1 - x_i)\\log(1 - p_i)},
 
-    where :math:`p = \\sigma(y)`, and :math:`\\sigma(\\cdot)` is a sigmoid
-    function.
+    where :math:`p = \\sigma(y)`, :math:`\\sigma(\\cdot)` is a sigmoid
+    function, and :math:`B(x; p)` is a Bernoulli distribution.
 
     .. note::
 
