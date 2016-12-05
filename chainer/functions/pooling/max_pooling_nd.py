@@ -8,6 +8,7 @@ from chainer import cuda
 from chainer.functions.pooling import max_pooling_nd_kernel
 from chainer.functions.pooling import pooling_nd
 from chainer.utils import conv_nd
+from chainer.utils import experimental
 
 
 if cuda.cudnn_enabled:
@@ -151,5 +152,6 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
+    experimental('chainer.functions.pooling.max_pooling_nd')
     ndim = len(x.shape[2:])
     return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)
