@@ -17,15 +17,16 @@ class LayerNormalization(link.Chain):
     that are computed along the second axis,
     scales and shifts them with :class:~chainer.links.Scale.
 
+
     Args:
         size (int): Size of input units.
-        eps (float): Epsilon value for numerical stability of the normalization.
-        initial_gumma (~chainer.Initializer): Initializer for the scale vector.
+        eps (float): Epsilon value for numerical stability of normalization.
+        initial_gumma (~chainer.Initializer): Initializer for scaling vector.
             If ``None``, then the vector is initialized
             by :class:`~chainer.initializers.HeNormal`.
             If a scalar, the vectors are filled by it.
             If ``numpy.ndarray``, the vectors are set by it.
-        initial_beta (~chainer.Initializer): Initializer for the shift vector.
+        initial_beta (~chainer.Initializer): Initializer for shifting vector.
             If ``None``, then the vector is initialized
             by :class:`~chainer.initializers.HeNormal`.
             If a scalar, the vectors are filled by it.
@@ -62,4 +63,15 @@ class LayerNormalization(link.Chain):
         return (x - mean) / std
 
     def __call__(self, x):
+        """Apply layer normalization to given input.
+
+        Args:
+            x (~chainer.Variable): Batch vectors.
+                Shape of this value must be `(batch_size, unit_size)`,
+                e.g., the output of :func:`~chainer.functions.linear`.
+
+        Returns:
+            ~chainer.Variable: Output of the layer normalization.
+
+        """
         return self.scale(self._normalize(x))
