@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 cdef extern from '../cuda/cupy_common.h':  # thru parent to import in core
     ctypedef char cpy_byte
     ctypedef unsigned char cpy_ubyte
