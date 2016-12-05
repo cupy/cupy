@@ -15,7 +15,7 @@ class LayerNormalization(link.Chain):
     This link implements a "layer normalization" layer
     which normalizes the input units by statistics
     that are computed along the second axis,
-    scales and shifts them with :class:~chainer.links.Scale.
+    scales and shifts them with :class:`~chainer.links.Scale`.
 
 
     Args:
