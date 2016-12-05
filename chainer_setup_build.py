@@ -15,7 +15,7 @@ from install import build
 from install import utils
 
 
-require_cython_version = pkg_resources.parse_version('0.24.0')
+required_cython_version = pkg_resources.parse_version('0.24.0')
 
 MODULES = [
     {
@@ -128,9 +128,14 @@ def check_library(compiler, includes=(), libraries=(),
     source = ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main(int argc, char* argv[]) {return 0;}'
     try:
-        build.build_and_run(compiler, source, libraries,
-                            include_dirs, library_dirs)
-    except Exception:
+        # We need to try to build a shared library because distutils
+        # uses different option to build an executable and a shared library.
+        # Especially when a user build an executable, distutils does not use
+        # LDFLAGS environment variable.
+        build.build_shlib(compiler, source, libraries,
+                          include_dirs, library_dirs)
+    except Exception as e:
+        print(e)
         return False
     return True
 
@@ -156,6 +161,11 @@ def make_extensions(options, compiler, use_cython):
                               for p in settings['library_dirs']))
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
+
+    # This is a workaround for Anaconda.
+    # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
+    # with GCC 5's new ABI.
+    settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
@@ -205,20 +215,22 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    arg_options = dict()
-    arg_options['profile'] = '--cupy-profile' in sys.argv
-    if arg_options['profile']:
+    cupy_profile = '--cupy-profile' in sys.argv
+    if cupy_profile:
         sys.argv.remove('--cupy-profile')
-
     cupy_coverage = '--cupy-coverage' in sys.argv
     if cupy_coverage:
         sys.argv.remove('--cupy-coverage')
-    arg_options['linetrace'] = cupy_coverage
-    arg_options['annotate'] = cupy_coverage
-
-    arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
-    if arg_options['no_cuda']:
+    no_cuda = '--cupy-no-cuda' in sys.argv
+    if no_cuda:
         sys.argv.remove('--cupy-no-cuda')
+
+    arg_options = {
+        'profile': cupy_profile,
+        'linetrace': cupy_coverage,
+        'annotate': cupy_coverage,
+        'no_cuda': no_cuda,
+    }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
     return arg_options
@@ -228,7 +240,7 @@ def check_cython_version():
     try:
         import Cython
         cython_version = pkg_resources.parse_version(Cython.__version__)
-        return cython_version >= require_cython_version
+        return cython_version >= required_cython_version
     except ImportError:
         return False
 
@@ -244,7 +256,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, language="c++", verbose=True,
+        extensions, verbose=True,
         compiler_directives=directives, **cythonize_options)
 
 
@@ -253,7 +265,8 @@ def check_extensions(extensions):
         for f in x.sources:
             if not path.isfile(f):
                 msg = ('Missing file: %s\n' % f +
-                       'Please install Cython.\n' +
+                       'Please install Cython. ' +
+                       'Please also check the version of Cython.\n' +
                        'See http://docs.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
@@ -262,6 +275,9 @@ def get_ext_modules():
     arg_options = parse_args()
     print('Options:', arg_options)
 
+    # We need to call get_config_vars to initialize _config_vars in distutils
+    # see #1849
+    sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
 

@@ -37,7 +37,7 @@ class Maxout(link.Chain):
             If ``None``, then this function uses ``wscale`` to initialize.
         initial_bias (2-D array, float or None): Initial bias value.
             If it is float, initial bias is filled with this value.
-            If it is ``None``, bias is omitted.
+            If ``None``, bias is omitted.
 
     Attributes:
         linear (~chainer.Link): The Linear link that performs

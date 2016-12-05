@@ -12,8 +12,6 @@ from chainer.dataset import iterator
 
 class MultiprocessIterator(iterator.Iterator):
 
-    _last_signal = object()
-
     """Dataset iterator that loads examples in parallel.
 
     This is an implementation of :class:`~chainer.dataset.Iterator` that loads
@@ -39,6 +37,8 @@ class MultiprocessIterator(iterator.Iterator):
             If ``None``, size is adjusted automatically.
 
     """
+
+    _last_signal = object()
 
     def __init__(self, dataset, batch_size, repeat=True, shuffle=True,
                  n_processes=None, n_prefetch=1, shared_mem=None):

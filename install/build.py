@@ -118,6 +118,34 @@ def check_cudnn_version(compiler, settings):
     return True
 
 
+def build_shlib(compiler, source, libraries=(),
+                include_dirs=(), library_dirs=()):
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        fname = os.path.join(temp_dir, 'a.cpp')
+        with open(fname, 'w') as f:
+            f.write(source)
+
+        objects = compiler.compile([fname], output_dir=temp_dir,
+                                   include_dirs=include_dirs)
+
+        try:
+            postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
+            compiler.link_shared_lib(objects,
+                                     os.path.join(temp_dir, 'a'),
+                                     libraries=libraries,
+                                     library_dirs=library_dirs,
+                                     extra_postargs=postargs,
+                                     target_lang='c++')
+        except Exception as e:
+            msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
+            raise Exception(msg)
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=()):
     temp_dir = tempfile.mkdtemp()

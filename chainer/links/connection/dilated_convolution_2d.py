@@ -14,7 +14,7 @@ class DilatedConvolution2D(link.Link):
     function and holds the filter weight and bias vector as parameters.
 
     Args:
-        in_channels (int): Number of channels of input arrays. If None,
+        in_channels (int): Number of channels of input arrays. If ``None``,
             parameter initialization will be deferred until the first forward
             data pass at which time the size will be determined.
         out_channels (int): Number of channels of output arrays.

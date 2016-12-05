@@ -231,6 +231,10 @@ accuracy
 ~~~~~~~~
 .. autofunction:: accuracy
 
+binary_accuracy
+~~~~~~~~~~~~~~~
+.. autofunction:: binary_accuracy
+
 
 Loss functions
 --------------
@@ -254,6 +258,7 @@ contrastive
 crf1d
 ~~~~~
 .. autofunction:: crf1d
+.. autofunction:: argmax_crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -274,6 +279,10 @@ hinge
 huber_loss
 ~~~~~~~~~~
 .. autofunction:: huber_loss
+
+mean_absolute_error
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: mean_absolute_error
 
 mean_squared_error
 ~~~~~~~~~~~~~~~~~~

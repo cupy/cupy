@@ -1,20 +1,18 @@
-from chainer.training import extension
-from chainer.training import trainer
-from chainer.training import trigger
-from chainer.training import updater
+from chainer.training import extension  # NOQA
+from chainer.training import trainer  # NOQA
+from chainer.training import trigger  # NOQA
+from chainer.training import updater  # NOQA
 
 
-Extension = extension.Extension
-make_extension = extension.make_extension
-PRIORITY_WRITER = extension.PRIORITY_WRITER
-PRIORITY_EDITOR = extension.PRIORITY_EDITOR
-PRIORITY_READER = extension.PRIORITY_READER
-
-Trainer = trainer.Trainer
-
-IntervalTrigger = trigger.IntervalTrigger
-get_trigger = trigger.get_trigger
-
-Updater = updater.Updater
-StandardUpdater = updater.StandardUpdater
-ParallelUpdater = updater.ParallelUpdater
+# import class and function
+from chainer.training.extension import Extension  # NOQA
+from chainer.training.extension import make_extension  # NOQA
+from chainer.training.extension import PRIORITY_EDITOR  # NOQA
+from chainer.training.extension import PRIORITY_READER  # NOQA
+from chainer.training.extension import PRIORITY_WRITER  # NOQA
+from chainer.training.trainer import Trainer  # NOQA
+from chainer.training.trigger import get_trigger  # NOQA
+from chainer.training.trigger import IntervalTrigger  # NOQA
+from chainer.training.updater import ParallelUpdater  # NOQA
+from chainer.training.updater import StandardUpdater  # NOQA
+from chainer.training.updater import Updater  # NOQA

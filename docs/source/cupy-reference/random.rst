@@ -26,6 +26,7 @@ Sample random data
 Distributions
 -------------
 
+.. autofunction:: cupy.random.gumbel
 .. autofunction:: cupy.random.lognormal
 .. autofunction:: cupy.random.normal
 .. autofunction:: cupy.random.standard_normal

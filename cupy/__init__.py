@@ -1,11 +1,10 @@
-from __future__ import division
 import sys
 
 import numpy
 import six
 
 try:
-    from cupy import core
+    from cupy import core  # NOQA
 except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
@@ -16,65 +15,92 @@ except ImportError:
     raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
 
 
-from cupy import binary
-from cupy import creation
-from cupy import indexing
-from cupy import io
-from cupy import linalg
-from cupy import logic
-from cupy import manipulation
-from cupy import math
-import cupy.random
-from cupy import sorting
-from cupy import statistics
-from cupy import testing  # NOQA
-from cupy import util
+from cupy import binary  # NOQA
+from cupy import creation  # NOQA
+from cupy import indexing  # NOQA
+from cupy import io  # NOQA
+from cupy import linalg  # NOQA
+from cupy import logic  # NOQA
+from cupy import manipulation  # NOQA
+from cupy import math  # NOQA
+from cupy import random  # NOQA
+from cupy import sorting  # NOQA
+from cupy import statistics  # NOQA
+from cupy import testing  # NOQA  # NOQA
+from cupy import util  # NOQA
 
-random = cupy.random
 
-ndarray = core.ndarray
+# import class and function
+from cupy.core import ndarray  # NOQA
 
-# dtype short cut
-number = numpy.number
-integer = numpy.integer
-signedinteger = numpy.signedinteger
-unsignedinteger = numpy.unsignedinteger
-inexact = numpy.inexact
-floating = numpy.floating
+# dtype short cuts
+from numpy import floating  # NOQA
+from numpy import inexact  # NOQA
+from numpy import integer  # NOQA
+from numpy import number  # NOQA
+from numpy import signedinteger  # NOQA
+from numpy import unsignedinteger  # NOQA
 
-bool_ = numpy.bool_
-byte = numpy.byte
-short = numpy.short
-intc = numpy.intc
-int_ = numpy.int_
-longlong = numpy.longlong
-ubyte = numpy.ubyte
-ushort = numpy.ushort
-uintc = numpy.uintc
-uint = numpy.uint
-ulonglong = numpy.ulonglong
 
-half = numpy.half
-single = numpy.single
-float_ = numpy.float_
-longfloat = numpy.longfloat
+from numpy import bool_  # NOQA
 
-int8 = numpy.int8
-int16 = numpy.int16
-int32 = numpy.int32
-int64 = numpy.int64
-uint8 = numpy.uint8
-uint16 = numpy.uint16
-uint32 = numpy.uint32
-uint64 = numpy.uint64
+from numpy import byte  # NOQA
 
-float16 = numpy.float16
-float32 = numpy.float32
-float64 = numpy.float64
+from numpy import short  # NOQA
 
-ufunc = core.ufunc
+from numpy import intc  # NOQA
 
-newaxis = numpy.newaxis  # == None
+from numpy import int_  # NOQA
+
+from numpy import longlong  # NOQA
+
+from numpy import ubyte  # NOQA
+
+from numpy import ushort  # NOQA
+
+from numpy import uintc  # NOQA
+
+from numpy import uint  # NOQA
+
+from numpy import ulonglong  # NOQA
+
+
+from numpy import half  # NOQA
+
+from numpy import single  # NOQA
+
+from numpy import float_  # NOQA
+
+from numpy import longfloat  # NOQA
+
+
+from numpy import int8  # NOQA
+
+from numpy import int16  # NOQA
+
+from numpy import int32  # NOQA
+
+from numpy import int64  # NOQA
+
+from numpy import uint8  # NOQA
+
+from numpy import uint16  # NOQA
+
+from numpy import uint32  # NOQA
+
+from numpy import uint64  # NOQA
+
+
+from numpy import float16  # NOQA
+
+from numpy import float32  # NOQA
+
+from numpy import float64  # NOQA
+
+
+from cupy.core import ufunc  # NOQA
+
+from numpy import newaxis  # == None  # NOQA
 
 # =============================================================================
 # Routines
@@ -86,108 +112,111 @@ newaxis = numpy.newaxis  # == None
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
-empty = creation.basic.empty
-empty_like = creation.basic.empty_like
-eye = creation.basic.eye
-identity = creation.basic.identity
-ones = creation.basic.ones
-ones_like = creation.basic.ones_like
-zeros = creation.basic.zeros
-zeros_like = creation.basic.zeros_like
-full = creation.basic.full
-full_like = creation.basic.full_like
+from cupy.creation.basic import empty  # NOQA
+from cupy.creation.basic import empty_like  # NOQA
+from cupy.creation.basic import eye  # NOQA
+from cupy.creation.basic import full  # NOQA
+from cupy.creation.basic import full_like  # NOQA
+from cupy.creation.basic import identity  # NOQA
+from cupy.creation.basic import ones  # NOQA
+from cupy.creation.basic import ones_like  # NOQA
+from cupy.creation.basic import zeros  # NOQA
+from cupy.creation.basic import zeros_like  # NOQA
 
-array = creation.from_data.array
-asarray = creation.from_data.asarray
-asanyarray = creation.from_data.asanyarray
-ascontiguousarray = creation.from_data.ascontiguousarray
-copy = creation.from_data.copy
+from cupy.creation.from_data import array  # NOQA
+from cupy.creation.from_data import asanyarray  # NOQA
+from cupy.creation.from_data import asarray  # NOQA
+from cupy.creation.from_data import ascontiguousarray  # NOQA
+from cupy.creation.from_data import copy  # NOQA
 
-arange = creation.ranges.arange
-linspace = creation.ranges.linspace
+from cupy.creation.ranges import arange  # NOQA
+from cupy.creation.ranges import linspace  # NOQA
 
-diag = creation.matrix.diag
-diagflat = creation.matrix.diagflat
+from cupy.creation.matrix import diag  # NOQA
+from cupy.creation.matrix import diagflat  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
-copyto = manipulation.basic.copyto
+from cupy.manipulation.basic import copyto  # NOQA
 
-reshape = manipulation.shape.reshape
-ravel = manipulation.shape.ravel
+from cupy.manipulation.shape import ravel  # NOQA
+from cupy.manipulation.shape import reshape  # NOQA
 
-rollaxis = manipulation.transpose.rollaxis
-swapaxes = manipulation.transpose.swapaxes
-transpose = manipulation.transpose.transpose
+from cupy.manipulation.transpose import rollaxis  # NOQA
+from cupy.manipulation.transpose import swapaxes  # NOQA
+from cupy.manipulation.transpose import transpose  # NOQA
 
-atleast_1d = manipulation.dims.atleast_1d
-atleast_2d = manipulation.dims.atleast_2d
-atleast_3d = manipulation.dims.atleast_3d
-broadcast = manipulation.dims.broadcast
-broadcast_arrays = manipulation.dims.broadcast_arrays
-broadcast_to = manipulation.dims.broadcast_to
-expand_dims = manipulation.dims.expand_dims
-squeeze = manipulation.dims.squeeze
+from cupy.manipulation.dims import atleast_1d  # NOQA
+from cupy.manipulation.dims import atleast_2d  # NOQA
+from cupy.manipulation.dims import atleast_3d  # NOQA
+from cupy.manipulation.dims import broadcast  # NOQA
+from cupy.manipulation.dims import broadcast_arrays  # NOQA
+from cupy.manipulation.dims import broadcast_to  # NOQA
+from cupy.manipulation.dims import expand_dims  # NOQA
+from cupy.manipulation.dims import squeeze  # NOQA
 
-column_stack = manipulation.join.column_stack
-concatenate = manipulation.join.concatenate
-dstack = manipulation.join.dstack
-hstack = manipulation.join.hstack
-vstack = manipulation.join.vstack
-stack = manipulation.join.stack
+from cupy.manipulation.join import column_stack  # NOQA
+from cupy.manipulation.join import concatenate  # NOQA
+from cupy.manipulation.join import dstack  # NOQA
+from cupy.manipulation.join import hstack  # NOQA
+from cupy.manipulation.join import stack  # NOQA
+from cupy.manipulation.join import vstack  # NOQA
 
-asfortranarray = manipulation.kind.asfortranarray
+from cupy.manipulation.kind import asfortranarray  # NOQA
 
-array_split = manipulation.split.array_split
-dsplit = manipulation.split.dsplit
-hsplit = manipulation.split.hsplit
-split = manipulation.split.split
-vsplit = manipulation.split.vsplit
+from cupy.manipulation.split import array_split  # NOQA
+from cupy.manipulation.split import dsplit  # NOQA
+from cupy.manipulation.split import hsplit  # NOQA
+from cupy.manipulation.split import split  # NOQA
+from cupy.manipulation.split import vsplit  # NOQA
 
-tile = manipulation.tiling.tile
-repeat = manipulation.tiling.repeat
+from cupy.manipulation.tiling import repeat  # NOQA
+from cupy.manipulation.tiling import tile  # NOQA
 
-roll = manipulation.rearrange.roll
+from cupy.manipulation.rearrange import roll  # NOQA
 
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
-bitwise_and = binary.elementwise.bitwise_and
-bitwise_or = binary.elementwise.bitwise_or
-bitwise_xor = binary.elementwise.bitwise_xor
-invert = binary.elementwise.invert
-left_shift = binary.elementwise.left_shift
-right_shift = binary.elementwise.right_shift
+from cupy.binary.elementwise import bitwise_and  # NOQA
+from cupy.binary.elementwise import bitwise_or  # NOQA
+from cupy.binary.elementwise import bitwise_xor  # NOQA
+from cupy.binary.elementwise import invert  # NOQA
+from cupy.binary.elementwise import left_shift  # NOQA
+from cupy.binary.elementwise import right_shift  # NOQA
 
-binary_repr = numpy.binary_repr
+from cupy.binary.packing import packbits  # NOQA
+from cupy.binary.packing import unpackbits  # NOQA
+
+from numpy import binary_repr  # NOQA
 
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
 # -----------------------------------------------------------------------------
-can_cast = numpy.can_cast
-promote_types = numpy.promote_types
-min_scalar_type = numpy.min_scalar_type
-result_type = numpy.result_type
-common_type = numpy.common_type
-obj2sctype = numpy.obj2sctype
+from numpy import can_cast  # NOQA
+from numpy import common_type  # NOQA
+from numpy import min_scalar_type  # NOQA
+from numpy import obj2sctype  # NOQA
+from numpy import promote_types  # NOQA
+from numpy import result_type  # NOQA
 
-dtype = numpy.dtype
-format_parser = numpy.format_parser
+from numpy import dtype  # NOQA
+from numpy import format_parser  # NOQA
 
-finfo = numpy.finfo
-iinfo = numpy.iinfo
-MachAr = numpy.MachAr
+from numpy import finfo  # NOQA
+from numpy import iinfo  # NOQA
+from numpy import MachAr  # NOQA
 
-issctype = numpy.issctype
-issubdtype = numpy.issubdtype
-issubsctype = numpy.issubsctype
-issubclass_ = numpy.issubclass_
-find_common_type = numpy.find_common_type
+from numpy import find_common_type  # NOQA
+from numpy import issctype  # NOQA
+from numpy import issubclass_  # NOQA
+from numpy import issubdtype  # NOQA
+from numpy import issubsctype  # NOQA
 
-typename = numpy.typename
-sctype2char = numpy.sctype2char
-mintypecode = numpy.mintypecode
+from numpy import mintypecode  # NOQA
+from numpy import sctype2char  # NOQA
+from numpy import typename  # NOQA
 
 # -----------------------------------------------------------------------------
 # Optionally Scipy-accelerated routines
@@ -202,160 +231,172 @@ mintypecode = numpy.mintypecode
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-take = indexing.indexing.take
-diagonal = indexing.indexing.diagonal
-ix_ = indexing.generate.ix_
+from cupy.indexing.generate import ix_  # NOQA
 
-fill_diagonal = indexing.insert.fill_diagonal
+from cupy.indexing.indexing import diagonal  # NOQA
+from cupy.indexing.indexing import take  # NOQA
+
+from cupy.indexing.insert import fill_diagonal  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
-load = io.npz.load
-save = io.npz.save
-savez = io.npz.savez
-savez_compressed = io.npz.savez_compressed
+from cupy.io.npz import load  # NOQA
+from cupy.io.npz import save  # NOQA
+from cupy.io.npz import savez  # NOQA
+from cupy.io.npz import savez_compressed  # NOQA
 
-array_repr = io.formatting.array_repr
-array_str = io.formatting.array_str
+from cupy.io.formatting import array_repr  # NOQA
+from cupy.io.formatting import array_str  # NOQA
 
-base_repr = numpy.base_repr
+from numpy import base_repr  # NOQA
 
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-dot = linalg.product.dot
-vdot = linalg.product.vdot
-inner = linalg.product.inner
-outer = linalg.product.outer
-tensordot = linalg.product.tensordot
+from cupy.linalg.product import dot  # NOQA
+from cupy.linalg.product import inner  # NOQA
+from cupy.linalg.product import matmul  # NOQA
+from cupy.linalg.product import outer  # NOQA
+from cupy.linalg.product import tensordot  # NOQA
+from cupy.linalg.product import vdot  # NOQA
 
-trace = linalg.norm.trace
+from cupy.linalg.norms import trace  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
-isfinite = logic.content.isfinite
-isinf = logic.content.isinf
-isnan = logic.content.isnan
+from cupy.logic.content import isfinite  # NOQA
+from cupy.logic.content import isinf  # NOQA
+from cupy.logic.content import isnan  # NOQA
 
-isscalar = numpy.isscalar
+from numpy import isscalar  # NOQA
 
-logical_and = logic.ops.logical_and
-logical_or = logic.ops.logical_or
-logical_not = logic.ops.logical_not
-logical_xor = logic.ops.logical_xor
+from cupy.logic.ops import logical_and  # NOQA
+from cupy.logic.ops import logical_not  # NOQA
+from cupy.logic.ops import logical_or  # NOQA
+from cupy.logic.ops import logical_xor  # NOQA
 
-greater = logic.comparison.greater
-greater_equal = logic.comparison.greater_equal
-less = logic.comparison.less
-less_equal = logic.comparison.less_equal
-equal = logic.comparison.equal
-not_equal = logic.comparison.not_equal
+from cupy.logic.comparison import equal  # NOQA
+from cupy.logic.comparison import greater  # NOQA
+from cupy.logic.comparison import greater_equal  # NOQA
+from cupy.logic.comparison import less  # NOQA
+from cupy.logic.comparison import less_equal  # NOQA
+from cupy.logic.comparison import not_equal  # NOQA
 
-all = logic.truth.all
-any = logic.truth.any
+from cupy.logic.truth import all  # NOQA
+from cupy.logic.truth import any  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
-sin = math.trigonometric.sin
-cos = math.trigonometric.cos
-tan = math.trigonometric.tan
-arcsin = math.trigonometric.arcsin
-arccos = math.trigonometric.arccos
-arctan = math.trigonometric.arctan
-hypot = math.trigonometric.hypot
-arctan2 = math.trigonometric.arctan2
-deg2rad = math.trigonometric.deg2rad
-rad2deg = math.trigonometric.rad2deg
-degrees = math.trigonometric.degrees
-radians = math.trigonometric.radians
+from cupy.math.trigonometric import arccos  # NOQA
+from cupy.math.trigonometric import arcsin  # NOQA
+from cupy.math.trigonometric import arctan  # NOQA
+from cupy.math.trigonometric import arctan2  # NOQA
+from cupy.math.trigonometric import cos  # NOQA
+from cupy.math.trigonometric import deg2rad  # NOQA
+from cupy.math.trigonometric import degrees  # NOQA
+from cupy.math.trigonometric import hypot  # NOQA
+from cupy.math.trigonometric import rad2deg  # NOQA
+from cupy.math.trigonometric import radians  # NOQA
+from cupy.math.trigonometric import sin  # NOQA
+from cupy.math.trigonometric import tan  # NOQA
 
-sinh = math.hyperbolic.sinh
-cosh = math.hyperbolic.cosh
-tanh = math.hyperbolic.tanh
-arcsinh = math.hyperbolic.arcsinh
-arccosh = math.hyperbolic.arccosh
-arctanh = math.hyperbolic.arctanh
+from cupy.math.hyperbolic import arccosh  # NOQA
+from cupy.math.hyperbolic import arcsinh  # NOQA
+from cupy.math.hyperbolic import arctanh  # NOQA
+from cupy.math.hyperbolic import cosh  # NOQA
+from cupy.math.hyperbolic import sinh  # NOQA
+from cupy.math.hyperbolic import tanh  # NOQA
 
-rint = math.rounding.rint
-floor = math.rounding.floor
-ceil = math.rounding.ceil
-trunc = math.rounding.trunc
+from cupy.math.rounding import ceil  # NOQA
+from cupy.math.rounding import floor  # NOQA
+from cupy.math.rounding import rint  # NOQA
+from cupy.math.rounding import trunc  # NOQA
 
-sum = math.sumprod.sum
-prod = math.sumprod.prod
+from cupy.math.sumprod import prod  # NOQA
+from cupy.math.sumprod import sum  # NOQA
 
-exp = math.explog.exp
-expm1 = math.explog.expm1
-exp2 = math.explog.exp2
-log = math.explog.log
-log10 = math.explog.log10
-log2 = math.explog.log2
-log1p = math.explog.log1p
-logaddexp = math.explog.logaddexp
-logaddexp2 = math.explog.logaddexp2
+from cupy.math.explog import exp  # NOQA
+from cupy.math.explog import exp2  # NOQA
+from cupy.math.explog import expm1  # NOQA
+from cupy.math.explog import log  # NOQA
+from cupy.math.explog import log10  # NOQA
+from cupy.math.explog import log1p  # NOQA
+from cupy.math.explog import log2  # NOQA
+from cupy.math.explog import logaddexp  # NOQA
+from cupy.math.explog import logaddexp2  # NOQA
 
-signbit = math.floating.signbit
-copysign = math.floating.copysign
-ldexp = math.floating.ldexp
-frexp = math.floating.frexp
-nextafter = math.floating.nextafter
+from cupy.math.floating import copysign  # NOQA
+from cupy.math.floating import frexp  # NOQA
+from cupy.math.floating import ldexp  # NOQA
+from cupy.math.floating import nextafter  # NOQA
+from cupy.math.floating import signbit  # NOQA
 
-add = math.arithmetic.add
-reciprocal = math.arithmetic.reciprocal
-negative = math.arithmetic.negative
-multiply = math.arithmetic.multiply
-divide = math.arithmetic.divide
-power = math.arithmetic.power
-subtract = math.arithmetic.subtract
-true_divide = math.arithmetic.true_divide
-floor_divide = math.arithmetic.floor_divide
-fmod = math.arithmetic.fmod
-mod = math.arithmetic.remainder
-modf = math.arithmetic.modf
-remainder = math.arithmetic.remainder
+from cupy.math.arithmetic import add  # NOQA
+from cupy.math.arithmetic import divide  # NOQA
+from cupy.math.arithmetic import floor_divide  # NOQA
+from cupy.math.arithmetic import fmod  # NOQA
+from cupy.math.arithmetic import modf  # NOQA
+from cupy.math.arithmetic import multiply  # NOQA
+from cupy.math.arithmetic import negative  # NOQA
+from cupy.math.arithmetic import power  # NOQA
+from cupy.math.arithmetic import reciprocal  # NOQA
+from cupy.math.arithmetic import remainder  # NOQA
+from cupy.math.arithmetic import remainder as mod  # NOQA
+from cupy.math.arithmetic import subtract  # NOQA
+from cupy.math.arithmetic import true_divide  # NOQA
 
-clip = math.misc.clip
-sqrt = math.misc.sqrt
-square = math.misc.square
-absolute = math.misc.absolute
-abs = math.misc.absolute
-sign = math.misc.sign
-maximum = math.misc.maximum
-minimum = math.misc.minimum
-fmax = math.misc.fmax
-fmin = math.misc.fmin
+from cupy.math.misc import absolute  # NOQA
+from cupy.math.misc import absolute as abs  # NOQA
+from cupy.math.misc import clip  # NOQA
+from cupy.math.misc import fmax  # NOQA
+from cupy.math.misc import fmin  # NOQA
+from cupy.math.misc import maximum  # NOQA
+from cupy.math.misc import minimum  # NOQA
+from cupy.math.misc import sign  # NOQA
+from cupy.math.misc import sqrt  # NOQA
+from cupy.math.misc import square  # NOQA
 
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-sort = sorting.sort.sort
+from cupy.sorting.sort import sort  # NQQA
+from cupy.sorting.count import count_nonzero  # NOQA
+from cupy.sorting.search import flatnonzero  # NOQA
+from cupy.sorting.search import nonzero  # NOQA
 
-count_nonzero = sorting.count.count_nonzero
-nonzero = sorting.search.nonzero
-flatnonzero = sorting.search.flatnonzero
-
-argmax = sorting.search.argmax
-argmin = sorting.search.argmin
-where = sorting.search.where
+from cupy.sorting.search import argmax  # NOQA
+from cupy.sorting.search import argmin  # NOQA
+from cupy.sorting.search import where  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
-amin = statistics.order.amin
-min = statistics.order.amin
-amax = statistics.order.amax
-max = statistics.order.amax
+from cupy.statistics.order import amax  # NOQA
+from cupy.statistics.order import amax as max  # NOQA
+from cupy.statistics.order import amin  # NOQA
+from cupy.statistics.order import amin as min  # NOQA
+from cupy.statistics.order import nanmax  # NOQA
+from cupy.statistics.order import nanmin  # NOQA
 
-mean = statistics.meanvar.mean
-var = statistics.meanvar.var
-std = statistics.meanvar.std
+from cupy.statistics.meanvar import mean  # NOQA
+from cupy.statistics.meanvar import std  # NOQA
+from cupy.statistics.meanvar import var  # NOQA
 
-bincount = statistics.histogram.bincount
+from cupy.statistics.histogram import bincount  # NOQA
 
-
+# -----------------------------------------------------------------------------
 # CuPy specific functions
+# -----------------------------------------------------------------------------
+
+from cupy.util import clear_memo  # NOQA
+from cupy.util import memoize  # NOQA
+
+from cupy.core import ElementwiseKernel  # NOQA
+from cupy.core import ReductionKernel  # NOQA
+
+
 def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
 
@@ -406,10 +447,3 @@ def get_array_module(*args):
         return _cupy
     else:
         return numpy
-
-
-clear_memo = util.clear_memo
-memoize = util.memoize
-
-ElementwiseKernel = core.ElementwiseKernel
-ReductionKernel = core.ReductionKernel

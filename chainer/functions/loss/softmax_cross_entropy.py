@@ -95,7 +95,7 @@ class SoftmaxCrossEntropy(function.Function):
             y = self.y.copy()
         else:
             y = log_softmax._log_softmax(x, self.use_cudnn)
-            y = numpy.exp(y, out=y)
+            numpy.exp(y, out=y)
         if y.ndim == 2:
             gx = y
             gx[numpy.arange(len(t)), numpy.maximum(t, 0)] -= 1
@@ -151,9 +151,9 @@ def softmax_cross_entropy(
             number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of ground truth labels.
             If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
-        normalize (bool): If true, this function normalizes the cross entropy
-            loss across all instances. If false, it only normalizes along
-            a batch size.
+        normalize (bool): If ``True``, this function normalizes the cross
+            entropy loss across all instances. If ``False``, it only
+            normalizes along a batch size.
         cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
             reduces computational cost though consumes more memory.

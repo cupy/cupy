@@ -121,7 +121,7 @@ def log10(x):
     """Elementwise logarithm function to the base 10.
 
     .. math::
-       y_i = \\log_10 x_i.
+       y_i = \\log_{10} x_i.
 
     Args:
         x (~chainer.Variable): Input variable.

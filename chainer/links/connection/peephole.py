@@ -34,7 +34,7 @@ class StatefulPeepholeLSTM(link.Chain):
 
     Args:
         in_size(int): Dimension of the input vector :math:`x`.
-        out_size(int): Dimension of the hidden vector :math: `h`.
+        out_size(int): Dimension of the hidden vector :math:`h`.
 
     Attributes:
         upward (~chainer.links.Linear): Linear layer of upward connections.

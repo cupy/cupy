@@ -3,9 +3,24 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_H
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
+#include "cupy_stdint.h"
+
+#ifndef CUPY_NO_CUDA
+#include <cuda.h>
+#endif
+
+#ifdef __APPLE__
+#if CUDA_VERSION == 7050
+// To avoid redefinition error of cudaDataType_t
+// caused by including library_types.h.
+// https://github.com/pfnet/chainer/issues/1700
+// https://github.com/pfnet/chainer/pull/1819
+#define __LIBRARY_TYPES_H__
+#endif // #if CUDA_VERSION == 7050
+#endif // #ifdef __APPLE__
+
 #ifndef CUPY_NO_CUDA
 #include <cublas_v2.h>
-#include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>

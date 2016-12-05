@@ -345,8 +345,8 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
             ``dilate=d`` and ``dilate=(d, d)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
-        cover_all (bool): If True, all spatial locations are convoluted into
-            some output pixels. It may make the output size larger.
+        cover_all (bool): If ``True``, all spatial locations are convoluted
+            into some output pixels. It may make the output size larger.
 
     Returns:
         ~chainer.Variable: Output variable.

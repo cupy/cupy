@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of CUDA Runtime API.
 
 There are four differences compared to the original C API.
