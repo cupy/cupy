@@ -102,7 +102,7 @@ from chainer.functions.pooling import max_pooling_2d  # NOQA
 from chainer.functions.pooling import roi_pooling_2d  # NOQA
 from chainer.functions.pooling import spatial_pyramid_pooling_2d  # NOQA
 from chainer.functions.pooling import unpooling_2d  # NOQA
-from chainer.functions.pooling import upsampling_2d
+from chainer.functions.pooling import upsampling_2d # NOQA
 from chainer.functions.util import forget  # NOQA
 
 
