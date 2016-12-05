@@ -315,7 +315,7 @@ def _nvcc_gencode_options():
 
     gencode_options = []
     for pair in pairs:
-        gencode_options.append('-gencode arch={},code={}'.format(*pair))
+        gencode_options.append('--generate-code arch={},code={}'.format(*pair))
 
     return gencode_options
 
