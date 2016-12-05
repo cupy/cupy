@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 cimport cpython
 cimport cython
 

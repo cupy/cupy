@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 import numpy
 import six
 
