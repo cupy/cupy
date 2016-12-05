@@ -35,10 +35,10 @@ class TestUpsampling2D(unittest.TestCase):
             y = conv.im2col_gpu(y.data, self.p.kh, self.p.kw,
                                 self.p.sy, self.p.sx, self.p.ph, self.p.pw)
         for i in numpy.ndindex(y.shape):
-            n, c, ky, kx, sy, sx = i
-            up_y = y[n, c, ky, kx, sy, sx]
-            if ky * y.shape[3] + kx == self.p.indexes[n, c, sy, sx]:
-                in_y = self.pooled_y.data[n, c, sy, sx]
+            n, c, ky, kx, oy, ox = i
+            up_y = y[n, c, ky, kx, oy, ox]
+            if ky * y.shape[3] + kx == self.p.indexes[n, c, oy, ox]:
+                in_y = self.pooled_y.data[n, c, oy, ox]
                 testing.assert_allclose(in_y, up_y)
             else:
                 testing.assert_allclose(up_y, 0)

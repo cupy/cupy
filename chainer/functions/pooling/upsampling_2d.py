@@ -75,23 +75,23 @@ class Upsampling2D(pooling_2d.Pooling2D):
             up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
-        n, c, sy, sx, ky, kx = up_y.shape
+        n, c, oy, ox, ky, kx = up_y.shape
         indexes = xp.asarray(self.indexes, dtype=numpy.int32)
         xp.ElementwiseKernel(
-            'int32 index, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
+            'int32 index, float32 x, int32 n, int32 c, int32 oy, int32 ox,'
             'int32 ky, int32 kx', 'raw float32 up_y',
             '''
-            int yn = i / c / sy / sx;
-            int yc = (i / sy / sx) % c;
-            int ysy = (i / sx) % sy;
-            int ysx = i % sx;
-            up_y[yn * c * sy * sx * ky * kx + \
-              yc * sy * sx * ky * kx + \
-              ysy * sx * ky * kx + \
-              ysx * ky * kx + \
+            int yn = i / c / oy / ox;
+            int yc = (i / oy / ox) % c;
+            int yoy = (i / ox) % oy;
+            int yox = i % ox;
+            up_y[yn * c * oy * ox * ky * kx + \
+              yc * oy * ox * ky * kx + \
+              yoy * ox * ky * kx + \
+              yox * ky * kx + \
               index] = x;
             ''',
-            'upsampling_2d_fwd')(indexes, x[0], n, c, sy, sx, ky, kx, up_y)
+            'upsampling_2d_fwd')(indexes, x[0], n, c, oy, ox, ky, kx, up_y)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         up_y = conv.col2im_gpu(up_y, self.sy, self.sx, self.ph, self.pw,
                                self.outh, self.outw)
@@ -103,15 +103,15 @@ class Upsampling2D(pooling_2d.Pooling2D):
             cover_all=self.cover_all)
 
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
-        n, c, sy, sx, ky, kx = gcol.shape
-        gcol = gcol.reshape((n, c, sy, sx, ky * kx))
-        gx = numpy.empty((n, c, sy, sx), dtype=x[0].dtype)
+        n, c, oy, ox, ky, kx = gcol.shape
+        gcol = gcol.reshape((n, c, oy, ox, ky * kx))
+        gx = numpy.empty((n, c, oy, ox), dtype=x[0].dtype)
         for n in six.moves.range(gcol.shape[0]):
             for c in six.moves.range(gcol.shape[1]):
-                for sy in six.moves.range(gcol.shape[2]):
-                    for sx in six.moves.range(gcol.shape[3]):
-                        gx[n, c, sy, sx] = \
-                            gcol[n, c, sy, sx][self.indexes[n, c, sy, sx]]
+                for oy in six.moves.range(gcol.shape[2]):
+                    for ox in six.moves.range(gcol.shape[3]):
+                        gx[n, c, oy, ox] = \
+                            gcol[n, c, oy, ox][self.indexes[n, c, oy, ox]]
         return gx,
 
     def backward_gpu(self, x, gy):
@@ -121,33 +121,33 @@ class Upsampling2D(pooling_2d.Pooling2D):
             cover_all=self.cover_all)
 
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
-        n, c, sy, sx, ky, kx = gcol.shape
-        gcol = gcol.reshape((n, c, sy, sx, ky * kx))
+        n, c, oy, ox, ky, kx = gcol.shape
+        gcol = gcol.reshape((n, c, oy, ox, ky * kx))
         indexes = xp.asarray(self.indexes, dtype=numpy.int32)
-        gx = xp.empty((n, c, sy, sx), dtype=x[0].dtype)
+        gx = xp.empty((n, c, oy, ox), dtype=x[0].dtype)
         xp.ElementwiseKernel(
-            'int32 indexes, raw float32 gcol, int32 n, int32 c, int32 sy,'
-            'int32 sx, int32 ky, int32 kx',
+            'int32 indexes, raw float32 gcol, int32 n, int32 c, int32 oy,'
+            'int32 ox, int32 ky, int32 kx',
             'raw float32 gx',
             '''
-            int ind_n = i / c / sy / sx;
-            int ind_c = (i / sy / sx) % c;
-            int ind_sy = (i / sx) % sy;
-            int ind_sx = i % sx;
+            int ind_n = i / c / oy / ox;
+            int ind_c = (i / oy / ox) % c;
+            int ind_oy = (i / ox) % oy;
+            int ind_ox = i % ox;
             int gcol_ky = indexes / kx;
             int gcol_kx = indexes % kx;
-            float top_gx = gcol[ind_n * c * sy * sx * ky * kx + \
-                                ind_c * sy * sx * ky * kx + \
-                                ind_sy * sx * ky * kx + \
-                                ind_sx * ky * kx + \
+            float top_gx = gcol[ind_n * c * oy * ox * ky * kx + \
+                                ind_c * oy * ox * ky * kx + \
+                                ind_oy * ox * ky * kx + \
+                                ind_ox * ky * kx + \
                                 gcol_ky * kx + \
                                 gcol_kx];
-            gx[ind_n * c * sy * sx + \
-               ind_c * sy * sx + \
-               ind_sy * sx + \
-               ind_sx] = top_gx;
+            gx[ind_n * c * oy * ox + \
+               ind_c * oy * ox + \
+               ind_oy * ox + \
+               ind_ox] = top_gx;
             ''',
-            'upsampling_2d_bwd')(indexes, gcol, n, c, sy, sx, ky, kx, gx)
+            'upsampling_2d_bwd')(indexes, gcol, n, c, oy, ox, ky, kx, gx)
 
         return gx,
 
