@@ -153,7 +153,27 @@ class Upsampling2D(pooling_2d.Pooling2D):
 def upsampling_2d(
         x, indexes, ksize, stride=None, pad=0, outsize=None, cover_all=True):
     """Upsampling using pooling indices.
+
     This function produces an upsampled image using pooling indices.
+
+    Example::
+
+        >>> p = F.MaxPooling2D(2, 2, use_cudnn=False)
+        >>> x = np.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
+        >>> x = chainer.Variable(x)
+        >>> pooled_x = p(x)
+        >>> upsampled_x = F.upsampling_2d(
+                pooled_x, p.indexes, p.kh, p.sy, p.ph, x.shape[2:])
+        >>> upsampled_x.shape
+        (1, 1, 6, 6)
+        >>> upsampled_x.data
+        array([[[[  0.,   0.,   0.,   0.,   0.,   0.],
+                 [  0.,   8.,   0.,  10.,   0.,  12.],
+                 [  0.,   0.,   0.,   0.,   0.,   0.],
+                 [  0.,  20.,   0.,  22.,   0.,  24.],
+                 [  0.,   0.,   0.,   0.,   0.,   0.],
+                 [  0.,  32.,   0.,  34.,   0.,  36.]]]], dtype=float32)
+
     Args:
         x (~chainer.Variable): Input variable.
         indexes (~numpy.ndarray or ~cupy.ndarray): Index array that was used
@@ -167,6 +187,7 @@ def upsampling_2d(
         outsize ((int, int)): Expected output size (height, width).
         cover_all (bool): Whether cover_all is used in the MaxPooling2D object
             or not.
+
     Returns:
         ~chainer.Variable: Output variable.
     """
