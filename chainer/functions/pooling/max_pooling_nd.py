@@ -21,6 +21,13 @@ class MaxPoolingND(pooling_nd._PoolingND):
 
     """Max pooling over a set of N-dimensional planes."""
 
+    def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=True,
+                 use_cudnn=True):
+        experimental('chainer.functions.pooling.MaxPoolingND')
+        super(MaxPoolingND, self).__init__(
+            ndim, ksize, stride=stride, pad=pad, cover_all=cover_all,
+            use_cudnn=use_cudnn)
+
     def forward_cpu(self, x):
         col = conv_nd.im2col_nd_cpu(
             x[0], self.ksize, self.stride, self.pad, pval=-float('inf'),
@@ -152,6 +159,5 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
-    experimental('chainer.functions.pooling.max_pooling_nd')
     ndim = len(x.shape[2:])
     return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)
