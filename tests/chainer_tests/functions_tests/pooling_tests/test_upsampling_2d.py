@@ -4,7 +4,6 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
-from models import upsampling_2d
 
 import chainer.functions as F
 import numpy
@@ -25,7 +24,7 @@ class TestUpsampling2D(unittest.TestCase):
             -1, 1, self.in_shape).astype(numpy.float32)
 
     def check_forward(self, y):
-        y = upsampling_2d.upsampling_2d(
+        y = F.upsampling_2d(
             self.pooled_y, self.p.indexes, ksize=(self.p.kh, self.p.kw),
             stride=(self.p.sy, self.p.sx), pad=(self.p.ph, self.p.pw),
             outsize=self.in_shape[2:], cover_all=self.p.cover_all)
@@ -56,7 +55,7 @@ class TestUpsampling2D(unittest.TestCase):
         self.check_forward(self.pooled_y)
 
     def check_backward(self, x_data, y_grad):
-        func = upsampling_2d.Upsampling2D(
+        func = F.Upsampling2D(
             self.p.indexes, ksize=(self.p.kh, self.p.kw),
             stride=(self.p.sy, self.p.sx), pad=(self.p.ph, self.p.pw),
             outsize=self.in_shape[2:], cover_all=self.p.cover_all)
