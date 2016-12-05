@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of CUBLAS."""
 cimport cython
 

@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from __future__ import division
 import ctypes
 import sys
@@ -1160,6 +1162,14 @@ cdef class ndarray:
 
     def __setitem__(self, slices, value):
         cdef ndarray v, x, y
+        if not isinstance(slices, tuple):
+            slices = (slices,)
+
+        for s in slices:
+            if isinstance(s, (list, numpy.ndarray, ndarray)):
+                raise IndexError(
+                    'Only basic indexing is supported for __setitem__')
+
         v = self[slices]
         if isinstance(value, ndarray):
             y, x = broadcast(v, value).values
@@ -2089,7 +2099,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
                 ri = i
 
     if do_transpose:
-        transp = range(a.ndim)
+        transp = list(range(a.ndim))
         p = 0
         for i, s in enumerate(list(slices)):
             if isinstance(s, ndarray):

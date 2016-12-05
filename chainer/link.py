@@ -430,8 +430,9 @@ class Link(object):
         """
         for param in self.params():
             param.cleargrad()
-        for param in self._uninitialized_params.values():
-            param._cleared = True
+        for link in self.links():
+            for param in link._uninitialized_params.values():
+                param._cleared = True
 
     def zerograds(self):
         """Initializes all gradient arrays by zero.
@@ -448,8 +449,9 @@ class Link(object):
             DeprecationWarning)
         for param in self.params():
             param.zerograd()
-        for param in self._uninitialized_params:
-            param._zeroed = True
+        for link in self.links():
+            for param in link._uninitialized_params.values():
+                param._zeroed = True
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.
