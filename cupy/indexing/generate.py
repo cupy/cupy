@@ -36,19 +36,28 @@ class AxisConcatenator(object):
         trans1d = self.trans1d
         ndmin = self.ndmin
         objs = []
+        scalars = []
+        arraytypes = []
+        scalartypes = []
         if isinstance(key, six.string_types):
-            raise NotImplementedError('')
+            raise NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
 
         for k in six.moves.range(len(key)):
+            scalar = False
             if isinstance(key[k], slice):
-                raise NotImplementedError('')
+                raise NotImplementedError
             elif isinstance(key[k], six.string_types):
                 if k != 0:
                     raise ValueError(
                     'special directives must be the first entry.')
-                raise NotImplementedError('')
+                raise NotImplementedError
+            elif type(key[k]) in numpy.ScalarType:
+                newobj = cupy.array(key[k], ndmin=ndmin)
+                scalars.append(k)
+                scalar = True
+                scalartypes.append(newobj.dtype)
             else:
                 newobj = key[k]
                 tempobj = cupy.array(newobj, copy=False)
@@ -63,6 +72,13 @@ class AxisConcatenator(object):
                     del tempobj
 
             objs.append(newobj)
+            if not scalar and isinstance(newobj, cupy.ndarray):
+                arraytypes.append(newobj.dtype)
+
+        final_dtype = numpy.find_common_type(arraytypes, scalartypes)
+        if final_dtype is not None:
+            for k in scalars:
+                objs[k] = objs[k].astype(final_dtype)
 
         return cupy.concatenate(tuple(objs), axis=self.axis)
 
