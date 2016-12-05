@@ -1,4 +1,4 @@
-from chainer.cuda import cupy
+from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 from chainer.utils import type_check
@@ -62,6 +62,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         return up_y,
 
     def forward_gpu(self, x):
+        xp = cuda.cupy
         n, c, h, w = x[0].shape
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(
@@ -69,14 +70,14 @@ class Upsampling2D(pooling_2d.Pooling2D):
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
-        up_y = cupy.zeros((n, c, self.outh, self.outw), dtype=numpy.float32)
+        up_y = xp.zeros((n, c, self.outh, self.outw), dtype=numpy.float32)
         up_y = conv.im2col_gpu(
             up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = up_y.shape
-        indexes = cupy.asarray(self.indexes, dtype=numpy.int32)
-        cupy.ElementwiseKernel(
+        indexes = xp.asarray(self.indexes, dtype=numpy.int32)
+        xp.ElementwiseKernel(
             'int32 indexes, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
             'int32 ky, int32 kx', 'raw float32 up_y',
             '''
@@ -114,6 +115,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
+        xp = cuda.cupy
         gcol = conv.im2col_gpu(
             gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
@@ -121,9 +123,9 @@ class Upsampling2D(pooling_2d.Pooling2D):
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = gcol.shape
         gcol = gcol.reshape((n, c, sy, sx, ky * kx))
-        indexes = cupy.asarray(self.indexes, dtype=numpy.int32)
-        gx = cupy.empty((n, c, sy, sx), dtype=x[0].dtype)
-        cupy.ElementwiseKernel(
+        indexes = xp.asarray(self.indexes, dtype=numpy.int32)
+        gx = xp.empty((n, c, sy, sx), dtype=x[0].dtype)
+        xp.ElementwiseKernel(
             'int32 indexes, raw float32 gcol, int32 n, int32 c, int32 sy,'
             'int32 sx, int32 ky, int32 kx',
             'raw float32 gx',
