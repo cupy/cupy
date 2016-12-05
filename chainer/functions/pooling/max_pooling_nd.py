@@ -7,8 +7,8 @@ import six
 from chainer import cuda
 from chainer.functions.pooling import max_pooling_nd_kernel
 from chainer.functions.pooling import pooling_nd
+from chainer import utils
 from chainer.utils import conv_nd
-from chainer.utils import experimental
 
 
 if cuda.cudnn_enabled:
@@ -23,7 +23,7 @@ class MaxPoolingND(pooling_nd._PoolingND):
 
     def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=True,
                  use_cudnn=True):
-        experimental('chainer.functions.pooling.MaxPoolingND')
+        utils.experimental('chainer.functions.pooling.MaxPoolingND')
         super(MaxPoolingND, self).__init__(
             ndim, ksize, stride=stride, pad=pad, cover_all=cover_all,
             use_cudnn=use_cudnn)
