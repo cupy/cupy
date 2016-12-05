@@ -1,17 +1,13 @@
-from chainer import functions as F
 from chainer import cuda
 from chainer import gradient_check
 from chainer import testing
-from chainer import Variable
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
 from models import upsampling_2d
 
 import chainer.functions as F
-import cupy
 import numpy
-import six
 import unittest
 
 
