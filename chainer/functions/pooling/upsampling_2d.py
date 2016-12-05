@@ -160,12 +160,31 @@ def upsampling_2d(
 
         It should be noted that you need to specify ``use_cudnn=False`` when
         you create MaxPooling2D object because if cuDNN used for operating
-        max pooling, ``indexes`` is never created and stored.
+        max pooling, ``indexes`` is never created and stored in the
+        MaxPooling2D object.
 
         >>> p = F.MaxPooling2D(2, 2, use_cudnn=False)
         >>> x = numpy.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
         >>> x = chainer.Variable(x)
+        >>> x.data
+        array([[[[  1.,   2.,   3.,   4.,   5.,   6.],
+                 [  7.,   8.,   9.,  10.,  11.,  12.],
+                 [ 13.,  14.,  15.,  16.,  17.,  18.],
+                 [ 19.,  20.,  21.,  22.,  23.,  24.],
+                 [ 25.,  26.,  27.,  28.,  29.,  30.],
+                 [ 31.,  32.,  33.,  34.,  35.,  36.]]]], dtype=float32)
+
+        This is the original ``x`` before max pooling.
+
         >>> pooled_x = p(x)
+        >>> pooled_x.data
+        array([[[[  8.,  10.,  12.],
+                 [ 20.,  22.,  24.],
+                 [ 32.,  34.,  36.]]]], dtype=float32)
+
+        This is the output of the max pooling operation. ``upsampling_2d``
+        needs ``indexes`` array stored in the max pooling object ``p``.
+
         >>> upsampled_x = F.upsampling_2d(
         ...     pooled_x, p.indexes, p.kh, p.sy, p.ph, x.shape[2:])
         >>> upsampled_x.shape
