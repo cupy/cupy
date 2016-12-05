@@ -156,14 +156,14 @@ def upsampling_2d(
 
     This function produces an upsampled image using pooling indices.
 
-    Example::
+    .. admonition:: Example
 
         >>> p = F.MaxPooling2D(2, 2, use_cudnn=False)
         >>> x = numpy.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
         >>> x = chainer.Variable(x)
         >>> pooled_x = p(x)
         >>> upsampled_x = F.upsampling_2d(
-                pooled_x, p.indexes, p.kh, p.sy, p.ph, x.shape[2:])
+        ...     pooled_x, p.indexes, p.kh, p.sy, p.ph, x.shape[2:])
         >>> upsampled_x.shape
         (1, 1, 6, 6)
         >>> upsampled_x.data
