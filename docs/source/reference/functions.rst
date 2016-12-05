@@ -519,7 +519,7 @@ unpooling_2d
 .. autofunction:: unpooling_2d
 
 upsampling_2d
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autofunction:: upsampling_2d
 
 

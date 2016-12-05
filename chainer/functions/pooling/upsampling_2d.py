@@ -1,9 +1,9 @@
+from chainer.cuda import cupy
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 from chainer.utils import type_check
 
-import cupy
-import numpy as np
+import numpy
 import six
 
 
@@ -46,7 +46,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
 
-        up_y = np.zeros((n, c, self.outh, self.outw), dtype=np.float32)
+        up_y = numpy.zeros((n, c, self.outh, self.outw), dtype=numpy.float32)
         up_y = conv.im2col_cpu(
             up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
@@ -69,13 +69,13 @@ class Upsampling2D(pooling_2d.Pooling2D):
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
-        up_y = cupy.zeros((n, c, self.outh, self.outw), dtype=np.float32)
+        up_y = cupy.zeros((n, c, self.outh, self.outw), dtype=numpy.float32)
         up_y = conv.im2col_gpu(
             up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = up_y.shape
-        indexes = cupy.asarray(self.indexes, dtype=np.int32)
+        indexes = cupy.asarray(self.indexes, dtype=numpy.int32)
         cupy.ElementwiseKernel(
             'int32 indexes, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
             'int32 ky, int32 kx', 'raw float32 up_y',
@@ -104,7 +104,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = gcol.shape
         gcol = gcol.reshape((n, c, sy, sx, ky * kx))
-        gx = np.empty((n, c, sy, sx), dtype=x[0].dtype)
+        gx = numpy.empty((n, c, sy, sx), dtype=x[0].dtype)
         for n in six.moves.range(gcol.shape[0]):
             for c in six.moves.range(gcol.shape[1]):
                 for sy in six.moves.range(gcol.shape[2]):
@@ -121,7 +121,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = gcol.shape
         gcol = gcol.reshape((n, c, sy, sx, ky * kx))
-        indexes = cupy.asarray(self.indexes, dtype=np.int32)
+        indexes = cupy.asarray(self.indexes, dtype=numpy.int32)
         gx = cupy.empty((n, c, sy, sx), dtype=x[0].dtype)
         cupy.ElementwiseKernel(
             'int32 indexes, raw float32 gcol, int32 n, int32 c, int32 sy,'
@@ -159,7 +159,7 @@ def upsampling_2d(
     Example::
 
         >>> p = F.MaxPooling2D(2, 2, use_cudnn=False)
-        >>> x = np.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
+        >>> x = numpy.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
         >>> x = chainer.Variable(x)
         >>> pooled_x = p(x)
         >>> upsampled_x = F.upsampling_2d(
