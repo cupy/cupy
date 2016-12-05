@@ -52,11 +52,11 @@ class Upsampling2D(pooling_2d.Pooling2D):
             cover_all=self.cover_all)
         for n in six.moves.range(up_y.shape[0]):
             for c in six.moves.range(up_y.shape[1]):
-                for ky in six.moves.range(up_y.shape[4]):
-                    for kx in six.moves.range(up_y.shape[5]):
-                        sy = self.indexes[n, c, ky, kx] // up_y.shape[3]
-                        sx = self.indexes[n, c, ky, kx] % up_y.shape[3]
-                        up_y[n, c, sy, sx, ky, kx] = x[0][n, c, ky, kx]
+                for oy in six.moves.range(up_y.shape[4]):
+                    for ox in six.moves.range(up_y.shape[5]):
+                        ky = self.indexes[n, c, oy, ox] // up_y.shape[3]
+                        kx = self.indexes[n, c, oy, ox] % up_y.shape[3]
+                        up_y[n, c, ky, kx, oy, ox] = x[0][n, c, oy, ox]
         up_y = conv.col2im_cpu(up_y, self.sy, self.sx, self.ph,
                                self.pw, self.outh, self.outw)
         return up_y,
