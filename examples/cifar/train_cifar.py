@@ -23,9 +23,9 @@ class TestModeEvaluator(extensions.Evaluator):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Chainer example: CIFAR10')
+    parser = argparse.ArgumentParser(description='Chainer CIFAR example:')
     parser.add_argument('--dataset', '-d', default='cifar10',
-                        help='The dataset to use. Choices are cifar10 or cifar100')
+                        help='The dataset to use: cifar10 or cifar100')
     parser.add_argument('--batchsize', '-b', type=int, default=128,
                         help='Number of images in each mini-batch')
     parser.add_argument('--epoch', '-e', type=int, default=300,
@@ -61,9 +61,9 @@ def main():
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU
 
-    # Setup an optimizer
-    optimizer = chainer.optimizers.Adam(alpha=1e-3)
+    optimizer = chainer.optimizers.MomentumSGD(0.1)
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
@@ -75,9 +75,16 @@ def main():
     # Evaluate the model with the test dataset for each epoch
     trainer.extend(TestModeEvaluator(test_iter, model, device=args.gpu))
 
+    # Reduce the learning rate by half every 25 epochs.
+    trainer.extend(extensions.ExponentialShift('lr', 0.5),
+                   trigger=(25, 'epoch'))
+
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
     trainer.extend(extensions.dump_graph('main/loss'))
+
+    # Take a snapshot at each epoch
+    trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())

@@ -20,7 +20,8 @@ class Block(chainer.Chain):
     """
     def __init__(self, out_channels, ksize, pad=1):
         super(Block, self).__init__(
-            conv=L.Convolution2D(None, out_channels, ksize, pad=pad, nobias=True),
+            conv=L.Convolution2D(None, out_channels, ksize, pad=pad,
+                                 nobias=True),
             bn=L.BatchNormalization(out_channels)
         )
 
@@ -31,9 +32,9 @@ class Block(chainer.Chain):
 
 
 class VGG(chainer.Chain):
-    """
-    This model is based on the VGG-style model from the
-    Torch7 blog:
+    """A VGG-style network for very small images.
+
+    This model is based on the VGG-style model from
     http://torch.ch/blog/2015/07/30/cifar.html
     which is based on the network architecture from the paper:
     http://arxiv.org/pdf/1409.1556v6.pdf
@@ -42,7 +43,8 @@ class VGG(chainer.Chain):
     images that are of size 32x32 pixels, such as those in the CIFAR10
     and CIFAR100 datasets.
 
-    On CIFAR10, it achieves approximately 86% accuracy on the test set.
+    On CIFAR10, it achieves approximately 89% accuracy on the test set with
+    no data augmentation.
 
     Args:
         class_labels (int): The number of class labels.
@@ -50,8 +52,8 @@ class VGG(chainer.Chain):
 
     def __init__(self, class_labels=10):
         super(VGG, self).__init__(
-            block1_1 = Block(64, 3),
-            block1_2 = Block(64, 3),
+            block1_1=Block(64, 3),
+            block1_2=Block(64, 3),
             block2_1=Block(128, 3),
             block2_2=Block(128, 3),
             block3_1=Block(256, 3),
