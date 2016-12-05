@@ -78,7 +78,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         n, c, sy, sx, ky, kx = up_y.shape
         indexes = xp.asarray(self.indexes, dtype=numpy.int32)
         xp.ElementwiseKernel(
-            'int32 indexes, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
+            'int32 index, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
             'int32 ky, int32 kx', 'raw float32 up_y',
             '''
             int yn = i / c / sy / sx;
@@ -89,7 +89,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
               yc * sy * sx * ky * kx + \
               ysy * sx * ky * kx + \
               ysx * ky * kx + \
-              indexes] = x;
+              index] = x;
             ''',
             'upsampling_2d_fwd')(indexes, x[0], n, c, sy, sx, ky, kx, up_y)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
