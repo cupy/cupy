@@ -4,9 +4,9 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer import functions
-from chainer.functions import theano_function
 from chainer import gradient_check
+from chainer import links
+from chainer.links.theano import theano_function
 from chainer import testing
 from chainer.testing import attr
 
@@ -100,7 +100,7 @@ class TestTheanoFunction(TheanoFunctionTestBase, unittest.TestCase):
         y = T.TensorType(self.inputs[1]['type'],
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x + y
-        return functions.TheanoFunction([x, y], [z])
+        return links.TheanoFunction([x, y], [z])
 
     def expect_forward(self):
         x, y = self.input_data
@@ -130,7 +130,7 @@ class TestTheanoFunctionTwoOutputs(TheanoFunctionTestBase, unittest.TestCase):
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x + y
         w = x - y
-        return functions.TheanoFunction([x, y], [z, w])
+        return links.TheanoFunction([x, y], [z, w])
 
     def expect_forward(self):
         x, y = self.input_data
@@ -154,7 +154,7 @@ class TestTheanoFunctionNonDifferential(
         i = T.TensorType(self.inputs[1]['type'],
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x[i]
-        return functions.TheanoFunction([x, i], z)
+        return links.TheanoFunction([x, i], z)
 
     def expect_forward(self):
         x, i = self.input_data
