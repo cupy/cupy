@@ -361,7 +361,6 @@ from cupy.math.misc import square  # NOQA
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-from cupy.sorting.sort import sort  # NQQA
 from cupy.sorting.count import count_nonzero  # NOQA
 from cupy.sorting.search import flatnonzero  # NOQA
 from cupy.sorting.search import nonzero  # NOQA
@@ -369,6 +368,8 @@ from cupy.sorting.search import nonzero  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 from cupy.sorting.search import where  # NOQA
+
+from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
