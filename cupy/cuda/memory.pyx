@@ -2,6 +2,7 @@
 
 import collections
 import ctypes
+import warnings
 import weakref
 
 import six
@@ -371,8 +372,14 @@ cdef class SingleDeviceMemoryPool:
         free = self._free[size]
         free.append(mem)
 
-    cpdef free_all_free(self):
+    cpdef free_all_blocks(self):
         self._free = collections.defaultdict(list)
+
+    cpdef free_all_free(self):
+        warnings.warn(
+            'free_all_free is deprecated. Use free_all_blocks instead.',
+            DeprecationWarning)
+        self.free_all_blocks()
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
@@ -431,10 +438,17 @@ cdef class MemoryPool(object):
         dev = device.get_device_id()
         return self._pools[dev].malloc(size)
 
-    cpdef free_all_free(self):
+    cpdef free_all_blocks(self):
         """Release free blocks."""
         dev = device.get_device_id()
-        self._pools[dev].free_all_free()
+        self._pools[dev].free_all_blocks()
+
+    cpdef free_all_free(self):
+        """Release free blocks."""
+        warnings.warn(
+            'free_all_free is deprecated. Use free_all_blocks instead.',
+            DeprecationWarning)
+        self.free_all_blocks()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
