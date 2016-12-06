@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of cuDNN."""
 # NOTE: This wrapper does not cover all APIs of cuDNN v4.
 cimport cython

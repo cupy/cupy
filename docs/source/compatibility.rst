@@ -68,6 +68,40 @@ The actual change should be done in the following steps:
 - At the major update announced in the above update, change the API.
 
 
+.. module:: chainer.utils
+
+Experimental APIs
+-----------------
+
+Thanks to many contributors, we have introduced many new features to Chainer.
+
+However, we have sometimes released new features only to later notice that their APIs are not appropriate.
+The objective of experimental APIs is to avoid such issues by allowing the developer to mark any newly added API as experimental.
+
+Any newly added API can be marked as *experimental*.
+Any API that is not experimental is called *stable* in this document.
+
+.. note::
+    Undocumented behaviors are not considered as APIs. So they are not experimental nor stable.
+    The treatment of undocumented behaviors are descibed in :ref:`undocumented_behavior` section.
+
+Chainer can change the interfaces and documents of experimental APIs at **any** version up.
+This change is not considered as a break of backward compatibility.
+Chainer can promote an experimental API to become stable at any **minor** or **major** version up.
+Once experimental APIs become stable, they cannot revert to experimental again.
+
+When users use experimental APIs for the first time, warnings are raised once for each experimental API,
+unless users explicitly disable the emission of the warnings in advance.
+
+See the document of :meth:`chainer.utils.experimental` how developers mark APIs as experimental
+and how users enable or disable the warnings practically.
+
+.. note::
+   It is up to developers if APIs should be annotated as experimental or not.
+   We recommend to make the APIs experimental if they implement large modules or
+   make a decision from several design choices.
+
+
 Supported Backward Compatibility
 --------------------------------
 
@@ -83,6 +117,8 @@ In other words, codes only based on the documented features run correctly with m
 
 Developers are encouraged to use apparent names for objects of implementation details.
 For example, attributes outside of the documented APIs should have one or more underscores at the prefix of their names.
+
+.. _undocumented_behavior:
 
 Undocumented behaviors
 ~~~~~~~~~~~~~~~~~~~~~~
