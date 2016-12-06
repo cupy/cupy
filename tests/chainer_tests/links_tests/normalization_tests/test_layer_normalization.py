@@ -21,12 +21,12 @@ from chainer.utils import type_check
 class LayerNormalizationTest(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LayerNormalization(self.size)
+        self.link = links.LayerNormalization()
         self.link.cleargrads()
 
-        shape = (self.batchsize, self.size)
-        self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
-        self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
+        self.shape = (self.batchsize, self.size)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
 
         self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
         self.check_backward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
@@ -40,7 +40,7 @@ class LayerNormalizationTest(unittest.TestCase):
         self.assertEqual(y.data.dtype, self.dtype)
 
         unbatched_concat_y = chainer.functions.concat(
-            [self.link(x[None, ]) for x in x_data], axis=0)
+            [self.link(one_x[None, ]) for one_x in x_data], axis=0)
 
         testing.assert_allclose(
             y.data, unbatched_concat_y.data, **self.check_forward_optionss)
@@ -77,22 +77,20 @@ class LayerNormalizationTest(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
+        self.link(numpy.zeros(self.shape, dtype='f'))
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
+        self.link(cuda.cupy.zeros(self.shape, dtype='f'))
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.cudnn
     def test_backward_gpu_without_cudnn(self):
         self.link.use_cudnn = False
-        self.test_backward_gpu()
-
-    @attr.cudnn
-    def test_backward_gpu_without_cudnn(self):
-        self.link.use_cudnn = False
+        self.link(numpy.zeros(self.shape, dtype='f'))
         self.test_backward_gpu()
 
 
@@ -106,12 +104,14 @@ class TestInitialize(unittest.TestCase):
         self.initial_gamma = self.initial_gamma.astype(numpy.float32)
         self.initial_beta = numpy.random.uniform(-1, 1, self.size)
         self.initial_beta = self.initial_beta.astype(numpy.float32)
-        self.link = links.LayerNormalization(self.size,
-                                             initial_gamma=self.initial_gamma,
-                                             initial_beta=self.initial_beta)
+        self.link = links.LayerNormalization(
+            initial_gamma=self.initial_gamma,
+            initial_beta=self.initial_beta)
+        self.shape = (1, self.size)
 
     @condition.retry(3)
     def test_initialize_cpu(self):
+        self.link(numpy.zeros(self.shape, dtype='f'))
         testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
         testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
@@ -119,6 +119,7 @@ class TestInitialize(unittest.TestCase):
     @condition.retry(3)
     def test_initialize_gpu(self):
         self.link.to_gpu()
+        self.link(cuda.cupy.zeros(self.shape, dtype='f'))
         testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
         testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
@@ -127,9 +128,11 @@ class TestDefaultInitializer(unittest.TestCase):
 
     def setUp(self):
         self.size = 3
-        self.link = links.LayerNormalization(self.size)
+        self.link = links.LayerNormalization()
+        self.shape = (1, self.size)
 
     def test_initialize_cpu(self):
+        self.link(numpy.zeros(self.shape, dtype='f'))
         testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(
             numpy.zeros(self.size), self.link.beta.data)
@@ -137,18 +140,19 @@ class TestDefaultInitializer(unittest.TestCase):
     @attr.gpu
     def test_initialize_gpu(self):
         self.link.to_gpu()
+        self.link(cuda.cupy.zeros(self.shape, dtype='f'))
         testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(
             numpy.zeros(self.size), self.link.beta.data)
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(2, 4), (2, 5, 3, 4)],
+    'shape': [(2, 4, 3), (2, 5, 3, 4)],
 }))
 class TestInvalidInput(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LayerNormalization(3)
+        self.link = links.LayerNormalization()
 
     def test_invalid_shape_cpu(self):
         with self.assertRaises(type_check.InvalidType):
@@ -157,7 +161,6 @@ class TestInvalidInput(unittest.TestCase):
     @attr.gpu
     def test_invalid_shape_gpu(self):
         self.link.to_gpu()
-        # with self.assertRaises(type_check.InvalidType):
         with self.assertRaises(type_check.InvalidType):
             self.link(chainer.Variable(cuda.cupy.zeros(self.shape, dtype='f')))
 
@@ -165,8 +168,9 @@ class TestInvalidInput(unittest.TestCase):
 class TestInvalidInitialize(unittest.TestCase):
 
     def test_invalid_type(self):
-        with self.assertRaises(TypeError):
-            self.link = links.LayerNormalization({})
+        with self.assertRaises(AssertionError):
+            self.link = links.LayerNormalization(1e-6, {})
+            self.link(chainer.Variable(numpy.zeros((1, 5), dtype='f')))
 
 
 testing.run_module(__name__, __file__)
