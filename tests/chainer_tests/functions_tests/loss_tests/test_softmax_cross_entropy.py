@@ -51,17 +51,17 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             self.check_backward_options = {
                 'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
         if self.weight_apply:
-            self.c = numpy.random.uniform(
+            self.class_weight = numpy.random.uniform(
                 0, 10, (self.x.shape[1],)).astype(self.dtype)
         else:
-            self.c = None
+            self.class_weight = None
 
-    def check_forward(self, x_data, t_data, c, use_cudnn=True):
+    def check_forward(self, x_data, t_data, class_weight, use_cudnn=True):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         loss = functions.softmax_cross_entropy(
             x, t, use_cudnn=use_cudnn, normalize=self.normalize,
-            cache_score=self.cache_score, c=c)
+            cache_score=self.cache_score, class_weight=class_weight)
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, self.dtype)
         self.assertEqual(hasattr(loss.creator, 'y'), self.cache_score)
@@ -77,10 +77,10 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             if ti == -1:
                 continue
             log_z = numpy.ufunc.reduce(numpy.logaddexp, xi)
-            if c is None:
+            if class_weight is None:
                 loss_expect -= (xi - log_z)[ti]
             else:
-                loss_expect -= (xi - log_z)[ti] * c[ti]
+                loss_expect -= (xi - log_z)[ti] * class_weight[ti]
             count += 1
 
         if self.normalize:
@@ -96,46 +96,49 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x, self.t, self.c)
+        self.check_forward(self.x, self.t, self.class_weight)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            None if not self.weight_apply else cuda.to_gpu(self.c))
+            None if not self.weight_apply else cuda.to_gpu(self.class_weight))
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            None if not self.weight_apply else cuda.to_gpu(self.c), False)
+            None if not self.weight_apply else cuda.to_gpu(self.class_weight),
+            False)
 
-    def check_backward(self, x_data, t_data, c, use_cudnn=True):
+    def check_backward(self, x_data, t_data, class_weight, use_cudnn=True):
         func = functions.SoftmaxCrossEntropy(
-            use_cudnn=use_cudnn, cache_score=self.cache_score, c=c)
+            use_cudnn=use_cudnn, cache_score=self.cache_score,
+            class_weight=class_weight)
         gradient_check.check_backward(
             func, (x_data, t_data), None, eps=0.02,
             **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.t, self.c)
+        self.check_backward(self.x, self.t, self.class_weight)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            None if not self.weight_apply else cuda.to_gpu(self.c))
+            None if not self.weight_apply else cuda.to_gpu(self.class_weight))
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            None if not self.weight_apply else cuda.to_gpu(self.c), False)
+            None if not self.weight_apply else cuda.to_gpu(self.class_weight),
+            False)
 
 
 @testing.parameterize(
