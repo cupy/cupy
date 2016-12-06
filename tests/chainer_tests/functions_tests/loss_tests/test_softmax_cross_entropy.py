@@ -94,6 +94,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         testing.assert_allclose(
             loss_expect, loss_value, **self.check_forward_options)
 
+    @testing.with_requires('numpy>=1.10')
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t, self.class_weight)
@@ -121,6 +122,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             func, (x_data, t_data), None, eps=0.02,
             **self.check_backward_options)
 
+    @testing.with_requires('numpy>=1.10')
     @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t, self.class_weight)
@@ -169,6 +171,7 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
             with self.assertRaises(ValueError):
                 functions.softmax_cross_entropy(x, t, use_cudnn)
 
+    @testing.with_requires('numpy>=1.10')
     def test_value_check_cpu(self):
         self.check_value_check(self.x, self.t, False)
 
@@ -197,6 +200,7 @@ class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
         t = chainer.Variable(self.t)
         return functions.softmax_cross_entropy(x, t, self.use_cudnn)
 
+    @testing.with_requires('numpy>=1.10')
     @unittest.skipIf(cuda.cudnn_enabled and
                      cuda.cudnn.cudnn.getVersion() < 3000,
                      'Only cudnn ver>=3 supports softmax-log')
