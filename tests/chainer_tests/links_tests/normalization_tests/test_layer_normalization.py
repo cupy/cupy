@@ -72,7 +72,7 @@ class LayerNormalizationTest(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             self.link, x_data, y_grad,
-            (self.link.scale.W, self.link.scale.bias.b),
+            (self.link.gamma, self.link.beta),
             eps=1e-2, **self.check_backward_optionss)
 
     @condition.retry(3)
@@ -112,15 +112,15 @@ class TestInitialize(unittest.TestCase):
 
     @condition.retry(3)
     def test_initialize_cpu(self):
-        testing.assert_allclose(self.initial_gamma, self.link.scale.W.data)
-        testing.assert_allclose(self.initial_beta, self.link.scale.bias.b.data)
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
     @attr.gpu
     @condition.retry(3)
     def test_initialize_gpu(self):
         self.link.to_gpu()
-        testing.assert_allclose(self.initial_gamma, self.link.scale.W.data)
-        testing.assert_allclose(self.initial_beta, self.link.scale.bias.b.data)
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
 
 class TestDefaultInitializer(unittest.TestCase):
@@ -130,16 +130,16 @@ class TestDefaultInitializer(unittest.TestCase):
         self.link = links.LayerNormalization(self.size)
 
     def test_initialize_cpu(self):
-        testing.assert_allclose(numpy.ones(self.size), self.link.scale.W.data)
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(
-            numpy.zeros(self.size), self.link.scale.bias.b.data)
+            numpy.zeros(self.size), self.link.beta.data)
 
     @attr.gpu
     def test_initialize_gpu(self):
         self.link.to_gpu()
-        testing.assert_allclose(numpy.ones(self.size), self.link.scale.W.data)
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(
-            numpy.zeros(self.size), self.link.scale.bias.b.data)
+            numpy.zeros(self.size), self.link.beta.data)
 
 
 @testing.parameterize(*testing.product({
