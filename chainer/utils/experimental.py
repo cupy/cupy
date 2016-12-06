@@ -46,7 +46,7 @@ def experimental(api_name):
     .. testoutput::
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.foo.bar.f is an experimental API. \
+        ... FutureWarning: chainer.foo.bar.f is experimental. \
 The interface can change in the future.
 
     We can also make a whole class experimental. In that case,
@@ -63,7 +63,7 @@ The interface can change in the future.
     .. testoutput::
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.foo.C is an experimental API. \
+        ... FutureWarning: chainer.foo.C is experimental. \
 The interface can change in the future
 
     If we want to mark ``__init__`` method only, rather than class itself,
@@ -80,7 +80,7 @@ The interface can change in the future
     .. testoutput::
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-       ...  FutureWarning: D.__init__ is an experimental API. \
+       ...  FutureWarning: D.__init__ is experimental. \
 The interface can change in the future
 
     Currently, we do not have any sophisticated way to mark some usage of
