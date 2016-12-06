@@ -1,6 +1,7 @@
 from chainer import cuda
 from chainer import initializers
 from chainer import link
+from chainer import utils
 
 from chainer.functions.array import broadcast
 from chainer.functions.math import bias
@@ -54,6 +55,8 @@ class LayerNormalization(link.Chain):
             initial_beta = initializers.Zero()
         self._beta_initializer = initial_beta
         self.eps = eps
+        utils.experimental(
+            'chainer.links.normalization.layer_normalization.py')
 
     def _initialize_params(self, size):
         self.add_param('gamma', size)
