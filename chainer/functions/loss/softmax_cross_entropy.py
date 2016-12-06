@@ -162,11 +162,7 @@ class SoftmaxCrossEntropy(function.Function):
                 'T gx',
                 '''
                     const int c = (i / n_unit % n_channel);
-                    if (t == -1) {
-                        gx = 0;
-                    } else {
-                        gx = coeff[0] * (y - (t == c)) * w[t];
-                    }
+                    gx = t == -1 ? 0 : coeff[0] * (y - (c == t)) * w[t];
                 ''',
                 'softmax_crossent_bwd')(
                     y, self.c, cupy.expand_dims(t, 1), coeff, x.shape[1],
