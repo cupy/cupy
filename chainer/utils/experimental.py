@@ -44,7 +44,7 @@ def experimental(api_name):
         f(1)
 
     .. testoutput::
-        :options: -ELLIPSIS, +NORMALIZE_WHITESPACE
+        :options: +IGNORE_EXCEPTION_DETAIL, +NORMALIZE_WHITESPACE
 
         ... FutureWarning: chainer.foo.bar.f is experimental. \
 The interface can change in the future.
