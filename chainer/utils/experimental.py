@@ -34,7 +34,6 @@ def experimental(api_name):
         warnings.showwarning = showwarning_orig
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         from chainer.utils import experimental
 
@@ -45,15 +44,15 @@ def experimental(api_name):
         f(1)
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.experimental.f is an experimental API. \
+        ... FutureWarning: chainer.foo.bar.f is an experimental API. \
 The interface can change in the future.
 
     We can also make a whole class experimental. In that case,
     we should call this function in its ``__init__`` method.
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         class C():
             def __init__(self):
@@ -62,6 +61,7 @@ The interface can change in the future.
         C()
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         ... FutureWarning: chainer.foo.C is an experimental API. \
 The interface can change in the future
@@ -70,7 +70,6 @@ The interface can change in the future
     it is recommended that we explicitly feed its API name.
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         class D():
             def __init__(self):
@@ -79,6 +78,7 @@ The interface can change in the future
         D()
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
        ...  FutureWarning: D.__init__ is an experimental API. \
 The interface can change in the future
