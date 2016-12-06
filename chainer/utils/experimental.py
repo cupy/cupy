@@ -64,7 +64,7 @@ The interface can change in the future.
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         ... FutureWarning: chainer.foo.C is experimental. \
-The interface can change in the future
+The interface can change in the future.
 
     If we want to mark ``__init__`` method only, rather than class itself,
     it is recommended that we explicitly feed its API name.
@@ -80,8 +80,8 @@ The interface can change in the future
     .. testoutput::
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-       ...  FutureWarning: D.__init__ is experimental. \
-The interface can change in the future
+        ...  FutureWarning: D.__init__ is experimental. \
+The interface can change in the future.
 
     Currently, we do not have any sophisticated way to mark some usage of
     non-experimental function as experimental.
