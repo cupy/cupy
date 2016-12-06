@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 import collections
 import ctypes
 import weakref
