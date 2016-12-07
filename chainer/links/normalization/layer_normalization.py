@@ -26,15 +26,13 @@ class LayerNormalization(link.Chain):
     Args:
         eps (float): Epsilon value for numerical stability of normalization.
         initial_gamma (~chainer.Initializer): Initializer for scaling vector.
-            If ``None``, then the vector is initialized
-            by :class:`~chainer.initializers.HeNormal`.
-            If a scalar, the vectors are filled by it.
-            If ``numpy.ndarray``, the vectors are set by it.
+            If ``None``, then the vector is filled by 1.
+            If a scalar, the vector is filled by it.
+            If ``numpy.ndarray``, the vector is set by it.
         initial_beta (~chainer.Initializer): Initializer for shifting vector.
-            If ``None``, then the vector is initialized
-            by :class:`~chainer.initializers.HeNormal`.
-            If a scalar, the vectors are filled by it.
-            If ``numpy.ndarray``, the vectors are set by it.
+            If ``None``, then the vector is filled by 0.
+            If a scalar, the vector is filled by it.
+            If ``numpy.ndarray``, the vector is set by it.
 
     Attributes:
         gamma (~chainer.Variable): Scaling parameter.
