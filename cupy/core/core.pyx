@@ -1089,7 +1089,9 @@ cdef class ndarray:
                     adv_slices.append(s)
                 elif isinstance(s, int):
                     basic_slices.append(slice(None))
-                    adv_slices.append(array(s, ndmin=0))
+                    scalar_array = ndarray((), dtype=numpy.int64)
+                    scalar_array.fill(s)
+                    adv_slices.append(scalar_array)
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
