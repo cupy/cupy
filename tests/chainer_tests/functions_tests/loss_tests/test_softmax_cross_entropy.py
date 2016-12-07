@@ -20,6 +20,7 @@ from chainer.testing import condition
     'ignore_index': [None, (slice(None),), (0,), (0, 1), (0, 1, 0)],
     'dtype': [numpy.float32],
     'weight_apply': [False, True],
+    'weight_var': [False, True],
 }) + testing.product({
     'shape': [None, (2, 3), (2, 3, 2), (2, 3, 2, 2)],
     'cache_score': [False],
@@ -27,6 +28,7 @@ from chainer.testing import condition
     'ignore_index': [(0, 1)],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'weight_apply': [False, True],
+    'weight_var': [False, True],
 })))
 class TestSoftmaxCrossEntropy(unittest.TestCase):
 
@@ -60,9 +62,13 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     def check_forward(self, x_data, t_data, class_weight, use_cudnn=True):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
+        if self.weight_apply and self.weight_var:
+            class_weight = chainer.Variable(class_weight)
         loss = functions.softmax_cross_entropy(
             x, t, use_cudnn=use_cudnn, normalize=self.normalize,
             cache_score=self.cache_score, class_weight=class_weight)
+        if self.weight_apply and self.weight_var:
+            class_weight = class_weight.data
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, self.dtype)
         self.assertEqual(hasattr(loss.creator, 'y'), self.cache_score)
@@ -117,6 +123,8 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             False)
 
     def check_backward(self, x_data, t_data, class_weight, use_cudnn=True):
+        if self.weight_apply and self.weight_var:
+            class_weight = chainer.Variable(class_weight)
         func = functions.SoftmaxCrossEntropy(
             use_cudnn=use_cudnn, cache_score=self.cache_score,
             class_weight=class_weight)
