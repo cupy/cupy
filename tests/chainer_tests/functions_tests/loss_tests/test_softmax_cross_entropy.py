@@ -174,6 +174,7 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
             with self.assertRaises(ValueError):
                 functions.softmax_cross_entropy(x, t, use_cudnn)
 
+    # numpy.broadcast_to is available only from numpy>=1.10
     @testing.with_requires('numpy>=1.10')
     def test_value_check_cpu(self):
         self.check_value_check(self.x, self.t, False)
@@ -203,6 +204,7 @@ class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
         t = chainer.Variable(self.t)
         return functions.softmax_cross_entropy(x, t, self.use_cudnn)
 
+    # numpy.broadcast_to is available only from numpy>=1.10
     @testing.with_requires('numpy>=1.10')
     @unittest.skipIf(cuda.cudnn_enabled and
                      cuda.cudnn.cudnn.getVersion() < 3000,
