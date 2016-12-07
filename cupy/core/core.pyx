@@ -1075,8 +1075,9 @@ cdef class ndarray:
                         raise ValueError('Boolean array indexing is supported '
                                          'only for same sized array.')
                 else:
-                    raise IndexError('Unsupported dtype for indexing: {}'
-                                     .format(s.dtype.type))
+                    raise IndexError(
+                        'arrays used as indices must be of integer or boolean '
+                        'type. (actual: {})'.format(s.dtype.type))
 
         if advanced:
             # split slices that can be handled by basic-indexing
