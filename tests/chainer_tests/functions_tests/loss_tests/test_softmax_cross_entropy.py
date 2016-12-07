@@ -1,15 +1,16 @@
+import unittest
+
+import mock
+import numpy
+import six
+
+import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
-
-import chainer
-import mock
-import numpy
-import six
-import unittest
 
 
 @testing.parameterize(*(testing.product({
@@ -94,6 +95,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         testing.assert_allclose(
             loss_expect, loss_value, **self.check_forward_options)
 
+    # numpy.broadcast_to is available only from numpy>=1.10
     @testing.with_requires('numpy>=1.10')
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -122,6 +124,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             func, (x_data, t_data), None, eps=0.02,
             **self.check_backward_options)
 
+    # numpy.broadcast_to is available only from numpy>=1.10
     @testing.with_requires('numpy>=1.10')
     @condition.retry(3)
     def test_backward_cpu(self):
