@@ -37,7 +37,7 @@ class MLPConvolution2D(link.ChainList):
         bias_init: An initializer of bias vectors
             passed to the convolution layers.
 
-    See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`.
+    See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`_.
 
     Attributes:
         activation (function): Activation function.
