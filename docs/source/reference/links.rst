@@ -119,6 +119,11 @@ BatchNormalization
 .. autoclass:: BatchNormalization
    :members:
 
+LayerNormalization
+~~~~~~~~~~~~~~~~~~
+.. autoclass:: LayerNormalization
+   :members:
+
 BinaryHierarchicalSoftmax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
