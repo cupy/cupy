@@ -235,6 +235,15 @@ class RandomState(object):
         rand = self.random_sample(size=size, dtype=dtype)
         return dtype.type(low) + rand * dtype.type(high - low)
 
+    def choice(self, a, size=None, replace=True, p=None):
+        """Return an array of random values from a given 1-D array.
+
+        .. seealso::
+            :func:`cupy.random.choice` for full document,
+            :meth:`numpy.random.RandomState.choice`
+
+        """
+
 
 def seed(seed=None):
     """Resets the state of the random number generator with a seed.
