@@ -9,3 +9,4 @@ If you want to use another image resolution, you need to change the network arch
 
 Below is an example learning result using cifar-10 dataset after 200 epoch.
 ![example result](https://raw.githubusercontent.com/pfnet/chainer/master/examples/dcgan/example_image.png)
+
