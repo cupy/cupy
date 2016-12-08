@@ -156,9 +156,10 @@ cdef class MemoryPointer:
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
-            src (ctypes.c_void_p): Source memory pointer. It must be a pinned
+            mem (ctypes.c_void_p): Source memory pointer. It must be a pinned
                 memory.
             size (int): Size of the sequence in bytes.
+            stream (cupy.cuda.Stream): CUDA stream.
 
         """
         if size > 0:
