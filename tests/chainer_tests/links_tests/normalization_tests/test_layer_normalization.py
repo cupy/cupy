@@ -12,6 +12,15 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
+def _create_ln(*args, **kwargs):
+    flag = chainer.disable_experimental_feature_warning
+    chainer.disable_experimental_feature_warning = True
+    try:
+        return links.LayerNormalization(*args, **kwargs)
+    finally:
+        chainer.disable_experimental_feature_warning = flag
+
+
 @testing.parameterize(*(testing.product({
     'volatile': ['on', 'off'],
     'batchsize': [1, 5],
@@ -21,7 +30,7 @@ from chainer.utils import type_check
 class LayerNormalizationTest(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LayerNormalization()
+        self.link = _create_ln()
         self.link.cleargrads()
 
         self.shape = (self.batchsize, self.size)
@@ -104,7 +113,7 @@ class TestInitialize(unittest.TestCase):
         self.initial_gamma = self.initial_gamma.astype(numpy.float32)
         self.initial_beta = numpy.random.uniform(-1, 1, self.size)
         self.initial_beta = self.initial_beta.astype(numpy.float32)
-        self.link = links.LayerNormalization(
+        self.link = _create_ln(
             initial_gamma=self.initial_gamma,
             initial_beta=self.initial_beta)
         self.shape = (1, self.size)
@@ -128,7 +137,7 @@ class TestDefaultInitializer(unittest.TestCase):
 
     def setUp(self):
         self.size = 3
-        self.link = links.LayerNormalization()
+        self.link = _create_ln()
         self.shape = (1, self.size)
 
     def test_initialize_cpu(self):
@@ -152,7 +161,7 @@ class TestDefaultInitializer(unittest.TestCase):
 class TestInvalidInput(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LayerNormalization()
+        self.link = _create_ln()
 
     def test_invalid_shape_cpu(self):
         with self.assertRaises(type_check.InvalidType):
@@ -169,7 +178,7 @@ class TestInvalidInitialize(unittest.TestCase):
 
     def test_invalid_type(self):
         with self.assertRaises(AssertionError):
-            self.link = links.LayerNormalization(1e-6, {})
+            self.link = _create_ln(1e-6, {})
             self.link(chainer.Variable(numpy.zeros((1, 5), dtype='f')))
 
 
