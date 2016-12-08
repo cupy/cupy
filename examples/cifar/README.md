@@ -5,7 +5,7 @@ This is a an example of a convolutional neural network (convnet) applied to an i
 Specifically, there are 50000 color training images of size 32x32 pixels with either 10 class labels (for CIFAR-10) or 100 class labels (for CIFAR-100).
 
 For CIFAR-10, state of the art methods without data augmentation can achieve similar to human-level classification accuracy of around 94%.
-For CIFAR-100, state of the art without data augmentation is around 20% (DenseNet) but we are not aware of any estimates of human-level accuracy for comparison.
+For CIFAR-100, state of the art without data augmentation is around 20% (DenseNet).
 
 The code consists of three parts: dataset preparation, network and optimizer definition and learning loop, similar to the MNIST example.
 

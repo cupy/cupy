@@ -6,7 +6,8 @@ import chainer.links as L
 
 
 class Block(chainer.Chain):
-    """
+    """A convolution, batch norm, ReLU block.
+
     A block in a feedforward network that performs a
     convolution followed by batch normalization followed
     by a ReLU activation.
@@ -44,6 +45,9 @@ class VGG(chainer.Chain):
     and CIFAR100 datasets.
 
     On CIFAR10, it achieves approximately 89% accuracy on the test set with
+    no data augmentation.
+
+    On CIFAR100, it achieves approximately 63% accuracy on the test set with
     no data augmentation.
 
     Args:
