@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--n_hidden', '-n', type=int, default=100,
                         help='Number of hidden units (z)')
     parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed')
+                        help='Random seed of z at visualization stage')
     parser.add_argument('--snapshot_interval', type=int, default=1000,
                         help='Interval of snapshot')
     parser.add_argument('--display_interval', type=int, default=100,
