@@ -18,6 +18,7 @@ class Block(chainer.Chain):
         out_channels (int): The number of output channels.
         ksize (int): The size of the filter is ksize x ksize.
         pad (int): The padding to use for the convolution.
+
     """
     def __init__(self, out_channels, ksize, pad=1):
         super(Block, self).__init__(
@@ -52,8 +53,8 @@ class VGG(chainer.Chain):
 
     Args:
         class_labels (int): The number of class labels.
-    """
 
+    """
     def __init__(self, class_labels=10):
         super(VGG, self).__init__(
             block1_1=Block(64, 3),
@@ -80,13 +81,13 @@ class VGG(chainer.Chain):
         h = self.block1_1(x, self.train)
         h = F.dropout(h, ratio=0.3, train=self.train)
         h = self.block1_2(h, self.train)
-        h = F.max_pooling_2d(h, 2, 2)
+        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
         # 128 channel blocks:
         h = self.block2_1(h, self.train)
         h = F.dropout(h, ratio=0.4, train=self.train)
         h = self.block2_2(h, self.train)
-        h = F.max_pooling_2d(h, 2, 2)
+        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
         # 256 channel blocks:
         h = self.block3_1(h, self.train)
@@ -94,7 +95,7 @@ class VGG(chainer.Chain):
         h = self.block3_2(h, self.train)
         h = F.dropout(h, ratio=0.4, train=self.train)
         h = self.block3_3(h, self.train)
-        h = F.max_pooling_2d(h, 2, 2)
+        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
         # 512 channel blocks:
         h = self.block4_1(h, self.train)
@@ -102,7 +103,7 @@ class VGG(chainer.Chain):
         h = self.block4_2(h, self.train)
         h = F.dropout(h, ratio=0.4, train=self.train)
         h = self.block4_3(h, self.train)
-        h = F.max_pooling_2d(h, 2, 2)
+        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
         # 512 channel blocks:
         h = self.block5_1(h, self.train)
@@ -110,7 +111,7 @@ class VGG(chainer.Chain):
         h = self.block5_2(h, self.train)
         h = F.dropout(h, ratio=0.4, train=self.train)
         h = self.block5_3(h, self.train)
-        h = F.max_pooling_2d(h, 2, 2)
+        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
         h = F.dropout(h, ratio=0.5, train=self.train)
         h = self.fc1(h)

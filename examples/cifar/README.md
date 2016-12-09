@@ -1,6 +1,6 @@
-# Convolutional nueral networks for CIFAR-10 and CIFAR-100 Classification
+# Convolutional neural networks for CIFAR-10 and CIFAR-100 Classification
 
-This is a an example of a convolutional neural network (convnet) applied to an image classification task using the CIFAR-10 or CIFAR-100 dataset. The CIFAR datasets can be a good choice for initial experiments with convnets because the size and number of images is small enough to allow typical models to be trained in a reasonable amount of time. However, the classification task is still challenging because natural images are used.
+This is an example of a convolutional neural network (convnet) applied to an image classification task using the CIFAR-10 or CIFAR-100 dataset. The CIFAR datasets can be a good choice for initial experiments with convnets because the size and number of images is small enough to allow typical models to be trained in a reasonable amount of time. However, the classification task is still challenging because natural images are used.
 
 Specifically, there are 50000 color training images of size 32x32 pixels with either 10 class labels (for CIFAR-10) or 100 class labels (for CIFAR-100).
 
@@ -13,7 +13,7 @@ More models may be added in the future, but currently only one model is availabl
 
 No data augmentation is used and the classification accuracy on the CIFAR-10 test set for the VGG-style model should reach approximately 89% after 200 iterations or so.
 
-If you want to run this example on the N-th GPU, pass `--gpu=N` to the script.
+If you want to run this example on the N-th GPU, pass `--gpu=N` to the script. To run on CPU, pass `--gpu=-1`.
 
 For example, to run the default model, which uses CIFAR-10 and GPU 0:
 ```
