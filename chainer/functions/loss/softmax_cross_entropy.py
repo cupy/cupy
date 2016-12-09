@@ -8,7 +8,6 @@ from chainer.functions.activation import log_softmax
 from chainer.utils import type_check
 
 
-
 class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
