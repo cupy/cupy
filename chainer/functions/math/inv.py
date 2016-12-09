@@ -1,5 +1,4 @@
 import numpy.linalg
-import six
 
 from chainer import cuda
 from chainer import function
@@ -83,26 +82,12 @@ class BatchInv(function.Function):
         self.invx, _ = _inv_gpu(x[0])
         return self.invx,
 
-    def backward_cpu(self, x, gy):
-        # Gradient is - x^-T (dx) x^-T
-        x, = x
-        gy, = gy
-        batch_size = len(x)
-        gx = numpy.empty_like(x)
-        for i in six.moves.range(batch_size):
-            gx[i] = numpy.dot(-self.invx[i].T, gy[i])
-            gx[i] = numpy.dot(gx[i], self.invx[i].T)
-        return gx,
-
-    def backward_gpu(self, x, gy):
+    def backward(self, x, gy):
         # Unpack 1-length tuples
         gy, = gy
-        shape = gy.shape
-        dtype = x[0].dtype
-        ret = cuda.cupy.empty(shape, dtype)
-        matmul._batch_matmul_gpu(-self.invx, gy, out=ret, transa=True)
-        ret2 = cuda.cupy.empty(shape, dtype)
-        matmul._batch_matmul_gpu(ret, self.invx, out=ret2, transb=True)
+        # Gradient is - x^-T (dx) x^-T
+        ret = matmul._batch_matmul(-self.invx, gy, transa=True)
+        ret2 = matmul._batch_matmul(ret, self.invx, transb=True)
         return ret2,
 
 

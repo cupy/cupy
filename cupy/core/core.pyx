@@ -1088,12 +1088,12 @@ cdef class ndarray:
                 elif (isinstance(s, ndarray) and
                         issubclass(s.dtype.type, numpy.integer)):
                     basic_slices.append(slice(None))
-                    if s.ndim == 0:
-                        s = s.reshape((1,))
                     adv_slices.append(s)
                 elif isinstance(s, int):
                     basic_slices.append(slice(None))
-                    adv_slices.append(array(s, ndmin=1))
+                    scalar_array = ndarray((), dtype=numpy.int64)
+                    scalar_array.fill(s)
+                    adv_slices.append(scalar_array)
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
@@ -2066,7 +2066,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 
 cpdef ndarray _adv_getitem(ndarray a, slices):
-    # slices consist of either None or ndarray of dim>=1
+    # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, o
 
