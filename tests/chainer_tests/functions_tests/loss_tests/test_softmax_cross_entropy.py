@@ -217,4 +217,30 @@ class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
     # Note that SoftmaxCrossEntropy does not use cudnn on backward
 
 
+class TestClassWeightAssertion(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.array([[0, 1], [2, 3]])
+        self.t = numpy.array([0, 1])
+
+    def test_ndim_assertion(self):
+        wrong_ndim_class_weight = numpy.array([[0, 0]], dtype='f')
+        with self.assertRaises(ValueError):
+            functions.softmax_cross_entropy(
+                self.x, self.t, class_weight=wrong_ndim_class_weight)
+
+    def test_dtype_assertion(self):
+        wrong_dtype_class_weight = numpy.array([0, 0], dtype=numpy.int32)
+        with self.assertRaises(ValueError):
+            functions.softmax_cross_entropy(
+                self.x, self.t, class_weight=wrong_dtype_class_weight)
+
+    def test_variable_assertion(self):
+        wrong_inst_class_weight = chainer.Variable(
+            numpy.array([0, 0], dtype='f'))
+        with self.assertRaises(ValueError):
+            functions.softmax_cross_entropy(
+                self.x, self.t, class_weight=wrong_inst_class_weight)
+
+
 testing.run_module(__name__, __file__)

@@ -1,11 +1,11 @@
-import numpy
-import six
-
-import chainer
 from chainer import cuda
 from chainer import function
 from chainer.functions.activation import log_softmax
 from chainer.utils import type_check
+
+import chainer
+import numpy
+import six
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -22,8 +22,13 @@ class SoftmaxCrossEntropy(function.Function):
         self.cache_score = cache_score
         self.class_weight = class_weight
         if class_weight is not None:
-            assert self.class_weight.ndim == 1
-            assert self.class_weight.dtype.kind == 'f'
+            if self.class_weight.ndim != 1:
+                raise ValueError('class_weight.ndim should be 1')
+            if self.class_weight.dtype.kind != 'f':
+                raise ValueError('The dtype of class_weight should be \'f\'')
+            if isinstance(self.class_weight, chainer.Variable):
+                raise ValueError('class_weight should be a numpy.ndarray or '
+                                 'cupy.ndarray, not a chainer.Variable')
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
