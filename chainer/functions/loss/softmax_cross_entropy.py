@@ -202,13 +202,13 @@ def softmax_cross_entropy(
         cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
             reduces computational cost though consumes more memory.
-        class_weight (~numpy.ndarray or ~cupy.ndarray): An array that contains
-            constant weights that will be multiplied with the loss values along
-            with the second dimension. The shape of this array should be
-            ``(x.shape[1],)``. If this is not ``None``, each class weight
-            ``class_weight[i]`` is actually multiplied to the corresponding
-            log-softmax output ``y[i]`` before calculating the actual loss
-            value.
+        class_weight (~numpy.ndarray or ~chainer.cuda.cupy.ndarray): An array
+            that contains constant weights that will be multiplied with the
+            loss values along with the second dimension. The shape of this
+            array should be ``(x.shape[1],)``. If this is not ``None``, each
+            class weight ``class_weight[i]`` is actually multiplied to the
+            corresponding log-softmax output ``y[i]`` before calculating the
+            actual loss value.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
