@@ -1,11 +1,12 @@
+import numpy
+import six
+
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.functions.activation import log_softmax
 from chainer.utils import type_check
 
-import chainer
-import numpy
-import six
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -207,7 +208,8 @@ def softmax_cross_entropy(
             with the second dimension. The shape of this array should be
             ``(x.shape[1],)``. If this is not ``None``, each class weight
             ``class_weight[i]`` is actually multiplied to the corresponding
-            softmax output ``y[i]`` before calculating the actual loss value.
+            log-softmax output ``y[i]`` before calculating the actual loss
+            value.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
