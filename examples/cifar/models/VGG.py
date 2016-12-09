@@ -6,6 +6,7 @@ import chainer.links as L
 
 
 class Block(chainer.Chain):
+
     """A convolution, batch norm, ReLU block.
 
     A block in a feedforward network that performs a
@@ -20,6 +21,7 @@ class Block(chainer.Chain):
         pad (int): The padding to use for the convolution.
 
     """
+
     def __init__(self, out_channels, ksize, pad=1):
         super(Block, self).__init__(
             conv=L.Convolution2D(None, out_channels, ksize, pad=pad,
@@ -34,6 +36,7 @@ class Block(chainer.Chain):
 
 
 class VGG(chainer.Chain):
+
     """A VGG-style network for very small images.
 
     This model is based on the VGG-style model from
@@ -55,6 +58,7 @@ class VGG(chainer.Chain):
         class_labels (int): The number of class labels.
 
     """
+
     def __init__(self, class_labels=10):
         super(VGG, self).__init__(
             block1_1=Block(64, 3),
