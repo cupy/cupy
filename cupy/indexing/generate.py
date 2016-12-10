@@ -9,12 +9,14 @@ import cupy
 
 import six
 
+
 class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see `r_`.
 
     """
+
     def _output_obj(self, newobj, tempobj, ndmin, trans1d):
         k2 = ndmin - tempobj.ndim
         if (trans1d < 0):
@@ -22,7 +24,7 @@ class AxisConcatenator(object):
         defaxes = list(six.moves.range(ndmin))
         k1 = trans1d
         axes = defaxes[:k1] + defaxes[k2:] + \
-               defaxes[k1:k2]
+            defaxes[k1:k2]
         newobj = newobj.transpose(axes)
         return newobj
 
@@ -51,7 +53,7 @@ class AxisConcatenator(object):
             elif isinstance(key[k], six.string_types):
                 if k != 0:
                     raise ValueError(
-                    'special directives must be the first entry.')
+                        'special directives must be the first entry.')
                 raise NotImplementedError
             elif type(key[k]) in numpy.ScalarType:
                 newobj = cupy.array(key[k], ndmin=ndmin)
@@ -68,7 +70,8 @@ class AxisConcatenator(object):
                     del tempobj
                 elif ndmin == 1:
                     if tempobj.ndim < ndmin:
-                        newobj = self._output_obj(newobj, tempobj, ndmin, trans1d)
+                        newobj = self._output_obj(
+                            newobj, tempobj, ndmin, trans1d)
                     del tempobj
 
             objs.append(newobj)
@@ -85,7 +88,9 @@ class AxisConcatenator(object):
     def __len__(self):
         return 0
 
+
 class CClass(AxisConcatenator):
+
     def __init__(self):
         """Translates slice objects to concatenation along the second axis.
 
@@ -102,6 +107,7 @@ c_ = CClass()
 
 
 class RClass(AxisConcatenator):
+
     def __init__(self):
         """Translates slice objects to concatenation along the first axis.
 
