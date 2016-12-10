@@ -24,6 +24,9 @@ class LayerNormalization(link.Chain):
 
 
     Args:
+        size (int): Size of input units. If ``None``, parameter initialization
+            will be deferred until the first forward data pass at which time
+            the size will be determined.
         eps (float): Epsilon value for numerical stability of normalization.
         initial_gamma (~chainer.Initializer): Initializer for scaling vector.
             If ``None``, then the vector is filled by 1.
@@ -42,7 +45,8 @@ class LayerNormalization(link.Chain):
     See: `Layer Normalization <https://arxiv.org/abs/1607.06450>`_
     """
 
-    def __init__(self, eps=1e-6, initial_gamma=None, initial_beta=None):
+    def __init__(self, size=None, eps=1e-6, initial_gamma=None,
+                 initial_beta=None):
         super(LayerNormalization, self).__init__()
         self.add_uninitialized_param('gamma')
         self.add_uninitialized_param('beta')
@@ -53,6 +57,10 @@ class LayerNormalization(link.Chain):
             initial_beta = initializers.Zero()
         self._beta_initializer = initial_beta
         self.eps = eps
+
+        if size is not None:
+            self._initialize_params(size)
+
         utils.experimental(
             'chainer.links.normalization.layer_normalization.py')
 
