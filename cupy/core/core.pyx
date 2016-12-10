@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from __future__ import division
 import ctypes
 import sys
@@ -1026,8 +1028,8 @@ cdef class ndarray:
            array([1, 0])
 
         """
-        # supports basic indexing (by slices, ints or Ellipsis).
-        # also supports indexing by integer arrays.
+        # supports basic indexing (by slices, ints or Ellipsis) and
+        # some parts of advanced indexing by integer or boolean arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
@@ -1068,9 +1070,16 @@ cdef class ndarray:
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
+                elif issubclass(s.dtype.type, numpy.bool_):
+                    if i == 0 and internal.vector_equal(self._shape, s._shape):
+                        return _boolean_array_indexing(self, s)
+                    else:
+                        raise ValueError('Boolean array indexing is supported '
+                                         'only for same sized array.')
                 else:
-                    raise IndexError('Advanced indexing with ' +
-                                     'non-integer array is not supported')
+                    raise IndexError(
+                        'arrays used as indices must be of integer or boolean '
+                        'type. (actual: {})'.format(s.dtype.type))
 
         if advanced:
             # split slices that can be handled by basic-indexing
@@ -1086,12 +1095,12 @@ cdef class ndarray:
                 elif (isinstance(s, ndarray) and
                         issubclass(s.dtype.type, numpy.integer)):
                     basic_slices.append(slice(None))
-                    if s.ndim == 0:
-                        s = s.reshape((1,))
                     adv_slices.append(s)
                 elif isinstance(s, int):
                     basic_slices.append(slice(None))
-                    adv_slices.append(array(s, ndmin=1))
+                    scalar_array = ndarray((), dtype=numpy.int64)
+                    scalar_array.fill(s)
+                    adv_slices.append(scalar_array)
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
@@ -1975,6 +1984,25 @@ cdef _take_kernel_0axis = ElementwiseKernel(
     'cupy_take_0axis')
 
 
+cdef _boolean_array_indexing_nth = ElementwiseKernel(
+    'T a, bool boolean_array, S nth',
+    'raw T out',
+    'if (boolean_array) out[nth] = a',
+    'cupy_boolean_array_indexing_nth')
+
+
+cpdef ndarray _boolean_array_indexing(ndarray a, ndarray boolean_array):
+    a = a.flatten()
+    boolean_array = boolean_array.flatten()
+    nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
+
+    n_true = int(nth_true_array.max()) + 1
+    out_shape = (n_true,)
+    out = ndarray(out_shape, dtype=a.dtype)
+
+    return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
+
+
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     if a.ndim == 0:
         a = a[None]
@@ -2064,7 +2092,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 
 cpdef ndarray _adv_getitem(ndarray a, slices):
-    # slices consist of either None or ndarray of dim>=1
+    # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, o
 

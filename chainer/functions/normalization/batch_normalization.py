@@ -41,7 +41,7 @@ class BatchNormalizationFunction(function.Function):
         # value.
         self.eps = eps
         if cuda.cudnn_enabled and use_cudnn:
-            if eps <= 1e-5:
+            if eps < 1e-5:
                 msg = 'cuDNN does not allow an eps value less than 1e-5.'
                 raise RuntimeError(msg)
         self.use_cudnn = use_cudnn
