@@ -8,6 +8,7 @@ except ImportError:
 
 from chainer import link
 from chainer.functions.theano import theano_function
+from chainer import utils
 
 
 def _to_var_tuple(vs):
@@ -66,6 +67,7 @@ class TheanoFunction(link.Link):
     """
 
     def __init__(self, inputs, outputs):
+        utils.experimental('chainer.links.TheanoFunction')
         if not _available:
             msg = '''theano is not installed on your environment.
 Please install theano to activate theano function.
