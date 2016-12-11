@@ -53,6 +53,7 @@ setup(
               'chainer.links.model',
               'chainer.links.model.vision',
               'chainer.links.normalization',
+              'chainer.links.theano',
               'chainer.optimizers',
               'chainer.serializers',
               'chainer.testing',
