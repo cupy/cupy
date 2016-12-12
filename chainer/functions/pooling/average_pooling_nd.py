@@ -8,6 +8,7 @@ import operator
 from chainer import cuda
 from chainer.functions.pooling import average_pooling_nd_kernel
 from chainer.functions.pooling import pooling_nd
+from chainer import utils
 from chainer.utils import conv_nd
 
 
@@ -20,6 +21,13 @@ class AveragePoolingND(pooling_nd.PoolingND):
 
     """Average pooling over a set of N-dimensional planes."""
     # TODO(takagi) Support cover_all mode.
+
+    def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=True,
+                 use_cudnn=True):
+        utils.experimental('chainer.functions.pooling.AveragePoolingND')
+        super(AveragePoolingND, self).__init__(
+            ndim, ksize, stride=stride, pad=pad, cover_all=cover_all,
+            use_cudnn=use_cudnn)
 
     def forward_cpu(self, x):
         col = conv_nd.im2col_nd_cpu(
