@@ -82,5 +82,7 @@ class Dropconnect(link.Link):
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.size // len(x.data))
+        if mask is not None and 'mask' not in self.__dict__:
+            self.add_persistent('mask', mask)
         return dropconnect.dropconnect(x, self.W, self.b,
                                        self.ratio, train, mask)
