@@ -85,10 +85,10 @@ class Upsampling2D(pooling_2d.Pooling2D):
             int yc = (i / oy / ox) % c;
             int yoy = (i / ox) % oy;
             int yox = i % ox;
-            up_y[yn * c * oy * ox * ky * kx + \
-              yc * oy * ox * ky * kx + \
-              yoy * ox * ky * kx + \
-              yox * ky * kx + \
+            up_y[yn * c * oy * ox * ky * kx +
+              yc * oy * ox * ky * kx +
+              yoy * ox * ky * kx +
+              yox * ky * kx +
               index] = x;
             ''',
             'upsampling_2d_fwd')(indexes, x[0], n, c, oy, ox, ky, kx, up_y)
@@ -136,15 +136,15 @@ class Upsampling2D(pooling_2d.Pooling2D):
             int ind_ox = i % ox;
             int gcol_ky = indexes / kx;
             int gcol_kx = indexes % kx;
-            float top_gx = gcol[ind_n * c * oy * ox * ky * kx + \
-                                ind_c * oy * ox * ky * kx + \
-                                ind_oy * ox * ky * kx + \
-                                ind_ox * ky * kx + \
-                                gcol_ky * kx + \
+            float top_gx = gcol[ind_n * c * oy * ox * ky * kx +
+                                ind_c * oy * ox * ky * kx +
+                                ind_oy * ox * ky * kx +
+                                ind_ox * ky * kx +
+                                gcol_ky * kx +
                                 gcol_kx];
-            gx[ind_n * c * oy * ox + \
-               ind_c * oy * ox + \
-               ind_oy * ox + \
+            gx[ind_n * c * oy * ox +
+               ind_c * oy * ox +
+               ind_oy * ox +
                ind_ox] = top_gx;
             ''',
             'upsampling_2d_bwd')(indexes, gcol, n, c, oy, ox, ky, kx, gx)
@@ -203,11 +203,11 @@ def upsampling_2d(
         x (~chainer.Variable): Input variable.
         indexes (~numpy.ndarray or ~cupy.ndarray): Index array that was used
             to calculate x with MaxPooling2D.
-        ksize (int or (int, int)): ksize attribtue of MaxPooling2D object that
+        ksize (int or (int, int)): ksize attribute of MaxPooling2D object that
             is used to calculate x
-        stride (int or (int, int)): stride attribtue of MaxPooling2D object
+        stride (int or (int, int)): stride attribute of MaxPooling2D object
             that is used to calculate x
-        pad (int or (int, int)): pad attribtue of MaxPooling2D object that is
+        pad (int or (int, int)): pad attribute of MaxPooling2D object that is
             used to calculate x
         outsize ((int, int)): Expected output size (height, width).
         cover_all (bool): Whether cover_all is used in the MaxPooling2D object
