@@ -510,6 +510,10 @@ max_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: max_pooling_2d
 
+max_pooling_nd
+~~~~~~~~~~~~~~
+.. autofunction:: max_pooling_nd
+
 roi_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: roi_pooling_2d
