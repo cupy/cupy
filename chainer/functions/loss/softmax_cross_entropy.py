@@ -206,9 +206,10 @@ def softmax_cross_entropy(
             that contains constant weights that will be multiplied with the
             loss values along with the second dimension. The shape of this
             array should be ``(x.shape[1],)``. If this is not ``None``, each
-            class weight ``class_weight[i]`` is actually multiplied to the
-            corresponding log-softmax output ``y[i]`` before calculating the
-            actual loss value.
+            class weight ``class_weight[i]`` is actually multiplied to
+            ``y[:, i]`` that is the corresponding log-softmax output of ``x``
+            and has the same shape as ``x`` before calculating the actual loss
+            value.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
