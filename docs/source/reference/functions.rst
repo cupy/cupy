@@ -235,6 +235,10 @@ binary_accuracy
 ~~~~~~~~~~~~~~~
 .. autofunction:: binary_accuracy
 
+r2_score
+~~~~~~~~
+.. autofunction:: r2_score
+
 
 Loss functions
 --------------
