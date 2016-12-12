@@ -17,7 +17,7 @@ if cuda.cudnn_enabled:
     libcudnn = cudnn.cudnn
 
 
-class AveragePoolingND(pooling_nd.PoolingND):
+class AveragePoolingND(pooling_nd._PoolingND):
 
     """Average pooling over a set of N-dimensional planes."""
     # TODO(takagi) Support cover_all mode.
