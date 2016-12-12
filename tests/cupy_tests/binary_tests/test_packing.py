@@ -9,9 +9,12 @@ class TestPacking(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
     def check_packbits(self, data, xp, dtype):
+        # Note numpy <= 1.9 raises an Exception when an input array is bool.
+        # See https://github.com/numpy/numpy/issues/5377
         a = xp.array(data, dtype=dtype)
         return xp.packbits(a)
 

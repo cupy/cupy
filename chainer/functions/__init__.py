@@ -204,6 +204,7 @@ from chainer.functions.evaluation.classification_summary import ClassificationSu
 from chainer.functions.evaluation.classification_summary import f1_score  # NOQA
 from chainer.functions.evaluation.classification_summary import precision  # NOQA
 from chainer.functions.evaluation.classification_summary import recall  # NOQA
+from chainer.functions.evaluation.r2_score import r2_score  # NOQA
 
 from chainer.functions.loss.black_out import black_out  # NOQA
 from chainer.functions.loss.contrastive import contrastive  # NOQA
