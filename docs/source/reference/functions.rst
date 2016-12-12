@@ -235,6 +235,10 @@ binary_accuracy
 ~~~~~~~~~~~~~~~
 .. autofunction:: binary_accuracy
 
+classification_summary
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: classification_summary
+
 r2_score
 ~~~~~~~~
 .. autofunction:: r2_score
