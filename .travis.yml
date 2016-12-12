@@ -47,7 +47,7 @@ before_install:
 
 install:
   - pip install -U pip wheel
-  - pip install cython
+  - pip install 'cython!=0.25.2'
   - python setup.py sdist
   - pip install dist/*.tar.gz
   - pip install h5py pillow
