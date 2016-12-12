@@ -15,9 +15,6 @@ if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
 
-_forward_cache = {}
-_backward_cache = {}
-
 
 class AveragePoolingND(pooling_nd.PoolingND):
 
@@ -49,14 +46,11 @@ class AveragePoolingND(pooling_nd.PoolingND):
         coeff = 1. / functools.reduce(operator.mul, self.ksize)
 
         ndim = self.ndim
-        if ndim not in _forward_cache:
-            _forward_cache[ndim] = \
-                average_pooling_nd_kernel.AveragePoolingNDKernelFwd(
-                    ndim).generate()
-        in_params, out_params, operation, name = _forward_cache[ndim]
-        kern = cuda.elementwise(in_params, out_params, operation, name)
-        kern(x[0].reduced_view(),
-             *(dims + ys + self.ksize + self.stride + self.pad + (coeff, y)))
+        in_params, out_params, operation, name = \
+            average_pooling_nd_kernel.AveragePoolingNDForward.generate(ndim)
+        cuda.elementwise(in_params, out_params, operation, name)(
+            x[0].reduced_view(),
+            *(dims + ys + self.ksize + self.stride + self.pad + (coeff, y)))
 
         return y,
 
@@ -83,11 +77,9 @@ class AveragePoolingND(pooling_nd.PoolingND):
         coeff = 1. / functools.reduce(operator.mul, self.ksize)
 
         ndim = self.ndim
-        if ndim not in _backward_cache:
-            _backward_cache[ndim] = \
-                average_pooling_nd_kernel.AveragePoolingNDKernelBwd(
-                    ndim).generate()
-        in_params, out_params, operation, name = _backward_cache[ndim]
+        in_params, out_params, operation, name = \
+            average_pooling_nd_kernel.AveragePoolingNDKernelBackward.generate(
+                ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             gy[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad + (coeff, gx)))
