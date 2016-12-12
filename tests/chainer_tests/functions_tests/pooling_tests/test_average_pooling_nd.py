@@ -21,7 +21,7 @@ def pooling_patches(dims, ksize, stride, pad):
     """Return tuples of slices that indicate pooling patches."""
     # Left-top indeces of each pooling patch.
     xss = itertools.product(
-        *[six.moves.range(-p, d+p-k+1, s) for (d, k, s, p) in zip(
+        *[six.moves.range(-p, d + p - k + 1, s) for (d, k, s, p) in zip(
             dims, ksize, stride, pad)])
     # Tuple of slices for pooling patches.
     return [tuple(slice(max(x, 0), min(x+k, d))
@@ -73,8 +73,8 @@ class TestAveragePoolingND(unittest.TestCase):
             for c in six.moves.range(3):
                 x = self.x[k, c]
                 size = functools.reduce(operator.mul, ksize)
-                expect = numpy.array([x[idx].sum() for idx in pooling_patches(
-                    dims, ksize, stride, pad)]).reshape(y_data.shape[2:])/size
+                expect = numpy.array(x[idx].sum() for idx in pooling_patches(
+                    dims, ksize, stride, pad)).reshape(y_data.shape[2:]) / size
                 testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
 

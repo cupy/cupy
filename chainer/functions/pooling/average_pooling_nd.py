@@ -34,7 +34,7 @@ class AveragePoolingND(pooling_nd.PoolingND):
             x[0], self.ksize, self.stride, self.pad, cover_all=False)
 
         # mean along (_, _, k_1, k_2, ..., k_N, _, ..., _)
-        y_axis = tuple(six.moves.range(2, 2+len(self.ksize)))
+        y_axis = tuple(six.moves.range(2, 2 + len(self.ksize)))
         y = col.mean(axis=y_axis)
         return y,
 
