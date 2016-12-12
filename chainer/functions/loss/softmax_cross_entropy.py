@@ -1,5 +1,4 @@
 import numpy
-import six
 
 import chainer
 from chainer import cuda
@@ -13,6 +12,7 @@ class SoftmaxCrossEntropy(function.Function):
     """Softmax activation followed by a cross entropy loss."""
 
     ignore_label = -1
+    normalize = True
 
     def __init__(self, use_cudnn=True, normalize=True, cache_score=True):
         self.use_cudnn = use_cudnn
@@ -36,28 +36,25 @@ class SoftmaxCrossEntropy(function.Function):
         if not (((0 <= t) &
                  (t < x.shape[1])) |
                 (t == self.ignore_label)).all():
-            msg = ('Each label `t` need to satisfty '
+            msg = ('Each label `t` need to satisfy '
                    '`0 <= t < x.shape[1] or t == %d`' % self.ignore_label)
             raise ValueError(msg)
-
-    def _log_softmax(self, x):
-        return log_softmax.LogSoftmax(self.use_cudnn).forward((x,))[0]
 
     def forward_cpu(self, inputs):
         x, t = inputs
         if chainer.is_debug():
             self._check_input_values(x, t)
 
-        log_y = self._log_softmax(x)
+        log_y = log_softmax._log_softmax(x, self.use_cudnn)
         if self.cache_score:
             self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
+        log_p = log_yd[numpy.maximum(t.ravel(), 0), numpy.arange(t.size)]
 
-        log_p = log_yd[numpy.maximum(t.ravel(), 0), six.moves.range(t.size)]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
-        if getattr(self, 'normalize', True):
+        if self.normalize:
             count = (t != self.ignore_label).sum()
         else:
             count = len(x)
@@ -73,10 +70,10 @@ class SoftmaxCrossEntropy(function.Function):
         if chainer.is_debug():
             self._check_input_values(x, t)
 
-        log_y = self._log_softmax(x)
+        log_y = log_softmax._log_softmax(x, self.use_cudnn)
         if self.cache_score:
             self.y = cupy.exp(log_y)
-        if getattr(self, 'normalize', True):
+        if self.normalize:
             coeff = cupy.maximum(1, (t != self.ignore_label).sum())
         else:
             coeff = max(1, len(t))
@@ -97,11 +94,11 @@ class SoftmaxCrossEntropy(function.Function):
         if hasattr(self, 'y'):
             y = self.y.copy()
         else:
-            log_y = self._log_softmax(x)
-            y = numpy.exp(log_y)
+            y = log_softmax._log_softmax(x, self.use_cudnn)
+            numpy.exp(y, out=y)
         if y.ndim == 2:
             gx = y
-            gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
+            gx[numpy.arange(len(t)), numpy.maximum(t, 0)] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1))
         else:
             # in the case where y.ndim is higher than 2,
@@ -123,7 +120,7 @@ class SoftmaxCrossEntropy(function.Function):
         if hasattr(self, 'y'):
             y = self.y
         else:
-            y = self._log_softmax(x)
+            y = log_softmax._log_softmax(x, self.use_cudnn)
             cupy.exp(y, out=y)
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
@@ -154,9 +151,9 @@ def softmax_cross_entropy(
             number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of ground truth labels.
             If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
-        normalize (bool): If true, this function normalizes the cross entropy
-            loss across all instances. If false, it only normalizes along
-            a batch size.
+        normalize (bool): If ``True``, this function normalizes the cross
+            entropy loss across all instances. If ``False``, it only
+            normalizes along a batch size.
         cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
             reduces computational cost though consumes more memory.

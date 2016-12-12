@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -17,7 +18,7 @@ if cuda.cudnn_enabled:
 _check_cudnn_acceptable_type = pooling_2d._check_cudnn_acceptable_type
 
 
-class PoolingND(function.Function):
+class _PoolingND(function.Function):
 
     """Base class of pooling function over a set of N-dimensional planes."""
 
@@ -48,7 +49,7 @@ class PoolingND(function.Function):
         n, c = x.shape[:2]
         dims = x.shape[2:]
         ys = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
-                   for (d, k, s, p) in zip(
+                   for d, k, s, p in six.moves.zip(
                        dims, self.ksize, self.stride, self.pad))
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)

@@ -1,9 +1,11 @@
 import collections
 import os
+import time
 
 import six
 
 from chainer import reporter as reporter_module
+from chainer import serializer as serializer_module
 from chainer.training import extension as extension_module
 from chainer.training import trigger as trigger_module
 
@@ -135,7 +137,26 @@ class Trainer(object):
         self._done = False
         self._extensions = collections.OrderedDict()
 
+        self._start_at = None
+        self._snapshot_elapsed_time = 0.0
+        self._final_elapsed_time = None
+
         updater.connect_trainer(self)
+
+    @property
+    def elapsed_time(self):
+        """Total time used for the training.
+
+        The time is in seconds. If the training is resumed from snapshot, it
+        includes the time of all the previous training to get the current
+        state of the trainer.
+
+        """
+        if self._done:
+            return self._final_elapsed_time
+        if self._start_at is None:
+            raise RuntimeError('training has not been started yet')
+        return time.time() - self._start_at + self._snapshot_elapsed_time
 
     def extend(self, extension, name=None, trigger=None, priority=None,
                invoke_before_training=None):
@@ -168,12 +189,12 @@ class Trainer(object):
                 are invoked in the descending order of priorities in each
                 iteration. If this is ``None``, ``extension.priority`` is used
                 instead.
-            invoke_before_training (bool): If ``True``, the extension is also
-                invoked just before entering the training loop. If this
-                ``None``, ``extension.invoke_before_training`` is used instead.
-                This option is mainly used for extensions that alter the
-                training configuration (e.g., learning rates); in such a case,
-                resuming from snapshots require the call of extension to
+            invoke_before_training (bool or None): If ``True``, the extension
+                is also invoked just before entering the training loop. If this
+                is ``None``, ``extension.invoke_before_training`` is used
+                instead. This option is mainly used for extensions that alter
+                the training configuration (e.g., learning rates); in such a
+                case, resuming from snapshots require the call of extension to
                 recover the configuration before any updates.
 
         """
@@ -249,6 +270,8 @@ class Trainer(object):
         extensions = [(name, self._extensions[name])
                       for name in extension_order]
 
+        self._start_at = time.time()
+
         # invoke extensions before the loop
         for _, entry in extensions:
             if entry.invoke_before_training:
@@ -274,6 +297,7 @@ class Trainer(object):
                     finalize()
             self.updater.finalize()
 
+        self._final_elapsed_time = self.elapsed_time
         self._done = True
 
     def serialize(self, serializer):
@@ -288,3 +312,9 @@ class Trainer(object):
                 entry.extension.serialize(s[name])
             if hasattr(entry.trigger, 'serialize'):
                 entry.trigger.serialize(t[name])
+
+        if isinstance(serializer, serializer_module.Serializer):
+            serializer('_snapshot_elapsed_time', self.elapsed_time)
+        else:
+            self._snapshot_elapsed_time = serializer(
+                '_snapshot_elapsed_time', 0.0)

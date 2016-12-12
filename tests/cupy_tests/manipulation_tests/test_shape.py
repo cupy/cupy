@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 
@@ -9,15 +11,17 @@ class TestShape(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.numpy_cupy_array_equal(type_check=False)
-    def test_reshape_strides(self, xp):
-        a = testing.shaped_arange((1, 1, 1, 2, 2), xp)
-        return a.strides
+    def test_reshape_strides(self):
+        def func(xp):
+            a = testing.shaped_arange((1, 1, 1, 2, 2), xp)
+            return a.strides
+        self.assertEqual(func(numpy), func(cupy))
 
-    @testing.numpy_cupy_array_equal(type_check=False)
-    def test_reshape2(self, xp):
-        a = xp.zeros((8,), dtype=xp.float32)
-        return a.reshape((1, 1, 1, 4, 1, 2)).strides
+    def test_reshape2(self):
+        def func(xp):
+            a = xp.zeros((8,), dtype=xp.float32)
+            return a.reshape((1, 1, 1, 4, 1, 2)).strides
+        self.assertEqual(func(numpy), func(cupy))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

@@ -26,10 +26,10 @@ class Alex(chainer.Chain):
         self.train = True
 
     def __call__(self, x, t):
-        h = F.max_pooling_2d(F.relu(
-            F.local_response_normalization(self.conv1(x))), 3, stride=2)
-        h = F.max_pooling_2d(F.relu(
-            F.local_response_normalization(self.conv2(h))), 3, stride=2)
+        h = F.max_pooling_2d(F.local_response_normalization(
+            F.relu(self.conv1(x))), 3, stride=2)
+        h = F.max_pooling_2d(F.local_response_normalization(
+            F.relu(self.conv2(h))), 3, stride=2)
         h = F.relu(self.conv3(h))
         h = F.relu(self.conv4(h))
         h = F.max_pooling_2d(F.relu(self.conv5(h)), 3, stride=2)

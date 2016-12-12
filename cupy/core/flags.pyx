@@ -1,3 +1,6 @@
+# distutils: language = c++
+
+
 class Flags(object):
 
     def __init__(self, c_contiguous, f_contiguous, owndata):

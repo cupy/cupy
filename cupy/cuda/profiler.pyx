@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of cuda profiler."""
 from cupy.cuda cimport runtime
 

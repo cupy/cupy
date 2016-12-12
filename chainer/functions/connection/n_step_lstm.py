@@ -63,15 +63,14 @@ class DropoutStates(object):
         self.states = states
         self.desc = desc
 
-    @staticmethod
-    def create(handle, states, dropout, seed):
-        desc = cudnn.create_dropout_descriptor(
-            handle, dropout, states.data.ptr, states.size, seed)
-        return DropoutStates(states, desc)
+    def set_dropout_ratio(self, handle, dropout):
+        cudnn.set_dropout_descriptor(self.desc, handle, dropout)
 
     @staticmethod
-    def from_states(handle, states, dropout):
-        desc = cudnn.create_dropout_descriptor(handle, dropout, 0, 0, 0)
+    def create(handle, dropout, seed):
+        states = cudnn.create_dropout_states(handle)
+        desc = cudnn.create_dropout_descriptor(
+            handle, dropout, states.data.ptr, states.size, seed)
         return DropoutStates(states, desc)
 
 
@@ -94,11 +93,11 @@ class DropoutRandomStates(object):
     def create_dropout_states(self, dropout):
         handle = cudnn.get_handle()
         if self._states is None:
-            self._states = cudnn.create_dropout_states(handle)
-            return DropoutStates.create(
-                handle, self._states, dropout, self._seed)
+            self._states = DropoutStates.create(handle, dropout, self._seed)
         else:
-            return DropoutStates.from_states(handle, self._states, dropout)
+            self._states.set_dropout_ratio(handle, dropout)
+
+        return self._states
 
 
 _random_states = {}
@@ -364,7 +363,7 @@ class NStepLSTM(function.Function):
 def _stack_weight(ws):
     # TODO(unno): Input of the current LSTM implementaiton is shuffled
     w = stack.stack(ws, axis=1)
-    shape = w.data.shape
+    shape = w.shape
     return reshape.reshape(w, (shape[0] * shape[1],) + shape[2:])
 
 
@@ -431,7 +430,7 @@ def n_step_lstm(
             :func:`~chainer.functions.transpose_sequence` transpose a list
             of :func:`~chainer.Variable` holding sequence.
             So ``xs`` needs to satisfy
-            ``len(xs[t].data) >= len(xs[t + 1].data)``.
+            ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
         train (bool): If ``True``, this function executes dropout.
         use_cudnn (bool): If ``True``, this function uses cuDNN if available.
 
@@ -453,7 +452,7 @@ def n_step_lstm(
 
     """
 
-    xp = cuda.get_array_module(hx.data)
+    xp = cuda.get_array_module(hx, hx.data)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
        _cudnn_version >= 5000:
@@ -472,9 +471,9 @@ def n_step_lstm(
 
     else:
         hx = split_axis.split_axis(hx, n_layers, axis=0, force_tuple=True)
-        hx = [reshape.reshape(h, h.data.shape[1:]) for h in hx]
+        hx = [reshape.reshape(h, h.shape[1:]) for h in hx]
         cx = split_axis.split_axis(cx, n_layers, axis=0, force_tuple=True)
-        cx = [reshape.reshape(c, c.data.shape[1:]) for c in cx]
+        cx = [reshape.reshape(c, c.shape[1:]) for c in cx]
 
         xws = [_stack_weight([w[2], w[0], w[1], w[3]]) for w in ws]
         hws = [_stack_weight([w[6], w[4], w[5], w[7]]) for w in ws]
@@ -483,13 +482,13 @@ def n_step_lstm(
 
         ys = []
         for x in xs:
-            batch = len(x.data)
+            batch = x.shape[0]
             h_next = []
             c_next = []
             for layer in six.moves.range(n_layers):
                 h = hx[layer]
                 c = cx[layer]
-                if len(h.data) > batch:
+                if h.shape[0] > batch:
                     h, h_rest = split_axis.split_axis(h, [batch], axis=0)
                     c, c_rest = split_axis.split_axis(c, [batch], axis=0)
                 else:

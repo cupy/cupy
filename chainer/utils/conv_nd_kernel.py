@@ -23,12 +23,12 @@ def muladdexp(xs, ys, init=None):
         x, y = arg
         return '({} + {} * {})'.format(y, x, exp)
     if init is not None:
-        return functools.reduce(aux, zip(xs, ys), init)
+        return functools.reduce(aux, six.moves.zip(xs, ys), init)
     else:
-        return functools.reduce(aux, zip(xs, ys))
+        return functools.reduce(aux, six.moves.zip(xs, ys))
 
 
-def _map(fn, *lst):
+def map_(fn, *lst):
     # For py2/py3 compatibility.
     return list(map(fn, *lst))
 
@@ -69,7 +69,7 @@ class Im2colNDKernel(object):
         #     int32 k_0, int32 k_1, int32 s_0, int32 s_1, int32 p_0, int32 p_1
         def aux(x):
             return 'int32 {}'.format(x)
-        return ', '.join(['raw T img'] + _map(aux, ds + outs + ks + ss + ps))
+        return ', '.join(['raw T img'] + map_(aux, ds + outs + ks + ss + ps))
 
     def _out_params(self):
         return 'T col'
@@ -89,7 +89,7 @@ class Im2colNDKernel(object):
             else:
                 return 'int {} = i % {};'.format(kx, head)
         kxs = vars('kx', ndim)
-        kx_decls = _map(aux, kxs, succ_sublists(ks))
+        kx_decls = map_(aux, kxs, succ_sublists(ks))
         return kx_decls, kxs
 
     def _compile_out_x(self, ndim, outs):
@@ -104,7 +104,7 @@ class Im2colNDKernel(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', ndim)
-        out_x_decls = _map(aux, out_xs, succ_sublists(outs))
+        out_x_decls = map_(aux, out_xs, succ_sublists(outs))
         return out_x_decls, out_xs
 
     def _compile_main(self, ndim, ds, ks, ss, ps, kxs, out_xs):
@@ -120,18 +120,17 @@ class Im2colNDKernel(object):
         w = Writer()
 
         ins = vars('in', ndim)
-        for (_in, kx, out_x, s, p) in zip(ins, kxs, out_xs, ss, ps):
-            w.write(
-                'int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
+        for _in, kx, out_x, s, p in six.moves.zip(ins, kxs, out_xs, ss, ps):
+            w.write('int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
 
         def rel_aux(_in, d):
             return '0 <= {} && {} < {}'.format(_in, _in, d)
         w.write(
-            'if ({}) {{'.format(andexp(_map(rel_aux, ins, ds))), indent='inc')
+            'if ({}) {{'.format(andexp(map_(rel_aux, ins, ds))), indent='inc')
 
         idxs = vars('idx', ndim)
         idx0s = ['c0'] + idxs[:-1]
-        for (idx, _in, d, idx0) in zip(idxs, ins, ds, idx0s):
+        for idx, _in, d, idx0 in six.moves.zip(idxs, ins, ds, idx0s):
             w.write('int {} = {} + {} * {};'.format(idx, _in, d, idx0))
 
         w.write('col = img[{}];'.format(idxs[-1]))
@@ -179,7 +178,7 @@ class Col2imNDKernel(object):
         #     int32 k_0, int32 k_1, int32 s_0, int32 s_1, int32 p_0, int32 p_1
         def aux(x):
             return 'int32 {}'.format(x)
-        return ', '.join(['raw T col'] + _map(aux, ds + outs + ks + ss + ps))
+        return ', '.join(['raw T col'] + map_(aux, ds + outs + ks + ss + ps))
 
     def _out_params(self):
         return 'T img'
@@ -200,7 +199,7 @@ class Col2imNDKernel(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', ndim)
-        x_decls = _map(aux, xs, succ_sublists(ds), ps)
+        x_decls = map_(aux, xs, succ_sublists(ds), ps)
         return x_decls, xs
 
     def _compile_loop(self, ndim, outs, ks, ss, xs):
@@ -225,7 +224,7 @@ class Col2imNDKernel(object):
                     out_x1, out, x, s, s)]
         out_x0s = vars('out_x0', ndim)
         out_x1s = vars('out_x1', ndim)
-        bounds = sum(_map(aux, out_x0s, out_x1s, outs, xs, ks, ss), [])
+        bounds = sum(map_(aux, out_x0s, out_x1s, outs, xs, ks, ss), [])
 
         def _loop_main(main, ndim, ks, ss):
             w = Writer()
@@ -234,7 +233,7 @@ class Col2imNDKernel(object):
             out_xs = vars('out_x', ndim)
             kxs = vars('kx', ndim)
             kxs1 = ['c0'] + kxs[:-1]
-            for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in zip(
+            for out_x, out_x0, out_x1, kx, s, x, k, kx1 in six.moves.zip(
                     out_xs, out_x0s, out_x1s, kxs, ss, xs, ks, kxs1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), indent='inc')

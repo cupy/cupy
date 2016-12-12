@@ -1,23 +1,19 @@
 from __future__ import print_function
-import copy
-import distutils
+from distutils import ccompiler
+from distutils import sysconfig
 import os
 from os import path
-import shutil
-import subprocess
 import sys
-import tempfile
 
 import pkg_resources
 import setuptools
-from setuptools.command import build_ext
 
 from install import build
 from install import utils
 
 
-dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
-cython_version = '0.23.0'
+required_cython_version = pkg_resources.parse_version('0.24.0')
+
 MODULES = [
     {
         'name': 'cuda',
@@ -30,6 +26,7 @@ MODULES = [
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
+            'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
@@ -75,60 +72,29 @@ if sys.platform == 'win32':
     mod_cuda['libraries'].remove('nvToolsExt')
 
 
-def localpath(*args):
-    return path.abspath(path.join(path.dirname(__file__), *args))
-
-
-def check_include(dirs, file_path):
-    return any(path.exists(path.join(dir, file_path)) for dir in dirs)
-
-
 def check_readthedocs_environment():
     return os.environ.get('READTHEDOCS', None) == 'True'
 
 
 def check_library(compiler, includes=(), libraries=(),
                   include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
 
+    source = ''.join(['#include <%s>\n' % header for header in includes])
+    source += 'int main(int argc, char* argv[]) {return 0;}'
     try:
-        source = '''
-        int main(int argc, char* argv[]) {
-          return 0;
-        }
-        '''
-        fname = os.path.join(temp_dir, 'a.cpp')
-        with open(fname, 'w') as f:
-            for header in includes:
-                f.write('#include <%s>\n' % header)
-            f.write(source)
-
-        try:
-            objects = compiler.compile([fname], output_dir=temp_dir,
-                                       include_dirs=include_dirs)
-        except distutils.errors.CompileError:
-            return False
-
-        try:
-            compiler.link_shared_lib(objects,
-                                     os.path.join(temp_dir, 'a'),
-                                     libraries=libraries,
-                                     library_dirs=library_dirs,
-                                     target_lang='c++')
-        except (distutils.errors.LinkError, TypeError):
-            return False
-
-        return True
-
-    except distutils.errors.DistutilsError as e:
-        print('distutils raises an error: %s' % e)
+        # We need to try to build a shared library because distutils
+        # uses different option to build an executable and a shared library.
+        # Especially when a user build an executable, distutils does not use
+        # LDFLAGS environment variable.
+        build.build_shlib(compiler, source, libraries,
+                          include_dirs, library_dirs)
+    except Exception as e:
+        print(e)
         return False
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    return True
 
 
-def make_extensions(options, compiler):
+def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
@@ -145,10 +111,15 @@ def make_extensions(options, compiler):
     if sys.platform == 'darwin':
         args = settings.setdefault('extra_link_args', [])
         args.append(
-            '-Wl,' + ','.join('-rpath,' + path
-                              for path in settings['library_dirs']))
+            '-Wl,' + ','.join('-rpath,' + p
+                              for p in settings['library_dirs']))
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
+
+    # This is a workaround for Anaconda.
+    # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
+    # with GCC 5's new ABI.
+    settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
@@ -157,6 +128,7 @@ def make_extensions(options, compiler):
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
     ret = []
+    ext = '.pyx' if use_cython else '.cpp'
     for module in MODULES:
         print('Include directories:', settings['include_dirs'])
         print('Library directories:', settings['library_dirs'])
@@ -168,7 +140,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
-                    'Check your CPATH environment variable')
+                    'Check your CFLAGS environment variable')
                 continue
 
             if not check_library(compiler,
@@ -177,7 +149,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
-                    'Check your LIBRARY_PATH environment variable')
+                    'Check your LDFLAGS environment variable')
                 continue
 
             if 'check_method' in module and \
@@ -187,80 +159,57 @@ def make_extensions(options, compiler):
         s = settings.copy()
         if not no_cuda:
             s['libraries'] = module['libraries']
+
         ret.extend([
-            setuptools.Extension(f, [path.join(*f.split('.')) + '.pyx'], **s)
+            setuptools.Extension(f, [path.join(*f.split('.')) + ext], **s)
             for f in module['file']])
     return ret
 
 
-_arg_options = {}
-
-
 def parse_args():
-    global _arg_options
-    _arg_options['profile'] = '--cupy-profile' in sys.argv
-    if _arg_options['profile']:
+    cupy_profile = '--cupy-profile' in sys.argv
+    if cupy_profile:
         sys.argv.remove('--cupy-profile')
-
     cupy_coverage = '--cupy-coverage' in sys.argv
     if cupy_coverage:
         sys.argv.remove('--cupy-coverage')
-    _arg_options['linetrace'] = cupy_coverage
-    _arg_options['annotate'] = cupy_coverage
-
-    _arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
-    if _arg_options['no_cuda']:
+    no_cuda = '--cupy-no-cuda' in sys.argv
+    if no_cuda:
         sys.argv.remove('--cupy-no-cuda')
+
+    arg_options = {
+        'profile': cupy_profile,
+        'linetrace': cupy_coverage,
+        'annotate': cupy_coverage,
+        'no_cuda': no_cuda,
+    }
     if check_readthedocs_environment():
-        _arg_options['no_cuda'] = True
+        arg_options['no_cuda'] = True
+    return arg_options
 
 
-def get_cython_pkg():
+def check_cython_version():
     try:
-        return pkg_resources.get_distribution('cython')
-    except pkg_resources.DistributionNotFound:
-        return None
+        import Cython
+        cython_version = pkg_resources.parse_version(Cython.__version__)
+        return cython_version >= required_cython_version
+    except ImportError:
+        return False
 
 
-def run_command(cmd):
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        msg = '''Command %r failed:
+def cythonize(extensions, arg_options):
+    import Cython.Build
 
-  command: %s
-  return code: %d
-  output:
+    directive_keys = ('linetrace', 'profile')
+    directives = {key: arg_options[key] for key in directive_keys}
 
-%s''' % (cmd[0], ' '.join(e.cmd), e.returncode, e.output)
-        raise distutils.errors.DistutilsExecError(msg)
+    cythonize_option_keys = ('annotate',)
+    cythonize_options = {key: arg_options[key]
+                         for key in cythonize_option_keys}
 
-
-def cythonize(
-        extensions, force=False, annotate=False, compiler_directives=None):
-    cython_location = get_cython_pkg().location
-    cython_path = path.join(cython_location, 'cython.py')
-    print("cython path:%s" % cython_location)
-    cmd = [sys.executable, cython_path]
-    run_command(cmd + ['--version'])
-
-    cmd.extend(['--fast-fail', '--verbose', '--cplus'])
-    if compiler_directives is not None:
-        for i in compiler_directives.items():
-            cmd.append('--directive')
-            cmd.append('%s=%s' % i)
-
-    for ext in extensions:
-        run_command(cmd + ext.sources)
-
-
-def to_cpp_extensions(extensions):
-    ret = []
-    for x in extensions:
-        ext = copy.copy(x)
-        ext.sources = [path.splitext(f)[0] + ".cpp" for f in x.sources]
-        ret.append(ext)
-    return ret
+    return Cython.Build.cythonize(
+        extensions, verbose=True,
+        compiler_directives=directives, **cythonize_options)
 
 
 def check_extensions(extensions):
@@ -268,44 +217,27 @@ def check_extensions(extensions):
         for f in x.sources:
             if not path.isfile(f):
                 msg = ('Missing file: %s\n' % f +
-                       'Please install Cython.\n' +
+                       'Please install Cython. ' +
+                       'Please also check the version of Cython.\n' +
                        'See http://docs.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
 
-class chainer_build_ext(build_ext.build_ext):
+def get_ext_modules():
+    arg_options = parse_args()
+    print('Options:', arg_options)
 
-    """`build_ext` command for cython files."""
+    # We need to call get_config_vars to initialize _config_vars in distutils
+    # see #1849
+    sysconfig.get_config_vars()
+    compiler = ccompiler.new_compiler()
+    sysconfig.customize_compiler(compiler)
 
-    def finalize_options(self):
-        ext_modules = self.distribution.ext_modules
-        if dummy_extension in ext_modules:
-            print('Executing cythonize')
-            print('Options:', _arg_options)
+    use_cython = check_cython_version()
+    extensions = make_extensions(arg_options, compiler, use_cython)
 
-            directive_keys = ('linetrace', 'profile')
-            directives = {key: _arg_options[key] for key in directive_keys}
+    if use_cython:
+        extensions = cythonize(extensions, arg_options)
 
-            cythonize_option_keys = ('annotate',)
-            cythonize_options = {
-                key: _arg_options[key] for key in cythonize_option_keys}
-
-            compiler = distutils.ccompiler.new_compiler(compiler=self.compiler)
-            distutils.sysconfig.customize_compiler(compiler)
-
-            extensions = make_extensions(_arg_options, compiler)
-
-            cython = get_cython_pkg()
-            req_version = pkg_resources.parse_version(cython_version)
-            if cython is not None and cython.parsed_version > req_version:
-                cythonize(extensions, force=True,
-                          compiler_directives=directives, **cythonize_options)
-
-            extensions = to_cpp_extensions(extensions)
-            check_extensions(extensions)
-
-            # Modify ext_modules for cython
-            ext_modules.remove(dummy_extension)
-            ext_modules.extend(extensions)
-
-        build_ext.build_ext.finalize_options(self)
+    check_extensions(extensions)
+    return extensions

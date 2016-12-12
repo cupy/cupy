@@ -1,9 +1,7 @@
+from six import moves
+
 import chainer
-from chainer.utils.conv_nd_kernel import _map
-from chainer.utils.conv_nd_kernel import mulexp
-from chainer.utils.conv_nd_kernel import succ_sublists
-from chainer.utils.conv_nd_kernel import vars
-from chainer.utils.conv_nd_kernel import Writer
+from chainer.utils import conv_nd_kernel
 
 
 class PoolingNDKernelForward(object):
@@ -33,11 +31,11 @@ class PoolingNDKernelForward(object):
 
     def _generate(self, ndim):
         self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
+        self.ds = conv_nd_kernel.vars('d', ndim)
+        self.outs = conv_nd_kernel.vars('out', ndim)
+        self.ks = conv_nd_kernel.vars('k', ndim)
+        self.ss = conv_nd_kernel.vars('s', ndim)
+        self.ps = conv_nd_kernel.vars('p', ndim)
 
         in_params = self._in_params()
         out_params = self._out_params()
@@ -58,7 +56,8 @@ class PoolingNDKernelForward(object):
         else:
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
-        return ', '.join(['raw T in'] + raws + _map(aux, vars) + in_params)
+        return ', '.join(
+            ['raw T in'] + raws + conv_nd_kernel.map_(aux, vars) + in_params)
 
     def _out_params(self):
         # T out, ...
@@ -67,7 +66,7 @@ class PoolingNDKernelForward(object):
 
     def _compile_c0(self):
         # 2D: int c0 = i / (out_0 * out_1);
-        return ['int c0 = i / ({});'.format(mulexp(self.outs))]
+        return ['int c0 = i / ({});'.format(conv_nd_kernel.mulexp(self.outs))]
 
     def _compile_out_x(self):
         # 2D: int out_x_0 = i / (out_1) % out_0;
@@ -77,11 +76,12 @@ class PoolingNDKernelForward(object):
             tail = outs[1:]
             if tail:
                 return 'int {} = i / ({}) % {};'.format(
-                    out_x, mulexp(tail), head)
+                    out_x, conv_nd_kernel.mulexp(tail), head)
             else:
                 return 'int {} = i % {};'.format(out_x, head)
-        out_xs = vars('out_x', self.ndim)
-        out_xs_decls = _map(aux, out_xs, succ_sublists(self.outs))
+        out_xs = conv_nd_kernel.vars('out_x', self.ndim)
+        out_xs_decls = conv_nd_kernel.map_(
+            aux, out_xs, conv_nd_kernel.succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
     def _compile_loop(self, out_xs):
@@ -103,21 +103,21 @@ class PoolingNDKernelForward(object):
                 'int {} = max(0, {} * {} - {});'.format(in_x0, out, s, p),
                 'int {} = min({}, {} * {} + {} - {});'.format(
                     in_x1, d, out, s, k, p)]
-        in_x0s = vars('in_x0', self.ndim)
-        in_x1s = vars('in_x1', self.ndim)
-        bounds = sum(_map(
+        in_x0s = conv_nd_kernel.vars('in_x0', self.ndim)
+        in_x1s = conv_nd_kernel.vars('in_x1', self.ndim)
+        bounds = sum(conv_nd_kernel.map_(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
         ), [])
 
         def _loop_main(main):
-            w = Writer()
+            w = conv_nd_kernel.Writer()
 
             # Loop openings.
-            xs = vars('x', self.ndim)
-            offsets = vars('offset', self.ndim)
+            xs = conv_nd_kernel.vars('x', self.ndim)
+            offsets = conv_nd_kernel.vars('offset', self.ndim)
             ds1 = self.ds[1:] + [1]
             offsets1 = ['d_0 * c0'] + offsets[:-1]
-            for (x, in_x0, in_x1, offset, offset1, d1) in zip(
+            for x, in_x0, in_x1, offset, offset1, d1 in moves.zip(
                     xs, in_x0s, in_x1s, offsets, offsets1, ds1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     x, in_x0, x, in_x1, x), 'inc')
@@ -180,11 +180,11 @@ class PoolingNDKernelBackward(object):
 
     def _generate(self, ndim):
         self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
+        self.ds = conv_nd_kernel.vars('d', ndim)
+        self.outs = conv_nd_kernel.vars('out', ndim)
+        self.ks = conv_nd_kernel.vars('k', ndim)
+        self.ss = conv_nd_kernel.vars('s', ndim)
+        self.ps = conv_nd_kernel.vars('p', ndim)
 
         in_params = self._in_params()
         out_params = self._out_params()
@@ -205,7 +205,8 @@ class PoolingNDKernelBackward(object):
         else:
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
-        return ', '.join(['raw T gy'] + raws + _map(aux, vars) + in_params)
+        return ', '.join(
+            ['raw T gy'] + raws + conv_nd_kernel.map_(aux, vars) + in_params)
 
     def _out_params(self):
         # T gx, ...
@@ -214,7 +215,7 @@ class PoolingNDKernelBackward(object):
 
     def _compile_c0(self):
         # 2D: int c0  = i / (d_0 * d_1);
-        return ['int c0  = i / ({});'.format(mulexp(self.ds))]
+        return ['int c0  = i / ({});'.format(conv_nd_kernel.mulexp(self.ds))]
 
     def _compile_x(self):
         # 2D: int x_0 = i / (d_1) % d_0 + p_0;
@@ -224,11 +225,12 @@ class PoolingNDKernelBackward(object):
             tail = ds[1:]
             if tail:
                 return 'int {} = i / ({}) % {} + {};'.format(
-                    x, mulexp(tail), head, p)
+                    x, conv_nd_kernel.mulexp(tail), head, p)
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
-        xs = vars('x', self.ndim)
-        xs_decls = _map(aux, xs, succ_sublists(self.ds), self.ps)
+        xs = conv_nd_kernel.vars('x', self.ndim)
+        xs_decls = conv_nd_kernel.map_(
+            aux, xs, conv_nd_kernel.succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
     def _compile_loop(self, xs):
@@ -251,20 +253,20 @@ class PoolingNDKernelBackward(object):
                     out_x0, x, k, s, s),
                 'int {} = min({}, ({} + {}) / {});'.format(
                     out_x1, out, x, s, s)]
-        out_x0s = vars('out_x0', self.ndim)
-        out_x1s = vars('out_x1', self.ndim)
-        bounds = sum(_map(
+        out_x0s = conv_nd_kernel.vars('out_x0', self.ndim)
+        out_x1s = conv_nd_kernel.vars('out_x1', self.ndim)
+        bounds = sum(conv_nd_kernel.map_(
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):
-            w = Writer()
+            w = conv_nd_kernel.Writer()
 
             # Loop openings.
-            out_xs = vars('out_x', self.ndim)
-            offsets = vars('offset', self.ndim)
+            out_xs = conv_nd_kernel.vars('out_x', self.ndim)
+            offsets = conv_nd_kernel.vars('offset', self.ndim)
             outs1 = self.outs[1:] + [1]
             offsets1 = ['out_0 * c0'] + offsets[:-1]
-            for (out_x, out_x0, out_x1, offset, offset1, out1) in zip(
+            for out_x, out_x0, out_x1, offset, offset1, out1 in moves.zip(
                     out_xs, out_x0s, out_x1s, offsets, offsets1, outs1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), 'inc')

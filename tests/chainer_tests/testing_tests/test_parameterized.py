@@ -34,4 +34,30 @@ class ProductDictTest(unittest.TestCase):
         self.assertListEqual(testing.product_dict(*self.actual), self.expect)
 
 
+def f(x):
+    return x
+
+
+class C(object):
+
+    def __call__(self, x):
+        return x
+
+    def method(self, x):
+        return x
+
+
+@testing.parameterize(
+    {'callable': f},
+    {'callable': lambda x: x},
+    {'callable': C()},
+    {'callable': C().method}
+)
+class TestParameterize(unittest.TestCase):
+
+    def test_callable(self):
+        y = self.callable(1)
+        self.assertEqual(y, 1)
+
+
 testing.run_module(__name__, __file__)

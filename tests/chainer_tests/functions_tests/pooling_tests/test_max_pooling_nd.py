@@ -20,18 +20,18 @@ from chainer.utils import conv
 
 def pooling_patches(dims, ksize, stride, pad, cover_all):
     """Return tuples of slices that indicate pooling patches."""
-    # Left-top indeces of each pooling patch.
+    # Left-top indices of each pooling patch.
     if cover_all:
         xss = itertools.product(
             *[six.moves.range(-p, d + p - k + s, s)
-              for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+              for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
     else:
         xss = itertools.product(
             *[six.moves.range(-p, d + p - k + 1, s)
-              for (d, k, s, p) in zip(dims, ksize, stride, pad)])
-    # Tuple of slices for pooling patches.
+              for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
+    # Tuples of slices for pooling patches.
     return [tuple(slice(max(x, 0), min(x + k, d))
-                  for (x, d, k) in zip(xs, dims, ksize))
+                  for (x, d, k) in six.moves.zip(xs, dims, ksize))
             for xs in xss]
 
 
@@ -56,7 +56,8 @@ class TestMaxPoolingND(unittest.TestCase):
 
         outs = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
                      for (d, k, s, p)
-                     in zip(self.dims, self.ksize, self.stride, self.pad))
+                     in six.moves.zip(
+                         self.dims, self.ksize, self.stride, self.pad))
         gy_shape = (2, 3) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
@@ -168,7 +169,7 @@ class TestMaxPoolingNDCudnnCall(unittest.TestCase):
         gy_shape = (2, 3) + tuple(
             conv.get_conv_outsize(d, k, s, p)
             for (d, k, s, p)
-            in zip(self.dims, self.ksize, self.stride, self.pad))
+            in six.moves.zip(self.dims, self.ksize, self.stride, self.pad))
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
     def forward(self):
