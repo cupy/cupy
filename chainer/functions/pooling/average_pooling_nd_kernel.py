@@ -1,9 +1,7 @@
-from __future__ import print_function
-
 from chainer.functions.pooling import pooling_nd_kernel
 
 
-class AveragePoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
+class AveragePoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
 
     def name(self):
         # avg_pool_{N}d_fwd
@@ -26,7 +24,8 @@ class AveragePoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         return 'out = val * coeff;'
 
 
-class AveragePoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
+class AveragePoolingNDKernelBackward(
+        pooling_nd_kernel.PoolingNDKernelBackward):
 
     def name(self):
         # avg_pool_{N}d_bwd
@@ -47,22 +46,3 @@ class AveragePoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
 
     def after(self, xs):
         return 'gx = val * coeff;'
-
-
-# just for debug.
-if __name__ == "__main__":
-    ndim = 3
-
-    print("AveragePoolingNDKernelFwd")
-    print("----------------")
-    print()
-    for x in AveragePoolingNDKernelFwd(ndim).generate():
-        print(x)
-        print()
-
-    print("AveragePoolingNDKernelFwd")
-    print("----------------")
-    print()
-    for x in AveragePoolingNDKernelBwd(ndim).generate():
-        print(x)
-        print()
