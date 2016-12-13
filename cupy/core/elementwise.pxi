@@ -191,7 +191,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
-                newstrides.assign(<Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
+                newstrides.assign(
+                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
