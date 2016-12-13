@@ -185,13 +185,13 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if cnt == ndim:
         return args, shape
     if cnt == 1:
-        newshape.assign(1, <long>vecshape[axis])
+        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
         ret = []
         for i, a in enumerate(args):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
-                newstrides.assign(1, <long>arr._strides[axis])
+                newstrides.assign(<Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
