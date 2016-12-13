@@ -492,8 +492,8 @@ cdef class ndarray:
             newarray = ndarray(self.shape, self.dtype)
             elementwise_copy(self, newarray)
 
-        newarray._shape.assign(1, <long>self.size)
-        newarray._strides.assign(1, <long>self.itemsize)
+        newarray._shape.assign(<Py_ssize_t>1, self.size)
+        newarray._strides.assign(<Py_ssize_t>1, <Py_ssize_t>self.itemsize)
         newarray._c_contiguous = True
         newarray._f_contiguous = True
         return newarray
@@ -1370,7 +1370,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
 
     itemsize = a.itemsize
     if size == 1:
-        newstrides.assign(newshape.size(), <size_t>itemsize)
+        newstrides.assign(<Py_ssize_t>newshape.size(), itemsize)
         return newstrides
 
     cdef vector.vector[Py_ssize_t] shape, strides
