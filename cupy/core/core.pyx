@@ -2421,11 +2421,11 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
         li = 0
         ri = len(transp_a) - 1
 
-    a_shepe = a.shape
+    a_shape = a.shape
 
     # flatten the array-indexed dimensions
-    shape = a_shepe[:li] +\
-        (internal.prod_ssize_t(a_shepe[li:ri+1]),) + a_shepe[ri+1:]
+    shape = a_shape[:li] +\
+        (internal.prod_ssize_t(a_shape[li:ri+1]),) + a_shape[ri+1:]
     input_flat = a._reshape(shape)
 
     # build the strides
@@ -2435,7 +2435,7 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
 
     # convert all negative indices to wrap_indices
     for i in range(li, ri+1):
-        slices[i] %= a_shepe[i]
+        slices[i] %= a_shape[i]
 
     flattened_indexes = [stride * s
                          for stride, s in zip(strides, slices[li:ri+1])]
@@ -2450,7 +2450,7 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
 
     out_flat = input_flat.take(take_idx.flatten(), axis=li)
 
-    out_flat_shape = a_shepe[:li] + take_idx.shape + a_shepe[ri+1:]
+    out_flat_shape = a_shape[:li] + take_idx.shape + a_shape[ri+1:]
     ret = out_flat._reshape(out_flat_shape)
     return ret
 
