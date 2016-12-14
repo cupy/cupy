@@ -44,9 +44,9 @@ def experimental(api_name):
         f(1)
 
     .. testoutput::
-        :options: +IGNORE_EXCEPTION_DETAIL, +NORMALIZE_WHITESPACE
+        :options: +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.foo.bar.f is experimental. \
+        /home/user/.local/lib/python2.7/site-packages/chainer-1.18.0-py2.7-linux-x86_64.egg/chainer/utils/experimental.py:104: FutureWarning: chainer.foo.bar.f is experimental. \
 The interface can change in the future.
 
     We can also make a whole class experimental. In that case,
