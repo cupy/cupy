@@ -88,8 +88,10 @@ cdef extern from "cupy_cuda.h":
     int cudaMemset(void* devPtr, int value, size_t count) nogil
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream) nogil
+    int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
+                             driver.Stream stream)
     int cudaMemAdvise(const void *devPtr, size_t count,
-                      int advice, int device)
+                      MemoryAdvise advice, int device)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr) nogil
 
@@ -291,6 +293,11 @@ cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
                                  <driver.Stream> stream)
     check_status(status)
 
+cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
+                       size_t stream):
+    status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
+                                  <driver.Stream> stream)
+    check_status(status)
 
 cpdef memAdvise(size_t devPtr, int count, int advice, int device):
     status = cudaMemAdvise(<void*>devPtr, count, <MemoryAdvise>advice, device)

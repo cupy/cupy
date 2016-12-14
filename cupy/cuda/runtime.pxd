@@ -117,6 +117,8 @@ cpdef memcpyPeerAsync(size_t dst, int dstDevice,
                       size_t size, size_t stream)
 cpdef memset(size_t ptr, int value, size_t size)
 cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream)
+cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
+                       size_t stream)
 cpdef memAdvise(size_t devPtr, int count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(size_t ptr)
 
