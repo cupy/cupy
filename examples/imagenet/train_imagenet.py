@@ -61,7 +61,7 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 
         image = image[:, top:bottom, left:right]
         image -= self.mean[:, top:bottom, left:right]
-        image *= (1.0 / 255.0)
+        image *= (1.0 / 255.0)  # Scale to [0, 1]
         return image, label
 
 
