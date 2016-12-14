@@ -44,10 +44,10 @@ def experimental(api_name):
         f(1)
 
     .. testoutput::
-        :options: +NORMALIZE_WHITESPACE
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        /home/user/.local/lib/python2.7/site-packages/chainer-1.18.0-py2.7-linux-x86_64.egg/chainer/utils/experimental.py:104: FutureWarning: chainer.foo.bar.f is experimental. \
-The interface can change in the future.
+        ... FutureWarning: chainer.foo.bar.f is experimental. \
+The interface can change in the future. ...
 
     We can also make a whole class experimental. In that case,
     we should call this function in its ``__init__`` method.
@@ -64,7 +64,7 @@ The interface can change in the future.
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         ... FutureWarning: chainer.foo.C is experimental. \
-The interface can change in the future.
+The interface can change in the future. ...
 
     If we want to mark ``__init__`` method only, rather than class itself,
     it is recommended that we explicitly feed its API name.
@@ -81,7 +81,7 @@ The interface can change in the future.
         :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         ...  FutureWarning: D.__init__ is experimental. \
-The interface can change in the future.
+The interface can change in the future. ...
 
     Currently, we do not have any sophisticated way to mark some usage of
     non-experimental function as experimental.
