@@ -14,6 +14,7 @@ class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see `r_`.
+    This implementation is referenced from Numpy's one.
 
     """
 
@@ -94,7 +95,7 @@ class CClass(AxisConcatenator):
     def __init__(self):
         """Translates slice objects to concatenation along the second axis.
 
-        This is CuPy object that corresponds to 'cupy.r_', which is
+        This is a CuPy object that corresponds to 'cupy.r_', which is
         useful because of its common occurrence. In particular, arrays will be
         stacked along their last axis after being upgraded to at least 2-D with
         1's post-pended to the shape (column vectors made out of 1-D arrays).
