@@ -52,7 +52,7 @@ class TestCifar(unittest.TestCase):
                 self.assertEqual(cifar_dataset.ndim, 2)
             else:
                 # self.ndim == 3
-                self.assertEqual(cifar_dataset.ndim == 4)
+                self.assertEqual(cifar_dataset.ndim, 4)
                 self.assertEqual(cifar_dataset.shape[2],
                                  cifar_dataset.shape[3])  # 32
 
