@@ -166,7 +166,7 @@ def upsampling_2d(
         MaxPooling2D object.
 
         >>> p = F.MaxPooling2D(2, 2, use_cudnn=False)
-        >>> x = numpy.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
+        >>> x = np.arange(1, 37).reshape(1, 1, 6, 6).astype('f')
         >>> x = chainer.Variable(x)
         >>> x.data
         array([[[[  1.,   2.,   3.,   4.,   5.,   6.],
