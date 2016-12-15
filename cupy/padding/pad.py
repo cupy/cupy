@@ -24,7 +24,7 @@ def _append_const(narray, pad_amount, value, axis=-1):
                      for i, x in enumerate(narray.shape))
     if value == 0:
         return cupy.concatenate((narray,
-                                cupy.zeros(padshape, dtype=narray.dtype)),
+                                 cupy.zeros(padshape, dtype=narray.dtype)),
                                 axis=axis)
     else:
         return cupy.concatenate(
