@@ -373,6 +373,8 @@ Sorting, searching, and counting
 :func:`argmax`
 :func:`argmin`
 :func:`count_nonzero`
+:func:`nonzero`
+:func:`flatnonzero`
 :func:`where`
 
 Statistics

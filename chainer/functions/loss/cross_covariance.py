@@ -56,9 +56,9 @@ def cross_covariance(y, z):
 
     Args:
         y (Variable): Variable holding a matrix where the first dimension
-            corresponds to the batches
+            corresponds to the batches.
         z (Variable): Variable holding a matrix where the first dimension
-            corresponds to the batches
+            corresponds to the batches.
 
     Returns:
         Variable: A variable holding a scalar of the cross covariance loss.

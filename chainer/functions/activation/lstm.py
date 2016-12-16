@@ -12,7 +12,8 @@ def _extract_gates(x):
 
 
 def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
+    half = x.dtype.type(0.5)
+    return numpy.tanh(x * half) * half + half
 
 
 def _grad_sigmoid(x):
@@ -24,7 +25,10 @@ def _grad_tanh(x):
 
 
 _preamble = '''
-template <typename T> __device__ T sigmoid(T x) { return 1 / (1 + exp(-x)); }
+template <typename T> __device__ T sigmoid(T x) {
+    const T half = 0.5;
+    return tanh(x * half) * half + half;
+}
 template <typename T> __device__ T grad_sigmoid(T y) { return y * (1 - y); }
 template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 
@@ -207,11 +211,10 @@ def lstm(c_prev, x):
         function. Each of ``y``, ``c`` and ``h`` has ``n_units`` channels.
         Most typical preparation of ``x`` is:
 
-        >>> import chainer, chainer.functions as F
         >>> n_units = 100
-        >>> y = chainer.Variable(numpy.zeros((1, n_units), 'f'))
-        >>> h = chainer.Variable(numpy.zeros((1, n_units), 'f'))
-        >>> c = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> y = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> h = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> c = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> model = chainer.Chain(w=F.Linear(n_units, 4 * n_units),
         ...                       v=F.Linear(n_units, 4 * n_units),)
         >>> x = model.w(y) + model.v(h)

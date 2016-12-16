@@ -41,7 +41,7 @@ class BatchNormalizationFunction(function.Function):
         # value.
         self.eps = eps
         if cuda.cudnn_enabled and use_cudnn:
-            if eps <= 1e-5:
+            if eps < 1e-5:
                 msg = 'cuDNN does not allow an eps value less than 1e-5.'
                 raise RuntimeError(msg)
         self.use_cudnn = use_cudnn
@@ -289,16 +289,16 @@ def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
     corresponding Link class for an example of how to do this.
 
     Args:
-        x (Variable): The input variable.
-        gamma (Variable): The scaling parameter of normalized data.
-        beta (Variable): The shifting parameter of scaled normalized data.
+        x (Variable): Input variable.
+        gamma (Variable): Scaling parameter of normalized data.
+        beta (Variable): Shifting parameter of scaled normalized data.
         eps (float): Epsilon value for numerical stability.
-        running_mean (array): The running average of the mean. This is a
+        running_mean (array): Running average of the mean. This is a
             running average of the mean over several mini-batches using
             the decay parameter. If ``None``, the running average is not
             computed. If this is ``None``, then ``runnng_var`` must also
             be ``None``.
-        running_var (array): The running average of the variance. This is a
+        running_var (array): Running average of the variance. This is a
             running average of the variance over several mini-batches using
             the decay parameter. If ``None``, the running average is not
             computed. If this is ``None``, then ``running_mean`` must also
@@ -329,11 +329,11 @@ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
     statistics cannot be used for prediction consistency.
 
     Args:
-        x (Variable): The input variable.
-        gamma (Variable): The scaling parameter of normalized data.
-        beta (Variable): The shifting parameter of scaled normalized data.
-        mean (Variable): The shifting parameter of input.
-        var (Variable): The square of scaling parameter of input.
+        x (Variable): Input variable.
+        gamma (Variable): Scaling parameter of normalized data.
+        beta (Variable): Shifting parameter of scaled normalized data.
+        mean (Variable): Shifting parameter of input.
+        var (Variable): Square of scaling parameter of input.
         eps (float): Epsilon value for numerical stability.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
             uses cuDNN as the core implementation.

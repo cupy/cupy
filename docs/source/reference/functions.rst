@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
@@ -124,7 +128,7 @@ get_item
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -151,6 +155,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+squeeze
+~~~~~~~
+.. autofunction:: squeeze
+
 stack
 ~~~~~
 .. autofunction:: stack
@@ -158,6 +166,10 @@ stack
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
+
+tile
+~~~~
+.. autofunction:: tile
 
 transpose
 ~~~~~~~~~
@@ -195,6 +207,14 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+deconvolution_nd
+~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
+
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
+
 embed_id
 ~~~~~~~~
 .. autofunction:: embed_id
@@ -211,6 +231,10 @@ accuracy
 ~~~~~~~~
 .. autofunction:: accuracy
 
+binary_accuracy
+~~~~~~~~~~~~~~~
+.. autofunction:: binary_accuracy
+
 
 Loss functions
 --------------
@@ -218,6 +242,10 @@ Loss functions
 bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
+
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
 
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -230,6 +258,7 @@ contrastive
 crf1d
 ~~~~~
 .. autofunction:: crf1d
+.. autofunction:: argmax_crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -250,6 +279,10 @@ hinge
 huber_loss
 ~~~~~~~~~~
 .. autofunction:: huber_loss
+
+mean_absolute_error
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: mean_absolute_error
 
 mean_squared_error
 ~~~~~~~~~~~~~~~~~~
@@ -275,6 +308,18 @@ triplet
 Mathematical functions
 ----------------------
 
+arccos
+~~~~~~
+.. autofunction:: arccos
+
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
+arctan
+~~~~~~
+.. autofunction:: arctan
+
 argmax
 ~~~~~~
 .. autofunction:: argmax
@@ -299,6 +344,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -314,6 +363,10 @@ cosh
 exp
 ~~~
 .. autofunction:: exp
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -386,6 +439,14 @@ sinh
 sqrt
 ~~~~
 .. autofunction:: sqrt
+
+square
+~~~~~~
+.. autofunction:: square
+
+squared_difference
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: squared_difference
 
 sum
 ~~~

@@ -5,6 +5,7 @@
 cdef extern from *:
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
+    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
@@ -15,18 +16,22 @@ cdef extern from *:
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
+    ctypedef int DirectionMode 'cudnnDirectionMode_t'
     ctypedef int NanPropagation 'cudnnNanPropagation_t'
     ctypedef int PoolingMode 'cudnnPoolingMode_t'
+    ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
+    ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
-    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
 
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
+    ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+    ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
 
 
@@ -106,6 +111,17 @@ cpdef enum:
 
     CUDNN_BATCHNORM_PER_ACTIVATION = 0
     CUDNN_BATCHNORM_SPATIAL = 1
+
+    CUDNN_RNN_RELU = 0
+    CUDNN_RNN_TANH = 1
+    CUDNN_LSTM = 2
+    CUDNN_GRU = 3
+
+    CUDNN_UNIDIRECTIONAL = 0
+    CUDNN_BIDIRECTIONAL = 1
+
+    CUDNN_LINEAR_INPUT = 0
+    CUDNN_SKIP_INPUT = 1
 
 
 ###############################################################################
@@ -289,3 +305,7 @@ cpdef activationBackward_v3(
     size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
     size_t destData, size_t beta, size_t destDiffDesc,
     size_t destDiffData)
+
+cpdef size_t createDropoutDescriptor() except *
+cpdef destroyDropoutDescriptor(size_t dropoutDesc)
+cpdef size_t dropoutGetStatesSize(size_t handle) except *

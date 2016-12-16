@@ -23,12 +23,34 @@ def logsumexp(x):
     return m
 
 
+def _log_softmax(x, use_cudnn):
+    if cuda.cudnn_enabled and use_cudnn and _cudnn_version >= 3000:
+        xp = cuda.get_array_module(x)
+        if xp != numpy:
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
+            handle = cudnn.get_handle()
+            x_cube = x.reshape(x.shape[:2] + (-1, 1))
+            desc = cudnn.create_tensor_descriptor(x_cube)
+            y = xp.empty_like(x)
+            libcudnn.softmaxForward(
+                handle, _algorithm, _mode, one.data, desc.value,
+                x_cube.data.ptr, zero.data, desc.value,
+                y.data.ptr)
+            return y
+    log_z = logsumexp(x)
+    y = x - log_z
+    return y
+
+
 class LogSoftmax(function.Function):
 
     """Log-softmax activation function."""
 
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
+        self.y = None
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -40,27 +62,8 @@ class LogSoftmax(function.Function):
         )
 
     def forward(self, xs):
-        x = xs[0]
-        xp = cuda.get_array_module(x)
-        if (xp != numpy and cuda.cudnn_enabled and self.use_cudnn and
-                _cudnn_version >= 3000):
-            oz_dtype = 'd' if x.dtype == 'd' else 'f'
-            one = numpy.array(1, dtype=oz_dtype).ctypes
-            zero = numpy.array(0, dtype=oz_dtype).ctypes
-            handle = cudnn.get_handle()
-            x_cube = x.reshape(x.shape[:2] + (-1, 1))
-            desc = cudnn.create_tensor_descriptor(x_cube)
-            self.y = xp.empty_like(x)
-            libcudnn.softmaxForward(
-                handle, _algorithm, _mode, one.data, desc.value,
-                x_cube.data.ptr, zero.data, desc.value,
-                self.y.data.ptr)
-            return self.y,
-
-        else:
-            log_z = logsumexp(x)
-            self.y = x - log_z
-            return self.y,
+        self.y = _log_softmax(xs[0], self.use_cudnn)
+        return self.y,
 
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
@@ -87,18 +90,14 @@ def log_softmax(x, use_cudnn=True):
     """Channelwise log-softmax function.
 
     This function computes its logarithm of softmax along the second axis. Let
-    :math:`i = (i_1, i_2, \\dots, i_d)^{\\top}` be the d dimensional index
-    array and :math:`x = f(i)` be the corresponding d dimensional input array.
-    For each index :math:`i` of the input array :math:`f(i)`, it computes the
-    logarithm of the probability :math:`\log p(x)` defined as
+    :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
+    array and :math:`f(x_1, \\dots, x_d)` be the corresponding input array.
+    For each index :math:`x` in the input array, it computes the logarithm
+    of the probability :math:`\log p(x)` defined as
 
     .. math::
-        p(i) = {\\exp(f(i)) \\over \\sum_{i'_2} \\exp(f(i'))},
-
-    where :math:`i' = (i_1, i'_2, \\dots, i_d)`.
-
-    .. math::
-        p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
+        p(x) = {\\exp(f(x_1, x_2, \\dots, x_d))
+                \\over \\sum_{x'_2} \\exp(f(x_1, x'_2, \\dots, x_d))}.
 
     This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.

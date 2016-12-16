@@ -1,7 +1,9 @@
+import os
 import sys
 
 from chainer.training import extension
 from chainer.training.extensions import log_report as log_report_module
+from chainer.training.extensions import util
 
 
 class PrintReport(extension.Extension):
@@ -43,9 +45,6 @@ class PrintReport(extension.Extension):
     def __call__(self, trainer):
         out = self._out
 
-        # delete the printed contents from the current cursor
-        out.write('\033[J')
-
         if self._header:
             out.write(self._header)
             self._header = None
@@ -62,6 +61,11 @@ class PrintReport(extension.Extension):
         log = log_report.log
         log_len = self._log_len
         while len(log) > log_len:
+            # delete the printed contents from the current cursor
+            if os.name == 'nt':
+                util.erase_console(0, 0)
+            else:
+                out.write('\033[J')
             self._print(log[log_len])
             log_len += 1
         self._log_len = log_len

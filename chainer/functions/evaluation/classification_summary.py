@@ -45,7 +45,7 @@ class ClassificationSummary(function.Function):
         y, t = inputs
 
         if self.label_num is None:
-            label_num = xp.maximum(t) + 1
+            label_num = xp.amax(t) + 1
         else:
             label_num = self.label_num
             if chainer.is_debug():

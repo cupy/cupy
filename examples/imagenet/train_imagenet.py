@@ -65,11 +65,23 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
         return image, label
 
 
+class TestModeEvaluator(extensions.Evaluator):
+
+    def evaluate(self):
+        model = self.get_target('main')
+        model.train = False
+        ret = super(TestModeEvaluator, self).evaluate()
+        model.train = True
+        return ret
+
+
 def main():
     archs = {
         'alex': alex.Alex,
+        'alex_fp16': alex.AlexFp16,
         'googlenet': googlenet.GoogLeNet,
         'googlenetbn': googlenetbn.GoogLeNetBN,
+        'googlenetbn_fp16': googlenetbn.GoogLeNetBNFp16,
         'nin': nin.NIN
     }
 
@@ -134,11 +146,7 @@ def main():
     val_interval = (10 if args.test else 100000), 'iteration'
     log_interval = (10 if args.test else 1000), 'iteration'
 
-    # Copy the chain with shared parameters to flip 'train' flag only in test
-    eval_model = model.copy()
-    eval_model.train = False
-
-    trainer.extend(extensions.Evaluator(val_iter, eval_model, device=args.gpu),
+    trainer.extend(TestModeEvaluator(val_iter, model, device=args.gpu),
                    trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
     trainer.extend(extensions.snapshot(), trigger=val_interval)

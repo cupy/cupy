@@ -1,6 +1,5 @@
+import nose
 import unittest
-
-from chainer import testing
 
 
 class TestImportError(unittest.TestCase):
@@ -11,5 +10,8 @@ class TestImportError(unittest.TestCase):
         except Exception as e:
             self.assertIsInstance(e, RuntimeError)
 
-
-testing.run_module(__name__, __file__)
+# This is copied from chainer/testing/__init__.py, so should be replaced in
+# some way.
+if __name__ == '__main__':
+    nose.runmodule(argv=[__file__, '-vvs', '-x', '--pdb', '--pdb-failure'],
+                   exit=False)
