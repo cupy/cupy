@@ -44,16 +44,15 @@ class TestCacheOrLoadFile(unittest.TestCase):
         creator = mock.Mock()
         loader = mock.Mock()
 
-        f = tempfile.NamedTemporaryFile(delete=False)
-        f.close()
+        _, file_name = tempfile.mkstemp()
 
         try:
-            dataset.cache_or_load_file(f.name, creator, loader)
+            dataset.cache_or_load_file(file_name, creator, loader)
         finally:
-            os.remove(f.name)
+            os.remove(file_name)
 
         self.assertFalse(creator.called)
-        loader.assert_called_once_with(f.name)
+        loader.assert_called_once_with(file_name)
 
     def test_new_file(self):
         def create(path):
@@ -86,13 +85,13 @@ class TestCacheOrLoadFileFileExists(unittest.TestCase):
 
     def setUp(self):
         self.default_dataset_root = dataset.get_dataset_root()
-        self.temp_file = tempfile.NamedTemporaryFile(delete=False)
-        dataset.set_dataset_root(self.temp_file.name)
+        _, self.temp_file_name = tempfile.mkstemp()
+        dataset.set_dataset_root(self.temp_file_name)
         self.dir_path = tempfile.mkdtemp()
 
     def tearDown(self):
         dataset.set_dataset_root(self.default_dataset_root)
-        os.remove(self.temp_file.name)
+        os.remove(self.temp_file_name)
         shutil.rmtree(self.dir_path)
 
     def test_file_exists(self):
