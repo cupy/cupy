@@ -14,7 +14,7 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-cupy_setup_build.parse_args()
+ext_modules = cupy_setup_build.get_ext_modules()
 
 setup(
     name='cupy',
@@ -48,9 +48,5 @@ setup(
     install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
-    # To trick build into running build_ext
-    ext_modules=[cupy_setup_build.dummy_extension],
-    cmdclass={
-        'build_ext': cupy_setup_build.cupy_build_ext,
-    },
+    ext_modules=ext_modules,
 )

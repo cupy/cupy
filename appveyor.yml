@@ -68,4 +68,4 @@ test_script:
   - "%CMD_IN_ENV% pip install nose mock hacking"
   - "flake8"
   - "cd tests\\install_tests"
-  - "nosetests -A \"gpu<1\""
+  - "nosetests -a \"!gpu,!slow\""
