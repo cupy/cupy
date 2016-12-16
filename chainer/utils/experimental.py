@@ -34,7 +34,6 @@ def experimental(api_name):
         warnings.showwarning = showwarning_orig
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         from chainer import utils
 
@@ -45,15 +44,15 @@ def experimental(api_name):
         f(1)
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.foo.bar.f is an experimental API. \
-The interface can change in the future.
+        ... FutureWarning: chainer.foo.bar.f is experimental. \
+The interface can change in the future. ...
 
     We can also make a whole class experimental. In that case,
     we should call this function in its ``__init__`` method.
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         class C():
             def __init__(self):
@@ -62,15 +61,15 @@ The interface can change in the future.
         C()
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-        ... FutureWarning: chainer.foo.C is an experimental API. \
-The interface can change in the future
+        ... FutureWarning: chainer.foo.C is experimental. \
+The interface can change in the future. ...
 
     If we want to mark ``__init__`` method only, rather than class itself,
     it is recommended that we explicitly feed its API name.
 
     .. testcode::
-        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
         class D():
             def __init__(self):
@@ -79,9 +78,10 @@ The interface can change in the future
         D()
 
     .. testoutput::
+        :options: +ELLIPSIS, +NORMALIZE_WHITESPACE
 
-       ...  FutureWarning: D.__init__ is an experimental API. \
-The interface can change in the future
+        ...  FutureWarning: D.__init__ is experimental. \
+The interface can change in the future. ...
 
     Currently, we do not have any sophisticated way to mark some usage of
     non-experimental function as experimental.
