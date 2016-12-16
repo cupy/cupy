@@ -75,7 +75,7 @@ class TestCifar(unittest.TestCase):
                                          ndim=self.ndim,
                                          scale=self.scale)
         mnumpy.savez_compressed.assert_not_called()  # creator() not called
-        mnumpy.load.assert_called_once()
+        self.assertEqual(mnumpy.load.call_count, 1)
 
 
 testing.run_module(__name__, __file__)
