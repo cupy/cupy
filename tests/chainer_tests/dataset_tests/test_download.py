@@ -85,12 +85,13 @@ class TestCacheOrLoadFileFileExists(unittest.TestCase):
 
     def setUp(self):
         self.default_dataset_root = dataset.get_dataset_root()
-        _, self.temp_file_name = tempfile.mkstemp()
+        self.temp_file_desc, self.temp_file_name = tempfile.mkstemp()
         dataset.set_dataset_root(self.temp_file_name)
         self.dir_path = tempfile.mkdtemp()
 
     def tearDown(self):
         dataset.set_dataset_root(self.default_dataset_root)
+        os.close(self.temp_file_desc)
         os.remove(self.temp_file_name)
         shutil.rmtree(self.dir_path)
 
