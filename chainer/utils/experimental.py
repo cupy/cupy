@@ -35,10 +35,10 @@ def experimental(api_name):
 
     .. testcode::
 
-        from chainer.utils import experimental
+        from chainer import utils
 
         def f(x):
-            experimental('chainer.foo.bar.f')
+            utils.experimental('chainer.foo.bar.f')
             # concrete implementation of f follows
 
         f(1)
@@ -56,7 +56,7 @@ The interface can change in the future. ...
 
         class C():
             def __init__(self):
-              experimental('chainer.foo.C')
+              utils.experimental('chainer.foo.C')
 
         C()
 
@@ -73,7 +73,7 @@ The interface can change in the future. ...
 
         class D():
             def __init__(self):
-                experimental('D.__init__')
+                utils.experimental('D.__init__')
 
         D()
 
@@ -91,7 +91,7 @@ The interface can change in the future. ...
 
         def g(x, experimental_arg=None):
             if experimental_arg is not None:
-                experimental('experimental_arg of chainer.foo.g')
+                utils.experimental('experimental_arg of chainer.foo.g')
 
     Args:
         api_name(str): The name of an API marked as experimental.
