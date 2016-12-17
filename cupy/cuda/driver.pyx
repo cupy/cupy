@@ -20,8 +20,8 @@ cimport cython
 
 cdef extern from "cupy_cuda.h":
     # Error handling
-    int cuGetErrorName(Result error, const char** pStr)
-    int cuGetErrorString(Result error, const char** pStr)
+    int cuGetErrorName(Result error, const char** pStr) nogil
+    int cuGetErrorString(Result error, const char** pStr) nogil
 
     # Module load and kernel execution
     int cuModuleLoad(Module* module, char* fname) nogil
