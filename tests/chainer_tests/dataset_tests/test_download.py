@@ -44,11 +44,12 @@ class TestCacheOrLoadFile(unittest.TestCase):
         creator = mock.Mock()
         loader = mock.Mock()
 
-        _, file_name = tempfile.mkstemp()
+        file_desc, file_name = tempfile.mkstemp()
 
         try:
             dataset.cache_or_load_file(file_name, creator, loader)
         finally:
+            os.close(file_desc)
             os.remove(file_name)
 
         self.assertFalse(creator.called)
