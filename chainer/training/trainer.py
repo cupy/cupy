@@ -39,10 +39,12 @@ class Trainer(object):
       should be called or not.
 
     Extensions are callable objects that take the trainer object as the
-    argument. There are two ways to define custom extensions: inheriting the
-    :class:`Extension` class, and decorating functions by
-    :func:`make_extension`. See :class:`Extension` for more details on custom
-    extensions.
+    argument. There are three ways to define custom extensions: inheriting the
+    :class:`Extension` class, decorating functions by :func:`make_extension`,
+    and defining any callable including lambda functions. The default
+    configurations of an extension is used in the former two cases, and users
+    have to add the trigger configuration in the :meth:`extend` method in the
+    last case. See :class:`Extension` for more details on custom extensions.
 
     Users can register extensions to the trainer by calling the :meth:`extend`
     method, where some configurations can be added.
