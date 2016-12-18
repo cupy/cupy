@@ -1,7 +1,6 @@
 import collections
 import os
 import time
-import types
 
 import six
 
@@ -199,14 +198,14 @@ class Trainer(object):
                 recover the configuration before any updates.
 
         """
-        if isinstance(extension, types.FunctionType):
-            name = "lambda"
         if name is None:
             name = getattr(extension, 'name', None)
             if name is None:
                 name = getattr(extension, 'default_name', None)
                 if name is None:
-                    raise TypeError('name is not given for the extension')
+                    name = getattr(extension, '__name__', None)
+                    if name is None:
+                        raise TypeError('name is not given for the extension')
         if name == 'training':
             raise ValueError(
                 'the name "training" is prohibited as an extension name')
@@ -295,10 +294,7 @@ class Trainer(object):
                             entry.extension(self)
         finally:
             for _, entry in extensions:
-                if isinstance(entry.extension, types.FunctionType):
-                    finalize = None
-                else:
-                    finalize = entry.extension.finalize
+                finalize = getattr(entry.extension, 'finalize', None)
                 if finalize:
                     finalize()
             self.updater.finalize()
