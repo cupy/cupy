@@ -1,8 +1,9 @@
-import unittest
 import mock
+import unittest
 
 from chainer import testing
 from chainer import training
+
 
 class DummyExtension(training.extension.Extension):
 
@@ -15,6 +16,7 @@ class DummyExtension(training.extension.Extension):
 
     def finalize(self):
         self.is_finalized = True
+
 
 class TestExtension(unittest.TestCase):
 
@@ -58,6 +60,7 @@ class TestExtension(unittest.TestCase):
 
     def test_add_make_extension(self):
         self.is_called = False
+
         @training.make_extension()
         def dummy_extension(trainer):
             self.is_called = True
@@ -97,6 +100,7 @@ class TestExtension(unittest.TestCase):
         self.trainer.extend(dummy_extension_2)
         self.trainer.run()
         self.assertEqual(self.called_order, [2, 1])
+
 
 def _get_mocked_trainer(stop_trigger=(10, 'iteration')):
     updater = mock.Mock()
