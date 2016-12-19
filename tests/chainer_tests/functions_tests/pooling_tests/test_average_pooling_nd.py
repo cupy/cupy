@@ -97,7 +97,7 @@ class TestAveragePoolingND(unittest.TestCase):
         gradient_check.check_backward(
             functions.AveragePoolingND(
                 self.ndim, self.ksize, self.stride, self.pad,
-                cover_all=False, use_cudnn=use_cudnn),
+                use_cudnn=use_cudnn),
             x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
