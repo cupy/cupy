@@ -21,11 +21,11 @@ def pooling_patches(dims, ksize, stride, pad):
     """Return tuples of slices that indicate pooling patches."""
     # Left-top indeces of each pooling patch.
     xss = itertools.product(
-        *[six.moves.range(-p, d + p - k + 1, s) for (d, k, s, p) in zip(
-            dims, ksize, stride, pad)])
+        *[six.moves.range(-p, d + p - k + 1, s)
+          for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
     # Tuple of slices for pooling patches.
     return [tuple(slice(max(x, 0), min(x + k, d))
-                  for (x, d, k) in zip(xs, dims, ksize))
+                  for (x, d, k) in six.moves.zip(xs, dims, ksize))
             for xs in xss]
 
 
@@ -45,7 +45,7 @@ class TestAveragePoolingND(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.dtype)
 
         outs = tuple(conv.get_conv_outsize(d, k, s, p, False)
-                     for (d, k, s, p) in zip(
+                     for (d, k, s, p) in six.moves.zip(
                          self.dims, self.ksize, self.stride, self.pad))
         gy_shape = (2, 3) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
@@ -134,7 +134,7 @@ class TestAveragePoolingNDCudnnCall(unittest.TestCase):
         gy_shape = (2, 3) + tuple(
             conv.get_conv_outsize(d, k, s, p)
             for (d, k, s, p)
-            in zip(self.dims, self.ksize, self.stride, self.pad))
+            in six.moves.zip(self.dims, self.ksize, self.stride, self.pad))
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
     def forward(self):
