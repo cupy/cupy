@@ -1,9 +1,8 @@
 import numpy
 
-import six
-
 import functools
 import operator
+import six
 
 from chainer import cuda
 from chainer.functions.pooling import average_pooling_nd_kernel
@@ -22,11 +21,10 @@ class AveragePoolingND(pooling_nd._PoolingND):
     """Average pooling over a set of N-dimensional planes."""
     # TODO(takagi) Support cover_all mode.
 
-    def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=True,
-                 use_cudnn=True):
+    def __init__(self, ndim, ksize, stride=None, pad=0, use_cudnn=True):
         utils.experimental('chainer.functions.pooling.AveragePoolingND')
         super(AveragePoolingND, self).__init__(
-            ndim, ksize, stride=stride, pad=pad, cover_all=cover_all,
+            ndim, ksize, stride=stride, pad=pad, cover_all=False,
             use_cudnn=use_cudnn)
 
     def forward_cpu(self, x):
@@ -84,10 +82,9 @@ class AveragePoolingND(pooling_nd._PoolingND):
         gx = cuda.cupy.empty_like(x[0])
         coeff = 1. / functools.reduce(operator.mul, self.ksize)
 
-        ndim = self.ndim
         in_params, out_params, operation, name = \
             average_pooling_nd_kernel.AveragePoolingNDKernelBackward.generate(
-                ndim)
+                self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             gy[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad + (coeff, gx)))
@@ -133,4 +130,4 @@ def average_pooling_nd(x, ksize, stride=None, pad=0, use_cudnn=True):
 
     """
     ndim = len(x.data.shape[2:])
-    return AveragePoolingND(ndim, ksize, stride, pad, False, use_cudnn)(x)
+    return AveragePoolingND(ndim, ksize, stride, pad, use_cudnn)(x)
