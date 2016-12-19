@@ -51,9 +51,9 @@ class AveragePoolingND(pooling_nd._PoolingND):
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
         coeff = 1. / functools.reduce(operator.mul, self.ksize)
 
-        ndim = self.ndim
         in_params, out_params, operation, name = \
-            average_pooling_nd_kernel.AveragePoolingNDForward.generate(ndim)
+            average_pooling_nd_kernel.AveragePoolingNDKernelForward.generate(
+                self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad + (coeff, y)))
