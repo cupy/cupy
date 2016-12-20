@@ -344,9 +344,6 @@ from chainer.functions.pooling.upsampling_2d import upsampling_2d  # NOQA
 from chainer.functions.util.forget import forget  # NOQA
 from chainer.functions.util.forget import Forget  # NOQA
 
-Forget = forget.Forget
-forget = forget.forget
-
 # Import for backward compatibility
 # om chainer.links.activation.prelu import PReLU  # NOQA
 
