@@ -129,5 +129,5 @@ def average_pooling_nd(x, ksize, stride=None, pad=0, use_cudnn=True):
        :func:`max_pooling_nd`. Average pooling runs in non-cover-all mode.
 
     """
-    ndim = len(x.data.shape[2:])
+    ndim = len(x.shape[2:])
     return AveragePoolingND(ndim, ksize, stride, pad, use_cudnn)(x)
