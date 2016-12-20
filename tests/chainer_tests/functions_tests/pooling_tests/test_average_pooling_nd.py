@@ -93,6 +93,22 @@ class TestAveragePoolingND(unittest.TestCase):
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
+    def test_forward_consistency_regression(self):
+        # Regression test to average_pooling_2d.
+
+        if len(self.dims) != 2:
+            return
+
+        ksize = self.ksize
+        stride = self.stride
+        pad = self.pad
+
+        y_nd = functions.average_pooling_nd(self.x, ksize, stride=stride,
+                                            pad=pad, use_cudnn=False)
+        y_2d = functions.average_pooling_2d(self.x, ksize, stride=stride,
+                                            pad=pad, use_cudnn=False)
+        testing.assert_allclose(y_nd.data, y_2d.data)
+
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
             functions.AveragePoolingND(
