@@ -53,6 +53,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
     cpdef free(self, size_t ptr, Py_ssize_t size)
+    cpdef free_all_blocks(self)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)
 
@@ -63,5 +64,6 @@ cdef class MemoryPool:
         object _pools
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
+    cpdef free_all_blocks(self)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)

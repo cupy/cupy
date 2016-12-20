@@ -91,6 +91,12 @@ MLPConvolution2D
 .. autoclass:: MLPConvolution2D
    :members:
 
+NStepLSTM
+~~~~~~~~~
+
+.. autoclass:: NStepLSTM
+   :members:
+
 Scale
 ~~~~~
 .. autoclass:: Scale
@@ -117,6 +123,11 @@ Activation/loss/normalization functions with parameters
 BatchNormalization
 ~~~~~~~~~~~~~~~~~~
 .. autoclass:: BatchNormalization
+   :members:
+
+LayerNormalization
+~~~~~~~~~~~~~~~~~~
+.. autoclass:: LayerNormalization
    :members:
 
 BinaryHierarchicalSoftmax

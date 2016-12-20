@@ -67,49 +67,44 @@ from chainer.functions.loss import softmax_cross_entropy  # NOQA
 from chainer.functions.loss import triplet  # NOQA
 from chainer.functions.loss import vae  # NOQA  # NOQA
 from chainer.functions.math import basic_math  # NOQA
-from chainer.functions.math import batch_l2_norm_squared
-from chainer.functions.math import bias
-from chainer.functions.math import clip
-from chainer.functions.math import det
-from chainer.functions.math import exponential
-from chainer.functions.math import exponential_m1
-from chainer.functions.math import hyperbolic
-from chainer.functions.math import identity
-from chainer.functions.math import inv
-from chainer.functions.math import linear_interpolate
-from chainer.functions.math import logarithm_1p
-from chainer.functions.math import logsumexp
-from chainer.functions.math import matmul
-from chainer.functions.math import maximum
-from chainer.functions.math import minimum
-from chainer.functions.math import minmax
-from chainer.functions.math import scale
-from chainer.functions.math import sqrt
-from chainer.functions.math import sum
-from chainer.functions.math import trigonometric
-from chainer.functions.noise import dropout
-from chainer.functions.noise import gaussian
-from chainer.functions.normalization import batch_normalization
-from chainer.functions.normalization import l2_normalization
-from chainer.functions.normalization import local_response_normalization
-from chainer.functions.pooling import average_pooling_2d
-from chainer.functions.pooling import max_pooling_2d
-from chainer.functions.pooling import roi_pooling_2d
-from chainer.functions.pooling import spatial_pyramid_pooling_2d
-from chainer.functions.pooling import unpooling_2d
-from chainer.functions.util import forget
-from chainer.links.activation import prelu as links_prelu
-from chainer.links.connection import bilinear as links_bilinear
-from chainer.links.connection import convolution_2d as links_convolution_2d
-from chainer.links.connection import embed_id as links_embed_id
-from chainer.links.connection import inception
-from chainer.links.connection import inceptionbn
-from chainer.links.connection import linear as links_linear
-from chainer.links.connection import parameter
-from chainer.links.loss import hierarchical_softmax
-from chainer.links.loss import negative_sampling as links_negative_sampling
-from chainer.links.normalization import batch_normalization \
-    as links_batch_normalization
+from chainer.functions.math import batch_l2_norm_squared  # NOQA
+from chainer.functions.math import bias  # NOQA
+from chainer.functions.math import ceil  # NOQA
+from chainer.functions.math import clip  # NOQA
+from chainer.functions.math import det  # NOQA
+from chainer.functions.math import exponential  # NOQA
+from chainer.functions.math import exponential_m1  # NOQA
+from chainer.functions.math import floor  # NOQA
+from chainer.functions.math import hyperbolic  # NOQA
+from chainer.functions.math import identity  # NOQA
+from chainer.functions.math import inv  # NOQA
+from chainer.functions.math import linear_interpolate  # NOQA
+from chainer.functions.math import logarithm_1p  # NOQA
+from chainer.functions.math import logsumexp  # NOQA
+from chainer.functions.math import matmul  # NOQA
+from chainer.functions.math import maximum  # NOQA
+from chainer.functions.math import minimum  # NOQA
+from chainer.functions.math import minmax  # NOQA
+from chainer.functions.math import scale  # NOQA
+from chainer.functions.math import sqrt  # NOQA
+from chainer.functions.math import square  # NOQA
+from chainer.functions.math import squared_difference  # NOQA
+from chainer.functions.math import sum  # NOQA
+from chainer.functions.math import trigonometric  # NOQA
+from chainer.functions.noise import dropout  # NOQA
+from chainer.functions.noise import gaussian  # NOQA
+from chainer.functions.noise import zoneout  # NOQA
+from chainer.functions.normalization import batch_normalization  # NOQA
+from chainer.functions.normalization import l2_normalization  # NOQA
+from chainer.functions.normalization import local_response_normalization  # NOQA
+from chainer.functions.pooling import average_pooling_2d  # NOQA
+from chainer.functions.pooling import max_pooling_2d  # NOQA
+from chainer.functions.pooling import max_pooling_nd  # NOQA
+from chainer.functions.pooling import roi_pooling_2d  # NOQA
+from chainer.functions.pooling import spatial_pyramid_pooling_2d  # NOQA
+from chainer.functions.pooling import unpooling_2d  # NOQA
+from chainer.functions.pooling import upsampling_2d  # NOQA
+from chainer.functions.util import forget  # NOQA
 
 # import class and function
 from chainer.functions.activation.clipped_relu import clipped_relu  # NOQA
@@ -209,6 +204,7 @@ from chainer.functions.evaluation.classification_summary import ClassificationSu
 from chainer.functions.evaluation.classification_summary import f1_score  # NOQA
 from chainer.functions.evaluation.classification_summary import precision  # NOQA
 from chainer.functions.evaluation.classification_summary import recall  # NOQA
+from chainer.functions.evaluation.r2_score import r2_score  # NOQA
 
 from chainer.functions.loss.black_out import black_out  # NOQA
 from chainer.functions.loss.contrastive import contrastive  # NOQA
@@ -334,12 +330,16 @@ from chainer.functions.pooling.average_pooling_2d import average_pooling_2d  # N
 from chainer.functions.pooling.average_pooling_2d import AveragePooling2D  # NOQA
 from chainer.functions.pooling.max_pooling_2d import max_pooling_2d  # NOQA
 from chainer.functions.pooling.max_pooling_2d import MaxPooling2D  # NOQA
+from chainer.functions.pooling.max_pooling_nd import max_pooling_nd  # NOQA
+from chainer.functions.pooling.max_pooling_nd import MaxPoolingND  # NOQA
 from chainer.functions.pooling.roi_pooling_2d import roi_pooling_2d  # NOQA
 from chainer.functions.pooling.roi_pooling_2d import ROIPooling2D  # NOQA
 from chainer.functions.pooling.spatial_pyramid_pooling_2d import spatial_pyramid_pooling_2d  # NOQA
 from chainer.functions.pooling.spatial_pyramid_pooling_2d import SpatialPyramidPooling2D  # NOQA
 from chainer.functions.pooling.unpooling_2d import Unpooling2D  # NOQA
 from chainer.functions.pooling.unpooling_2d import unpooling_2d  # NOQA
+from chainer.functions.pooling.upsampling_2d import Upsampling2D  # NOQA
+from chainer.functions.pooling.upsampling_2d import upsampling_2d  # NOQA
 
 from chainer.functions.util.forget import forget  # NOQA
 from chainer.functions.util.forget import Forget  # NOQA

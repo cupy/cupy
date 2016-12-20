@@ -28,7 +28,7 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 
     def __init__(self, path, root, mean, crop_size, random=True):
         self.base = chainer.datasets.LabeledImageDataset(path, root)
-        self.mean = mean
+        self.mean = mean.astype('f')
         self.crop_size = crop_size
         self.random = random
 
@@ -61,7 +61,7 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 
         image = image[:, top:bottom, left:right]
         image -= self.mean[:, top:bottom, left:right]
-        image /= 255
+        image *= (1.0 / 255.0)  # Scale to [0, 1]
         return image, label
 
 
