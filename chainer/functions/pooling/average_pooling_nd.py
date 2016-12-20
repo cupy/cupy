@@ -14,6 +14,7 @@ from chainer.utils import conv_nd
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
 
 
 class AveragePoolingND(pooling_nd._PoolingND):
@@ -37,9 +38,16 @@ class AveragePoolingND(pooling_nd._PoolingND):
         return y,
 
     def forward_gpu(self, x):
-        if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
+        if (cuda.cudnn_enabled and self.use_cudnn and
                 pooling_nd._check_cudnn_acceptable_type(x[0].dtype)):
-            return super(AveragePoolingND, self).forward_gpu(x)
+            # With cuDNN v3 or greater, use cuDNN implementation for inputs
+            # with spatial dimensions of two or more.
+            if _cudnn_version >= 3000 and self.ndim >= 2:
+                return super(AveragePoolingND, self).forward_gpu(x)
+            # With cuDNN v2, use cuDNN implementation only for inputs with
+            # spatial dimensions of two.
+            elif self.ndim == 2:
+                return super(AveragePoolingND, self).forward_gpu(x)
 
         n, c = x[0].shape[:2]
         dims = x[0].shape[2:]
@@ -72,9 +80,16 @@ class AveragePoolingND(pooling_nd._PoolingND):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
+        if (cuda.cudnn_enabled and self.use_cudnn and
                 pooling_nd._check_cudnn_acceptable_type(x[0].dtype)):
-            return super(AveragePoolingND, self).backward_gpu(x, gy)
+            # With cuDNN v3 or greater, use cuDNN implementation for inputs
+            # with spatial dimensions of two or more.
+            if _cudnn_version >= 3000 and self.ndim >= 2:
+                return super(AveragePoolingND, self).backward_gpu(x, gy)
+            # With cuDNN v2, use cuDNN implementation only for inputs with
+            # spatial dimensions of two.
+            elif self.ndim == 2:
+                return super(AveragePoolingND, self).backward_gpu(x, gy)
 
         n, c = x[0].shape[:2]
         dims = x[0].shape[2:]
