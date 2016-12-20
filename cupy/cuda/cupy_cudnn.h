@@ -592,7 +592,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
-#if not defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
 // Some functions are renamed in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
 
@@ -602,7 +602,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
 #define cudnnGetFilterNdDescriptor_v5 cudnnGetFilterNdDescriptor
 
-#endif // #if not defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
+#endif // #if !defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
 
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
