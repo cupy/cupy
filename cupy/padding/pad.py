@@ -59,7 +59,42 @@ def _validate_lengths(narray, number_elements):
 
 
 def pad(array, pad_width, mode, **keywords):
-    if not cupy.asarray(pad_width).dtype.kind == 'i':
+    """Returns padded array. You can specify the padded widths and values.
+
+    This function currently supports only ``mode=constant`` .
+
+    Args:
+        array (array-like): Input array of rank N.
+        pad_width (int or array-like): Number of values padded
+            to the edges of each axis.
+            ((before_1, after_1), ... (before_N, after_N)) uniquely pad widths
+            for each axis.
+            ((before, after),) yields same before and after pad for each axis.
+            (pad,) or int is a shortcut for before = after = pad width for all
+            axes.
+        mode (str):
+            'constant'
+                Pads with a constant values.
+        constant_values (int or array-like): Used in
+            ``constant``.
+            The values are padded for each axis.
+            ((before_1, after_1), ... (before_N, after_N)) uniquely pad
+            constants for each axis.
+            ((before, after),) yields same before and after constants for each
+            axis.
+            (constant,) or int is a shortcut for before = after = constant for
+            all axes.
+            Default is 0.
+
+    Returns:
+        cupy.ndarray:
+        Padded array of rank equal to ``array`` with shape increased according
+        to ``pad_width`` .
+
+    .. seealso:: :func:`numpy.pad`
+
+    """
+    if not numpy.asarray(pad_width).dtype.kind == 'i':
         raise TypeError('pad_width must be of integral type.')
     narray = cupy.array(array)
     pad_width = _validate_lengths(narray, pad_width)
