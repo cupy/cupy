@@ -129,6 +129,16 @@ Also note that you should use shortcut names of CuPy APIs in Chainer implementat
 Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_.
 The reviewing process starts after the check passes.
 
+The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
+The document should be careful the following:
+* For documents which have significant overlap with those of NumPy, it is better to add some remarks that the document
+  is actually copied (and modified in a case). It is better to just explain the functionality in a short paragraph and
+  refers to the corresponding NumPy function so that users can read the detailed document, but if it is difficult,
+  it is ok to include a complete copy of the document with such a remark.
+* If the CuPy function only implements a limited amount of features of the original NumPy function,
+  it should be clearly noted in the document, and the document itself should only cover the detailed explanation of
+  what is actually implemented in CuPy.
+
 
 Testing Guidelines
 ------------------
