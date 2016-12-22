@@ -36,15 +36,29 @@ def _normalize_shape(ndarray, shape, cast_to_int=True):
     ndims = ndarray.ndim
     if shape is None:
         return ((None, None), ) * ndims
-    ndshape = numpy.asarray(shape)
-    try:
-        ndshape = numpy.broadcast_to(ndshape, (ndims, 2))
-    except ValueError:
-        message = 'Unable to create correctly shaped tuple from %s' % shape
-        raise ValueError(message)
+    arr = numpy.asarray(shape)
+    if arr.ndim <= 1:
+        if arr.shape == () or arr.shape == (1,):
+            arr = numpy.ones((ndims, 2), dtype=ndarray.dtype) * arr
+        elif arr.shape == (2,):
+            arr = arr[numpy.newaxis, :].repeat(ndims, axis=0)
+        else:
+            fmt = "Unable to create correctly shaped tuple from %s"
+            raise ValueError(fmt % (shape,))
+    elif arr.ndim == 2:
+        if arr.shape[1] == 1 and arr.shape[0] == ndims:
+            arr = arr.repeat(2, axis=1)
+        elif arr.shape[0] == ndims:
+            pass
+        else:
+            fmt = "Unable to create correctly shaped tuple from %s"
+            raise ValueError(fmt % (shape,))
+    else:
+        fmt = "Unable to create correctly shaped tuple from %s"
+        raise ValueError(fmt % (shape,))
     if cast_to_int:
-        ndshape = numpy.rint(ndshape).astype(int)
-    return tuple(tuple(axis) for axis in ndshape.tolist())
+        arr = numpy.rint(arr).astype(int)
+    return tuple(tuple(axis) for axis in arr.tolist())
 
 
 def _validate_lengths(narray, number_elements):
