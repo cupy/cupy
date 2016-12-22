@@ -394,6 +394,11 @@ Padding
 
 :func:`pad`
 
+External Functions
+~~~~~~~~~~~~~~~~~~
+
+:func:`scatter_add`
+
 Other
 ~~~~~
 

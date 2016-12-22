@@ -1247,106 +1247,16 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
-        cdef Py_ssize_t ellipsis_size
-        cdef ndarray a, v, x, y
+        _scatter_op(self, slices, value, 'update')
 
-        if not isinstance(slices, tuple):
-            slices = [slices]
-        else:
-            slices = list(slices)
+    def scatter_add(self, slices, value):
+        """Adds given values to specified elements of an array.
 
-        # Expand ellipsis into empty slices
-        ellipsis = -1
-        n_newaxes, n_ellipses = 0, 0
-        for i, s in enumerate(slices):
-            if s is None:
-                n_newaxes += 1
-            elif s is Ellipsis:
-                n_ellipses += 1
-                ellipsis = i
-        ndim = self._shape.size()
-        noneslices = [slice(None)]
-        if n_ellipses > 0:
-            if n_ellipses > 1:
-                raise ValueError('Only one Ellipsis is allowed in index')
-            ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
-            slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
+        .. seealso::
+            :func:`cupy.scatter_add` for full documentation.
 
-        slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
-
-        if len(slices) > self.ndim + n_newaxes:
-            raise IndexError('too many indices for array')
-
-        # Check if advanced is true, and convert list/NumPy arrays to ndarray
-        advanced = False
-        for i, s in enumerate(slices):
-            if isinstance(s, (list, numpy.ndarray)):
-                s = array(s)
-                slices[i] = s
-            if isinstance(s, ndarray):
-                if issubclass(s.dtype.type, numpy.integer):
-                    advanced = True
-                else:
-                    raise IndexError(
-                        'currently, only integer array is supported for '
-                        'advanced indexing __setitem__')
-
-        if advanced:
-            # split slices that can be handled by basic-indexing
-            basic_slices = []
-            adv_slices = []
-            for i, s in enumerate(slices):
-                if type(s) is slice:
-                    basic_slices.append(s)
-                    adv_slices.append(slice(None))
-                elif s is None:
-                    basic_slices.append(None)
-                    adv_slices.append(slice(None))
-                elif (isinstance(s, ndarray) and
-                        issubclass(s.dtype.type, numpy.integer)):
-                    basic_slices.append(slice(None))
-                    adv_slices.append(s)
-                elif isinstance(s, int):
-                    basic_slices.append(slice(None))
-                    scalar_array = ndarray((), dtype=numpy.int64)
-                    scalar_array.fill(s)
-                    adv_slices.append(scalar_array)
-                else:
-                    raise IndexError(
-                        'only integers, slices (`:`), ellipsis (`...`),'
-                        'numpy.newaxis (`None`) and integer or'
-                        'boolean arrays are valid indices')
-
-            # check if this is a combination of basic and advanced indexing
-            a = self
-            for s in basic_slices:
-                if s is None or (isinstance(s, slice) and s != slice(None)):
-                    # returns a view of a
-                    a = a[tuple(basic_slices)]
-                    break
-
-            arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
-            if sum(arr_slices_mask) == 1:
-                axis = arr_slices_mask.index(True)
-                _scatter_op_single(a, adv_slices[axis], value, axis, 'update')
-                return
-            raise ValueError('indexing with multiple arrays is not supported '
-                             'for __setitem__ yet')
-
-        v = self[tuple(slices)]
-        if isinstance(value, ndarray):
-            y, x = broadcast(v, value).values
-            if (internal.vector_equal(y._shape, x._shape) and
-                    internal.vector_equal(y._strides, x._strides)):
-                if y.data.ptr == x.data.ptr:
-                    return  # Skip since x and y are the same array
-                elif y._c_contiguous and x.dtype == y.dtype:
-                    y.data.copy_from(x.data, x.nbytes)
-                    return
-            elementwise_copy(x, y)
-        else:
-            v.fill(value)
+        """
+        _scatter_op(self, slices, value, 'add')
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
@@ -2176,6 +2086,19 @@ cdef _scatter_update_kernel = ElementwiseKernel(
     'scatter_update')
 
 
+cdef _scatter_add_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      int li = i / (rdim * cdim);
+      int ri = i % rdim;
+      atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'scatter_add')
+
+
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
     'T a, bool boolean_array, S nth',
     'raw T out',
@@ -2287,8 +2210,125 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
     if op == 'update':
         _scatter_update_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'add':
+        if not issubclass(v.dtype.type, (numpy.int32, numpy.float32)):
+            raise TypeError(
+                'scatter_add only supports int32 and float32 as data type')
+        _scatter_add_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
+
+
+cpdef _scatter_op(ndarray a, slices, value, op):
+    cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
+    cdef Py_ssize_t ellipsis_size
+    cdef ndarray v, x, y
+
+    if not isinstance(slices, tuple):
+        slices = [slices]
+    else:
+        slices = list(slices)
+
+    # Expand ellipsis into empty slices
+    ellipsis = -1
+    n_newaxes, n_ellipses = 0, 0
+    for i, s in enumerate(slices):
+        if s is None:
+            n_newaxes += 1
+        elif s is Ellipsis:
+            n_ellipses += 1
+            ellipsis = i
+    ndim = a._shape.size()
+    noneslices = [slice(None)]
+    if n_ellipses > 0:
+        if n_ellipses > 1:
+            raise ValueError('Only one Ellipsis is allowed in index')
+        ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
+        slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
+
+    slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
+
+    if len(slices) > a.ndim + n_newaxes:
+        raise IndexError('too many indices for array')
+
+    # Check if advanced is true,
+    # and convert list/NumPy arrays to cupy.ndarray
+    advanced = False
+    for i, s in enumerate(slices):
+        if isinstance(s, (list, numpy.ndarray)):
+            s = array(s)
+            slices[i] = s
+        if isinstance(s, ndarray):
+            if issubclass(s.dtype.type, numpy.integer):
+                advanced = True
+            else:
+                raise IndexError(
+                    'currently, only integer array is supported for '
+                    'advanced indexing')
+
+    if advanced:
+        # split slices that can be handled by basic-indexing
+        basic_slices = []
+        adv_slices = []
+        for i, s in enumerate(slices):
+            if type(s) is slice:
+                basic_slices.append(s)
+                adv_slices.append(slice(None))
+            elif s is None:
+                basic_slices.append(None)
+                adv_slices.append(slice(None))
+            elif (isinstance(s, ndarray) and
+                    issubclass(s.dtype.type, numpy.integer)):
+                basic_slices.append(slice(None))
+                adv_slices.append(s)
+            elif isinstance(s, int):
+                basic_slices.append(slice(None))
+                scalar_array = ndarray((), dtype=numpy.int64)
+                scalar_array.fill(s)
+                adv_slices.append(scalar_array)
+            else:
+                raise IndexError(
+                    'only integers, slices (`:`), ellipsis (`...`),'
+                    'numpy.newaxis (`None`) and integer or'
+                    'boolean arrays are valid indices')
+
+        # check if this is a combination of basic and advanced indexing
+        for s in basic_slices:
+            if s is None or (isinstance(s, slice) and s != slice(None)):
+                # returns a view of a
+                a = a[tuple(basic_slices)]
+                break
+
+        arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
+        if sum(arr_slices_mask) == 1:
+            axis = arr_slices_mask.index(True)
+            _scatter_op_single(a, adv_slices[axis], value, axis, op)
+            return
+        raise ValueError('indexing with multiple arrays is not supported yet')
+
+    if op == 'update':
+        v = a[tuple(slices)]
+        if isinstance(value, ndarray):
+            y, x = broadcast(v, value).values
+            if (internal.vector_equal(y._shape, x._shape) and
+                    internal.vector_equal(y._strides, x._strides)):
+                if y.data.ptr == x.data.ptr:
+                    return  # Skip since x and y are the same array
+                elif y._c_contiguous and x.dtype == y.dtype:
+                    y.data.copy_from(x.data, x.nbytes)
+                    return
+            elementwise_copy(x, y)
+        else:
+            v.fill(value)
+    elif op == 'add':
+        v = a[tuple(slices)]
+        if not isinstance(value, ndarray):
+            value = ndarray(value)
+        y, x = broadcast(v, value).values
+        elementwise_copy(x + y, y)
+    else:
+        raise ValueError('this op is not supported')
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
