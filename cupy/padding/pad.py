@@ -36,15 +36,31 @@ def _normalize_shape(ndarray, shape, cast_to_int=True):
     ndims = ndarray.ndim
     if shape is None:
         return ((None, None), ) * ndims
-    shape_array = numpy.asarray(shape)
-    try:
-        shape_array = numpy.broadcast_to(shape_array, (ndims, 2))
-    except ValueError:
-        message = 'Unable to create correctly shaped tuple from %s' % shape
+    ndshape = numpy.asarray(shape)
+    if ndshape.ndim <= 1:
+        if ndshape.shape == () or ndshape.shape == (1,):
+            ndshape = numpy.full((ndims, 2), ndshape, dtype=ndarray.dtype)
+        elif ndshape.shape == (2,):
+            ndshape = ndshape[numpy.newaxis, :].repeat(ndims, axis=0)
+        else:
+            message = 'Unable to create correctly shaped tuple from %s' \
+                % (shape,)
+            raise ValueError(message)
+    elif ndshape.ndim == 2:
+        if ndshape.shape[1] == 1 and ndshape.shape[0] == ndims:
+            ndshape = ndshape.repeat(2, axis=1)
+        elif ndshape.shape[0] == ndims:
+            pass
+        else:
+            message = 'Unable to create correctly shaped tuple from %s' \
+                % (shape,)
+            raise ValueError(message)
+    else:
+        message = 'Unable to create correctly shaped tuple from %s' % (shape,)
         raise ValueError(message)
     if cast_to_int:
-        shape_array = numpy.round(shape_array).astype(int)
-    return tuple(tuple(axis) for axis in shape_array.tolist())
+        ndshape = numpy.round(ndshape).astype(int)
+    return tuple(tuple(axis) for axis in ndshape.tolist())
 
 
 def _validate_lengths(narray, number_elements):
@@ -72,6 +88,7 @@ def pad(array, pad_width, mode, **keywords):
             ((before, after),) yields same before and after pad for each axis.
             (pad,) or int is a shortcut for before = after = pad width for all
             axes.
+            You cannot specify ``cupy.ndarray`` .
         mode (str):
             'constant'
                 Pads with a constant values.
@@ -84,7 +101,7 @@ def pad(array, pad_width, mode, **keywords):
             axis.
             (constant,) or int is a shortcut for before = after = constant for
             all axes.
-            Default is 0.
+            Default is 0. You cannot specify ``cupy.ndarray`` .
 
     Returns:
         cupy.ndarray:
