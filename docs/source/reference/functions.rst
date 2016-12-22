@@ -223,6 +223,10 @@ linear
 ~~~~~~
 .. autofunction:: linear
 
+n_step_lstm
+~~~~~~~~~~~
+.. autofunction:: n_step_lstm
+
 
 Evaluation functions
 --------------------
