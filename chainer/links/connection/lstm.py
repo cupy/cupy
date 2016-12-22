@@ -195,8 +195,8 @@ class LSTM(LSTMBase):
             c_.to_cpu()
             h_.to_cpu()
         else:
-            c_.to_gpu()
-            h_.to_gpu()
+            c_.to_gpu(self._device_id)
+            h_.to_gpu(self._device_id)
         self.c = c_
         self.h = h_
 
