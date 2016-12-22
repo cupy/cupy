@@ -35,7 +35,7 @@ def perm(iterable):
     })
 )
 @testing.gpu
-class TestArrayAdvancedIndexingPerm(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -52,7 +52,7 @@ class TestArrayAdvancedIndexingPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': [1, -1]},
 )
 @testing.gpu
-class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -68,7 +68,7 @@ class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
      'indexes': (None, [1, 2], [0, -1])},
 )
 @testing.gpu
-class TestArrayAdvancedIndexingParametrizedTransp(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemParametrizedTransp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -87,7 +87,7 @@ class TestArrayAdvancedIndexingParametrizedTransp(unittest.TestCase):
     {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
 )
 @testing.gpu
-class TestArrayAdvancedIndexingArrayClass(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemArrayClass(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -108,10 +108,70 @@ class TestArrayAdvancedIndexingArrayClass(unittest.TestCase):
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
 )
 @testing.gpu
-class TestArrayInvalidIndexAdv(unittest.TestCase):
+class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_invalid_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         a[self.indexes]
+
+
+@testing.parameterize(
+    # array only
+    {'shape': (2, 3, 4), 'indexes': numpy.array(-1), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [1, -1], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 2]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), [[1, 2], [0, -1]],), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), slice(None), [[1, 2], [0, 2]]), 'value': 1},
+    # slice and array
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), slice(1, 2), [[1, 2], [0, 2]]), 'value': 1},
+    # None and array
+    {'shape': (2, 3, 4),
+     'indexes': (None, [1, -1]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (None, [1, -1], None), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (None, None, None, [1, -1]), 'value': 1},
+    # None, slice and array
+    {'shape': (2, 3, 4),
+     'indexes': (slice(0, 1), None, [1, -1]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(0, 1), slice(1, 2), [1, -1]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(0, 1), None, slice(1, 2), [1, -1]), 'value': 1},
+)
+@testing.gpu
+class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_adv_setitem(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype=dtype)
+        a[self.indexes] = self.value
+        return a
+
+
+@testing.parameterize(
+    {'shape': (2, 3, 4), 'indexes': numpy.array(1),
+     'value': numpy.array([1])},
+    {'shape': (2, 3, 4), 'indexes': numpy.array(1),
+     'value': numpy.array([1, 2, 3, 4])},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [0, -1]),
+     'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [[0, 1], [2, 0]]),
+     'value': numpy.arange(2 * 2 * 2 * 4).reshape(2, 2, 2, 4)},
+)
+@testing.gpu
+class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_adv_setitem(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype=dtype)
+        a[self.indexes] = self.value.astype(a.dtype)
+        return a
