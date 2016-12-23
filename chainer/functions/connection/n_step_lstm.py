@@ -329,7 +329,7 @@ class NStepLSTM(function.Function):
             self.reserve_space.data.ptr, self.reserve_space.size)
 
         dw = cuda.cupy.zeros_like(self.w)
-        dw_desc = cudnn.create_tensor_nd_descriptor(dw)
+        dw_desc = cudnn.create_filter_descriptor(dw))
         libcudnn.RNNBackwardWeights(
             handle, rnn_desc.value, length,
             self.c_x_descs.data, xs.data.ptr,
