@@ -45,6 +45,9 @@ class TestDropconnect(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
         self.gy = numpy.random.uniform(
             -1, 1, (4, self.out_size)).astype(self.x_dtype)
+        W = self.link.W.data
+        b = self.link.b.data
+        self.y_expect = self.x.reshape(4, -1).dot(W.T * self.mask.T) + b
         self.check_forward_options = {}
         self.check_backward_options = {}
         if self.x_dtype == numpy.float16:
@@ -53,43 +56,42 @@ class TestDropconnect(unittest.TestCase):
         elif self.W_dtype == numpy.float16:
             self.check_backward_options = {'atol': 1e-3, 'rtol': 1e-2}
 
-    def check_forward(self, x_data):
-        mask = self.mask
+    def check_forward(self, x_data, mask):
         x = chainer.Variable(x_data)
         y = self.link(x, True, mask)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        W = self.link.W.data
-        y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
-        testing.assert_allclose(y_expect, y.data, **self.check_forward_options)
+        testing.assert_allclose(self.y_expect, y.data,
+                                **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x)
+        self.check_forward(self.x, self.mask)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.link.to_gpu()
-        self.check_forward(cuda.to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.mask))
 
     def link_wrapper(self, *data):
         return self.link(data[0], True, data[1])
 
-    def check_backward(self, x_data, y_grad):
+    def check_backward(self, x_data, y_grad, mask):
         gradient_check.check_backward(
-            self.link_wrapper, (x_data, self.mask), y_grad,
+            self.link_wrapper, (x_data, mask), y_grad,
             (self.link.W, self.link.b), eps=2 ** -3,
             no_grads=(False, True), **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy)
+        self.check_backward(self.x, self.gy, self.mask)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
+                            cuda.to_gpu(self.mask))
 
 
 class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
@@ -117,43 +119,42 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         self.gy = numpy.random.uniform(
             -1, 1, (4, self.out_size)).astype(numpy.float32)
+        self.y_expect = self.x.reshape(4, -1).dot(W.T * self.mask.T) + b
 
-    def check_forward(self, x_data):
-        mask = self.mask
+    def check_forward(self, x_data, mask):
         x = chainer.Variable(x_data)
         y = self.link(x, True, mask)
         self.assertEqual(y.data.dtype, numpy.float32)
-        W = self.link.W.data
-        y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
-        testing.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(self.y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x)
+        self.check_forward(self.x, self.mask)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.link.to_gpu()
-        self.check_forward(cuda.to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.mask))
 
     def link_wrapper(self, *data):
         return self.link(data[0], True, data[1])
 
-    def check_backward(self, x_data, y_grad):
+    def check_backward(self, x_data, y_grad, mask):
         gradient_check.check_backward(
-            self.link_wrapper, (x_data, self.mask), y_grad,
+            self.link_wrapper, (x_data, mask), y_grad,
             (self.link.W, self.link.b), eps=1e-2, no_grads=(False, True))
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy)
+        self.check_backward(self.x, self.gy, self.mask)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
+                            cuda.to_gpu(self.mask))
 
     def test_serialization(self):
         lin1 = links.Dropconnect(None, self.out_size)
