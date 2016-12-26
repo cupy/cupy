@@ -44,6 +44,8 @@ cdef class ndarray:
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
         strides (tuple of ints): The strides for axes.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Attributes:
         base (None or cupy.ndarray): Base array from which this array is
@@ -73,7 +75,7 @@ cdef class ndarray:
         readonly memory.MemoryPointer data
         readonly ndarray base
 
-    def __init__(self, shape, dtype=float, memptr=None):
+    def __init__(self, shape, dtype=float, memptr=None, order='C'):
         cdef Py_ssize_t size
         self._shape = internal.get_size(shape)
         for x in self._shape:
@@ -81,8 +83,6 @@ cdef class ndarray:
                 raise ValueError('Negative dimensions are not allowed')
         self.dtype = numpy.dtype(dtype)
         self.size = internal.prod_ssize_t(self._shape)
-        self._strides = internal.get_contiguous_strides(
-            self._shape, self.itemsize)
 
         if memptr is None:
             self.data = memory.alloc(self.size * self.dtype.itemsize)
@@ -90,8 +90,18 @@ cdef class ndarray:
             self.data = memptr
         self.base = None
 
-        self._c_contiguous = True
-        self._update_f_contiguity()
+        if order == 'C':
+            self._strides = internal.get_contiguous_strides(
+                self._shape, self.itemsize, 'C')
+            self._c_contiguous = True
+            self._update_f_contiguity()
+        elif order == 'F':
+            self._strides = internal.get_contiguous_strides(
+                self._shape, self.itemsize, 'F')
+            self._f_contiguous = True
+            self._update_c_contiguity()
+        else:
+            raise TypeError('order not understood')
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.

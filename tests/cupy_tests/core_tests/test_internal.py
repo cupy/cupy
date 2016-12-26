@@ -68,17 +68,32 @@ class TestVectorEqual(unittest.TestCase):
 class TestGetContiguousStrides(unittest.TestCase):
 
     def test_zero(self):
-        self.assertEqual(internal.get_contiguous_strides((), 1), [])
+        self.assertEqual(internal.get_contiguous_strides((), 1, 'C'), [])
 
     def test_one(self):
-        self.assertEqual(internal.get_contiguous_strides((1,), 2), [2])
+        self.assertEqual(internal.get_contiguous_strides((1,), 2, 'C'), [2])
 
     def test_two(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2), 3), [6, 3])
+        self.assertEqual(internal.get_contiguous_strides((1, 2), 3, 'C'),
+                         [6, 3])
 
     def test_three(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2, 3), 4),
+        self.assertEqual(internal.get_contiguous_strides((1, 2, 3), 4, 'C'),
                          [24, 12, 4])
+
+    def test_zero_f(self):
+        self.assertEqual(internal.get_contiguous_strides((), 1, 'F'), [])
+
+    def test_one_f(self):
+        self.assertEqual(internal.get_contiguous_strides((1,), 2, 'F'), [2])
+
+    def test_two_f(self):
+        self.assertEqual(internal.get_contiguous_strides((1, 2), 3, 'F'),
+                         [3, 3])
+
+    def test_three_f(self):
+        self.assertEqual(internal.get_contiguous_strides((1, 2, 3), 4, 'F'),
+                         [4, 4, 8])
 
 
 class TestGetCContiguity(unittest.TestCase):
