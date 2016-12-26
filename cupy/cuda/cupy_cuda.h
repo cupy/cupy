@@ -482,6 +482,24 @@ cublasStatus_t cublasSgemmEx(
 
 
 // BLAS extension
+cublasStatus_t cublasSgeam(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb, int m, int n,
+        const float* alpha, const float* A, int lda,
+        const float* beta, const float* B, int ldb,
+        float* C, int ldc) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDgeam(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb, int m, int n,
+        const double* alpha, const double* A, int lda,
+        const double* beta, const double* B, int ldb,
+        double* C, int ldc) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSdgmm(
         cublasHandle_t handle, cublasSideMode_t mode, int m, int n, float* A,
         int lda, float* x, int incx, float* C, int ldc) {

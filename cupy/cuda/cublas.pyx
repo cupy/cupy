@@ -75,6 +75,16 @@ cdef extern from 'cupy_cuda.h':
         float** Carray, int ldc, int batchCount) nogil
 
     # BLAS extension
+    int cublasSgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const float* alpha, const float* A, int lda,
+        const float* beta, const float* B, int ldb,
+        float* C, int ldc) nogil
+    int cublasDgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const double* alpha, const double* A, int lda,
+        const double* beta, const double* B, int ldb,
+        double* C, int ldc) nogil
     int cublasSdgmm(
         Handle handle, SideMode mode, int m, int n, float* A, int lda,
         float* x, int incx, float* C, int ldc) nogil
@@ -332,6 +342,28 @@ cpdef sgemmBatched(
 ###############################################################################
 # BLAS extension
 ###############################################################################
+
+cpdef sgeam(size_t handle, int transa, int transb, int m, int n,
+            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t C, int ldc):
+    with nogil:
+        status = cublasSgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            &alpha, <const float*>A, lda, &beta, <const float*>B, ldb,
+            <float*>C, ldc)
+    check_status(status)
+
+
+cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
+            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t C, int ldc):
+    with nogil:
+        status = cublasDgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            &alpha, <const double*>A, lda, &beta, <const double*>B, ldb,
+            <double*>C, ldc)
+    check_status(status)
+
 
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc):
