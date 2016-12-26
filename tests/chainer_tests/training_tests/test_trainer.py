@@ -24,7 +24,7 @@ class DummyExtension(training.extension.Extension):
         self.is_finalized = True
 
 
-class TestTrainerElapsedTime(unittest.TestCase):
+class TestTrainer(unittest.TestCase):
 
     def setUp(self):
         self.trainer = _get_mocked_trainer()
