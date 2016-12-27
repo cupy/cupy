@@ -25,31 +25,7 @@ def take(a, indices, axis=None, out=None):
 
 
 def choose(a, choices, out=None, mode='raise'):
-    n = choices.shape[0]
-
-    # broadcast `a` and `choices[i]` for all i
-    if a.ndim < choices.ndim - 1:
-        for i in range(choices.ndim - 1 - a.ndim):
-            a = cupy.expand_dims(a, 0)
-    elif a.ndim > choices.ndim - 1:
-        for i in range(a.ndim + 1 - choices.ndim):
-            choices = cupy.expand_dims(choices, 1)
-    ba, bcs = cupy.broadcast_arrays(a, choices)
-
-    n_channel = numpy.prod(bcs[0].shape)
-    if mode == 'raise':
-        if not ((a < n).all() and (0 <= a).all()):
-            raise ValueError('invalid entry in choice array')
-        c = _choose_kernel(ba[0], bcs, n_channel)
-    elif mode == 'wrap':
-        ba = ba[0] % n
-        c = _choose_kernel(ba, bcs, n_channel)
-    elif mode == 'clip':
-        c = _choose_clip_kernel(ba[0], bcs, n_channel, n)
-    else:
-        raise TypeError('clipmode not understood')
-
-    return c
+    return a.choose(choices, out, mode)
 
 
 # TODO(okuta): Implement compress
@@ -81,34 +57,3 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
 
 
 # TODO(okuta): Implement select
-
-
-_take_kernel = elementwise.ElementwiseKernel(
-    'raw T a, S indices, int64 cdim, int64 rdim',
-    'T out',
-    '''
-      long long li = i / (rdim * cdim);
-      long long ri = i % rdim;
-      out = a[(li * cdim + indices) * rdim + ri];
-    ''',
-    'cupy_take')
-
-_choose_kernel = elementwise.ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel',
-    'T y',
-    'y = choices[i + n_channel * a]',
-    'cupy_choose')
-
-_choose_clip_kernel = elementwise.ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel, int32 n',
-    'T y',
-    '''
-      S x = a;
-      if (a < 0) {
-        x = 0;
-      } else if (a >= n) {
-        x = n - 1;
-      }
-      y = choices[i + n_channel * x];
-    ''',
-    'cupy_choose_clip')
