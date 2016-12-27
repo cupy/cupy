@@ -9,12 +9,8 @@ def _prepend_const(narray, pad_amount, value, axis=-1):
         return narray
     padshape = tuple(x if i != axis else pad_amount
                      for i, x in enumerate(narray.shape))
-    if value == 0:
-        return cupy.concatenate((cupy.zeros(padshape, dtype=narray.dtype),
-                                 narray), axis=axis)
-    else:
-        return cupy.concatenate(((cupy.zeros(padshape) + value).astype(
-                                 narray.dtype), narray), axis=axis)
+    return cupy.concatenate((cupy.full(padshape, value, narray.dtype),
+                             narray), axis=axis)
 
 
 def _append_const(narray, pad_amount, value, axis=-1):
@@ -22,14 +18,9 @@ def _append_const(narray, pad_amount, value, axis=-1):
         return narray
     padshape = tuple(x if i != axis else pad_amount
                      for i, x in enumerate(narray.shape))
-    if value == 0:
-        return cupy.concatenate((narray,
-                                 cupy.zeros(padshape, dtype=narray.dtype)),
-                                axis=axis)
-    else:
-        return cupy.concatenate(
-            (narray, (cupy.zeros(padshape) + value).astype(narray.dtype)),
-            axis=axis)
+    return cupy.concatenate((narray,
+                             (cupy.full(padshape, value, narray.dtype))),
+                            axis=axis)
 
 
 def _normalize_shape(ndarray, shape, cast_to_int=True):
@@ -37,14 +28,17 @@ def _normalize_shape(ndarray, shape, cast_to_int=True):
     if shape is None:
         return ((None, None), ) * ndims
     ndshape = numpy.asarray(shape)
-    try:
-        ndshape = numpy.broadcast_to(ndshape, (ndims, 2))
-    except ValueError:
+    extend_shape = numpy.repeat(ndshape, 2)
+    if len(extend_shape) == 2:
+        ndshape = extend_shape
+    if ndshape.ndim == 1:
+        ndshape = numpy.tile(ndshape, (ndims, 1))
+    if ndshape.shape != (ndims, 2):
         message = 'Unable to create correctly shaped tuple from %s' % shape
         raise ValueError(message)
     if cast_to_int:
         ndshape = numpy.rint(ndshape).astype(int)
-    return tuple(tuple(axis) for axis in ndshape.tolist())
+    return tuple(tuple(axis) for axis in ndshape)
 
 
 def _validate_lengths(narray, number_elements):
@@ -114,7 +108,7 @@ def pad(array, pad_width, mode, **keywords):
     for allowed_keyword in allowed_keywords[mode]:
         keywords.setdefault(allowed_keyword, keyword_defaults[allowed_keyword])
     for key in keywords:
-        if key in ['constant_values']:
+        if key == 'constant_values':
             keywords[key] = _normalize_shape(narray, keywords[key],
                                              cast_to_int=False)
     newmatrix = narray.copy()

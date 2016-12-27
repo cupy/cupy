@@ -15,66 +15,93 @@ except ImportError:
     raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
 
 
-from cupy import binary
-from cupy import creation
-from cupy import indexing
-from cupy import io
-from cupy import linalg
-from cupy import logic
-from cupy import manipulation
-from cupy import math
-from cupy import padding
-import cupy.random
-from cupy import sorting
-from cupy import statistics
+from cupy import binary  # NOQA
+from cupy import creation  # NOQA
+from cupy import indexing  # NOQA
+from cupy import io  # NOQA
+from cupy import linalg  # NOQA
+from cupy import logic  # NOQA
+from cupy import manipulation  # NOQA
+from cupy import math  # NOQA
+from cupy import padding  # NOQA
+from cupy import random  # NOQA
+from cupy import sorting  # NOQA
+from cupy import statistics  # NOQA
 from cupy import testing  # NOQA
-from cupy import util
+from cupy import util  # NOQA
 
-random = cupy.random
 
-ndarray = core.ndarray
+# import class and function
+from cupy.core import ndarray  # NOQA
 
-# dtype short cut
-number = numpy.number
-integer = numpy.integer
-signedinteger = numpy.signedinteger
-unsignedinteger = numpy.unsignedinteger
-inexact = numpy.inexact
-floating = numpy.floating
+# dtype short cuts
+from numpy import floating  # NOQA
+from numpy import inexact  # NOQA
+from numpy import integer  # NOQA
+from numpy import number  # NOQA
+from numpy import signedinteger  # NOQA
+from numpy import unsignedinteger  # NOQA
 
-bool_ = numpy.bool_
-byte = numpy.byte
-short = numpy.short
-intc = numpy.intc
-int_ = numpy.int_
-longlong = numpy.longlong
-ubyte = numpy.ubyte
-ushort = numpy.ushort
-uintc = numpy.uintc
-uint = numpy.uint
-ulonglong = numpy.ulonglong
 
-half = numpy.half
-single = numpy.single
-float_ = numpy.float_
-longfloat = numpy.longfloat
+from numpy import bool_  # NOQA
 
-int8 = numpy.int8
-int16 = numpy.int16
-int32 = numpy.int32
-int64 = numpy.int64
-uint8 = numpy.uint8
-uint16 = numpy.uint16
-uint32 = numpy.uint32
-uint64 = numpy.uint64
+from numpy import byte  # NOQA
 
-float16 = numpy.float16
-float32 = numpy.float32
-float64 = numpy.float64
+from numpy import short  # NOQA
 
-ufunc = core.ufunc
+from numpy import intc  # NOQA
 
-newaxis = numpy.newaxis  # == None
+from numpy import int_  # NOQA
+
+from numpy import longlong  # NOQA
+
+from numpy import ubyte  # NOQA
+
+from numpy import ushort  # NOQA
+
+from numpy import uintc  # NOQA
+
+from numpy import uint  # NOQA
+
+from numpy import ulonglong  # NOQA
+
+
+from numpy import half  # NOQA
+
+from numpy import single  # NOQA
+
+from numpy import float_  # NOQA
+
+from numpy import longfloat  # NOQA
+
+
+from numpy import int8  # NOQA
+
+from numpy import int16  # NOQA
+
+from numpy import int32  # NOQA
+
+from numpy import int64  # NOQA
+
+from numpy import uint8  # NOQA
+
+from numpy import uint16  # NOQA
+
+from numpy import uint32  # NOQA
+
+from numpy import uint64  # NOQA
+
+
+from numpy import float16  # NOQA
+
+from numpy import float32  # NOQA
+
+from numpy import float64  # NOQA
+
+
+from cupy.core import ufunc  # NOQA
+
+from numpy import newaxis  # == None  # NOQA
 
 # =============================================================================
 # Routines

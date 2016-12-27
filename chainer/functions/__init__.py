@@ -106,6 +106,7 @@ from chainer.functions.pooling import unpooling_2d  # NOQA
 from chainer.functions.pooling import upsampling_2d  # NOQA
 from chainer.functions.util import forget  # NOQA
 
+
 # import class and function
 from chainer.functions.activation.clipped_relu import clipped_relu  # NOQA
 from chainer.functions.activation.clipped_relu import ClippedReLU  # NOQA
