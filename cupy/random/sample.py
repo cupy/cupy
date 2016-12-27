@@ -1,4 +1,4 @@
-import operator
+import numpy
 
 import cupy
 from cupy.random import distributions
@@ -140,16 +140,16 @@ def random_sample(size=None, dtype=float):
 
 
 def choice(a, size=None, replace=True, p=None):
-    """Return an array of random values from a given 1-D array.
+    """Returns an array of random values from a given 1-D array.
 
-    Each element of returned values are independently sampled
+    Each element of the returned array is independently sampled
     from a according to p or uniformly.
 
     Args:
         a (1-D array-like or int):
-            If an ndarray, a random sample is generated from its elements.
+            If a ``cupy.ndarray`` , a random sample is generated from its elements.
             If an int, the random sample is generated as if a was
-            cupy.arange(n)
+            ``cupy.arange(n)``
         size (int or tuple of ints): The shape of the array.
         replace (boolean): Whether the sample is with or without replacement
         p (1-D array-like):
@@ -164,27 +164,32 @@ def choice(a, size=None, replace=True, p=None):
     .. seealso:: :func:`numpy.random.choice`
 
     """
-    a = cupy.array(a, copy=False)
+    a = cupy.array(a, copy=False)  # fix
     if a.ndim == 0:
         try:
-            pop_size = operator.index(a.item())
+            a_size = a.item()
         except TypeError:
-            raise ValueError("a must be 1-dimensional or an integer")
-        if pop_size <= 0:
-            raise ValueError("a must be greater than 0")
+            raise ValueError('a must be 1-dimensional or an integer')
+        if a_size <= 0:
+            raise ValueError('a must be greater than 0')
     elif a.ndim != 1:
-        raise ValueError("a must be 1-dimensional")
+        raise ValueError('a must be 1-dimensional')
     else:
-        pop_size = a.shape[0]
-        if pop_size is 0:
-            raise ValueError("a must be non-empty")
+        if len(a) == 0:
+            raise ValueError('a must be non-empty')
 
     if p is not None:
         p = cupy.array(p)
         if p.ndim != 1:
-            raise ValueError("p must be 1-dimensional")
-        if len(p) != pop_size:
-            raise ValueError("a and p must have same size")
+            raise ValueError('p must be 1-dimensional')
+        if len(p) != a_size:
+            raise ValueError('a and p must have same size')
+        if (p >= 0).all() == False:
+            raise ValueError('probabilities are not non-negative')
+        p_sum = cupy.sum(p).get()
+        if numpy.allclose(p_sum, 1) == False:
+            raise ValueError('probabilities do not sum to 1')
+
 
     rs = generator.get_random_state()
     return rs.random_choice(a=a, size=size, replace=replace, p=p)
