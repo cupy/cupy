@@ -147,7 +147,8 @@ def choice(a, size=None, replace=True, p=None):
 
     Args:
         a (1-D array-like or int):
-            If a ``cupy.ndarray`` , a random sample is generated from its elements.
+            If a ``cupy.ndarray`` ,
+            a random sample is generated from its elements.
             If an int, the random sample is generated as if a was
             ``cupy.arange(n)``
         size (int or tuple of ints): The shape of the array.
@@ -184,12 +185,10 @@ def choice(a, size=None, replace=True, p=None):
             raise ValueError('p must be 1-dimensional')
         if len(p) != a_size:
             raise ValueError('a and p must have same size')
-        if (p >= 0).all() == False:
+        if not (p >= 0).all():
             raise ValueError('probabilities are not non-negative')
         p_sum = cupy.sum(p).get()
-        if numpy.allclose(p_sum, 1) == False:
+        if not numpy.allclose(p_sum, 1):
             raise ValueError('probabilities do not sum to 1')
-
-
-    rs = generator.get_random_state()
-    return rs.random_choice(a=a, size=size, replace=replace, p=p)
+    rs = generator.get_random_state()  # fix
+    return rs.random_choice(a=a, size=size, replace=replace, p=p)  # fix
