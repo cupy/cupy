@@ -153,7 +153,7 @@ class TestMaxPoolingND(unittest.TestCase):
         func = functions.MaxPoolingND(
             self.ndim, self.ksize, stride=self.stride, pad=self.pad,
             cover_all=self.cover_all)
-        _ = func(self.x)
+        func(self.x)
         func.backward_cpu((self.x,), (self.gy,))
         func.backward_cpu((self.x,), (self.gy,))
 

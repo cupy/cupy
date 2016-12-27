@@ -99,7 +99,7 @@ class TestMaxPooling2D(unittest.TestCase):
     def test_backward_cpu_more_than_once(self):
         func = functions.MaxPooling2D(
             3, stride=2, pad=1, cover_all=self.cover_all)
-        _ = func(self.x)
+        func(self.x)
         func.backward_cpu((self.x,), (self.gy,))
         func.backward_cpu((self.x,), (self.gy,))
 
