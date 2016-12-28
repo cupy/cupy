@@ -74,7 +74,7 @@ class TestAveragePoolingND(unittest.TestCase):
             for c in six.moves.range(3):
                 x = self.x[k, c]
                 size = functools.reduce(operator.mul, ksize)
-                expect = numpy.array(x[idx].sum() for idx in patches)
+                expect = numpy.array([x[idx].sum() for idx in patches])
                 expect = expect.reshape(y_data.shape[2:]) / size
                 testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
