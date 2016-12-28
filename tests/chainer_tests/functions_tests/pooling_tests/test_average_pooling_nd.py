@@ -69,12 +69,12 @@ class TestAveragePoolingND(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
+        patches = pooling_patches(dims, ksize, stride, pad)
         for k in six.moves.range(2):
             for c in six.moves.range(3):
                 x = self.x[k, c]
                 size = functools.reduce(operator.mul, ksize)
-                expect = numpy.array([x[idx].sum() for idx in pooling_patches(
-                    dims, ksize, stride, pad)])
+                expect = numpy.array(x[idx].sum() for idx in patches)
                 expect = expect.reshape(y_data.shape[2:]) / size
                 testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
