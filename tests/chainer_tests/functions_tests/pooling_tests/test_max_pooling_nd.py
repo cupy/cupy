@@ -1,7 +1,6 @@
 import unittest
 
 import functools
-import itertools
 import math
 import mock
 import numpy
@@ -16,23 +15,7 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
-
-
-def pooling_patches(dims, ksize, stride, pad, cover_all):
-    """Return tuples of slices that indicate pooling patches."""
-    # Left-top indices of each pooling patch.
-    if cover_all:
-        xss = itertools.product(
-            *[six.moves.range(-p, d + p - k + s, s)
-              for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
-    else:
-        xss = itertools.product(
-            *[six.moves.range(-p, d + p - k + 1, s)
-              for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
-    # Tuples of slices for pooling patches.
-    return [tuple(slice(max(x, 0), min(x + k, d))
-                  for (x, d, k) in six.moves.zip(xs, dims, ksize))
-            for xs in xss]
+import test_pooling_nd
 
 
 @testing.parameterize(*testing.product({
@@ -79,13 +62,13 @@ class TestMaxPoolingND(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
+        patches = test_pooling_nd.pooling_patches(
+            dims, ksize, stride, pad, self.cover_all)
         for k in six.moves.range(2):
             for c in six.moves.range(3):
                 x = self.x[k, c]
-                expect = numpy.array(
-                    [x[idx].max() for idx in pooling_patches(
-                        dims, ksize, stride, pad, self.cover_all)]
-                ).reshape(y_data.shape[2:])
+                expect = numpy.array([x[idx].max() for idx in patches])
+                expect = expect.reshape(y_data.shape[2:])
                 testing.assert_allclose(expect, y_data[k, c])
 
     @condition.retry(3)

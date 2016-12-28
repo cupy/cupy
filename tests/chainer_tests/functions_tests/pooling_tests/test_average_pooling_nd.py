@@ -1,7 +1,6 @@
 import unittest
 
 import functools
-import itertools
 import mock
 import numpy
 import operator
@@ -15,18 +14,7 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
-
-
-def pooling_patches(dims, ksize, stride, pad):
-    """Return tuples of slices that indicate pooling patches."""
-    # Left-top indeces of each pooling patch.
-    xss = itertools.product(
-        *[six.moves.range(-p, d + p - k + 1, s)
-          for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad)])
-    # Tuple of slices for pooling patches.
-    return [tuple(slice(max(x, 0), min(x + k, d))
-                  for (x, d, k) in six.moves.zip(xs, dims, ksize))
-            for xs in xss]
+import test_pooling_nd
 
 
 @testing.parameterize(*testing.product({
@@ -69,7 +57,8 @@ class TestAveragePoolingND(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
-        patches = pooling_patches(dims, ksize, stride, pad)
+        patches = test_pooling_nd.pooling_patches(
+            dims, ksize, stride, pad, False)
         for k in six.moves.range(2):
             for c in six.moves.range(3):
                 x = self.x[k, c]
