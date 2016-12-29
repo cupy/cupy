@@ -31,6 +31,7 @@ Numerical ranges
 
 .. autofunction:: cupy.arange
 .. autofunction:: cupy.linspace
+.. autofunction:: cupy.logspace
 
 
 Matrix creation
