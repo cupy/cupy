@@ -120,7 +120,7 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
       respectively.
 
     Args:
-        x (~chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+        x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             Input variable of shape :math:`(n, c_I, h, w)`.
         W (~chainer.Variable): Weight variable of shape
             :math:`(c_M, c_I, k_H, k_W)`.
@@ -139,8 +139,8 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
     Like ``Convolution2D``, ``DepthwiseConvolution2D`` function computes
     correlations between filters and patches of size :math:`(k_H, k_W)` in
     ``x``.
-    Unlike ``Convolution2D``, with not adds up between output channels of
-    filters but concatenates.
+    But unlike ``Convolution2D``, ``DepthwiseConvolution2D`` not adds up
+    between output channels of filters but concatenates.
     For that reason, the shape of outputs of depthwise convolution are
     :math:`(n, c_I * c_M, h_O, w_O)`, ``c_M`` called channel_multiplier.
 
