@@ -28,7 +28,7 @@ Please install matplotlib to plot figure.
         raise RuntimeError(msg)
 
 
-class GraphReport(extension.Extension):
+class PlotReport(extension.Extension):
 
     def __init__(self, y_keys, x_key='iteration', trigger=(1, 'epoch'),
                  postprocess=None, file_name='graph.png'):

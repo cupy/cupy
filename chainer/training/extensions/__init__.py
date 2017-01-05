@@ -2,7 +2,7 @@ from chainer.training.extensions import _snapshot  # NOQA
 from chainer.training.extensions import computational_graph  # NOQA
 from chainer.training.extensions import evaluator  # NOQA
 from chainer.training.extensions import exponential_shift  # NOQA
-from chainer.training.extensions import graph_report  # NOQA
+from chainer.training.extensions import plot_report  # NOQA
 from chainer.training.extensions import linear_shift  # NOQA
 from chainer.training.extensions import log_report  # NOQA
 from chainer.training.extensions import print_report  # NOQA
@@ -16,7 +16,7 @@ from chainer.training.extensions._snapshot import snapshot_object  # NOQA
 from chainer.training.extensions.computational_graph import dump_graph  # NOQA
 from chainer.training.extensions.evaluator import Evaluator  # NOQA
 from chainer.training.extensions.exponential_shift import ExponentialShift  # NOQA
-from chainer.training.extensions.graph_report import GraphReport  # NOQA
+from chainer.training.extensions.plot_report import PlotReport  # NOQA
 from chainer.training.extensions.linear_shift import LinearShift  # NOQA
 from chainer.training.extensions.log_report import LogReport  # NOQA
 from chainer.training.extensions.print_report import PrintReport  # NOQA
