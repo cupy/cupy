@@ -12,9 +12,6 @@ from cupy import testing
      'pad_width': numpy.array([1, 2]), 'mode': 'constant'},
     {'array': numpy.arange(6).reshape([2, 3]),
      'pad_width': numpy.array([[1, 2], [3, 4]]), 'mode': 'constant'},
-    {'array': numpy.ones([4, 5, 6, 7]),
-     'pad_width': numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]]),
-     'mode': 'constant'},
 )
 @testing.gpu
 class TestPadDefault(unittest.TestCase):
@@ -38,10 +35,6 @@ class TestPadDefault(unittest.TestCase):
     {'array': numpy.arange(6).reshape([2, 3]),
      'pad_width': numpy.array([[1, 2], [3, 4]]), 'mode': 'constant',
      'constant_values': numpy.array([[3, 4], [5, 6]])},
-    {'array': numpy.ones([4, 5, 6, 7]),
-     'pad_width': numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]]),
-     'mode': 'constant',
-     'constant_values': numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])},
 )
 @testing.gpu
 class TestPad(unittest.TestCase):
@@ -54,6 +47,32 @@ class TestPad(unittest.TestCase):
         array = xp.array(self.array, dtype=dtype)
         a = xp.pad(array, self.pad_width, mode=self.mode,
                    constant_values=self.constant_values)
+        return a
+
+
+@testing.gpu
+class TestPadHighdim(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.with_requires('numpy>=1.11.2')
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_pad_highdim_default(self, xp, dtype):
+        array = xp.ones([4, 5, 6, 7], dtype=dtype)
+        pad_width = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        a = xp.pad(array, pad_width, mode='constant')
+        return a
+
+    @testing.with_requires('numpy>=1.11.2')
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_pad_highdim(self, xp, dtype):
+        array = xp.ones([4, 5, 6, 7], dtype=dtype)
+        pad_width = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        constant_values = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        a = xp.pad(array, pad_width, mode='constant',
+                   constant_values=constant_values)
         return a
 
 

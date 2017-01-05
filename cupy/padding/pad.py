@@ -1,7 +1,7 @@
 import numpy
+import six
 
 import cupy
-import six
 
 
 def _prepend_const(narray, pad_amount, value, axis=-1):
@@ -19,7 +19,7 @@ def _append_const(narray, pad_amount, value, axis=-1):
     padshape = tuple(x if i != axis else pad_amount
                      for i, x in enumerate(narray.shape))
     return cupy.concatenate((narray,
-                             (cupy.full(padshape, value, narray.dtype))),
+                             cupy.full(padshape, value, narray.dtype)),
                             axis=axis)
 
 
@@ -28,9 +28,8 @@ def _normalize_shape(ndarray, shape, cast_to_int=True):
     if shape is None:
         return ((None, None), ) * ndims
     ndshape = numpy.asarray(shape)
-    extend_shape = numpy.repeat(ndshape, 2)
-    if len(extend_shape) == 2:
-        ndshape = extend_shape
+    if ndshape.size == 1:
+        ndshape = numpy.repeat(ndshape, 2)
     if ndshape.ndim == 1:
         ndshape = numpy.tile(ndshape, (ndims, 1))
     if ndshape.shape != (ndims, 2):
