@@ -43,12 +43,12 @@ class Dropconnect(function.Function):
     def forward(self, inputs):
         scale = inputs[1].dtype.type(1. / (1 - self.ratio))
         xp = cuda.get_array_module(*inputs)
-        if xp == numpy:
-            flag = xp.random.rand(*inputs[1].shape) >= self.ratio
-        else:
-            flag = (xp.random.rand(*inputs[1].shape, dtype=numpy.float32) >=
-                    self.ratio)
         if self.mask is None:
+            if xp == numpy:
+                flag = xp.random.rand(*inputs[1].shape) >= self.ratio
+            else:
+                flag = xp.random.rand(*inputs[1].shape,
+                                      dtype=numpy.float32) >= self.ratio
             self.mask = scale * flag
         elif isinstance(self.mask, chainer.Variable):
             self.mask = self.mask.data
