@@ -51,7 +51,7 @@ class TestPad(unittest.TestCase):
 
 
 @testing.gpu
-class TestPadHighdim(unittest.TestCase):
+class TestPadNumpybug(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
@@ -59,18 +59,9 @@ class TestPadHighdim(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_pad_highdim_default(self, xp, dtype):
-        array = xp.ones([4, 5, 6, 7], dtype=dtype)
-        pad_width = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
-        a = xp.pad(array, pad_width, mode='constant')
-        return a
-
-    @testing.with_requires('numpy>=1.11.2')
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_pad_highdim(self, xp, dtype):
-        array = xp.ones([4, 5, 6, 7], dtype=dtype)
-        pad_width = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
-        constant_values = numpy.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        array = xp.arange(6, dtype=dtype).reshape([2, 3])
+        pad_width = numpy.array([[1, 2], [3, 4]])
+        constant_values = [[1, 2], [3, 4]]
         a = xp.pad(array, pad_width, mode='constant',
                    constant_values=constant_values)
         return a
@@ -83,8 +74,6 @@ class TestPadHighdim(unittest.TestCase):
      'constant_values': 3},
     {'array': [0, 1, 2, 3], 'pad_width': [1, 2], 'mode': 'constant',
      'constant_values': 3},
-    {'array': [[0, 1, 2], [3, 4, 5]], 'pad_width': [[1, 2], [3, 4]],
-     'mode': 'constant', 'constant_values': [[1, 2], [3, 4]]},
 )
 @testing.gpu
 class TestPadSpecial(unittest.TestCase):
