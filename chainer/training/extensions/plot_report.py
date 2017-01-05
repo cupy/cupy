@@ -1,11 +1,13 @@
+import json
+import numpy
+from os import path
+
+import six
+
 from chainer import reporter
 import chainer.serializer as serializer_module
 from chainer.training import extension
 import chainer.training.trigger as trigger_module
-import json
-import numpy as np
-from os import path
-import six
 
 try:
     import matplotlib
@@ -29,43 +31,44 @@ Please install matplotlib to plot figure.
 
 
 class PlotReport(extension.Extension):
+    """Trainer extension to output plots.
+
+    This extension accumulates the observations of the trainer to
+    :class:`~chainer.DictSummary` at a regular interval specified by a
+    supplied trigger, and plot a graph with using them.
+
+    There are two triggers to handle this extension. One is the trigger
+    to invoke this extension, which is used to handle the timing of
+    accumulating the results. It is set to ``1, 'iteration'`` by default.
+    The other is the trigger to determine when to emit the result. When
+    this trigger returns True, this extension appends the summary of
+    accumulated values to the list of past summaries, and writes the list
+    to the log file. Then, this extension makes a new fresh summary
+    object which is used until the next time that the trigger fires.
+
+    It also adds ``'epoch'`` and ``'iteration'`` entries to each result
+    dictionary, which are the epoch and iteration counts at the output.
+
+    Args:
+        y_keys (iterable of strs): Keys of values regarded as y. If this is
+            None, nothing is output to the graph.
+        x_key (str): Keys of values regarded as x. The default value is
+            'iteration'
+        trigger: Trigger that decides when to aggregate the result and
+            output the values. This is distinct from the trigger of this
+            extension itself. If it is a tuple in the form
+            ``<int>, 'epoch'`` or ``<int>, 'iteration'``, it is passed to
+            :class:`IntervalTrigger`.
+        postprocess: Callback to postprocess the result dictionaries.
+            Figure object, Axes object, and all plot data is passed to this
+            callback on the output. This callback can modify the figure.
+        file_name (str): Name of the figure file under the output
+            directory. It can be a format string.
+
+    """
 
     def __init__(self, y_keys, x_key='iteration', trigger=(1, 'epoch'),
                  postprocess=None, file_name='graph.png'):
-        """Trainer extension to output graph.
-
-        This extension accumulates the observations of the trainer to
-        :class:`~chainer.DictSummary` at a regular interval specified by a
-        supplied trigger, and plot a graph with using them.
-
-        There are two triggers to handle this extension. One is the trigger
-        to invoke this extension, which is used to handle the timing of
-        accumulating the results. It is set to ``1, 'iteration'`` by default.
-        The other is the trigger to determine when to emit the result. When
-        this trigger returns True, this extension appends the summary of
-        accumulated values to the list of past summaries, and writes the list
-        to the log file. Then, this extension makes a new fresh summary
-        object which is used until the next time that the trigger fires.
-
-        It also adds ``'epoch'`` and ``'iteration'`` entries to each result
-        dictionary, which are the epoch and iteration counts at the output.
-
-        Args:
-            y_keys (iterable of strs): Keys of values regarded as y. If this is
-                None, nothing is output to the graph.
-            x_key (str): Keys of values regarded as x.
-            trigger: Trigger that decides when to aggregate the result and
-                output the values. This is distinct from the trigger of this
-                extension itself. If it is a tuple in the form
-                ``<int>, 'epoch'`` or ``<int>, 'iteration'``, it is passed to
-                :class:`IntervalTrigger`.
-            postprocess: Callback to postprocess the result dictionaries.
-                Figure object, Axes object, and all plot data is passed to this
-                callback on the output. This callback can modify the figure.
-            file_name (str): Name of the figure file under the output
-                directory. It can be a format string.
-
-        """
 
         _check_available()
 
@@ -116,13 +119,12 @@ class PlotReport(extension.Extension):
                     continue
 
                 flag_any_item = True
-                xy = np.array(xy)
+                xy = numpy.array(xy)
                 a.plot(xy[:, 0], xy[:, 1], label=k)
 
             if flag_any_item:
                 if self._postprocess is not None:
                     self._postprocess(f, a, summary)
-
                 f.savefig(path.join(trainer.out, self._file_name))
 
             plot.close()
@@ -130,12 +132,12 @@ class PlotReport(extension.Extension):
 
     def serialize(self, serializer):
         if isinstance(serializer, serializer_module.Serializer):
-            serializer('_graph_{}'.format(self._file_name),
+            serializer('_plot_{}'.format(self._file_name),
                        json.dumps(self._data))
 
         else:
             self._data = json.loads(
-                serializer('_graph_{}'.format(self._file_name), ''))
+                serializer('_plot_{}'.format(self._file_name), ''))
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()
