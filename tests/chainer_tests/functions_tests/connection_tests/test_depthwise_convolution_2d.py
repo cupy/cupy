@@ -36,9 +36,9 @@ class TestDepthwiseConvolution2DFunction(unittest.TestCase):
         self.check_forward_options = {}
         self.check_backward_options = {'dtype': numpy.float64}
         if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_forward_options = {'atol': 5e-3, 'rtol': 5e-3}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 5e-3, 'rtol': 5e-3}
 
     def check_forward(self, x_data, W_data, b_data):
         args1 = (x_data, W_data)
@@ -90,6 +90,16 @@ class TestDepthwiseConvolution2DFunction(unittest.TestCase):
     @condition.retry(3)
     def test_backward_cpu_nobias(self):
         self.check_backward(self.x, self.W, None, self.gy)
+
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
+
+    @condition.retry(3)
+    def test_backward_gpu_nobias(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            None, cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)
