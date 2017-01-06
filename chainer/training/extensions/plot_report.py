@@ -1,12 +1,12 @@
-from chainer import reporter
-from chainer.training import extension
+import json
 from os import path
 
-import chainer.serializer as serializer_module
-import chainer.training.trigger as trigger_module
-import json
 import numpy
 import six
+
+from chainer import reporter
+from chainer.training import extension
+import chainer.training.trigger as trigger_module
 
 try:
     import matplotlib
