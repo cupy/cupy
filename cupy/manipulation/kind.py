@@ -29,21 +29,21 @@ def asfortranarray(a, dtype=None):
         if a.dtype == numpy.float32:
             cupy.cuda.cublas.sgeam(
                 cupy.cuda.Device().cublas_handle,
-                1,  # transa
-                1,  # transb
+                1,  # transpose a
+                1,  # transpose ret
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 ret.data.ptr, m)
         elif a.dtype == numpy.float64:
             cupy.cuda.cublas.dgeam(
                 cupy.cuda.Device().cublas_handle,
-                1,  # transa
-                1,  # transb
+                1,  # transpose a
+                1,  # transpose ret
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 ret.data.ptr, m)
         return ret
-
-    ret[...] = a
-    return ret
+    else:
+        ret[...] = a
+        return ret
 
 
 # TODO(okuta): Implement asarray_chkfinite
