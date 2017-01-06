@@ -1,7 +1,7 @@
 import json
-import numpy
 from os import path
 
+import numpy
 import six
 
 from chainer import reporter
@@ -112,17 +112,15 @@ class PlotReport(extension.Extension):
             f = plot.figure()
             a = f.add_subplot(111)
 
-            flag_any_item = False
             for k in keys:
                 xy = data[k]
                 if len(xy) == 0:
                     continue
 
-                flag_any_item = True
                 xy = numpy.array(xy)
                 a.plot(xy[:, 0], xy[:, 1], label=k)
 
-            if flag_any_item:
+            if a.has_data():
                 if self._postprocess is not None:
                     self._postprocess(f, a, summary)
                 f.savefig(path.join(trainer.out, self._file_name))
