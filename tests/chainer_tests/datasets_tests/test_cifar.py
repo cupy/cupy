@@ -70,7 +70,8 @@ class TestCifar(unittest.TestCase):
         train, test = retrieval_func(withlabel=self.withlabel, ndim=self.ndim,
                                      scale=self.scale)
 
-        with mock.patch('chainer.datasets.cifar.numpy') as mnumpy:
+        with mock.patch('chainer.datasets.cifar.numpy', autospec=True) as \
+                mnumpy:
             train, test = retrieval_func(withlabel=self.withlabel,
                                          ndim=self.ndim,
                                          scale=self.scale)

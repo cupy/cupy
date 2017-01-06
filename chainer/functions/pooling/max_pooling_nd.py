@@ -87,7 +87,7 @@ class MaxPoolingND(pooling_nd._PoolingND):
 
         gcol = numpy.zeros(n * c * prod_outs * prod_ksize, dtype=x[0].dtype)
 
-        indexes = self.indexes.ravel()
+        indexes = self.indexes.flatten()
         indexes += numpy.arange(0, indexes.size * prod_ksize, prod_ksize)
 
         gcol[indexes] = gy[0].ravel()

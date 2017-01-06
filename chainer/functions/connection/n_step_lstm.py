@@ -329,7 +329,7 @@ class NStepLSTM(function.Function):
             self.reserve_space.data.ptr, self.reserve_space.size)
 
         dw = cuda.cupy.zeros_like(self.w)
-        dw_desc = cudnn.create_tensor_nd_descriptor(dw)
+        dw_desc = cudnn.create_filter_descriptor(dw)
         libcudnn.RNNBackwardWeights(
             handle, rnn_desc.value, length,
             self.c_x_descs.data, xs.data.ptr,
@@ -381,12 +381,12 @@ def n_step_lstm(
 
     .. math::
 
-       i_t = \sigma(W_0 x_t + W_4 h_{t-1} + b_0 + b_4)
-       f_t = \sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5)
-       o_t = \sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6)
-       a_t = \tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7)
-       c_t = f_t \dot c_{t-1} + i_t \dot a_t
-       h_t = o_t \dot \tanh(c_t)
+       i_t &= \\sigma(W_0 x_t + W_4 h_{t-1} + b_0 + b_4) \\\\
+       f_t &= \\sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5) \\\\
+       o_t &= \\sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6) \\\\
+       a_t &= \\tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7) \\\\
+       c_t &= f_t \\dot c_{t-1} + i_t \\dot a_t \\\\
+       h_t &= o_t \\dot \\tanh(c_t)
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are
@@ -420,7 +420,7 @@ def n_step_lstm(
             ``bs[i][j]`` is corresponding with ``b_j`` in the equation.
             Shape of each matrix is ``(N,)`` where ``N`` is dimention of
             hidden units.
-        xs (list of chainer.Variable): A list of :class:`chainer.Variable`
+        xs (list of chainer.Variable): A list of :class:`~chainer.Variable`
             holding input values. Each element ``xs[t]`` holds input value
             for time ``t``. Its shape is ``(B_t, I)``, where ``B_t`` is
             mini-batch size for time ``t``, and ``I`` is size of input units.
@@ -440,7 +440,7 @@ def n_step_lstm(
 
             - ``hy`` is an updated hidden states whose shape is same as ``hx``.
             - ``cy`` is an updated cell states whose shape is same as ``cx``.
-            - ``ys`` is a list of :class:~chainer.Variable. Each element
+            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
               ``ys[t]`` holds hidden states of the last layer corresponding
               to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
               mini-batch size for time ``t``, and ``N`` is size of hidden
