@@ -1,4 +1,5 @@
 import json
+import warnings
 from os import path
 
 import numpy
@@ -6,6 +7,7 @@ import six
 
 from chainer import reporter
 from chainer.training import extension
+import chainer.serializer as serializer_module
 import chainer.training.trigger as trigger_module
 
 try:
@@ -22,11 +24,10 @@ except ImportError:
 
 def _check_available():
     if not _available:
-        msg = '''matplotlib is not installed on your environment.
-Please install matplotlib to plot figure.
-
-  $ pip install matplotlib'''
-        raise RuntimeError(msg)
+        warnings.warn('matplotlib is not installed on your environment, '
+                      'so that nothing will be plotted at this time. '
+                      'Please install matplotlib to plot figures.\n\n'
+                      '$ pip install matplotlib')
 
 
 class PlotReport(extension.Extension):
@@ -71,6 +72,9 @@ class PlotReport(extension.Extension):
 
         _check_available()
 
+        if not _available:
+            return
+
         self._x_key = x_key
         if isinstance(y_keys, str):
             y_keys = (y_keys,)
@@ -83,6 +87,9 @@ class PlotReport(extension.Extension):
         self._data = {k: [] for k in y_keys}
 
     def __call__(self, trainer):
+        if not _available:
+            return
+
         keys = self._y_keys
         observation = trainer.observation
         summary = self._summary
