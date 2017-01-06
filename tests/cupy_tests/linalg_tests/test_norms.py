@@ -53,7 +53,7 @@ class TestNorm(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_trace(self, xp, dtype):
+    def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
             return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)

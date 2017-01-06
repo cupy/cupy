@@ -18,7 +18,7 @@ ext_modules = chainer_setup_build.get_ext_modules()
 
 setup(
     name='chainer',
-    version='1.18.0',
+    version='1.19.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -38,6 +38,7 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.functions.theano',
               'chainer.functions.util',
               'chainer.function_hooks',
               'chainer.iterators',
@@ -52,6 +53,7 @@ setup(
               'chainer.links.model',
               'chainer.links.model.vision',
               'chainer.links.normalization',
+              'chainer.links.theano',
               'chainer.optimizers',
               'chainer.serializers',
               'chainer.testing',

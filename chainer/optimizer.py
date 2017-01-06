@@ -28,7 +28,6 @@ def exponential_decay_noise(xp, shape, dtype, hook, opt):
 
 
 class Optimizer(object):
-
     """Base class of all numerical optimizers.
 
     This class provides basic features for all optimization methods. It
@@ -351,7 +350,6 @@ class Optimizer(object):
 
 
 class GradientMethod(Optimizer):
-
     """Base class of all single gradient-based optimizers.
 
     This is an extension of the :class:`Optimizer` class. Typical gradient
@@ -469,7 +467,6 @@ class GradientMethod(Optimizer):
 
 
 class WeightDecay(object):
-
     """Optimizer hook function for weight decay regularization.
 
     This hook function adds a scaled parameter to the corresponding gradient.
@@ -487,11 +484,11 @@ class WeightDecay(object):
     def __init__(self, rate):
         self.rate = rate
 
-    def __call__(self, opt):
-        if cuda.available:
-            kernel = cuda.elementwise(
-                'T p, T decay', 'T g', 'g += decay * p', 'weight_decay')
+    def kernel(self):
+        return cuda.elementwise(
+            'T p, T decay', 'T g', 'g += decay * p', 'weight_decay')
 
+    def __call__(self, opt):
         rate = self.rate
         for param in opt.target.params():
             p, g = param.data, param.grad
@@ -499,7 +496,7 @@ class WeightDecay(object):
                 if int(dev) == -1:
                     g += rate * p
                 else:
-                    kernel(p, rate, g)
+                    self.kernel()(p, rate, g)
 
 
 class Lasso(object):
@@ -520,11 +517,11 @@ class Lasso(object):
     def __init__(self, rate):
         self.rate = rate
 
-    def __call__(self, opt):
-        if cuda.available:
-            kernel = cuda.elementwise(
-                'T s, T decay', 'T g', 'g += decay * s', 'lasso')
+    def kernel(self):
+        return cuda.elementwise(
+            'T s, T decay', 'T g', 'g += decay * s', 'lasso')
 
+    def __call__(self, opt):
         rate = self.rate
         for param in opt.target.params():
             p, g = param.data, param.grad
@@ -534,11 +531,10 @@ class Lasso(object):
                 if int(dev) == -1:
                     g += rate * sign
                 else:
-                    kernel(sign, rate, g)
+                    self.kernel()(sign, rate, g)
 
 
 class GradientClipping(object):
-
     """Optimizer hook function for gradient clipping.
 
     This hook function scales all gradient arrays to fit to the defined L2 norm
@@ -600,11 +596,11 @@ class GradientNoise(object):
         self.eta = eta
         self.noise_func = noise_func
 
-    def __call__(self, opt):
-        if cuda.available:
-            kernel = cuda.elementwise(
-                'T noise', 'T g', 'g += noise', 'gradient_noise')
+    def kernel(self):
+        return cuda.elementwise(
+            'T noise', 'T g', 'g += noise', 'gradient_noise')
 
+    def __call__(self, opt):
         for param in opt.target.params():
             g = param.grad
             xp = cuda.get_array_module(g)
@@ -613,11 +609,10 @@ class GradientNoise(object):
                 if int(dev) == -1:
                     g += noise
                 else:
-                    kernel(noise, g)
+                    self.kernel()(noise, g)
 
 
 class GradientHardClipping(object):
-
     """Optimizer hook function for gradient clipping.
 
     This hook function clips all gradient arrays to be within a lower and upper

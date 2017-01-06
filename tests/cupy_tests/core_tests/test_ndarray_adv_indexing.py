@@ -27,7 +27,10 @@ def perm(iterable):
             perm(([1, 0], [2, 1], [3, 1])) +
             perm(([1, 0], 1, [3, 1])) +
             perm(([1, 2], [[1, 0], [0, 1], [-1, 1]], slice(None))) +
-            perm((None, [1, 2], [1, 0]))
+            perm((None, [1, 2], [1, 0])) +
+            perm((numpy.array(0), numpy.array(-1))) +
+            perm((numpy.array(0), None)) +
+            perm((1, numpy.array(2), slice(None)))
         )
     })
 )
@@ -42,8 +45,11 @@ class TestArrayAdvancedIndexingPerm(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (2, 3, 4), 'indexes': numpy.array(-1)},
     {'shape': (2, 3, 4), 'indexes': (None, [1, 0], [0, 2], slice(None))},
-    {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))}
+    {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
+    {'shape': (2, 3, 4), 'indexes': [1, -1]},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
@@ -76,6 +82,9 @@ class TestArrayAdvancedIndexingParametrizedTransp(unittest.TestCase):
 @testing.parameterize(
     {'shape': (2, 3, 4), 'indexes': (slice(None),)},
     {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
+    {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingArrayClass(unittest.TestCase):

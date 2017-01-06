@@ -118,7 +118,8 @@ class InceptionBN(link.Chain):
         outs.append(h33)
 
         if self.pooltype == 'max':
-            p = max_pooling_2d.max_pooling_2d(x, 3, stride=self.stride, pad=1)
+            p = max_pooling_2d.max_pooling_2d(x, 3, stride=self.stride, pad=1,
+                                              cover_all=False)
         else:
             p = average_pooling_2d.average_pooling_2d(x, 3, stride=self.stride,
                                                       pad=1)

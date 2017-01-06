@@ -340,8 +340,9 @@ cpdef streamQuery(size_t stream):
 
 
 cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
-    status = cudaStreamWaitEvent(<driver.Stream>stream,
-                                 <driver.Event>event, flags)
+    with nogil:
+        status = cudaStreamWaitEvent(<driver.Stream>stream,
+                                     <driver.Event>event, flags)
     check_status(status)
 
 
