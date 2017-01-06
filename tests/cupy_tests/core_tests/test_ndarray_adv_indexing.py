@@ -175,3 +175,15 @@ class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
         a = xp.zeros(self.shape, dtype=dtype)
         a[self.indexes] = self.value.astype(a.dtype)
         return a
+
+
+@testing.gpu
+class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
+
+    def test_cupy_array(self):
+        shape = (2, 3)
+        a = cupy.zeros(shape)
+        indexes = cupy.array([0, 1])
+        a[:, indexes] = cupy.array(1.)
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
