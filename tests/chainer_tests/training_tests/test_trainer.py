@@ -24,7 +24,7 @@ class DummyExtension(training.extension.Extension):
         self.is_finalized = True
 
 
-class DummyCallableClass():
+class DummyCallableClass(object):
 
     def __init__(self):
         self.name = "DummyCallableClass"
@@ -38,7 +38,7 @@ class DummyCallableClass():
         self.is_finalized = True
 
 
-class DummyClass():
+class DummyClass(object):
 
     def __init__(self):
         self.is_touched = False
