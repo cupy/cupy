@@ -1257,7 +1257,7 @@ cdef class ndarray:
 
         # Expand ellipsis into empty slices
         ellipsis = -1
-        n_newaxes = n_ellipses = 0
+        n_newaxes, n_ellipses = 0, 0
         for i, s in enumerate(slices):
             if s is None:
                 n_newaxes += 1
