@@ -12,11 +12,13 @@ class Extension(object):
     attributes, e.g. the default trigger and the default priority. This class
     provides a set of typical default values for these attributes.
 
-    There are two ways to define users' own extensions: inheriting this class,
-    or decorating closures by :func:`make_extension`. Decorator can slightly
-    reduce the overhead and is much easier to use, while this class provides
-    more flexibility (for example, it can have methods to configure the
-    behavior).
+    There are three ways to define users' own extensions: inheriting this class,
+    decorating closures by :func:`make_extension`, or using any callable including
+    lambda functions as extensions. Decorator can slightly reduce the overhead
+    and is much easier to use, while this class provides more flexibility
+    (for example, it can have methods to configure the behavior). Using a lambda
+    function allows one-line coding for simple purposes, but users have to specify
+    the configurations in :meth:`Trainer.extend` by themselves.
 
     Attributes:
         trigger: Default value of trigger for this extension. It is set to
