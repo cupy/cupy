@@ -84,7 +84,7 @@ def main():
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
 
-    # Save a plot image to the result dir
+    # Save two plot images to the result dir
     trainer.extend(
         extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch',
                               file_name='loss.png'))
