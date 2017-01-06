@@ -186,7 +186,9 @@ class Trainer(object):
             trigger (tuple or Trigger): Trigger object that determines when to
                 invoke the extension. If it is ``None``, ``extension.trigger``
                 is used instead. If the trigger is not callable, it is passed
-                to :class:`IntervalTrigger` to build an interval trigger.
+                to :class:`IntervalTrigger` to build an interval trigger. If
+                ``extension.trigger`` is ``None``, the extension is triggered
+                at every iteration as default.
             priority (int): Invocation priority of the extension. Extensions
                 are invoked in the descending order of priorities in each
                 iteration. If this is ``None``, ``extension.priority`` is used
@@ -213,7 +215,7 @@ class Trainer(object):
                 'the name "training" is prohibited as an extension name')
 
         if trigger is None:
-            trigger = getattr(extension, 'trigger', None)
+            trigger = getattr(extension, 'trigger', (1, 'iteration'))
         trigger = trigger_module.get_trigger(trigger)
 
         if priority is None:
