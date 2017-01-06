@@ -1091,7 +1091,8 @@ cdef class ndarray:
         if len(slices) > self.ndim + n_newaxes:
             raise IndexError('too many indices for array')
 
-        # Check if advanced is true, and convert list/NumPy arrays to ndarray
+        # Check if advanced is true,
+        # and convert list/NumPy arrays to cupy.ndarray
         advanced = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
