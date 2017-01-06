@@ -1223,7 +1223,7 @@ cdef class ndarray:
         .. note::
 
             The behavior differs from NumPy when integer arrays in ``slices``
-            index same location multiple times.
+            reference the same location multiple times.
             In that case, the value that is actually stored is undefined.
 
             >>> import cupy; import numpy
@@ -1235,7 +1235,7 @@ cdef class ndarray:
             array([9150., 9151.])
 
             On the other hand, NumPy stores the value corresponding to the
-            last index among the indices with duplicate target.
+            last index among the indices referencing duplicate locations.
 
             >>> import numpy
             >>> a_cpu = numpy.zeros((2,))
