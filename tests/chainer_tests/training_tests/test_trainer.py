@@ -24,6 +24,29 @@ class DummyExtension(training.extension.Extension):
         self.is_finalized = True
 
 
+class DummyCallableClass():
+
+    def __init__(self):
+        self.name = "DummyCallableClass"
+        self.is_called = False
+        self.is_finalized = False
+
+    def __call__(self, trainer):
+        self.is_called = True
+
+    def finalize(self):
+        self.is_finalized = True
+
+
+class DummyClass():
+
+    def __init__(self):
+        self.is_touched = False
+
+    def touch(self):
+        self.is_touched = True
+
+
 class TestTrainer(unittest.TestCase):
 
     def setUp(self):
@@ -56,12 +79,25 @@ class TestTrainer(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_add_class_extension(self):
+    def test_add_inherit_class_extension(self):
         dummy_extension = DummyExtension()
         self.trainer.extend(dummy_extension)
         self.trainer.run()
         self.assertTrue(dummy_extension.is_called)
         self.assertTrue(dummy_extension.is_finalized)
+
+    def test_add_callable_class_extension(self):
+        dummy_callable_class = DummyCallableClass()
+        self.trainer.extend(dummy_callable_class)
+        self.trainer.run()
+        self.assertTrue(dummy_callable_class.is_called)
+        self.assertTrue(dummy_callable_class.is_finalized)
+
+    def test_add_lambda_extension(self):
+        dummy_class = DummyClass()
+        self.trainer.extend(lambda x: dummy_class.touch())
+        self.trainer.run()
+        self.assertTrue(dummy_class.is_touched)
 
     def test_add_make_extension(self):
         self.is_called = False
