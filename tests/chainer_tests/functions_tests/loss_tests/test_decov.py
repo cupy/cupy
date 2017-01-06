@@ -30,11 +30,11 @@ class TestDeCov(unittest.TestCase):
         N = h_data.shape[0]
 
         loss_expect = 0
-        for i in six.moves.xrange(h_data.shape[1]):
-            for j in six.moves.xrange(h_data.shape[1]):
+        for i in six.moves.range(h_data.shape[1]):
+            for j in six.moves.range(h_data.shape[1]):
                 ij_loss = 0.
                 if i != j:
-                    for n in six.moves.xrange(N):
+                    for n in six.moves.range(N):
                         ij_loss += (h_data[n, i] - h_mean[i]) * (
                             h_data[n, j] - h_mean[j])
                     ij_loss /= N
