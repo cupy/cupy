@@ -1,13 +1,13 @@
 import json
-import warnings
 from os import path
+import warnings
 
 import numpy
 import six
 
 from chainer import reporter
-from chainer.training import extension
 import chainer.serializer as serializer_module
+from chainer.training import extension
 import chainer.training.trigger as trigger_module
 
 try:
