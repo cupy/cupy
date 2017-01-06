@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from chainer import training
-from chainer.training import extensions
-
 import argparse
+
 import chainer
 import chainer.functions as F
 import chainer.links as L
+from chainer import training
+from chainer.training import extensions
 
 
 # Network definition
