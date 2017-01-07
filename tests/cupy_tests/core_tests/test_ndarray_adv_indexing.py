@@ -187,3 +187,17 @@ class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
         a[:, indexes] = cupy.array(1.)
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
+
+
+@testing.gpu
+class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
+
+    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='dst_dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_differnt_dtypes(self, xp, src_dtype, dst_dtype):
+        shape = (2, 3)
+        a = xp.zeros(shape, dtype=src_dtype)
+        indexes = xp.array([0, 1])
+        a[:, indexes] = xp.array(1, dtype=dst_dtype)
+        return a

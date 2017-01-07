@@ -2266,6 +2266,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
+    v = v.astype(a.dtype)
 
     a_shape = a.shape
     axis %= ndim
