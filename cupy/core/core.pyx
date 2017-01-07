@@ -628,16 +628,16 @@ cdef class ndarray:
         if mode == 'raise':
             if not ((a < n).all() and (0 <= a).all()):
                 raise ValueError('invalid entry in choice array')
-            c = _choose_kernel(ba[0], bcs, n_channel, out)
+            _choose_kernel(ba[0], bcs, n_channel, out)
         elif mode == 'wrap':
             ba = ba[0] % n
-            c = _choose_kernel(ba, bcs, n_channel, out)
+            _choose_kernel(ba, bcs, n_channel, out)
         elif mode == 'clip':
-            c = _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
+            _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
         else:
             raise TypeError('clipmode not understood')
 
-        return c
+        return out
 
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
