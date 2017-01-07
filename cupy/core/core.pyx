@@ -608,7 +608,37 @@ cdef class ndarray:
         """
         return _repeat(self, repeats, axis)
 
-    # TODO(okuta): Implement choose
+    cpdef choose(self, choices, out=None, mode='raise'):
+        a = self
+        n = choices.shape[0]
+
+        # broadcast `a` and `choices[i]` for all i
+        if a.ndim < choices.ndim - 1:
+            for i in range(choices.ndim - 1 - a.ndim):
+                a = a[None, ...]
+        elif a.ndim > choices.ndim - 1:
+            for i in range(a.ndim + 1 - choices.ndim):
+                choices = choices[:, None, ...]
+        ba, bcs = broadcast(a, choices).values
+
+        if out is None:
+            out = ndarray(ba.shape[1:], choices.dtype)
+
+        n_channel = numpy.prod(bcs[0].shape)
+        if mode == 'raise':
+            if not ((a < n).all() and (0 <= a).all()):
+                raise ValueError('invalid entry in choice array')
+            _choose_kernel(ba[0], bcs, n_channel, out)
+        elif mode == 'wrap':
+            ba = ba[0] % n
+            _choose_kernel(ba, bcs, n_channel, out)
+        elif mode == 'clip':
+            _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
+        else:
+            raise TypeError('clipmode not understood')
+
+        return out
+
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition
@@ -1982,6 +2012,28 @@ cdef _take_kernel_0axis = ElementwiseKernel(
       out = a[wrap_indices * rdim + i % rdim];
     ''',
     'cupy_take_0axis')
+
+
+cdef _choose_kernel = ElementwiseKernel(
+    'S a, raw T choices, int32 n_channel',
+    'T y',
+    'y = choices[i + n_channel * a]',
+    'cupy_choose')
+
+
+cdef _choose_clip_kernel = ElementwiseKernel(
+    'S a, raw T choices, int32 n_channel, int32 n',
+    'T y',
+    '''
+      S x = a;
+      if (a < 0) {
+        x = 0;
+      } else if (a >= n) {
+        x = n - 1;
+      }
+      y = choices[i + n_channel * x];
+    ''',
+    'cupy_choose_clip')
 
 
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
