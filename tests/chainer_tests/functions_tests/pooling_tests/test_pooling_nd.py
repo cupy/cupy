@@ -4,7 +4,7 @@ import six
 
 def pooling_patches(dims, ksize, stride, pad, cover_all):
     """Return tuples of slices that indicate pooling patches."""
-    # Left-top indices of each pooling patch.
+    # Left-top indexes of each pooling patch.
     if cover_all:
         xss = itertools.product(
             *[six.moves.range(-p, d + p - k + s, s)
