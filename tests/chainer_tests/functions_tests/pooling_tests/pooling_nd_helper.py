@@ -1,7 +1,7 @@
 import itertools
 import nose.tools
 import six
-import testing
+from chainer import testing
 
 
 @nose.tools.nottest
