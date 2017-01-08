@@ -151,4 +151,5 @@ def average_pooling_nd(x, ksize, stride=None, pad=0, use_cudnn=True):
 
     """
     ndim = len(x.shape[2:])
-    return AveragePoolingND(ndim, ksize, stride, pad, use_cudnn)(x)
+    return AveragePoolingND(
+        ndim, ksize, stride=stride, pad=pad, use_cudnn=use_cudnn)(x)
