@@ -1,6 +1,7 @@
 import itertools
 import nose.tools
 import six
+
 from chainer import testing
 
 
