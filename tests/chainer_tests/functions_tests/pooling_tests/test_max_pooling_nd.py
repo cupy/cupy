@@ -15,7 +15,7 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
-import test_pooling_nd
+import pooling_nd_helper
 
 
 @testing.parameterize(*testing.product({
@@ -62,7 +62,7 @@ class TestMaxPoolingND(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
-        patches = test_pooling_nd.pooling_patches(
+        patches = pooling_nd_helper.pooling_patches(
             dims, ksize, stride, pad, self.cover_all)
         for k in six.moves.range(2):
             for c in six.moves.range(3):
