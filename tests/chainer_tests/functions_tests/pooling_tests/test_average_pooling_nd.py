@@ -180,4 +180,11 @@ class TestAveragePoolingNDCudnnCall(unittest.TestCase):
             self.assertEqual(func.called, self.use_cudnn and self.ndim > 1)
 
 
+class TestAveragePoolingNDCoverAllNotSupported(unittest.TestCase):
+
+    def test_cover_all_not_supported(self):
+        with self.assertRaises(ValueError):
+            functions.AveragePoolingND(3, 3, cover_all=True)
+
+
 testing.run_module(__name__, __file__)

@@ -20,17 +20,22 @@ if cuda.cudnn_enabled:
 class AveragePoolingND(pooling_nd._PoolingND):
 
     """Average pooling over a set of N-dimensional planes."""
-    # TODO(takagi) Support cover_all mode.
 
-    def __init__(self, ndim, ksize, stride=None, pad=0, use_cudnn=True):
+    def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=False,
+                 use_cudnn=True):
         utils.experimental('chainer.functions.pooling.AveragePoolingND')
+
+        # TODO(takagi) Support cover_all mode.
+        if cover_all is True:
+            raise ValueError('`cover_all` mode is not supported yet.')
+
         super(AveragePoolingND, self).__init__(
-            ndim, ksize, stride=stride, pad=pad, cover_all=False,
+            ndim, ksize, stride=stride, pad=pad, cover_all=cover_all,
             use_cudnn=use_cudnn)
 
     def forward_cpu(self, x):
         col = conv_nd.im2col_nd_cpu(
-            x[0], self.ksize, self.stride, self.pad, cover_all=False)
+            x[0], self.ksize, self.stride, self.pad, cover_all=self.cover_all)
 
         # mean along (_, _, k_1, k_2, ..., k_N, _, ..., _)
         y_axis = tuple(six.moves.range(2, 2 + len(self.ksize)))
@@ -51,7 +56,8 @@ class AveragePoolingND(pooling_nd._PoolingND):
 
         n, c = x[0].shape[:2]
         dims = x[0].shape[2:]
-        ys = tuple(conv_nd.get_conv_outsize(d, k, s, p, cover_all=False)
+        ys = tuple(conv_nd.get_conv_outsize(d, k, s, p,
+                                            cover_all=self.cover_all)
                    for (d, k, s, p) in six.moves.zip(
                        dims, self.ksize, self.stride, self.pad))
         # (n, c, y_1, y_2, ..., y_N)
