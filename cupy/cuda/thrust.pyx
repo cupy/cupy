@@ -1,11 +1,10 @@
 # distutils: language = c++
 
-"""Thin wrapper of CuPy Thrust wrapper."""
-# NOTE: This wrapper does not cover all APIs of Thrust.
+"""Thin wrapper of Thrust implementations for CuPy API."""
 
 ###############################################################################
 # Extern
 ###############################################################################
 
 cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
-    void stable_sort[T](void *start, ssize_t num)
+    void sort[T](void *start, ssize_t num)
