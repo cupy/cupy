@@ -233,6 +233,7 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.indexing.generate import ix_  # NOQA
 
+from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 

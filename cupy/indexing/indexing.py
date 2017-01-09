@@ -24,7 +24,8 @@ def take(a, indices, axis=None, out=None):
     return a.take(indices, axis, out)
 
 
-# TODO(okuta): Implement choose
+def choose(a, choices, out=None, mode='raise'):
+    return a.choose(choices, out, mode)
 
 
 # TODO(okuta): Implement compress

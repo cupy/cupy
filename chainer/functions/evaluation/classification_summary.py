@@ -71,8 +71,8 @@ def classification_summary(y, t, label_num=None, beta=1.0, ignore_label=-1):
 
     This function calculates the following quantities for each class.
 
-    - Precision: :math:`\frac{tp}{tp + fp}`
-    - Recall: :math:`\frac{tp}{tp + tn}`
+    - Precision: :math:`\\frac{\\mathrm{tp}}{\\mathrm{tp} + \\mathrm{fp}}`
+    - Recall: :math:`\\frac{\\mathrm{tp}}{\\mathrm{tp} + \\mathrm{tn}}`
     - F beta Score: The weighted harmonic average of Precision and Recall.
     - Support: The number of instances of each ground truth label.
 
@@ -90,18 +90,18 @@ def classification_summary(y, t, label_num=None, beta=1.0, ignore_label=-1):
     into account for calculating the above quantities.
     By default, it is set to -1 so that all instances are taken
     into consideration, as labels are supposed to be non-negative integers.
-    Setting ignore_label to a non-negative integer less than label_num is
-    illegal and yields undefined behavior. In the current implementation,
-    it arises RuntimeWarning and ignore_label-th entries in output
+    Setting ``ignore_label`` to a non-negative integer less than ``label_num``
+    is illegal and yields undefined behavior. In the current implementation,
+    it arises ``RuntimeWarning`` and ``ignore_label``-th entries in output
     arrays do not contain correct quantities.
 
     Args:
         y (~chainer.Variable): Variable holding a vector of scores.
         t (~chainer.Variable): Variable holding a vector of
-        ground truth labels.
+            ground truth labels.
         label_num (int): The number of classes.
         beta (float): The parameter which determines the weight of
-        precision in the F-beta score.
+            precision in the F-beta score.
         ignore_label (int): Instances with this label are ignored.
 
     Returns:

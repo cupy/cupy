@@ -494,8 +494,8 @@ cdef class ndarray:
             newarray = ndarray(self.shape, self.dtype)
             elementwise_copy(self, newarray)
 
-        newarray._shape.assign(1, self.size)
-        newarray._strides.assign(1, self.itemsize)
+        newarray._shape.assign(<Py_ssize_t>1, self.size)
+        newarray._strides.assign(<Py_ssize_t>1, <Py_ssize_t>self.itemsize)
         newarray._c_contiguous = True
         newarray._f_contiguous = True
         return newarray
@@ -610,7 +610,36 @@ cdef class ndarray:
         """
         return _repeat(self, repeats, axis)
 
-    # TODO(okuta): Implement choose
+    cpdef choose(self, choices, out=None, mode='raise'):
+        a = self
+        n = choices.shape[0]
+
+        # broadcast `a` and `choices[i]` for all i
+        if a.ndim < choices.ndim - 1:
+            for i in range(choices.ndim - 1 - a.ndim):
+                a = a[None, ...]
+        elif a.ndim > choices.ndim - 1:
+            for i in range(a.ndim + 1 - choices.ndim):
+                choices = choices[:, None, ...]
+        ba, bcs = broadcast(a, choices).values
+
+        if out is None:
+            out = ndarray(ba.shape[1:], choices.dtype)
+
+        n_channel = numpy.prod(bcs[0].shape)
+        if mode == 'raise':
+            if not ((a < n).all() and (0 <= a).all()):
+                raise ValueError('invalid entry in choice array')
+            _choose_kernel(ba[0], bcs, n_channel, out)
+        elif mode == 'wrap':
+            ba = ba[0] % n
+            _choose_kernel(ba, bcs, n_channel, out)
+        elif mode == 'clip':
+            _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
+        else:
+            raise TypeError('clipmode not understood')
+
+        return out
 
     cpdef sort(self):
         """Sort an array, in-place with a stable sorting algorithm.
@@ -1093,8 +1122,8 @@ cdef class ndarray:
            array([1, 0])
 
         """
-        # supports basic indexing (by slices, ints or Ellipsis).
-        # also supports indexing by integer arrays.
+        # supports basic indexing (by slices, ints or Ellipsis) and
+        # some parts of advanced indexing by integer or boolean arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
@@ -1135,9 +1164,16 @@ cdef class ndarray:
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
+                elif issubclass(s.dtype.type, numpy.bool_):
+                    if i == 0 and internal.vector_equal(self._shape, s._shape):
+                        return _boolean_array_indexing(self, s)
+                    else:
+                        raise ValueError('Boolean array indexing is supported '
+                                         'only for same sized array.')
                 else:
-                    raise IndexError('Advanced indexing with ' +
-                                     'non-integer array is not supported')
+                    raise IndexError(
+                        'arrays used as indices must be of integer or boolean '
+                        'type. (actual: {})'.format(s.dtype.type))
 
         if advanced:
             # split slices that can be handled by basic-indexing
@@ -1153,12 +1189,12 @@ cdef class ndarray:
                 elif (isinstance(s, ndarray) and
                         issubclass(s.dtype.type, numpy.integer)):
                     basic_slices.append(slice(None))
-                    if s.ndim == 0:
-                        s = s.reshape((1,))
                     adv_slices.append(s)
                 elif isinstance(s, int):
                     basic_slices.append(slice(None))
-                    adv_slices.append(array(s, ndmin=1))
+                    scalar_array = ndarray((), dtype=numpy.int64)
+                    scalar_array.fill(s)
+                    adv_slices.append(scalar_array)
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
@@ -1428,7 +1464,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
 
     itemsize = a.itemsize
     if size == 1:
-        newstrides.assign(newshape.size(), itemsize)
+        newstrides.assign(<Py_ssize_t>newshape.size(), itemsize)
         return newstrides
 
     cdef vector.vector[Py_ssize_t] shape, strides
@@ -1808,7 +1844,7 @@ cdef class broadcast:
                 broadcasted.append(a)
                 continue
 
-            r_strides.assign(self.nd, 0)
+            r_strides.assign(self.nd, <Py_ssize_t>0)
             a_ndim = a._shape.size()
             for i in range(a_ndim):
                 a_sh = a._shape[a_ndim - i - 1]
@@ -2042,6 +2078,47 @@ cdef _take_kernel_0axis = ElementwiseKernel(
     'cupy_take_0axis')
 
 
+cdef _choose_kernel = ElementwiseKernel(
+    'S a, raw T choices, int32 n_channel',
+    'T y',
+    'y = choices[i + n_channel * a]',
+    'cupy_choose')
+
+
+cdef _choose_clip_kernel = ElementwiseKernel(
+    'S a, raw T choices, int32 n_channel, int32 n',
+    'T y',
+    '''
+      S x = a;
+      if (a < 0) {
+        x = 0;
+      } else if (a >= n) {
+        x = n - 1;
+      }
+      y = choices[i + n_channel * x];
+    ''',
+    'cupy_choose_clip')
+
+
+cdef _boolean_array_indexing_nth = ElementwiseKernel(
+    'T a, bool boolean_array, S nth',
+    'raw T out',
+    'if (boolean_array) out[nth] = a',
+    'cupy_boolean_array_indexing_nth')
+
+
+cpdef ndarray _boolean_array_indexing(ndarray a, ndarray boolean_array):
+    a = a.flatten()
+    boolean_array = boolean_array.flatten()
+    nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
+
+    n_true = int(nth_true_array.max()) + 1
+    out_shape = (n_true,)
+    out = ndarray(out_shape, dtype=a.dtype)
+
+    return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
+
+
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     if a.ndim == 0:
         a = a[None]
@@ -2131,7 +2208,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 
 cpdef ndarray _adv_getitem(ndarray a, slices):
-    # slices consist of either None or ndarray of dim>=1
+    # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, o
 

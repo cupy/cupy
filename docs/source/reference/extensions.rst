@@ -37,6 +37,11 @@ snapshot_object
 ---------------
 .. autofunction:: snapshot_object
 
+PlotReport
+----------
+.. autoclass:: PlotReport
+   :members:
+
 PrintReport
 -----------
 .. autoclass:: PrintReport
