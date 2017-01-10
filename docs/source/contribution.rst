@@ -130,14 +130,17 @@ Once you send a pull request, your coding style is automatically checked by `Tra
 The reviewing process starts after the check passes.
 
 The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
-The document should be careful the following:
-* For documents which have significant overlap with those of NumPy, it is better to add some remarks that the document
-  is actually copied (and modified in a case). It is better to just explain the functionality in a short paragraph and
-  refers to the corresponding NumPy function so that users can read the detailed document, but if it is difficult,
-  it is ok to include a complete copy of the document with such a remark.
-* If the CuPy function only implements a limited amount of features of the original NumPy function,
-  it should be clearly noted in the document, and the document itself should only cover the detailed explanation of
-  what is actually implemented in CuPy.
+Please note the followings when writing the document.
+* In order to identify overlapping parts, it is preferable to add some remarks
+  that this document is just copied or altered from the original one. It is
+  also preferable to briefly explain the specification of the function in a
+  short paragraph, and refer to the corresponding function in NumPy so that
+  users can read the detailed document. However, it is possible to include a
+  complete copy of the document with such a remark if users cannot summarize
+  in such a way.
+* If a function in CuPy only implements a limited amount of features in the
+  original one, users should explicitly describe only what is implemented in
+  the document.
 
 
 Testing Guidelines

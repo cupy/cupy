@@ -21,7 +21,7 @@ THE SOFTWARE.
 
 
 ######################################################################
-# The CuPy is designed based on NumPy's API design.
+# The CuPy is designed based on NumPy's API.
 # CuPy's source code and documents contain the original NumPy ones.
 ######################################################################
 Copyright (c) 2005-2016, NumPy Developers.
