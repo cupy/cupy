@@ -57,6 +57,7 @@ from chainer.functions.loss import contrastive  # NOQA
 from chainer.functions.loss import crf1d  # NOQA
 from chainer.functions.loss import cross_covariance  # NOQA
 from chainer.functions.loss import ctc  # NOQA
+from chainer.functions.loss import decov  # NOQA
 from chainer.functions.loss import hinge  # NOQA
 from chainer.functions.loss import huber_loss  # NOQA
 from chainer.functions.loss import mean_absolute_error  # NOQA
@@ -217,6 +218,8 @@ from chainer.functions.loss.cross_covariance import cross_covariance  # NOQA
 from chainer.functions.loss.cross_covariance import CrossCovariance  # NOQA
 from chainer.functions.loss.ctc import connectionist_temporal_classification  # NOQA
 from chainer.functions.loss.ctc import ConnectionistTemporalClassification  # NOQA
+from chainer.functions.loss.decov import decov  # NOQA
+from chainer.functions.loss.decov import DeCov  # NOQA
 from chainer.functions.loss.hinge import hinge  # NOQA
 from chainer.functions.loss.hinge import Hinge  # NOQA
 from chainer.functions.loss.huber_loss import huber_loss  # NOQA
