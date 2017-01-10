@@ -329,9 +329,10 @@ cpdef streamAddCallback(size_t stream, callback, size_t arg,
                         unsigned int flags=0):
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
-    status = cudaStreamAddCallback(
-        <driver.Stream>stream, <StreamCallback>_streamCallbackFunc,
-        <void*>func_arg, flags)
+    with nogil:
+        status = cudaStreamAddCallback(
+            <driver.Stream>stream, <StreamCallback>_streamCallbackFunc,
+            <void*>func_arg, flags)
     check_status(status)
 
 
