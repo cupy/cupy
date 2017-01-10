@@ -23,6 +23,7 @@ from cupy import linalg  # NOQA
 from cupy import logic  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import math  # NOQA
+from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
 from cupy import statistics  # NOQA
@@ -358,6 +359,11 @@ from cupy.math.misc import minimum  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+
+# -----------------------------------------------------------------------------
+# Padding
+# -----------------------------------------------------------------------------
+pad = padding.pad.pad
 
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting

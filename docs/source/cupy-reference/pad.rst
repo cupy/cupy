@@ -1,0 +1,4 @@
+Padding
+================================
+
+.. autofunction:: cupy.pad

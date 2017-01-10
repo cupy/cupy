@@ -389,6 +389,11 @@ Statistics
 
 :func:`bincount`
 
+Padding
+~~~~~~~~~~
+
+:func:`pad`
+
 Other
 ~~~~~
 
