@@ -176,7 +176,8 @@ def choice(a, size=None, replace=True, p=None):
     elif a.ndim != 1:
         raise ValueError('a must be 1-dimensional')
     else:
-        if len(a) == 0:
+        a_size = len(a)
+        if a_size == 0:
             raise ValueError('a must be non-empty')
 
     if p is not None:
@@ -190,5 +191,31 @@ def choice(a, size=None, replace=True, p=None):
         p_sum = cupy.sum(p).get()
         if not numpy.allclose(p_sum, 1):
             raise ValueError('probabilities do not sum to 1')
+
+    shape = size
+    if shape is not None:
+        size = cupy.prod(shape)
+    else:
+        size = 1
+
+    # Actual sampling
+    if replace:
+        if p is not None:
+            p = cupy.broadcast_to(p, (size, a_size))
+            index = cupy.argmax(cupy.log(p) -
+                                cupy.random.gumbel(size=(size, a_size)),
+                                axis=1)
+            index.shape = shape
+        else:
+            index = cupy.random.randint(0, a_size, size=shape)
+    else:
+        if size > a_size:
+            raise ValueError('Cannot take a larger sample than population \
+                              when \'replace=False\'')
+        if p is not None:
+            pass  # Not yet
+        else:
+            pass  # Not yet
+
     rs = generator.get_random_state()  # fix
     return rs.random_choice(a=a, size=size, replace=replace, p=p)  # fix
