@@ -276,7 +276,7 @@ cdef class ndarray:
         """
         # TODO(beam2d): Support ordering, casting, and subok option
         dtype = numpy.dtype(dtype)
-        if dtype == self.dtype:
+        if dtype.type == self.dtype.type:
             if copy:
                 return self.copy()
             else:
