@@ -1,16 +1,16 @@
 def scatter_add(a, slices, value):
     """Adds given values to specified elements of an array.
 
-    This function adds given ``value`` to specified elements of ``a``.
-    When all of the indices target different locations, :func:`scatter_add`
-    does operation equivalent to ``a[slices] = a[slices] + value``.
-    When there are indices targeting the same location, :func:`scatter_add`
-    uses all of the values for addition. On the other hand,
-    ``a[slices] = a[slices] + value`` only adds the contribution from one of
-    the indices targeting the same location.
+    It adds ``value`` to the specified elements of ``a``.
+    If all of the indices target different locations, the operation of
+    :func:`scatter_add` is equivalent to ``a[slices] = a[slices] + value``.
+    If there are multiple elements targeting the same location,
+    :func:`scatter_add` uses all of these values for addition. On the other
+    hand, ``a[slices] = a[slices] + value`` only adds the contribution from one
+    of the indices targeting the same location.
 
-    Similarly to array indexing, negative indices are interpreted as counting
-    from the end of an axis.
+    Note that just like an array indexing, negative indices are interpreted as
+    counting from the end of an array.
 
     Example
     -------
