@@ -4,6 +4,15 @@ import six
 from chainer import cuda
 
 
+def to_device(device, x):
+    if device is None:
+        return x
+    elif device < 0:
+        return cuda.to_cpu(x)
+    else:
+        return cuda.to_gpu(x, device, cuda.Stream.null)
+
+
 def concat_examples(batch, device=None, padding=None):
     """Concatenates a list of examples into array(s).
 
@@ -50,15 +59,6 @@ def concat_examples(batch, device=None, padding=None):
     if len(batch) == 0:
         raise ValueError('batch is empty')
 
-    if device is None:
-        def to_device(x):
-            return x
-    elif device < 0:
-        to_device = cuda.to_cpu
-    else:
-        def to_device(x):
-            return cuda.to_gpu(x, device, cuda.Stream.null)
-
     first_elem = batch[0]
 
     if isinstance(first_elem, tuple):
@@ -67,7 +67,7 @@ def concat_examples(batch, device=None, padding=None):
             padding = [padding] * len(first_elem)
 
         for i in six.moves.range(len(first_elem)):
-            result.append(to_device(_concat_arrays(
+            result.append(to_device(device, _concat_arrays(
                 [example[i] for example in batch], padding[i])))
 
         return tuple(result)
@@ -78,13 +78,13 @@ def concat_examples(batch, device=None, padding=None):
             padding = {key: padding for key in first_elem}
 
         for key in first_elem:
-            result[key] = to_device(_concat_arrays(
+            result[key] = to_device(device, _concat_arrays(
                 [example[key] for example in batch], padding[key]))
 
         return result
 
     else:
-        return to_device(_concat_arrays(batch, padding))
+        return to_device(device, _concat_arrays(batch, padding))
 
 
 def _concat_arrays(arrays, padding):
