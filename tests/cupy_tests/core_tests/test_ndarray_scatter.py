@@ -70,7 +70,7 @@ class TestScatterAddDuplicateVectorValue(unittest.TestCase):
 
 
 @testing.gpu
-class TestScatterAddCupyArguments(unittest.TestCase):
+class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32])
     def test_scatter_add_cupy_arguments(self, dtype):
