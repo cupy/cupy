@@ -2211,9 +2211,12 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
         _scatter_update_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'add':
-        if not issubclass(v.dtype.type, (numpy.int32, numpy.float32)):
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32 and float32 as data type')
+                'scatter_add only supports int32, float32, uint32, uint64 as'
+                'data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:

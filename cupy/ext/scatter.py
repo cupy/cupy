@@ -32,7 +32,9 @@ def scatter_add(a, slices, value):
         v (array-like): Values to increment ``a`` at referenced locations.
 
     .. note::
-        Supports only arrays of type ``numpy.float32`` and ``numpy.int32``.
+        It only supports types that are supported by CUDA's atomicAdd.
+        The supported types are ``numpy.float32``, ``numpy.int32``,
+        ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
 
     .. note::
         :func:`scatter_add` does not raise an error when indices exceed size of
