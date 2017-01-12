@@ -60,7 +60,7 @@ class TestPadNumpybug(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_pad_highdim_default(self, xp, dtype):
         array = xp.arange(6, dtype=dtype).reshape([2, 3])
-        pad_width = numpy.array([[1, 2], [3, 4]])
+        pad_width = [[1, 2], [3, 4]]
         constant_values = [[1, 2], [3, 4]]
         a = xp.pad(array, pad_width, mode='constant',
                    constant_values=constant_values)
