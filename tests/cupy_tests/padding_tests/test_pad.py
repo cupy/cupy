@@ -37,6 +37,8 @@ class TestPadDefault(unittest.TestCase):
      'constant_values': [[3, 4], [5, 6]]},
 )
 @testing.gpu
+# Old numpy does not work with multi-dimensional constant_values
+@testing.with_requires('numpy>=1.11.1')
 class TestPad(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -98,6 +100,7 @@ class TestPadSpecial(unittest.TestCase):
      'notallowedkeyword': 3},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.11.1')  # Old numpy fails differently
 class TestPadFailure(unittest.TestCase):
 
     _multiprocess_can_split_ = True
