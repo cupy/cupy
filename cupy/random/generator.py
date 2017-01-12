@@ -270,11 +270,10 @@ class RandomState(object):
             if not numpy.allclose(p_sum, 1):
                 raise ValueError('probabilities do not sum to 1')
 
+        if size is None:
+            raise NotImplementedError
         shape = size
-        if shape is not None:
-            size = cupy.prod(shape)
-        else:
-            size = 1
+        size = cupy.prod(shape)
 
         if replace:
             if p is not None:
@@ -290,9 +289,28 @@ class RandomState(object):
                 raise ValueError('Cannot take a larger sample than population \
                                   when \'replace=False\'')
             if p is not None:
-                pass  # Not yet
+                if cupy.count_nonzero(p > 0) < size:
+                    raise ValueError('Fewer non-zero entries in p than size')
+                n_uniq = 0
+                # fix
+                # found = cupy.zeros(shape, dtype=cupy.int32)
+                # flat_found = found.ravel()
+                while n_uniq < size:
+                    raise NotImplementedError
             else:
-                pass  # Not yet
+                # e.g.) cupy.random.choice(a, size, replace=False, p=None)
+                raise NotImplementedError
+
+        if a.ndim == 0:
+            # e.g) cupy.random.choice(a=5, size, replace, p)
+            return index
+
+        if index.ndim == 0:
+            # e.g.) cupy.random.choice(a=[1, 2, 3], size=(), True, p=None)
+            # res.ndim == 0
+            res = cupy.empty((), dtype=a.dtype)
+            res[()] = a[index]
+            return res
 
         return a[index]
 
