@@ -330,7 +330,6 @@ def customize_compiler_for_nvcc(compiler):
         if os.path.splitext(src)[1] == '.cu':
             compiler.set_executable('compiler_so', nvcc_path)
             postargs = _nvcc_gencode_options() + ['--ptxas-options=-v',
-                                                  '-c',
                                                   '--compiler-options',
                                                   "'-fPIC'"]
             print('NVCC options:', postargs)
