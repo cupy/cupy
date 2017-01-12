@@ -402,6 +402,8 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+from cupy.ext.scatter import scatter_add  # NOQA
+
 
 def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
