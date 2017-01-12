@@ -25,9 +25,9 @@ except ImportError:
 def _check_available():
     if not _available:
         warnings.warn('matplotlib is not installed on your environment, '
-                      'so that nothing will be plotted at this time. '
+                      'so nothing will be plotted at this time. '
                       'Please install matplotlib to plot figures.\n\n'
-                      '$ pip install matplotlib')
+                      '  $ pip install matplotlib\n')
 
 
 class PlotReport(extension.Extension):
