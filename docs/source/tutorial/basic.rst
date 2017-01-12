@@ -416,7 +416,7 @@ just replace :func:`~serializers.save_npz` and :func:`~serializers.load_npz` by 
 
 Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
+
 Now you can solve a multiclass classification task using a multi-layer perceptron (MLP).
 We use a hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing de facto "hello world" examples used in machine learning.
 This MNIST example is also found in the `examples/mnist <https://github.com/pfnet/chainer/tree/master/examples/mnist>`_ directory of the official repository.
