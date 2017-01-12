@@ -100,6 +100,12 @@ cpdef sgemmBatched(size_t handle, int transa, int transb,
 # BLAS extension
 ###############################################################################
 
+cpdef sgeam(size_t handle, int transa, int transb, int m, int n,
+            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
+            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t C, int ldc)
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
 cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,
