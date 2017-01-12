@@ -1,6 +1,3 @@
-import numpy
-
-import cupy
 from cupy.random import distributions
 from cupy.random import generator
 
@@ -147,7 +144,7 @@ def choice(a, size=None, replace=True, p=None):
 
     Args:
         a (1-D array-like or int):
-            If a ``cupy.ndarray`` ,
+            If an array-like,
             a random sample is generated from its elements.
             If an int, the random sample is generated as if a was
             ``cupy.arange(n)``
@@ -165,57 +162,5 @@ def choice(a, size=None, replace=True, p=None):
     .. seealso:: :func:`numpy.random.choice`
 
     """
-    a = cupy.array(a, copy=False)  # fix
-    if a.ndim == 0:
-        try:
-            a_size = a.item()
-        except TypeError:
-            raise ValueError('a must be 1-dimensional or an integer')
-        if a_size <= 0:
-            raise ValueError('a must be greater than 0')
-    elif a.ndim != 1:
-        raise ValueError('a must be 1-dimensional')
-    else:
-        a_size = len(a)
-        if a_size == 0:
-            raise ValueError('a must be non-empty')
-
-    if p is not None:
-        p = cupy.array(p)
-        if p.ndim != 1:
-            raise ValueError('p must be 1-dimensional')
-        if len(p) != a_size:
-            raise ValueError('a and p must have same size')
-        if not (p >= 0).all():
-            raise ValueError('probabilities are not non-negative')
-        p_sum = cupy.sum(p).get()
-        if not numpy.allclose(p_sum, 1):
-            raise ValueError('probabilities do not sum to 1')
-
-    shape = size
-    if shape is not None:
-        size = cupy.prod(shape)
-    else:
-        size = 1
-
-    # Actual sampling
-    if replace:
-        if p is not None:
-            p = cupy.broadcast_to(p, (size, a_size))
-            index = cupy.argmax(cupy.log(p) -
-                                cupy.random.gumbel(size=(size, a_size)),
-                                axis=1)
-            index.shape = shape
-        else:
-            index = cupy.random.randint(0, a_size, size=shape)
-    else:
-        if size > a_size:
-            raise ValueError('Cannot take a larger sample than population \
-                              when \'replace=False\'')
-        if p is not None:
-            pass  # Not yet
-        else:
-            pass  # Not yet
-
-    rs = generator.get_random_state()  # fix
-    return rs.random_choice(a=a, size=size, replace=replace, p=p)  # fix
+    rs = generator.get_random_state()
+    return rs.choice(a=a, size=size, replace=replace, p=p)

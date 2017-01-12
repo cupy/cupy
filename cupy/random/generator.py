@@ -243,6 +243,58 @@ class RandomState(object):
             :meth:`numpy.random.choice`
 
         """
+        a = cupy.array(a)
+        if a.ndim == 0:
+            try:
+                a_size = a.item()
+            except TypeError:
+                raise ValueError('a must be 1-dimensional or an integer')
+            if a_size <= 0:
+                raise ValueError('a must be greater than 0')
+        elif a.ndim != 1:
+            raise ValueError('a must be 1-dimensional')
+        else:
+            a_size = len(a)
+            if a_size == 0:
+                raise ValueError('a must be non-empty')
+
+        if p is not None:
+            p = cupy.array(p)
+            if p.ndim != 1:
+                raise ValueError('p must be 1-dimensional')
+            if len(p) != a_size:
+                raise ValueError('a and p must have same size')
+            if not (p >= 0).all():
+                raise ValueError('probabilities are not non-negative')
+            p_sum = cupy.sum(p).get()
+            if not numpy.allclose(p_sum, 1):
+                raise ValueError('probabilities do not sum to 1')
+
+        shape = size
+        if shape is not None:
+            size = cupy.prod(shape)
+        else:
+            size = 1
+
+        if replace:
+            if p is not None:
+                p = cupy.broadcast_to(p, (size, a_size))
+                index = cupy.argmax(cupy.log(p) -
+                                    cupy.random.gumbel(size=(size, a_size)),
+                                    axis=1)
+                index.shape = shape
+            else:
+                index = cupy.random.randint(0, a_size, size=shape)
+        else:
+            if size > a_size:
+                raise ValueError('Cannot take a larger sample than population \
+                                  when \'replace=False\'')
+            if p is not None:
+                pass  # Not yet
+            else:
+                pass  # Not yet
+
+        return a[index]
 
 
 def seed(seed=None):
