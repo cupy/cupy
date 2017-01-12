@@ -131,6 +131,7 @@ The reviewing process starts after the check passes.
 
 The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
 Please note the followings when writing the document.
+
 * In order to identify overlapping parts, it is preferable to add some remarks
   that this document is just copied or altered from the original one. It is
   also preferable to briefly explain the specification of the function in a
