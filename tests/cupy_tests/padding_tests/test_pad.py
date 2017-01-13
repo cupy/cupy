@@ -9,9 +9,9 @@ from cupy import testing
     {'array': numpy.arange(6).reshape([2, 3]), 'pad_width': 1,
      'mode': 'constant'},
     {'array': numpy.arange(6).reshape([2, 3]),
-     'pad_width': numpy.array([1, 2]), 'mode': 'constant'},
+     'pad_width': [1, 2], 'mode': 'constant'},
     {'array': numpy.arange(6).reshape([2, 3]),
-     'pad_width': numpy.array([[1, 2], [3, 4]]), 'mode': 'constant'},
+     'pad_width': [[1, 2], [3, 4]], 'mode': 'constant'},
 )
 @testing.gpu
 class TestPadDefault(unittest.TestCase):
@@ -30,13 +30,15 @@ class TestPadDefault(unittest.TestCase):
     {'array': numpy.arange(6).reshape([2, 3]), 'pad_width': 1,
      'mode': 'constant', 'constant_values': 3},
     {'array': numpy.arange(6).reshape([2, 3]),
-     'pad_width': numpy.array([1, 2]), 'mode': 'constant',
-     'constant_values': numpy.array([3, 4])},
+     'pad_width': [1, 2], 'mode': 'constant',
+     'constant_values': [3, 4]},
     {'array': numpy.arange(6).reshape([2, 3]),
-     'pad_width': numpy.array([[1, 2], [3, 4]]), 'mode': 'constant',
-     'constant_values': numpy.array([[3, 4], [5, 6]])},
+     'pad_width': [[1, 2], [3, 4]], 'mode': 'constant',
+     'constant_values': [[3, 4], [5, 6]]},
 )
 @testing.gpu
+# Old numpy does not work with multi-dimensional constant_values
+@testing.with_requires('numpy>=1.11.1')
 class TestPad(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -60,7 +62,7 @@ class TestPadNumpybug(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_pad_highdim_default(self, xp, dtype):
         array = xp.arange(6, dtype=dtype).reshape([2, 3])
-        pad_width = numpy.array([[1, 2], [3, 4]])
+        pad_width = [[1, 2], [3, 4]]
         constant_values = [[1, 2], [3, 4]]
         a = xp.pad(array, pad_width, mode='constant',
                    constant_values=constant_values)
@@ -98,6 +100,7 @@ class TestPadSpecial(unittest.TestCase):
      'notallowedkeyword': 3},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.11.1')  # Old numpy fails differently
 class TestPadFailure(unittest.TestCase):
 
     _multiprocess_can_split_ = True
