@@ -187,7 +187,7 @@ class Trainer(object):
                 is used instead. If the trigger is not callable, it is passed
                 to :class:`IntervalTrigger` to build an interval trigger. If
                 it is ``None`` and the extension does not have the trigger
-                attirbute, the extension is triggered at every iteration as
+                attribute, the extension is triggered at every iteration as
                 default.
             priority (int): Invocation priority of the extension. Extensions
                 are invoked in the descending order of priorities in each
