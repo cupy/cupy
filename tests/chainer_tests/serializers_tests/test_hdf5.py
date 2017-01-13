@@ -263,24 +263,17 @@ class TestGroupHierachy(unittest.TestCase):
         with h5py.File(self.temp_file_path) as h5:
             self._load(h5, self.optimizer, 'test')
 
-original_import = __import__
-
-
-def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
-    if name == 'h5py':
-        raise ImportError()
-    else:
-        return original_import(name, _globals, _locals, fromlist, level)
-
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestNoH5py(unittest.TestCase):
 
     def setUp(self):
-        __builtins__['__import__'] = no_h5py
+        # Remove h5py from sys.modules to emulate situation that h5py is not
+        # installed.
+        sys.modules['h5py'] = None
 
     def tearDown(self):
-        __builtins__['__import__'] = original_import
+        sys.modules['h5py'] = h5py
 
     def test_raise(self):
         del sys.modules['chainer.serializers.hdf5']
@@ -288,6 +281,7 @@ class TestNoH5py(unittest.TestCase):
         del sys.modules['chainer.serializers']
 
         import chainer.serializers
+        self.assertFalse(chainer.serializers.hdf5._available)
         with self.assertRaises(RuntimeError):
             chainer.serializers.save_hdf5(None, None, None)
         with self.assertRaises(RuntimeError):
