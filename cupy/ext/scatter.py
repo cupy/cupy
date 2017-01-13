@@ -14,13 +14,14 @@ def scatter_add(a, slices, value):
 
     Example
     -------
+    >>> import numpy
     >>> import cupy
-    >>> a = cupy.zeros((6,))
+    >>> a = cupy.zeros((6,), dtype=numpy.float32)
     >>> i = cupy.array([1, 0, 1])
     >>> v = cupy.array([1., 1., 1.])
     >>> cupy.scatter_add(a, i, v);
     >>> a
-    array([ 1.,  2.,  0.,  0.,  0.,  0.])
+    array([ 1.,  2.,  0.,  0.,  0.,  0.], dtype=float32)
 
     Args:
         a (ndarray): An array that gets added.
