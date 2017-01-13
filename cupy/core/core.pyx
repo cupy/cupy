@@ -2083,7 +2083,7 @@ cdef _scatter_update_kernel = ElementwiseKernel(
       int ri = i % rdim;
       a[(li * adim + wrap_indices) * rdim + ri] = v;
     ''',
-    'scatter_update')
+    'cupy_scatter_update')
 
 
 cdef _scatter_add_kernel = ElementwiseKernel(
@@ -2096,7 +2096,7 @@ cdef _scatter_add_kernel = ElementwiseKernel(
       int ri = i % rdim;
       atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
     ''',
-    'scatter_add')
+    'cupy_scatter_add')
 
 
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
