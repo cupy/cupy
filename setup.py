@@ -66,6 +66,7 @@ setup(
               'cupy.core',
               'cupy.creation',
               'cupy.cuda',
+              'cupy.ext',
               'cupy.indexing',
               'cupy.io',
               'cupy.linalg',
