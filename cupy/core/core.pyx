@@ -1113,7 +1113,7 @@ cdef class ndarray:
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
                     if i == 0 and internal.vector_equal(self._shape, s._shape):
-                        return _boolean_array_indexing(self, s)
+                        return _getitem_mask(self, s)
                     else:
                         raise ValueError('Boolean array indexing is supported '
                                          'only for same sized array.')
@@ -2116,7 +2116,7 @@ cdef _boolean_array_indexing_nth = ElementwiseKernel(
     'cupy_boolean_array_indexing_nth')
 
 
-cpdef ndarray _boolean_array_indexing(ndarray a, ndarray boolean_array):
+cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
     a = a.flatten()
     boolean_array = boolean_array.flatten()
     nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
