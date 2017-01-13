@@ -92,12 +92,12 @@ cdef class ndarray:
 
         if order == 'C':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, 'C')
+                self._shape, self.itemsize, is_c_contiguous=True)
             self._c_contiguous = True
             self._update_f_contiguity()
         elif order == 'F':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, 'F')
+                self._shape, self.itemsize, is_c_contiguous=False)
             self._f_contiguous = True
             self._update_c_contiguity()
         else:

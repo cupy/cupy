@@ -16,7 +16,8 @@ cdef void get_reduced_dims(
     vector.vector[Py_ssize_t]& reduced_strides)
 
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-    vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize, str order) except *
+    vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+    bint is_c_contiguous) except *
 
 cpdef bint get_c_contiguity(
     vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
