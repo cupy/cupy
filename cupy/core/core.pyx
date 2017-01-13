@@ -1219,6 +1219,8 @@ cdef class ndarray:
 
         * combination of basic indexing and an integer array
 
+        * a boolean array
+
         .. note::
 
             CuPy handles out-of-bounds indices differently from NumPy when
@@ -2109,6 +2111,13 @@ cdef _scatter_add_kernel = ElementwiseKernel(
     'cupy_scatter_add')
 
 
+cdef _scatter_update_mask_kernel = ElementwiseKernel(
+    'T v, bool mask',
+    'T a',
+    'if (mask) a = v',
+    'cupy_scatter_update_mask')
+
+
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
     'T a, bool boolean_array, S nth',
     'raw T out',
@@ -2235,8 +2244,21 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
         raise ValueError('provided op is not supported')
 
 
+cpdef _scatter_op_mask(ndarray a, ndarray mask, v, op):
+    if not isinstance(v, ndarray):
+        v = array(v, dtype=a.dtype)
+    v = v.astype(a.dtype)
+    v = broadcast_to(v, a.shape)
+
+    if op == 'update':
+        _scatter_update_mask_kernel(v, mask, a)
+    else:
+        raise ValueError('provided op is not supported')
+
+
 cpdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
+    cdef Py_ssize_t n_not_slice_none, mask_i
     cdef Py_ssize_t ellipsis_size
     cdef ndarray v, x, y
 
@@ -2270,6 +2292,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     # Check if advanced is true,
     # and convert list/NumPy arrays to cupy.ndarray
     advanced = False
+    mask_exists = False
     for i, s in enumerate(slices):
         if isinstance(s, (list, numpy.ndarray)):
             s = array(s)
@@ -2277,10 +2300,29 @@ cpdef _scatter_op(ndarray a, slices, value, op):
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):
                 advanced = True
+            elif issubclass(s.dtype.type, numpy.bool_):
+                mask_exists = True
             else:
                 raise IndexError(
-                    'currently, only integer array is supported for '
-                    'advanced indexing')
+                    'arrays used as indices must be of integer or boolean '
+                    'type. (actual: {})'.format(s.dtype.type))
+
+    if mask_exists:
+        n_not_slice_none = 0
+        for i, s in enumerate(slices):
+            if not isinstance(s, slice) or s != slice(None):
+                n_not_slice_none += 1
+                if issubclass(s.dtype.type, numpy.bool_):
+                    mask_i = i
+        if n_not_slice_none != 1:
+            raise ValueError('currently, CuPy only supports slices that '
+                             'consist of one boolean array.')
+        mask = slices[mask_i]
+        mask = mask.reshape(
+            mask_i * (1,) + mask.shape + (a.ndim - mask_i - mask.ndim) * (1,))
+        mask = broadcast_to(mask, a.shape)
+        _scatter_op_mask(a, mask, value, op)
+        return
 
     if advanced:
         # split slices that can be handled by basic-indexing
