@@ -81,12 +81,9 @@ class TestScatterAdd(unittest.TestCase):
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
-    @testing.for_dtypes(
+    @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong], name='src_dtype')
-    @testing.for_dtypes(
-        [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong], name='dst_dtype')
+         numpy.ulonglong], names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes(self, src_dtype, dst_dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
