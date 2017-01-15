@@ -70,6 +70,16 @@ class TestBasic(unittest.TestCase):
     def test_zeros_int(self, xp, dtype):
         return xp.zeros(3, dtype=dtype)
 
+    def test_zeros_strides(self):
+        a = numpy.zeros((2, 3), dtype='d', order='C')
+        b = cupy.zeros((2, 3), dtype='d', order='C')
+        self.assertEqual(b.strides, a.strides)
+
+    def test_zeros_strides_f(self):
+        a = numpy.zeros((2, 3), dtype='d', order='F')
+        b = cupy.zeros((2, 3), dtype='d', order='F')
+        self.assertEqual(b.strides, a.strides)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_zeros_like(self, xp, dtype):
