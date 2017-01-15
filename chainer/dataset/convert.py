@@ -5,6 +5,28 @@ from chainer import cuda
 
 
 def to_device(device, x):
+    """Send an array to a given device.
+
+    This method send a given array to a given device. This method is used in
+    :func:`~chainer.dataset.concat_examples`.
+    You can also use this method in a custom converter method used in
+    :class:`~chainer.training.Updater` and :class:`~chainer.training.Extension`
+    such as :class:`~chainer.training.StandardUpdater` and
+    :class:`~chainer.training.extensions.Evaluator`.
+
+    .. see:: :func:`chainer.dataset.concat_examples`
+
+    Args:
+        device (int or None): Device ID to which an array is sent. If it is
+            negative value, an array is sent to CPU. If it is positive, an
+            array is sent to GPU with the given ID. If it is ``None``, an
+            array is left in the original device.
+        x (numpy.ndarray or cupy.ndarray): An array to send.
+
+    Returns:
+        Converted array.
+
+    """
     if device is None:
         return x
     elif device < 0:
