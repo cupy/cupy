@@ -43,7 +43,7 @@ between CuPy's functions and corresponding NumPy's ones.
 Parameterized dtype Test
 ------------------------
 
-The following decorators offers the standard way for
+The following decorators offer the standard way for
 parameterized test with respect to single or the
 combination of dtype(s).
 
