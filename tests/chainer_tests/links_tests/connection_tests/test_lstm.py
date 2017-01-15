@@ -41,9 +41,10 @@ class TestLSTM(unittest.TestCase):
         xp = self.link.xp
         x1 = chainer.Variable(x1_data) if self.input_variable else x1_data
         h1 = self.link(x1)
-        c0 = chainer.Variable(xp.zeros((len(self.x1), self.out_size),
-                                       dtype=self.x1.dtype))
-        c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x1))
+        with cuda.get_device(x1_data):
+            c0 = chainer.Variable(xp.zeros((len(self.x1), self.out_size),
+                                           dtype=self.x1.dtype))
+            c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x1))
         testing.assert_allclose(h1.data, h1_expect.data)
         testing.assert_allclose(self.link.h.data, h1_expect.data)
         testing.assert_allclose(self.link.c.data, c1_expect.data)
@@ -53,9 +54,10 @@ class TestLSTM(unittest.TestCase):
         h1_in, h1_rest = functions.split_axis(
             self.link.h.data, [batch], axis=0)
         y2 = self.link(x2)
-        c2_expect, y2_expect = \
-            functions.lstm(c1_expect,
-                           self.link.upward(x2) + self.link.lateral(h1_in))
+        with cuda.get_device(x1):
+            c2_expect, y2_expect = \
+                functions.lstm(c1_expect,
+                               self.link.upward(x2) + self.link.lateral(h1_in))
         testing.assert_allclose(y2.data, y2_expect.data)
         testing.assert_allclose(self.link.h.data[:batch], y2_expect.data)
         testing.assert_allclose(self.link.h.data[batch:], h1_rest.data)
@@ -76,6 +78,16 @@ class TestLSTM(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
                            cuda.to_gpu(self.x3))
+
+    @attr.multi_gpu(2)
+    def test_forward_gpu_multi(self):
+        with cuda.get_device(0):
+            self.link.to_gpu()
+            x1 = cuda.to_gpu(self.x1)
+            x2 = cuda.to_gpu(self.x2)
+            x3 = cuda.to_gpu(self.x3)
+        with cuda.get_device(1):
+            self.check_forward(x1, x2, x3)
 
 
 class TestLSTMState(unittest.TestCase):
@@ -249,9 +261,10 @@ class TestStatelessLSTM(unittest.TestCase):
         xp = self.link.xp
         x = chainer.Variable(x_data) if self.input_variable else x_data
         c1, h1 = self.link(None, None, x)
-        c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
-                                       dtype=self.x.dtype))
-        c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
+        with cuda.get_device(x_data):
+            c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
+                                           dtype=self.x.dtype))
+            c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
         testing.assert_allclose(h1.data, h1_expect.data)
         testing.assert_allclose(c1.data, c1_expect.data)
 
@@ -269,6 +282,14 @@ class TestStatelessLSTM(unittest.TestCase):
     def test_forward_gpu(self):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
+
+    @attr.multi_gpu(2)
+    def test_forward_gpu_multi(self):
+        with cuda.get_device(0):
+            self.link.to_gpu()
+            x = cuda.to_gpu(self.x)
+        with cuda.get_device(1):
+            self.check_forward(x)
 
 
 testing.run_module(__name__, __file__)

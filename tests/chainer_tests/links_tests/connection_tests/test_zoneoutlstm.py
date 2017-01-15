@@ -12,28 +12,28 @@ from chainer.testing import attr
 
 def _sigmoid(x):
     xp = cuda.get_array_module(x)
-    return 1 / (1 + xp.exp(-x))
+    half = x.dtype.type(0.5)
+    return xp.tanh(x * half) * half + half
 
 
 def _zoneoutlstm(func, c, h, x, c_creator, h_creator):
     xp = cuda.get_array_module(x)
+    with cuda.get_device(x):
+        lstm_in = x.dot(func.upward.W.data.T)
+        lstm_in += h.dot(func.lateral.W.data.T)
+        lstm_in = xp.reshape(lstm_in, (len(lstm_in),
+                                       lstm_in.shape[1] // 4,
+                                       4))
+        a, i, f, o = xp.split(lstm_in, 4, 2)
+        a = xp.reshape(a, (len(a), a.shape[1]))
+        i = xp.reshape(i, (len(i), i.shape[1]))
+        f = xp.reshape(f, (len(f), f.shape[1]))
+        o = xp.reshape(o, (len(o), o.shape[1]))
 
-    lstm_in = x.dot(func.upward.W.data.T)
-    lstm_in += h.dot(func.lateral.W.data.T)
-    lstm_in = xp.reshape(lstm_in, (len(lstm_in),
-                                   lstm_in.shape[1] // 4,
-                                   4))
-    a, i, f, o = xp.split(lstm_in, 4, 2)
-    a = xp.reshape(a, (len(a), a.shape[1]))
-    i = xp.reshape(i, (len(i), i.shape[1]))
-    f = xp.reshape(f, (len(f), f.shape[1]))
-    o = xp.reshape(o, (len(o), o.shape[1]))
-
-    c_tmp = xp.tanh(a) * _sigmoid(i) + _sigmoid(f) * c
-    c_next = c * c_creator.flag_h + c_tmp * c_creator.flag_x
-    h_next = h * h_creator.flag_h + \
-        (_sigmoid(o) * xp.tanh(c_tmp)) * h_creator.flag_x
-
+        c_tmp = xp.tanh(a) * _sigmoid(i) + _sigmoid(f) * c
+        c_next = c * c_creator.flag_h + c_tmp * c_creator.flag_x
+        h_next = h * h_creator.flag_h + \
+            (_sigmoid(o) * xp.tanh(c_tmp)) * h_creator.flag_x
     return c_next, h_next
 
 
@@ -96,6 +96,16 @@ class TestZoneoutlstm(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.c),
                            cuda.to_gpu(self.h),
                            cuda.to_gpu(self.x))
+
+    @attr.multi_gpu(2)
+    def test_forward_gpu_multi(self):
+        with cuda.get_device(0):
+            self.link.to_gpu()
+            c = cuda.to_gpu(self.c)
+            h = cuda.to_gpu(self.h)
+            x = cuda.to_gpu(self.x)
+        with cuda.get_device(1):
+            self.check_forward(c, h, x)
 
     def check_backward(self, c_data, h_data, x_data, y_grad):
         x = chainer.Variable(x_data)
