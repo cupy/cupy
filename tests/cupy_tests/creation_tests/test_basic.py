@@ -19,17 +19,19 @@ class TestBasic(unittest.TestCase):
         a.fill(0)
         return a
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_empty_scalar(self, xp, dtype):
-        a = xp.empty(None, dtype=dtype)
+    def test_empty_scalar(self, xp, dtype, order):
+        a = xp.empty(None, dtype=dtype, order=order)
         a.fill(0)
         return a
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_empty_int(self, xp, dtype):
-        a = xp.empty(3, dtype=dtype)
+    def test_empty_int(self, xp, dtype, order):
+        a = xp.empty(3, dtype=dtype, order=order)
         a.fill(0)
         return a
 
@@ -57,20 +59,23 @@ class TestBasic(unittest.TestCase):
     def test_identity(self, xp, dtype):
         return xp.identity(4, dtype)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros(self, xp, dtype):
-        return xp.zeros((2, 3, 4), dtype=dtype)
+    def test_zeros(self, xp, dtype, order):
+        return xp.zeros((2, 3, 4), dtype=dtype, order=order)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar(self, xp, dtype):
-        return xp.zeros(None, dtype=dtype)
+    def test_zeros_scalar(self, xp, dtype, order):
+        return xp.zeros(None, dtype=dtype, order=order)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros_int(self, xp, dtype):
-        return xp.zeros(3, dtype=dtype)
+    def test_zeros_int(self, xp, dtype, order):
+        return xp.zeros(3, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     def test_zeros_strides(self, order):
