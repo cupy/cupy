@@ -1161,7 +1161,7 @@ cdef class ndarray:
             if sum(arr_slices_mask) == 1:
                 axis = arr_slices_mask.index(True)
                 return a.take(adv_slices[axis], axis)
-            return _adv_getitem(a, adv_slices)
+            return _getitem_multiple(a, adv_slices)
 
         # Create new shape and stride
         j = 0
@@ -1219,7 +1219,7 @@ cdef class ndarray:
 
         * one integer array
 
-        * combination of basic indexing and an integer array
+        * combination of basic indexing and integer arrays
 
         * a boolean array
 
@@ -2208,7 +2208,18 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
             a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
 
 
-cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
+cpdef _scatter_op_single(ndarray a, ndarray indices, v,
+                         int li=0, int ri=0, op=''):
+    # When op == 'update', this function behaves similarly to
+    # a code below using NumPy under the condition that a = a._reshape(shape)
+    # does not invoke copy.
+    #
+    # shape = a[:li] +\
+    #     (numpy.prod(a[li:ri+1]),) + a[ri+1:]
+    # a = a._reshape(shape)
+    # slices = (slice(None),) * li + indices +\
+    #     (slice(None),) * (a.ndim - indices.ndim - ri)
+    # a[slices] = v
     cdef int ndim, adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
 
@@ -2216,7 +2227,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
 
     if ndim == 0:
         raise ValueError("requires a.ndim >= 1")
-    if not (-ndim <= axis < ndim):
+    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
         raise ValueError('Axis overrun')
 
     if not isinstance(v, ndarray):
@@ -2224,10 +2235,12 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
     v = v.astype(a.dtype)
 
     a_shape = a.shape
-    axis %= ndim
-    lshape = a_shape[:axis]
-    rshape = a_shape[axis + 1:]
-    adim = a_shape[axis]
+    li %= ndim
+    ri %= ndim
+
+    lshape = a_shape[:li]
+    rshape = a_shape[ri + 1:]
+    adim = internal.prod(a_shape[li:ri + 1])
 
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
@@ -2288,6 +2301,19 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
         _scatter_update_mask_kernel(v, mask_br, mask_br_scanned, a)
     else:
         raise ValueError('provided op is not supported')
+
+
+cpdef _scatter_op_multiple(ndarray a, list slices, v, op):
+    cdef ndarray a_interm, reduced_idx
+    cdef int li, ri
+
+    if op != 'update':
+        raise TypeError('scatter_op_multiple does not support op other than'
+                        'update yet')
+
+    a_interm, reduced_idx, li, ri =\
+        _prepare_multiple_array_indexing(a, slices)
+    _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
 
 
 cpdef _scatter_op(ndarray a, slices, value, op):
@@ -2390,9 +2416,11 @@ cpdef _scatter_op(ndarray a, slices, value, op):
         arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
         if sum(arr_slices_mask) == 1:
             axis = arr_slices_mask.index(True)
-            _scatter_op_single(a, adv_slices[axis], value, axis, op)
+            _scatter_op_single(a, adv_slices[axis], value,
+                               li=axis, ri=axis, op=op)
             return
-        raise ValueError('indexing with multiple arrays is not supported yet')
+        _scatter_op_multiple(a, adv_slices, value, op)
+        return
 
     if op == 'update':
         v = a[tuple(slices)]
@@ -2448,7 +2476,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     return ret
 
 
-cpdef ndarray _adv_getitem(ndarray a, list slices):
+cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, ret
@@ -2493,12 +2521,8 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
         li = 0
         ri = len(transp_a) - 1
 
-    a_shape = a.shape
-
-    # flatten the array-indexed dimensions
-    shape = a_shape[:li] +\
-        (internal.prod_ssize_t(a_shape[li:ri+1]),) + a_shape[ri+1:]
-    input_flat = a._reshape(shape)
+    a_interm_shape = a.shape
+    a_interm = a
 
     # build the strides
     strides = [1]
@@ -2507,7 +2531,7 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
 
     # convert all negative indices to wrap_indices
     for i in range(li, ri+1):
-        slices[i] %= a_shape[i]
+        slices[i] %= a_interm_shape[i]
 
     flattened_indexes = [stride * s
                          for stride, s in zip(strides, slices[li:ri+1])]
@@ -2518,12 +2542,26 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
-    take_idx = _sum(flattened_indexes, axis=0)
+    reduced_idx = _sum(flattened_indexes, axis=0)
 
-    out_flat = input_flat.take(take_idx.flatten(), axis=li)
+    return a_interm, reduced_idx, li, ri
 
-    out_flat_shape = a_shape[:li] + take_idx.shape + a_shape[ri+1:]
-    ret = out_flat._reshape(out_flat_shape)
+
+cpdef ndarray _getitem_multiple(ndarray a, list slices):
+    cdef ndarray a_interm, reduced_idx, ret, ret_flat
+    cdef tuple a_interm_shape, kern_input_shape, out_shape
+    cdef int li, ri
+
+    a_interm, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
+
+    a_interm_shape = a_interm.shape
+    out_shape = a_interm_shape[:li] + reduced_idx.shape + a_interm_shape[ri+1:]
+    kern_input_shape = a_interm_shape[:li] +\
+        (internal.prod_ssize_t(a_interm_shape[li:ri+1]),) +\
+        a_interm_shape[ri+1:]
+    a_interm = a_interm._reshape(kern_input_shape)
+    ret_flat = a_interm.take(reduced_idx.ravel(), axis=li)
+    ret = ret_flat._reshape(out_shape)
     return ret
 
 

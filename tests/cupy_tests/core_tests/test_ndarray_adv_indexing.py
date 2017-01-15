@@ -160,6 +160,28 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
      'value': 1},
     {'shape': (2, 3, 4),
      'indexes': (numpy.random.choice([False, True], (2, 3, 4)),), 'value': 1},
+    # multiple arrays
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], [1, -1]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': ([0, -1], [1, -1], [2, 1]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], 1), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(None), [1, -1]),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], 1, 2), 'value': 1},
+    # multiple arrays and basic indexing
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], None, [1, 0]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(0, 2), [1, 0]),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([0, -1], None, slice(0, 2), [1, 0]),
+     'value': 1},
+    {'shape': (1, 1, 2, 3, 4),
+     'indexes': (None, slice(None), slice(None), [1, 0], [2, -1], 1),
+     'value': 1},
+    {'shape': (1, 1, 2, 3, 4),
+     'indexes': (None, slice(None), 0, [1, 0], slice(0, 2, 2), [2, -1]),
+     'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), [0, -1], [[1, 0], [0, 1], [-1, 1]]), 'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
@@ -251,4 +273,17 @@ class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
         a = xp.zeros(shape, dtype=src_dtype)
         indexes = xp.array([True, False])
         a[indexes] = xp.array(1, dtype=dst_dtype)
+        return a
+
+
+@testing.gpu
+class TestArrayAdvancedIndexingSetitemTranspose(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_adv_setitem_transp(self, xp):
+        shape = (2, 3, 4)
+        a = xp.zeros(shape).transpose(0, 2, 1)
+        slices = (numpy.array([1, 0]), slice(None), numpy.array([2, 1]))
+        a[slices] = 1
+>>>>>>> add support for multiple integer arrays for cupy.ndarray.__setitem__
         return a
