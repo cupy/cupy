@@ -11,17 +11,11 @@ class TestBasic(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_empty(self, xp, dtype):
-        a = xp.empty((2, 3, 4), dtype=dtype)
-        a.fill(0)
-        return a
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_f(self, xp, dtype):
-        a = xp.empty((2, 3, 4), dtype=dtype, order='F')
+    def test_empty(self, xp, dtype, order):
+        a = xp.empty((2, 3, 4), dtype=dtype, order=order)
         a.fill(0)
         return a
 
@@ -47,14 +41,10 @@ class TestBasic(unittest.TestCase):
         b.fill(0)
         return b
 
-    def test_empty_zero_sized_array_strides(self):
-        a = numpy.empty((1, 0, 2), dtype='d')
-        b = cupy.empty((1, 0, 2), dtype='d')
-        self.assertEqual(b.strides, a.strides)
-
-    def test_empty_zero_sized_array_strides_f(self):
-        a = numpy.empty((1, 0, 2), dtype='d', order='F')
-        b = cupy.empty((1, 0, 2), dtype='d', order='F')
+    @testing.for_CF_orders()
+    def test_empty_zero_sized_array_strides(self, order):
+        a = numpy.empty((1, 0, 2), dtype='d', order=order)
+        b = cupy.empty((1, 0, 2), dtype='d', order=order)
         self.assertEqual(b.strides, a.strides)
 
     @testing.for_all_dtypes()
@@ -82,14 +72,10 @@ class TestBasic(unittest.TestCase):
     def test_zeros_int(self, xp, dtype):
         return xp.zeros(3, dtype=dtype)
 
-    def test_zeros_strides(self):
-        a = numpy.zeros((2, 3), dtype='d', order='C')
-        b = cupy.zeros((2, 3), dtype='d', order='C')
-        self.assertEqual(b.strides, a.strides)
-
-    def test_zeros_strides_f(self):
-        a = numpy.zeros((2, 3), dtype='d', order='F')
-        b = cupy.zeros((2, 3), dtype='d', order='F')
+    @testing.for_CF_orders()
+    def test_zeros_strides(self, order):
+        a = numpy.zeros((2, 3), dtype='d', order=order)
+        b = cupy.zeros((2, 3), dtype='d', order=order)
         self.assertEqual(b.strides, a.strides)
 
     @testing.for_all_dtypes()
