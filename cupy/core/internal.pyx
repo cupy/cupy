@@ -160,7 +160,8 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
             step = _extract_slice_element(slc.step)
         except TypeError:
             raise TypeError(
-                'slice.step must be int or None or have __index__ method: {}'.format(slc))
+                'slice.step must be int or None or have __index__ method: '
+                '{}'.format(slc))
 
     if step == 0:
         raise ValueError('Slice step must be nonzero.')
@@ -171,7 +172,8 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
             start = _extract_slice_element(slc.start)
         except TypeError:
             raise TypeError(
-                'slice.start must be int or None or have __index__ method: {}'.format(slc))
+                'slice.start must be int or None or have __index__ method: '
+                '{}'.format(slc))
 
         if start < 0:
             start += dim
@@ -182,7 +184,8 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
             stop = _extract_slice_element(slc.stop)
         except TypeError:
             raise TypeError(
-                'slice.stop must be int or None or have __index__ method: {}'.format(slc))
+                'slice.stop must be int or None or have __index__ method: '
+                '{}'.format(slc))
 
         if stop < 0:
             stop += dim
