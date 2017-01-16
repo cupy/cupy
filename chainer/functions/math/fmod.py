@@ -39,7 +39,7 @@ def fmod(x, divisor):
 
     Args:
         x (~chainer.Variable): Input variable.
-
+        divisor (~chainer.Variable): Input divisor.
     Returns:
         ~chainer.Variable: Output variable.
     """
