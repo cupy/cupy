@@ -14,7 +14,7 @@ class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see `r_`.
-    This implementation is referenced from Numpy's one.
+    This implementation is partially borrowed from NumPy's one
 
     """
 
@@ -93,70 +93,70 @@ class AxisConcatenator(object):
 class CClass(AxisConcatenator):
 
     def __init__(self):
-        """Translates slice objects to concatenation along the second axis.
-
-        This is a CuPy object that corresponds to 'cupy.r_', which is
-        useful because of its common occurrence. In particular, arrays will be
-        stacked along their last axis after being upgraded to at least 2-D with
-        1's post-pended to the shape (column vectors made out of 1-D arrays).
-
-        For detailed documentation, see `r_`.
-
-        Args:
-            Not a function, so takes no parameters
-
-        Returns:
-            cupy.ndarray: Joined array.
-
-        .. seealso:: :func:`numpy.c_`
-
-        Examples
-        --------
-        >>> a = cupy.array([1, 2, 3], dtype=np.int32)
-        >>> b = cupy.array([4, 5, 6], dtype=np.int32)
-        >>> cupy.c_[a, 0, 0, b]
-        array([[1, 2, 3, 0, 0, 4, 5, 6]])
-
-        """
         AxisConcatenator.__init__(self, -1, ndmin=2, trans1d=0)
 
 c_ = CClass()
+"""Translates slice objects to concatenation along the second axis.
+
+This is a CuPy object that corresponds to :func:`cupy.r_`, which is
+useful because of its common occurrence. In particular, arrays will be
+stacked along their last axis after being upgraded to at least 2-D with
+1's post-pended to the shape (column vectors made out of 1-D arrays).
+
+For detailed documentation, see `r_`.
+
+Args:
+    Not a function, so takes no parameters
+
+Returns:
+    cupy.ndarray: Joined array.
+
+.. seealso:: :func:`numpy.c_`
+
+Examples
+--------
+>>> a = cupy.array([1, 2, 3], dtype=np.int32)
+>>> b = cupy.array([4, 5, 6], dtype=np.int32)
+>>> cupy.c_[a, 0, 0, b]
+array([[1, 2, 3, 0, 0, 4, 5, 6]])
+
+"""
 
 
 class RClass(AxisConcatenator):
 
     def __init__(self):
-        """Translates slice objects to concatenation along the first axis.
-
-        This is a simple way to build up arrays quickly.
-        If the index expression contains comma separated arrays, then stack
-        them along their first axis.
-
-        This object can build up from normal CuPy arrays.
-        Therefore, the other objects (e.g. writing strings like '2,3,4',
-        or using imaginary numbers like [1,2,3j],
-        or using string integers like '-1') are not implemented yet
-        compared with NumPy.
-
-        Args:
-            Not a function, so takes no parameters
-
-        Returns:
-            cupy.ndarray: Joined array.
-
-        .. seealso:: :func:`numpy.r_`
-
-        Examples
-        --------
-        >>> a = cupy.array([1, 2, 3], dtype=np.int32)
-        >>> b = cupy.array([4, 5, 6], dtype=np.int32)
-        >>> cupy.r_[a, 0, 0, b]
-        array([1, 2, 3, 0, 0, 4, 5, 6])
-
-        """
         AxisConcatenator.__init__(self)
 
 r_ = RClass()
+"""Translates slice objects to concatenation along the first axis.
+
+This is a simple way to build up arrays quickly.
+If the index expression contains comma separated arrays, then stack
+them along their first axis.
+
+This object can build up from normal CuPy arrays.
+Therefore, the other objects (e.g. writing strings like '2,3,4',
+or using imaginary numbers like [1,2,3j],
+or using string integers like '-1') are not implemented yet
+compared with NumPy.
+
+Args:
+    Not a function, so takes no parameters
+
+Returns:
+    cupy.ndarray: Joined array.
+
+.. seealso:: :func:`numpy.r_`
+
+Examples
+--------
+>>> a = cupy.array([1, 2, 3], dtype=np.int32)
+>>> b = cupy.array([4, 5, 6], dtype=np.int32)
+>>> cupy.r_[a, 0, 0, b]
+array([1, 2, 3, 0, 0, 4, 5, 6])
+
+"""
 
 # TODO(okuta): Implement indices
 
