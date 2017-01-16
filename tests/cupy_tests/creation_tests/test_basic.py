@@ -20,6 +20,13 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_empty_f(self, xp, dtype):
+        a = xp.empty((2, 3, 4), dtype=dtype, order='F')
+        a.fill(0)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_empty_scalar(self, xp, dtype):
         a = xp.empty(None, dtype=dtype)
         a.fill(0)
@@ -43,6 +50,11 @@ class TestBasic(unittest.TestCase):
     def test_empty_zero_sized_array_strides(self):
         a = numpy.empty((1, 0, 2), dtype='d')
         b = cupy.empty((1, 0, 2), dtype='d')
+        self.assertEqual(b.strides, a.strides)
+
+    def test_empty_zero_sized_array_strides_f(self):
+        a = numpy.empty((1, 0, 2), dtype='d', order='F')
+        b = cupy.empty((1, 0, 2), dtype='d', order='F')
         self.assertEqual(b.strides, a.strides)
 
     @testing.for_all_dtypes()

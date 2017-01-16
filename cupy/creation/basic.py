@@ -1,14 +1,14 @@
 import cupy
 
 
-def empty(shape, dtype=float):
+def empty(shape, dtype=float, order='C'):
     """Returns an array without initializing the elements.
-
-    This function currently does not support ``order`` option.
 
     Args:
         shape (tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: A new array with elements not initialized.
@@ -16,8 +16,7 @@ def empty(shape, dtype=float):
     .. seealso:: :func:`numpy.empty`
 
     """
-    # TODO(beam2d): Support ordering option
-    return cupy.ndarray(shape, dtype=dtype)
+    return cupy.ndarray(shape, dtype=dtype, order=order)
 
 
 def empty_like(a, dtype=None):
