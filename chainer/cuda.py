@@ -558,8 +558,8 @@ def get_array_module(*args):
 
     """
     if available:
-        args = (arg.data if isinstance(arg, chainer.Variable) else arg
-                for arg in args)
+        args = [arg.data if isinstance(arg, chainer.Variable) else arg
+                for arg in args]
         return cupy.get_array_module(*args)
     else:
         return numpy
