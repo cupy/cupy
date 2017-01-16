@@ -124,14 +124,14 @@ def ones_like(a, dtype=None):
     return ones(a.shape, dtype)
 
 
-def zeros(shape, dtype=float):
+def zeros(shape, dtype=float, order='C'):
     """Returns a new array of given shape and dtype, filled with zeros.
-
-    This function currently does not support ``order`` option.
 
     Args:
         shape (tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -139,8 +139,7 @@ def zeros(shape, dtype=float):
     .. seealso:: :func:`numpy.zeros`
 
     """
-    # TODO(beam2d): Support ordering option
-    a = empty(shape, dtype)
+    a = cupy.ndarray(shape, dtype, order=order)
     a.data.memset(0, a.nbytes)
     return a
 
