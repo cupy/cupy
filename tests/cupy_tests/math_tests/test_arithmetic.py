@@ -34,6 +34,13 @@ class TestArithmetic(unittest.TestCase):
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
         return getattr(xp, name)(a, b)
 
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_binary_negative_float(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+        return getattr(xp, name)(a, b)
+
     def test_add(self):
         self.check_binary('add')
 
@@ -56,7 +63,7 @@ class TestArithmetic(unittest.TestCase):
         self.check_binary('power')
 
     def test_power_negative(self):
-        self.check_binary_negative('power')
+        self.check_binary_negative_float('power')
 
     def test_subtract(self):
         self.check_binary('subtract')
