@@ -43,6 +43,7 @@ class SubDataset(dataset_mixin.DatasetMixin):
             If this is ``None``, then the ascending order of indexes is used.
 
     """
+
     def __init__(self, dataset, start, finish, order=None):
         if start < 0 or finish > len(dataset):
             raise ValueError('subset overruns the base dataset.')
@@ -104,7 +105,7 @@ def split_dataset(dataset, split_at, order=None):
     return subset1, subset2
 
 
-def split_dataset_random(dataset, first_size):
+def split_dataset_random(dataset, first_size, seed=None):
     """Splits a dataset into two subsets randomly.
 
     This function creates two instances of :class:`SubDataset`. These instances
@@ -114,6 +115,11 @@ def split_dataset_random(dataset, first_size):
     Args:
         dataset: Dataset to split.
         first_size (int): Size of the first subset.
+        seed (int): Seed the generator used for the permutation of indexes.
+            If an integer beging convertible to 32 bit unsigned integers is
+            specified, it is guaranteed that each sample
+            in the given dataset always belongs to a specific subset.
+            If ``None``, the permutation is changed randomly.
 
     Returns:
         tuple: Two :class:`SubDataset` objects. The first subset contains
@@ -122,7 +128,7 @@ def split_dataset_random(dataset, first_size):
             dataset.
 
     """
-    order = numpy.random.permutation(len(dataset))
+    order = numpy.random.RandomState(seed).permutation(len(dataset))
     return split_dataset(dataset, first_size, order)
 
 
@@ -166,7 +172,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
     return splits
 
 
-def get_cross_validation_datasets_random(dataset, n_fold):
+def get_cross_validation_datasets_random(dataset, n_fold, seed=None):
     """Creates a set of training/test splits for cross validation randomly.
 
     This function acts almost same as :func:`get_cross_validation_dataset`,
@@ -175,10 +181,15 @@ def get_cross_validation_datasets_random(dataset, n_fold):
     Args:
         dataset: Dataset to split.
         n_fold (int): Number of splits for cross validation.
+        seed (int): Seed the generator used for the permutation of indexes.
+            If an integer beging convertible to 32 bit unsigned integers is
+            specified, it is guaranteed that each sample
+            in the given dataset always belongs to a specific subset.
+            If ``None``, the permutation is changed randomly.
 
     Returns:
         list of tuples: List of dataset splits.
 
     """
-    order = numpy.random.permutation(len(dataset))
+    order = numpy.random.RandomState(seed).permutation(len(dataset))
     return get_cross_validation_datasets(dataset, n_fold, order)

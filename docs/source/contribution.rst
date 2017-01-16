@@ -94,10 +94,19 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-To check your code, use ``flake8`` command installed by ``hacking`` package::
+To check your code, use ``autopep8`` and ``flake8`` command installed by ``hacking`` package::
 
-  $ pip install hacking
+  $ pip install autopep8 hacking
+  $ autopep8 --global-config .pep8 path/to/your/code.py
   $ flake8 path/to/your/code.py
+
+To check Cython code, use ``.flake8.cython`` configuration file::
+
+  $ flake8 --config=.flake8.cython path/to/your/cython/code.pyx
+
+The ``autopep8`` supports automatically correct Python code to conform to the PEP 8 style guide::
+
+  $ autopep8 --in-place --global-config .pep8 path/to/your/code.py
 
 The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
 Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.
@@ -119,6 +128,20 @@ Also note that you should use shortcut names of CuPy APIs in Chainer implementat
 
 Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_.
 The reviewing process starts after the check passes.
+
+The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
+Please note the followings when writing the document.
+
+* In order to identify overlapping parts, it is preferable to add some remarks
+  that this document is just copied or altered from the original one. It is
+  also preferable to briefly explain the specification of the function in a
+  short paragraph, and refer to the corresponding function in NumPy so that
+  users can read the detailed document. However, it is possible to include a
+  complete copy of the document with such a remark if users cannot summarize
+  in such a way.
+* If a function in CuPy only implements a limited amount of features in the
+  original one, users should explicitly describe only what is implemented in
+  the document.
 
 
 Testing Guidelines
@@ -148,6 +171,11 @@ If you want to run GPU tests with insufficient number of GPUs, specify the numbe
 For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
   $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
+
+Some tests spend too much time.
+If you want to skip such tests, pass ``--attr='!slow'`` option to the ``nosetests`` command::
+
+  $ nosetests path/to/your/test.py --attr='!slow'
 
 Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.
@@ -210,7 +238,24 @@ In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu(
       def test_my_two_gpu_func(self):
           ...
 
-Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu' option**.
+If your test requires too much time, add ``chainer.testing.attr.slow`` decorator.
+The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is given::
+
+  import unittest
+  from chainer.testing import attr
+
+  class TestMyFunc(unittest.TestCase):
+      ...
+
+      @attr.slow
+      def test_my_slow_func(self):
+          ...
+
+.. note::
+   If you want to specify more than two attributes, separate them with a comma such as ``--attr='!gpu,!slow'``.
+   See detail in `the document of nose <https://nose.readthedocs.io/en/latest/plugins/attrib.html#simple-syntax>`_.
+
+Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu,!slow' option**.
 Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
 The reviewing process starts after the test passes.
 Note that reviewers will test your code without the option to check CUDA-related code.

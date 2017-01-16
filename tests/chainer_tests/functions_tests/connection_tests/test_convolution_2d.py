@@ -1,6 +1,6 @@
+import mock
 import unittest
 
-import mock
 import numpy
 
 import chainer
@@ -13,21 +13,26 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'c_contiguous': [True, False],
     'cover_all': [True, False],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'c_contiguous': [False],
+    'cover_all': [False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestConvolution2DFunction(unittest.TestCase):
 
-    def setUp(self, use_cudnn=True):
+    def setUp(self):
         in_channels = 3
         out_channels = 2
         kh, kw = (3, 3)
         self.stride = 2
         self.pad = 1
-        self.use_cudnn = use_cudnn
+        self.use_cudnn = True
         self.W = numpy.random.normal(
             0, numpy.sqrt(1. / (kh * kw * in_channels)),
             (out_channels, in_channels, kh, kw)).astype(self.W_dtype)
@@ -173,7 +178,7 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
             self.forward()
             self.assertEqual(func.called, self.expect)
 
-    def test_call_cudnn_backrward(self):
+    def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         if cuda.cudnn.cudnn.getVersion() >= 4000:
@@ -183,6 +188,105 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
         with mock.patch(name) as func:
             y.backward()
             self.assertEqual(func.called, self.expect)
+
+
+@testing.parameterize(*testing.product({
+    'c_contiguous': [True, False],
+    'nobias': [True, False],
+}))
+@attr.gpu
+@attr.cudnn
+class TestConvolution2DFunctionDeterministic(unittest.TestCase):
+
+    def setUp(self):
+        self.cudnn_version = cuda.cudnn.cudnn.getVersion()
+        self.stride = 2
+        self.pad = 1
+        batch_sz = 2
+        in_channels = 64
+        out_channels = 64
+        kh, kw = (3, 3)
+        in_h, in_w = (32, 128)
+        out_h, out_w = (16, 64)
+        # should be same types for cudnn test
+        x_dtype = numpy.float32
+        W_dtype = numpy.float32
+        self.W = numpy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * in_channels)),
+            (out_channels, in_channels, kh, kw)).astype(W_dtype)
+        self.b = numpy.random.uniform(-1, 1, out_channels).astype(x_dtype)
+        self.x = numpy.random.uniform(
+            -1, 1, (batch_sz, in_channels, in_h, in_w)).astype(x_dtype)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_sz, out_channels, out_h, out_w)).astype(x_dtype)
+
+    def test_called(self):
+        with mock.patch(
+                'chainer.functions.connection.convolution_2d.libcudnn',
+                autospec=True) as mlibcudnn:
+            if self.cudnn_version < 4000:
+                with self.assertRaises(ValueError):
+                    x, W, b, y = self._run()
+                return
+
+            # cuDNN version >= v4 supports `deterministic` option
+            x, W, b, y = self._run()
+
+            # in Convolution2DFunction.backward_gpu()
+            self.assertFalse(
+                mlibcudnn.getConvolutionBackwardFilterAlgorithm.called)
+            self.assertEqual(
+                mlibcudnn.convolutionBackwardFilter_v3.call_count, 1)
+            self.assertFalse(
+                mlibcudnn.getConvolutionBackwardDataAlgorithm.called)
+            self.assertEqual(
+                mlibcudnn.convolutionBackwardData_v3.call_count, 1)
+
+    def test_deterministic(self):
+        if self.cudnn_version < 4000:
+            # `deterministic` option is not supported
+            return
+
+        x1, W1, b1, y1 = self._run()
+        x2, W2, b2, y2 = self._run()
+
+        cuda.cupy.testing.assert_array_equal(x1.grad, x2.grad)
+        cuda.cupy.testing.assert_array_equal(y1.data, y2.data)
+        cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
+
+    def _contiguous(self, x_data, W_data, b_data, gy_data):
+        if not self.c_contiguous:
+            x_data = numpy.asfortranarray(x_data)
+            W_data = numpy.asfortranarray(W_data)
+            gy_data = numpy.asfortranarray(gy_data)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(gy_data.flags.c_contiguous)
+            b = numpy.empty((len(b_data) * 2,), dtype=self.b.dtype)
+            b[::2] = b_data
+            b_data = b[::2]
+            self.assertFalse(b_data.flags.c_contiguous)
+        return x_data, W_data, b_data, gy_data
+
+    def _run(self):
+        # verify data continuity and move to gpu
+        x_data, W_data, b_data, gy_data = \
+            tuple(cuda.to_gpu(data) for data in self._contiguous(
+                self.x, self.W, self.b, self.gy))
+        x, W, b, y = self._run_forward(x_data, W_data, b_data)
+
+        y.grad = gy_data
+        y.backward()
+        return x, W, b, y
+
+    def _run_forward(self, x_data, W_data, b_data):
+        x = chainer.Variable(x_data)
+        W = chainer.Variable(W_data)
+        b = None if self.nobias else chainer.Variable(b_data)
+        y = functions.convolution_2d(
+            x, W, b, stride=self.stride, pad=self.pad, use_cudnn=True,
+            cover_all=False, deterministic=True)
+        return x, W, b, y
 
 
 testing.run_module(__name__, __file__)

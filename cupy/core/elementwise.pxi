@@ -51,7 +51,7 @@ cdef dict _typenames_base = {
 cdef str _all_type_chars = 'dfeqlihbQLIHB?'
 
 cdef dict _typenames = {
-    numpy.dtype(i).type:_typenames_base[numpy.dtype(i)]
+    numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
     for i in _all_type_chars}
 
 cdef tuple _python_scalar_type = six.integer_types + (float, bool)
@@ -170,7 +170,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     for i in range(1, ndim):
         if vecshape[i - 1] == 1:
             continue
-        for j in range(args_strides.size()):
+        for j in range(<Py_ssize_t>args_strides.size()):
             if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
                 cnt += 1
                 axis = i - 1
@@ -185,13 +185,14 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if cnt == ndim:
         return args, shape
     if cnt == 1:
-        newshape.assign(1, vecshape[axis])
+        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
         ret = []
         for i, a in enumerate(args):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
-                newstrides.assign(1, arr._strides[axis])
+                newstrides.assign(
+                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
@@ -308,7 +309,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
-    cpdef Py_ssize_t i 
+    cpdef Py_ssize_t i
     cpdef ParameterInfo p
     cpdef bint is_none, is_not_none
     value = []
@@ -365,11 +366,12 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
 
 
 cdef list _get_out_args_with_params(
-        list out_args, tuple out_types, tuple out_shape, tuple out_params):
+        list out_args, tuple out_types, tuple out_shape, tuple out_params,
+        bint is_size_specified=False):
     cdef ParameterInfo p
     if not out_args:
         for p in out_params:
-            if p.raw:
+            if p.raw and is_size_specified is False:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -478,9 +480,9 @@ cdef class ElementwiseKernel:
         """Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
-        kernels with different argument dtypes or dimensions are not compatible.
-        It means that single ElementwiseKernel object may be compiled into
-        multiple kernel binaries.
+        kernels with different argument dtypes or dimensions are not
+        compatible. It means that single ElementwiseKernel object may be
+        compiled into multiple kernel binaries.
 
         Args:
             args: Arguments of the kernel.
@@ -497,6 +499,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
 
         size = kwargs.pop('size', None)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -518,15 +521,17 @@ cdef class ElementwiseKernel:
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
+        is_size_specified = False
+        if size is not None:
+            shape = size,
+            is_size_specified = True
+
         out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params)
+            out_args, out_types, shape, self.out_params, is_size_specified)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
-
-        if size is not None:
-            shape = size,
 
         if 0 in shape:
             return ret
@@ -545,7 +550,8 @@ cdef class ElementwiseKernel:
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        kern.linear_launch(indexer.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=128, stream=stream)
         return ret
 
 
@@ -714,7 +720,7 @@ class ufunc(object):
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
-        # Note default behavie of casting is 'same_kind' on numpy>=1.10
+        # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', 'same_kind')
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
@@ -766,7 +772,7 @@ class ufunc(object):
         args_info = _get_args_info(inout_args)
 
         kern = _get_ufunc_kernel(
-            in_types, out_types, routine, args_info, 
+            in_types, out_types, routine, args_info,
             self._params, self.name, self._preamble)
 
         kern.linear_launch(indexer.size, inout_args)

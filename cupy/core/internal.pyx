@@ -1,5 +1,8 @@
+# distutils: language = c++
+
 cimport cpython
 cimport cython
+
 
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
@@ -33,7 +36,7 @@ cpdef inline tuple get_size(object size):
 cpdef inline bint vector_equal(
         vector.vector[Py_ssize_t]& x, vector.vector[Py_ssize_t]& y):
     cdef Py_ssize_t n = x.size()
-    if n != y.size():
+    if n != <Py_ssize_t>y.size():
         return False
     for i in range(n):
         if x[i] != y[i]:
@@ -69,7 +72,7 @@ cdef void get_reduced_dims(
     reduced_shape.push_back(tmp_shape[0])
     reduced_strides.push_back(tmp_strides[0])
     index = 0
-    for i in range(tmp_shape.size() - 1):
+    for i in range(<Py_ssize_t>tmp_shape.size() - 1):
         sh = tmp_shape[i + 1]
         st = tmp_strides[i + 1]
         if tmp_strides[i] == sh * st:
@@ -83,14 +86,21 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize) except *:
+        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+        bint is_c_contiguous) except *:
     cdef vector.vector[Py_ssize_t] strides
     cdef Py_ssize_t st, sh
+    cdef int i, idx
     strides.resize(shape.size(), 0)
     st = itemsize
-    for i in range(shape.size() - 1, -1, -1):
-        strides[i] = st
-        sh = shape[i]
+
+    for i in range(shape.size()):
+        if is_c_contiguous:
+            idx = shape.size() - 1 - i
+        else:
+            idx = i
+        strides[idx] = st
+        sh = shape[idx]
         if sh > 1:
             st *= sh
     return strides

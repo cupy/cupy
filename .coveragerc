@@ -1,7 +1,7 @@
 [run]
 plugins = Cython.Coverage
-omit = chainer/links/caffe/caffe_pb2.py
-       chainer/links/caffe/caffe_pb3.py
+omit = chainer/links/caffe/protobuf2/caffe_pb2.py
+       chainer/links/caffe/protobuf3/caffe_pb2.py
 
 [report]
 exclude_lines =

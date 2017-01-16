@@ -12,6 +12,18 @@ from cupy.cuda import device
 from cupy.cuda import function
 
 
+_nvcc_version = None
+
+
+def _get_nvcc_version():
+    global _nvcc_version
+    if _nvcc_version is None:
+        cmd = ['nvcc', '--version']
+        _nvcc_version = _run_nvcc(cmd, '.')
+
+    return _nvcc_version
+
+
 def _get_arch():
     cc = device.Device().compute_capability
     return 'sm_%s' % cc
@@ -110,7 +122,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         elif sys.maxsize == 2147483647:
             options += '-m32',
 
-    env = (arch, options)
+    env = (arch, options, _get_nvcc_version())
     if '#include' in source:
         pp_src = '%s %s' % (env, preprocess(source, options))
     else:
@@ -135,13 +147,13 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         if os.path.exists(path):
             with open(path, 'rb') as file:
                 cubin = file.read()
-            mod.load(cubin)
         else:
             lock.release()
             cubin = nvcc(source, options, arch)
-            mod.load(cubin)
             lock.acquire()
             with open(path, 'wb') as cubin_file:
                 cubin_file.write(cubin)
+
+    mod.load(cubin)
 
     return mod

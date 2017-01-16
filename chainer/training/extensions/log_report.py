@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 
 import six
@@ -27,8 +28,12 @@ class LogReport(extension.Extension):
     extension makes a new fresh summary object which is used until the next
     time that the trigger fires.
 
-    It also adds ``'epoch'`` and ``'iteration'`` entries to each result
-    dictionary, which are the epoch and iteration counts at the output.
+    It also adds some entries to each result dictionary.
+
+    - ``'epoch'`` and ``'iteration'`` are the epoch and iteration counts at the
+      output, respectively.
+    - ``'elapsed_time'`` is the elapsed time in seconds since the training
+      begins. The value is taken from :attr:`Trainer.elapsed_time`.
 
     Args:
         keys (iterable of strs): Keys of values to accumulate. If this is None,
@@ -48,6 +53,7 @@ class LogReport(extension.Extension):
             does not output the log to any file.
 
     """
+
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
                  log_name='log'):
         self._keys = keys
@@ -79,6 +85,7 @@ class LogReport(extension.Extension):
             updater = trainer.updater
             stats_cpu['epoch'] = updater.epoch
             stats_cpu['iteration'] = updater.iteration
+            stats_cpu['elapsed_time'] = trainer.elapsed_time
 
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
@@ -91,7 +98,9 @@ class LogReport(extension.Extension):
                 fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
                 with os.fdopen(fd, 'w') as f:
                     json.dump(self._log, f, indent=4)
-                os.rename(path, os.path.join(trainer.out, log_name))
+
+                new_path = os.path.join(trainer.out, log_name)
+                shutil.move(path, new_path)
 
             # reset the summary for the next output
             self._init_summary()

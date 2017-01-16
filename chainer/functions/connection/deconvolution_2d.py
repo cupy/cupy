@@ -30,11 +30,13 @@ def _pair(x):
 
 class Deconvolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True):
+    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True,
+                 deterministic=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
         self.outh, self.outw = (None, None) if outsize is None else outsize
+        self.deterministic = deterministic
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -75,7 +77,7 @@ class Deconvolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
-        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype)
+        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype, copy=False)
         # - k, m, n: shape of out_channel
         # - b: number of inputs
         # - h, w: height and width of kernels
@@ -83,8 +85,10 @@ class Deconvolution2DFunction(function.Function):
         gcol = numpy.rollaxis(gcol, 3)
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(h, kh, self.sy, self.ph)
+            assert self.outh > 0, 'Height in the output should be positive.'
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(w, kw, self.sx, self.pw)
+            assert self.outw > 0, 'Width in the output should be positive.'
         y = conv.col2im_cpu(
             gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
         # b, k, h, w
@@ -100,8 +104,10 @@ class Deconvolution2DFunction(function.Function):
         c = W.shape[1]  # out_c
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
+            assert self.outh > 0, 'Height in the output should be positive.'
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
+            assert self.outw > 0, 'Width in the output should be positive.'
         if (cuda.cudnn_enabled and self.use_cudnn and
                 _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
@@ -117,7 +123,7 @@ class Deconvolution2DFunction(function.Function):
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
             self.conv_desc = cudnn.create_convolution_descriptor(
-                (self.ph, self.pw), (self.sy, self.sx))
+                (self.ph, self.pw), (self.sy, self.sx), x.dtype)
             if b is not None:
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
@@ -129,10 +135,14 @@ class Deconvolution2DFunction(function.Function):
             if _cudnn_version >= 4000:
                 workspace_size = cuda.get_max_workspace_size()
                 workspace = cuda.cupy.empty((workspace_size,), dtype='b')
-                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
-                    handle, self.filter_desc.value, x_desc.value,
-                    self.conv_desc.value, y_desc.value, _bwd_data_pref,
-                    workspace_size)
+                if not self.deterministic:
+                    algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                        handle, self.filter_desc.value, x_desc.value,
+                        self.conv_desc.value, y_desc.value, _bwd_data_pref,
+                        workspace_size)
+                else:
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1  # NOQA
+
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     x_desc.value, x.data.ptr, self.conv_desc.value,
@@ -169,8 +179,10 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
             gy, kh, kw, self.sy, self.sx, self.ph, self.pw)
-        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype)
-        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype)
+        gW = numpy.tensordot(
+            x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype, copy=False)
+        gx = numpy.tensordot(
+            col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype, copy=False)
         gx = numpy.rollaxis(gx, 3, 1)
 
         if b is None:
@@ -224,10 +236,13 @@ class Deconvolution2DFunction(function.Function):
             gW = cuda.cupy.empty_like(W)
             # filter backward
             if _cudnn_version >= 4000:
-                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                    handle, gy_desc.value, gx_desc.value,
-                    self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, workspace_size)
+                if not self.deterministic:
+                    algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                        handle, gy_desc.value, gx_desc.value,
+                        self.conv_desc.value, self.filter_desc.value,
+                        _bwd_filter_pref, workspace_size)
+                else:
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1  # NOQA
 
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, gy_desc.value, gy.data.ptr,
@@ -235,6 +250,9 @@ class Deconvolution2DFunction(function.Function):
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, self.filter_desc.value, gW.data.ptr)
             else:
+                if self.deterministic:
+                    raise ValueError("'deterministic' option not available "
+                                     "for cuDNN versions < v4")
                 libcudnn.convolutionBackwardFilter_v2(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     gx_desc.value, x.data.ptr, self.conv_desc.value,
@@ -269,7 +287,7 @@ class Deconvolution2DFunction(function.Function):
 
 
 def deconvolution_2d(x, W, b=None, stride=1, pad=0,
-                     outsize=None, use_cudnn=True):
+                     outsize=None, use_cudnn=True, deterministic=False):
     """Two dimensional deconvolution function.
 
     This is an implementation of two-dimensional deconvolution.
@@ -291,10 +309,15 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             input size, stride and pad.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
+        deterministic (bool): The output of this function can be
+            non-deterministic when it uses cuDNN.
+            If this option is ``True``, then it forces cuDNN to use
+            a deterministic algorithm. This option is only available for
+            cuDNN version >= v4.
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
-    which indicate the number of the number of input channels, output channels,
+    which indicate the number of input channels, output channels,
     height and width of the kernels, respectively.
 
     The bias vector is of size :math:`c_O`.
@@ -310,7 +333,8 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
        w_O &= s_X (w - 1) + k_W - 2p_W.
 
     """
-    func = Deconvolution2DFunction(stride, pad, outsize, use_cudnn)
+    func = Deconvolution2DFunction(
+        stride, pad, outsize, use_cudnn, deterministic)
     if b is None:
         return func(x, W)
     else:

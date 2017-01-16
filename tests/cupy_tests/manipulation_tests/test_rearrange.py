@@ -9,7 +9,7 @@ class TestRearrange(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_roll(self, xp, dtype):
         x = xp.arange(10, dtype)
         return xp.roll(x, 2)

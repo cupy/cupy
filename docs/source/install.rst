@@ -37,12 +37,12 @@ Chainer depends on these Python packages:
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5, 8.0
 * `filelock <https://filelock.readthedocs.org>`_
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
 
 Caffe model support
 
@@ -50,6 +50,10 @@ Caffe model support
 * protobuf>=3.0.0 is required for Py3
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
+
+Image dataset is optional
+
+* `Pillow <https://pillow.readthedocs.io/>`_
 
 HDF5 serialization is optional
 
@@ -132,11 +136,17 @@ For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory
 
 The destination directories depend on your environment.
 
+If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing Chainer::
+
+  export CFLAGS=-I/path/to/cudnn/include
+  export LDFLAGS=-L/path/to/cudnn/lib
+  export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+
 
 Install Chainer for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer uses Cython (>=0.23).
+Chainer uses Cython (>=0.24).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
 We recommend to use ``pip`` with ``-e`` option for editable mode::
 
@@ -145,6 +155,15 @@ We recommend to use ``pip`` with ``-e`` option for editable mode::
   $ pip install -e .
 
 Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+
+
+Support image dataset
+~~~~~~~~~~~~~~~~~~~~~
+
+Install Pillow manually to activate image dataset.
+This feature is optional::
+
+  $ pip install pillow
 
 
 Support HDF5 serialization
@@ -198,6 +217,20 @@ We recommend to use ``--no-cache-dir`` option as ``pip`` sometimes uses cache::
 
 When you install Chainer without CUDA, and after that you want to use CUDA, please reinstall Chainer.
 You need to reinstall Chainer when you want to upgrade CUDA.
+
+
+Run Chainer with Docker
+-----------------------
+
+We provide the official Docker image.
+Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run Chainer image with GPU.
+You can login to the environment with bash, and run the Python interpreter::
+
+  $ nvidia-docker run -it chainer/chainer /bin/bash
+
+Or, run the interpreter directly::
+
+  $ nvidia-docker run -it chainer/chainer /usr/bin/python
 
 
 What "recommend" means?

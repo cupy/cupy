@@ -10,10 +10,11 @@ class TupleDataset(object):
 
     Args:
         datasets: Underlying datasets. The ``i``-th one is used for the
-            ``i``-th item of each example. All datasets must have the
+            ``i``-th item of each example. All datasets must have the same
             length.
 
     """
+
     def __init__(self, *datasets):
         if not datasets:
             raise ValueError('no datasets are given')

@@ -19,13 +19,13 @@ environment:
       PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "64"
 
-    - PYTHON: "C:\\Miniconda3"
-      PYTHON_VERSION: "3.4.x"
-      PYTHON_ARCH: "32"
+#    - PYTHON: "C:\\Miniconda3"
+#      PYTHON_VERSION: "3.4.x"
+#      PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Miniconda3-x64"
-      PYTHON_VERSION: "3.4.x"
-      PYTHON_ARCH: "64"
+#    - PYTHON: "C:\\Miniconda3-x64"
+#      PYTHON_VERSION: "3.4.x"
+#      PYTHON_ARCH: "64"
 
     - PYTHON: "C:\\Miniconda35"
       PYTHON_VERSION: "3.5.x"
@@ -68,4 +68,4 @@ test_script:
   - "%CMD_IN_ENV% pip install nose mock hacking"
   - "flake8"
   - "cd tests\\chainer_tests"
-  - "nosetests -A \"gpu<1\""
+  - "nosetests -a \"!gpu,!slow\""

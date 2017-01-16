@@ -192,15 +192,27 @@ class ConnectionistTemporalClassification(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
         self.input_length = inputs[0]
+        label_length = inputs[1]
+        t = inputs[2]
+        xs = inputs[3:]
 
-        # The length of path is (2 * label_length + 1)
-        self.path_length = 2 * inputs[1] + 1
+        if chainer.is_debug():
+            # Batch size check.
+            assert len(xs[0]) == len(t)
+            assert len(xs[0]) == len(self.input_length)
+            assert len(xs[0]) == len(label_length)
 
-        batch_size = len(inputs[2])
-        yseq_shape = (len(inputs) - 3,) + inputs[3].shape
-        self.yseq = _softmax(xp.vstack(inputs[3::]).reshape(yseq_shape), xp)
+            # Length check.
+            assert len(xs) >= xp.max(self.input_length)
+            assert len(t[0]) >= xp.max(label_length)
+
+        self.path_length = 2 * label_length + 1
+
+        batch_size = len(t)
+        yseq_shape = (len(xs),) + xs[0].shape
+        self.yseq = _softmax(xp.vstack(xs).reshape(yseq_shape), xp)
         log_yseq = self.log_matrix(self.yseq, xp)
-        self.path = _label_to_path(inputs[2], self.blank_symbol, xp)
+        self.path = _label_to_path(t, self.blank_symbol, xp)
         self.prob_trans = self.calc_trans(self.path, log_yseq, xp)
 
         loss = utils.force_array(xp.sum(
@@ -241,11 +253,11 @@ def connectionist_temporal_classification(
         blank_symbol (int): Index of blank_symbol.
             This value must be non-negative.
         input_length (Variable): Length of valid sequence for each of mini
-            batch x (optional). If input_length is skipped, It regards that all
-            of x is valid input.
+            batch ``x`` (optional). If input_length is skipped, It regards that
+            all of ``x`` is valid input.
         label_length (Variable): Length of valid sequence for each of mini
-            batch t (optional). If label_length is skipped, It regards that all
-            of t is valid input.
+            batch ``t`` (optional). If label_length is skipped, It regards that
+            all of ``t`` is valid input.
 
     Returns:
         Variable: A variable holding a scalar value of the CTC loss.
@@ -279,10 +291,10 @@ def connectionist_temporal_classification(
     if not isinstance(blank_symbol, int):
         raise TypeError('blank_symbol must be non-negative integer.')
     assert blank_symbol >= 0
-    assert blank_symbol < x[0].data.shape[1]
+    assert blank_symbol < x[0].shape[1]
     # This implementation only supports 1-dimensional data.
     # TODO(jnishi): Support d(>1)-dimentinal inputs.
-    assert(len(x[0].data.shape) == 2)
+    assert(len(x[0].shape) == 2)
 
     if input_length is None:
         xp = cuda.get_array_module(x[0].data)
@@ -292,15 +304,6 @@ def connectionist_temporal_classification(
         label_length = chainer.Variable(
             xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32),
             volatile='auto')
-
-    # Batch size check.
-    assert len(x[0].data) == len(t.data)
-    assert len(x[0].data) == len(input_length.data)
-    assert len(x[0].data) == len(label_length.data)
-
-    # Length check.
-    assert len(x) >= max(input_length.data)
-    assert len(t.data[0]) >= max(label_length.data)
 
     return ConnectionistTemporalClassification(blank_symbol)(
         input_length, label_length, t, *x)

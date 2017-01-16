@@ -35,16 +35,14 @@ cudnn_enabled = False
 
 try:
     import cupy
-    import cupy.cuda
-    import cupy.cuda.cublas
+    from cupy import cuda  # NOQA
+    from cupy.cuda import cublas  # NOQA
 
-    cuda = cupy.cuda
-    cublas = cuda.cublas
+    from cupy import ndarray  # NOQA
 
-    ndarray = cupy.ndarray
-    Device = cuda.Device
-    Event = cuda.Event
-    Stream = cuda.Stream
+    from cupy.cuda import Device  # NOQA
+    from cupy.cuda import Event  # NOQA
+    from cupy.cuda import Stream  # NOQA
 
     available = True
 except Exception as e:
@@ -54,10 +52,11 @@ except Exception as e:
         pass  # for type testing
 
 if available:
+    _cudnn_disabled_by_user = int(os.environ.get('CHAINER_CUDNN', '1')) == 0
     try:
         import cupy.cudnn
         cudnn = cupy.cudnn
-        cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+        cudnn_enabled = not _cudnn_disabled_by_user
     except Exception as e:
         _resolution_error = e
 
@@ -82,11 +81,14 @@ def check_cuda_available():
                '(see https://github.com/pfnet/chainer#installation).')
         msg += str(_resolution_error)
         raise RuntimeError(msg)
-    if not cudnn_enabled:
+    if (not cudnn_enabled and
+            not _cudnn_disabled_by_user and
+            not getattr(check_cuda_available, '_already_warned', False)):
         warnings.warn(
             'cuDNN is not enabled.\n'
             'Please reinstall chainer after you install cudnn\n'
             '(see https://github.com/pfnet/chainer#installation).')
+        check_cuda_available._already_warned = True
 
 
 class DummyDeviceType(object):
@@ -130,13 +132,25 @@ DummyDevice = DummyDeviceType()
 if available:
     memory_pool = cuda.MemoryPool()
     cuda.set_allocator(memory_pool.malloc)
+    pinned_memory_pool = cuda.PinnedMemoryPool()
+    cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
+
+
+if six.PY2:
+    try:
+        from future.types.newint import newint as _newint
+        _integer_types = six.integer_types + (_newint,)
+    except ImportError:
+        _integer_types = six.integer_types
+else:
+    _integer_types = six.integer_types
 
 
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
 def get_device(*args):
-    """Gets the device from an ID integer or an array object.
+    """Gets the device from a device object, an ID integer or an array object.
 
     This is a convenient utility to select a correct device if the type of
     ``arg`` is unknown (i.e., one can use this function on arrays that may be
@@ -144,10 +158,11 @@ def get_device(*args):
     protocol of Python for the *with* statement.
 
     Args:
-        args: Values to specify a GPU device. The first integer or
-            :class:`cupy.ndarray` object is used to select a device. If it is
-            an integer, the corresponding device is returned. If it is a CuPy
-            array, the device on which this array reside is returned. If any
+        args: Values to specify a GPU device. The first device object, integer
+            or :class:`cupy.ndarray` object is used to select a device.
+            If it is a device object, it is returned. If it is an integer,
+            the corresponding device is returned. If it is a CuPy array,
+            the device on which this array reside is returned. If any
             arguments are neither integers nor CuPy arrays, a dummy device
             object representing CPU is returned.
 
@@ -159,13 +174,15 @@ def get_device(*args):
 
     """
     for arg in args:
-        if type(arg) in six.integer_types:
+        if type(arg) in _integer_types:
             check_cuda_available()
             return Device(arg)
         if isinstance(arg, ndarray):
             if arg.device is None:
                 continue
             return arg.device
+        if available and isinstance(arg, Device):
+            return arg
 
     return DummyDevice
 
@@ -199,18 +216,26 @@ def to_gpu(array, device=None, stream=None):
 
         if stream is not None:
             ret = cupy.empty_like(array)
+            mem = None
             if array_dev.id == -1:
                 # cpu to gpu
-                src = array.copy(order='C')
+                mem = cupy.cuda.alloc_pinned_memory(array.nbytes)
+                src = numpy.frombuffer(
+                    mem, array.dtype, array.size).reshape(array.shape)
+                src[...] = array
                 ret.set(src, stream)
             else:
                 # gpu to gpu
                 with array_dev:
                     src = array.copy()
+                    event = cupy.cuda.Event()
+                    event.record()
+                stream.wait_event(event)
                 ret.data.copy_from_device_async(src.data, src.nbytes, stream)
 
             # to hold a reference until the end of the asynchronous memcpy
-            stream.add_callback(lambda *x: None, (src, ret))
+            stream.add_callback(lambda *x: None, (src, mem, ret))
+
             return ret
 
         if array_dev.id == -1:
@@ -463,8 +488,8 @@ def clear_memo():
     """Clears the memoized results for all functions decorated by memoize.
 
     This function works like :func:`cupy.clear_memo` as a counterpart for
-    :func:`chainer.cuda.memoize`. It also can be used even if CUDA is not
-    available. In such case, this function does nothing.
+    :func:`chainer.cuda.memoize`. It can be used even if CUDA is not available.
+    In such a case, this function does nothing.
 
     """
     if available:

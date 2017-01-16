@@ -30,12 +30,12 @@ class Sigmoid(function.Function):
 
     def forward_gpu(self, inputs):
         x = inputs[0]
-        if (cuda.cudnn_enabled and self.use_cudnn and
+        if (cuda.cudnn_enabled and self.use_cudnn and x.flags.c_contiguous and
                 (_cudnn_version >= 3000 or x.dtype != numpy.float16)):
             self.y = cuda.cupy.cudnn.activation_forward(x, _mode)
         else:
             self.y = cuda.elementwise(
-                'T x', 'T y', 'y = 1 / (1 + exp(-x))',
+                'T x', 'T y', 'y = tanh(x * 0.5) * 0.5 + 0.5',
                 'sigmoid_fwd')(x)
         return self.y,
 
@@ -46,7 +46,8 @@ class Sigmoid(function.Function):
     def backward_gpu(self, inputs, grads):
         x = inputs[0]
         gy = grads[0]
-        if (cuda.cudnn_enabled and self.use_cudnn and
+        if (cuda.cudnn_enabled and self.use_cudnn and x.flags.c_contiguous and
+                gy.flags.c_contiguous and
                 (_cudnn_version >= 3000 or x.dtype != numpy.float16)):
             gx = cuda.cupy.cudnn.activation_backward(x, self.y, gy, _mode)
         else:

@@ -920,6 +920,128 @@ class TestScaleOneBottomWithBias(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0])
 
 
+class TestSlice(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.split_axis'
+    in_shapes = [(3, 4, 3)]
+    out_shapes = [(3, 2, 3), (3, 2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Slice',
+                'bottom': ['x'],
+                'top': ['y1', 'y2'],
+                'slice_param': {
+                    'axis': 1
+                }
+            }
+        ]
+    }
+
+    def test_slice(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y1', 'y2'])
+        self.mock.assert_called_once_with(
+            self.inputs[0],
+            indices_or_sections=2,
+            axis=1
+        )
+
+
+class TestSliceNoAxis(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.split_axis'
+    in_shapes = [(4, 6, 4)]
+    out_shapes = [(2, 6, 4), (2, 6, 4)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Slice',
+                'bottom': ['x'],
+                'top': ['y1', 'y2'],
+                'slice_param': {
+                    'slice_dim': 0
+                }
+            }
+        ]
+    }
+
+    def test_slice_no_axis(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y1', 'y2'])
+        self.mock.assert_called_once_with(
+            self.inputs[0],
+            indices_or_sections=2,
+            axis=0
+        )
+
+
+class TestSliceNoAxisNoSliceDim(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.split_axis'
+    in_shapes = [(4, 6, 4)]
+    out_shapes = [(4, 3, 4), (4, 3, 4)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Slice',
+                'bottom': ['x'],
+                'top': ['y1', 'y2'],
+            }
+        ]
+    }
+
+    def test_slice_no_axis_no_slice_dim(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y1', 'y2'])
+        self.mock.assert_called_once_with(
+            self.inputs[0],
+            indices_or_sections=2,
+            axis=1
+        )
+
+
+class TestSliceSlicePoint(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.split_axis'
+    in_shapes = [(4, 8, 6)]
+    out_shapes = [(4, 3, 6), (4, 2, 6), (4, 3, 6)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Slice',
+                'bottom': ['x'],
+                'top': ['y1', 'y2', 'y3'],
+                'slice_param': {
+                    'axis': 1,
+                    'slice_point': [3, 5]
+                }
+            }
+        ]
+    }
+
+    def test_slice_slice_point(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y1', 'y2', 'y3'])
+        self.mock.assert_called_once_with(
+            self.inputs[0],
+            indices_or_sections=[3, 5],
+            axis=1
+        )
+
+
 class TestSoftmax(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.softmax'

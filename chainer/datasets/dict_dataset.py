@@ -13,6 +13,7 @@ class DictDataset(object):
             example. All datasets must have the same length.
 
     """
+
     def __init__(self, **datasets):
         if not datasets:
             raise ValueError('no datasets are given')

@@ -10,8 +10,7 @@ class FunctionSet(link.Chain):
     """Set of links (as "parameterized functions").
 
     FunctionSet is a subclass of :class:`~chainer.Chain`. Function
-    registration is done just by adding an attribute to :class:`
-    object.
+    registration is done just by adding an attribute to :class:`object`.
 
     .. deprecated:: v1.5
        Use :class:`~chainer.Chain` instead.
@@ -22,6 +21,7 @@ class FunctionSet(link.Chain):
           been replaced by :class:`~chainer.Link` and :class:`~chainer.Chain`.
 
     """
+
     def __init__(self, **links):
         super(FunctionSet, self).__init__(**links)
         warnings.warn('FunctionSet is deprecated. Use Chain instead.',
@@ -73,8 +73,8 @@ class FunctionSet(link.Chain):
 
         .. admonition:: Example
 
-           >>> import chainer.links as L
-           >>> model = FunctionSet(l1=L.Linear(10, 10), l2=L.Linear(10, 10))
+           >>> model = chainer.FunctionSet(l1=L.Linear(10, 10),
+           ...                             l2=L.Linear(10, 10))
            >>> l1 = model['l1']  # equivalent to l1 = model.l1
 
         """

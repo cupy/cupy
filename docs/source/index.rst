@@ -15,6 +15,7 @@ This is the `Chainer <http://chainer.org>`_ documentation.
    compatibility
    tips
    comparison
+   license
 
 
 Indices and tables

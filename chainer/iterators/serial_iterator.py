@@ -29,6 +29,7 @@ class SerialIterator(iterator.Iterator):
             order of indexes.
 
     """
+
     def __init__(self, dataset, batch_size, repeat=True, shuffle=True):
         self.dataset = dataset
         self.batch_size = batch_size
@@ -58,11 +59,12 @@ class SerialIterator(iterator.Iterator):
         if i_end >= N:
             if self._repeat:
                 rest = i_end - N
+                if self._order is not None:
+                    numpy.random.shuffle(self._order)
                 if rest > 0:
                     if self._order is None:
                         batch += list(self.dataset[:rest])
                     else:
-                        numpy.random.shuffle(self._order)
                         batch += [self.dataset[index]
                                   for index in self._order[:rest]]
                 self.current_position = rest

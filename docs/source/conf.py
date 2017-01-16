@@ -20,8 +20,6 @@ import sys
 
 __version__ = pkg_resources.get_distribution('chainer').version
 
-sys.path.insert(0, '../..')
-
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 
@@ -337,7 +335,6 @@ import chainer.links as L
 from chainer.training import extensions
 np.random.seed(0)
 '''
-doctest_test_doctest_blocks = None
 
 spelling_lang = 'en_US'
 spelling_word_list_filename = 'spelling_wordlist.txt'

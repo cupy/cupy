@@ -22,3 +22,4 @@ These functions cover a subset of
    random
    sorting
    statistics
+   ext

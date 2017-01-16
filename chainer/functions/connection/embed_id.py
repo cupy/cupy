@@ -27,14 +27,16 @@ class EmbedIDFunction(function.Function):
     def forward(self, inputs):
         x, W = inputs
 
+        xp = cuda.get_array_module(*inputs)
         if chainer.is_debug():
-            if not ((0 <= x).all() and
-                    (x < len(W)).all()):
-                msg = 'Each `x` value need to satisfy `0 <= x < len(W)`'
-                raise ValueError(msg)
+            valid_x = xp.logical_and(0 <= x, x < len(W))
+            if self.ignore_label is not None:
+                valid_x = xp.logical_or(valid_x, x == self.ignore_label)
+            if not valid_x.all():
+                raise ValueError('Each not ignored `x` value need to satisfy'
+                                 '`0 <= x < len(W)`')
 
         if self.ignore_label is not None:
-            xp = cuda.get_array_module(*inputs)
             mask = (x == self.ignore_label)
             return xp.where(
                 mask[..., None], 0, W.take(xp.where(mask, 0, x), axis=0)),
@@ -98,7 +100,7 @@ def embed_id(x, W, ignore_label=None):
     Returns:
         ~chainer.Variable: Output variable.
 
-    .. seealso:: :class:`EmbedID`
+    .. seealso:: :class:`~chainer.links.EmbedID`
 
     """
     return EmbedIDFunction(ignore_label=ignore_label)(x, W)

@@ -12,6 +12,17 @@ import six
 from chainer.dataset import dataset_mixin
 
 
+def _read_image_as_array(path, dtype):
+    f = Image.open(path)
+    try:
+        image = numpy.asarray(f, dtype=dtype)
+    finally:
+        # Only pillow >= 3.0 has 'close' method
+        if hasattr(f, 'close'):
+            f.close()
+    return image
+
+
 class ImageDataset(dataset_mixin.DatasetMixin):
 
     """Dataset of images built from a list of paths to image files.
@@ -43,6 +54,7 @@ class ImageDataset(dataset_mixin.DatasetMixin):
         dtype: Data type of resulting image arrays.
 
     """
+
     def __init__(self, paths, root='.', dtype=numpy.float32):
         _check_pillow_availability()
         if isinstance(paths, six.string_types):
@@ -57,8 +69,11 @@ class ImageDataset(dataset_mixin.DatasetMixin):
 
     def get_example(self, i):
         path = os.path.join(self._root, self._paths[i])
-        with Image.open(path) as f:
-            image = numpy.asarray(f, dtype=self._dtype)
+        image = _read_image_as_array(path, self._dtype)
+
+        if image.ndim == 2:
+            # image is greyscale
+            image = image[:, :, numpy.newaxis]
         return image.transpose(2, 0, 1)
 
 
@@ -92,6 +107,7 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
         label_dtype: Data type of the labels.
 
     """
+
     def __init__(self, pairs, root='.', dtype=numpy.float32,
                  label_dtype=numpy.int32):
         _check_pillow_availability()
@@ -117,8 +133,11 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
     def get_example(self, i):
         path, int_label = self._pairs[i]
         full_path = os.path.join(self._root, path)
-        with Image.open(full_path) as f:
-            image = numpy.asarray(f, dtype=self._dtype)
+        image = _read_image_as_array(full_path, self._dtype)
+
+        if image.ndim == 2:
+            # image is greyscale
+            image = image[:, :, numpy.newaxis]
         label = numpy.array(int_label, dtype=self._label_dtype)
         return image.transpose(2, 0, 1), label
 
