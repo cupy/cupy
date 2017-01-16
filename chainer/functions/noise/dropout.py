@@ -17,14 +17,15 @@ class Dropout(function.Function):
         type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
-        scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
-        xp = cuda.get_array_module(*x)
-        if xp == numpy:
-            flag = xp.random.rand(*x[0].shape) >= self.dropout_ratio
-        else:
-            flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32) >=
-                    self.dropout_ratio)
-        self.mask = scale * flag
+        if not hasattr(self, 'mask'):
+            scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
+            xp = cuda.get_array_module(*x)
+            if xp == numpy:
+                flag = xp.random.rand(*x[0].shape) >= self.dropout_ratio
+            else:
+                flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32) >=
+                        self.dropout_ratio)
+            self.mask = scale * flag
         return x[0] * self.mask,
 
     def backward(self, x, gy):

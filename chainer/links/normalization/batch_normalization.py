@@ -1,5 +1,6 @@
 import numpy
 
+from chainer import cuda
 from chainer.functions.normalization import batch_normalization
 from chainer import initializers
 from chainer import link
@@ -106,13 +107,15 @@ class BatchNormalization(link.Link):
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
-            gamma = variable.Variable(self.xp.ones(
-                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
+            with cuda.get_device(self._device_id):
+                gamma = variable.Variable(self.xp.ones(
+                    self.avg_mean.shape, dtype=x.dtype), volatile='auto')
         if hasattr(self, 'beta'):
             beta = self.beta
         else:
-            beta = variable.Variable(self.xp.zeros(
-                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
+            with cuda.get_device(self._device_id):
+                beta = variable.Variable(self.xp.zeros(
+                    self.avg_mean.shape, dtype=x.dtype), volatile='auto')
 
         if not test:
             if finetune:

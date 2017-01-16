@@ -153,7 +153,7 @@ class StatefulGRU(GRUBase):
         if self.xp == numpy:
             h_.to_cpu()
         else:
-            h_.to_gpu()
+            h_.to_gpu(self._device_id)
         self.h = h_
 
     def reset_state(self):

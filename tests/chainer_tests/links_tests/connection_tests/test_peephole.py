@@ -18,26 +18,26 @@ def _sigmoid(x):
 
 def _peephole(func, c, h, x):
     xp = cuda.get_array_module(x)
-
-    lstm_in = x.dot(func.upward.W.data.T)
-    lstm_in += h.dot(func.lateral.W.data.T)
-    lstm_in = xp.reshape(lstm_in, (len(lstm_in),
-                                   lstm_in.shape[1] // 4,
-                                   4))
-    a, i, f, o = xp.split(lstm_in, 4, 2)
-    a = xp.reshape(a, (len(a), a.shape[1]))
-    i = xp.reshape(i, (len(i), i.shape[1]))
-    f = xp.reshape(f, (len(f), f.shape[1]))
-    o = xp.reshape(o, (len(o), o.shape[1]))
-    peep_in_i = c.dot(func.peep_i.W.data.T)
-    peep_in_f = c.dot(func.peep_f.W.data.T)
-    a = xp.tanh(a)
-    i = _sigmoid(i + peep_in_i)
-    f = _sigmoid(f + peep_in_f)
-    c_next = a * i + f * c
-    peep_in_o = c_next.dot(func.peep_o.W.data.T)
-    o = _sigmoid(o + peep_in_o)
-    y = o * xp.tanh(c_next)
+    with cuda.get_device(x):
+        lstm_in = x.dot(func.upward.W.data.T)
+        lstm_in += h.dot(func.lateral.W.data.T)
+        lstm_in = xp.reshape(lstm_in, (len(lstm_in),
+                                       lstm_in.shape[1] // 4,
+                                       4))
+        a, i, f, o = xp.split(lstm_in, 4, 2)
+        a = xp.reshape(a, (len(a), a.shape[1]))
+        i = xp.reshape(i, (len(i), i.shape[1]))
+        f = xp.reshape(f, (len(f), f.shape[1]))
+        o = xp.reshape(o, (len(o), o.shape[1]))
+        peep_in_i = c.dot(func.peep_i.W.data.T)
+        peep_in_f = c.dot(func.peep_f.W.data.T)
+        a = xp.tanh(a)
+        i = _sigmoid(i + peep_in_i)
+        f = _sigmoid(f + peep_in_f)
+        c_next = a * i + f * c
+        peep_in_o = c_next.dot(func.peep_o.W.data.T)
+        o = _sigmoid(o + peep_in_o)
+        y = o * xp.tanh(c_next)
     return c_next, y
 
 
@@ -97,6 +97,16 @@ class TestPeephole(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.c),
                            cuda.to_gpu(self.h),
                            cuda.to_gpu(self.x))
+
+    @attr.multi_gpu(2)
+    def test_forward_gpu_multi(self):
+        with cuda.get_device(0):
+            self.link.to_gpu()
+            c = cuda.to_gpu(self.c)
+            h = cuda.to_gpu(self.h)
+            x = cuda.to_gpu(self.x)
+        with cuda.get_device(1):
+            self.check_forward(c, h, x)
 
     def check_backward(self, c_data, h_data, x_data, y_grad):
         x = chainer.Variable(x_data)

@@ -185,13 +185,14 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if cnt == ndim:
         return args, shape
     if cnt == 1:
-        newshape.assign(1, vecshape[axis])
+        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
         ret = []
         for i, a in enumerate(args):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
-                newstrides.assign(1, arr._strides[axis])
+                newstrides.assign(
+                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
@@ -498,6 +499,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
 
         size = kwargs.pop('size', None)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -548,7 +550,8 @@ cdef class ElementwiseKernel:
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        kern.linear_launch(indexer.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=128, stream=stream)
         return ret
 
 

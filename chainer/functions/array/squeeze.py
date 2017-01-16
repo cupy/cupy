@@ -65,12 +65,12 @@ def squeeze(x, axis=None):
     """Remove demensions of size one from the shape of a ndarray.
 
     Args:
-        x (chainer.Variable or :class:``numpy.ndarray` or cupy.ndarray): Input
+        x (chainer.Variable or :class:``numpy.ndarray`` or cupy.ndarray): Input
             data.
         axis (None or int or tuple of ints): A subset of the single-dimensional
             entries in the shape to remove. If ``None`` is supplied, all of
             them are removed. The dimension index starts at zero. If an axis
-            with dimension greater than one is selected, an error is raiseed.
+            with dimension greater than one is selected, an error is raised.
 
     Returns:
         ~chainer.Variable: Variable whose dimensions of size 1 are removed.

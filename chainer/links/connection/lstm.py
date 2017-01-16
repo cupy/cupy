@@ -2,6 +2,7 @@ import numpy
 import six
 
 import chainer
+from chainer import cuda
 from chainer.functions.activation import lstm
 from chainer.functions.array import concat
 from chainer.functions.array import split_axis
@@ -83,17 +84,19 @@ class StatelessLSTM(LSTMBase):
         """
         if self.upward.has_uninitialized_params:
             in_size = x.size // x.shape[0]
-            self.upward._initialize_params(in_size)
-            self._initialize_params()
+            with cuda.get_device(self._device_id):
+                self.upward._initialize_params(in_size)
+                self._initialize_params()
 
         lstm_in = self.upward(x)
         if h is not None:
             lstm_in += self.lateral(h)
         if c is None:
             xp = self.xp
-            c = variable.Variable(
-                xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
-                volatile='auto')
+            with cuda.get_device(self._device_id):
+                c = variable.Variable(
+                    xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
+                    volatile='auto')
         return lstm.lstm(c, lstm_in)
 
 
@@ -192,8 +195,8 @@ class LSTM(LSTMBase):
             c_.to_cpu()
             h_.to_cpu()
         else:
-            c_.to_gpu()
-            h_.to_gpu()
+            c_.to_gpu(self._device_id)
+            h_.to_gpu(self._device_id)
         self.c = c_
         self.h = h_
 
@@ -216,9 +219,10 @@ class LSTM(LSTMBase):
 
         """
         if self.upward.has_uninitialized_params:
-            in_size = x.size // x.shape[0]
-            self.upward._initialize_params(in_size)
-            self._initialize_params()
+            with cuda.get_device(self._device_id):
+                in_size = x.size // x.shape[0]
+                self.upward._initialize_params(in_size)
+                self._initialize_params()
 
         batch = x.shape[0]
         lstm_in = self.upward(x)
@@ -228,8 +232,8 @@ class LSTM(LSTMBase):
             if batch == 0:
                 h_rest = self.h
             elif h_size < batch:
-                msg = ('The batch size of x must be equal to or less than the '
-                       'size of the previous state h.')
+                msg = ('The batch size of x must be equal to or less than'
+                       'the size of the previous state h.')
                 raise TypeError(msg)
             elif h_size > batch:
                 h_update, h_rest = split_axis.split_axis(
@@ -239,9 +243,10 @@ class LSTM(LSTMBase):
                 lstm_in += self.lateral(self.h)
         if self.c is None:
             xp = self.xp
-            self.c = variable.Variable(
-                xp.zeros((batch, self.state_size), dtype=x.dtype),
-                volatile='auto')
+            with cuda.get_device(self._device_id):
+                self.c = variable.Variable(
+                    xp.zeros((batch, self.state_size), dtype=x.dtype),
+                    volatile='auto')
         self.c, y = lstm.lstm(self.c, lstm_in)
 
         if h_rest is None:

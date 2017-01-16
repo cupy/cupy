@@ -52,3 +52,45 @@ We support the option in CuPy because cuRAND, which is used in CuPy, supports an
   TypeError: randn() got an unexpected keyword argument 'dtype'
   >>> cupy.random.randn(dtype='f')
   array(0.10689262300729752, dtype=float32)
+
+
+Out-of-bounds indices
+---------------------
+CuPy handles out-of-bounds indices differently by default from NumPy when
+using integer array indexing.
+NumPy handles them by raising an error, but CuPy wraps around them::
+
+  >>> x = numpy.array([0, 1, 2])
+  >>> x[[1, 3]] = 10
+  Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+  IndexError: index 3 is out of bounds for axis 1 with size 3
+  >>> x = cupy.array([0, 1, 2])
+  >>> x[[1, 3]] = 10
+  >>> x
+  array([10, 10, 2])
+
+
+Duplicate values in indices
+---------------------------
+CuPy's ``__setitem__`` behaves differently from NumPy when integer arrays
+reference the same location multiple times.
+In that case, the value that is actually stored is undefined.
+Here is an example of CuPy::
+
+  >>> a = cupy.zeros((2,))
+  >>> i = cupy.arange(10000) % 2
+  >>> v = cupy.arange(10000).astype(numpy.float)
+  >>> a[i] = v
+  >>> a
+  array([9150., 9151.])
+
+NumPy stores the value corresponding to the
+last element among elements referencing duplicate locations::
+
+  >>> a_cpu = numpy.zeros((2,))
+  >>> i_cpu = numpy.arange(10000) % 2
+  >>> v_cpu = numpy.arange(10000).astype(numpy.float)
+  >>> a_cpu[i_cpu] = v_cpu
+  >>> a_cpu
+  array([9998., 9999.])

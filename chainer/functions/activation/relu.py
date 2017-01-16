@@ -32,6 +32,7 @@ class ReLU(function.Function):
 
     def forward_gpu(self, x):
         if (cuda.cudnn_enabled and self.use_cudnn and
+                x[0].flags.c_contiguous and
                 (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             y = cudnn.activation_forward(x[0], _mode)
             self.y = y
@@ -44,6 +45,7 @@ class ReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         if (cuda.cudnn_enabled and self.use_cudnn and
+                x[0].flags.c_contiguous and gy[0].flags.c_contiguous and
                 (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             gx = cudnn.activation_backward(x[0], self.y, gy[0], _mode)
         else:

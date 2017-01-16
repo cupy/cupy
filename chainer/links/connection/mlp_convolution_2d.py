@@ -15,7 +15,9 @@ class MLPConvolution2D(link.ChainList):
     last 1x1 convolution layer.
 
     Args:
-        in_channels (int): Number of channels of input arrays.
+        in_channels (int or None): Number of channels of input arrays.
+            If ``None``, parameter initialization will be deferred until the
+            first forward data pass at which time the size will be determined.
         out_channels (tuple of ints): Tuple of number of channels. The i-th
             integer indicates the number of filters of the i-th convolution.
         ksize (int or pair of ints): Size of filters (a.k.a. kernels) of the
@@ -35,7 +37,7 @@ class MLPConvolution2D(link.ChainList):
         bias_init: An initializer of bias vectors
             passed to the convolution layers.
 
-    See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`.
+    See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`_.
 
     Attributes:
         activation (function): Activation function.

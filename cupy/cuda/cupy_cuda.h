@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_H
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
+#include "cupy_stdint.h"
+
 #ifndef CUPY_NO_CUDA
 #include <cuda.h>
 #endif
@@ -38,12 +40,7 @@ typedef enum cudaDataType_t cudaDataType;
 #endif // #if CUDA_VERSION < 8000
 
 #if CUDA_VERSION < 7050
-cublasStatus_t cublasSgemmEx(
-        cublasHandle_t handle, cublasOperation_t transa,
-        cublasOperation_t transb, int m, int n, int k,
-        const float *alpha, const void *A, cudaDataType Atype,
-        int lda, const void *B, cudaDataType Btype, int ldb,
-        const float *beta, void *C, cudaDataType Ctype, int ldc) {
+cublasStatus_t cublasSgemmEx(...) {
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
 #endif // #if CUDA_VERSION < 7050
@@ -77,43 +74,37 @@ typedef struct CUstream_st* cudaStream_t;
 
 
 // Error handling
-CUresult cuGetErrorName(CUresult error, const char** pStr) {
+CUresult cuGetErrorName(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuGetErrorString(CUresult error, const char** pStr) {
+CUresult cuGetErrorString(...) {
     return CUDA_SUCCESS;
 }
 
 
 // Module load and kernel execution
-CUresult cuModuleLoad(CUmodule* module, char* fname) {
+CUresult cuModuleLoad(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuModuleLoadData(CUmodule* module, void* image) {
+CUresult cuModuleLoadData(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuModuleUnload(CUmodule hmod) {
+CUresult cuModuleUnload(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuModuleGetFunction(CUfunction* hfunc, CUmodule hmod, char* name) {
+CUresult cuModuleGetFunction(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuModuleGetGlobal(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod,
-                      char* name) {
+CUresult cuModuleGetGlobal(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuLaunchKernel(
-        CUfunction f, unsigned int gridDimX, unsigned int gridDimY,
-        unsigned int gridDimZ, unsigned int blockDimX,
-        unsigned int blockDimY, unsigned int blockDimZ,
-        unsigned int sharedMemBytes, cudaStream_t hStream,
-        void** kernelParams, void** extra) {
+CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
 
@@ -148,40 +139,39 @@ typedef cudaPointerAttributes _PointerAttributes;
 
 
 // Error handling
-const char* cudaGetErrorName(cudaError_t error) {
+const char* cudaGetErrorName(...) {
     return NULL;
 }
 
-const char* cudaGetErrorString(cudaError_t error) {
+const char* cudaGetErrorString(...) {
     return NULL;
 }
 
 
 // Initialization
-cudaError_t cudaDriverGetVersion(int* driverVersion) {
+cudaError_t cudaDriverGetVersion(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaRuntimeGetVersion(int* runtimeVersion) {
+cudaError_t cudaRuntimeGetVersion(...) {
     return cudaSuccess;
 }
 
 
 // CUdevice operations
-cudaError_t cudaGetDevice(int* device) {
+cudaError_t cudaGetDevice(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaDeviceGetAttribute(
-        int* value, cudaDeviceAttr attr, int device) {
+cudaError_t cudaDeviceGetAttribute(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaGetDeviceCount(int* count) {
+cudaError_t cudaGetDeviceCount(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaSetDevice(int device) {
+cudaError_t cudaSetDevice(...) {
     return cudaSuccess;
 }
 
@@ -189,134 +179,119 @@ cudaError_t cudaDeviceSynchronize() {
     return cudaSuccess;
 }
 
-cudaError_t cudaDeviceCanAccessPeer(
-        int* canAccessPeer, int device, int peerDevice) {
+cudaError_t cudaDeviceCanAccessPeer(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
+cudaError_t cudaDeviceEnablePeerAccess(...) {
     return cudaSuccess;
 }
 
 
 // Memory management
-cudaError_t cudaMalloc(void** devPtr, size_t size) {
+cudaError_t cudaMalloc(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaHostAlloc(void** ptr, size_t size, unsigned int flags) {
+cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
 
-int cudaFree(void* devPtr) {
+int cudaFree(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaFreeHost(void* ptr) {
+cudaError_t cudaFreeHost(...) {
     return cudaSuccess;
 }
 
-int cudaMemGetInfo(size_t* free, size_t* total) {
+int cudaMemGetInfo(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemcpy(
-          void* dst, const void* src, size_t count, cudaMemcpyKind kind) {
+cudaError_t cudaMemcpy(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemcpyAsync(
-        void* dst, const void* src, size_t count, cudaMemcpyKind kind,
-        cudaStream_t stream) {
+cudaError_t cudaMemcpyAsync(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemcpyPeer(
-        void* dst, int dstDevice, const void* src, int srcDevice,
-        size_t count) {
+cudaError_t cudaMemcpyPeer(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemcpyPeerAsync(
-          void* dst, int dstDevice, const void* src, int srcDevice,
-          size_t count, cudaStream_t stream) {
+cudaError_t cudaMemcpyPeerAsync(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemset(void* devPtr, int value, size_t count) {
+cudaError_t cudaMemset(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemsetAsync(
-        void* devPtr, int value, size_t count, cudaStream_t stream) {
+cudaError_t cudaMemsetAsync(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaPointerGetAttributes(
-        _PointerAttributes* attributes, const void* ptr) {
+cudaError_t cudaPointerGetAttributes(...) {
     return cudaSuccess;
 }
 
 
 // Stream and Event
-cudaError_t cudaStreamCreate(cudaStream_t* pStream) {
+cudaError_t cudaStreamCreate(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamCreateWithFlags(
-        cudaStream_t* pStream, unsigned int flags) {
+cudaError_t cudaStreamCreateWithFlags(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamDestroy(cudaStream_t stream) {
+cudaError_t cudaStreamDestroy(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
+cudaError_t cudaStreamSynchronize(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamAddCallback(
-        cudaStream_t stream, StreamCallback callback,
-        void* userData, unsigned int flags) {
+cudaError_t cudaStreamAddCallback(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamQuery(cudaStream_t stream) {
+cudaError_t cudaStreamQuery(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamWaitEvent(
-        cudaStream_t stream, cudaEvent_t event, unsigned int flags) {
+cudaError_t cudaStreamWaitEvent(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventCreate(cudaEvent_t* event) {
+cudaError_t cudaEventCreate(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventCreateWithFlags(cudaEvent_t* event, unsigned int flags) {
+cudaError_t cudaEventCreateWithFlags(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventDestroy(cudaEvent_t event) {
+cudaError_t cudaEventDestroy(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventElapsedTime(
-        float* ms, cudaEvent_t start, cudaEvent_t end) {
+cudaError_t cudaEventElapsedTime(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventQuery(cudaEvent_t event) {
+cudaError_t cudaEventQuery(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventRecord(cudaEvent_t event, cudaStream_t stream) {
+cudaError_t cudaEventRecord(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaEventSynchronize(cudaEvent_t event) {
+cudaError_t cudaEventSynchronize(...) {
     return cudaSuccess;
 }
 
@@ -336,166 +311,126 @@ typedef enum {
 
 
 // Context
-cublasStatus_t cublasCreate(cublasHandle_t* handle) {
+cublasStatus_t cublasCreate(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDestroy(cublasHandle_t handle) {
+cublasStatus_t cublasDestroy(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasGetVersion(cublasHandle_t handle, int* version) {
+cublasStatus_t cublasGetVersion(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasGetPointerMode(
-        cublasHandle_t handle, cublasPointerMode_t* mode) {
+cublasStatus_t cublasGetPointerMode(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSetPointerMode(
-        cublasHandle_t handle, cublasPointerMode_t mode) {
+cublasStatus_t cublasSetPointerMode(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 // Stream
-cublasStatus_t cublasSetStream(cublasHandle_t handle, cudaStream_t streamId) {
+cublasStatus_t cublasSetStream(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasGetStream(cublasHandle_t handle, cudaStream_t* streamId) {
+cublasStatus_t cublasGetStream(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 // BLAS Level 1
-cublasStatus_t cublasIsamax(
-        cublasHandle_t handle, int n, float* x, int incx, int* result) {
+cublasStatus_t cublasIsamax(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasIsamin(
-        cublasHandle_t handle, int n, float* x, int incx, int* result) {
+cublasStatus_t cublasIsamin(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSasum(cublasHandle_t handle, int n, float* x, int incx,
-                float* result) {
+cublasStatus_t cublasSasum(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSaxpy(
-      cublasHandle_t handle, int n, float* alpha, float* x,
-      int incx, float* y, int incy) {
+cublasStatus_t cublasSaxpy(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDaxpy(
-        cublasHandle_t handle, int n, double* alpha, double* x,
-        int incx, double* y, int incy) {
+cublasStatus_t cublasDaxpy(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSdot(
-        cublasHandle_t handle, int n, float* x, int incx,
-        float* y, int incy, float* result) {
+cublasStatus_t cublasSdot(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDdot(
-        cublasHandle_t handle, int n, double* x, int incx,
-        double* y, int incy, double* result) {
+cublasStatus_t cublasDdot(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSnrm2(
-        cublasHandle_t handle, int n, float* x, int incx, float* result) {
+cublasStatus_t cublasSnrm2(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSscal(
-        cublasHandle_t handle, int n, float* alpha, float* x, int incx) {
+cublasStatus_t cublasSscal(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 
 // BLAS Level 2
-cublasStatus_t cublasSgemv(
-        cublasHandle_t handle, cublasOperation_t trans, int m, int n,
-        float* alpha, float* A, int lda, float* x, int incx, float* beta,
-        float* y, int incy) {
+cublasStatus_t cublasSgemv(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDgemv(
-        cublasHandle_t handle, cublasOperation_t trans, int m, int n,
-        double* alpha, double* A, int lda, double* x, int incx, double* beta,
-        double* y, int incy) {
+cublasStatus_t cublasDgemv(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSger(
-        cublasHandle_t handle, int m, int n, float* alpha, float* x, int incx,
-        float* y, int incy, float* A, int lda) {
+cublasStatus_t cublasSger(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDger(
-        cublasHandle_t handle, int m, int n, double* alpha, double* x,
-        int incx, double* y, int incy, double* A, int lda) {
+cublasStatus_t cublasDger(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 // BLAS Level 3
-cublasStatus_t cublasSgemm(
-        cublasHandle_t handle, cublasOperation_t transa,
-        cublasOperation_t transb, int m, int n, int k, float* alpha,
-        float* A, int lda, float* B, int ldb, float* beta, float* C, int ldc) {
+cublasStatus_t cublasSgemm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDgemm(
-        cublasHandle_t handle, cublasOperation_t transa,
-        cublasOperation_t transb, int m, int n, int k, double* alpha,
-        double* A, int lda, double* B, int ldb, double* beta, double* C,
-        int ldc) {
+cublasStatus_t cublasDgemm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSgemmBatched(
-        cublasHandle_t handle, cublasOperation_t transa,
-        cublasOperation_t transb, int m, int n, int k, const float* alpha,
-        const float** Aarray, int lda, const float** Barray, int ldb,
-        const float* beta, float** Carray, int ldc, int batchCount) {
+cublasStatus_t cublasSgemmBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSgemmEx(
-        cublasHandle_t handle, cublasOperation_t transa,
-        cublasOperation_t transb, int m, int n, int k,
-        const float *alpha, const void *A, cudaDataType Atype,
-        int lda, const void *B, cudaDataType Btype, int ldb,
-        const float *beta, void *C, cudaDataType Ctype, int ldc) {
+cublasStatus_t cublasSgemmEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 
 // BLAS extension
-cublasStatus_t cublasSdgmm(
-        cublasHandle_t handle, cublasSideMode_t mode, int m, int n, float* A,
-        int lda, float* x, int incx, float* C, int ldc) {
+cublasStatus_t cublasSgeam(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSgetrfBatched(
-        cublasHandle_t handle, int n, float *Aarray[], int lda,
-        int *PivotArray, int *infoArray, int batchSize) {
+cublasStatus_t cublasDgeam(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasSgetriBatched(
-        cublasHandle_t handle, int n, const float *Aarray[], int lda,
-        int *PivotArray, float *Carray[], int ldc, int *infoArray,
-        int batchSize) {
+cublasStatus_t cublasSdgmm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasSgetrfBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasSgetriBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -514,91 +449,71 @@ typedef void* curandGenerator_t;
 
 
 // curandGenerator_t
-curandStatus_t curandCreateGenerator(
-        curandGenerator_t* generator, curandRngType_t rng_type) {
+curandStatus_t curandCreateGenerator(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandDestroyGenerator(curandGenerator_t generator) {
+curandStatus_t curandDestroyGenerator(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGetVersion(int* version) {
+curandStatus_t curandGetVersion(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
 
 // Stream
-curandStatus_t curandSetStream(
-        curandGenerator_t generator, cudaStream_t stream) {
+curandStatus_t curandSetStream(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandSetPseudoRandomGeneratorSeed(
-        curandGenerator_t generator, unsigned long long seed) {
+curandStatus_t curandSetPseudoRandomGeneratorSeed(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandSetGeneratorOffset(
-        curandGenerator_t generator, unsigned long long offset) {
+curandStatus_t curandSetGeneratorOffset(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandSetGeneratorOrdering(
-        curandGenerator_t generator, curandOrdering_t order) {
+curandStatus_t curandSetGeneratorOrdering(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
 
 // Generation functions
-curandStatus_t curandGenerate(
-        curandGenerator_t generator, unsigned int* outputPtr, size_t num) {
+curandStatus_t curandGenerate(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateLongLong(
-        curandGenerator_t generator, unsigned long long* outputPtr,
-        size_t num) {
+curandStatus_t curandGenerateLongLong(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateUniform(
-        curandGenerator_t generator, float* outputPtr, size_t num) {
+curandStatus_t curandGenerateUniform(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateUniformDouble(
-        curandGenerator_t generator, double* outputPtr, size_t num) {
+curandStatus_t curandGenerateUniformDouble(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateNormal(
-        curandGenerator_t generator, float* outputPtr, size_t num,
-        float mean, float stddev) {
+curandStatus_t curandGenerateNormal(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateNormalDouble(
-        curandGenerator_t generator, double* outputPtr, size_t n,
-        double mean, double stddev) {
+curandStatus_t curandGenerateNormalDouble(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateLogNormal(
-        curandGenerator_t generator, float* outputPtr, size_t n,
-        float mean, float stddev) {
+curandStatus_t curandGenerateLogNormal(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGenerateLogNormalDouble(
-        curandGenerator_t generator, double* outputPtr, size_t n,
-        double mean, double stddev) {
+curandStatus_t curandGenerateLogNormalDouble(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
-curandStatus_t curandGeneratePoisson(
-        curandGenerator_t generator, unsigned int* outputPtr, size_t n,
-        double lam) {
+curandStatus_t curandGeneratePoisson(...) {
     return CURAND_STATUS_SUCCESS;
 }
 
@@ -608,9 +523,7 @@ curandStatus_t curandGeneratePoisson(
 
 typedef enum {} cudaOutputMode_t;
 
-cudaError_t cudaProfilerInitialize(const char *configFile,
-                           const char *outputFile,
-                           cudaOutputMode_t outputMode) {
+cudaError_t cudaProfilerInitialize(...) {
   return cudaSuccess;
 }
 
@@ -668,17 +581,17 @@ typedef struct nvtxEventAttributes_v1
 
 typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
 
-void nvtxMarkA(const char *message) {
+void nvtxMarkA(...) {
 }
 
-void nvtxMarkEx(const nvtxEventAttributes_t *eventAttrib) {
+void nvtxMarkEx(...) {
 }
 
-int nvtxRangePushA(const char *message) {
+int nvtxRangePushA(...) {
     return 0;
 }
 
-int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib) {
+int nvtxRangePushEx(...) {
     return 0;
 }
 

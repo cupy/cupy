@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of CUDA Driver API.
 
 There are four differences compared to the original C API.
@@ -18,22 +20,23 @@ cimport cython
 
 cdef extern from "cupy_cuda.h":
     # Error handling
-    int cuGetErrorName(Result error, const char** pStr)
-    int cuGetErrorString(Result error, const char** pStr)
+    int cuGetErrorName(Result error, const char** pStr) nogil
+    int cuGetErrorString(Result error, const char** pStr) nogil
 
     # Module load and kernel execution
-    int cuModuleLoad(Module* module, char* fname)
-    int cuModuleLoadData(Module* module, void* image)
-    int cuModuleUnload(Module hmod)
-    int cuModuleGetFunction(Function* hfunc, Module hmod, char* name)
+    int cuModuleLoad(Module* module, char* fname) nogil
+    int cuModuleLoadData(Module* module, void* image) nogil
+    int cuModuleUnload(Module hmod) nogil
+    int cuModuleGetFunction(Function* hfunc, Module hmod,
+                            char* name) nogil
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
-                          char* name)
+                          char* name) nogil
     int cuLaunchKernel(
         Function f, unsigned int gridDimX, unsigned int gridDimY,
         unsigned int gridDimZ, unsigned int blockDimX,
         unsigned int blockDimY, unsigned int blockDimZ,
         unsigned int sharedMemBytes, Stream hStream,
-        void** kernelParams, void** extra)
+        void** kernelParams, void** extra) nogil
 
 
 ###############################################################################
@@ -66,27 +69,34 @@ cpdef inline check_status(int status):
 cpdef size_t moduleLoad(str filename) except *:
     cdef Module module
     cdef bytes b_filename = filename.encode()
-    status = cuModuleLoad(&module, b_filename)
+    cdef char* b_filename_ptr = b_filename
+    with nogil:
+        status = cuModuleLoad(&module, b_filename_ptr)
     check_status(status)
     return <size_t>module
 
 
 cpdef size_t moduleLoadData(bytes image) except *:
     cdef Module module
-    status = cuModuleLoadData(&module, <char*>image)
+    cdef char* image_ptr = image
+    with nogil:
+        status = cuModuleLoadData(&module, image_ptr)
     check_status(status)
     return <size_t>module
 
 
 cpdef moduleUnload(size_t module):
-    status = cuModuleUnload(<Module>module)
+    with nogil:
+        status = cuModuleUnload(<Module>module)
     check_status(status)
 
 
 cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
     cdef Function func
     cdef bytes b_funcname = funcname.encode()
-    status = cuModuleGetFunction(&func, <Module>module, <char*>b_funcname)
+    cdef char* b_funcname_ptr = b_funcname
+    with nogil:
+        status = cuModuleGetFunction(&func, <Module>module, b_funcname_ptr)
     check_status(status)
     return <size_t>func
 
@@ -95,7 +105,9 @@ cpdef size_t moduleGetGlobal(size_t module, str varname) except *:
     cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()
-    status = cuModuleGetGlobal(&var, &size, <Module>module, <char*>b_varname)
+    cdef char* b_varname_ptr = b_varname
+    with nogil:
+        status = cuModuleGetGlobal(&var, &size, <Module>module, b_varname_ptr)
     check_status(status)
     return <size_t>var
 
@@ -106,9 +118,10 @@ cpdef launchKernel(
         unsigned int block_dim_y, unsigned int block_dim_z,
         unsigned int shared_mem_bytes, size_t stream, size_t kernel_params,
         size_t extra):
-    status = cuLaunchKernel(
-        <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,
-        block_dim_x, block_dim_y, block_dim_z,
-        shared_mem_bytes, <Stream>stream,
-        <void**>kernel_params, <void**>extra)
+    with nogil:
+        status = cuLaunchKernel(
+            <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,
+            block_dim_x, block_dim_y, block_dim_z,
+            shared_mem_bytes, <Stream>stream,
+            <void**>kernel_params, <void**>extra)
     check_status(status)

@@ -1,9 +1,11 @@
 from __future__ import division
 import datetime
+import os
 import sys
 import time
 
 from chainer.training import extension
+from chainer.training.extensions import util
 from chainer.training import trigger
 
 
@@ -66,7 +68,10 @@ class ProgressBar(extension.Extension):
 
             recent_timing.append((iteration, epoch, now))
 
-            out.write('\033[J')
+            if os.name == 'nt':
+                util.erase_console(0, 0)
+            else:
+                out.write('\033[J')
 
             if unit == 'iteration':
                 rate = iteration / length
@@ -104,7 +109,10 @@ class ProgressBar(extension.Extension):
                               datetime.timedelta(seconds=estimated_time)))
 
             # move the cursor to the head of the progress bar
-            out.write('\033[4A')
+            if os.name == 'nt':
+                util.set_console_cursor_position(0, -4)
+            else:
+                out.write('\033[4A')
             out.flush()
 
             if len(recent_timing) > 100:
@@ -113,5 +121,8 @@ class ProgressBar(extension.Extension):
     def finalize(self):
         # delete the progress bar
         out = self._out
-        out.write('\033[J')
+        if os.name == 'nt':
+            util.erase_console(0, 0)
+        else:
+            out.write('\033[J')
         out.flush()

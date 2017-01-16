@@ -12,7 +12,7 @@ from install import build
 from install import utils
 
 
-require_cython_version = pkg_resources.parse_version('0.24.0')
+required_cython_version = pkg_resources.parse_version('0.24.0')
 
 MODULES = [
     {
@@ -116,6 +116,11 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
+    # This is a workaround for Anaconda.
+    # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
+    # with GCC 5's new ABI.
+    settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
@@ -162,20 +167,22 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    arg_options = dict()
-    arg_options['profile'] = '--cupy-profile' in sys.argv
-    if arg_options['profile']:
+    cupy_profile = '--cupy-profile' in sys.argv
+    if cupy_profile:
         sys.argv.remove('--cupy-profile')
-
     cupy_coverage = '--cupy-coverage' in sys.argv
     if cupy_coverage:
         sys.argv.remove('--cupy-coverage')
-    arg_options['linetrace'] = cupy_coverage
-    arg_options['annotate'] = cupy_coverage
-
-    arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
-    if arg_options['no_cuda']:
+    no_cuda = '--cupy-no-cuda' in sys.argv
+    if no_cuda:
         sys.argv.remove('--cupy-no-cuda')
+
+    arg_options = {
+        'profile': cupy_profile,
+        'linetrace': cupy_coverage,
+        'annotate': cupy_coverage,
+        'no_cuda': no_cuda,
+    }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
     return arg_options
@@ -185,7 +192,7 @@ def check_cython_version():
     try:
         import Cython
         cython_version = pkg_resources.parse_version(Cython.__version__)
-        return cython_version >= require_cython_version
+        return cython_version >= required_cython_version
     except ImportError:
         return False
 
@@ -201,7 +208,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, language="c++", verbose=True,
+        extensions, verbose=True,
         compiler_directives=directives, **cythonize_options)
 
 
