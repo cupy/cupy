@@ -33,6 +33,8 @@ class TestPacking(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.12')
     def test_packbits_empty(self):
+        # Note packbits of numpy <= 1.11 has a bug against empty arrays.
+        # See https://github.com/numpy/numpy/issues/8324
         self.check_packbits([])
 
     def test_unpackbits(self):
