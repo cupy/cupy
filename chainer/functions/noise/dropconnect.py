@@ -87,6 +87,14 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     In testing mode, zero will be used as dropconnect ratio instead of
     ``ratio``.
 
+    There are two differences between the current implementation and the
+    original version dropconnect.
+    The original version uses a different mask for each sample in the mini
+    batch, but the current implementation uses a single same mask.
+    In addition, not approximation by Gaussian distribution as original
+    version, current implementation uses approximation by averaging before
+    activation at inference time.
+
     Args:
         x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             Input variable. Its first dimension is assumed
