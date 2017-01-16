@@ -548,7 +548,6 @@ def get_array_module(*args):
     are that this function can be used even if CUDA is not available and that
     it will return their data arrays' array module for
     :class:`~chainer.Variable` arguments.
-.
 
     Args:
         args: Values to determine whether NumPy or CuPy should be used.
