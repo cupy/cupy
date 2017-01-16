@@ -9,11 +9,13 @@ except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
+    exc_info = sys.exc_info()
     msg = ('CuPy is not correctly installed. Please check your environment, '
            'uninstall Chainer and reinstall it with `pip install chainer '
-           '--no-cache-dir -vvvv`.')
-    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
+           '--no-cache-dir -vvvv`.\n\n'
+           'original error: {}'.format(exc_info[1]))
 
+    raise six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
 
 from cupy import binary  # NOQA
 from cupy import creation  # NOQA
