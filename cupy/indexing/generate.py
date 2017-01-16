@@ -105,6 +105,8 @@ stacked along their last axis after being upgraded to at least 2-D with
 
 For detailed documentation, see `r_`.
 
+This implementation is partially borrowed from NumPy's one
+
 Args:
     Not a function, so takes no parameters
 
@@ -140,6 +142,8 @@ Therefore, the other objects (e.g. writing strings like '2,3,4',
 or using imaginary numbers like [1,2,3j],
 or using string integers like '-1') are not implemented yet
 compared with NumPy.
+
+This implementation is partially borrowed from NumPy's one
 
 Args:
     Not a function, so takes no parameters
