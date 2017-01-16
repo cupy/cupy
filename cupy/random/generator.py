@@ -243,7 +243,7 @@ class RandomState(object):
             :meth:`numpy.random.choice`
 
         """
-        a = cupy.array(a)
+        a = numpy.array(a, copy=False)
         if a.ndim == 0:
             try:
                 a_size = a.item()
@@ -270,49 +270,33 @@ class RandomState(object):
             if not numpy.allclose(p_sum, 1):
                 raise ValueError('probabilities do not sum to 1')
 
+        if not replace:
+            raise NotImplementedError
+
         if size is None:
             raise NotImplementedError
         shape = size
-        size = cupy.prod(shape)
+        size = numpy.prod(shape)
 
-        if replace:
-            if p is not None:
-                p = cupy.broadcast_to(p, (size, a_size))
-                index = cupy.argmax(cupy.log(p) -
-                                    cupy.random.gumbel(size=(size, a_size)),
-                                    axis=1)
+        if p is not None:
+            p = cupy.broadcast_to(p, (size, a_size))
+            index = cupy.argmax(cupy.log(p) -
+                                cupy.random.gumbel(size=(size, a_size)),
+                                axis=1)
+            if type(shape) != int:
                 index.shape = shape
-            else:
-                index = cupy.random.randint(0, a_size, size=shape)
         else:
-            if size > a_size:
-                raise ValueError('Cannot take a larger sample than population \
-                                  when \'replace=False\'')
-            if p is not None:
-                if cupy.count_nonzero(p > 0) < size:
-                    raise ValueError('Fewer non-zero entries in p than size')
-                n_uniq = 0
-                # fix
-                # found = cupy.zeros(shape, dtype=cupy.int32)
-                # flat_found = found.ravel()
-                while n_uniq < size:
-                    raise NotImplementedError
-            else:
-                # e.g.) cupy.random.choice(a, size, replace=False, p=None)
-                raise NotImplementedError
+            index = cupy.random.randint(0, a_size, size=shape)
 
         if a.ndim == 0:
-            # e.g) cupy.random.choice(a=5, size, replace, p)
             return index
 
         if index.ndim == 0:
-            # e.g.) cupy.random.choice(a=[1, 2, 3], size=(), True, p=None)
-            # res.ndim == 0
             res = cupy.empty((), dtype=a.dtype)
             res[()] = a[index]
             return res
 
-        return a[index]
+        return a[cupy.asnumpy(index)]
 
 
 def seed(seed=None):
