@@ -192,8 +192,7 @@ class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
 
-    @testing.for_all_dtypes(name='src_dtype')
-    @testing.for_all_dtypes(name='dst_dtype')
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_array_equal()
     def test_differnt_dtypes(self, xp, src_dtype, dst_dtype):
         shape = (2, 3)
