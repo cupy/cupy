@@ -110,6 +110,16 @@ class TestTrainer(unittest.TestCase):
         self.trainer.run()
         self.assertTrue(self.is_called)
 
+    def test_add_function_extension(self):
+        self.is_called = False
+
+        def dummy_function(trainer):
+            self.is_called = True
+
+        self.trainer.extend(dummy_function)
+        self.trainer.run()
+        self.assertTrue(self.is_called)
+
     def test_add_two_extensions_default_priority(self):
         self.called_order = []
 
