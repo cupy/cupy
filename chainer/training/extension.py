@@ -18,10 +18,10 @@ class Extension(object):
     overhead and is much easier to use, while this class provides more
     flexibility (for example, it can have methods to configure the behavior).
     Using a lambda function allows one-line coding for simple purposes, but
-    users have to specify the configurations in :meth:`Trainer.extend` by
-    themselves. For a callable class not inheriting this class, the default
-    configurations of this class are used unless the user explicitly specifies
-    them in :meth:`Trainer.extend` method.
+    users have to specify the configurations as arguments to
+    :meth:`Trainer.extend`. For a callable not inheriting this class, the
+    default configurations of this class are used unless the user explicitly
+    specifies them in :meth:`Trainer.extend` method.
 
     Attributes:
         trigger: Default value of trigger for this extension. It is set to

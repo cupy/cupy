@@ -41,9 +41,9 @@ class Trainer(object):
     Extensions are callable objects that take the trainer object as the
     argument. There are three ways to define custom extensions: inheriting the
     :class:`Extension` class, decorating functions by :func:`make_extension`,
-    and defining any callable including lambda functions. The default
-    configurations of an extension is used in the former two cases. See
-    :class:`Extension` for more details on custom extensions.
+    and defining any callable including lambda functions. See
+    :class:`Extension` for more details on custom extensions and how to
+    configure them.
 
     Users can register extensions to the trainer by calling the :meth:`extend`
     method, where some configurations can be added.
@@ -184,11 +184,11 @@ class Trainer(object):
                 duplicated names as explained above.
             trigger (tuple or Trigger): Trigger object that determines when to
                 invoke the extension. If it is ``None``, ``extension.trigger``
-                is used instead. If the trigger is not callable, it is passed
-                to :class:`IntervalTrigger` to build an interval trigger. If
-                it is ``None`` and the extension does not have the trigger
-                attribute, the extension is triggered at every iteration as
-                default.
+                is used instead. If it is ``None`` and the extension does not
+                have the trigger attribute, the extension is triggered at every
+                iteration by default. If the trigger is not callable, it is
+                passed to :class:`IntervalTrigger` to build an interval
+                trigger.
             priority (int): Invocation priority of the extension. Extensions
                 are invoked in the descending order of priorities in each
                 iteration. If this is ``None``, ``extension.priority`` is used
