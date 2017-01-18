@@ -64,7 +64,8 @@ class PlotReport(extension.Extension):
             in this order. This callback can modify the figure.
         file_name (str): Name of the figure file under the output directory.
             It can be a format string.
-        marker (str): The marker used to plot the graph. Default is 'x'
+        marker (str): The marker used to plot the graph. Default is ``'x'``. If
+            ``None`` is given, it draws with no markers.
         grid (bool): Set the axis grid on if True. Default is True.
 
     """
