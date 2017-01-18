@@ -171,6 +171,7 @@ class TestCompleteSlice(unittest.TestCase):
             slice(*self.expect))
 
 
+@testing.with_requires('numpy>=1.12')
 class TestCompleteSliceError(unittest.TestCase):
 
     def test_invalid_step_value(self):
@@ -178,17 +179,17 @@ class TestCompleteSliceError(unittest.TestCase):
             internal.complete_slice(slice(1, 1, 0), 1)
 
     def test_invalid_step_type(self):
-        with self.assertRaises(IndexError):
+        with self.assertRaises(TypeError):
             internal.complete_slice(slice(1, 1, (1, 2)), 1)
 
     def test_invalid_start_type(self):
-        with self.assertRaises(IndexError):
+        with self.assertRaises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(IndexError):
+        with self.assertRaises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
 
     def test_invalid_stop_type(self):
-        with self.assertRaises(IndexError):
+        with self.assertRaises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(IndexError):
+        with self.assertRaises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
