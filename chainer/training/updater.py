@@ -128,7 +128,8 @@ class StandardUpdater(Updater):
         self._optimizers = optimizer
 
         if device is not None and device >= 0:
-            optimizer['main'].target.to_gpu(device)
+            for opt in self._optimizers.values():
+                opt.target.to_gpu(device)
 
         self.converter = converter
         self.loss_func = loss_func
