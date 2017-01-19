@@ -64,11 +64,15 @@ class PlotReport(extension.Extension):
             in this order. This callback can modify the figure.
         file_name (str): Name of the figure file under the output directory.
             It can be a format string.
+        marker (str): The marker used to plot the graph. Default is ``'x'``. If
+            ``None`` is given, it draws with no markers.
+        grid (bool): Set the axis grid on if True. Default is True.
 
     """
 
     def __init__(self, y_keys, x_key='iteration', trigger=(1, 'epoch'),
-                 postprocess=None, file_name='plot.png'):
+                 postprocess=None, file_name='plot.png', marker='x',
+                 grid=True):
 
         _check_available()
 
@@ -82,6 +86,8 @@ class PlotReport(extension.Extension):
         self._y_keys = y_keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._file_name = file_name
+        self._marker = marker
+        self._grid = grid
         self._postprocess = postprocess
         self._init_summary()
         self._data = {k: [] for k in y_keys}
@@ -118,7 +124,8 @@ class PlotReport(extension.Extension):
             f = plot.figure()
             a = f.add_subplot(111)
             a.set_xlabel(self._x_key)
-            a.grid()
+            if self._grid:
+                a.grid()
 
             for k in keys:
                 xy = data[k]
@@ -126,7 +133,7 @@ class PlotReport(extension.Extension):
                     continue
 
                 xy = numpy.array(xy)
-                a.plot(xy[:, 0], xy[:, 1], marker='x', label=k)
+                a.plot(xy[:, 0], xy[:, 1], marker=self._marker, label=k)
 
             if a.has_data():
                 if self._postprocess is not None:
