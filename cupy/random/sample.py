@@ -163,4 +163,4 @@ def choice(a, size=None, replace=True, p=None):
 
     """
     rs = generator.get_random_state()
-    return rs.choice(a=a, size=size, replace=replace, p=p)
+    return rs.choice(a, size, replace, p)
