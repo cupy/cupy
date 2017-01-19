@@ -705,6 +705,45 @@ def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
     return for_dtypes_combination(types, names, full)
 
 
+def for_orders(orders, name='order'):
+    """Decorator to parameterize tests with order.
+
+    Args:
+         orders(list of orders): orders to be tested.
+         name(str): Argument name to which the specified order is passed.
+
+    This decorator adds a keyword argument specified by ``name``
+    to the test fixtures. Then, the fixtures run by passing each element of
+    ``orders`` to the named argument.
+
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            for order in orders:
+                try:
+                    kw[name] = order
+                    impl(self, *args, **kw)
+                except Exception:
+                    print(name, 'is', order)
+                    raise
+
+        return test_func
+    return decorator
+
+
+def for_CF_orders(name='order'):
+    """Decorator that checks the fixture with orders 'C' and 'F'.
+
+    Args:
+         name(str): Argument name to which the specified order is passed.
+
+    .. seealso:: :func:`cupy.testing.for_all_dtypes`
+
+    """
+    return for_orders(['C', 'F'], name)
+
+
 def with_requires(*requirements):
     """Run a test case only when given requirements are satisfied.
 
