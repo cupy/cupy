@@ -133,6 +133,35 @@ class TestAveragePoolingND(unittest.TestCase):
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
+    def test_backward_consistency_regression(self):
+        # Regression test to two-dimensional average pooling layer.
+
+        if len(self.dims) != 2:
+            return
+
+        ksize = self.ksize
+        stride = self.stride
+        pad = self.pad
+
+        # Backward computation for N-dimensional average pooling layer.
+        x_nd = chainer.Variable(numpy.array(self.x))
+        func_nd = functions.AveragePoolingND(self.ndim, ksize, stride=stride,
+                                             pad=pad, use_cudnn=False)
+        y_nd = func_nd(x_nd)
+        y_nd.grad = self.gy
+        y_nd.backward()
+
+        # Backward computation for two-dimensional average pooling layer.
+        x_2d = chainer.Variable(numpy.array(self.x))
+        func_2d = functions.AveragePooling2D(ksize, stride=stride, pad=pad,
+                                             use_cudnn=False)
+        y_2d = func_2d(x_2d)
+        y_2d.grad = self.gy
+        y_2d.backward()
+
+        # Test that the two result gradients are close enough.
+        testing.assert_allclose(x_nd.grad, x_2d.grad)
+
 
 @testing.parameterize(*testing.product({
     'dims': [(4, 3, 2), (3, 2), (2,)],
