@@ -621,7 +621,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.take`
 
         """
-        return _take(self, indices, axis, out)
+        return _take(self, indices, li=axis, ri=axis, out=out)
 
     # TODO(okuta): Implement put
 
@@ -2247,31 +2247,33 @@ cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
     return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
 
 
-cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
+cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
+    # When li == ri, this function behaves similarly to np.take
     if a.ndim == 0:
         a = a[None]
 
-    if axis is None:
+    if li is None and ri is None:
         a = a.ravel()
         lshape = ()
         rshape = ()
         adim = 1
         index_range = a.size
     else:
-        if not (-a.ndim <= axis < a.ndim):
+        if not (-a.ndim <= li < a.ndim and -a.ndim <= ri < a.ndim):
             raise ValueError('Axis overrun')
         if a.ndim != 0:
-            axis %= a.ndim
+            li %= a.ndim
+            ri %= a.ndim
 
-        lshape = a.shape[:axis]
-        rshape = a.shape[axis + 1:]
-        adim = a.shape[axis]
+        lshape = a.shape[:li]
+        rshape = a.shape[ri + 1:]
+        adim = internal.prod(a.shape[li:ri + 1])
         index_range = adim
 
     if numpy.isscalar(indices):
         indices %= index_range
-        if axis is not None:
-            a = rollaxis(a, axis)
+        if li is not None and ri is not None and li == ri:
+            a = rollaxis(a, li)
         if out is None:
             return a[indices].copy()
         else:
@@ -2297,7 +2299,7 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     rdim = internal.prod(rshape)
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
-    if axis == 0 or axis is None:
+    if (li == 0 and ri == 0) or (li is None and ri is None):
         return _take_kernel_0axis(
             a.reduced_view(), indices, rdim, index_range, out)
     else:
@@ -2654,11 +2656,7 @@ cpdef ndarray _getitem_multiple(ndarray a, list slices):
 
     a_interm_shape = a_interm.shape
     out_shape = a_interm_shape[:li] + reduced_idx.shape + a_interm_shape[ri+1:]
-    kern_input_shape = a_interm_shape[:li] +\
-        (internal.prod_ssize_t(a_interm_shape[li:ri+1]),) +\
-        a_interm_shape[ri+1:]
-    a_interm = a_interm._reshape(kern_input_shape)
-    ret_flat = a_interm.take(reduced_idx.ravel(), axis=li)
+    ret_flat = _take(a_interm, reduced_idx.ravel(), li=li, ri=ri)
     ret = ret_flat._reshape(out_shape)
     return ret
 
