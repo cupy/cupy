@@ -1994,6 +1994,45 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         ret[skip + (slice(i, i + aw),)] = a
         i += aw
 
+    left_stride = numpy.prod(shape[:axis])
+    right_stride = numpy.prod(shape[axis+1:])
+    x = cupy.array([a.data.ptr for a in tup])
+    axis_sizes = cupy.array([a.shape[axis] for a in tup], 'i')
+    x_strides = cupy.array([a.strides for a in tup], 'i')
+    kernel = ElementwiseKernel(
+        '''raw P x, int32 axis, raw int32 axis_sizes, raw int32 x_strides,
+        raw int32 shape, int32 ndim, int32 left_stride, int32 right_stride''',
+        'T y',
+        '''
+        int axis_ind = i % left_stride / right_stride;
+
+        int accum_ind = 0;
+        int array_ind;
+        for (int j = 0; j < n; ++j) {
+          int[] ind = {j, axis};
+          if (axis_ind < axis_sizes[j]) {
+            array_ind = j;
+            break;
+          }
+          axis_ind -= axis_sizes[j];
+        }
+
+        int x_ind = 0;
+        int ind_rest = i;
+        for (int j = ndim - 1; j >= 0; --j) {
+          int[] ind = {array_ind, j};
+          if (j == axis) {
+            x_ind += x_strides[ind] * axis_ind;
+          } else {
+            x_ind += x_strides[ind] * (ind_rest % shape[j]);
+          }
+          ind_rest /= shape[j];
+        }
+        y = x[array_ind][x_ind];
+        '''
+    )
+    kernel(
+        x, axis, axis_sizes, shape, len(shape), left_stride, right_stride, ret)
     return ret
 
 # -----------------------------------------------------------------------------
