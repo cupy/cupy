@@ -93,7 +93,7 @@ def _concat_arrays(arrays, padding):
 
     xp = cuda.get_array_module(arrays[0])
     with cuda.get_device(arrays[0]):
-        return xp.concatenate([array[None] for array in arrays])
+        return xp.concatenate([xp.asarray(array)[None] for array in arrays])
 
 
 def _concat_arrays_with_padding(arrays, padding):
