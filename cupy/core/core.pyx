@@ -139,8 +139,10 @@ cdef class ndarray:
 
         def __set__(self, newshape):
             cdef vector.vector[Py_ssize_t] shape, strides
+            if not cpython.PySequence_Check(newshape):
+                newshape = (newshape,)
             shape = internal.infer_unknown_dimension(newshape, self.size)
-            strides = _get_strides_for_nocopy_reshape(self, newshape)
+            strides = _get_strides_for_nocopy_reshape(self, shape)
             if strides.size() != shape.size():
                 raise AttributeError('incompatible shape')
             self._shape = shape
