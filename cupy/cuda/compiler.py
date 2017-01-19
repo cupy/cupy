@@ -147,13 +147,13 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         if os.path.exists(path):
             with open(path, 'rb') as file:
                 cubin = file.read()
-            mod.load(cubin)
         else:
             lock.release()
             cubin = nvcc(source, options, arch)
-            mod.load(cubin)
             lock.acquire()
             with open(path, 'wb') as cubin_file:
                 cubin_file.write(cubin)
+
+    mod.load(cubin)
 
     return mod

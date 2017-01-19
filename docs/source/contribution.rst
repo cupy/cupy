@@ -127,6 +127,20 @@ Note that you can still use them in ``tests`` and ``examples`` directories.
 Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_.
 The reviewing process starts after the check passes.
 
+The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
+Please note the followings when writing the document.
+
+* In order to identify overlapping parts, it is preferable to add some remarks
+  that this document is just copied or altered from the original one. It is
+  also preferable to briefly explain the specification of the function in a
+  short paragraph, and refer to the corresponding function in NumPy so that
+  users can read the detailed document. However, it is possible to include a
+  complete copy of the document with such a remark if users cannot summarize
+  in such a way.
+* If a function in CuPy only implements a limited amount of features in the
+  original one, users should explicitly describe only what is implemented in
+  the document.
+
 
 Testing Guidelines
 ------------------

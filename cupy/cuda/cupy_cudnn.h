@@ -38,7 +38,7 @@ typedef void* cudnnTensorDescriptor_t;
 
 
 // Error handling
-const char* cudnnGetErrorString(cudnnStatus_t status) {
+const char* cudnnGetErrorString(...) {
     return NULL;
 }
 
@@ -50,203 +50,131 @@ size_t cudnnGetVersion() {
 
 
 // Initialization and CUDA cooperation
-cudnnStatus_t cudnnCreate(cudnnHandle_t* handle) {
+cudnnStatus_t cudnnCreate(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
+cudnnStatus_t cudnnDestroy(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetStream(cudnnHandle_t handle, cudaStream_t stream) {
+cudnnStatus_t cudnnSetStream(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnGetStream(cudnnHandle_t handle, cudaStream_t* stream) {
+cudnnStatus_t cudnnGetStream(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
 
 // Tensor manipulation
-cudnnStatus_t cudnnCreateTensorDescriptor(
-        cudnnTensorDescriptor_t* descriptor) {
+cudnnStatus_t cudnnCreateTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetTensor4dDescriptor(
-        cudnnTensorDescriptor_t tensorDesc, cudnnTensorFormat_t format,
-        cudnnDataType_t dataType, int n, int c, int h, int w) {
+cudnnStatus_t cudnnSetTensor4dDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetTensor4dDescriptorEx(
-        cudnnTensorDescriptor_t tensorDesc, cudnnDataType_t dataType,
-        int n, int c, int h, int w,
-        int nStride, int cStride, int hStride, int wStride) {
+cudnnStatus_t cudnnSetTensor4dDescriptorEx(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetTensorNdDescriptor(
-        cudnnTensorDescriptor_t tensorDesc, cudnnDataType_t dataType,
-        int nbDims, int* dimA, int* strideA) {
+cudnnStatus_t cudnnSetTensorNdDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnDestroyTensorDescriptor(
-        cudnnTensorDescriptor_t tensorDesc) {
+cudnnStatus_t cudnnDestroyTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
 
 // Filter manipulation
-cudnnStatus_t cudnnCreateFilterDescriptor(
-        cudnnFilterDescriptor_t* filterDesc) {
+cudnnStatus_t cudnnCreateFilterDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetFilter4dDescriptor(
-        cudnnFilterDescriptor_t filterDesc, cudnnDataType_t dataType,
-        int k, int c, int h, int w) {
+cudnnStatus_t cudnnSetFilter4dDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetFilterNdDescriptor(
-        cudnnFilterDescriptor_t filterDesc, cudnnDataType_t dataType,
-        int nbDims, const int filterDimA[]) {
+cudnnStatus_t cudnnSetFilterNdDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnDestroyFilterDescriptor(
-        cudnnFilterDescriptor_t filterDesc) {
+cudnnStatus_t cudnnDestroyFilterDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
 
 // Convolution
-cudnnStatus_t cudnnCreateConvolutionDescriptor(
-        cudnnConvolutionDescriptor_t* convDesc) {
+cudnnStatus_t cudnnCreateConvolutionDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetConvolution2dDescriptor(
-        cudnnConvolutionDescriptor_t convDesc, int pad_h, int pad_w, int u,
-        int v, int upscalex, int upscaley, cudnnConvolutionMode_t mode) {
+cudnnStatus_t cudnnSetConvolution2dDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnDestroyConvolutionDescriptor(
-        cudnnConvolutionDescriptor_t conDesc) {
+cudnnStatus_t cudnnDestroyConvolutionDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnGetConvolutionForwardAlgorithm(
-        cudnnHandle_t handle, cudnnTensorDescriptor_t srcDesc,
-        cudnnFilterDescriptor_t filterDesc,
-        cudnnConvolutionDescriptor_t convDesc,
-        cudnnTensorDescriptor_t destDesc,
-        cudnnConvolutionFwdPreference_t preference,
-        size_t memoryLimitInbytes, cudnnConvolutionFwdAlgo_t* algo) {
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnGetConvolutionForwardWorkspaceSize(
-        cudnnHandle_t handle, cudnnTensorDescriptor_t srcDesc,
-        cudnnFilterDescriptor_t filterDesc,
-        cudnnConvolutionDescriptor_t convDesc,
-        cudnnTensorDescriptor_t destDesc, cudnnConvolutionFwdAlgo_t algo,
-        size_t* sizeInBytes) {
+cudnnStatus_t cudnnGetConvolutionForwardWorkspaceSize(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnConvolutionForward(
-        cudnnHandle_t handle, void* alpha, cudnnTensorDescriptor_t srcDesc,
-        void* srcData, cudnnFilterDescriptor_t filterDesc, void* filterData,
-        cudnnConvolutionDescriptor_t convDesc, cudnnConvolutionFwdAlgo_t algo,
-        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        cudnnTensorDescriptor_t destDesc, void* destData) {
+cudnnStatus_t cudnnConvolutionForward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnConvolutionBackwardBias(
-        cudnnHandle_t handle, void* alpha,
-        cudnnTensorDescriptor_t srcDesc, void* srcData, void* beta,
-        cudnnTensorDescriptor_t destDesc, void* destData) {
+cudnnStatus_t cudnnConvolutionBackwardBias(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
 // Pooling
-cudnnStatus_t cudnnCreatePoolingDescriptor(cudnnPoolingDescriptor_t* desc) {
+cudnnStatus_t cudnnCreatePoolingDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetPooling2dDescriptor(
-        cudnnPoolingDescriptor_t poolingDesc, cudnnPoolingMode_t mode,
-        int windowHeight, int windowWidth, int verticalPadding,
-        int horizontalPadding, int verticalStride, int horizontalStride) {
+cudnnStatus_t cudnnSetPooling2dDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetPoolingNdDescriptor(
-        cudnnPoolingDescriptor_t poolingDesc, const cudnnPoolingMode_t mode,
-        int nbDims, const int windowDimA[], const int paddingA[],
-        const int strideA[]) {
+cudnnStatus_t cudnnSetPoolingNdDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnDestroyPoolingDescriptor(
-        cudnnPoolingDescriptor_t poolingDesc) {
+cudnnStatus_t cudnnDestroyPoolingDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnPoolingForward(
-        cudnnHandle_t handle, cudnnPoolingDescriptor_t poolingDesc,
-        void* alpha, cudnnTensorDescriptor_t srcDesc, void* srcData,
-        void* beta, cudnnTensorDescriptor_t dstDesc, void* dstData) {
+cudnnStatus_t cudnnPoolingForward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnPoolingBackward(
-        cudnnHandle_t handle, cudnnPoolingDescriptor_t poolingDesc,
-        void* alpha, cudnnTensorDescriptor_t srcDesc, void* srcData,
-        cudnnTensorDescriptor_t srcDiffDesc, void* srcDiffData,
-        cudnnTensorDescriptor_t destDesc, void* destData, void* beta,
-        cudnnTensorDescriptor_t destDiffDesc, void* destDiffData) {
+cudnnStatus_t cudnnPoolingBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
 
 // Activation
-cudnnStatus_t cudnnSoftmaxForward(
-        cudnnHandle_t handle, cudnnSoftmaxAlgorithm_t algorithm,
-        cudnnSoftmaxMode_t mode,
-        void* alpha, cudnnTensorDescriptor_t srcDesc, void* srcData,
-        void* beta, cudnnTensorDescriptor_t dstDesc, void* dstData) {
+cudnnStatus_t cudnnSoftmaxForward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSoftmaxBackward(
-        cudnnHandle_t handle, cudnnSoftmaxAlgorithm_t algorithm,
-        cudnnSoftmaxMode_t mode,
-        void* alpha, cudnnTensorDescriptor_t srcDesc, void* srcData,
-        cudnnTensorDescriptor_t srcDiffDesc, void* srcDiffData, void* beta,
-        cudnnTensorDescriptor_t destDiffDesc, void* destDiffData) {
+cudnnStatus_t cudnnSoftmaxBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
-cudnnStatus_t cudnnActivationForward(
-        cudnnHandle_t handle, cudnnActivationMode_t mode, const void *alpha,
-        const cudnnTensorDescriptor_t srcDesc, const void *srcData,
-        const void *beta, const cudnnTensorDescriptor_t destDesc,
-        void *destData) {
+cudnnStatus_t cudnnActivationForward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnActivationBackward(
-        cudnnHandle_t handle, cudnnActivationMode_t mode, const void *alpha,
-        const cudnnTensorDescriptor_t srcDesc, const void *srcData,
-        const cudnnTensorDescriptor_t srcDiffDesc, const void *srcDiffData,
-        const cudnnTensorDescriptor_t destDesc, const void *destData,
-        const void *beta, const cudnnTensorDescriptor_t destDiffDesc,
-        void *destDiffData) {
+cudnnStatus_t cudnnActivationBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
@@ -270,77 +198,35 @@ typedef enum {} cudnnConvolutionBwdDataPreference_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
 
-cudnnStatus_t cudnnAddTensor_v3(
-        cudnnHandle_t handle, const void* alpha,
-        const cudnnTensorDescriptor_t bDesc, const void* b, const void* beta,
-        cudnnTensorDescriptor_t yDesc, void* y) {
+cudnnStatus_t cudnnAddTensor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
-        cudnnHandle_t handle, const void* alpha,
-        const cudnnTensorDescriptor_t xDesc, const void* x,
-        const cudnnTensorDescriptor_t dyDesc, const void* dy,
-        const cudnnConvolutionDescriptor_t convDesc,
-        cudnnConvolutionBwdFilterAlgo_t algo,
-        void* workSpace, size_t workSpaceSizeInBytes, const void* beta,
-        const cudnnFilterDescriptor_t dwDesc, void* dw) {
+cudnnStatus_t cudnnConvolutionBackwardFilter_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(
-        cudnnHandle_t handle, const cudnnTensorDescriptor_t xDesc,
-        const cudnnTensorDescriptor_t dyDesc,
-        const cudnnConvolutionDescriptor_t convDes,
-        const cudnnFilterDescriptor_t gradDes,
-        cudnnConvolutionBwdFilterAlgo_t algo, size_t* sizeInBytes) {
+cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(
-        cudnnHandle_t handle, const cudnnTensorDescriptor_t xDesc,
-        const cudnnTensorDescriptor_t dyDesc,
-        const cudnnConvolutionDescriptor_t convDesc,
-        const cudnnFilterDescriptor_t dwDesc,
-        cudnnConvolutionBwdFilterPreference_t preference,
-        size_t memoryLimitInBytes, cudnnConvolutionBwdFilterAlgo_t* algo) {
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnConvolutionBackwardData_v3(
-        cudnnHandle_t handle, const void* alpha,
-        const cudnnFilterDescriptor_t wDesc, const void* w,
-        const cudnnTensorDescriptor_t dyDesc, const void* dy,
-        const cudnnConvolutionDescriptor_t convDesc,
-        cudnnConvolutionBwdDataAlgo_t algo, void* workSpace,
-        size_t workSpaceSizeInBytes, const void* beta,
-        const cudnnTensorDescriptor_t dxDesc, void* dx) {
+cudnnStatus_t cudnnConvolutionBackwardData_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(
-        cudnnHandle_t handle, const cudnnFilterDescriptor_t wDesc,
-        const cudnnTensorDescriptor_t dyDesc,
-        const cudnnConvolutionDescriptor_t convDesc,
-        const cudnnTensorDescriptor_t dxDesc,
-        cudnnConvolutionBwdDataPreference_t preference,
-        size_t memoryLimitInBytes, cudnnConvolutionBwdDataAlgo_t* algo) {
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(
-        cudnnHandle_t handle, const cudnnFilterDescriptor_t wDesc,
-        const cudnnTensorDescriptor_t dyDesc,
-        const cudnnConvolutionDescriptor_t convDesc,
-        const cudnnTensorDescriptor_t dxDesc,
-        cudnnConvolutionBwdDataAlgo_t algo, size_t* sizeInBytes) {
+cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
-        cudnnConvolutionDescriptor_t convDesc, int arrayLength,
-        const int padA[], const int filterStrideA[], const int upscaleA[],
-        cudnnConvolutionMode_t mode, cudnnDataType_t dataType) {
+cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -361,45 +247,19 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 typedef enum {} cudnnBatchNormMode_t;
 
 
-cudnnStatus_t cudnnDeriveBNTensorDescriptor(
-         cudnnTensorDescriptor_t derivedBnDesc,
-         const cudnnTensorDescriptor_t xDesc,
-         cudnnBatchNormMode_t mode) {
+cudnnStatus_t cudnnDeriveBNTensorDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnBatchNormalizationForwardTraining(
-        cudnnHandle_t handle, cudnnBatchNormMode_t mode, const void *alpha,
-        const void *beta, const cudnnTensorDescriptor_t xDesc, const void *x,
-        const cudnnTensorDescriptor_t yDesc, void *y,
-        const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
-        const void *bnScale, const void *bnBias,
-        double exponentialAverageFactor, void *resultRunningMean,
-        void *resultRunningVariance, double epsilon, void *resultSaveMean,
-        void *resultSaveInvVariance) {
+cudnnStatus_t cudnnBatchNormalizationForwardTraining(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnBatchNormalizationForwardInference(
-        cudnnHandle_t handle, cudnnBatchNormMode_t mode, const void *alpha,
-        const void *beta, const cudnnTensorDescriptor_t xDesc, const void *x,
-        const cudnnTensorDescriptor_t yDesc, void *y,
-        const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
-        const void *bnScale, const void *bnBias, const void *estimatedMean,
-        const void *estimatedVariance, double epsilon) {
+cudnnStatus_t cudnnBatchNormalizationForwardInference(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnBatchNormalizationBackward(
-        cudnnHandle_t handle, cudnnBatchNormMode_t mode,
-        const void *alphaDataDiff, const void *betaDataDiff,
-        const void *alphaParamDiff, const void *betaParamDiff,
-        const cudnnTensorDescriptor_t xDesc, const void *x,
-        const cudnnTensorDescriptor_t dyDesc, const void *dy,
-        const cudnnTensorDescriptor_t dxDesc, void *dx,
-        const cudnnTensorDescriptor_t dBnScaleBiasDesc, const void *bnScale,
-        void *dBnScaleResult, void *dBnBiasResult, double epsilon,
-        const void *savedMean, const void *savedInvVariance) {
+cudnnStatus_t cudnnBatchNormalizationBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -426,173 +286,90 @@ typedef void* cudnnDropoutDescriptor_t;
 typedef void* cudnnRNNDescriptor_t;
 
 
-cudnnStatus_t cudnnGetFilterNdDescriptor_v5(
-        const cudnnFilterDescriptor_t filterDesc, int nbDimsRequested,
-        cudnnDataType_t* dataType, cudnnTensorFormat_t* format, int* nbDims,
-        int filterDimA[]) {
+cudnnStatus_t cudnnGetFilterNdDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnCreateDropoutDescriptor(
-        cudnnDropoutDescriptor_t* dropoutDesc) {
+cudnnStatus_t cudnnCreateDropoutDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDestroyDropoutDescriptor(
-        cudnnDropoutDescriptor_t dropoutDesc) {
+cudnnStatus_t cudnnDestroyDropoutDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDropoutGetStatesSize(
-        cudnnHandle_t handle, size_t * sizeInBytes) {
+cudnnStatus_t cudnnDropoutGetStatesSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDropoutGetReserveSpaceSize(
-        cudnnTensorDescriptor_t xdesc, size_t * sizeInBytes) {
+cudnnStatus_t cudnnDropoutGetReserveSpaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnSetDropoutDescriptor(
-        cudnnDropoutDescriptor_t dropoutDesc, cudnnHandle_t handle,
-        float dropout, void* states, size_t stateSizeInBytes,
-        unsigned long long seed) {
+cudnnStatus_t cudnnSetDropoutDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDropoutForward(
-        cudnnHandle_t handle, const cudnnDropoutDescriptor_t dropoutDesc,
-        const cudnnTensorDescriptor_t xdesc, const void* x,
-        const cudnnTensorDescriptor_t ydesc, void* y,
-        void* reserveSpace, size_t reserveSpaceSizeInBytes) {
+cudnnStatus_t cudnnDropoutForward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDropoutBackward(
-        cudnnHandle_t handle, const cudnnDropoutDescriptor_t dropoutDesc,
-        const cudnnTensorDescriptor_t dydesc, const void* dy,
-        const cudnnTensorDescriptor_t dxdesc, void* dx,
-        void* reserveSpace, size_t reserveSpaceSizeInBytes) {
+cudnnStatus_t cudnnDropoutBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnCreateRNNDescriptor(cudnnRNNDescriptor_t* rnnDesc) {
+cudnnStatus_t cudnnCreateRNNDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnDestroyRNNDescriptor(cudnnRNNDescriptor_t rnnDesc) {
+cudnnStatus_t cudnnDestroyRNNDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnSetRNNDescriptor(
-        cudnnRNNDescriptor_t rnnDesc, int hiddenSize, int numLayers,
-        cudnnDropoutDescriptor_t dropoutDesc,
-        cudnnRNNInputMode_t inputMode, cudnnDirectionMode_t direction,
-        cudnnRNNMode_t mode, cudnnDataType_t dataType) {
+cudnnStatus_t cudnnSetRNNDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetRNNWorkspaceSize(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int seqLength, const cudnnTensorDescriptor_t* xDesc,
-        size_t* sizeInBytes) {
+cudnnStatus_t cudnnGetRNNWorkspaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetRNNTrainingReserveSize(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int seqLength, const cudnnTensorDescriptor_t* xDesc,
-        size_t* sizeInBytes) {
+cudnnStatus_t cudnnGetRNNTrainingReserveSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetRNNParamsSize(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const cudnnTensorDescriptor_t xDesc, size_t* sizeInBytes,
-        cudnnDataType_t dataType) {
+cudnnStatus_t cudnnGetRNNParamsSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetRNNLinLayerMatrixParams(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int layer, const cudnnTensorDescriptor_t xDesc,
-        const cudnnFilterDescriptor_t wDesc, const void* w,
-        const int linLayerID, cudnnFilterDescriptor_t linLayerMatDesc,
-        void** linLayerMat) {
+cudnnStatus_t cudnnGetRNNLinLayerMatrixParams(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetRNNLinLayerBiasParams(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int layer, const cudnnTensorDescriptor_t xDesc,
-        const cudnnFilterDescriptor_t wDesc, const void* w,
-        const int linLayerID, cudnnFilterDescriptor_t linLayerBiasDesc,
-        void** linLayerBias) {
+cudnnStatus_t cudnnGetRNNLinLayerBiasParams(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnRNNForwardInference(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int seqLength,
-        const cudnnTensorDescriptor_t* xDesc, const void* x,
-        const cudnnTensorDescriptor_t hxDesc, const void* hx,
-        const cudnnTensorDescriptor_t cxDesc, const void* cx,
-        const cudnnFilterDescriptor_t wDesc, const void* w,
-        const cudnnTensorDescriptor_t* yDesc, void* y,
-        const cudnnTensorDescriptor_t hyDesc, void* hy,
-        const cudnnTensorDescriptor_t cyDesc, void* cy,
-        void* workspace, size_t workSpaceSizeInBytes) {
+cudnnStatus_t cudnnRNNForwardInference(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnRNNForwardTraining(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int seqLength,
-        const cudnnTensorDescriptor_t* xDesc, const void* x,
-        const cudnnTensorDescriptor_t hxDesc, const void* hx,
-        const cudnnTensorDescriptor_t cxDesc, const void* cx,
-        const cudnnFilterDescriptor_t wDesc, const void* w,
-        const cudnnTensorDescriptor_t* yDesc, void* y,
-        const cudnnTensorDescriptor_t hyDesc, void* hy,
-        const cudnnTensorDescriptor_t cyDesc, void* cy,
-        void* workspace, size_t workSpaceSizeInBytes,
-        void* reserveSpace, size_t reserveSpaceSizeInBytes) {
+cudnnStatus_t cudnnRNNForwardTraining(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnRNNBackwardData(
-        cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-        const int seqLength,
-        const cudnnTensorDescriptor_t* yDesc, const void * y,
-        const cudnnTensorDescriptor_t* dyDesc, const void * dy,
-        const cudnnTensorDescriptor_t dhyDesc, const void * dhy,
-        const cudnnTensorDescriptor_t dcyDesc, const void * dcy,
-        const cudnnFilterDescriptor_t wDesc, const void * w,
-        const cudnnTensorDescriptor_t hxDesc, const void * hx,
-        const cudnnTensorDescriptor_t cxDesc, const void * cx,
-        const cudnnTensorDescriptor_t* dxDesc, void* dx,
-        const cudnnTensorDescriptor_t dhxDesc, void* dhx,
-        const cudnnTensorDescriptor_t dcxDesc, void* dcx,
-        void * workspace, size_t workSpaceSizeInBytes,
-        const void* reserveSpace, size_t reserveSpaceSizeInBytes) {
+cudnnStatus_t cudnnRNNBackwardData(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnRNNBackwardWeights(
-         cudnnHandle_t handle, const cudnnRNNDescriptor_t rnnDesc,
-         const int seqLength, const cudnnTensorDescriptor_t* xDesc,
-         const void* x, const cudnnTensorDescriptor_t hxDesc,
-         const void* hx, const cudnnTensorDescriptor_t* yDesc,
-         const void* y, const void* workspace, size_t workSpaceSizeInBytes,
-         const cudnnFilterDescriptor_t dwDesc, void* dw,
-         const void* reserveSpace, size_t reserveSpaceSizeInBytes) {
+cudnnStatus_t cudnnRNNBackwardWeights(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
-#if not defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
 // Some functions are renamed in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
 
@@ -602,7 +379,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
 #define cudnnGetFilterNdDescriptor_v5 cudnnGetFilterNdDescriptor
 
-#endif // #if not defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
+#endif // #if !defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
 
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
@@ -612,43 +389,23 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 
 typedef enum {} cudnnAddMode_t;
 
-cudnnStatus_t cudnnSetConvolutionNdDescriptor_v2(
-        cudnnConvolutionDescriptor_t convDesc, int arrayLength,
-        const int padA[], const int filterStrideA[], const int upscaleA[],
-        cudnnConvolutionMode_t mode) {
+cudnnStatus_t cudnnSetConvolutionNdDescriptor_v2(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionNdDescriptor_v2(
-        const cudnnConvolutionDescriptor_t convDesc, int arrayLengthRequested,
-        int* arrayLength, int padA[], int strideA[], int upscaleA[],
-        cudnnConvolutionMode_t* mode) {
+cudnnStatus_t cudnnGetConvolutionNdDescriptor_v2(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnAddTensor_v2(
-        cudnnHandle_t handle, cudnnAddMode_t mode, const void* alpha,
-        const cudnnTensorDescriptor_t biasDesc, const void* biasData,
-        const void* beta, cudnnTensorDescriptor_t srcDestDesc,
-        void* srcDestData) {
+cudnnStatus_t cudnnAddTensor_v2(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnConvolutionBackwardFilter_v2(
-        cudnnHandle_t handle, const void* alpha,
-        const cudnnTensorDescriptor_t srcDesc, const void* srcData,
-        const cudnnTensorDescriptor_t diffDesc, const void* diffData,
-        const cudnnConvolutionDescriptor_t convDesc, const void* beta,
-        const cudnnFilterDescriptor_t gradDesc, void* gradData) {
+cudnnStatus_t cudnnConvolutionBackwardFilter_v2(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnConvolutionBackwardData_v2(
-        cudnnHandle_t handle, const void* alpha,
-        const cudnnFilterDescriptor_t filterDesc, const void* filterData,
-        const cudnnTensorDescriptor_t diffDesc, const void* diffData,
-        const cudnnConvolutionDescriptor_t convDesc, const void* beta,
-        const cudnnTensorDescriptor_t gradDesc, void *gradData) {
+cudnnStatus_t cudnnConvolutionBackwardData_v2(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 

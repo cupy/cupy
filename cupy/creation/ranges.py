@@ -99,7 +99,31 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         return ret
 
 
-# TODO(okuta): Implement logspace
+def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
+    """Returns an array with evenly-spaced values on a log-scale.
+
+    Instead of specifying the step width like :func:`cupy.arange`, this
+    function requires the total number of elements specified.
+
+    Args:
+        start: Start of the interval.
+        stop: End of the interval.
+        num: Number of elements.
+        endpoint (bool): If ``True``, the stop value is included as the last
+            element. Otherwise, the stop value is omitted.
+        base (float): Base of the log space. The step sizes between the
+            elements on a log-scale are the same as ``base``.
+        dtype: Data type specifier. It is inferred from the start and stop
+            arguments by default.
+
+    Returns:
+        cupy.ndarray: The 1-D array of ranged values.
+
+    """
+    y = linspace(start, stop, num=num, endpoint=endpoint)
+    if dtype is None:
+        return core.power(base, y)
+    return core.power(base, y).astype(dtype)
 
 
 # TODO(okuta): Implement meshgrid

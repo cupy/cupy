@@ -81,7 +81,7 @@ cdef class MemoryPointer:
         ptr (int): Pointer to the place within the buffer.
     """
 
-    def __init__(self, Memory mem, Py_ssize_t offset):
+    def __init__(self, mem, Py_ssize_t offset):
         self.mem = mem
         self.device = mem.device
         self.ptr = mem.ptr + offset
