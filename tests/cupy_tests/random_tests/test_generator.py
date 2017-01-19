@@ -253,6 +253,28 @@ class TestInterval(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.parameterize(
+    {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': -3, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': [[0, 1], [2]], 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': [], 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': 3, 'size': 1, 'p': [[0.1, 0.1], [0.8]]},
+    {'a': 2, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},
+    {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
+)
+@testing.gpu
+class TestChoiceFailure(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_choice_invalid_value(self):
+        with self.assertRaises(ValueError):
+            self.rs.choice(a=self.a, size=self.size, p=self.p)
+
+
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):

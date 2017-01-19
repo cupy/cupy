@@ -245,9 +245,8 @@ class RandomState(object):
         """
         a = numpy.array(a, copy=False)
         if a.ndim == 0:
-            try:
-                a_size = a.item()
-            except TypeError:
+            a_size = a.item()
+            if type(a_size) != int or a_size is None:
                 raise ValueError('a must be 1-dimensional or an integer')
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
