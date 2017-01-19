@@ -118,9 +118,6 @@ class CaffeFunction(link.Chain):
         model_path (str): Path to the binary-proto model file of Caffe.
 
     Attributes:
-        fs (FunctionSet): A set of functions corresponding to parameterized
-            layers of Caffe. The names of its attributes are same as the layer
-            names of the given network.
         forwards (dict): A mapping from layer names to corresponding functions.
 
     """

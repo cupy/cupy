@@ -70,6 +70,28 @@ class TestNdarrayInitRaise(unittest.TestCase):
             core.array(arr)
 
 
+@testing.gpu
+class TestNdarrayShape(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = (3, 2)
+        return xp.array(arr.shape)
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set_infer(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = (3, -1)
+        return xp.array(arr.shape)
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set_int(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = 6
+        return xp.array(arr.shape)
+
+
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],
