@@ -146,7 +146,8 @@ class TestMaxPoolingND(unittest.TestCase):
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
-    def test_backward_consistency_regression(self):
+    def check_backward_consistency_regression(self, x_data, gy_data,
+                                              use_cudnn=True):
         # Regression test to two-dimensional max pooling layer.
 
         if len(self.dims) != 2:
@@ -155,27 +156,44 @@ class TestMaxPoolingND(unittest.TestCase):
         ksize = self.ksize
         stride = self.stride
         pad = self.pad
+        xp = cuda.get_array_module(x_data)
 
         # Backward computation for N-dimensional max pooling layer.
-        x_nd = chainer.Variable(numpy.array(self.x))
+        x_nd = chainer.Variable(xp.array(x_data))
         func_nd = functions.MaxPoolingND(self.ndim, ksize, stride=stride,
-                                         pad=pad, use_cudnn=False,
+                                         pad=pad, use_cudnn=use_cudnn,
                                          cover_all=self.cover_all)
         y_nd = func_nd(x_nd)
-        y_nd.grad = self.gy
+        y_nd.grad = gy_data
         y_nd.backward()
 
         # Backward computation for two-dimensional max pooling layer.
-        x_2d = chainer.Variable(numpy.array(self.x))
+        x_2d = chainer.Variable(xp.array(x_data))
         func_2d = functions.MaxPooling2D(ksize, stride=stride, pad=pad,
-                                         use_cudnn=False,
+                                         use_cudnn=use_cudnn,
                                          cover_all=self.cover_all)
         y_2d = func_2d(x_2d)
-        y_2d.grad = self.gy
+        y_2d.grad = gy_data
         y_2d.backward()
 
         # Test that the two result gradients are close enough.
         testing.assert_allclose(x_nd.grad, x_2d.grad)
+
+    @condition.retry(3)
+    def test_backward_consistency_regression_cpu(self):
+        self.check_backward_consistency_regression(self.x, self.gy)
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_consistency_regression_gpu(self):
+        self.check_backward_consistency_regression(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_consistency_regression_no_cudnn(self):
+        self.check_backward_consistency_regression(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy), use_cudnn=False)
 
     def test_backward_cpu_more_than_once(self):
         func = functions.MaxPoolingND(
