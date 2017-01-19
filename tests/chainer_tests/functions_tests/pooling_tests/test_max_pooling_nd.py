@@ -93,7 +93,7 @@ class TestMaxPoolingND(unittest.TestCase):
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
-    def test_forward_consistency_regression(self):
+    def check_forward_consistency_regression(self, x_data, use_cudnn=True):
         # Regression test to max_pooling_2d.
 
         if len(self.dims) != 2:
@@ -103,13 +103,27 @@ class TestMaxPoolingND(unittest.TestCase):
         stride = self.stride
         pad = self.pad
 
-        y_nd = functions.max_pooling_nd(self.x, ksize, stride=stride, pad=pad,
-                                        use_cudnn=False,
+        y_nd = functions.max_pooling_nd(x_data, ksize, stride=stride, pad=pad,
+                                        use_cudnn=use_cudnn,
                                         cover_all=self.cover_all)
-        y_2d = functions.max_pooling_2d(self.x, ksize, stride=stride, pad=pad,
-                                        use_cudnn=False,
+        y_2d = functions.max_pooling_2d(x_data, ksize, stride=stride, pad=pad,
+                                        use_cudnn=use_cudnn,
                                         cover_all=self.cover_all)
         testing.assert_allclose(y_nd.data, y_2d.data)
+
+    @condition.retry(3)
+    def test_forward_consistency_regression_cpu(self):
+        self.check_forward_consistency_regression(self.x)
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_forward_consistency_regression_gpu(self):
+        self.check_forward_consistency_regression(cuda.to_gpu(self.x))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_consistency_regression_no_cudnn(self):
+        self.check_forward_consistency_regression(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
