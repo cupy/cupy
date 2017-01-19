@@ -499,6 +499,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
 
         size = kwargs.pop('size', None)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -549,7 +550,8 @@ cdef class ElementwiseKernel:
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        kern.linear_launch(indexer.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=128, stream=stream)
         return ret
 
 

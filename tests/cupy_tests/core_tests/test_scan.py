@@ -7,6 +7,7 @@ from cupy import cuda
 from cupy import testing
 
 
+@testing.gpu
 class TestScan(unittest.TestCase):
 
     @testing.for_all_dtypes()

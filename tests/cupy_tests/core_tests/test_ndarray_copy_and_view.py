@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -55,6 +56,21 @@ class TestArrayCopyAndView(unittest.TestCase):
     def test_astype(self, xp, src_dtype, dst_dtype):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.astype(dst_dtype)
+
+    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='dst_dtype')
+    def test_astype_type(self, src_dtype, dst_dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, src_dtype)
+        b = a.astype(dst_dtype)
+        a_cpu = testing.shaped_arange((2, 3, 4), numpy, src_dtype)
+        b_cpu = a_cpu.astype(dst_dtype)
+        self.assertEqual(b.dtype.type, b_cpu.dtype.type)
+
+    @testing.for_all_dtypes()
+    def test_astype_type_no_copy(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = a.astype(dtype, copy=False)
+        self.assertTrue(b is a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

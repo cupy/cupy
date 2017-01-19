@@ -370,6 +370,7 @@ class ReductionKernel(object):
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
         keepdims = kwargs.pop('keepdims', False)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -441,7 +442,7 @@ class ReductionKernel(object):
 
         kern.linear_launch(
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
-            inout_args, shared_mem, block_size)
+            inout_args, shared_mem, block_size, stream)
         return out_args[0]
 
 
