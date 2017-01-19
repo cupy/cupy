@@ -1333,7 +1333,8 @@ cdef class ndarray:
             numpy.ndarray: Copy of the array on host memory.
 
         """
-        a_gpu = ascontiguousarray(self)
+        with self.device:
+            a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.data_as(ctypes.c_void_p)
         if stream is None:
