@@ -177,7 +177,7 @@ class TestAveragePoolingND(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-    def test_backward_consistency_regression_no_gpu(self):
+    def test_backward_consistency_regression_no_cudnn(self):
         self.check_backward_consistency_regression(
             cuda.to_gpu(self.x), cuda.to_gpu(self.gy), use_cudnn=False)
 
