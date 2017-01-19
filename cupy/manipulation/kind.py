@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import core
 
 
 # TODO(okuta): Implement asfarray
@@ -20,30 +21,7 @@ def asfortranarray(a, dtype=None):
     .. seealso:: :func:`numpy.asfortranarray`
 
     """
-    ret = cupy.empty(a.shape[::-1], a.dtype if dtype is None else dtype).T
-    if (a.flags.c_contiguous and
-            (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
-            a.ndim == 2 and
-            dtype is None):
-        m, n = a.shape
-        if a.dtype == numpy.float32:
-            cupy.cuda.cublas.sgeam(
-                cupy.cuda.Device().cublas_handle,
-                1,  # transpose a
-                1,  # transpose ret
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                ret.data.ptr, m)
-        elif a.dtype == numpy.float64:
-            cupy.cuda.cublas.dgeam(
-                cupy.cuda.Device().cublas_handle,
-                1,  # transpose a
-                1,  # transpose ret
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                ret.data.ptr, m)
-        return ret
-    else:
-        ret[...] = a
-        return ret
+    return core.asfortranarray(a, dtype)
 
 
 # TODO(okuta): Implement asarray_chkfinite
