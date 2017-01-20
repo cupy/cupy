@@ -2025,8 +2025,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         'cupy_concatenate'
     )
     kernel(
-        x, axis, axis_sizes, x_strides, array(shape, 'i'),
-        base, ret)
+        x, axis, axis_sizes, x_strides, array(shape, 'i'), base, ret)
     return ret
 
 # -----------------------------------------------------------------------------
