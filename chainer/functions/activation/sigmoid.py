@@ -67,7 +67,8 @@ def sigmoid(x, use_cudnn=True):
 
         >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
         >>> y = F.sigmoid(x)
-        >>> assert y.shape == (3, 4)
+        >>> y.shape
+        (3, 4)
 
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
