@@ -1986,30 +1986,21 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 cpdef ndarray concatenate(tup, axis, shape, dtype):
     cdef ndarray ret
     ret = ndarray(shape, dtype=dtype)
-
-    skip = (slice(None),) * axis
-    i = 0
-    for a in tup:
-        aw = a.shape[axis]
-        ret[skip + (slice(i, i + aw),)] = a
-        i += aw
-
-    left_stride = numpy.prod(shape[:axis])
-    right_stride = numpy.prod(shape[axis+1:])
-    x = cupy.array([a.data.ptr for a in tup])
-    axis_sizes = cupy.array([a.shape[axis] for a in tup], 'i')
-    x_strides = cupy.array([a.strides for a in tup], 'i')
+    cdef int base
+    base = numpy.prod(shape[axis+1:], dtype='i')
+    x = array([a.data.ptr for a in tup])
+    axis_sizes = array([a.shape[axis] for a in tup], 'i')
+    x_strides = array([a.strides for a in tup], 'i')
     kernel = ElementwiseKernel(
         '''raw P x, int32 axis, raw int32 axis_sizes, raw int32 x_strides,
-        raw int32 shape, int32 ndim, int32 left_stride, int32 right_stride''',
+        raw int32 shape, int32 base''',
         'T y',
         '''
-        int axis_ind = i % left_stride / right_stride;
+        int n = shape[axis];
+        int axis_ind = i / base % n;
 
-        int accum_ind = 0;
         int array_ind;
         for (int j = 0; j < n; ++j) {
-          int[] ind = {j, axis};
           if (axis_ind < axis_sizes[j]) {
             array_ind = j;
             break;
@@ -2017,22 +2008,25 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
           axis_ind -= axis_sizes[j];
         }
 
-        int x_ind = 0;
+        char* ptr = reinterpret_cast<char*>(x[array_ind]);
         int ind_rest = i;
-        for (int j = ndim - 1; j >= 0; --j) {
-          int[] ind = {array_ind, j};
+        for (int j = shape.size() - 1; j >= 0; --j) {
+          int ind[] = {array_ind, j};
           if (j == axis) {
-            x_ind += x_strides[ind] * axis_ind;
+            ptr += x_strides[ind] * axis_ind;
           } else {
-            x_ind += x_strides[ind] * (ind_rest % shape[j]);
+            ptr += x_strides[ind] * (ind_rest % shape[j]);
           }
           ind_rest /= shape[j];
         }
-        y = x[array_ind][x_ind];
-        '''
+
+        y = *reinterpret_cast<T*>(ptr);
+        ''',
+        'cupy_concatenate'
     )
     kernel(
-        x, axis, axis_sizes, shape, len(shape), left_stride, right_stride, ret)
+        x, axis, axis_sizes, x_strides, array(shape, 'i'),
+        base, ret)
     return ret
 
 # -----------------------------------------------------------------------------
