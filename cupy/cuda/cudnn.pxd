@@ -10,7 +10,7 @@ cdef extern from *:
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
     ctypedef struct ConvolutionBwdDataAlgoPerf \
-        'cudnnConvolutionBwdDataAlgoPerf_t':
+        'cudnnConvolutionBwdDataAlgoPerf_t':  # NOQA: E125
         int algo
         int status
         float time
@@ -19,7 +19,7 @@ cdef extern from *:
     ctypedef int ConvolutionBwdFilterPreference \
         'cudnnConvolutionBwdFilterPreference_t'
     ctypedef struct ConvolutionBwdFilterAlgoPerf \
-        'cudnnConvolutionBwdFilterAlgoPerf_t':
+        'cudnnConvolutionBwdFilterAlgoPerf_t':  # NOQA: E125
         int algo
         int status
         float time
