@@ -51,7 +51,7 @@ class TestMatmul(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-3)  # required for uint8
     def test_operator_matmul(self, xp, dtype1, dtype2):
         if not (numpy.result_type(dtype1, dtype2) == numpy.float32 or
-                    numpy.result_type(dtype1, dtype2) == numpy.float64):
+                numpy.result_type(dtype1, dtype2) == numpy.float64):
             return xp.array([])
         x1 = xp.array(self.x1, dtype=dtype1)
         x2 = xp.array(self.x2, dtype=dtype2)
@@ -63,7 +63,7 @@ class TestMatmul(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-3)  # required for uint8
     def test_cupy_matmul(self, xp, dtype1, dtype2):
         if not (numpy.result_type(dtype1, dtype2) == numpy.float32 or
-                    numpy.result_type(dtype1, dtype2) == numpy.float64):
+                numpy.result_type(dtype1, dtype2) == numpy.float64):
             return xp.array([])
         x1 = xp.array(self.x1, dtype=dtype1)
         x2 = xp.array(self.x2, dtype=dtype2)
