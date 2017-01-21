@@ -43,31 +43,42 @@ class Dropconnect(function.Function):
     def forward(self, inputs):
         scale = inputs[1].dtype.type(1. / (1 - self.ratio))
         xp = cuda.get_array_module(*inputs)
+        mask_shape = (inputs[0].shape[0], *inputs[1].shape)
         if self.mask is None:
             if xp == numpy:
-                flag = xp.random.rand(*inputs[1].shape) >= self.ratio
+                self.mask = xp.random.rand(*mask_shape) >= self.ratio
             else:
-                flag = xp.random.rand(*inputs[1].shape,
-                                      dtype=numpy.float32) >= self.ratio
-            self.mask = scale * flag
+                self.mask = xp.random.rand(*mask_shape,
+                                           dtype=numpy.float32) >= self.ratio
         elif isinstance(self.mask, chainer.Variable):
             self.mask = self.mask.data
 
         x = _as_mat(inputs[0])
-        W = inputs[1] * self.mask
-        y = x.dot(W.T).astype(x.dtype, copy=False)
+        W = inputs[1] * scale * self.mask
+
+        # ijk,ik->ij
+        y = xp.matmul(W, x[:, :, None])
+        y = y.reshape(y.shape[0], y.shape[1]).astype(x.dtype, copy=False)
+
         if len(inputs) == 3:
             b = inputs[2]
             y += b
         return y,
 
     def backward(self, inputs, grad_outputs):
+        scale = inputs[1].dtype.type(1. / (1 - self.ratio))
         x = _as_mat(inputs[0])
-        W = inputs[1] * self.mask
+        W = inputs[1] * scale * self.mask
         gy = grad_outputs[0]
+        xp = cuda.get_array_module(*inputs)
 
-        gx = gy.dot(W).astype(x.dtype, copy=False).reshape(inputs[0].shape)
-        gW = gy.T.dot(x).astype(W.dtype, copy=False) * self.mask
+        # ij,ijk->ik
+        gx = xp.matmul(gy[:, None, :], W).reshape(inputs[0].shape)
+
+        # ij,ik,ijk->jk
+        gW = (gy[:, :, None] * x[:, None, :] * self.mask).sum(0) * scale
+        gW = gW.astype(W.dtype, copy=False)
+
         if len(inputs) == 3:
             gb = gy.sum(0)
             return gx, gW, gb

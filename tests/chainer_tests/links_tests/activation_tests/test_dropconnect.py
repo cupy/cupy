@@ -15,10 +15,8 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
-def gen_mask(ratio, shape, dtype):
-    scale = dtype(1. / (1 - ratio))
-    flag = numpy.random.rand(*shape) >= ratio
-    return scale * flag
+def gen_mask(ratio, shape):
+    return numpy.random.rand(*shape) >= ratio
 
 
 @testing.parameterize(*testing.product({
@@ -39,7 +37,7 @@ class TestDropconnect(unittest.TestCase):
             initialW=chainer.initializers.Normal(1, self.W_dtype),
             initial_bias=chainer.initializers.Normal(1, self.x_dtype))
         self.link.cleargrads()
-        self.mask = gen_mask(self.ratio, self.link.W.shape, self.W_dtype)
+        self.mask = gen_mask(self.ratio, self.link.W.shape)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
@@ -113,7 +111,7 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.cleargrads()
-        self.mask = gen_mask(self.ratio, self.link.W.shape, numpy.float32)
+        self.mask = gen_mask(self.ratio, self.link.W.shape)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
