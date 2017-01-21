@@ -2577,7 +2577,7 @@ cpdef ndarray matmul(ndarray a, ndarray b):
         Currently the output must be float32 and float64, (complex64
         and complex128 follow later). This means, that
         numpy.result_type(a.dtype, b.dtype) have to be numpy.float32 or
-        numpy.float32.
+        numpy.float64.
 
         The out array as input is currently not supported.
 
