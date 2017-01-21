@@ -2033,12 +2033,14 @@ cdef _concatenate_kernel = ElementwiseKernel(
     int ind_rest = i;
     for (int j = shape.size() - 1; j >= 0; --j) {
       int ind[] = {array_ind, j};
+      int offset;
       if (j == axis) {
-        ptr += x_strides[ind] * axis_ind;
+        offset = axis_ind;
       } else {
-        ptr += x_strides[ind] * (ind_rest % shape[j]);
+        offset = ind_rest % shape[j];
       }
-      ind_rest /= shape[j];
+      ptr += x_strides[ind] * offset;
+      ind_rest = ind_rest / shape[j];
     }
 
     y = *reinterpret_cast<T*>(ptr);
