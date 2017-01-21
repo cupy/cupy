@@ -21,7 +21,6 @@ typedef enum {
 typedef enum {} cudnnActivationMode_t;
 typedef enum {} cudnnConvolutionFwdAlgo_t;
 typedef enum {} cudnnConvolutionFwdPreference_t;
-typedef struct {} cudnnConvolutionFwdAlgoPerf_t;
 typedef enum {} cudnnConvolutionMode_t;
 typedef enum {} cudnnDataType_t;
 typedef enum {} cudnnNanPropagation_t;
@@ -196,10 +195,26 @@ extern "C" {
 
 typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
-typedef enum {} cudnnConvolutionBwdDataAlgoPerf_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
-typedef enum {} cudnnConvolutionBwdFilterAlgoPerf_t;
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionFwdAlgoPerf_t;
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdFilterAlgoPerf_t;
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
