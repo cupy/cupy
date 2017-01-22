@@ -1988,13 +1988,11 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     cdef int base
     ret = ndarray(shape, dtype=dtype)
 
-    all_contiguous = True
     all_same_type = True
     for a in tup:
-        all_contiguous &= a._c_contiguous
         all_same_type &= a.dtype == tup[0].dtype
 
-    if all_contiguous and all_same_type:
+    if all_same_type:
         base = numpy.prod(shape[axis+1:], dtype='i')
         x = array([a.data.ptr for a in tup])
         axis_sizes = array([a.shape[axis] for a in tup], 'i')

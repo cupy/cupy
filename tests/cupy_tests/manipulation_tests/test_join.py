@@ -53,6 +53,14 @@ class TestJoin(unittest.TestCase):
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         return xp.concatenate((a, b, c), axis=-1)
 
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_f_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_arange((2, 3, 2), xp, dtype).T
+        c = testing.shaped_arange((2, 3, 3), xp, dtype)
+        return xp.concatenate((a, b, c), axis=-1)
+
     def test_concatenate_wrong_ndim(self):
         a = cupy.empty((2, 3))
         b = cupy.empty((2,))
