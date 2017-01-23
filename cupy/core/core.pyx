@@ -1991,21 +1991,29 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     ret = ndarray(shape, dtype=dtype)
 
     all_same_type = True
+    all_one = True
     for a in tup:
         all_same_type &= a.dtype == tup[0].dtype
+        all_one &= a.shape[axis] == 1
 
     if all_same_type:
         base = internal.prod_ssize_t(shape[axis+1:])
         x = array([a.data.ptr for a in tup])
-        cum = 0
-        cum_sizes = numpy.empty(len(tup), 'i')
-        for i, a in enumerate(tup):
-            cum_sizes[i] = cum
-            cum += a._shape[axis]
-        cum_sizes = array(cum_sizes)
         x_strides = array([a.strides for a in tup], 'i')
-        _concatenate_kernel(
-            x, axis, cum_sizes, x_strides, array(shape, 'i'), base, ret)
+        if all_one:
+            _concatenate_kernel_one(
+                x, axis, x_strides, array(shape, 'i'), base, ret, size=ret.size)
+
+        else:
+            cum = 0
+            cum_sizes = numpy.empty(len(tup), 'i')
+            for i, a in enumerate(tup):
+                cum_sizes[i] = cum
+                cum += a._shape[axis]
+            cum_sizes = array(cum_sizes)
+
+            _concatenate_kernel(
+                x, axis, cum_sizes, x_strides, array(shape, 'i'), base, ret)
     else:
         skip = (slice(None),) * axis
         i = 0
@@ -2015,6 +2023,35 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
             i += aw
 
     return ret
+
+
+cdef _concatenate_kernel_one = ElementwiseKernel(
+    '''raw P x, int32 axis, raw int32 x_strides, raw int32 shape,
+    int32 base''',
+    'raw T y',
+    '''
+    int n = shape[axis];
+    int array_ind = i / base % n;
+
+    char* ptr = reinterpret_cast<char*>(x[array_ind]);
+    int ind_rest = i;
+    for (int j = shape.size() - 1; j >= 0; --j) {
+      int ind[] = {array_ind, j};
+      int next_ind = ind_rest / shape[j];
+      int offset;
+      if (j == axis) {
+        offset = 0;
+      } else {
+        offset = ind_rest - next_ind * shape[j];
+      }
+      ptr += x_strides[ind] * offset;
+      ind_rest = next_ind;
+    }
+
+    y[i] = *reinterpret_cast<T*>(ptr);
+    ''',
+    'cupy_concatenate_one'
+)
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
