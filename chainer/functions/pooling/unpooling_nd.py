@@ -81,6 +81,34 @@ class UnpoolingND(function.Function):
 
 
 def unpooling_nd(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
-    """To be described."""
+    """Inverse operation of N-dimensional spatial pooling.
+
+    This function acts similary to :class:`~functions.DeconvolutionND`, but
+    it spreads input N-dimensional array's value without any parameter instead
+    of computing the inner products.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+        ksize (int or pair of ints): Size of pooling window
+            :math:`(k_1, k_2, ..., k_N)`. ``ksize=k`` is equivalent to
+            ``(k, k, ..., k)``.
+        stride (int, pair of ints or None): Stride of pooling applications
+            :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
+            ``(s, s, ..., s)``. If ``None`` is specified, then it uses same
+            stride as the pooling window size.
+        pad (int or pair of ints): Spatial padding width for the input array
+            :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
+            ``(p, p, ..., p)``.
+        outsize (None or pair of ints): Expected output size of unpooling
+            operation :math:`(out_1, out_2, ..., out_N)`. If ``None``, the size
+            is estimated from input size, stride and padding.
+        cover_all (bool): If ``True``, the pooling window is assumed to cover
+            all of the ouput array, eventually the output size may be smaller
+            than that in the case ``cover_all`` is ``False``.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     ndim = len(x.data.shape[2:])
     return UnpoolingND(ndim, ksize, stride, pad, outsize, cover_all)(x)
