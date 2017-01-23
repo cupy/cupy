@@ -1993,7 +1993,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         all_same_type &= a.dtype == tup[0].dtype
 
     if all_same_type:
-        base = numpy.prod(shape[axis+1:], dtype='i')
+        base = internal.prod_ssize_t(shape[axis+1:])
         x = array([a.data.ptr for a in tup])
         axis_sizes = array([a.shape[axis] for a in tup], 'i')
         x_strides = array([a.strides for a in tup], 'i')
