@@ -1986,6 +1986,8 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 cpdef ndarray concatenate(tup, axis, shape, dtype):
     cdef ndarray ret
     cdef int base
+    cdef int cum
+
     ret = ndarray(shape, dtype=dtype)
 
     all_same_type = True
@@ -1995,10 +1997,15 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     if all_same_type:
         base = internal.prod_ssize_t(shape[axis+1:])
         x = array([a.data.ptr for a in tup])
-        axis_sizes = array([a.shape[axis] for a in tup], 'i')
+        cum = 0
+        cum_sizes = numpy.empty(len(tup), 'i')
+        for i, a in enumerate(tup):
+            cum_sizes[i] = cum
+            cum += a._shape[axis]
+        cum_sizes = array(cum_sizes)
         x_strides = array([a.strides for a in tup], 'i')
         _concatenate_kernel(
-            x, axis, axis_sizes, x_strides, array(shape, 'i'), base, ret)
+            x, axis, cum_sizes, x_strides, array(shape, 'i'), base, ret)
     else:
         skip = (slice(None),) * axis
         i = 0
@@ -2011,21 +2018,27 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, raw int32 axis_sizes, raw int32 x_strides,
+    '''raw P x, int32 axis, raw int32 cum_sizes, raw int32 x_strides,
     raw int32 shape, int32 base''',
     'T y',
     '''
     int n = shape[axis];
     int axis_ind = i / base % n;
 
-    int array_ind;
-    for (int j = 0; j < n; ++j) {
-      if (axis_ind < axis_sizes[j]) {
-        array_ind = j;
-        break;
+    int left = 0;
+    int right = cum_sizes.size();
+
+    while (left < right - 1) {
+      int m = (left + right) / 2;
+      if (axis_ind < cum_sizes[m]) {
+        right = m;
+      } else {
+        left = m;
       }
-      axis_ind -= axis_sizes[j];
     }
+
+    int array_ind = left;
+    axis_ind -= cum_sizes[left];
 
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
     int ind_rest = i;
