@@ -169,6 +169,8 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(None), [1, -1]),
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': ([0, -1], 1, 2), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [[2, 0], [3, 1]]),
+     'value': 1},
     # multiple arrays and basic indexing
     {'shape': (2, 3, 4), 'indexes': ([0, -1], None, [1, 0]), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(0, 2), [1, 0]),
