@@ -154,6 +154,55 @@ class TestUnpoolingND(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+    def check_backward_consistency_regression(
+            self, x_data, gy_data, use_cudnn=True):
+        # Regression test to two-dimensional unpooling layer.
+
+        if len(self.dims) != 2:
+            return
+
+        ksize = self.ksize
+        stride = self.stride
+        pad = self.pad
+        xp = cuda.get_array_module(x_data)
+
+        # Backward computation for N-dimensional unpooling layer.
+        x_nd = chainer.Variable(xp.array(x_data))
+        func_nd = functions.UnpoolingND(self.ndim, ksize, stride=stride,
+                                        pad=pad, use_cudnn=use_cudnn,
+                                        cover_all=self.cover_all)
+        y_nd = func_nd(x_nd)
+        y_nd.grad = gy_data
+        y_nd.backward()
+
+        # Backward computation for two-dimensional unpooling layer.
+        x_2d = chainer.Variable(xp.array(x_data))
+        func_2d = functions.Unpooling2D(ksize, stride=stride, pad=pad,
+                                        use_cudnn=use_cudnn,
+                                        cover_all=self.cover_all)
+        y_2d = func_2d(x_2d)
+        y_2d.grad = gy_data
+        y_2d.backward()
+
+        # Test that the two result gradients are close enough.
+        testing.assert_allclose(x_nd.grad, x_2d.grad)
+
+    @condition.retry(3)
+    def test_backward_consistency_regression_cpu(self):
+        self.check_backward_consistency_regression(self.x, self.gy)
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_consistency_regression_gpu(self):
+        self.check_backward_consistency_regression(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_consistency_regression_no_cudnn(self):
+        self.check_backward_consistency_regression(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy), use_cudnn=False)
+
 
 @testing.parameterize(*testing.product({
     'outsize': [(10,), (10, 9), (10, 9, 8)],
