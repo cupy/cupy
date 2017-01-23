@@ -115,10 +115,10 @@ class TestUnpoolingND(unittest.TestCase):
         stride = self.stride
         pad = self.pad
 
-        y_nd = functions.unpooling_nd(x_data, ksize, stride=stride, pad=pad
+        y_nd = functions.unpooling_nd(x_data, ksize, stride=stride, pad=pad,
                                       use_cudnn=use_cudnn,
                                       cover_all=self.cover_all)
-        y_2d = functions.unpooling_2d(x_data, ksize, stride=stride, pad=pad
+        y_2d = functions.unpooling_2d(x_data, ksize, stride=stride, pad=pad,
                                       use_cudnn=use_cudnn,
                                       cover_all=self.cover_all)
         testing.assert_allclose(y_nd.data, y_2d.data)
