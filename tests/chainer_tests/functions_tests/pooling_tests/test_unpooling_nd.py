@@ -69,9 +69,9 @@ class TestUnpoolingND(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
         if self.dtype == numpy.float16:
-            self.check_forward_options = {'atol': 2**-4, 'rtol': 2**-4}
+            self.check_forward_options = {'atol': 2 ** -4, 'rtol': 2 ** -4}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 2**-4, 'rtol': 2**-4}
+                'dtype': numpy.float64, 'atol': 2 ** -4, 'rtol': 2 ** -4}
         else:
             self.check_forward_options = {}
             self.check_backward_options = {'atol': 5e-4, 'rtol': 5e-4}
