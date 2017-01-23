@@ -36,7 +36,7 @@ class UnpoolingND(function.Function):
             expected_dims = tuple(
                 conv.get_conv_outsize(out, k, s, p, cover_all=self.cover_all)
                 for (out, k, s, p)
-                in zip(self.outs, self.ksize, self.stride, self.pad))
+                in six.moves.zip(self.outs, self.ksize, self.stride, self.pad))
             type_check.expect(x_type.shape[2:] == expected_dims)
 
     def forward(self, x):
@@ -48,7 +48,7 @@ class UnpoolingND(function.Function):
         if self.outs is None:
             self.outs = tuple(
                 conv.get_deconv_outsize(d, k, s, p, cover_all=self.cover_all)
-                for (d, k, s, p) in zip(dims, ksize, stride, pad))
+                for (d, k, s, p) in six.moves.zip(dims, ksize, stride, pad))
 
         xp = cuda.get_array_module(*x)
 
