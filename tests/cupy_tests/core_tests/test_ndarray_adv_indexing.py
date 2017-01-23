@@ -50,6 +50,7 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
     {'shape': (2, 3, 4), 'indexes': [1, -1]},
+    {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [[2, 1], [3, 1]])},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
