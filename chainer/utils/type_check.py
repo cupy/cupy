@@ -13,9 +13,10 @@ _thread_local = threading.local()
 
 @contextlib.contextmanager
 def get_function_check_context(f):
+    default = getattr(_thread_local, 'current_function', 'None')
     _thread_local.current_function = f
     yield
-    _thread_local.current_function = None
+    _thread_local.current_function = default
 
 
 class TypeInfo(object):
