@@ -105,6 +105,39 @@ class TestUnpoolingND(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
+    def check_forward_consistency_regression(self, x_data, use_cudnn=True):
+        # Regression test to two-dimensional unpooling layer.
+
+        if len(self.dims) != 2:
+            return
+
+        ksize = self.ksize
+        stride = self.stride
+        pad = self.pad
+
+        y_nd = functions.unpooling_nd(x_data, ksize, stride=stride, pad=pad
+                                      use_cudnn=use_cudnn,
+                                      cover_all=self.cover_all)
+        y_2d = functions.unpooling_2d(x_data, ksize, stride=stride, pad=pad
+                                      use_cudnn=use_cudnn,
+                                      cover_all=self.cover_all)
+        testing.assert_allclose(y_nd.data, y_2d.data)
+
+    @condition.retry(3)
+    def test_forward_consistency_regression_cpu(self):
+        self.check_forward_consistency_regression(self.x)
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_forward_consistency_regression_gpu(self):
+        self.check_forward_consistency_regression(cuda.to_gpu(self.x))
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_forward_consistency_regression_no_cudnn(self):
+        self.check_forward_consistency_regression(
+            cuda.to_gpu(self.x), use_cudnn=False)
+
     def check_backward(self, x_data, y_grad):
         ndim = len(self.dims)
         gradient_check.check_backward(
