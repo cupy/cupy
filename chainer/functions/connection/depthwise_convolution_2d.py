@@ -1,5 +1,4 @@
 import numpy
-from six import moves
 
 from chainer import cuda
 from chainer import function
@@ -54,16 +53,22 @@ class DepthwiseConvolution2D(function.Function):
             self.col = conv.im2col_gpu(
                 x, kh, kw, self.sy, self.sx, self.ph, self.pw)
 
-        arys = [xp.tensordot(self.col[:, i, :, :, :, :], W[:, i, :, :],
-                             ((1, 2), (1, 2))).astype(x.dtype, copy=False)
-                for i in moves.range(W.shape[1])]
+        B, C, KY, KX, IY, IX = self.col.shape
+        D = W.shape[0]  # (D, C, KY, KX)
+        c_ = self.col.transpose(1, 0, 4, 5, 2, 3) \
+            .reshape((C, B * IY * IX, KY * KX))
+        w_ = W.transpose(1, 2, 3, 0).reshape((C, KY * KX, D))
 
-        # along input channel axis
-        y = xp.concatenate(arys, axis=3)
+        # (C, B*IY*IX, KY*KX), (C, KY*KX, D)-> (C, B*IY*IX, D)
+        y = xp.matmul(c_, w_).astype(x.dtype, copy=False)
+
+        # (C, B*IY*IX, D) -> (B, C*D, IY, IX)
+        y = y.reshape((C, B, IY, IX, D)).transpose(1, 0, 4, 2, 3) \
+            .reshape((B, C * D, IY, IX))
 
         if b is not None:
-            y += b
-        return xp.rollaxis(y, 3, 1),
+            y += b[None, :, None, None]
+        return y,
 
     def backward(self, inputs, grad_outputs):
         x, W = inputs[:2]
@@ -72,17 +77,22 @@ class DepthwiseConvolution2D(function.Function):
         h, w = x.shape[2:]
 
         xp = cuda.get_array_module(*x)
-        gy = xp.rollaxis(gy, 1, 4)
-        garys = xp.split(gy, W.shape[1], axis=3)
-        gW = xp.empty_like(W)
-        gcol = xp.empty_like(self.col)
-        gcol = xp.rollaxis(self.col, 0, 4)
-        for i in moves.range(W.shape[1]):
-            gW[:, i, :, :] = xp.tensordot(
-                garys[i], self.col[:, i, :, :, :, :], ((0, 1, 2), (0, 3, 4)))
-            gcol[i, :, :, :, :, :] = xp.tensordot(
-                W[:, i, :, :], garys[i], (0, 3))
+
+        B, C, KY, KX, IY, IX = self.col.shape
+        D = W.shape[0]
+
+        gy_ = gy.reshape((B, C, D, IY * IX)).transpose(1, 2, 0, 3) \
+            .reshape((C, D, B * IY * IX))
+        c_ = self.col.transpose(1, 0, 4, 5, 2, 3) \
+            .reshape((C, B * IY * IX, KY * KX))
+        # (C, D, B*IY*IX), (C, B*IY*IX, KY*KX) -> (C, D, KY*KX)
+        gW_ = xp.matmul(gy_, c_)
+        gW = gW_.reshape((C, D, KY, KX)).transpose(1, 0, 2, 3)
         gW = gW.astype(W.dtype, copy=False)
+
+        w_ = W.transpose(1, 2, 3, 0).reshape((C, KY * KX, D))
+        # (C, KY*KX, D), (C, D, B*IY*IX) -> (C, KY*KX, B*IY*IX)
+        gcol = xp.matmul(w_, gy_).reshape((C, KY, KX, B, IY, IX))
         gcol = gcol.astype(x.dtype, copy=False)
         gcol = xp.rollaxis(gcol, 3)
 
@@ -96,6 +106,7 @@ class DepthwiseConvolution2D(function.Function):
         if b is None:
             return gx, gW
         else:
+            gy = xp.rollaxis(gy, 1, 4)
             gb = gy.sum(axis=(0, 1, 2))
             return gx, gW, gb
 
