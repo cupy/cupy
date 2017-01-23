@@ -1994,7 +1994,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     all_one = True
     for a in tup:
         all_same_type &= a.dtype == tup[0].dtype
-        all_one &= a.shape[axis] == 1
+        all_one &= a._shape[axis] == 1
 
     if all_same_type:
         base = internal.prod_ssize_t(shape[axis+1:])
