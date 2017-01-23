@@ -269,7 +269,7 @@ class Function(object):
 
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)
-        with type_check.check_function(self):
+        with type_check.get_function_check_context(self):
             self.check_type_forward(in_type)
 
     def check_type_forward(self, in_types):

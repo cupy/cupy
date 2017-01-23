@@ -12,7 +12,7 @@ _thread_local = threading.local()
 
 
 @contextlib.contextmanager
-def check_function(f):
+def get_function_check_context(f):
     _thread_local.current_function = f
     yield
     _thread_local.current_function = None
