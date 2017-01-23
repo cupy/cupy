@@ -225,6 +225,16 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     {'shape': (5,),
      'indexes': numpy.array([True, False, False, True, True]),
      'value': numpy.arange(3)},
+    # multiple arrays
+    {'shape': (2, 3, 4), 'indexes': ([1, 0], [2, 1]),
+     'value': numpy.arange(2 * 4).reshape(2, 4)},
+    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [2, 1]),
+     'value': numpy.arange(2 * 3).reshape(2, 3)},
+    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [[2, 0], [3, 1]]),
+     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {'shape': (2, 3, 4),
+     'indexes': ([[1, 0], [1, 0]], slice(None), [[2, 0], [3, 1]]),
+     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
@@ -288,5 +298,4 @@ class TestArrayAdvancedIndexingSetitemTranspose(unittest.TestCase):
         a = xp.zeros(shape).transpose(0, 2, 1)
         slices = (numpy.array([1, 0]), slice(None), numpy.array([2, 1]))
         a[slices] = 1
->>>>>>> add support for multiple integer arrays for cupy.ndarray.__setitem__
         return a
