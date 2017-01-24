@@ -1,5 +1,4 @@
 import numpy
-import six
 
 from cupy import core
 
