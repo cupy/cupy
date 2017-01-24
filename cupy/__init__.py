@@ -454,7 +454,7 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
-        return _cupy
-    else:
-        return numpy
+    for arg in args:
+        if isinstance(arg, ndarray):
+            return _cupy
+    return numpy
