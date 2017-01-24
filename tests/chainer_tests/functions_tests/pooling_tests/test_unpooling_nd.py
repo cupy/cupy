@@ -74,7 +74,7 @@ class TestUnpoolingND(unittest.TestCase):
                 'dtype': numpy.float64, 'atol': 2 ** -4, 'rtol': 2 ** -4}
         else:
             self.check_forward_options = {}
-            self.check_backward_options = {'atol': 5e-4, 'rtol': 5e-4}
+            self.check_backward_options = {'atol': 1e-3, 'rtol': 1e-3}
 
     def check_forward(self, x_data):
         ksize = self.ksize
