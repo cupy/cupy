@@ -110,5 +110,5 @@ def unpooling_nd(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
         ~chainer.Variable: Output variable.
 
     """
-    ndim = len(x.data.shape[2:])
+    ndim = len(x.shape[2:])
     return UnpoolingND(ndim, ksize, stride, pad, outsize, cover_all)(x)
