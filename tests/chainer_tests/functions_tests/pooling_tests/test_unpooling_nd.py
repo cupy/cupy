@@ -1,5 +1,6 @@
 import unittest
 
+import copy
 import itertools
 import numpy
 import six
@@ -176,8 +177,9 @@ class TestUnpoolingND(unittest.TestCase):
         y_2d.backward()
 
         # Test that the two result gradients are close enough.
+        opt = copy.copy(self.check_backward_options)
         testing.assert_allclose(
-            x_nd.grad, x_2d.grad, **self.check_backward_options)
+            x_nd.grad, x_2d.grad, atol=opt['atol'], rtol=opt['rtol'])
 
     @condition.retry(3)
     def test_backward_consistency_regression_cpu(self):
