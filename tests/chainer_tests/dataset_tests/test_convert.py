@@ -210,52 +210,65 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
         self.check_concat_dicts_padding(cuda.cupy)
 
 
+def get_xp(gpu):
+    if gpu:
+        return cuda.cupy
+    else:
+        return numpy
+
+
 @testing.parameterize(
-    {'device': None, 'src_xp': numpy, 'dst_xp': numpy},
-    {'device': -1, 'src_xp': numpy, 'dst_xp': numpy},
+    {'device': None, 'src_gpu': False, 'dst_gpu': False},
+    {'device': -1, 'src_gpu': False, 'dst_gpu': False},
 )
 class TestToDeviceCPU(unittest.TestCase):
 
     def test_to_device(self):
-        x = self.src_xp.array([1], 'i')
+        src_xp = get_xp(self.src_gpu)
+        dst_xp = get_xp(self.dst_gpu)
+        x = src_xp.array([1], 'i')
         y = dataset.to_device(self.device, x)
-        self.assertIsInstance(y, self.dst_xp.ndarray)
+        self.assertIsInstance(y, dst_xp.ndarray)
 
 
 @testing.parameterize(
-    {'device': None, 'src_xp': cuda.cupy, 'dst_xp': cuda.cupy},
+    {'device': None, 'src_gpu': True, 'dst_gpu': True},
 
-    {'device': -1, 'src_xp': cuda.cupy, 'dst_xp': numpy},
+    {'device': -1, 'src_gpu': True, 'dst_gpu': False},
 
-    {'device': 0, 'src_xp': numpy, 'dst_xp': cuda.cupy},
-    {'device': 0, 'src_xp': cuda.cupy, 'dst_xp': cuda.cupy},
+    {'device': 0, 'src_gpu': False, 'dst_gpu': True},
+    {'device': 0, 'src_gpu': True, 'dst_gpu': True},
 )
+@attr.gpu
 class TestToDeviceGPU(unittest.TestCase):
 
-    @attr.gpu
     def test_to_device(self):
-        x = self.src_xp.array([1], 'i')
+        src_xp = get_xp(self.src_gpu)
+        dst_xp = get_xp(self.dst_gpu)
+        x = src_xp.array([1], 'i')
         y = dataset.to_device(self.device, x)
-        self.assertIsInstance(y, self.dst_xp.ndarray)
+        self.assertIsInstance(y, dst_xp.ndarray)
 
         if self.device >= 0:
             self.assertEqual(int(y.device), self.device)
 
-        if self.device is None and self.src_xp is cuda.cupy:
+        if self.device is None and self.src_gpu:
             self.assertEqual(int(x.device), int(y.device))
 
 
 @testing.parameterize(
-    {'device': 1, 'src_xp': numpy, 'dst_xp': cuda.cupy},
-    {'device': 1, 'src_xp': cuda.cupy, 'dst_xp': cuda.cupy},
+    {'device': 1, 'src_gpu': False, 'dst_gpu': True},
+    {'device': 1, 'src_gpu': True, 'dst_gpu': True},
 )
+@attr.multi_gpu(2)
 class TestToDeviceMultiGPU(unittest.TestCase):
 
-    @attr.multi_gpu(2)
     def test_to_device(self):
-        x = self.src_xp.array([1], 'i')
+        src_xp = get_xp(self.src_gpu)
+        dst_xp = get_xp(self.dst_gpu)
+        x = src_xp.array([1], 'i')
         y = dataset.to_device(self.device, x)
-        self.assertIsInstance(y, self.dst_xp.ndarray)
+        self.assertIsInstance(y, dst_xp.ndarray)
 
         self.assertEqual(int(y.device), self.device)
 
