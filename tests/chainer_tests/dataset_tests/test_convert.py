@@ -210,4 +210,45 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
         self.check_concat_dicts_padding(cuda.cupy)
 
 
+class TestConcatExamplesWithBuiltInTypes(unittest.TestCase):
+
+    def get_int_arrays(self):
+        return [1, 2, 3]
+
+    def get_float_arrays(self):
+        return [1.0, 2.0, 3.0]
+
+    def check_device(self, array, device):
+        if device is not None:
+            self.assertIsInstance(array, cuda.ndarray)
+            self.assertEqual(array.device.id, device)
+
+    def check_concat_arrays(self, arrays, device=None, expected_type=None):
+        array = dataset.concat_examples(arrays, device)
+        self.assertEqual(array.shape, (len(arrays),))
+        self.check_device(array, device)
+
+        for x in array:
+            self.assertIsInstance(x, expected_type)
+
+    def test_concat_arrays_cpu(self):
+        arrays = self.get_int_arrays()
+        self.check_concat_arrays(arrays,
+                                 expected_type=numpy.int64)
+        arrays = self.get_float_arrays()
+        self.check_concat_arrays(arrays,
+                                 expected_type=numpy.float64)
+
+    @attr.gpu
+    def test_concat_arrays_gpu(self):
+        arrays = self.get_int_arrays()
+        self.check_concat_arrays(arrays,
+                                 device=cuda.Device().id,
+                                 expected_type=cuda.ndarray)
+        arrays = self.get_float_arrays()
+        self.check_concat_arrays(arrays,
+                                 device=cuda.Device().id,
+                                 expected_type=cuda.ndarray)
+
+
 testing.run_module(__name__, __file__)
