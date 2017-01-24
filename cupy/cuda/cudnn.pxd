@@ -9,11 +9,28 @@ cdef extern from *:
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
+    ctypedef struct ConvolutionBwdDataAlgoPerf \
+        'cudnnConvolutionBwdDataAlgoPerf_t':  # NOQA: E125
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
     ctypedef int ConvolutionBwdFilterPreference \
         'cudnnConvolutionBwdFilterPreference_t'
+    ctypedef struct ConvolutionBwdFilterAlgoPerf \
+        'cudnnConvolutionBwdFilterAlgoPerf_t':  # NOQA: E125
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
+    ctypedef struct ConvolutionFwdAlgoPerf 'cudnnConvolutionFwdAlgoPerf_t':
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
     ctypedef int DirectionMode 'cudnnDirectionMode_t'
@@ -187,6 +204,13 @@ cpdef setConvolutionNdDescriptor_v3(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t upscaleA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
+cpdef findConvolutionForwardAlgorithm(
+    size_t handle, size_t xDesc, size_t wDesc, size_t convDesc, size_t yDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionForwardAlgorithmEx(
+    size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
+    size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, ConvolutionFwdPreference preference,
@@ -202,6 +226,13 @@ cpdef convolutionForward(
 cpdef convolutionBackwardBias(
     size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
     size_t beta, size_t destDesc, size_t destData)
+cpdef findConvolutionBackwardFilterAlgorithm(
+    size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc, size_t dwDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionBackwardFilterAlgorithmEx(
+    size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, ConvolutionBwdFilterPreference preference,
@@ -218,6 +249,13 @@ cpdef convolutionBackwardFilter_v3(
     size_t diffDesc, size_t diffData, size_t convDesc, int algo,
     size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
     size_t gradDesc, size_t gradData)
+cpdef findConvolutionBackwardDataAlgorithm(
+    size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionBackwardDataAlgorithmEx(
+    size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dxDesc, size_t dx,
+    int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardDataAlgorithm(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, size_t preference,

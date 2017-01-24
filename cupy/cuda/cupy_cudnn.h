@@ -197,8 +197,30 @@ typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionFwdAlgoPerf_t;
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdFilterAlgoPerf_t;
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -210,11 +232,19 @@ cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithm(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnConvolutionBackwardData_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -363,6 +393,18 @@ cudnnStatus_t cudnnRNNBackwardData(...) {
 }
 
 cudnnStatus_t cudnnRNNBackwardWeights(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithmEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
