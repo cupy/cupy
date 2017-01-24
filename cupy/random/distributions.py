@@ -87,8 +87,6 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
     """
     rs = generator.get_random_state()
-    if loc.shape == () and scale.shape == ():
-        return rs.normal(loc, scale, size, dtype)
     return (rs.normal(0, 1, size, dtype) * scale + loc).astype(dtype)
 
 
