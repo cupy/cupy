@@ -1,12 +1,54 @@
 from chainer import reporter
 import chainer.training as training
 from chainer.training import extension
-import statistics
+import chainer.statistics as statistics
 
 
-def prefix_statistic_keys(key_prefix, stats):
+def _iterable(x):
+    if isinstance(x, (list, tuple)):
+        return x
+    return x,
+
+
+def _prefix_statistics(prefix, stats):
+
+    """Prefix all keys in a statistic dictionary."""
+
     for key in list(stats.keys()):
-        stats['{}/{}'.format(key_prefix, key)] = stats.pop(key)
+        stats['{}/{}'.format(prefix, key)] = stats.pop(key)
+    return stats
+
+
+def _statistic_key(link, param_names, attr_names):
+
+    """Generate a statistic dictionary key based on context."""
+
+    param_names = _iterable(param_names)
+    attr_names = _iterable(attr_names)
+
+    link_name = 'None' if not hasattr(link, 'name') else link.name
+    param_name = '-'.join(param_names)
+    attr_name = '-'.join(attr_names)
+
+    return '{}/{}/{}'.format(link_name, param_name, attr_name)
+
+
+def _flatten_link(link, param_names, attr_names):
+
+    """Flatten a link to an array."""
+
+    param_names = _iterable(param_names)
+    attr_names = _iterable(attr_names)
+
+    params = []
+    for param in link.params():
+        if param.name in param_names:
+            for attr_name in attr_names:
+                p = getattr(param, attr_name)
+                p = p.flatten()
+                params.append(p)
+
+    return link.xp.concatenate(params)
 
 
 class ParameterStatistics(extension.Extension):
@@ -92,13 +134,40 @@ class ParameterStatistics(extension.Extension):
             reporter.report(self._summary.compute_mean())
             self._summary = reporter.DictSummary()  # Clear summary
 
+
     def post_process(self, stats):
+
+        """Handle any post processing of the data before adding them to the
+        summary.
+        """
+
         if self._prefix is not None:
-            prefix_statistic_keys(self._prefix, stats)
+            _prefix_statistics(self._prefix, stats)
+
         return stats
 
     def get_statistics(self, link, param_names, attr_names):
-        return statistics.get_statistics(link, param_names, attr_names)
+
+        key = _statistic_key(link, param_names, attr_names)
+        params = _flatten_link(link, param_names, attr_names)
+        stats = {}
+
+        # Statistics such as min, max, mean, std.
+        for f, s in statistics.statistics(params).items():
+            stats['{}/{}'.format(key, f)] = s
+
+        # Percentiles
+        for i, p in enumerate(statistics.percentiles(params)):
+            stats['{}/percentile/{}'.format(key, i)] = p
+
+        return stats
 
     def get_sparsity(self, link, param_names, attr_names):
-        return statistics.get_sparsity(link, param_names, attr_names)
+
+        key = _statistic_key(link, param_names, attr_names)
+        key += '/zeros'
+
+        params = _flatten_link(link, param_names, attr_names)
+        zeros = statistics.sparsity(params)
+
+        return { key: zeros }
