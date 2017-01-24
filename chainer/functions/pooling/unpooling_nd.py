@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import conv
 from chainer.utils import conv_nd
 from chainer.utils import type_check
@@ -13,6 +14,7 @@ class UnpoolingND(function.Function):
 
     def __init__(self, ndim, ksize, stride=None, pad=0, outsize=None,
                  cover_all=True):
+        utils.experimental('chainer.functions.pooling.UnpoolingND')
         if stride is None:
             stride = ksize
 
