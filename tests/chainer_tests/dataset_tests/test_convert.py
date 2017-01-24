@@ -239,9 +239,9 @@ class TestToDeviceCPU(unittest.TestCase):
     {'device': 0, 'src_gpu': False, 'dst_gpu': True},
     {'device': 0, 'src_gpu': True, 'dst_gpu': True},
 )
-@attr.gpu
 class TestToDeviceGPU(unittest.TestCase):
 
+    @attr.gpu
     def test_to_device(self):
         src_xp = get_xp(self.src_gpu)
         dst_xp = get_xp(self.dst_gpu)
@@ -260,9 +260,9 @@ class TestToDeviceGPU(unittest.TestCase):
     {'device': 1, 'src_gpu': False, 'dst_gpu': True},
     {'device': 1, 'src_gpu': True, 'dst_gpu': True},
 )
-@attr.multi_gpu(2)
 class TestToDeviceMultiGPU(unittest.TestCase):
 
+    @attr.multi_gpu(2)
     def test_to_device(self):
         src_xp = get_xp(self.src_gpu)
         dst_xp = get_xp(self.dst_gpu)
