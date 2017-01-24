@@ -158,7 +158,8 @@ class TestUnpoolingND(unittest.TestCase):
             self, x_data, gy_data, use_cudnn=True):
         # Regression test to two-dimensional unpooling layer.
 
-        if len(self.dims) != 2:
+        ndim = len(self.dims)
+        if ndim != 2:
             return
 
         ksize = self.ksize
@@ -168,7 +169,7 @@ class TestUnpoolingND(unittest.TestCase):
 
         # Backward computation for N-dimensional unpooling layer.
         x_nd = chainer.Variable(xp.array(x_data))
-        func_nd = functions.UnpoolingND(self.ndim, ksize, stride=stride,
+        func_nd = functions.UnpoolingND(ndim, ksize, stride=stride,
                                         pad=pad, use_cudnn=use_cudnn,
                                         cover_all=self.cover_all)
         y_nd = func_nd(x_nd)
