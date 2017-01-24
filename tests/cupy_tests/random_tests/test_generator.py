@@ -254,6 +254,66 @@ class TestInterval(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'a': 3, 'size': 2, 'p': None},
+    {'a': 3, 'size': 2, 'p': [0.3, 0.3, 0.4]},
+    {'a': 3, 'size': (5, 5), 'p': [0.3, 0.3, 0.4]},
+    {'a': 3, 'size': (), 'p': None},
+    {'a': [1, 2, 3], 'size': 2, 'p': [0.3, 0.3, 0.4]},
+)
+@testing.gpu
+class TestChoice(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    @condition.repeat(10)
+    def test_within_choice_and_shape(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        minimum = -1 if type(self.a) == int else 0
+        maximum = 3 if type(self.a) == int else 4
+        numpy.testing.assert_array_less(
+            numpy.full(self.size, minimum, dtype=numpy.int64), val)
+        numpy.testing.assert_array_less(
+            val, numpy.full(self.size, maximum, dtype=numpy.int64))
+
+    @condition.retry(20)
+    def test_lower_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        val = val.item() if self.size == () else val.item(0)
+        lower = 0 if type(self.a) == int else 1
+        self.assertEqual(lower, val)
+
+    @condition.retry(20)
+    def test_upper_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        val = val.item() if self.size == () else val.item(0)
+        upper = 2 if type(self.a) == int else 3
+        self.assertEqual(upper, val)
+
+
+@testing.gpu
+class TestChoiceChi(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_goodness_of_fit(self):
+        trial = 100
+        vals = [self.rs.choice(3, 1, True, [0.3, 0.3, 0.4]).get()
+                for _ in six.moves.xrange(trial)]
+        counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
+        expected = numpy.array([30, 30, 40])
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        vals = self.rs.choice(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
+        expected = numpy.array([30, 30, 40])
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+
+
+@testing.parameterize(
     {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': -3, 'size': 1, 'p': [0.1, 0.1, 0.8]},

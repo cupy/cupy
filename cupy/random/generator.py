@@ -243,19 +243,21 @@ class RandomState(object):
             :meth:`numpy.random.choice`
 
         """
-        a = numpy.array(a, copy=False)
-        if a.ndim == 0:
-            a_size = a.item()
-            if type(a_size) != int or a_size is None:
-                raise ValueError('a must be 1-dimensional or an integer')
+        if a is None:
+            raise ValueError('a must be 1-dimensional or an integer')
+        if type(a) == int:
+            a_size = a
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
-        elif a.ndim != 1:
-            raise ValueError('a must be 1-dimensional')
+            a = cupy.array(a, copy=False)
         else:
-            a_size = len(a)
-            if a_size == 0:
-                raise ValueError('a must be non-empty')
+            a = cupy.array(a, copy=False)
+            if a.ndim != 1:
+                raise ValueError('a must be 1-dimensional')
+            else:
+                a_size = len(a)
+                if a_size == 0:
+                    raise ValueError('a must be non-empty')
 
         if p is not None:
             p = cupy.array(p)
@@ -291,6 +293,7 @@ class RandomState(object):
             return index
 
         if index.ndim == 0:
+            # size = ()
             res = cupy.empty((), dtype=a.dtype)
             res[()] = a[index]
             return res
