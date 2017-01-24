@@ -1,6 +1,5 @@
 import unittest
 
-import copy
 import itertools
 import numpy
 import six
@@ -177,7 +176,7 @@ class TestUnpoolingND(unittest.TestCase):
         y_2d.backward()
 
         # Test that the two result gradients are close enough.
-        opt = copy.copy(self.check_backward_options)
+        opt = self.check_backward_options
         testing.assert_allclose(
             x_nd.grad, x_2d.grad, atol=opt['atol'], rtol=opt['rtol'])
 
