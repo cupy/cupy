@@ -2253,6 +2253,7 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
         v = array(v, dtype=a.dtype)
     v = v.astype(a.dtype)
 
+    # broadcast v to shape determined by the mask
     mask_scanned = scan(mask.astype(numpy.int32).ravel())  # starts with 1
     n_true = int(mask_scanned.max())
     lshape = a.shape[:axis]
@@ -2265,6 +2266,7 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
     mask_br = broadcast_to(mask_br, a.shape)
     mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
     mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
+
     if op == 'update':
         _scatter_update_mask_kernel(v, mask_br, mask_br_scanned, a)
     else:
