@@ -1333,6 +1333,9 @@ cdef class ndarray:
             numpy.ndarray: Copy of the array on host memory.
 
         """
+        if self.size == 0:
+            return numpy.ndarray(self.shape, dtype=self.dtype)
+
         with self.device:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
