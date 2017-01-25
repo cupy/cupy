@@ -2117,6 +2117,8 @@ cdef _boolean_array_indexing_nth = ElementwiseKernel(
 
 
 cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
+    cdef int n_true
+
     a = a.ravel()
     boolean_array = boolean_array.ravel()
     if boolean_array.size <= 2 ** 31 - 1:
