@@ -1,6 +1,3 @@
-import numpy
-
-import cupy
 from cupy import core
 
 
