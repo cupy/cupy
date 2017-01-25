@@ -2117,8 +2117,8 @@ cdef _boolean_array_indexing_nth = ElementwiseKernel(
 
 
 cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
-    a = a.flatten()
-    boolean_array = boolean_array.flatten()
+    a = a.ravel()
+    boolean_array = boolean_array.ravel()
     nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
 
     n_true = int(nth_true_array.max()) + 1
