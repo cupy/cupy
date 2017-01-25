@@ -4,6 +4,7 @@
 Wrapper for NVIDIA Tools Extension Library (NVTX)
 
 """
+from contextlib import contextmanager
 from libc cimport string
 
 cdef extern from "cupy_cuda.h":
@@ -170,3 +171,29 @@ cpdef void RangePop() except *:
     pair of RangePush*() to RangePop() calls.
     """
     nvtxRangePop()
+
+
+@contextmanager
+def range(message, id_color=-1):
+    """A context manager to describe the enclosed block as a nested time range.
+
+    Args:
+        message (str): Name of a range.
+        id_color (int): ID of color for a range.
+    """
+    RangePush(message, id_color)
+    yield
+    RangePop()
+
+
+@contextmanager
+def rangeC(message, color=0):
+    """A context manager to describe the enclosed block as a nested time range.
+
+    Args:
+        message (str): Name of a range.
+        color (uint32): Color for a range.
+    """
+    RangePushC(message, color)
+    yield
+    RangePop()
