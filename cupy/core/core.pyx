@@ -2245,6 +2245,10 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
 
 
 cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
+    cdef ndarray mask_scanned, mask_br, mask_br_scanned
+    cdef int n_true
+    cdef tuple lshape, rshape, v_shape
+
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
     v = v.astype(a.dtype)
