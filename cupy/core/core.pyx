@@ -2121,7 +2121,7 @@ cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
     boolean_array = boolean_array.ravel()
     nth_true_array = scan(boolean_array.astype(int))  # starts with 1
 
-    n_true = int(nth_true_array.max())
+    n_true = int(nth_true_array[-1])
     out_shape = (n_true,)
     out = ndarray(out_shape, dtype=a.dtype)
 
