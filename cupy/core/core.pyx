@@ -2119,7 +2119,12 @@ cdef _boolean_array_indexing_nth = ElementwiseKernel(
 cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
     a = a.ravel()
     boolean_array = boolean_array.ravel()
-    nth_true_array = scan(boolean_array.astype(int))  # starts with 1
+    if boolean_array.size <= 2 ** 31 - 1:
+        boolean_array_type = numpy.int32
+    else:
+        boolean_array_type = numpy.int64
+    nth_true_array = scan(
+        boolean_array.astype(boolean_array_type))  # starts with 1
 
     n_true = int(nth_true_array[-1])
     out_shape = (n_true,)
