@@ -35,6 +35,16 @@ from cupy import testing
     # broadcasting
     {'shape': (3, 4, 5), 'slices': (slice(None), [[1, 2], [0, -1]],),
      'value': numpy.arange(3 * 2 * 2 * 5).reshape(3, 2, 2, 5)},
+    # mask
+    {'shape': (3, 4, 5),
+     'slices': (numpy.random.choice([False, True], (3, 4, 5)),),
+     'value': 1},
+    {'shape': (3, 4, 5),
+     'slices': (numpy.random.choice([False, True], (3,)),),
+     'value': numpy.arange(4 * 5).reshape(4, 5)},
+    {'shape': (3, 4, 5),
+     'slices': (slice(None), numpy.array([True, False, False, True]),),
+     'value': numpy.arange(3 * 2 * 5).reshape(3, 2, 5)},
 )
 @testing.gpu
 class TestScatterAddNoDuplicate(unittest.TestCase):
@@ -81,6 +91,15 @@ class TestScatterAdd(unittest.TestCase):
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
+    @testing.for_dtypes([numpy.float32, numpy.int32])
+    def test_scatter_add_cupy_arguments_mask(self, dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype)
+        slices = (cupy.array([True, False]), slice(None))
+        a.scatter_add(slices, cupy.array(1.))
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
+
     @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
          numpy.ulonglong], names=['src_dtype', 'dst_dtype'])
@@ -94,3 +113,17 @@ class TestScatterAdd(unittest.TestCase):
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[0, 0, 0], [2, 2, 2]], dtype=src_dtype))
+
+    @testing.for_dtypes_combination(
+        [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
+         numpy.ulonglong], names=['src_dtype', 'dst_dtype'])
+    def test_scatter_add_differnt_dtypes_mask(self, src_dtype, dst_dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype=src_dtype)
+        value = cupy.array(1, dtype=dst_dtype)
+        slices = (numpy.array([[True, False, False], [False, True, True]]))
+        a.scatter_add(slices, value)
+
+        numpy.testing.assert_almost_equal(
+            a.get(),
+            numpy.array([[1, 0, 0], [0, 1, 1]], dtype=src_dtype))
