@@ -2112,9 +2112,9 @@ cdef _scatter_add_kernel = ElementwiseKernel(
 
 
 cdef _scatter_update_mask_kernel = ElementwiseKernel(
-    'T v, bool mask',
-    'T a',
-    'if (mask) a = v',
+    'T v, bool mask, S mask_scanned',
+    'raw T a',
+    'if (mask) a[mask_scanned - 1] = v',
     'cupy_scatter_update_mask')
 
 
@@ -2248,10 +2248,19 @@ cpdef _scatter_op_mask(ndarray a, ndarray mask, v, op):
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
     v = v.astype(a.dtype)
-    v = broadcast_to(v, a.shape)
+    mask_scanned = scan(mask.astype(numpy.int32).ravel())  # starts with 1
+
+    n_true = int(mask_scanned.max())
+    if v.size != n_true:
+        raise ValueError(
+            'CuPy boolean array indexing assignment cannot assign {} input'
+            'values to the {} output values where the mask is true')
+    v_shape = (n_true,)
+    v = broadcast_to(v, v_shape)
 
     if op == 'update':
-        _scatter_update_mask_kernel(v, mask, a)
+        _scatter_update_mask_kernel(
+            v, mask, mask_scanned._reshape(mask.shape), a)
     else:
         raise ValueError('provided op is not supported')
 
