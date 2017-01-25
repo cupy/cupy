@@ -2254,7 +2254,11 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
     v = v.astype(a.dtype)
 
     # broadcast v to shape determined by the mask
-    mask_scanned = scan(mask.astype(numpy.int32).ravel())  # starts with 1
+    if mask.size <= 2 ** 31 - 1:
+        mask_type = numpy.int32
+    else:
+        mask_type = numpy.int64
+    mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
     n_true = int(mask_scanned[-1])
     lshape = a.shape[:axis]
     rshape = a.shape[axis + mask.ndim:]
