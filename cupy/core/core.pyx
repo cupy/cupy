@@ -2112,9 +2112,9 @@ cdef _scatter_add_kernel = ElementwiseKernel(
 
 
 cdef _scatter_update_mask_kernel = ElementwiseKernel(
-    'T v, bool mask, S mask_scanned',
-    'raw T a',
-    'if (mask) a[mask_scanned - 1] = v',
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = v[mask_scanned - 1]',
     'cupy_scatter_update_mask')
 
 
@@ -2244,23 +2244,25 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
         raise ValueError('provided op is not supported')
 
 
-cpdef _scatter_op_mask(ndarray a, ndarray mask, v, op):
+cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
     v = v.astype(a.dtype)
-    mask_scanned = scan(mask.astype(numpy.int32).ravel())  # starts with 1
 
+    mask_scanned = scan(mask.astype(numpy.int32).ravel())  # starts with 1
     n_true = int(mask_scanned.max())
-    if v.size != n_true:
-        raise ValueError(
-            'CuPy boolean array indexing assignment cannot assign {} input'
-            'values to the {} output values where the mask is true')
-    v_shape = (n_true,)
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+    v_shape = lshape + (n_true,) + rshape
     v = broadcast_to(v, v_shape)
 
+    mask_br = mask._reshape(
+        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
+    mask_br = broadcast_to(mask_br, a.shape)
+    mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
+    mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
     if op == 'update':
-        _scatter_update_mask_kernel(
-            v, mask, mask_scanned._reshape(mask.shape), a)
+        _scatter_update_mask_kernel(v, mask_br, mask_br_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
@@ -2326,11 +2328,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
         if n_not_slice_none != 1:
             raise ValueError('currently, CuPy only supports slices that '
                              'consist of one boolean array.')
-        mask = slices[mask_i]
-        mask = mask.reshape(
-            mask_i * (1,) + mask.shape + (a.ndim - mask_i - mask.ndim) * (1,))
-        mask = broadcast_to(mask, a.shape)
-        _scatter_op_mask(a, mask, value, op)
+        _scatter_op_mask_single(a, slices[mask_i], value, mask_i, op)
         return
 
     if advanced:
