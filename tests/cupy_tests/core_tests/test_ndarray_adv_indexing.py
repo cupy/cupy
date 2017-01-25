@@ -184,6 +184,19 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     # mask
     {'shape': (2, 3, 4), 'indexes': numpy.random.choice([False, True], (2, 3)),
      'value': numpy.arange(4)},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.array([True, False, True])),
+     'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.array([[True, False, False], [False, True, True]]),),
+     'value': numpy.arange(3 * 4).reshape(3, 4)},
+    {'shape': (2, 2, 2),
+     'indexes': (slice(None), numpy.array([[True, False], [False, True]]),),
+     'value': numpy.arange(2 * 2).reshape(2, 2)},
+    {'shape': (2, 2, 2),
+     'indexes': (numpy.array(
+         [[[True, False], [True, False]], [[True, True], [False, False]]]),),
+     'value': numpy.arange(4)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
