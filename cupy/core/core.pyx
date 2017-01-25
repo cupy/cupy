@@ -2112,16 +2112,16 @@ cdef _scatter_add_kernel = ElementwiseKernel(
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
     'T a, bool boolean_array, S nth',
     'raw T out',
-    'if (boolean_array) out[nth] = a',
+    'if (boolean_array) out[nth - 1] = a',
     'cupy_boolean_array_indexing_nth')
 
 
 cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
     a = a.ravel()
     boolean_array = boolean_array.ravel()
-    nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
+    nth_true_array = scan(boolean_array.astype(int))  # starts with 1
 
-    n_true = int(nth_true_array.max()) + 1
+    n_true = int(nth_true_array.max())
     out_shape = (n_true,)
     out = ndarray(out_shape, dtype=a.dtype)
 
