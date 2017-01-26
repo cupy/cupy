@@ -8,6 +8,10 @@ Interval
 .. autoclass:: IntervalTrigger
    :members:
 
+ManualSchedule
+--------------
+.. autoclass:: ManualScheduleTrigger
+   :members:
 
 Minimum and maximum values
 --------------------------
@@ -16,4 +20,3 @@ Minimum and maximum values
 
 .. autoclass:: MinValueTrigger
    :members:
-
