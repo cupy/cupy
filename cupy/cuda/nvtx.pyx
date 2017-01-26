@@ -182,8 +182,10 @@ def range(message, id_color=-1):
         id_color (int): ID of color for a range.
     """
     RangePush(message, id_color)
-    yield
-    RangePop()
+    try:
+        yield
+    finally:
+        RangePop()
 
 
 @contextmanager
@@ -195,5 +197,7 @@ def rangeC(message, color=0):
         color (uint32): Color for a range.
     """
     RangePushC(message, color)
-    yield
-    RangePop()
+    try:
+        yield
+    finally:
+        RangePop()
