@@ -2256,7 +2256,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v, int axis=0, op=''):
                           (numpy.int32, numpy.float32,
                            numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float32, uint32, uint64 as'
+                'scatter_add only supports int32, float32, uint32, uint64 as '
                 'data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
