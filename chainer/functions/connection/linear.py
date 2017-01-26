@@ -70,16 +70,22 @@ def linear(x, W, b=None):
         (3, 5)
 
     Args:
-        x (~chainer.Variable): (b, s1, s2, .., sn) shaped float array. Its
-            first dimension `b` is assumed to be the *minibatch dimension*.
-            The other dimensions are treated as concatenated one dimension
-            whose size must be ``s1 * ... * sn = n``.
-        W (~chainer.Variable): Weight variable of shape ``(m, n)``, where
-            ``n == s1 * ... * sn``
-        b (~chainer.Variable): Bias variable (optional) of shape ``(m,)``.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable, which is :math:`(b, s_1, \
+            s_2, ..., s_n)`-shaped float array. Its first dimension `b` 
+            is assumed to be the *minibatch dimension*. The other dimensions
+            are treated as concatenated one dimension whose size must be
+            :math:`(s_1 * ... * s_n = n)`.
+        W (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Weight variable of shape :math:`(m, n)`,
+            where :math:`(n == s_1 * ... * s_n)`.
+        b (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Bias variable (optional) of shape
+            :math:`(m,)`.
 
     Returns:
-        ~chainer.Variable: ``(b, m)`` shapred Output variable.
+        ~chainer.Variable: Output variable. A float array with shape
+        of :math:`(b, m)`.
 
     .. seealso:: :class:`~chainer.links.Linear`
 
