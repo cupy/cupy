@@ -58,17 +58,28 @@ def linear(x, W, b=None):
 
     It accepts two or three arguments: an input minibatch ``x``, a weight
     matrix ``W``, and optionally a bias vector ``b``. It computes
-    :math:`Y = xW^\\top + b`.
+     .. math:: Y = xW^\\top + b.
+
+    Example::
+
+        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
+        >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
+        >>> b = np.random.uniform(0, 1, (5,)).astype('f')
+        >>> y = F.linear(x, W, b)
+        >>> y.shape
+        (3, 5)
 
     Args:
-        x (~chainer.Variable): Input variable. Its first dimension is assumed
-            to be the *minibatch dimension*. The other dimensions are treated
-            as concatenated one dimension whose size must be ``N``.
-        W (~chainer.Variable): Weight variable of shape ``(M, N)``.
-        b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
+        x (~chainer.Variable): (b, s1, s2, .., sn) shaped float array. Its
+            first dimension `b` is assumed to be the *minibatch dimension*.
+            The other dimensions are treated as concatenated one dimension
+            whose size must be ``s1 * ... * sn = n``.
+        W (~chainer.Variable): Weight variable of shape ``(m, n)``, where
+            ``n == s1 * ... * sn``
+        b (~chainer.Variable): Bias variable (optional) of shape ``(m,)``.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: ``(b, m)`` shapred Output variable.
 
     .. seealso:: :class:`~chainer.links.Linear`
 
