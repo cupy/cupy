@@ -22,3 +22,13 @@ class TestNVTX(unittest.TestCase):
     def test_RangePushC(self):
         nvtx.RangePushC("test:RangePushC", 0xFF000000)
         nvtx.RangePop()
+
+    @attr.gpu
+    def test_range(self):
+        with nvtx.range('test:range'):
+            pass
+
+    @attr.gpu
+    def test_rangeC(self):
+        with nvtx.rangeC('test:rangeC'):
+            pass
