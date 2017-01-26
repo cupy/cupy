@@ -269,12 +269,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != p.dtype:
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != a:
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -289,12 +289,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
                 unknown_ctype.append(p.ctype)
         else:
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != p.dtype:
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != a:
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
