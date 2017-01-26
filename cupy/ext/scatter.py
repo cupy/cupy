@@ -33,7 +33,8 @@ def scatter_add(a, slices, value):
         v (array-like): Values to increment ``a`` at referenced locations.
 
     .. note::
-        It only supports types that are supported by CUDA's atomicAdd.
+        It only supports types that are supported by CUDA's atomicAdd when
+        an integer array is included in ``slices``.
         The supported types are ``numpy.float32``, ``numpy.int32``,
         ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
 
