@@ -72,7 +72,7 @@ def linear(x, W, b=None):
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): Input variable, which is :math:`(b, s_1, \
-            s_2, ..., s_n)`-shaped float array. Its first dimension `b` 
+            s_2, ..., s_n)`-shaped float array. Its first dimension `b`
             is assumed to be the *minibatch dimension*. The other dimensions
             are treated as concatenated one dimension whose size must be
             :math:`(s_1 * ... * s_n = n)`.
