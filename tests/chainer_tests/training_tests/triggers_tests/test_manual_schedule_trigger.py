@@ -42,62 +42,62 @@ def _test_trigger(self, updater, trigger, expecteds):
         self.assertEqual(trigger(trainer), expected)
 
 
-class TestIterationIrregularTrigger(unittest.TestCase):
+class TestIterationManualScheduleTrigger(unittest.TestCase):
 
-    def test_iteration_irregular_single_trigger(self):
+    def test_iteration_manual_single_trigger(self):
         updater = DummyUpdater(iters_per_epoch=3)
-        trigger = triggers.IrregularTrigger(2, 'iteration')
+        trigger = triggers.ManualScheduleTrigger(2, 'iteration')
         expected = [False, True, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 
-    def test_iteration_irregular_multiple_trigger(self):
+    def test_iteration_manual_multiple_trigger(self):
         updater = DummyUpdater(iters_per_epoch=5)
-        trigger = triggers.IrregularTrigger([2, 3], 'iteration')
+        trigger = triggers.ManualScheduleTrigger([2, 3], 'iteration')
         expected = [False, True, True, False, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 
 
-class TestEpochIrregularTrigger(unittest.TestCase):
+class TestEpochManualScheduleTrigger(unittest.TestCase):
 
-    def test_epoch_irregular_single_trigger(self):
+    def test_epoch_manual_single_trigger(self):
         updater = DummyUpdater(iters_per_epoch=3)
-        trigger = triggers.IrregularTrigger(1, 'epoch')
+        trigger = triggers.ManualScheduleTrigger(1, 'epoch')
         expected = [False, False, True, False, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 
-    def test_epoch_irregular_multiple_trigger(self):
+    def test_epoch_manual_multiple_trigger(self):
         updater = DummyUpdater(iters_per_epoch=3)
-        trigger = triggers.IrregularTrigger([1, 2], 'epoch')
+        trigger = triggers.ManualScheduleTrigger([1, 2], 'epoch')
         expected = [False, False, True, False, False, True, False]
         _test_trigger(self, updater, trigger, expected)
 
 
-class TestFractionalEpochIrregularTrigger(unittest.TestCase):
+class TestFractionalEpochManualScheduleTrigger(unittest.TestCase):
 
-    def test_epoch_irregular_single_trigger(self):
+    def test_epoch_manual_single_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2)
-        trigger = triggers.IrregularTrigger(1.5, 'epoch')
+        trigger = triggers.ManualScheduleTrigger(1.5, 'epoch')
         expected = [False, False, True, False, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 
-    def test_epoch_irregular_multiple_trigger(self):
+    def test_epoch_manual_multiple_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2)
-        trigger = triggers.IrregularTrigger([1.5, 2.5], 'epoch')
+        trigger = triggers.ManualScheduleTrigger([1.5, 2.5], 'epoch')
         expected = [False, False, True, False, True, False, False]
         _test_trigger(self, updater, trigger, expected)
 
 
-class TestUnalignedEpochIrregularTrigger(unittest.TestCase):
+class TestUnalignedEpochManualScheduleTrigger(unittest.TestCase):
 
-    def test_unaligned_epoch_single_irregular_trigger(self):
+    def test_unaligned_epoch_single_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2.5)
-        trigger = triggers.IrregularTrigger(1, 'epoch')
+        trigger = triggers.ManualScheduleTrigger(1, 'epoch')
         expected = [False, False, True, False, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 
-    def test_unaligned_epoch_multiple_irregular_trigger(self):
+    def test_unaligned_epoch_multiple_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2.5)
-        trigger = triggers.IrregularTrigger([1, 2], 'epoch')
+        trigger = triggers.ManualScheduleTrigger([1, 2], 'epoch')
         expected = [False, False, True, False, True, False, False, False]
         _test_trigger(self, updater, trigger, expected)
 

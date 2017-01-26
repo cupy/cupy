@@ -1,4 +1,4 @@
-class IrregularTrigger(object):
+class ManualScheduleTrigger(object):
 
     """Trigger invoked when specific value reaches the indicated values.
 
