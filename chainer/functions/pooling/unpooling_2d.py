@@ -1,3 +1,5 @@
+import numpy
+
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
@@ -43,11 +45,11 @@ class Unpooling2D(pooling_2d.Pooling2D):
         xp = cuda.get_array_module(*x)
         col = xp.tile(x[0][:, :, None, None],
                       (1, 1, self.kh, self.kw, 1, 1))
-        if xp is cuda.cupy:
-            y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
+        if xp is numpy:
+            y = conv.col2im_cpu(col, self.sy, self.sx, self.ph, self.pw,
                                 self.outh, self.outw)
         else:
-            y = conv.col2im_cpu(col, self.sy, self.sx, self.ph, self.pw,
+            y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
                                 self.outh, self.outw)
         return y,
 
