@@ -60,7 +60,7 @@ def linear(x, W, b=None):
     matrix ``W``, and optionally a bias vector ``b``. It computes
      .. math:: Y = xW^\\top + b.
 
-    Example::
+    .. admonition:: Example
 
         >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
         >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
