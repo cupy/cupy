@@ -71,21 +71,21 @@ def linear(x, W, b=None):
 
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
-        :class:`cupy.ndarray`): Input variable, which is :math:`(b, s_1, \
-            s_2, ..., s_n)`-shaped float array. Its first dimension `b`
+        :class:`cupy.ndarray`): Input variable, which is a :math:`(s_B, s_1, \
+            s_2, ..., s_n)`-shaped float array. Its first dimension :math:`(s_B)`
             is assumed to be the *minibatch dimension*. The other dimensions
             are treated as concatenated one dimension whose size must be
             :math:`(s_1 * ... * s_n = n)`.
         W (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): Weight variable of shape :math:`(m, n)`,
-            where :math:`(n == s_1 * ... * s_n)`.
+            where :math:`(n = s_1 * ... * s_n)`.
         b (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): Bias variable (optional) of shape
             :math:`(m,)`.
 
     Returns:
         ~chainer.Variable: Output variable. A float array with shape
-        of :math:`(b, m)`.
+        of :math:`(s_B, m)`.
 
     .. seealso:: :class:`~chainer.links.Linear`
 
