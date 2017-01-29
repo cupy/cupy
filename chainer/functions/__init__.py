@@ -358,7 +358,7 @@ from chainer.functions.util.forget import forget  # NOQA
 from chainer.functions.util.forget import Forget  # NOQA
 
 # Import for backward compatibility
-# om chainer.links.activation.prelu import PReLU  # NOQA
+from chainer.links.activation.prelu import PReLU  # NOQA
 
 from chainer.links.connection.bilinear import Bilinear  # NOQA
 from chainer.links.connection.convolution_2d import Convolution2D  # NOQA
