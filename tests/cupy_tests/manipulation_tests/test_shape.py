@@ -51,6 +51,11 @@ class TestShape(unittest.TestCase):
         with self.assertRaises(ValueError):
             a.reshape(3, -1, -1)
 
+    def test_reshape_with_changed_arraysize(self):
+        a = testing.shaped_arange((2, 3, 4))
+        with self.assertRaises(ValueError):
+            a.reshape(2, 4, 4)
+
     @testing.numpy_cupy_array_equal()
     def test_external_reshape(self, xp):
         a = xp.zeros((8,), dtype=xp.float32)
