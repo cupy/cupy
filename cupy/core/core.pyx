@@ -1145,7 +1145,7 @@ cdef class ndarray:
                         mask_i = i
             if n_not_slice_none != 1:
                 raise ValueError('currently, CuPy only supports slices that '
-                                'consist of one boolean array.')
+                                 'consist of one boolean array.')
             return _getitem_mask_single(self, slices[mask_i], mask_i)
 
         if advanced:
