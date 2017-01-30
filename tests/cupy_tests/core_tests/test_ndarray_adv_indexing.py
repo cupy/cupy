@@ -98,20 +98,23 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
 )
 @testing.gpu
-class TestArrayAdvancedIndexingGetitemArrayClass(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_adv_getitem(self, xp, dtype):
-        indexes = list(self.indexes)
-        a = testing.shaped_arange(self.shape, xp, dtype)
+    def test_adv_getitem_cupy_indices1(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([1, 0])
+        b = a[index]
+        b_cpu = a.get()[index.get()]
+        testing.assert_array_equal(b, b_cpu)
 
-        if xp is numpy:
-            for i, s in enumerate(indexes):
-                if isinstance(s, cupy.ndarray):
-                    indexes[i] = s.get()
-
-        return a[tuple(indexes)]
+    def test_adv_getitem_cupy_indices2(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([1, 0])
+        b = a[(slice(None), index)]
+        b_cpu = a.get()[(slice(None), index.get())]
+        testing.assert_array_equal(b, b_cpu)
 
 
 @testing.parameterize(
