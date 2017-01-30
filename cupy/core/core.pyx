@@ -1130,7 +1130,7 @@ cdef class ndarray:
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
                     if i == 0 and internal.vector_equal(self._shape, s._shape):
-                        return _getitem_mask(self, s)
+                        return _getitem_mask_single(self, s)
                     else:
                         raise ValueError('Boolean array indexing is supported '
                                          'only for same sized array.')
@@ -2228,30 +2228,30 @@ cdef _scatter_add_mask_kernel = ElementwiseKernel(
     'cupy_scatter_add_mask')
 
 
-cdef _boolean_array_indexing_nth = ElementwiseKernel(
-    'T a, bool boolean_array, S nth',
+cdef _getitem_mask_kernel = ElementwiseKernel(
+    'T a, bool mask, S mask_scanned',
     'raw T out',
-    'if (boolean_array) out[nth - 1] = a',
-    'cupy_boolean_array_indexing_nth')
+    'if (mask) out[mask_scanned - 1] = a',
+    'cupy_getitem_mask')
 
 
-cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
+cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask):
     cdef int n_true
 
     a = a.ravel()
-    boolean_array = boolean_array.ravel()
-    if boolean_array.size <= 2 ** 31 - 1:
-        boolean_array_type = numpy.int32
+    mask = mask.ravel()
+    if mask.size <= 2 ** 31 - 1:
+        mask_type = numpy.int32
     else:
-        boolean_array_type = numpy.int64
-    nth_true_array = scan(
-        boolean_array.astype(boolean_array_type))  # starts with 1
+        mask_type = numpy.int64
+    mask_scanned = scan(
+        mask.astype(mask_type))  # starts with 1
 
-    n_true = int(nth_true_array[-1])
+    n_true = int(mask_scanned[-1])
     out_shape = (n_true,)
     out = ndarray(out_shape, dtype=a.dtype)
 
-    return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
+    return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
 cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
