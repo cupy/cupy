@@ -1,7 +1,10 @@
+import numpy
+import cupy
+
+from chainer import cuda
 from chainer import reporter
-import chainer.training as training
+from chainer import training
 from chainer.training import extension
-import chainer.statistics as statistics
 
 
 def _iterable(x):
@@ -35,7 +38,7 @@ def _statistic_key(link, param_names, attr_names):
 
 def _flatten_link(link, param_names, attr_names):
 
-    """Flatten a link to an array."""
+    """Flatten a link into an array."""
 
     param_names = _iterable(param_names)
     attr_names = _iterable(attr_names)
@@ -49,6 +52,70 @@ def _flatten_link(link, param_names, attr_names):
                 params.append(p)
 
     return link.xp.concatenate(params)
+
+
+def _statistics(x, functions):
+
+    """Compute statisticts for the given array.
+
+    Args:
+        x (array): Target array for which statistics are computed.
+        functions (iterable): Statistics to collect, mapping directly to NumPy
+            or CuPy functions.
+
+    Returns:
+        dict: Mappings from functions keys to statistic values.
+    """
+
+    stats = {}
+    for f in functions:
+        try:
+            stats[f] = getattr(x, f)()
+        except ValueError:
+            stats[f] = float('NaN')
+    return stats
+
+
+def _percentiles(x, sigmas):
+
+    """Compute percentiles for the given array.
+
+    Args:
+        x (array): Target array for which percentiles are computed.
+        sigmas (iterable): Percentile sigma values.
+
+    Returns:
+        array: List of percentiles. The list has the same length as the given
+            ``sigma``.
+    """
+
+    def _percentiles_cpu(_x):
+        try:
+            return numpy.percentile(_x, sigmas)
+        except IndexError:
+            return numpy.array((float('NaN'),) * 7)
+
+    # TODO(hvy): Make percentile computation faster for GPUs
+    if isinstance(x, cupy.ndarray):
+        x = cupy.asnumpy(x)
+        return cupy.asarray(_percentiles_cpu(x))
+    return _percentiles_cpu(x)
+
+
+def _sparsity(x):
+    """Count the number of zeros in the given array.
+
+    Args:
+        x (array): Target array for which sparsity is computed.
+
+    Returns:
+        int: Number of zeros.
+    """
+
+    if x.ndim ==  0:
+        raise ValueError('Cannot compute sparsity for shape {}'.format(x.shape))
+
+    return x.size - cuda.get_array_module(x).count_nonzero(x)
 
 
 class ParameterStatistics(extension.Extension):
@@ -105,6 +172,9 @@ class ParameterStatistics(extension.Extension):
             else:
                 self._sparsity_targets.append((('W'), 'data'))
 
+        self._statistic_functions = ('min', 'max', 'mean', 'std')
+        self._percentile_sigmas = (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)
+
     def __call__(self, trainer):
 
         """Execute the extension and collect statistics for the current state
@@ -134,7 +204,6 @@ class ParameterStatistics(extension.Extension):
             reporter.report(self._summary.compute_mean())
             self._summary = reporter.DictSummary()  # Clear summary
 
-
     def post_process(self, stats):
 
         """Handle any post processing of the data before adding them to the
@@ -146,18 +215,25 @@ class ParameterStatistics(extension.Extension):
 
         return stats
 
+    def statistics(self, params):
+        return _statistics(params, self._statistic_functions)
+
+    def percentiles(self, params):
+        return _percentiles(params, self._percentile_sigmas)
+
+    def sparsity(self, params):
+        return _sparsity(params)
+
     def get_statistics(self, link, param_names, attr_names):
 
         key = _statistic_key(link, param_names, attr_names)
         params = _flatten_link(link, param_names, attr_names)
         stats = {}
 
-        # Statistics such as min, max, mean, std.
-        for f, s in statistics.statistics(params).items():
+        for f, s in self.statistics(params).items():
             stats['{}/{}'.format(key, f)] = s
 
-        # Percentiles
-        for i, p in enumerate(statistics.percentiles(params)):
+        for i, p in enumerate(self.percentiles(params)):
             stats['{}/percentile/{}'.format(key, i)] = p
 
         return stats
@@ -168,6 +244,6 @@ class ParameterStatistics(extension.Extension):
         key += '/zeros'
 
         params = _flatten_link(link, param_names, attr_names)
-        zeros = statistics.sparsity(params)
+        zeros = self.sparsity(params)
 
         return { key: zeros }
