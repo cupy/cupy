@@ -26,7 +26,7 @@ def scatter_add(a, slices, value):
     Args:
         a (ndarray): An array that gets added.
         slices: It is integer, slices, ellipsis, numpy.newaxis,
-            integer array-like or tuple of them.
+            integer array-like, boolean array-like or tuple of them.
             It works for slices used for
             :func:`cupy.ndarray.__getitem__` and
             :func:`cupy.ndarray.__setitem__`.
