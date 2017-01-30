@@ -46,15 +46,15 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.reshape(3, -1)
 
+    @testing.numpy_cupy_raises()
     def test_reshape_with_multiple_unknown_dimensions(self):
         a = testing.shaped_arange((2, 3, 4))
-        with self.assertRaises(ValueError):
-            a.reshape(3, -1, -1)
+        a.reshape(3, -1, -1)
 
+    @testing.numpy_cupy_raises()
     def test_reshape_with_changed_arraysize(self):
         a = testing.shaped_arange((2, 3, 4))
-        with self.assertRaises(ValueError):
-            a.reshape(2, 4, 4)
+        a.reshape(2, 4, 4)
 
     @testing.numpy_cupy_array_equal()
     def test_external_reshape(self, xp):
