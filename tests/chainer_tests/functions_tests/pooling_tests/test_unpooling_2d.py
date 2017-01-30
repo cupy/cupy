@@ -120,9 +120,6 @@ class TestUnpooling2D(unittest.TestCase):
 }))
 class TestMaxPoolingUnpooling(unittest.TestCase):
 
-    def setUp(self):
-        pass
-
     def check_left_inverse(self, xp, use_cudnn=False):
         x = xp.arange(self.h * self.h).reshape(
             (1, 1, self.h, self.h)).astype(self.dtype)
@@ -155,9 +152,6 @@ class TestMaxPoolingUnpooling(unittest.TestCase):
     'p': [0],
 }))
 class TestAveragePoolingUnpooling(unittest.TestCase):
-
-    def setUp(self):
-        pass
 
     def check_left_inverse(self, xp, use_cudnn=False):
         x = xp.arange(self.h * self.h).reshape(
