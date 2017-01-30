@@ -116,6 +116,14 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
         b_cpu = a.get()[(slice(None), index.get())]
         testing.assert_array_equal(b, b_cpu)
 
+    def test_adv_getitem_cupy_indices3(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([True, False])
+        b = a[index]
+        b_cpu = a.get()[index.get()]
+        testing.assert_array_equal(b, b_cpu)
+
 
 @testing.parameterize(
     {'shape': (), 'indexes': ([1],)},
