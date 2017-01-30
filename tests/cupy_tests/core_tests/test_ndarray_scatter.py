@@ -53,7 +53,8 @@ from cupy import testing
 @testing.gpu
 class TestScatterAddParametrized(unittest.TestCase):
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     @testing.numpy_cupy_array_equal()
     def test_scatter_add(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
@@ -67,7 +68,8 @@ class TestScatterAddParametrized(unittest.TestCase):
 @testing.gpu
 class TestScatterAdd(unittest.TestCase):
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     def test_scatter_add_cupy_arguments(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
@@ -76,7 +78,8 @@ class TestScatterAdd(unittest.TestCase):
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     def test_scatter_add_cupy_arguments_mask(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
