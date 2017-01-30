@@ -2415,13 +2415,12 @@ cpdef _scatter_op_multiple(ndarray a, list slices, v, op):
     cdef ndarray a_interm, reduced_idx
     cdef int li, ri
 
-    if op != 'update':
-        raise TypeError('scatter_op_multiple does not support op other than'
-                        'update yet')
-
     a_interm, reduced_idx, li, ri =\
         _prepare_multiple_array_indexing(a, slices)
-    _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
+    if op == 'update':
+        _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
+    elif op == 'add':
+        _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
 
 
 cpdef _scatter_op(ndarray a, slices, value, op):
