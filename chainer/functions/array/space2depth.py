@@ -60,6 +60,6 @@ def space2depth(X, r):
 
     .. note::
        This can be used to compute inverse super-resolution transformations.
-       See http://arxiv.org/abs/1609.05158 for details.
+       See https://arxiv.org/abs/1609.05158 for details.
     """
     return Space2Depth(r)(X)

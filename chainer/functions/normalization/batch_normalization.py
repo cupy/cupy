@@ -310,7 +310,7 @@ def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
 
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
-          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
+          Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`_
 
     .. seealso:: :class:`links.BatchNormalization`
 

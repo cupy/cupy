@@ -65,7 +65,7 @@ class GRU(GRUBase):
           Approaches <http://www.aclweb.org/anthology/W14-4012>`_
           [Cho+, SSST2014].
         - `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
-          Modeling <http://arxiv.org/abs/1412.3555>`_
+          Modeling <https://arxiv.org/abs/1412.3555>`_
           [Chung+NIPS2014 DLWorkshop].
 
 

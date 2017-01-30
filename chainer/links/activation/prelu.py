@@ -12,7 +12,7 @@ class PReLU(link.Link):
 
     See the paper for details: `Delving Deep into Rectifiers: Surpassing \
     Human-Level Performance on ImageNet Classification \
-    <http://arxiv.org/abs/1502.01852>`_.
+    <https://arxiv.org/abs/1502.01852>`_.
 
     .. seealso:: :func:`chainer.functions.prelu`
 

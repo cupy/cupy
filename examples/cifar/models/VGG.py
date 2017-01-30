@@ -42,7 +42,7 @@ class VGG(chainer.Chain):
     This model is based on the VGG-style model from
     http://torch.ch/blog/2015/07/30/cifar.html
     which is based on the network architecture from the paper:
-    http://arxiv.org/pdf/1409.1556v6.pdf
+    https://arxiv.org/pdf/1409.1556v6.pdf
 
     This model is intended to be used with either RGB or greyscale input
     images that are of size 32x32 pixels, such as those in the CIFAR10
