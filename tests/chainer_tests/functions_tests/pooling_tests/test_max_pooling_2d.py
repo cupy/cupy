@@ -141,4 +141,20 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
             self.assertEqual(func.called, self.use_cudnn)
 
 
+class TestMaxPoolingUnpooling(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_identity(self):
+        h = w = 5
+        kh = kw = 3
+        sh = sw = 3
+        ph = pw = 0
+        x = numpy.random.uniform(0, 1, (1, 1, h, w)).astype(numpy.float32)
+        y = chainer.functions.unpooling_2d(x, (kh, kw), (sh, sw), (ph, pw))
+        x_ = chainer.functions.max_pooling_2d(y, (kh, kw), (sh, sw), (ph, pw)).data
+        numpy.testing.assert_allclose(x, x_)
+
+
 testing.run_module(__name__, __file__)
