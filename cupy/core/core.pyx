@@ -1744,6 +1744,45 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     elementwise_copy(a, newarray)
     return newarray
 
+
+cpdef ndarray asfortranarray(ndarray a, dtype=None):
+    cdef ndarray newarray
+    cdef int m, n
+
+    if dtype is None:
+        if a._f_contiguous:
+            return a
+        dtype = a.dtype
+    else:
+        dtype = numpy.dtype(dtype)
+        if a._f_contiguous and dtype == a.dtype:
+            return a
+
+    newarray = ndarray(a.shape, dtype, order='F')
+    if (a.flags.c_contiguous and
+            (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
+            a.ndim == 2 and dtype == a.dtype):
+        m, n = a.shape
+        if a.dtype == numpy.float32:
+            cuda.cublas.sgeam(
+                cuda.Device().cublas_handle,
+                1,  # transpose a
+                1,  # transpose newarray
+                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
+                newarray.data.ptr, m)
+        elif a.dtype == numpy.float64:
+            cuda.cublas.dgeam(
+                cuda.Device().cublas_handle,
+                1,  # transpose a
+                1,  # transpose newarray
+                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
+                newarray.data.ptr, m)
+        return newarray
+    else:
+        elementwise_copy(a, newarray)
+        return newarray
+
+
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
