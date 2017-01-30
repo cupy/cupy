@@ -2244,8 +2244,8 @@ cdef _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
-cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
-    cdef ndarray mask_br, mask_br_scanned
+cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
+    cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
     cdef tuple lshape, rshape, out_shape
 
@@ -2257,16 +2257,24 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     n_true = int(mask_scanned[-1])
     lshape = a.shape[:axis]
     rshape = a.shape[axis + mask.ndim:]
-    out_shape = lshape + (n_true,) + rshape
+    masked_shape = lshape + (n_true,) + rshape
 
     mask_br = mask._reshape(
         axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
     mask_br = broadcast_to(mask_br, a.shape)
     mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
     mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
+    return mask_br, mask_br_scanned, masked_shape
 
-    out = ndarray(out_shape, dtype=a.dtype)
-    return _getitem_mask_kernel(a, mask_br, mask_br_scanned, out)
+
+cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
+    cdef ndarray mask_scanned
+    cdef tuple masked_shape
+
+    mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
+        a, mask, axis)
+    out = ndarray(masked_shape, dtype=a.dtype)
+    return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
 cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
