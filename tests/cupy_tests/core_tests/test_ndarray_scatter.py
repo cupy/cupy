@@ -15,6 +15,10 @@ from cupy import testing
      'slices': (slice(None), [[1, 2], [0, -1]],), 'value': 1},
     {'shape': (3, 4, 5),
      'slices': (slice(None), slice(None), [[1, 2], [0, 3]]), 'value': 1},
+    # array with duplicate indices
+    {'shape': (2, 3), 'slices': ([1, 1], slice(None)), 'value': 1},
+    {'shape': (2, 3), 'slices': ([1, 0, 1], slice(None)), 'value': 1},
+    {'shape': (2, 3), 'slices': (slice(1, 2), [1, 0, 1]), 'value': 1},
     # slice and array
     {'shape': (3, 4, 5),
      'slices': (slice(None), slice(1, 2), [[1, 3], [0, 2]]), 'value': 1},
@@ -47,7 +51,7 @@ from cupy import testing
      'value': numpy.arange(3 * 2 * 5).reshape(3, 2, 5)},
 )
 @testing.gpu
-class TestScatterAddNoDuplicate(unittest.TestCase):
+class TestScatterAddParametrized(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32])
     @testing.numpy_cupy_array_equal()
@@ -56,27 +60,8 @@ class TestScatterAddNoDuplicate(unittest.TestCase):
         if xp is cupy:
             a.scatter_add(self.slices, self.value)
         else:
-            a[self.slices] = a[self.slices] + self.value
+            numpy.add.at(a, self.slices, self.value)
         return a
-
-
-@testing.parameterize(
-    {'shape': (2, 3), 'slices': ([1, 1], slice(None)), 'value': 1,
-     'expected': numpy.array([[0, 0, 0], [2, 2, 2]])},
-    {'shape': (2, 3), 'slices': ([1, 0, 1], slice(None)), 'value': 1,
-     'expected': numpy.array([[1, 1, 1], [2, 2, 2]])},
-    {'shape': (2, 3), 'slices': (slice(1, 2), [1, 0, 1]), 'value': 1,
-     'expected': numpy.array([[0, 0, 0], [1, 2, 0]])},
-)
-@testing.gpu
-class TestScatterAddDuplicateVectorValue(unittest.TestCase):
-
-    @testing.for_dtypes([numpy.float32, numpy.int32])
-    def test_scatter_add(self, dtype):
-        a = cupy.zeros(self.shape, dtype)
-        a.scatter_add(self.slices, self.value)
-
-        numpy.testing.assert_almost_equal(a.get(), self.expected)
 
 
 @testing.gpu
