@@ -82,6 +82,9 @@ class NpzDeserializer(serializer.Deserializer):
     Args:
         npz: `npz` file object.
         path: The base path that the deserialization starts from.
+        strict (bool): If ``True``, the deserializer raises an error when an
+            expected value is not found in the given NPZ file. Otherwise,
+            it ignores the value and skip deserialization.
 
     """
 

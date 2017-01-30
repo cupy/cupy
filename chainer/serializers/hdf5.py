@@ -82,6 +82,9 @@ class HDF5Deserializer(serializer.Deserializer):
 
     Args:
         group (h5py.Group): The group that the deserialization starts from.
+        strict (bool): If ``True``, the deserializer raises an error when an
+            expected value is not found in the given HDF5 file. Otherwise,
+            it ignores the value and skip deserialization.
 
     """
 
