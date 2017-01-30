@@ -141,20 +141,38 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
             self.assertEqual(func.called, self.use_cudnn)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'h': [5],
+    'k': [3],
+    's': [3],
+    'p': [0],
+    'cover_all': [True, False]
+}))
 class TestMaxPoolingUnpooling(unittest.TestCase):
 
     def setUp(self):
         pass
 
-    def test_identity(self):
-        h = w = 5
-        kh = kw = 3
-        sh = sw = 3
-        ph = pw = 0
-        x = numpy.random.uniform(0, 1, (1, 1, h, w)).astype(numpy.float32)
-        y = chainer.functions.unpooling_2d(x, (kh, kw), (sh, sw), (ph, pw))
-        x_ = chainer.functions.max_pooling_2d(y, (kh, kw), (sh, sw), (ph, pw)).data
-        numpy.testing.assert_allclose(x, x_)
+    def check_left_inverse(self, xp, use_cudnn=False):
+        x = xp.arange(self.h * self.h).reshape(
+            (1, 1, self.h, self.h)).astype(self.dtype)
+        y = chainer.functions.unpooling_2d(
+            x, self.k, self.s, self.p, None, self.cover_all)
+        x_ = chainer.functions.max_pooling_2d(
+            y, self.k, self.s, self.p, self.cover_all, use_cudnn).data
+        chainer.testing.assert_allclose(x, x_)
+
+    def test_left_inverse_cpu(self):
+        self.check_left_inverse(numpy)
+
+    @attr.gpu
+    def test_left_inverse_cupy(self):
+        self.check_left_inverse(cuda.cupy)
+
+    @attr.gpu
+    def test_left_inverse_cudnn(self):
+        self.check_left_inverse(cuda.cupy, True)
 
 
 testing.run_module(__name__, __file__)
