@@ -1,5 +1,3 @@
-import collections
-
 import numpy
 
 import chainer
@@ -15,18 +13,14 @@ class GetItem(function.Function):
     """Function that slices array and extract elements."""
 
     def __init__(self, slices):
-        if not isinstance(slices, collections.Iterable):
-            slices = tuple([slices])
+        if not isinstance(slices, tuple):
+            slices = slices,
 
         if chainer.is_debug():
             n_ellipses = 0
             for s in slices:
-                if numpy.isscalar(s) or s is None or isinstance(s, slice):
-                    pass
-                elif s is Ellipsis:
+                if s is Ellipsis:
                     n_ellipses += 1
-                else:
-                    raise ValueError('Only basic indexing is supported')
             if n_ellipses > 1:
                 raise ValueError('Only one Ellipsis is allowed')
 
@@ -39,13 +33,16 @@ class GetItem(function.Function):
 
     def forward(self, xs):
         ary = xs[0]
-        return utils.force_array(ary[tuple(self.slices)]),
+        return utils.force_array(ary[self.slices]),
 
     def backward(self, xs, gys):
         xp = cuda.get_array_module(*xs)
         gy = gys[0]
         gx = xp.zeros_like(xs[0])
-        gx[tuple(self.slices)] = gy
+        if xp is numpy:
+            numpy.add.at(gx, self.slices, gy)
+        else:
+            gx.scatter_add(self.slices, gy)
         return gx,
 
 
