@@ -50,7 +50,7 @@ def get_item(x, slices):
     """Extract elements from array with specified shape, axes and offsets.
 
     Args:
-        x (tuple of Variables): Variable to be sliced.
+        x (tuple of Variables): A variable to be sliced.
         slices (int, slice, None or Ellipsis or tuple of them): Basic slicing
             to slice a variable. It supports ``int``, ``slice``, ``newaxis``
             (equivalent to ``None``) and ``Ellipsis``.
@@ -58,6 +58,12 @@ def get_item(x, slices):
     Returns:
         Variable: :class:`~chainer.Variable` object
             which contains sliced array of ``x``.
+
+    .. note::
+        It only supports types that are supported by CUDA's atomicAdd when
+        an integer array is included in ``slices``.
+        The supported types are ``numpy.float32``, ``numpy.int32``,
+        ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
 
     .. note::
 
