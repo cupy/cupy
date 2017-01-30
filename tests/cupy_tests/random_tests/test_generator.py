@@ -266,11 +266,20 @@ class TestChoice(unittest.TestCase):
     def setUp(self):
         self.rs = generator.RandomState()
 
+    def test_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, p=self.p)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, expected_shape)
+
     @condition.repeat(10)
     def test_within_choice_and_shape(self):
         val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        minimum = -1 if type(self.a) == int else 0
-        maximum = 3 if type(self.a) == int else 4
+        minimum = -1 if isinstance(self.a, six.integer_types) else 0
+        maximum = 3 if isinstance(self.a, six.integer_types) else 4
         numpy.testing.assert_array_less(
             numpy.full(self.size, minimum, dtype=numpy.int64), val)
         numpy.testing.assert_array_less(
@@ -280,14 +289,14 @@ class TestChoice(unittest.TestCase):
     def test_lower_bound(self):
         val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
         val = val.item() if self.size == () else val.item(0)
-        lower = 0 if type(self.a) == int else 1
+        lower = 0 if isinstance(self.a, six.integer_types) else 1
         self.assertEqual(lower, val)
 
     @condition.retry(20)
     def test_upper_bound(self):
         val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
         val = val.item() if self.size == () else val.item(0)
-        upper = 2 if type(self.a) == int else 3
+        upper = 2 if isinstance(self.a, six.integer_types) else 3
         self.assertEqual(upper, val)
 
 
@@ -318,7 +327,6 @@ class TestChoiceChi(unittest.TestCase):
     {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': -3, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': [[0, 1], [2]], 'size': 1, 'p': [0.1, 0.1, 0.8]},
-    {'a': [], 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': 3, 'size': 1, 'p': [[0.1, 0.1], [0.8]]},
     {'a': 2, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},

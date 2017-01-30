@@ -245,7 +245,7 @@ class RandomState(object):
         """
         if a is None:
             raise ValueError('a must be 1-dimensional or an integer')
-        if type(a) == int:
+        if isinstance(a, six.integer_types):
             a_size = a
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
@@ -254,6 +254,8 @@ class RandomState(object):
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
                 raise ValueError('a must be 1-dimensional')
+            elif a.dtype != 'int':
+                raise NotImplementedError
             else:
                 a_size = len(a)
                 if a_size == 0:
@@ -284,8 +286,9 @@ class RandomState(object):
             index = cupy.argmax(cupy.log(p) -
                                 cupy.random.gumbel(size=(size, a_size)),
                                 axis=1)
-            if type(shape) != int:
-                index.shape = shape
+            index = index.astype(cupy.int32, copy=False)
+            if not isinstance(shape, six.integer_types):
+                index = cupy.reshape(index, shape)
         else:
             index = cupy.random.randint(0, a_size, size=shape)
 
@@ -293,11 +296,11 @@ class RandomState(object):
             return index
 
         if index.ndim == 0:
-            # size = ()
             res = cupy.empty((), dtype=a.dtype)
             res[()] = a[index]
             return res
 
+        a = a.astype(cupy.int32, copy=False)
         return a[cupy.asnumpy(index)]
 
 

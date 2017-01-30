@@ -147,7 +147,7 @@ def choice(a, size=None, replace=True, p=None):
             If an array-like,
             a random sample is generated from its elements.
             If an int, the random sample is generated as if a was
-            ``numpy.arange(n)``
+            ``cupy.arange(n)``
         size (int or tuple of ints): The shape of the array.
         replace (boolean): Whether the sample is with or without replacement
         p (1-D array-like):
