@@ -2262,7 +2262,11 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
     mask_br = mask._reshape(
         axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
     mask_br = broadcast_to(mask_br, a.shape)
-    mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
+    if mask.size <= 2 ** 31 - 1:
+        mask_type = numpy.int32
+    else:
+        mask_type = numpy.int64
+    mask_br_scanned = scan(mask_br.astype(mask_type).ravel())
     mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
     return mask_br, mask_br_scanned, masked_shape
 
