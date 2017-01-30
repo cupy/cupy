@@ -1759,7 +1759,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     newarray = ndarray(a.shape, dtype, order='F')
     if (a.flags.c_contiguous and
             (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
-            a.ndim == 2 and dtype is None):
+            a.ndim == 2):
         m, n = a.shape
         if a.dtype == numpy.float32:
             cuda.cublas.sgeam(
