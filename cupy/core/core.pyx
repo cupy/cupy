@@ -1121,6 +1121,7 @@ cdef class ndarray:
         # Check if advanced is true,
         # and convert list/NumPy arrays to cupy.ndarray
         advanced = False
+        mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
                 s = array(s)
@@ -1129,15 +1130,23 @@ cdef class ndarray:
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
-                    if i == 0 and internal.vector_equal(self._shape, s._shape):
-                        return _getitem_mask_single(self, s)
-                    else:
-                        raise ValueError('Boolean array indexing is supported '
-                                         'only for same sized array.')
+                    mask_exists = True
                 else:
                     raise IndexError(
                         'arrays used as indices must be of integer or boolean '
                         'type. (actual: {})'.format(s.dtype.type))
+
+        if mask_exists:
+            n_not_slice_none = 0
+            for i, s in enumerate(slices):
+                if not isinstance(s, slice) or s != slice(None):
+                    n_not_slice_none += 1
+                    if issubclass(s.dtype.type, numpy.bool_):
+                        mask_i = i
+            if n_not_slice_none != 1:
+                raise ValueError('currently, CuPy only supports slices that '
+                                'consist of one boolean array.')
+            return _getitem_mask_single(self, slices[mask_i], mask_i)
 
         if advanced:
             # split slices that can be handled by basic-indexing
@@ -2235,23 +2244,29 @@ cdef _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
-cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask):
+cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
+    cdef ndarray mask_br, mask_br_scanned
     cdef int n_true
+    cdef tuple lshape, rshape, out_shape
 
-    a = a.ravel()
-    mask = mask.ravel()
     if mask.size <= 2 ** 31 - 1:
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
-    mask_scanned = scan(
-        mask.astype(mask_type))  # starts with 1
-
+    mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
     n_true = int(mask_scanned[-1])
-    out_shape = (n_true,)
-    out = ndarray(out_shape, dtype=a.dtype)
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+    out_shape = lshape + (n_true,) + rshape
 
-    return _getitem_mask_kernel(a, mask, mask_scanned, out)
+    mask_br = mask._reshape(
+        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
+    mask_br = broadcast_to(mask_br, a.shape)
+    mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
+    mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
+
+    out = ndarray(out_shape, dtype=a.dtype)
+    return _getitem_mask_kernel(a, mask_br, mask_br_scanned, out)
 
 
 cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
