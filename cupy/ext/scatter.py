@@ -12,6 +12,9 @@ def scatter_add(a, slices, value):
     Note that just like an array indexing, negative indices are interpreted as
     counting from the end of an array.
 
+    Also note that :func:`scatter_add` behaves identically
+    to :func:`numpy.add.at`.
+
     Example
     -------
     >>> import numpy
@@ -41,6 +44,8 @@ def scatter_add(a, slices, value):
     .. note::
         :func:`scatter_add` does not raise an error when indices exceed size of
         axes. Instead, it wraps indices.
+
+    .. seealso:: :func:`numpy.add.at`.
 
     """
     a.scatter_add(slices, value)
