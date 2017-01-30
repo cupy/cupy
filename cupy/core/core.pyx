@@ -2259,6 +2259,10 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
     rshape = a.shape[axis + mask.ndim:]
     masked_shape = lshape + (n_true,) + rshape
 
+    # when mask covers the entire array, broadcasting is not necessary
+    if mask.ndim == a.ndim and axis == 0:
+        return mask, mask_scanned._reshape(mask._shape), masked_shape
+
     mask_br = mask._reshape(
         axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
     mask_br = broadcast_to(mask_br, a.shape)
