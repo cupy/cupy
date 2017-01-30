@@ -59,6 +59,6 @@ def depth2space(X, r):
 
     .. note::
        This can be used to compute super-resolution transformations.
-       See http://arxiv.org/abs/1609.05158 for details.
+       See https://arxiv.org/abs/1609.05158 for details.
     """
     return Depth2Space(r)(X)

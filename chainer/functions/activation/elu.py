@@ -59,7 +59,7 @@ def elu(x, alpha=1.0):
         \\end{array} \\right.
 
     where :math:`\\alpha` is a parameter.
-    See: http://arxiv.org/abs/1511.07289
+    See: https://arxiv.org/abs/1511.07289
 
     Args:
         x (~chainer.Variable): Input variable.
