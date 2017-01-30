@@ -51,19 +51,24 @@ def get_item(x, slices):
 
     Args:
         x (tuple of Variables): A variable to be sliced.
-        slices (int, slice, None or Ellipsis or tuple of them): Basic slicing
-            to slice a variable. It supports ``int``, ``slice``, ``newaxis``
-            (equivalent to ``None``) and ``Ellipsis``.
+        slices (array_like or tuple): It is integer, slices, ellipsis,
+            numpy.newaxis, integer array-like, boolean array-like or tuple of
+            them.
 
     Returns:
         Variable: :class:`~chainer.Variable` object
             which contains sliced array of ``x``.
 
     .. note::
+
         It only supports types that are supported by CUDA's atomicAdd when
         an integer array is included in ``slices``.
         The supported types are ``numpy.float32``, ``numpy.int32``,
         ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
+
+    .. note::
+
+        It does not support ``slices`` that contains multiple boolean arrays.
 
     .. note::
 
