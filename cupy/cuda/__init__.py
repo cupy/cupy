@@ -55,17 +55,16 @@ def profile():
 def timerange(message, id_color=-1):
     """A context manager to describe the enclosed block as a nested time range
 
+    >>> with cupy.cuda.timerange('some range in green', 0):
+    ...    # do something you want to measure
+    ...    pass
+
     Args:
         message (str): Name of a range.
         id_color (int): ID of color for a range.
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
-
-    >>> with cupy.cuda.timerange('some range in green', 0):
-    ...    # do something you want to measure
-    ...    pass
-
     """
     nvtx.RangePush(message, id_color)
     try:
@@ -78,17 +77,16 @@ def timerange(message, id_color=-1):
 def timerangeC(message, color=0):
     """A context manager to describe the enclosed block as a nested time range
 
-    Args:
-        message (str): Name of a range.
-        color (uint32): ARGB Color for a range.
-
-    .. seealso:: :func:`cupy.cuda.nvtx.RangePushC`
-        :func:`cupy.cuda.nvtx.RangePop`
-
     >>> with cupy.cuda.timerangeC('some range in green', 0xFF00FF00):
     ...    # do something you want to measure
     ...    pass
 
+    Args:
+        message (str): Name of a range.
+        color (uint32): ARGB color for a range.
+
+    .. seealso:: :func:`cupy.cuda.nvtx.RangePushC`
+        :func:`cupy.cuda.nvtx.RangePop`
     """
     nvtx.RangePushC(message, color)
     try:
