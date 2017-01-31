@@ -61,6 +61,11 @@ def timerange(message, id_color=-1):
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
+
+    >>> with cupy.cuda.timerange('some range in green', 0):
+    ...    # do something you want to measure
+    ...    pass
+
     """
     nvtx.RangePush(message, id_color)
     try:
@@ -79,6 +84,11 @@ def timerangeC(message, color=0):
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePushC`
         :func:`cupy.cuda.nvtx.RangePop`
+
+    >>> with cupy.cuda.timerangeC('some range in green', 0xFF00FF00):
+    ...    # do something you want to measure
+    ...    pass
+
     """
     nvtx.RangePushC(message, color)
     try:
