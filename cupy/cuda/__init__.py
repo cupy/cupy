@@ -53,13 +53,14 @@ def profile():
 
 @contextlib.contextmanager
 def timerange(message, id_color=-1):
-    """A context manager to describe the enclosed block
-    as a nested NVTX time range.
+    """A context manager to describe the enclosed block as a nested time range
 
     Args:
         message (str): Name of a range.
         id_color (int): ID of color for a range.
 
+    .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
+        :func:`cupy.cuda.nvtx.RangePop`
     """
     nvtx.RangePush(message, id_color)
     try:
@@ -70,13 +71,14 @@ def timerange(message, id_color=-1):
 
 @contextlib.contextmanager
 def timerangeC(message, color=0):
-    """A context manager to describe the enclosed block
-    as a nested NVTX time range.
+    """A context manager to describe the enclosed block as a nested time range
 
     Args:
         message (str): Name of a range.
         color (uint32): ARGB Color for a range.
 
+    .. seealso:: :func:`cupy.cuda.nvtx.RangePushC`
+        :func:`cupy.cuda.nvtx.RangePop`
     """
     nvtx.RangePushC(message, color)
     try:
