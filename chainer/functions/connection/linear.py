@@ -60,15 +60,6 @@ def linear(x, W, b=None):
     matrix ``W``, and optionally a bias vector ``b``. It computes
      .. math:: Y = xW^\\top + b.
 
-    .. admonition:: Example
-
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
-        >>> b = np.random.uniform(0, 1, (5,)).astype('f')
-        >>> y = F.linear(x, W, b)
-        >>> y.shape
-        (3, 5)
-
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): Input variable, which is a :math:`(s_B, s_1, \
@@ -88,6 +79,15 @@ def linear(x, W, b=None):
         of :math:`(s_B, M)`.
 
     .. seealso:: :class:`~chainer.links.Linear`
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
+        >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
+        >>> b = np.random.uniform(0, 1, (5,)).astype('f')
+        >>> y = F.linear(x, W, b)
+        >>> y.shape
+        (3, 5)
 
     """
     if b is None:
