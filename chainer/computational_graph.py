@@ -1,7 +1,13 @@
 import heapq
 
+import six
+
+import chainer
 from chainer import function
 from chainer import variable
+
+_var_style = {'shape': 'octagon', 'fillcolor': '#E0E0E0', 'style': 'filled'}
+_func_style = {'shape': 'record', 'fillcolor': '#6495ED', 'style': 'filled'}
 
 
 class DotNode(object):
@@ -129,9 +135,9 @@ class ComputationalGraph(object):
             NotImplementedError('Currently, only dot format is supported.')
 
 
-def build_computational_graph(outputs, remove_split=True,
-                              variable_style=None, function_style=None,
-                              rankdir='TB'):
+def build_computational_graph(
+        outputs, remove_split=True, variable_style=_var_style,
+        function_style=_func_style, rankdir='TB'):
     """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
@@ -219,3 +225,108 @@ def build_computational_graph(outputs, remove_split=True,
                     nodes.add(HashableObject(cand))
     return ComputationalGraph(list(i.v for i in nodes), list(seen_edges),
                               variable_style, function_style, rankdir)
+
+
+def build_hierarchical_computational_graph(
+        outputs, model, variable_style=_var_style, function_style=_func_style,
+        rankdir='TB'):
+    assert isinstance(model, chainer.Chain)
+
+    def get_parent(name):
+        return '/'.join(name.split('/')[:-1])
+
+    nodenames = dict((p, n) for n, p in model.namedparams())
+    nodegroup = {}
+    cg = build_computational_graph(outputs)
+    for node in cg.nodes:
+        # Parameters
+        if isinstance(node, variable.Variable) and node in nodenames:
+            nodegroup[node] = get_parent(nodenames[node])
+        # Determine parametric Function's group from parameter variables
+        elif isinstance(node, function.Function):
+            for input_var in node.inputs:
+                if input_var in nodenames:
+                    nodegroup[node] = get_parent(nodenames[input_var])
+                    # Set output variables' group same as the function's one
+                    for output_var in node.outputs:
+                        nodegroup[output_var()] = nodegroup[node]
+                    break
+
+    for node in cg.nodes:
+        # Non-parametric Function
+        if node not in nodegroup and isinstance(node, function.Function):
+            input_var_name = None
+            for input_var in node.inputs:
+                if input_var in nodegroup:
+                    input_var_name = nodegroup[input_var]
+            if input_var_name is not None:
+                nodegroup[node] = get_parent(input_var_name)
+                # Output variables of non-parametric Function
+                for output_var in node.outputs:
+                    nodegroup[output_var()] = nodegroup[node]
+            else:
+                print(node, 'None!!')
+
+    subgraphs = {}
+    for var_or_func, subgraph in six.iteritems(nodegroup):
+        parts = [n for n in subgraph.split('/') if n]
+        if parts:
+            leaf = subgraphs
+            for p in parts[:-1]:
+                if p not in leaf:
+                    leaf[p] = {}
+                leaf = leaf[p]
+            if parts[-1] not in leaf:
+                leaf[parts[-1]] = {}
+            leaf[parts[-1]][var_or_func] = {}
+        else:
+            subgraphs[var_or_func] = {}
+
+    def dot_subgraph(subgraph_name, subgraph_dict):
+        ret = 'subgraph cluster_%s{label=%s;\n' % (
+            id(subgraph_dict), subgraph_name)
+        for node in subgraph_dict.keys():
+            if isinstance(node, str):
+                ret += dot_subgraph(node, subgraph_dict[node])
+            else:
+                if isinstance(node, variable.Variable):
+                    ret += DotNode(node, variable_style).label + '\n'
+                elif isinstance(node, function.Function):
+                    ret += DotNode(node, function_style).label + '\n'
+                else:
+                    raise ValueError('{}'.format(node))
+        ret += '}\n'
+        return ret
+
+    ret = 'digraph graphname{rankdir=%s;\n' % rankdir
+    for subgraph_name, subgraph_dict in six.iteritems(subgraphs):
+        ret += dot_subgraph(subgraph_name, subgraph_dict)
+        if isinstance(subgraph_name, variable.Variable):
+            ret += DotNode(subgraph_name, variable_style).label + '\n'
+        elif isinstance(subgraph_name, function.Function):
+            ret += DotNode(subgraph_name, function_style).label + '\n'
+
+    for edge in cg.edges:
+        head, tail = edge
+        for n in cg.nodes:
+            if id(head) == id(n):
+                break
+        else:
+            raise ValueError('{}: {}'.format(head, head.__class__))
+
+        if (isinstance(head, variable.Variable) and
+                isinstance(tail, function.Function)):
+            head_attr = variable_style
+            tail_attr = function_style
+        elif (isinstance(head, function.Function) and
+              isinstance(tail, variable.Variable)):
+            head_attr = function_style
+            tail_attr = variable_style
+        else:
+            raise TypeError(
+                'head and tail should be the set of Variable and Function')
+        head_node = DotNode(head, head_attr)
+        tail_node = DotNode(tail, tail_attr)
+        ret += "%s -> %s;\n" % (head_node.id_, tail_node.id_)
+    ret += "}\n"
+    return ret
