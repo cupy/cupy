@@ -229,7 +229,7 @@ def build_computational_graph(
 
 def build_hierarchical_computational_graph(
         outputs, model, variable_style=_var_style, function_style=_func_style,
-        rankdir='TB'):
+        rankdir='TB', draw_variable=True):
     assert isinstance(model, chainer.Chain)
 
     def get_parent(name):
@@ -290,7 +290,8 @@ def build_hierarchical_computational_graph(
                 ret += dot_subgraph(node, subgraph_dict[node])
             else:
                 if isinstance(node, variable.Variable):
-                    ret += DotNode(node, variable_style).label + '\n'
+                    if draw_variable:
+                        ret += DotNode(node, variable_style).label + '\n'
                 elif isinstance(node, function.Function):
                     ret += DotNode(node, function_style).label + '\n'
                 else:
@@ -298,7 +299,7 @@ def build_hierarchical_computational_graph(
         ret += '}\n'
         return ret
 
-    ret = 'digraph graphname{rankdir=%s;\n' % rankdir
+    ret = 'digraph graphname{rank=same;rankdir=%s;\n' % rankdir
     for subgraph_name, subgraph_dict in six.iteritems(subgraphs):
         ret += dot_subgraph(subgraph_name, subgraph_dict)
         if isinstance(subgraph_name, variable.Variable):
@@ -306,13 +307,29 @@ def build_hierarchical_computational_graph(
         elif isinstance(subgraph_name, function.Function):
             ret += DotNode(subgraph_name, function_style).label + '\n'
 
+    if not draw_variable:
+        for edge_i, edge in enumerate(cg.edges):
+            head, tail = edge
+            if isinstance(head, variable.Variable):
+                if head.creator is not None:
+                    head = head.creator
+            if isinstance(tail, variable.Variable):
+                for node in cg.nodes:
+                    if isinstance(node, function.Function):
+                        for input_var in node.inputs:
+                            if id(input_var) == id(tail):
+                                tail = node
+                                break
+                        if isinstance(tail, function.Function):
+                            break
+            cg.edges[edge_i] = head, tail
+
+    drawn_edges = []
     for edge in cg.edges:
         head, tail = edge
-        for n in cg.nodes:
-            if id(head) == id(n):
-                break
-        else:
-            raise ValueError('{}: {}'.format(head, head.__class__))
+        if (id(head), id(tail)) in drawn_edges:
+            continue
+        drawn_edges.append((id(head), id(tail)))
 
         if (isinstance(head, variable.Variable) and
                 isinstance(tail, function.Function)):
@@ -323,8 +340,16 @@ def build_hierarchical_computational_graph(
             head_attr = function_style
             tail_attr = variable_style
         else:
-            raise TypeError(
-                'head and tail should be the set of Variable and Function')
+            if draw_variable:
+                raise TypeError(
+                    'head and tail should be the set of Variable and Function')
+            else:
+                head_attr = function_style
+                tail_attr = function_style
+        if not draw_variable:
+            if isinstance(head, variable.Variable) \
+                    or isinstance(tail, variable.Variable):
+                continue
         head_node = DotNode(head, head_attr)
         tail_node = DotNode(tail, tail_attr)
         ret += "%s -> %s;\n" % (head_node.id_, tail_node.id_)
