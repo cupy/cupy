@@ -1213,15 +1213,12 @@ cdef class ndarray:
     def __setitem__(self, slices, value):
         """x.__setitem__(slices, y) <==> x[slices] = y
 
-        Supported ``slices`` consists of
+        Supports both basic and advanced indexing.
 
-        * basic indexing
+        .. note::
 
-        * one integer array
-
-        * combination of basic indexing and integer arrays
-
-        * a boolean array
+            Currently, it does not support ``slices`` that consists of more
+            than one boolean arrays
 
         .. note::
 
