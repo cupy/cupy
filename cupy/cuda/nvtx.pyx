@@ -4,7 +4,6 @@
 Wrapper for NVIDIA Tools Extension Library (NVTX)
 
 """
-from contextlib import contextmanager
 from libc cimport string
 
 cdef extern from "cupy_cuda.h":
