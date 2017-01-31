@@ -2072,7 +2072,7 @@ cpdef ndarray concatenate_method(tup, int axis):
         if a.ndim != ndim:
             raise ValueError(
                 'All arrays to concatenate must have the same ndim')
-        for i in six.moves.range(ndim):
+        for i in range(ndim):
             if i != axis and shape[i] != a._shape[i]:
                 raise ValueError(
                     'All arrays must have same shape except the axis to '
