@@ -355,13 +355,12 @@ def build_hierarchical_computational_graph(
             for input_var in node.inputs:
                 if input_var in nodegroup:
                     input_var_name = nodegroup[input_var]
-            if input_var_name is not None:
+                    break
+            if input_var_name:
                 nodegroup[node] = get_parent(input_var_name)
                 # Output variables of non-parametric Function
                 for output_var in node.outputs:
                     nodegroup[output_var()] = nodegroup[node]
-            else:
-                print(node, 'None!!')
 
     subgraphs = {}
     for var_or_func, subgraph in six.iteritems(nodegroup):
