@@ -62,7 +62,7 @@ class ComputationalGraph(object):
     """
 
     def __init__(self, nodes, edges, variable_style=None, function_style=None,
-                 rankdir='TB', draw_variable=True):
+                 rankdir='TB', remove_variable=False):
         """Initializes computational graph.
 
         Args:
@@ -83,7 +83,7 @@ class ComputationalGraph(object):
         if rankdir not in ('TB', 'BT', 'LR', 'RL'):
             raise ValueError('rankdir must be in TB, BT, LR or RL.')
         self.rankdir = rankdir
-        self.draw_variable = draw_variable
+        self.remove_variable = remove_variable
 
     def _to_dot(self):
         """Converts graph in dot format.
@@ -95,13 +95,13 @@ class ComputationalGraph(object):
         """
         ret = 'digraph graphname{rankdir=%s;' % self.rankdir
 
-        if not self.draw_variable:
+        if self.remove_variable:
             self.nodes, self.edges = _skip_variable(self.nodes, self.edges)
 
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
             if isinstance(node, variable.Variable):
-                if self.draw_variable:
+                if not self.remove_variable:
                     ret += DotNode(node, self.variable_style).label
             else:
                 ret += DotNode(node, self.function_style).label
@@ -118,13 +118,13 @@ class ComputationalGraph(object):
                 head_attr = self.function_style
                 tail_attr = self.variable_style
             else:
-                if self.draw_variable:
+                if not self.remove_variable:
                     raise TypeError('head and tail should be the set of '
                                     'Variable and Function')
                 else:
                     head_attr = self.function_style
                     tail_attr = self.function_style
-            if not self.draw_variable:
+            if self.remove_variable:
                 if isinstance(head, variable.Variable) \
                         or isinstance(tail, variable.Variable):
                     continue
@@ -176,7 +176,7 @@ def _skip_variable(nodes, edges):
 
 def build_computational_graph(
         outputs, remove_split=True, variable_style=_var_style,
-        function_style=_func_style, rankdir='TB', draw_variable=True):
+        function_style=_func_style, rankdir='TB', remove_variable=False):
     """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
@@ -191,9 +191,8 @@ def build_computational_graph(
         rankdir (str): Direction of the graph that must be
             TB (top to bottom), BT (bottom to top), LR (left to right)
             or RL (right to left).
-        draw_variable (bool): If it't `True`, not only
-            :class:`~chainer.Function`s but also :class:`~chainer.Variable`s
-            are included in the computational graph built by this method.
+        remove_variable (bool): If it't `True`, :class:`~chainer.Variable`s
+            are removed from the resulting computational graph.
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
@@ -267,4 +266,4 @@ def build_computational_graph(
                     nodes.add(HashableObject(cand))
     return ComputationalGraph(
         list(i.v for i in nodes), list(seen_edges), variable_style,
-        function_style, rankdir, draw_variable)
+        function_style, rankdir, remove_variable)
