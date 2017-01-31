@@ -191,6 +191,9 @@ def build_computational_graph(
         rankdir (str): Direction of the graph that must be
             TB (top to bottom), BT (bottom to top), LR (left to right)
             or RL (right to left).
+        draw_variable (bool): If it't `True`, not only
+            :class:`~chainer.Function`s but also :class:`~chainer.Variable`s
+            are included in the computational graph built by this method.
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
