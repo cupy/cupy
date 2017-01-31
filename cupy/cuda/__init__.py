@@ -4,6 +4,7 @@ from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
+from cupy.cuda import nvtx  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
@@ -48,3 +49,37 @@ def profile():
         yield
     finally:
         profiler.stop()
+
+
+@contextlib.contextmanager
+def timerange(message, id_color=-1):
+    """A context manager to describe the enclosed block
+    as a nested NVTX time range.
+
+    Args:
+        message (str): Name of a range.
+        id_color (int): ID of color for a range.
+
+    """
+    nvtx.RangePush(message, id_color)
+    try:
+        yield
+    finally:
+        nvtx.RangePop()
+
+
+@contextlib.contextmanager
+def timerangeC(message, color=0):
+    """A context manager to describe the enclosed block
+    as a nested NVTX time range.
+
+    Args:
+        message (str): Name of a range.
+        color (uint32): ARGB Color for a range.
+
+    """
+    nvtx.RangePushC(message, color)
+    try:
+        yield
+    finally:
+        nvtx.RangePop()

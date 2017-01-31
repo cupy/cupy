@@ -3,6 +3,7 @@ import unittest
 import mock
 
 from cupy import cuda
+from cupy.testing import attr
 
 
 class TestProfile(unittest.TestCase):
@@ -28,3 +29,49 @@ class TestProfile(unittest.TestCase):
                 pass
             start.assert_called_once_with()
             stop.assert_called_once_with()
+
+    @attr.gpu
+    def test_timerange(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            with cuda.timerange('test:timerange', -1):
+                pass
+            push.assert_called_once_with('test:timerange', -1)
+            pop.assert_called_once_with()
+
+    @attr.gpu
+    def test_timerange_err(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            try:
+                with cuda.timerange('test:timerange_error', -1):
+                    raise Exception()
+            except Exception:
+                pass
+            push.assert_called_once_with('test:timerange_error', -1)
+            pop.assert_called_once_with()
+
+    @attr.gpu
+    def test_timerangeC(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            with cuda.timerangeC('test:timerangeC', 0):
+                pass
+            push.assert_called_once_with('test:timerangeC', 0)
+            pop.assert_called_once_with()
+
+    @attr.gpu
+    def test_timerangeC_err(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            try:
+                with cuda.timerangeC('test:timerangeC_error', 0):
+                    raise Exception()
+            except Exception:
+                pass
+            push.assert_called_once_with('test:timerangeC_error', 0)
+            pop.assert_called_once_with()
