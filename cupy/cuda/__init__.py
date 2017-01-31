@@ -1,4 +1,5 @@
 import contextlib
+import functools
 
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
@@ -93,3 +94,29 @@ def timerangeC(message, color=0):
         yield
     finally:
         nvtx.RangePop()
+
+
+class TimeRangeDecorator(object):
+
+    def __init__(self, message=None, id_color=0):
+        self.message = message
+        self.id_color = id_color
+
+    def __enter__(self):
+        nvtx.RangePush(self.message, self.id_color)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        nvtx.RangePop()
+
+    def _recreate_cm(self, message):
+        if self.message is None:
+            self.message = message
+        return self
+
+    def __call__(self, func):
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            with self._recreate_cm(func.__name__):
+                return func(*args, **kwargs)
+        return inner
