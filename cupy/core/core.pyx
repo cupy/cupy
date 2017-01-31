@@ -1073,6 +1073,13 @@ cdef class ndarray:
     def __getitem__(self, slices):
         """x.__getitem__(y) <==> x[y]
 
+        Supports both basic and advanced indexing.
+
+        .. note::
+
+            Currently, it does not support ``slices`` that consists of more
+            than one boolean arrays
+
         .. note::
 
            CuPy handles out-of-bounds indices differently from NumPy.
