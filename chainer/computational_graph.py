@@ -31,6 +31,9 @@ class DotNode(object):
         self.id_ = id(node)
         self.attribute = {'label': node.label}
         if isinstance(node, variable.Variable):
+            if hasattr(node, 'name') and node.name is not None:
+                self.attribute['label'] = '{}:{}'.format(
+                    node.name, self.attribute['label'])
             self.attribute.update({'shape': 'oval'})
         else:
             self.attribute.update({'shape': 'box'})
@@ -265,7 +268,8 @@ class HierarchicalComputationalGraph(object):
         return ret
 
     def dump(self):
-        ret = 'digraph graphname{rank=same;rankdir=%s;\n' % self.rankdir
+        ret = 'digraph graphname{'
+        ret += 'rank=same;rankdir=%s;\n' % self.rankdir
         for subgraph_name, subgraph_dict in six.iteritems(self.subgraphs):
             ret += self.dot_subgraph(subgraph_name, subgraph_dict)
             if isinstance(subgraph_name, variable.Variable):
@@ -332,7 +336,7 @@ def build_hierarchical_computational_graph(
         return '/'.join(name.split('/')[:-1])
 
     nodenames = dict((p, n) for n, p in model.namedparams())
-    nodegroup = {}
+    nodegroup = {}  # A dict of group names for nodes (Variable or Function)
     cg = build_computational_graph(outputs)
     for node in cg.nodes:
         # Parameters
@@ -351,16 +355,23 @@ def build_hierarchical_computational_graph(
     for node in cg.nodes:
         # Non-parametric Function
         if node not in nodegroup and isinstance(node, function.Function):
-            input_var_name = None
+            input_var_names = []
             for input_var in node.inputs:
                 if input_var in nodegroup:
-                    input_var_name = nodegroup[input_var]
-                    break
-            if input_var_name:
-                nodegroup[node] = get_parent(input_var_name)
-                # Output variables of non-parametric Function
-                for output_var in node.outputs:
-                    nodegroup[output_var()] = nodegroup[node]
+                    input_var_names.append(
+                        tuple(n for n in nodegroup[input_var].split('/') if n))
+            common_parent = ''
+            if len(input_var_names) > 1:
+                for c in zip(*input_var_names):
+                    if not all([d == c[0] for d in c]):
+                        break
+                    common_parent += '/{}'.format(c[0])
+            else:
+                common_parent = '/{}'.format('/'.join(input_var_names[0]))
+            nodegroup[node] = common_parent
+            # Output variables of non-parametric Function
+            for output_var in node.outputs:
+                nodegroup[output_var()] = common_parent
 
     subgraphs = {}
     for var_or_func, subgraph in six.iteritems(nodegroup):
