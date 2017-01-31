@@ -1,8 +1,5 @@
 import heapq
 
-import six
-
-import chainer
 from chainer import function
 from chainer import variable
 
@@ -32,7 +29,7 @@ class DotNode(object):
         self.attribute = {'label': node.label}
         if isinstance(node, variable.Variable):
             if hasattr(node, 'name') and node.name is not None:
-                self.attribute['label'] = '{}:{}'.format(
+                self.attribute['label'] = '{}: {}'.format(
                     node.name, self.attribute['label'])
             self.attribute.update({'shape': 'oval'})
         else:
@@ -65,7 +62,7 @@ class ComputationalGraph(object):
     """
 
     def __init__(self, nodes, edges, variable_style=None, function_style=None,
-                 rankdir='TB'):
+                 rankdir='TB', draw_variable=True):
         """Initializes computational graph.
 
         Args:
@@ -86,6 +83,7 @@ class ComputationalGraph(object):
         if rankdir not in ('TB', 'BT', 'LR', 'RL'):
             raise ValueError('rankdir must be in TB, BT, LR or RL.')
         self.rankdir = rankdir
+        self.draw_variable = draw_variable
 
     def _to_dot(self):
         """Converts graph in dot format.
@@ -96,12 +94,19 @@ class ComputationalGraph(object):
 
         """
         ret = 'digraph graphname{rankdir=%s;' % self.rankdir
+
+        if not self.draw_variable:
+            self.nodes, self.edges = _skip_variable(self.nodes, self.edges)
+
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
             if isinstance(node, variable.Variable):
-                ret += DotNode(node, self.variable_style).label
+                if self.draw_variable:
+                    ret += DotNode(node, self.variable_style).label
             else:
                 ret += DotNode(node, self.function_style).label
+
+        drawn_edges = []
         for edge in self.edges:
             head, tail = edge
             if (isinstance(head, variable.Variable) and
@@ -113,11 +118,23 @@ class ComputationalGraph(object):
                 head_attr = self.function_style
                 tail_attr = self.variable_style
             else:
-                raise TypeError(
-                    'head and tail should be the set of Variable and Function')
+                if self.draw_variable:
+                    raise TypeError('head and tail should be the set of '
+                                    'Variable and Function')
+                else:
+                    head_attr = self.function_style
+                    tail_attr = self.function_style
+            if not self.draw_variable:
+                if isinstance(head, variable.Variable) \
+                        or isinstance(tail, variable.Variable):
+                    continue
             head_node = DotNode(head, head_attr)
             tail_node = DotNode(tail, tail_attr)
-            ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
+            edge = (head_node.id_, tail_node.id_)
+            if edge in drawn_edges:
+                continue
+            ret += "%s -> %s;" % edge
+            drawn_edges.append(edge)
         ret += "}"
         return ret
 
@@ -138,9 +155,28 @@ class ComputationalGraph(object):
             NotImplementedError('Currently, only dot format is supported.')
 
 
+def _skip_variable(nodes, edges):
+    for edge_i, edge in enumerate(edges):
+        head, tail = edge
+        if isinstance(head, variable.Variable):
+            if head.creator is not None:
+                head = head.creator
+        if isinstance(tail, variable.Variable):
+            for node in nodes:
+                if isinstance(node, function.Function):
+                    for input_var in node.inputs:
+                        if id(input_var) == id(tail):
+                            tail = node
+                            break
+                    if isinstance(tail, function.Function):
+                        break
+        edges[edge_i] = head, tail
+    return nodes, edges
+
+
 def build_computational_graph(
         outputs, remove_split=True, variable_style=_var_style,
-        function_style=_func_style, rankdir='TB'):
+        function_style=_func_style, rankdir='TB', draw_variable=True):
     """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
@@ -226,168 +262,6 @@ def build_computational_graph(
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))
                     nodes.add(HashableObject(cand))
-    return ComputationalGraph(list(i.v for i in nodes), list(seen_edges),
-                              variable_style, function_style, rankdir)
-
-
-class HierarchicalComputationalGraph(object):
-
-    """Class that represents computational graph.
-
-    .. note::
-
-      We assume that the computational graph is directed and acyclic.
-
-    """
-
-    def __init__(self, nodes, edges, subgraphs, variable_style=None,
-                 function_style=None, rankdir='TB', draw_variable=True):
-        self.nodes = nodes
-        self.edges = edges
-        self.subgraphs = subgraphs
-        self.variable_style = variable_style
-        self.function_style = function_style
-        self.rankdir = rankdir
-        self.draw_variable = draw_variable
-
-    def dot_subgraph(self, subgraph_name, subgraph_dict):
-        ret = 'subgraph cluster_%s{label=%s;\n' % (
-            id(subgraph_dict), subgraph_name)
-        for node in subgraph_dict.keys():
-            if isinstance(node, str):
-                ret += self.dot_subgraph(node, subgraph_dict[node])
-            else:
-                if isinstance(node, variable.Variable):
-                    if self.draw_variable:
-                        ret += DotNode(node, self.variable_style).label + '\n'
-                elif isinstance(node, function.Function):
-                    ret += DotNode(node, self.function_style).label + '\n'
-                else:
-                    raise ValueError('{}'.format(node))
-        ret += '}\n'
-        return ret
-
-    def dump(self):
-        ret = 'digraph graphname{'
-        ret += 'rank=same;rankdir=%s;\n' % self.rankdir
-        for subgraph_name, subgraph_dict in six.iteritems(self.subgraphs):
-            ret += self.dot_subgraph(subgraph_name, subgraph_dict)
-            if isinstance(subgraph_name, variable.Variable):
-                ret += DotNode(subgraph_name, self.variable_style).label + '\n'
-            elif isinstance(subgraph_name, function.Function):
-                ret += DotNode(subgraph_name, self.function_style).label + '\n'
-
-        if not self.draw_variable:
-            for edge_i, edge in enumerate(self.edges):
-                head, tail = edge
-                if isinstance(head, variable.Variable):
-                    if head.creator is not None:
-                        head = head.creator
-                if isinstance(tail, variable.Variable):
-                    for node in self.nodes:
-                        if isinstance(node, function.Function):
-                            for input_var in node.inputs:
-                                if id(input_var) == id(tail):
-                                    tail = node
-                                    break
-                            if isinstance(tail, function.Function):
-                                break
-                self.edges[edge_i] = head, tail
-
-        drawn_edges = []
-        for edge in self.edges:
-            head, tail = edge
-            if (id(head), id(tail)) in drawn_edges:
-                continue
-            drawn_edges.append((id(head), id(tail)))
-
-            if (isinstance(head, variable.Variable) and
-                    isinstance(tail, function.Function)):
-                head_attr = self.variable_style
-                tail_attr = self.function_style
-            elif (isinstance(head, function.Function) and
-                  isinstance(tail, variable.Variable)):
-                head_attr = self.function_style
-                tail_attr = self.variable_style
-            else:
-                if self.draw_variable:
-                    raise TypeError('head and tail should be the set of '
-                                    'Variable and Function')
-                else:
-                    head_attr = self.function_style
-                    tail_attr = self.function_style
-            if not self.draw_variable:
-                if isinstance(head, variable.Variable) \
-                        or isinstance(tail, variable.Variable):
-                    continue
-            head_node = DotNode(head, head_attr)
-            tail_node = DotNode(tail, tail_attr)
-            ret += "%s -> %s;\n" % (head_node.id_, tail_node.id_)
-        ret += "}\n"
-        return ret
-
-
-def build_hierarchical_computational_graph(
-        outputs, model, variable_style=_var_style, function_style=_func_style,
-        rankdir='TB', draw_variable=True):
-    assert isinstance(model, chainer.Chain)
-
-    def get_parent(name):
-        return '/'.join(name.split('/')[:-1])
-
-    nodenames = dict((p, n) for n, p in model.namedparams())
-    nodegroup = {}  # A dict of group names for nodes (Variable or Function)
-    cg = build_computational_graph(outputs)
-    for node in cg.nodes:
-        # Parameters
-        if isinstance(node, variable.Variable) and node in nodenames:
-            nodegroup[node] = get_parent(nodenames[node])
-        # Determine parametric Function's group from parameter variables
-        elif isinstance(node, function.Function):
-            for input_var in node.inputs:
-                if input_var in nodenames:
-                    nodegroup[node] = get_parent(nodenames[input_var])
-                    # Set output variables' group same as the function's one
-                    for output_var in node.outputs:
-                        nodegroup[output_var()] = nodegroup[node]
-                    break
-
-    for node in cg.nodes:
-        # Non-parametric Function
-        if node not in nodegroup and isinstance(node, function.Function):
-            input_var_names = []
-            for input_var in node.inputs:
-                if input_var in nodegroup:
-                    input_var_names.append(
-                        tuple(n for n in nodegroup[input_var].split('/') if n))
-            common_parent = ''
-            if len(input_var_names) > 1:
-                for c in zip(*input_var_names):
-                    if not all([d == c[0] for d in c]):
-                        break
-                    common_parent += '/{}'.format(c[0])
-            else:
-                common_parent = '/{}'.format('/'.join(input_var_names[0]))
-            nodegroup[node] = common_parent
-            # Output variables of non-parametric Function
-            for output_var in node.outputs:
-                nodegroup[output_var()] = common_parent
-
-    subgraphs = {}
-    for var_or_func, subgraph in six.iteritems(nodegroup):
-        parts = [n for n in subgraph.split('/') if n]
-        if parts:
-            leaf = subgraphs
-            for p in parts[:-1]:
-                if p not in leaf:
-                    leaf[p] = {}
-                leaf = leaf[p]
-            if parts[-1] not in leaf:
-                leaf[parts[-1]] = {}
-            leaf[parts[-1]][var_or_func] = {}
-        else:
-            subgraphs[var_or_func] = {}
-
-    return HierarchicalComputationalGraph(
-        cg.nodes, cg.edges, subgraphs, variable_style, function_style, rankdir,
-        draw_variable)
+    return ComputationalGraph(
+        list(i.v for i in nodes), list(seen_edges), variable_style,
+        function_style, rankdir, draw_variable)
