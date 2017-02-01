@@ -13,8 +13,11 @@ def _transpose(xs, length):
     lengths = numpy.empty(length, dtype='i')
     end = length
     for i, x in enumerate(xs):
-        lengths[len(x):end] = i
-        end = len(x)
+        len_x = len(x)
+        if len_x == end:
+            continue
+        lengths[len_x:end] = i
+        end = len_x
     lengths[0:end] = len(xs)
 
     if xp is numpy:
