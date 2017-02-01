@@ -16,7 +16,7 @@ import os
 
 
 class _Worker(multiprocessing.Process):
-    def __init__(self, proc_id, pipe, master, root):
+    def __init__(self, proc_id, pipe, master):
         super(_Worker, self).__init__()
         self.proc_id = proc_id
         self.pipe = pipe
@@ -25,7 +25,6 @@ class _Worker(multiprocessing.Process):
         self.device = master._devices[proc_id]
         self.iterator = master._mpu_iterators[proc_id]
         self.n_devices = len(master._devices)
-        self.root = root
 
     def setup(self):
         print("setup %d" % self.device)
@@ -64,10 +63,10 @@ class _Worker(multiprocessing.Process):
                 gg = self.model.gather_grads()
                 null_stream = cuda.Stream.null
                 self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
-                                 nccl.NCCL_FLOAT, nccl.NCCL_SUM, self.root, null_stream.ptr)
+                                 nccl.NCCL_FLOAT, nccl.NCCL_SUM, 0, null_stream.ptr)
                 if pp is None:
                     pp = self.model.gather_params()
-                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, self.root, null_stream.ptr)
+                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, 0, null_stream.ptr)
                 self.model.scatter_params(pp)
 
                 # Sending observation via pipe is too slow.
@@ -152,7 +151,7 @@ class MultiprocessParallelUpdater(StandardUpdater):
         self._master.cleargrads()
         for i in six.moves.range(1, len(self._devices)):
             pipe, worker_end = multiprocessing.Pipe()
-            worker = _Worker(i, worker_end, self, self._devices[0])
+            worker = _Worker(i, worker_end, self)
             worker.start()
             self._workers.append(worker)
             self._pipes.append(pipe)
@@ -185,12 +184,12 @@ class MultiprocessParallelUpdater(StandardUpdater):
             null_stream = cuda.Stream.null
             self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
                              nccl.NCCL_FLOAT, nccl.NCCL_SUM,
-                             self._devices[0], null_stream.ptr)
+                             0, null_stream.ptr)
             self._master.scatter_grads(gg)
             optimizer.update()
             pp = self._master.gather_params()
             self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT,
-                            self._devices[0], null_stream.ptr)
+                            0, null_stream.ptr)
 
             # Sending observation via pipe is too slow.
             # for pipe in self._pipes:
