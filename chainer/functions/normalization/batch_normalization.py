@@ -163,7 +163,7 @@ class BatchNormalizationFunction(function.Function):
                 var += self.eps
             else:
                 mean = self.fixed_mean
-                var = self.fixed_var
+                var = self.fixed_var + self.eps
             self.std = xp.sqrt(var, dtype=var.dtype)
             if xp is numpy:
                 self.x_hat = _xhat(x, mean, self.std, expander)
