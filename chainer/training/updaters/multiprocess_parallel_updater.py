@@ -111,9 +111,9 @@ class MultiprocessParallelUpdater(StandardUpdater):
         # Correct optimizer parameters for new minibatch size
         optim = optimizer.__class__.__name__
         if optim in ('Adam', 'AdaGrad', 'RMSprop'):
-            optimizer.eps /= len(devices)
+            optimizer.eps *= len(devices)
         elif optim in ('RMSpropGraves', 'AdaDelta'):
-            optimizer.eps /= len(devices) ** 2
+            optimizer.eps *= len(devices) ** 2  # not quite right for AdaDelta
         else:
             optimizer.lr /= len(devices)
 
