@@ -75,3 +75,30 @@ class TestProfile(unittest.TestCase):
                 pass
             push.assert_called_once_with('test:timerangeC_error', 0)
             pop.assert_called_once_with()
+
+    @attr.gpu
+    def test_TimeRangeDecorator(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            @cuda.TimeRangeDecorator()
+            def f():
+                pass
+            f()
+            push.assert_called_once_with('f', 0)
+            pop.assert_called_once_with()
+
+    @attr.gpu
+    def test_TimeRangeDecorator_err(self):
+        push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
+        pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
+        with push_patch as push, pop_patch as pop:
+            @cuda.TimeRangeDecorator()
+            def f():
+                raise Exception()
+            try:
+                f()
+            except Exception:
+                pass
+            push.assert_called_once_with('f', 0)
+            pop.assert_called_once_with()

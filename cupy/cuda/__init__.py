@@ -97,6 +97,23 @@ def timerangeC(message, color=0):
 
 
 class TimeRangeDecorator(object):
+    """Decorator to mark function calls with time range in NVIDIA profiler
+
+    Decorated function calls are marked as time ranges
+    in NVIDIA profiler timeline.
+
+    >>> @cupy.cuda.TimeRangeDecorator()
+    ... def function_to_profile():
+    ...     pass
+
+    Args:
+        message (str): Name of a range, default use ``func.__name__``.
+        id_color (int): ID of color for a range.
+
+    .. seealso:: :func:`cupy.cuda.timerange`
+        :func:`cupy.cuda.nvtx.RangePush`
+        :func:`cupy.cuda.nvtx.RangePop`
+    """
 
     def __init__(self, message=None, id_color=0):
         self.message = message
