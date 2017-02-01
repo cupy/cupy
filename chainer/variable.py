@@ -249,6 +249,28 @@ Actual: {0}'''.format(type(data))
             else:
                 self._grad.fill(0)
 
+    def scatter_grad(self, array, offset):
+        """Copy back contents of the array to gradient array
+
+        Args:
+            array (cupy.ndarray): gathered array
+            offset (int): ...
+        """
+        next_offset = offset + self.size
+        self._grad = array[offset:next_offset].reshape(self.data.shape)
+        return next_offset
+
+    def scatter_param(self, array, offset):
+        """Copy back contents of the array to gradient array
+
+        Args:
+            array (cupy.ndarray): gathered array
+            offset (int): ...
+        """
+        next_offset = offset + self.size
+        self.data = array[offset:next_offset].reshape(self.data.shape)
+        return next_offset
+
     def copydata(self, var):
         """Copies the data array from given source variable.
 

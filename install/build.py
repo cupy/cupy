@@ -109,6 +109,10 @@ def check_cudnn_version(compiler, settings):
     return True
 
 
+def check_nccl_version(compiler, settings):
+    return True
+
+
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=()):
     temp_dir = tempfile.mkdtemp()

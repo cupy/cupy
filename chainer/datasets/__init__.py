@@ -19,6 +19,8 @@ from chainer.datasets.ptb import get_ptb_words_vocabulary  # NOQA
 from chainer.datasets.sub_dataset import get_cross_validation_datasets  # NOQA
 from chainer.datasets.sub_dataset import get_cross_validation_datasets_random  # NOQA
 from chainer.datasets.sub_dataset import split_dataset  # NOQA
+from chainer.datasets.sub_dataset import split_dataset_n  # NOQA
 from chainer.datasets.sub_dataset import split_dataset_random  # NOQA
+from chainer.datasets.sub_dataset import split_dataset_n_random  # NOQA
 from chainer.datasets.sub_dataset import SubDataset  # NOQA
 from chainer.datasets.tuple_dataset import TupleDataset  # NOQA

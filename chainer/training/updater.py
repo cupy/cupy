@@ -301,17 +301,7 @@ class ParallelUpdater(StandardUpdater):
         for model_key, model in six.iteritems(self._models):
             in_arrays = in_arrays_list[model_key]
             loss_func = self.loss_func or model
-
-            if isinstance(in_arrays, tuple):
-                in_vars = tuple(variable.Variable(x) for x in in_arrays)
-                losses.append(loss_func(*in_vars))
-            elif isinstance(in_arrays, dict):
-                in_vars = {key: variable.Variable(x)
-                           for key, x in six.iteritems(in_arrays)}
-                losses.append(loss_func(**in_vars))
-            else:
-                in_vars = variable.Variable(in_arrays)
-                losses.append(loss_func(in_vars))
+            losses.append(loss_func, in_arrays)
 
         # For _uninitialized_params
         for model in six.itervalues(self._models):
@@ -327,3 +317,16 @@ class ParallelUpdater(StandardUpdater):
 
         for model in six.itervalues(models_others):
             model.copyparams(model_main)
+
+
+def _calc_loss(model, in_arrays):
+    if isinstance(in_arrays, tuple):
+        in_vars = tuple(variable.Variable(x) for x in in_arrays)
+        return model(*in_vars)
+    elif isinstance(in_arrays, dict):
+        in_vars = {key: variable.Variable(x)
+                   for key, x in six.iteritems(in_arrays)}
+        return model(**in_vars)
+    else:
+        in_vars = variable.Variable(in_arrays)
+        return model(in_vars)
