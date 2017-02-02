@@ -6,6 +6,7 @@ from cupy.core import internal  # NOQA
 from cupy.core.core import absolute  # NOQA
 from cupy.core.core import add  # NOQA
 from cupy.core.core import array  # NOQA
+from cupy.core.core import array_split  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
 from cupy.core.core import asfortranarray  # NOQA
 from cupy.core.core import bitwise_and  # NOQA

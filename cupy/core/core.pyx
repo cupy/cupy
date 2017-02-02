@@ -1807,6 +1807,52 @@ cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=0):
     return a._transpose(axes)
 
 
+def array_split(ndarray ary, indices_or_sections, int axis):
+
+    cdef int i, ndim, size, each_size, index, prev, offset, stride
+    cdef vector.vector[Py_ssize_t] shape
+
+    ndim = ary.ndim
+    if -ndim > axis or ndim <= axis:
+        raise IndexError('Axis exceeds ndim')
+    if axis < 0:
+        axis += ndim
+    size = ary._shape[axis]
+
+    if numpy.isscalar(indices_or_sections):
+        each_size = (size - 1) // indices_or_sections + 1
+        indices = [i * each_size
+                   for i in range(1, indices_or_sections)]
+    else:
+        indices = indices_or_sections
+
+    if len(indices) == 0:
+        return [ary]
+
+    # Make a copy of shape for each view
+    shape = ary._shape
+
+    prev = 0
+    ret = []
+    stride = ary._strides[axis]
+    for index in indices:
+        shape[axis] = index - prev
+        v = ary.view()
+        v.data = ary.data + prev * stride
+        v._set_shape_and_strides(shape, ary._strides)
+        ret.append(v)
+
+        prev = index
+
+    shape[axis] = size - prev
+    v = ary.view()
+    v.data = ary.data + prev * stride
+    v._set_shape_and_strides(shape, ary._strides)
+    ret.append(v)
+
+    return ret
+
+
 cdef class broadcast:
     """Object that performs broadcasting.
 
