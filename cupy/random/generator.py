@@ -245,17 +245,16 @@ class RandomState(object):
         """
         if a is None:
             raise ValueError('a must be 1-dimensional or an integer')
+        if isinstance(a, cupy.ndarray) and a.ndim == 0:
+            raise NotImplementedError
         if isinstance(a, six.integer_types):
             a_size = a
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
-            a = cupy.array(a, copy=False)
         else:
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
-                raise ValueError('a must be 1-dimensional')
-            elif a.dtype != 'int':
-                raise NotImplementedError
+                raise ValueError('a must be 1-dimensional or an integer')
             else:
                 a_size = len(a)
                 if a_size == 0:
@@ -286,22 +285,20 @@ class RandomState(object):
             index = cupy.argmax(cupy.log(p) -
                                 cupy.random.gumbel(size=(size, a_size)),
                                 axis=1)
-            index = index.astype(cupy.int32, copy=False)
             if not isinstance(shape, six.integer_types):
                 index = cupy.reshape(index, shape)
         else:
             index = cupy.random.randint(0, a_size, size=shape)
+            # Align the dtype with NumPy
+            index = index.astype(cupy.int64, copy=False)
 
-        if a.ndim == 0:
+        if isinstance(a, six.integer_types):
             return index
 
         if index.ndim == 0:
-            res = cupy.empty((), dtype=a.dtype)
-            res[()] = a[index]
-            return res
+            return cupy.array(a[index], dtype=a.dtype)
 
-        a = a.astype(cupy.int32, copy=False)
-        return a[cupy.asnumpy(index)]
+        return a[index]
 
 
 def seed(seed=None):
