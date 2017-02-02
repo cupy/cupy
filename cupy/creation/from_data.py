@@ -91,7 +91,8 @@ def copy(a, order='C'):
     Args:
         a (cupy.ndarray): The source array.
         order ({'C', 'F'}): Row-major (C-style) or column-major
-            (Fortran-style) order.
+            (Fortran-style) order. This function currently does not
+            support order 'A' and 'K'.
 
     Returns:
         cupy.ndarray: The copy of ``a`` on the current device.

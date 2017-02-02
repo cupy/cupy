@@ -305,7 +305,8 @@ cdef class ndarray:
 
         Args:
             order ({'C', 'F'}): Row-major (C-style) or column-major
-                (Fortran-style) order.
+                (Fortran-style) order. This function currently does not
+                support order 'A' and 'K'.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
