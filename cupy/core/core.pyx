@@ -2661,11 +2661,6 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     out = ndarray(out_shape, dtype=dtype)
     out.data.memset(0, out.nbytes)
 
-    if dtype == ret_dtype:
-        ret = out
-    else:
-        ret = ndarray(out_shape, ret_dtype)
-
     out_view = out.view()
     out_view_shape = out.shape
     out_view_strides = out.strides
@@ -2738,9 +2733,12 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     else:
         raise TypeError(dtype, a.dtype, b.dtype)
 
-    if out is not ret:
+    if dtype == ret_dtype:
+        return out
+    else:
+        ret = ndarray(out_shape, ret_dtype)
         elementwise_copy(out, ret)
-    return ret
+        return ret
 
 
 cdef _cuda_runtime_version = None
