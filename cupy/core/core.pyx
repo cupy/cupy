@@ -1825,7 +1825,7 @@ def array_split(ndarray ary, indices_or_sections, int axis):
     if numpy.isscalar(indices_or_sections):
         each_size = (size - 1) // indices_or_sections + 1
         indices = [i * each_size
-                   for i in six.moves.range(1, indices_or_sections)]
+                   for i in range(1, indices_or_sections)]
     else:
         indices = indices_or_sections
 
