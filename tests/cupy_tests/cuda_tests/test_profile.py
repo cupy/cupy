@@ -3,7 +3,6 @@ import unittest
 import mock
 
 from cupy import cuda
-from cupy.testing import attr
 
 
 class TestProfile(unittest.TestCase):
@@ -30,7 +29,6 @@ class TestProfile(unittest.TestCase):
             start.assert_called_once_with()
             stop.assert_called_once_with()
 
-    @attr.gpu
     def test_timerange(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
@@ -40,7 +38,6 @@ class TestProfile(unittest.TestCase):
             push.assert_called_once_with('test:timerange', -1)
             pop.assert_called_once_with()
 
-    @attr.gpu
     def test_timerange_err(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
@@ -53,7 +50,6 @@ class TestProfile(unittest.TestCase):
             push.assert_called_once_with('test:timerange_error', -1)
             pop.assert_called_once_with()
 
-    @attr.gpu
     def test_timerangeC(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
@@ -63,7 +59,6 @@ class TestProfile(unittest.TestCase):
             push.assert_called_once_with('test:timerangeC', 0)
             pop.assert_called_once_with()
 
-    @attr.gpu
     def test_timerangeC_err(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
@@ -76,7 +71,6 @@ class TestProfile(unittest.TestCase):
             push.assert_called_once_with('test:timerangeC_error', 0)
             pop.assert_called_once_with()
 
-    @attr.gpu
     def test_TimeRangeDecorator(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
@@ -88,7 +82,6 @@ class TestProfile(unittest.TestCase):
             push.assert_called_once_with('f', 0)
             pop.assert_called_once_with()
 
-    @attr.gpu
     def test_TimeRangeDecorator_err(self):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
