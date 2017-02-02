@@ -86,6 +86,8 @@ class TestGetItem(unittest.TestCase):
         {'slices': ([1, 0], slice(None), [[1, 1], [1, 1]]),
          'sliced_shape': (2, 2, 3)},
         {'slices': ([1, 0], slice(1, 2), [0, 0]), 'sliced_shape': (2, 1)},
+        {'slices': ([[1, 1], [1, 0]], slice(1, 2), 1),
+         'sliced_shape': (2, 2, 1)},
         {'slices': numpy.array([True] * 18 + [False] * 6).reshape(4, 3, 2),
          'sliced_shape': (18,)},
     ],
