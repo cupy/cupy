@@ -54,6 +54,8 @@ from cupy import testing
      'value': numpy.arange(2 * 4).reshape(2, 4)},
     {'shape': (2, 3, 4), 'slices': ([1, 1], slice(None), [[2, 2], [3, 1]]),
      'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {'shape': (2, 3, 4), 'slices': ([1, 1], 1, [[2, 2], [3, 1]]),
+     'value': numpy.arange(2 * 2).reshape(2, 2)},
     # mask
     {'shape': (3, 4, 5),
      'slices': (numpy.random.choice([False, True], (3, 4, 5)),),
