@@ -316,7 +316,7 @@ from cupy.math.hyperbolic import tanh  # NOQA
 
 from cupy.math.rounding import ceil  # NOQA
 from cupy.math.rounding import floor  # NOQA
-from cupy.math.rounding import fmod  # NOQA
+from cupy.math.rounding import fix  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
 

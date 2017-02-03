@@ -14,8 +14,7 @@ class Fmod(function.Function):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
             in_types.size() == 2,
-            in_types[0].dtype.kind == 'f',
-            in_types[1].dtype.kind == 'f',
+            in_types[0].dtype == in_types[1].dtype,
         )
 
     def forward(self, inputs):
@@ -35,7 +34,7 @@ def fmod(x, divisor):
     """Elementwise mod function.
 
     .. math::
-       y_i = x_i mod div.
+       y_i = x_i \bmod divisor.
 
     Args:
         x (~chainer.Variable): Input variable.
