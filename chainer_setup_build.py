@@ -298,11 +298,11 @@ def _nvcc_gencode_options():
 
     arch_options = re.findall("'(compute_\d{2})'", help_string)
     arch_options = sorted(list(set(arch_options)))
-    arch_options = list(filter(lambda x: x >= "compute_30", arch_options))
+    arch_options = list(filter(lambda x: x >= 'compute_30', arch_options))
 
     code_options = re.findall("'(sm_\d{2})'", help_string)
     code_options = sorted(list(set(code_options)))
-    code_options = list(filter(lambda x: x >= "sm_30", code_options))
+    code_options = list(filter(lambda x: x >= 'sm_30', code_options))
 
     pairs = []
     for code_option in code_options:
