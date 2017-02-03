@@ -99,6 +99,6 @@ class TestMatmul(unittest.TestCase):
     @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(rtol=1, atol=1)
     def test_cupy_matmul3(self, xp):
-        x1 = testing.shaped_arange(self.shape_pair[0], xp, numpy.float16)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, numpy.int8)
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, numpy.int8)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, numpy.float16)
         return xp.matmul(x1, x2)
