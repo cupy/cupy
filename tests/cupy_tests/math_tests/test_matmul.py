@@ -75,18 +75,30 @@ class TestMatmul(unittest.TestCase):
         return operator.matmul(x1, x2)
 
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(name='dtype1', no_float16=True)
-    @testing.for_all_dtypes(name='dtype2', no_float16=True)
+    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
     def test_cupy_matmul(self, xp, dtype1, dtype2):
+        if dtype1 == numpy.float16 and dtype2 == numpy.int8:
+            return xp.array([])
+        if dtype2 == numpy.float16 and dtype1 == numpy.int8:
+            return xp.array([])
         x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return xp.matmul(x1, x2)
 
     # Since calculation accuracy is bad for (float16, uint8).
     @testing.with_requires('numpy>=1.10')
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
-    def test_cupy_matmul_float16(self, xp):
+    @testing.numpy_cupy_allclose(rtol=1, atol=1)
+    def test_cupy_matmul2(self, xp):
         x1 = testing.shaped_arange(self.shape_pair[0], xp, numpy.float16)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, numpy.float16)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, numpy.int8)
+        return xp.matmul(x1, x2)
+
+    # Since calculation accuracy is bad for (float16, uint8).
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose(rtol=1, atol=1)
+    def test_cupy_matmul3(self, xp):
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, numpy.float16)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, numpy.int8)
         return xp.matmul(x1, x2)
