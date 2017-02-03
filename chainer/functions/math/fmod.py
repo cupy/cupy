@@ -15,6 +15,8 @@ class Fmod(function.Function):
         type_check.expect(
             in_types.size() == 2,
             in_types[0].dtype == in_types[1].dtype,
+            in_types[0].dtype.kind == 'f',
+            in_types[1].dtype.kind == 'f',
         )
 
     def forward(self, inputs):
