@@ -399,7 +399,8 @@ cdef class ndarray:
             newarray = self.copy()
             strides = _get_strides_for_nocopy_reshape(newarray, shape)
 
-        assert shape.size() == strides.size()
+        if shape.size() != strides.size():
+            raise ValueError('total size of new array must be unchanged')
         newarray._set_shape_and_strides(shape, strides, False)
         return newarray
 
