@@ -150,6 +150,10 @@ class NStepLSTM(function.Function):
                 x_type.dtype == numpy.float32,
                 x_type.ndim == 2,
             )
+
+        # Check batch size
+        type_check.expect(x_types[0].shape[0] == h_type.shape[1])
+
         for x1_type, x2_type in zip(x_types, x_types[1:]):
             type_check.expect(
                 # Check if xs are sorted by descending lengths
