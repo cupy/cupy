@@ -300,8 +300,13 @@ cdef class ndarray:
 
     # TODO(okuta): Implement byteswap
 
-    cpdef ndarray copy(self):
+    cpdef ndarray copy(self, order='C'):
         """Returns a copy of the array.
+
+        Args:
+            order ({'C', 'F'}): Row-major (C-style) or column-major
+                (Fortran-style) order. This function currently does not
+                support order 'A' and 'K'.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
@@ -309,17 +314,26 @@ cdef class ndarray:
 
         """
         cdef ndarray a, newarray
-        # TODO(beam2d): Support ordering option
+        # TODO(beam2d): Support ordering option 'A' and 'K'
+        if order not in ['C', 'F']:
+            raise TypeError('order not understood')
+
         if self.size == 0:
-            return ndarray(self.shape, self.dtype)
+            return ndarray(self.shape, self.dtype, order=order)
 
         a = self
-        if not self._c_contiguous:
+        if order == 'C' and not self._c_contiguous:
             with self.device:
                 a = ascontiguousarray(self)
             if a.data.device.id == device.get_device_id():
                 return a
-        newarray = ndarray(a.shape, a.dtype)
+        elif order == 'F' and not self._f_contiguous:
+            with self.device:
+                a = asfortranarray(self)
+            if a.data.device.id == device.get_device_id():
+                return a
+
+        newarray = ndarray(a.shape, a.dtype, order=order)
         newarray.data.copy_from_device(a.data, a.nbytes)
         return newarray
 
