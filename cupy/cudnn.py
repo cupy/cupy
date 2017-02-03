@@ -1,11 +1,10 @@
 import atexit
 
-import functools
 import numpy
-import operator
 import six
 
 import cupy
+from cupy.core import internal
 from cupy import cuda
 from cupy.cuda import cudnn
 
@@ -61,17 +60,6 @@ def _to_ctypes_array(tup, dtype=numpy.intc):
     return numpy.array(tup, dtype=dtype).ctypes
 
 
-def _succ_sublists(xs):
-    # Returns successive sublists of xs.
-    return [xs[i:] for i in six.moves.range(len(xs))]
-
-
-def _compute_strides(shape):
-    def aux(xs):
-        return functools.reduce(operator.mul, xs[1:], 1)
-    return tuple(map(aux, _succ_sublists(shape)))
-
-
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
@@ -81,8 +69,9 @@ def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     if arr.ndim == 4:
         cudnn.setTensor4dDescriptor(desc.value, format, data_type, *arr.shape)
     else:
+        strides = [s // arr.itemsize for s in arr.strides]
         c_shape = _to_ctypes_array(arr.shape)
-        c_strides = _to_ctypes_array(_compute_strides(arr.shape))
+        c_strides = _to_ctypes_array(strides)
         cudnn.setTensorNdDescriptor(desc.value, data_type, arr.ndim,
                                     c_shape.data, c_strides.data)
     return desc
@@ -99,6 +88,9 @@ def create_uninitialized_tensor_descriptor():
     return desc
 
 
+_nd_tensor_cache = {}
+
+
 def create_tensor_nd_descriptor(arr):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
@@ -106,6 +98,10 @@ def create_tensor_nd_descriptor(arr):
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
     shape = arr.shape
+    key = (data_type, shape)
+    if key in _nd_tensor_cache:
+        return _nd_tensor_cache[key]
+
     # numpy's stride is defined in bytes, but cudnn's stride is defined in
     # size of element
     strides = [s // arr.itemsize for s in arr.strides]
@@ -114,7 +110,7 @@ def create_tensor_nd_descriptor(arr):
     c_strides = _to_ctypes_array(strides)
     cudnn.setTensorNdDescriptor(desc.value, data_type,
                                 arr.ndim, c_shape.data, c_strides.data)
-
+    _nd_tensor_cache[key] = desc
     return desc
 
 
@@ -260,7 +256,7 @@ def get_rnn_lin_layer_matrix_params(
         lin_layer_id, mat_desc.value, ptr.ctypes.data)
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc.value, 3)
-    size = numpy.prod(dim)
+    size = internal.prod(dim)
     mat = w[offset: offset + size]
     return mat
 
@@ -275,7 +271,7 @@ def get_rnn_lin_layer_bias_params(
         lin_layer_id, bias_desc.value, ptr.ctypes.data)
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc.value, 3)
-    size = numpy.prod(dim)
+    size = internal.prod(dim)
     bias = w[offset: offset + size]
     return bias
 
