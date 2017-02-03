@@ -1,6 +1,6 @@
 from __future__ import division
-import multiprocessing
-from multiprocessing import sharedctypes
+# import multiprocessing
+from pathos.helpers import mp as multiprocessing
 import threading
 import warnings
 
@@ -8,6 +8,10 @@ import numpy
 import six
 
 from chainer.dataset import iterator
+
+# To enforce spawn on Linux
+import multiprocess.context as ctx
+ctx._force_start_method('spawn')
 
 
 class MultiprocessIterator(iterator.Iterator):
@@ -136,7 +140,7 @@ class MultiprocessIterator(iterator.Iterator):
         assert self._shared_mem_size is not None
         mem_size = self._shared_mem_size
         for i in six.moves.range(self.batch_size * (self.n_prefetch + 1)):
-            self._mem_list.append(sharedctypes.RawArray('b', mem_size))
+            self._mem_list.append(multiprocessing.RawArray('b', mem_size))
             self._unused_mem_queue.put(i)
 
         args = (self.dataset, self._index_queue, self._data_queue,
