@@ -2527,7 +2527,8 @@ cpdef _scatter_op(ndarray a, slices, value, op):
                 if y.data.ptr == x.data.ptr:
                     return  # Skip since x and y are the same array
                 elif y._c_contiguous and x.dtype == y.dtype:
-                    y.data.copy_from(x.data, x.nbytes)
+                    y.data.copy_from_device_async(x.data, x.nbytes,
+                                                  cuda.Stream.null)
                     return
             elementwise_copy(x, y)
         else:
