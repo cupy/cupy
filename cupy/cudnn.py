@@ -12,6 +12,7 @@ from cupy.cuda import cudnn
 _cudnn_version = cudnn.getVersion()
 
 _handles = {}
+_nd_tensor_cache = {}
 
 
 def get_handle():
@@ -31,6 +32,11 @@ def reset_handles():
 
     for handle in six.itervalues(handles):
         cudnn.destroy(handle)
+
+
+@atexit.register
+def _clear_cache():
+    _nd_tensor_cache.clear()
 
 
 class Descriptor(object):
@@ -86,9 +92,6 @@ def create_uninitialized_tensor_descriptor():
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
     return desc
-
-
-_nd_tensor_cache = {}
 
 
 def create_tensor_nd_descriptor(arr):
