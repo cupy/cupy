@@ -1,4 +1,3 @@
-import cupy
 from cupy import core
 
 
@@ -44,7 +43,7 @@ def asarray(a, dtype=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return cupy.array(a, dtype=dtype, copy=False)
+    return core.array(a, dtype, False)
 
 
 def asanyarray(a, dtype=None):
@@ -58,7 +57,7 @@ def asanyarray(a, dtype=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return cupy.asarray(a, dtype)
+    return core.array(a, dtype, False)
 
 
 def ascontiguousarray(a, dtype=None):
