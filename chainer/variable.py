@@ -351,7 +351,9 @@ Actual: {0}'''.format(type(data))
         """
         if self.creator is None:
             return
-        initial_device = cuda.Device()
+        initial_device = None
+        if cuda.available:
+            initial_device = cuda.Device()
 
         is_debug = chainer.is_debug()
 
@@ -442,7 +444,8 @@ Actual: {0}'''.format(type(data))
                         else:  # 3rd or later visit
                             x._grad += gx
             del gxs  # to reduce memory usage
-            initial_device.use()
+            if initial_device is not None:
+                initial_device.use()
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.
