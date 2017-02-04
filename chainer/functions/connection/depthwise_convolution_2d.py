@@ -136,7 +136,7 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
         W (~chainer.Variable): Weight variable of shape
             :math:`(c_M, c_I, k_H, k_W)`.
         b (~chainer.Variable):
-            Bias variable of length :math:`c_M * C_I` (optional).
+            Bias variable of length :math:`c_M * c_I` (optional).
         stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
@@ -151,9 +151,9 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
     correlations between filters and patches of size :math:`(k_H, k_W)` in
     ``x``.
     But unlike ``Convolution2D``, ``DepthwiseConvolution2D`` not adds up
-    between output channels of filters but concatenates.
+    between input channels of filters but concatenates.
     For that reason, the shape of outputs of depthwise convolution are
-    :math:`(n, c_I * c_M, h_O, w_O)`, ``c_M`` called channel_multiplier.
+    :math:`(n, c_I * c_M, h_O, w_O)`, :math:`c_M` called channel_multiplier.
 
     :math:`(h_O, w_O)` is determined by the equivalent equation with
     ``Convolution2D``.
@@ -161,11 +161,19 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
     If the bias vector is given, then it is added to all spatial locations of
     the output of convolution.
 
-
     See: `L. Sifre. Rigid-motion scattering for image classification\
           <http://www.di.ens.fr/data/publications/papers/phd_sifre.pdf>`_
 
     .. seealso:: :class:`~chainer.links.DepthwiseConvolution2D`
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(0, 1, (2, 3, 4, 7)).astype('f')
+        >>> W = np.random.uniform(0, 1, (2, 3, 3, 3)).astype('f')
+        >>> b = np.random.uniform(0, 1, (6,)).astype('f')
+        >>> y = F.depthwise_convolution_2d(x, W, b)
+        >>> y.shape
+        (2, 6, 2, 5)
 
     """
     func = DepthwiseConvolution2D(stride, pad)
