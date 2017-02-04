@@ -1,3 +1,8 @@
+import numpy
+
+from cupy import core
+
+
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
 
@@ -46,7 +51,40 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 # TODO(okuta): Implement cumprod
 
 
-# TODO(okuta): Implement cumsum
+def cumsum(a, axis=None, dtype=None, out=None):
+    if axis is None:
+        a = a.ravel()
+    else:
+        raise ValueError("'axis' option is not supported")
+
+    if out is None:
+        if dtype is None:
+            if a.dtype in ['?', 'b', 'h', 'i']:
+                dtype = numpy.dtype(numpy.intp)
+            elif a.dtype in ['B', 'H', 'I']:
+                dtype = numpy.dtype(numpy.uintp)
+            else:
+                dtype = a.dtype
+
+        out = a.astype(dtype)
+    else:
+        out[...] = a
+
+    kern = core.ElementwiseKernel(
+        'int32 pos', 'raw T x',
+        '''
+        if (i & pos) {
+          x[i] += x[i ^ pos | (pos - 1)];
+        }
+        ''',
+        'cumsum_kernel'
+    )
+
+    pos = 1
+    while pos < out.size:
+        kern(pos, out, size=out.size)
+        pos <<= 1
+    return out
 
 
 # TODO(okuta): Implement diff

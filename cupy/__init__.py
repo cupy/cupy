@@ -319,6 +319,7 @@ from cupy.math.rounding import floor  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
 
+from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 
