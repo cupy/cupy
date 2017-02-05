@@ -46,8 +46,8 @@ class ManualScheduleTrigger(object):
         updater = trainer.updater
         if self.unit == 'epoch':
             cur_epoch = updater.epoch_detail
-            th = cur_epoch - self.prev_epoch if self.prev_epoch > 0 else 0
-            flag = [p <= cur_epoch < p + th and v for (p, v)
+            thresh = cur_epoch - self.prev_epoch if self.prev_epoch > 0 else 0
+            flag = [p <= cur_epoch < p + thresh and v for (p, v)
                     in six.moves.zip(self.points, self.valid)]
             ans = any([f and v for (f, v) in six.moves.zip(flag,
                                                            self.valid)])
