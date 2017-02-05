@@ -1,6 +1,3 @@
-import numpy
-import six
-
 import cupy
 from cupy import core
 
