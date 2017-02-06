@@ -23,6 +23,8 @@ from chainer.functions.array import depth2space  # NOQA
 from chainer.functions.array import dstack  # NOQA
 from chainer.functions.array import expand_dims  # NOQA
 from chainer.functions.array import flatten  # NOQA
+from chainer.functions.array import fliplr  # NOQA
+from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
 from chainer.functions.array import permutate  # NOQA
@@ -158,6 +160,10 @@ from chainer.functions.array.expand_dims import expand_dims  # NOQA
 from chainer.functions.array.expand_dims import ExpandDims  # NOQA
 from chainer.functions.array.flatten import flatten  # NOQA
 from chainer.functions.array.flatten import Flatten  # NOQA
+from chainer.functions.array.fliplr import fliplr  # NOQA
+from chainer.functions.array.fliplr import FlipLR  # NOQA
+from chainer.functions.array.flipud import flipud  # NOQA
+from chainer.functions.array.flipud import FlipUD  # NOQA
 from chainer.functions.array.get_item import get_item  # NOQA
 from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
