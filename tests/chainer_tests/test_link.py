@@ -5,6 +5,7 @@ import numpy
 
 import chainer
 from chainer import cuda
+import chainer.serializer
 from chainer import testing
 from chainer.testing import attr
 
@@ -198,6 +199,20 @@ class TestLink(unittest.TestCase):
         serializer.assert_any_call('y', l.y.data)
         serializer.assert_any_call('z', 1)
         self.assertEqual(l.z, 3)
+
+    def test_serialize_uninitialized_param(self):
+        class SerializerMock(chainer.serializer.Serializer):
+            def __getitem__(self, key):
+                pass
+
+            def __call__(self, key, value):
+                pass
+
+        serializer = SerializerMock()
+        l = chainer.Link()
+        l.add_uninitialized_param('x')
+        with self.assertRaises(ValueError):
+            l.serialize(serializer)
 
     def test_duplicate_uninitialized_param(self):
         l = chainer.Link(y=2)
