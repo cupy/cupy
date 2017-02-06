@@ -112,7 +112,7 @@ class TestResumedIterationManualScheduleTrigger(unittest.TestCase):
 
     def test_resumed_iteration_multiple_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=1, initial_iteration=3)
-        trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'epoch')
+        trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'iteration')
         expected = [True, False, True, False, False]
         _test_trigger(self, updater, trigger, expected)
 
