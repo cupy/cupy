@@ -73,7 +73,7 @@ cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
     bool: numpy.dtype(bool).type}
 for i in six.integer_types:
-    _python_type_to_numpy_type[i] = numpy.dtype(i).type
+    _python_type_to_numpy_type[i] = numpy.int64
 
 
 cpdef str _get_typename(dtype):
