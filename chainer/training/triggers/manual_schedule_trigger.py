@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import division
+import math
+
 
 class ManualScheduleTrigger(object):
 
@@ -23,7 +26,6 @@ class ManualScheduleTrigger(object):
 
     def __init__(self, points, unit):
         assert unit == 'epoch' or unit == 'iteration'
-        self.prev_epoch = 0
         self.points = (points if isinstance(points, list) else [points])
         self.unit = unit
 
@@ -42,13 +44,11 @@ class ManualScheduleTrigger(object):
         """
 
         updater = trainer.updater
+        iteration = updater.iteration
+        epoch = updater.epoch_detail
         if self.unit == 'epoch':
-            cur_epoch = updater.epoch_detail
-            thresh = cur_epoch - self.prev_epoch if self.prev_epoch > 0 else 0
-            ans = any(p <= cur_epoch < p + thresh for p in self.points)
-
-            self.prev_epoch = cur_epoch
-            return ans
+            return any(
+                math.ceil(p * iteration / epoch) == iteration
+                for p in self.points)
         else:
-            iteration = updater.iteration
             return iteration > 0 and iteration in self.points
