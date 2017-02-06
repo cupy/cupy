@@ -9,8 +9,8 @@ from chainer.training import triggers
 
 class DummyUpdater(training.Updater):
 
-    def __init__(self, iters_per_epoch):
-        self.iteration = 0
+    def __init__(self, iters_per_epoch, initial_iteration=0):
+        self.iteration = initial_iteration
         self.iters_per_epoch = iters_per_epoch
 
     def finalize(self):
@@ -99,6 +99,37 @@ class TestUnalignedEpochManualScheduleTrigger(unittest.TestCase):
         updater = DummyUpdater(iters_per_epoch=2.5)
         trigger = triggers.ManualScheduleTrigger([1, 2], 'epoch')
         expected = [False, False, True, False, True, False, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+
+class TestResumedIterationManualScheduleTrigger(unittest.TestCase):
+
+    def test_resumed_iteration_single_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=1, initial_iteration=3)
+        trigger = triggers.ManualScheduleTrigger(3, 'iteration')
+        expected = [True, False, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+    def test_resumed_iteration_multiple_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=1, initial_iteration=3)
+        trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'epoch')
+        expected = [True, False, True, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+
+class TestResumedEpochManualScheduleTrigger(unittest.TestCase):
+
+    def test_resumed_epoch_single_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=2.5, initial_iteration=3)
+        trigger = triggers.ManualScheduleTrigger(3, 'epoch')
+        expected = [False, False, False, False, False, True, False]
+        _test_trigger(self, updater, trigger, expected)
+
+    def test_resumed_epoch_multiple_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=2.5, initial_iteration=3)
+        trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'epoch')
+        expected = [False, False, False, False, False,
+                    True, False, False, False, False, True, False]
         _test_trigger(self, updater, trigger, expected)
 
 
