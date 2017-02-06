@@ -2221,6 +2221,13 @@ cdef _scatter_update_mask_kernel = ElementwiseKernel(
     'cupy_scatter_update_mask')
 
 
+cdef _scatter_add_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = a + v[mask_scanned - 1]',
+    'cupy_scatter_add_mask')
+
+
 cdef _boolean_array_indexing_nth = ElementwiseKernel(
     'T a, bool boolean_array, S nth',
     'raw T out',
@@ -2361,7 +2368,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
                           (numpy.int32, numpy.float32,
                            numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float32, uint32, uint64 as'
+                'scatter_add only supports int32, float32, uint32, uint64 as '
                 'data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
@@ -2398,6 +2405,8 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
 
     if op == 'update':
         _scatter_update_mask_kernel(v, mask_br, mask_br_scanned, a)
+    elif op == 'add':
+        _scatter_add_mask_kernel(v, mask_br, mask_br_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
