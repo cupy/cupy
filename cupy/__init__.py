@@ -178,6 +178,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.rearrange import fliplr  # NOQA
+from cupy.manipulation.rearrange import flipud  # NOQA
 from cupy.manipulation.rearrange import roll  # NOQA
 
 # -----------------------------------------------------------------------------
