@@ -1,6 +1,6 @@
 import copy
-# import multiprocessing
-from pathos.helpers import mp as multiprocessing
+import multiprocessing
+# from pathos.helpers import mp as multiprocessing
 
 import six
 
@@ -15,9 +15,9 @@ from chainer.training.updater import StandardUpdater, _calc_loss
 
 import os
 
-# To enforce spawn on Linux
-import multiprocess.context as ctx
-ctx._force_start_method('spawn')
+## To enforce spawn on Linux
+#import multiprocess.context as ctx
+#ctx._force_start_method('spawn')
 
 class _Worker(multiprocessing.Process):
     def __init__(self, proc_id, pipe, master):
@@ -64,14 +64,19 @@ class _Worker(multiprocessing.Process):
                 self.model.cleargrads()
                 loss.backward()
 
+                del loss
+
                 gg = self.model.gather_grads()
                 null_stream = cuda.Stream.null
                 self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
                                  nccl.NCCL_FLOAT, nccl.NCCL_SUM, 0, null_stream.ptr)
+                del gg
+                self.model.cleargrads()
                 if pp is None:
                     pp = self.model.gather_params()
                 self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, 0, null_stream.ptr)
                 self.model.scatter_params(pp)
+                pp = None
 
                 # Sending observation via pipe is too slow.
                 # self.pipe.send(observation)
@@ -190,6 +195,7 @@ class MultiprocessParallelUpdater(StandardUpdater):
                              nccl.NCCL_FLOAT, nccl.NCCL_SUM,
                              0, null_stream.ptr)
             self._master.scatter_grads(gg)
+            del gg
             optimizer.update()
             pp = self._master.gather_params()
             self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT,

@@ -1,6 +1,6 @@
 from __future__ import division
-# import multiprocessing
-from pathos.helpers import mp as multiprocessing
+import multiprocessing
+# from pathos.helpers import mp as multiprocessing
 import threading
 import warnings
 
@@ -9,9 +9,9 @@ import six
 
 from chainer.dataset import iterator
 
-# To enforce spawn on Linux
-import multiprocess.context as ctx
-ctx._force_start_method('spawn')
+# # To enforce spawn on Linux
+# import multiprocess.context as ctx
+# ctx._force_start_method('spawn')
 
 
 class MultiprocessIterator(iterator.Iterator):
