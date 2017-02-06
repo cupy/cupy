@@ -9,7 +9,7 @@ For CIFAR-100, state of the art without data augmentation is around 20% (DenseNe
 
 The code consists of three parts: dataset preparation, network and optimizer definition and learning loop, similar to the MNIST example.
 
-More models may be added in the future, but currently only one model is available that uses the VGG-style network from [here](http://torch.ch/blog/2015/07/30/cifar.html) which is based on the network architecture from the paper from [here](http://arxiv.org/pdf/1409.1556v6.pdf).
+More models may be added in the future, but currently only one model is available that uses the VGG-style network from [here](http://torch.ch/blog/2015/07/30/cifar.html) which is based on the network architecture from the paper from [here](https://arxiv.org/pdf/1409.1556v6.pdf).
 
 No data augmentation is used and the classification accuracy on the CIFAR-10 test set for the VGG-style model should reach approximately 89% after 200 iterations or so.
 

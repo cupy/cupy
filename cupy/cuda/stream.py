@@ -39,7 +39,7 @@ class Event(object):
     @property
     def done(self):
         """True if the event is done."""
-        return bool(runtime.eventQuery(self.ptr))
+        return runtime.eventQuery(self.ptr) == 0  # cudaSuccess
 
     def record(self, stream=None):
         """Records the event to a stream.
@@ -116,7 +116,7 @@ class Stream(object):
     @property
     def done(self):
         """True if all work on this stream has been done."""
-        return bool(runtime.streamQuery(self.ptr))
+        return runtime.streamQuery(self.ptr) == 0  # cudaSuccess
 
     def synchronize(self):
         """Waits for the stream completing all queued work."""

@@ -63,13 +63,6 @@ def sigmoid(x, use_cudnn=True):
 
      .. math:: f(x)=(1 + \\exp(-x))^{-1}.
 
-    Example::
-
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> y = F.sigmoid(x)
-        >>> y.shape
-        (3, 4)
-
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
@@ -80,6 +73,13 @@ def sigmoid(x, use_cudnn=True):
     Returns:
         ~chainer.Variable: Output variable. A
         :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
+        >>> y = F.sigmoid(x)
+        >>> y.shape
+        (3, 4)
 
     """
     return Sigmoid(use_cudnn)(x)

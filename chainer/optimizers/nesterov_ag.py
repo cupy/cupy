@@ -9,7 +9,7 @@ class NesterovAG(optimizer.GradientMethod):
     Formulated as the linear combination coefficients of the velocity and
     gradient contributions at each iteration.
 
-    See: http://arxiv.org/abs/1212.0901
+    See: https://arxiv.org/abs/1212.0901
 
     """
 

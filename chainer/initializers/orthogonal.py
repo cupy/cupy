@@ -30,7 +30,7 @@ class Orthogonal(initializer.Initializer):
         scale (float): A constant to be multiplied by.
         dtype: Data type specifier.
 
-    Reference: Saxe et al., http://arxiv.org/abs/1312.6120
+    Reference: Saxe et al., https://arxiv.org/abs/1312.6120
 
     """
 
