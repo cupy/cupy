@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import six
 
 
 class ManualScheduleTrigger(object):
