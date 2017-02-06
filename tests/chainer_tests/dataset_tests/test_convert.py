@@ -249,7 +249,7 @@ class TestToDeviceGPU(unittest.TestCase):
         y = dataset.to_device(self.device, x)
         self.assertIsInstance(y, dst_xp.ndarray)
 
-        if self.device >= 0:
+        if self.device is not None and self.device >= 0:
             self.assertEqual(int(y.device), self.device)
 
         if self.device is None and self.src_gpu:
