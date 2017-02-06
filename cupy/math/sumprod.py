@@ -59,10 +59,13 @@ def cumsum(a, axis=None, dtype=None, out=None):
 
     if out is None:
         if dtype is None:
-            if a.dtype in ['?', 'b', 'h', 'i']:
-                dtype = numpy.dtype(numpy.intp)
-            elif a.dtype in ['B', 'H', 'I']:
-                dtype = numpy.dtype(numpy.uintp)
+            kind = a.dtype.kind
+            if kind == 'b':
+                dtype = numpy.dtype('l')
+            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
+                dtype = numpy.dtype('l')
+            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
+                dtype = numpy.dtype('L')
             else:
                 dtype = a.dtype
 
