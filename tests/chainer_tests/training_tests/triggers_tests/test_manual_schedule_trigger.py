@@ -120,12 +120,27 @@ class TestResumedIterationManualScheduleTrigger(unittest.TestCase):
 class TestResumedEpochManualScheduleTrigger(unittest.TestCase):
 
     def test_resumed_epoch_single_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=2, initial_iteration=4)
+        trigger = triggers.ManualScheduleTrigger(2, 'epoch')
+        expected = [True, False, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+    def test_resumed_epoch_multiple_manual_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=2, initial_iteration=4)
+        trigger = triggers.ManualScheduleTrigger([1, 2, 3], 'epoch')
+        expected = [True, False, True, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+
+class TestUnalignedResumedEpochManualScheduleTrigger(unittest.TestCase):
+
+    def test_unaligned_resumed_epoch_single_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2.5, initial_iteration=3)
         trigger = triggers.ManualScheduleTrigger(3, 'epoch')
         expected = [False, False, False, False, False, True, False]
         _test_trigger(self, updater, trigger, expected)
 
-    def test_resumed_epoch_multiple_manual_trigger(self):
+    def test_unaligned_resumed_epoch_multiple_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2.5, initial_iteration=3)
         trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'epoch')
         expected = [False, False, False, False, False,
