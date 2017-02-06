@@ -143,7 +143,7 @@ class TestUnalignedResumedEpochManualScheduleTrigger(unittest.TestCase):
     def test_unaligned_resumed_epoch_multiple_manual_trigger(self):
         updater = DummyUpdater(iters_per_epoch=2.5, initial_iteration=3)
         trigger = triggers.ManualScheduleTrigger([1, 3, 5], 'epoch')
-        expected = [False, False, False, False, False,
+        expected = [True, False, False, False, False,
                     True, False, False, False, False, True, False]
         _test_trigger(self, updater, trigger, expected)
 
