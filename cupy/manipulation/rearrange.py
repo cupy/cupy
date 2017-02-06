@@ -1,5 +1,6 @@
 import cupy
 
+
 def fliplr(a):
     """Flip array in the left/right direction.
 
@@ -15,6 +16,8 @@ def fliplr(a):
     .. seealso:: :func:`numpy.fliplr`
 
     """
+    if a.ndim < 2:
+        raise ValueError('Input must be >= 2-d')
     return cupy.take(a, cupy.arange(a.shape[1] - 1, -1, -1), axis=1)
 
 
@@ -33,6 +36,8 @@ def flipud(a):
     .. seealso:: :func:`numpy.flipud`
 
     """
+    if a.ndim < 1:
+        raise ValueError('Input must be >= 1-d')
     return cupy.take(a, cupy.arange(a.shape[0] - 1, -1, -1), axis=0)
 
 
