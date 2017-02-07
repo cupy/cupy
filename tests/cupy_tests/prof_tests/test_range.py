@@ -20,9 +20,11 @@ class TestTimeRange(unittest.TestCase):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
         with push_patch as push, pop_patch as pop:
-            with prof.time_range('test:time_range_with_ARGB', 0xFF00FF00, use_ARGB=True):
+            with prof.time_range('test:time_range_with_ARGB',
+                                 0xFF00FF00, use_ARGB=True):
                 pass
-            push.assert_called_once_with('test:time_range_with_ARGB', 0xFF00FF00)
+            push.assert_called_once_with(
+                'test:time_range_with_ARGB', 0xFF00FF00)
             pop.assert_called_once_with()
 
     def test_time_range_err(self):
