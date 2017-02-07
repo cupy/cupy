@@ -5,7 +5,7 @@ from cupy.cuda import nvtx  # NOQA
 
 
 @contextlib.contextmanager
-def time_range(message, id_color=-1):
+def time_range(message, color=-1, use_ARGB=False):
     """A context manager to describe the enclosed block as a nested range
 
     >>> with cupy.prof.time_range('some range in green', 0):
@@ -13,35 +13,18 @@ def time_range(message, id_color=-1):
     ...    pass
 
     Args:
-        message (str): Name of a range.
-        id_color (int): ID of color for a range.
+        message: Name of a range.
+        color: range color ID (int) or ARGB integer (uint32)
+        use_ARGB: use ARGB color (e.g. 0xFF00FF00 for green) or not,
+            default: ``False``, use color ID
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
-    nvtx.RangePush(message, id_color)
-    try:
-        yield
-    finally:
-        nvtx.RangePop()
-
-
-@contextlib.contextmanager
-def time_rangeC(message, color=0):
-    """A context manager to describe the enclosed block as a nested range
-
-    >>> with cupy.prof.time_rangeC('some range in green', 0xFF00FF00):
-    ...    # do something you want to measure
-    ...    pass
-
-    Args:
-        message (str): Name of a range.
-        color (uint32): ARGB color for a range.
-
-    .. seealso:: :func:`cupy.cuda.nvtx.RangePushC`
-        :func:`cupy.cuda.nvtx.RangePop`
-    """
-    nvtx.RangePushC(message, color)
+    if use_ARGB:
+        nvtx.RangePushC(message, color)
+    else:
+        nvtx.RangePush(message, color)
     try:
         yield
     finally:
@@ -59,19 +42,25 @@ class TimeRangeDecorator(object):
 
     Args:
         message (str): Name of a range, default use ``func.__name__``.
-        id_color (int): ID of color for a range.
+        color: range color ID (int) or ARGB integer (uint32)
+        use_ARGB: use ARGB color (e.g. 0xFF00FF00 for green) or not,
+            default: ``False``, use color ID
 
     .. seealso:: :func:`cupy.nvtx.range`
         :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
 
-    def __init__(self, message=None, id_color=0):
+    def __init__(self, message=None, color=0, use_ARGB=False):
         self.message = message
-        self.id_color = id_color
+        self.color = color
+        self.use_ARGB = use_ARGB
 
     def __enter__(self):
-        nvtx.RangePush(self.message, self.id_color)
+        if self.use_ARGB:
+            nvtx.RangePushC(self.message, self.color)
+        else:
+            nvtx.RangePush(self.message, self.color)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
