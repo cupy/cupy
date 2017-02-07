@@ -202,6 +202,7 @@ class TestLink(unittest.TestCase):
 
     def test_serialize_uninitialized_param(self):
         class SerializerMock(chainer.serializer.Serializer):
+
             def __getitem__(self, key):
                 pass
 
