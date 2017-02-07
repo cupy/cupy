@@ -1904,8 +1904,6 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         dtype = a_cpu.dtype
         if dtype.char not in '?bhilqBHILQefd':
             raise ValueError('Unsupported dtype %s' % dtype)
-        if a_cpu.ndim > 0:
-            a_cpu = numpy.ascontiguousarray(a_cpu)
         a = ndarray(a_cpu.shape, dtype=dtype)
         mem = pinned_memory.alloc_pinned_memory(a.nbytes)
         src = numpy.frombuffer(mem, a_cpu.dtype,
