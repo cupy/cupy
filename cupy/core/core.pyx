@@ -1353,7 +1353,7 @@ cdef class ndarray:
         with self.device:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
-        ptr = a_cpu.ctypes.data_as(ctypes.c_void_p)
+        ptr = a_cpu.ctypes.get_as_parameter()
         if stream is None:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
@@ -1380,7 +1380,7 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         arr = numpy.ascontiguousarray(arr)
-        ptr = arr.ctypes.data_as(ctypes.c_void_p)
+        ptr = arr.ctypes.get_as_parameter()
         if stream is None:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
@@ -1735,7 +1735,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         if a_cpu.ndim > 0:
             a_cpu = numpy.ascontiguousarray(a_cpu)
         a = ndarray(a_cpu.shape, dtype=a_cpu.dtype)
-        a.data.copy_from_host(a_cpu.ctypes.data_as(ctypes.c_void_p), a.nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), a.nbytes)
         if a_cpu.dtype == a.dtype:
             return a
         else:
