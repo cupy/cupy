@@ -49,7 +49,7 @@ def crelu(x, axis=1):
     This function is expressed as :math:`f(x) = (\\max(0, x), \\max(0, -x))`,
     where two output values are concatenated along an axis.
 
-    See: http://arxiv.org/abs/1603.05201
+    See: https://arxiv.org/abs/1603.05201
 
     Args:
         x (~chainer.Variable): Input variable.

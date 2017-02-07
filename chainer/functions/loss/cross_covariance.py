@@ -66,7 +66,7 @@ def cross_covariance(y, z):
     .. note::
 
        This cost can be used to disentangle variables.
-       See http://arxiv.org/abs/1412.6583v3 for details.
+       See https://arxiv.org/abs/1412.6583v3 for details.
 
     """
     return CrossCovariance()(y, z)

@@ -148,3 +148,21 @@ class TestSumprod(unittest.TestCase):
     def test_external_prod_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.prod(a, axis=1)
+
+
+@testing.gpu
+class TestCumsum(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.cumsum(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_2dim(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumsum(a)

@@ -48,7 +48,7 @@ class ResNet50Layers(link.Chain):
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
     .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
-        <http://arxiv.org/abs/1512.03385>`_
+        <https://arxiv.org/abs/1512.03385>`_
 
     Args:
         pretrained_model (str): the destination of the pre-trained

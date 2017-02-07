@@ -351,6 +351,11 @@ Actual: {0}'''.format(type(data))
         """
         if self.creator is None:
             return
+        initial_device = None
+        if cuda.available:
+            initial_device = cuda.Device()
+
+        is_debug = chainer.is_debug()
 
         cand_funcs = []
         seen_set = set()
@@ -375,28 +380,31 @@ Actual: {0}'''.format(type(data))
 
         while cand_funcs:
             _, _, func = heapq.heappop(cand_funcs)
-            outputs = tuple(y() for y in func.outputs)  # access via weak ref
+            outputs = [y() for y in func.outputs]  # access via weak ref
 
-            in_data = tuple(x.data for x in func.inputs)
-            out_grad = tuple(None if y is None else y.grad for y in outputs)
+            in_data = tuple([x.data for x in func.inputs])
+            out_grad = tuple([None if y is None else y.grad for y in outputs])
             hooks = chainer.get_function_hooks()
             if func._n_local_function_hooks != 0:
                 hooks = collections.OrderedDict(hooks)
                 hooks.update(func.local_function_hooks)
+
+            cuda.get_device(*(in_data + out_grad)).use()
             for hook in six.itervalues(hooks):
                 hook.backward_preprocess(func, in_data, out_grad)
-            with cuda.get_device(*(in_data + out_grad)):
-                gxs = func.backward(in_data, out_grad)
+            gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
             for hook in six.itervalues(hooks):
                 hook.backward_postprocess(func, in_data, out_grad)
 
-            if chainer.is_debug():
-                if any(gx is not None and
-                       cuda.get_array_module(gx).isnan(gx).any()
-                       for gx in gxs):
-                    msg = 'NaN is detected on backward computation'
-                    raise RuntimeError(msg)
+            if is_debug:
+                for gx in gxs:
+                    if gx is None:
+                        continue
+                    cuda.get_device(gx).use()
+                    if cuda.get_array_module(gx).isnan(gx).any():
+                        msg = 'NaN is detected on backward computation'
+                        raise RuntimeError(msg)
 
             if not retain_grad:
                 for y in outputs:
@@ -410,29 +418,34 @@ Actual: {0}'''.format(type(data))
 
                 # Accumulate the gradient to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
-                with cuda.get_device(gx):
-                    id_x = id(x)
-                    if x.creator is None:  # leaf
-                        if x._grad is None:
-                            x.grad = gx
-                            need_copy.add(id_x)
-                        elif id_x in need_copy:
+                id_x = id(x)
+                if x.creator is None:  # leaf
+                    if x._grad is None:
+                        x.grad = gx
+                        need_copy.add(id_x)
+                    else:
+                        cuda.get_device(gx).use()
+                        if id_x in need_copy:
                             x.grad = utils.force_array(x.grad + gx)  # copy
                             need_copy.remove(id_x)
                         else:
                             x._grad += gx
-                    else:  # not a leaf
-                        add_cand(x.creator)
-                        if id_x not in seen_vars:  # 1st visit
-                            x.grad = gx
-                            seen_vars.add(id_x)
-                            need_copy.add(id_x)
-                        elif id_x in need_copy:  # 2nd visit
+                else:  # not a leaf
+                    add_cand(x.creator)
+                    if id_x not in seen_vars:  # 1st visit
+                        x.grad = gx
+                        seen_vars.add(id_x)
+                        need_copy.add(id_x)
+                    else:
+                        cuda.get_device(gx).use()
+                        if id_x in need_copy:  # 2nd visit
                             x._grad = utils.force_array(gx + x._grad)  # copied
                             need_copy.remove(id_x)
                         else:  # 3rd or later visit
                             x._grad += gx
             del gxs  # to reduce memory usage
+            if initial_device is not None:
+                initial_device.use()
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.

@@ -19,7 +19,7 @@ class InceptionBN(link.Chain):
     pooling method is configurable.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing \
-    Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_.
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`_.
 
     Args:
         in_channels (int): Number of channels of input arrays.
