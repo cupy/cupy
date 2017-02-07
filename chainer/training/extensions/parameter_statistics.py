@@ -112,8 +112,9 @@ def _sparsity(x):
         int: Number of zeros.
     """
 
-    if x.ndim ==  0:
-        raise ValueError('Cannot compute sparsity for shape {}'.format(x.shape))
+    if x.ndim == 0:
+        raise ValueError(
+                'Cannot compute sparsity for shape {}'.format(x.shape))
 
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
@@ -246,4 +247,4 @@ class ParameterStatistics(extension.Extension):
         params = _flatten_link(link, param_names, attr_names)
         zeros = self.sparsity(params)
 
-        return { key: zeros }
+        return {key: zeros}

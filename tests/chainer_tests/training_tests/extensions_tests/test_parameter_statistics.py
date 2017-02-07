@@ -3,10 +3,8 @@ import unittest
 import mock
 import numpy
 
-import chainer
-from chainer import testing, Variable
+from chainer import testing
 from chainer.training import extensions
-from chainer.training import trigger
 
 
 @testing.parameterize(
@@ -72,7 +70,7 @@ class TestParameterStatisticsNone(unittest.TestCase):
 
     def test_none(self):
         with self.assertRaises(ValueError):
-            statistics = self.extension.sparsity(numpy.array(self.x))
+            self.extension.sparsity(numpy.array(self.x))
 
 
 @testing.parameterize(
