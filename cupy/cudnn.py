@@ -1,4 +1,5 @@
 import atexit
+import threading
 
 import numpy
 import six
@@ -10,9 +11,9 @@ from cupy.cuda import cudnn
 
 
 _cudnn_version = cudnn.getVersion()
+_thread_local = threading.local()
 
 _handles = {}
-_nd_tensor_cache = {}
 
 
 def get_handle():
@@ -34,9 +35,10 @@ def reset_handles():
         cudnn.destroy(handle)
 
 
-@atexit.register
-def _clear_cache():
-    _nd_tensor_cache.clear()
+def _get_nd_tensor_cache():
+    if not hasattr(_thread_local, 'cudnn_nd_tensor_cache'):
+        _thread_local.cudnn_nd_tensor_cache = {}
+    return _thread_local.cudnn_nd_tensor_cache
 
 
 class Descriptor(object):
@@ -102,8 +104,10 @@ def create_tensor_nd_descriptor(arr):
     data_type = get_data_type(arr.dtype)
     shape = arr.shape
     key = (data_type, shape)
-    if key in _nd_tensor_cache:
-        return _nd_tensor_cache[key]
+    getattr(_thread_local, 'default_backprop', True)
+    cache = _get_nd_tensor_cache()
+    if key in cache:
+        return cache[key]
 
     # numpy's stride is defined in bytes, but cudnn's stride is defined in
     # size of element
@@ -113,7 +117,8 @@ def create_tensor_nd_descriptor(arr):
     c_strides = _to_ctypes_array(strides)
     cudnn.setTensorNdDescriptor(desc.value, data_type,
                                 arr.ndim, c_shape.data, c_strides.data)
-    _nd_tensor_cache[key] = desc
+    cache = _get_nd_tensor_cache()
+    cache[key] = desc
     return desc
 
 
