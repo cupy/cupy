@@ -2068,7 +2068,7 @@ cpdef ndarray concatenate_method(tup, int axis):
             dtype = a.dtype
             continue
 
-        have_same_types &= (a.dtype == dtype)
+        have_same_types = have_same_types and (a.dtype == dtype)
         if a.ndim != ndim:
             raise ValueError(
                 'All arrays to concatenate must have the same ndim')
