@@ -2042,17 +2042,120 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
 
 cpdef ndarray concatenate(tup, axis, shape, dtype):
-    cdef ndarray ret
+    cdef ndarray a, x, ret
+    cdef int i, base, cum
+    cdef bint all_same_type, all_one_and_contiguous
+
     ret = ndarray(shape, dtype=dtype)
 
-    skip = (slice(None),) * axis
-    i = 0
+    all_same_type = True
+    all_one_and_contiguous = True
+    dtype = tup[0].dtype
     for a in tup:
-        aw = a.shape[axis]
-        ret[skip + (slice(i, i + aw),)] = a
-        i += aw
+        all_same_type = all_same_type and (a.dtype == dtype)
+        all_one_and_contiguous = (
+            all_one_and_contiguous and a._c_contiguous and a._shape[axis] == 1)
+
+    if all_same_type:
+        base = internal.prod_ssize_t(shape[axis+1:])
+        x = array([a.data.ptr for a in tup])
+        if all_one_and_contiguous:
+            _concatenate_kernel_one(
+                x, axis, len(shape), base, ret, size=ret.size)
+
+        else:
+            x_strides = array([a.strides for a in tup], 'i')
+            cum = 0
+            cum_sizes = numpy.empty(len(tup), 'i')
+            for i, a in enumerate(tup):
+                cum_sizes[i] = cum
+                cum += a._shape[axis]
+            cum_sizes = array(cum_sizes)
+
+            _concatenate_kernel(
+                x, axis, cum_sizes, x_strides, array(shape, 'i'), base, ret)
+    else:
+        skip = (slice(None),) * axis
+        i = 0
+        for a in tup:
+            aw = a._shape[axis]
+            ret[skip + (slice(i, i + aw),)] = a
+            i += aw
 
     return ret
+
+
+cdef _concatenate_kernel_one = ElementwiseKernel(
+    '''raw P x, int32 axis, int32 ndim, int32 base''',
+    'raw T y',
+    '''
+    const int* shape = y.shape();
+    int n = shape[axis];
+    int array_ind = i / base % n;
+
+    T* ptr = reinterpret_cast<T*>(x[array_ind]);
+    int ind_rest = i;
+    int stride = 1;
+    for (int j = ndim - 1; j >= 0; --j) {
+      int dim_size = shape[j];
+      int next_ind = ind_rest / dim_size;
+      if (j != axis) {
+        int offset = ind_rest - next_ind * dim_size;
+        ptr += stride * offset;
+        stride *= dim_size;
+      }
+      ind_rest = next_ind;
+    }
+
+    y[i] = *ptr;
+    ''',
+    'cupy_concatenate_one'
+)
+
+
+cdef _concatenate_kernel = ElementwiseKernel(
+    '''raw P x, int32 axis, raw int32 cum_sizes, raw int32 x_strides,
+    raw int32 shape, int32 base''',
+    'T y',
+    '''
+    int n = shape[axis];
+    int axis_ind = i / base % n;
+
+    int left = 0;
+    int right = cum_sizes.size();
+
+    while (left < right - 1) {
+      int m = (left + right) / 2;
+      if (axis_ind < cum_sizes[m]) {
+        right = m;
+      } else {
+        left = m;
+      }
+    }
+
+    int array_ind = left;
+    axis_ind -= cum_sizes[left];
+
+    char* ptr = reinterpret_cast<char*>(x[array_ind]);
+    int ind_rest = i;
+    for (int j = shape.size() - 1; j >= 0; --j) {
+      int ind[] = {array_ind, j};
+      int next_ind = ind_rest / shape[j];
+      int offset;
+      if (j == axis) {
+        offset = axis_ind;
+      } else {
+        offset = ind_rest - next_ind * shape[j];
+      }
+      ptr += x_strides[ind] * offset;
+      ind_rest = next_ind;
+    }
+
+    y = *reinterpret_cast<T*>(ptr);
+    ''',
+    'cupy_concatenate'
+)
+
 
 # -----------------------------------------------------------------------------
 # Binary operations
