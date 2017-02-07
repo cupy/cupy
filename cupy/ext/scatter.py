@@ -12,6 +12,9 @@ def scatter_add(a, slices, value):
     Note that just like an array indexing, negative indices are interpreted as
     counting from the end of an array.
 
+    Also note that :func:`scatter_add` behaves identically
+    to :func:`numpy.add.at`.
+
     Example
     -------
     >>> import numpy
@@ -26,20 +29,23 @@ def scatter_add(a, slices, value):
     Args:
         a (ndarray): An array that gets added.
         slices: It is integer, slices, ellipsis, numpy.newaxis,
-            integer array-like or tuple of them.
+            integer array-like, boolean array-like or tuple of them.
             It works for slices used for
             :func:`cupy.ndarray.__getitem__` and
             :func:`cupy.ndarray.__setitem__`.
         v (array-like): Values to increment ``a`` at referenced locations.
 
     .. note::
-        It only supports types that are supported by CUDA's atomicAdd.
+        It only supports types that are supported by CUDA's atomicAdd when
+        an integer array is included in ``slices``.
         The supported types are ``numpy.float32``, ``numpy.int32``,
         ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
 
     .. note::
         :func:`scatter_add` does not raise an error when indices exceed size of
         axes. Instead, it wraps indices.
+
+    .. seealso:: :func:`numpy.add.at`.
 
     """
     a.scatter_add(slices, value)

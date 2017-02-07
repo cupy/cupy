@@ -163,7 +163,7 @@ class BatchNormalizationFunction(function.Function):
                 var += self.eps
             else:
                 mean = self.fixed_mean
-                var = self.fixed_var
+                var = self.fixed_var + self.eps
             self.std = xp.sqrt(var, dtype=var.dtype)
             if xp is numpy:
                 self.x_hat = _xhat(x, mean, self.std, expander)
@@ -310,7 +310,7 @@ def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
 
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
-          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
+          Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`_
 
     .. seealso:: :class:`links.BatchNormalization`
 

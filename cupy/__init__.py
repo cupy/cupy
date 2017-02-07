@@ -319,6 +319,7 @@ from cupy.math.rounding import floor  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
 
+from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 
@@ -454,7 +455,7 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
-        return _cupy
-    else:
-        return numpy
+    for arg in args:
+        if isinstance(arg, ndarray):
+            return _cupy
+    return numpy

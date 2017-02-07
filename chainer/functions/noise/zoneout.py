@@ -50,7 +50,7 @@ def zoneout(h, x, ratio=.5, train=True):
         ~chainer.Variable: Output variable.
 
     See the paper: `Zoneout: Regularizing RNNs by Randomly Preserving Hidden \
-    Activations <http://arxiv.org/abs/1606.01305>`_.
+    Activations <https://arxiv.org/abs/1606.01305>`_.
 
     """
     if train:
