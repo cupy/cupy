@@ -39,9 +39,6 @@ Profiler
 .. autofunction:: cupy.cuda.profiler.initialize
 .. autofunction:: cupy.cuda.profiler.start
 .. autofunction:: cupy.cuda.profiler.stop
-.. autofunction:: cupy.cuda.TimeRangeDecorator
-.. autofunction:: cupy.cuda.timerange
-.. autofunction:: cupy.cuda.timerangeC
 .. autofunction:: cupy.cuda.nvtx.Mark
 .. autofunction:: cupy.cuda.nvtx.MarkC
 .. autofunction:: cupy.cuda.nvtx.RangePush
