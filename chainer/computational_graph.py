@@ -155,11 +155,14 @@ class ComputationalGraph(object):
 
 
 def _skip_variable(nodes, edges):
+    func_edges = []
     for edge_i, edge in enumerate(edges):
         head, tail = edge
         if isinstance(head, variable.Variable):
             if head.creator is not None:
                 head = head.creator
+            else:
+                continue
         if isinstance(tail, variable.Variable):
             for node in nodes:
                 if isinstance(node, function.Function):
@@ -169,8 +172,10 @@ def _skip_variable(nodes, edges):
                             break
                     if isinstance(tail, function.Function):
                         break
-        edges[edge_i] = head, tail
-    return nodes, edges
+            else:
+                continue
+        func_edges.append((head, tail))
+    return nodes, func_edges
 
 
 def build_computational_graph(
