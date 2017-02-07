@@ -1,4 +1,5 @@
 import numpy
+
 import cupy
 
 from chainer import cuda
@@ -14,18 +15,14 @@ def _iterable(x):
 
 
 def _prefix_statistics(prefix, stats):
-
     """Prefix all keys in a statistic dictionary."""
-
     for key in list(stats.keys()):
         stats['{}/{}'.format(prefix, key)] = stats.pop(key)
     return stats
 
 
 def _statistic_key(link, param_names, attr_names):
-
     """Generate a statistic dictionary key based on context."""
-
     param_names = _iterable(param_names)
     attr_names = _iterable(attr_names)
 
@@ -37,9 +34,7 @@ def _statistic_key(link, param_names, attr_names):
 
 
 def _flatten_link(link, param_names, attr_names):
-
     """Flatten a link into an array."""
-
     param_names = _iterable(param_names)
     attr_names = _iterable(attr_names)
 
@@ -55,7 +50,6 @@ def _flatten_link(link, param_names, attr_names):
 
 
 def _statistics(x, functions):
-
     """Compute statisticts for the given array.
 
     Args:
@@ -66,7 +60,6 @@ def _statistics(x, functions):
     Returns:
         dict: Mappings from functions keys to statistic values.
     """
-
     stats = {}
     for f in functions:
         try:
@@ -77,7 +70,6 @@ def _statistics(x, functions):
 
 
 def _percentiles(x, sigmas):
-
     """Compute percentiles for the given array.
 
     Args:
@@ -88,7 +80,6 @@ def _percentiles(x, sigmas):
         array: List of percentiles. The list has the same length as the given
             ``sigma``.
     """
-
     def _percentiles_cpu(_x):
         try:
             return numpy.percentile(_x, sigmas)
@@ -111,16 +102,14 @@ def _sparsity(x):
     Returns:
         int: Number of zeros.
     """
-
     if x.ndim == 0:
         raise ValueError(
-                'Cannot compute sparsity for shape {}'.format(x.shape))
+            'Cannot compute sparsity for shape {}'.format(x.shape))
 
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
 
 class ParameterStatistics(extension.Extension):
-
     """Trainer extension to report parameter statistics.
 
     The statistics are collected for a given `~chainer.Link` or an iterable of
@@ -149,7 +138,6 @@ class ParameterStatistics(extension.Extension):
             weights. Does nothing if ``sparsity`` is ``False``.
         prefix (str): Prefix to prepend to the report keys.
     """
-
     default_name = 'parameter_statistics'
     priority = extension.PRIORITY_WRITER
 
@@ -177,9 +165,9 @@ class ParameterStatistics(extension.Extension):
         self._percentile_sigmas = (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)
 
     def __call__(self, trainer):
+        """Execute the statistics extension.
 
-        """Execute the extension and collect statistics for the current state
-        of parameters.
+        Collect statistics for the current state of parameters.
 
         Note that this method will merely update its statistic summary, unless
         the internal trigger is fired. If the trigger is fired, the summary
@@ -189,7 +177,6 @@ class ParameterStatistics(extension.Extension):
             trainer (~chainer.training.Trainer): Associated trainer that
                 invoked this extension.
         """
-
         for link in self._links:
             for target in self._targets:
                 stats = self.get_statistics(link, *target)
@@ -206,11 +193,7 @@ class ParameterStatistics(extension.Extension):
             self._summary = reporter.DictSummary()  # Clear summary
 
     def post_process(self, stats):
-
-        """Handle any post processing of the data before adding them to the
-        summary.
-        """
-
+        """Post processing of the data before adding them to the summary."""
         if self._prefix is not None:
             _prefix_statistics(self._prefix, stats)
 
