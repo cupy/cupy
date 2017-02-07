@@ -74,6 +74,9 @@ class ComputationalGraph(object):
             rankdir (str): Direction of the graph that must be
                 TB (top to bottom), BT (bottom to top), LR (left to right)
                 or RL (right to left).
+            remove_variable (bool): If `True`, :class:`~chainer.Variable`s are
+                removed from the resulting computational graph. Only
+                :class:`~chainer.Function`s are shown in the output.
 
         """
         self.nodes = nodes
@@ -124,10 +127,6 @@ class ComputationalGraph(object):
                 else:
                     head_attr = self.function_style
                     tail_attr = self.function_style
-            if self.remove_variable:
-                if isinstance(head, variable.Variable) \
-                        or isinstance(tail, variable.Variable):
-                    continue
             head_node = DotNode(head, head_attr)
             tail_node = DotNode(tail, tail_attr)
             edge = (head_node.id_, tail_node.id_)
@@ -165,7 +164,7 @@ def _skip_variable(nodes, edges):
             for node in nodes:
                 if isinstance(node, function.Function):
                     for input_var in node.inputs:
-                        if id(input_var) == id(tail):
+                        if input_var is tail:
                             tail = node
                             break
                     if isinstance(tail, function.Function):
@@ -191,8 +190,9 @@ def build_computational_graph(
         rankdir (str): Direction of the graph that must be
             TB (top to bottom), BT (bottom to top), LR (left to right)
             or RL (right to left).
-        remove_variable (bool): If it't `True`, :class:`~chainer.Variable`s
-            are removed from the resulting computational graph.
+        remove_variable (bool): If `True`, :class:`~chainer.Variable`s are
+            removed from the resulting computational graph. Only
+            :class:`~chainer.Function`s are shown in the output.
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
