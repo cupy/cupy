@@ -2020,7 +2020,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         skip = (slice(None),) * axis
         i = 0
         for a in tup:
-            aw = a.shape[axis]
+            aw = a._shape[axis]
             ret[skip + (slice(i, i + aw),)] = a
             i += aw
 
