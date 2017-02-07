@@ -15,7 +15,7 @@ except ImportError:
            '--no-cache-dir -vvvv`.\n\n'
            'original error: {}'.format(exc_info[1]))
 
-    raise six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
+    six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
 
 from cupy import binary  # NOQA
 from cupy import creation  # NOQA
