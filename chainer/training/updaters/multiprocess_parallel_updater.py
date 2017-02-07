@@ -1,6 +1,5 @@
 import copy
 import multiprocessing
-# from pathos.helpers import mp as multiprocessing
 
 import six
 
@@ -15,9 +14,6 @@ from chainer.training.updater import StandardUpdater, _calc_loss
 
 import os
 
-## To enforce spawn on Linux
-#import multiprocess.context as ctx
-#ctx._force_start_method('spawn')
 
 class _Worker(multiprocessing.Process):
     def __init__(self, proc_id, pipe, master):

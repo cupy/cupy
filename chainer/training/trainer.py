@@ -296,11 +296,6 @@ class Trainer(object):
                     for name, entry in extensions:
                         if entry.trigger(self):
                             entry.extension(self)
-        except Exception as e:
-            print(e)
-            import sys
-            import traceback
-            traceback.print_tb(sys.exc_info[2])
         finally:
             for _, entry in extensions:
                 finalize = getattr(entry.extension, 'finalize', None)
