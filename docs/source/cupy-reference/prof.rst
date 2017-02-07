@@ -5,5 +5,5 @@ time range
 ----------
 
 .. autofunction:: cupy.prof.TimeRangeDecorator
-.. autofunction:: cupy.prof.timerange
-.. autofunction:: cupy.prof.timerangeC
+.. autofunction:: cupy.prof.time_range
+.. autofunction:: cupy.prof.time_rangeC

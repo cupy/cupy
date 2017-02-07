@@ -1,3 +1,3 @@
-from cupy.prof.timerange import timerange  # NOQA
-from cupy.prof.timerange import timerangeC  # NOQA
-from cupy.prof.timerange import TimeRangeDecorator  # NOQA
+from cupy.prof.time_range import time_range  # NOQA
+from cupy.prof.time_range import time_rangeC  # NOQA
+from cupy.prof.time_range import TimeRangeDecorator  # NOQA

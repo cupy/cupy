@@ -5,10 +5,10 @@ from cupy.cuda import nvtx  # NOQA
 
 
 @contextlib.contextmanager
-def timerange(message, id_color=-1):
+def time_range(message, id_color=-1):
     """A context manager to describe the enclosed block as a nested range
 
-    >>> with cupy.prof.timerange('some range in green', 0):
+    >>> with cupy.prof.time_range('some range in green', 0):
     ...    # do something you want to measure
     ...    pass
 
@@ -27,10 +27,10 @@ def timerange(message, id_color=-1):
 
 
 @contextlib.contextmanager
-def timerangeC(message, color=0):
+def time_rangeC(message, color=0):
     """A context manager to describe the enclosed block as a nested range
 
-    >>> with cupy.prof.timerangeC('some range in green', 0xFF00FF00):
+    >>> with cupy.prof.time_rangeC('some range in green', 0xFF00FF00):
     ...    # do something you want to measure
     ...    pass
 
