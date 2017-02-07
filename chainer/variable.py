@@ -353,7 +353,11 @@ Actual: {0}'''.format(type(data))
             return
         initial_device = None
         if cuda.available:
-            initial_device = cuda.Device()
+            try:
+                initial_device = cuda.Device()
+            except cuda.cupy.cuda.runtime.CUDARuntimeError as e:
+                if e.status != 38:  # cudaErrorNoDevice
+                    raise
 
         is_debug = chainer.is_debug()
 
