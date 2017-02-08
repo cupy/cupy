@@ -18,16 +18,15 @@ class AxisConcatenator(object):
 
     """
 
-    def _output_obj(self, newobj, tempobj, ndmin, trans1d):
-        k2 = ndmin - tempobj.ndim
-        if (trans1d < 0):
+    def _output_obj(self, obj, ndim, ndmin, trans1d):
+        k2 = ndmin - ndim
+        if trans1d < 0:
             trans1d += k2 + 1
         defaxes = list(six.moves.range(ndmin))
         k1 = trans1d
         axes = defaxes[:k1] + defaxes[k2:] + \
             defaxes[k1:k2]
-        newobj = newobj.transpose(axes)
-        return newobj
+        return obj.transpose(axes)
 
     def __init__(self, axis=0, matrix=False, ndmin=1, trans1d=-1):
         self.axis = axis
@@ -47,33 +46,26 @@ class AxisConcatenator(object):
         if not isinstance(key, tuple):
             key = (key,)
 
-        for k in six.moves.range(len(key)):
+        for i, k in enumerate(key):
             scalar = False
-            if isinstance(key[k], slice):
+            if isinstance(k, slice):
                 raise NotImplementedError
-            elif isinstance(key[k], six.string_types):
-                if k != 0:
+            elif isinstance(k, six.string_types):
+                if i != 0:
                     raise ValueError(
                         'special directives must be the first entry.')
                 raise NotImplementedError
-            elif type(key[k]) in numpy.ScalarType:
-                newobj = cupy.array(key[k], ndmin=ndmin)
-                scalars.append(k)
+            elif type(k) in numpy.ScalarType:
+                newobj = cupy.array(k, ndmin=ndmin)
+                scalars.append(i)
                 scalar = True
                 scalartypes.append(newobj.dtype)
             else:
-                newobj = key[k]
-                tempobj = cupy.array(newobj, copy=False)
-                newobj = cupy.array(newobj, copy=False, ndmin=ndmin)
+                newobj = cupy.array(k, copy=False, ndmin=ndmin)
                 if ndmin > 1:
-                    if trans1d != -1 and tempobj.ndim < ndmin:
-                        newobj = self._output_obj(newobj, ndmin, trans1d)
-                    del tempobj
-                elif ndmin == 1:
-                    if tempobj.ndim < ndmin:
-                        newobj = self._output_obj(
-                            newobj, tempobj, ndmin, trans1d)
-                    del tempobj
+                    ndim = cupy.array(k, copy=False).ndim
+                    if trans1d != -1 and ndim < ndmin:
+                        newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
 
             objs.append(newobj)
             if not scalar and isinstance(newobj, cupy.ndarray):
@@ -93,7 +85,7 @@ class AxisConcatenator(object):
 class CClass(AxisConcatenator):
 
     def __init__(self):
-        AxisConcatenator.__init__(self, -1, ndmin=2, trans1d=0)
+        super(CClass, self).__init__(self, -1, ndmin=2, trans1d=0)
 
 c_ = CClass()
 """Translates slice objects to concatenation along the second axis.
@@ -128,7 +120,7 @@ array([[1, 2, 3, 0, 0, 4, 5, 6]])
 class RClass(AxisConcatenator):
 
     def __init__(self):
-        AxisConcatenator.__init__(self)
+        super(RClass, self).__init__(self)
 
 r_ = RClass()
 """Translates slice objects to concatenation along the first axis.
