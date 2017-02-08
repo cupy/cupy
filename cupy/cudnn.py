@@ -104,7 +104,6 @@ def create_tensor_nd_descriptor(arr):
     data_type = get_data_type(arr.dtype)
     shape = arr.shape
     key = (data_type, shape)
-    getattr(_thread_local, 'default_backprop', True)
     cache = _get_nd_tensor_cache()
     if key in cache:
         return cache[key]
