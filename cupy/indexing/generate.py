@@ -13,8 +13,8 @@ import six
 class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
 
-    For detailed documentation on usage, see `r_`.
-    This implementation is partially borrowed from NumPy's one
+    For detailed documentation on usage, see :func:`r_`.
+    This implementation is partially borrowed from NumPy's one.
 
     """
 
@@ -103,9 +103,9 @@ useful because of its common occurrence. In particular, arrays will be
 stacked along their last axis after being upgraded to at least 2-D with
 1's post-pended to the shape (column vectors made out of 1-D arrays).
 
-For detailed documentation, see `r_`.
+For detailed documentation, see :func:`r_`.
 
-This implementation is partially borrowed from NumPy's one
+This implementation is partially borrowed from NumPy's one.
 
 Args:
     Not a function, so takes no parameters
@@ -143,7 +143,7 @@ or using imaginary numbers like [1,2,3j],
 or using string integers like '-1') are not implemented yet
 compared with NumPy.
 
-This implementation is partially borrowed from NumPy's one
+This implementation is partially borrowed from NumPy's one.
 
 Args:
     Not a function, so takes no parameters
