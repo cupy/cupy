@@ -1911,7 +1911,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         src[...] = a_cpu
         stream = cuda.Stream.null
         a.set(src, stream)
-        pinned_memory._add_to_watch_lsit(stream.record(), mem)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
 
 

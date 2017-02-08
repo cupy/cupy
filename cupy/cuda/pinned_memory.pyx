@@ -174,7 +174,7 @@ cdef object _current_allocator = _malloc
 cdef _EventWatcher _watcher = _EventWatcher()
 
 
-cpdef _add_to_watch_lsit(event, obj):
+cpdef _add_to_watch_list(event, obj):
     """ Add event to be monitored.
 
     The ``obj`` are automatically released when the event done.
