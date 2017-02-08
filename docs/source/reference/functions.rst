@@ -123,6 +123,14 @@ flatten
 ~~~~~~~
 .. autofunction:: flatten
 
+fliplr
+~~~~~~
+.. autofunction:: fliplr
+
+flipud
+~~~~~~
+.. autofunction:: flipud
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
