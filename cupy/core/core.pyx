@@ -2121,6 +2121,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
                 ndim = tup[0].ndim
                 x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
                 cum_sizes = numpy.ndarray(len(tup), numpy.int32)
+                cum = 0
                 for i, a in enumerate(tup):
                     for j in range(ndim):
                         x_strides[i, j] = a._strides[j]
