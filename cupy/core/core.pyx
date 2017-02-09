@@ -13,6 +13,7 @@ from cupy import util
 
 cimport cpython
 cimport cython
+from libc cimport stdint
 from libcpp cimport vector
 
 from cupy.core cimport internal
@@ -2089,8 +2090,11 @@ cpdef ndarray concatenate_method(tup, int axis):
 
 cpdef ndarray concatenate(tup, axis, shape, dtype):
     cdef ndarray a, x, ret
-    cdef int i, base, cum
+    cdef int i, j, base, cum, ndim
     cdef bint all_same_type, all_one_and_contiguous
+    cdef Py_ssize_t[:] ptrs
+    cdef stdint.int32_t[:] cum_sizes
+    cdef stdint.int32_t[:, :] x_strides
 
     ret = ndarray(shape, dtype=dtype)
 
@@ -2105,21 +2109,28 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
                 a._shape[axis] == 1)
 
         if all_same_type:
-            x = array([a.data.ptr for a in tup])
+            ptrs = numpy.ndarray(len(tup), numpy.int64)
+            for i, a in enumerate(tup):
+                ptrs[i] = a.data.ptr
+            x = array(ptrs)
+
             if all_one_and_contiguous:
                 base = internal.prod_ssize_t(shape[axis + 1:])
                 _concatenate_kernel_one(x, base, ret)
             else:
-                x_strides = array([a.strides for a in tup], 'i')
+                ndim = tup[0].ndim
+                x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
+                cum_sizes = numpy.ndarray(len(tup), numpy.int32)
                 cum = 0
-                cum_sizes = numpy.empty(len(tup), 'i')
                 for i, a in enumerate(tup):
+                    for j in range(ndim):
+                        x_strides[i, j] = a._strides[j]
                     cum_sizes[i] = cum
                     cum += a._shape[axis]
-                cum_sizes = array(cum_sizes)
 
                 _concatenate_kernel(
-                    x, axis, len(shape), cum_sizes, x_strides, ret)
+                    x, axis, len(shape), array(cum_sizes), array(x_strides),
+                    ret)
             return ret
 
     skip = (slice(None),) * axis
