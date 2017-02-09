@@ -2094,37 +2094,40 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
 
     ret = ndarray(shape, dtype=dtype)
 
-    all_same_type = True
-    all_one_and_contiguous = True
-    dtype = tup[0].dtype
-    for a in tup:
-        all_same_type = all_same_type and (a.dtype == dtype)
-        all_one_and_contiguous = (
-            all_one_and_contiguous and a._c_contiguous and a._shape[axis] == 1)
-
-    if all_same_type:
-        x = array([a.data.ptr for a in tup])
-        if all_one_and_contiguous:
-            base = internal.prod_ssize_t(shape[axis + 1:])
-            _concatenate_kernel_one(x, base, ret)
-        else:
-            x_strides = array([a.strides for a in tup], 'i')
-            cum = 0
-            cum_sizes = numpy.empty(len(tup), 'i')
-            for i, a in enumerate(tup):
-                cum_sizes[i] = cum
-                cum += a._shape[axis]
-            cum_sizes = array(cum_sizes)
-
-            _concatenate_kernel(
-                x, axis, len(shape), cum_sizes, x_strides, ret)
-    else:
-        skip = (slice(None),) * axis
-        i = 0
+    if len(tup) > 3:
+        all_same_type = True
+        all_one_and_contiguous = True
+        dtype = tup[0].dtype
         for a in tup:
-            aw = a._shape[axis]
-            ret[skip + (slice(i, i + aw),)] = a
-            i += aw
+            all_same_type = all_same_type and (a.dtype == dtype)
+            all_one_and_contiguous = (
+                all_one_and_contiguous and a._c_contiguous and
+                a._shape[axis] == 1)
+
+        if all_same_type:
+            x = array([a.data.ptr for a in tup])
+            if all_one_and_contiguous:
+                base = internal.prod_ssize_t(shape[axis + 1:])
+                _concatenate_kernel_one(x, base, ret)
+            else:
+                x_strides = array([a.strides for a in tup], 'i')
+                cum = 0
+                cum_sizes = numpy.empty(len(tup), 'i')
+                for i, a in enumerate(tup):
+                    cum_sizes[i] = cum
+                    cum += a._shape[axis]
+                cum_sizes = array(cum_sizes)
+
+                _concatenate_kernel(
+                    x, axis, len(shape), cum_sizes, x_strides, ret)
+            return ret
+
+    skip = (slice(None),) * axis
+    i = 0
+    for a in tup:
+        aw = a._shape[axis]
+        ret[skip + (slice(i, i + aw),)] = a
+        i += aw
 
     return ret
 
