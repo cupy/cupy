@@ -18,8 +18,8 @@ ext_modules = cupy_setup_build.get_ext_modules()
 
 setup(
     name='cupy',
-    version='1.0.0',
-    description=('CuPy: NumPy-like API accelerated with CUDA'),
+    version='0.0.1',
+    description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://cupy-ndarray.org/',
