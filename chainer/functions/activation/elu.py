@@ -63,12 +63,12 @@ def elu(x, alpha=1.0):
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Input variable. A :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
         alpha (float): Parameter :math:`\\alpha`. Default is 1.0.
 
     Returns:
         ~chainer.Variable: Output variable. A
-        :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+        :math:`(s_1, s_2, ..., s_N)`-shaped float array.
 
     .. admonition:: Example
 
