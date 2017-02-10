@@ -125,7 +125,7 @@ def broadcast_to(x, shape):
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
             Input variable be broadcasted. A \
-            :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+            :math:`(s_1, s_2, ..., s_N)`-shaped float array.
         shape (tuple): Tuple of :class:`int` of the shape of the \
             output variable.
 
