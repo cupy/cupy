@@ -53,6 +53,21 @@ class TestEmbedID(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
+    @attr.gpu
+    def test_forward_mixed_cpu_gpu_1(self):
+        # self.link is not sent to gpu
+        with self.assertRaisesRegexp(ValueError, "numpy and cupy must not\
+                                                      be used together.*"):
+            self.check_forward(cuda.to_gpu(self.x))
+
+    @attr.gpu
+    def test_forward_mixed_cpu_gpu_2(self):
+        self.link.to_gpu()
+        with self.assertRaisesRegexp(ValueError, "numpy and cupy must not\
+                                                      be used together.*"):
+            # self.x is not sent to gpu
+            self.check_forward(self.x)
+
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             self.link, x_data, y_grad, self.link.W)
