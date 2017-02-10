@@ -62,20 +62,21 @@ def tanh(x, use_cudnn=True):
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Input variable. A :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
             uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable. A
-        :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+        :math:`(s_1, s_2, ..., s_N)`-shaped float array.
 
     .. admonition:: Example
 
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> y = F.tanh(x)
-        >>> y.shape
-        (3, 4)
+        >>> x = np.arange(-1, 4, 2).astype('f')
+        >>> x
+        array([-1.,  1.,  3.], dtype=float32)
+        >>> F.tanh(x).data
+        array([-0.76159418,  0.76159418,  0.99505478], dtype=float32)
 
     """
     return Tanh(use_cudnn)(x)
