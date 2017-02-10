@@ -57,13 +57,13 @@ def crelu(x, axis=1):
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Input variable. A :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
         axis (int): Axis that the output values are concatenated along.
             Default is 1.
 
     Returns:
         ~chainer.Variable: Output variable of concatenated array.
-        If the axis is 1, A :math:`(s_1, s_2 \\times 2, ..., s_n)`-shaped float
+        If the axis is 1, A :math:`(s_1, s_2 \\times 2, ..., s_N)`-shaped float
         array.
 
     .. admonition:: Example
