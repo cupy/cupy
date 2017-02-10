@@ -13,7 +13,6 @@ from cupy import util
 
 cimport cpython
 cimport cython
-from libc cimport stdint
 from libcpp cimport vector
 
 from cupy.core cimport internal
@@ -2093,8 +2092,8 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     cdef int i, j, base, cum, ndim
     cdef bint all_same_type, all_one_and_contiguous
     cdef Py_ssize_t[:] ptrs
-    cdef stdint.int32_t[:] cum_sizes
-    cdef stdint.int32_t[:, :] x_strides
+    cdef int[:] cum_sizes
+    cdef int[:, :] x_strides
 
     ret = ndarray(shape, dtype=dtype)
 
