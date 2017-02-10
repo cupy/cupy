@@ -303,7 +303,7 @@ Backprop Through Time is implemented as follows.
        loss = 0
        for i in range(35):
            batch = train_iter.__next__()
-           x, t = chainer.dataset.concat_example(batch)
+           x, t = chainer.dataset.concat_examples(batch)
            loss += model(chainer.Variable(x), chainer.Variable(t))
 
        model.cleargrads()

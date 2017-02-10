@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import core
 from cupy import cuda
@@ -30,14 +32,26 @@ class TestElementwise(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check_copy(dtype, 0, 1)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_copy_zero_sized_array1(self, xp, dtype):
+    def test_copy_zero_sized_array1(self, xp, dtype, order):
         src = xp.empty((0,), dtype=dtype)
-        return xp.copy(src)
+        return xp.copy(src, order=order)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_copy_zero_sized_array2(self, xp, dtype):
+    def test_copy_zero_sized_array2(self, xp, dtype, order):
         src = xp.empty((1, 0, 2), dtype=dtype)
-        return xp.copy(src)
+        return xp.copy(src, order=order)
+
+    @testing.for_CF_orders()
+    def test_copy_orders(self, order):
+        a = cupy.empty((2, 3, 4))
+        b = cupy.copy(a, order)
+
+        a_cpu = numpy.empty((2, 3, 4))
+        b_cpu = numpy.copy(a_cpu, order)
+
+        self.assertEqual(b.strides, b_cpu.strides)

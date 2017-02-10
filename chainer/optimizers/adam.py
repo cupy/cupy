@@ -10,7 +10,7 @@ class Adam(optimizer.GradientMethod):
 
     """Adam optimization algorithm.
 
-    See: http://arxiv.org/abs/1412.6980v8
+    See: https://arxiv.org/abs/1412.6980v8
 
     """
 

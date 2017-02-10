@@ -414,6 +414,14 @@ cublasStatus_t cublasSgemmEx(...) {
 
 
 // BLAS extension
+cublasStatus_t cublasSgeam(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDgeam(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSdgmm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }

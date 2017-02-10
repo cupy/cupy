@@ -73,6 +73,17 @@ cdef extern from "cupy_cudnn.h":
         int* filterStrideA, int* upscaleA, ConvolutionMode mode,
         DataType dataType) nogil
     int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) nogil
+    int cudnnFindConvolutionForwardAlgorithm(
+        Handle handle, TensorDescriptor xDesc, FilterDescriptor wDesc,
+        ConvolutionDescriptor convDesc, TensorDescriptor yDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionFwdAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionForwardAlgorithmEx(
+        Handle handle, TensorDescriptor xDesc, void* x,
+        FilterDescriptor wDesc, void* w, ConvolutionDescriptor convDesc,
+        TensorDescriptor yDesc, void* y, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionFwdAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
@@ -93,6 +104,17 @@ cdef extern from "cupy_cudnn.h":
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
         TensorDescriptor destDesc, void* destData) nogil
+    int cudnnFindConvolutionBackwardFilterAlgorithm(
+        Handle handle, TensorDescriptor xDesc, TensorDescriptor dyDesc,
+        ConvolutionDescriptor convDesc, FilterDescriptor dwDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionBwdFilterAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionBackwardFilterAlgorithmEx(
+        Handle handle, TensorDescriptor xDesc, void* x,
+        TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
+        FilterDescriptor dwDesc, void* dw, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionBwdFilterAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionBackwardFilterAlgorithm(
         Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
@@ -121,6 +143,17 @@ cdef extern from "cupy_cudnn.h":
         ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
         ConvolutionBwdDataPreference preference,
         size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo) nogil
+    int cudnnFindConvolutionBackwardDataAlgorithm(
+        Handle handle, TensorDescriptor wDesc, TensorDescriptor dyDesc,
+        ConvolutionDescriptor convDesc, FilterDescriptor dxDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionBwdDataAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionBackwardDataAlgorithmEx(
+        Handle handle, FilterDescriptor wDesc, void* w,
+        TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
+        TensorDescriptor dxDesc, void* dx, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionBwdDataAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionBackwardDataWorkspaceSize(
         Handle handle, FilterDescriptor filterDesc,
         TensorDescriptor diffDesc,
@@ -511,6 +544,36 @@ cpdef destroyConvolutionDescriptor(size_t convDesc):
         <ConvolutionDescriptor>convDesc)
     check_status(status)
 
+cpdef findConvolutionForwardAlgorithm(
+        size_t handle, size_t xDesc, size_t wDesc, size_t convDesc,
+        size_t yDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionFwdAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionForwardAlgorithm(
+        <Handle> handle, <TensorDescriptor>xDesc, <FilterDescriptor>wDesc,
+        <ConvolutionDescriptor>convDesc, <TensorDescriptor>yDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionForwardAlgorithmEx(
+        size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
+        size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionFwdAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionForwardAlgorithmEx(
+        <Handle> handle, <TensorDescriptor>xDesc, <void*>x,
+        <FilterDescriptor>wDesc, <void*>w, <ConvolutionDescriptor>convDesc,
+        <TensorDescriptor>yDesc, <void*>y, requestedAlgoCount,
+        &returnedAlgoCount[0], &perfResults[0], <void*>workSpace,
+        workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
@@ -563,6 +626,37 @@ cpdef convolutionBackwardBias(
             <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
             <TensorDescriptor>destDesc, <void*>destData)
     check_status(status)
+
+cpdef findConvolutionBackwardFilterAlgorithm(
+        size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc,
+        size_t dwDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionBwdFilterAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardFilterAlgorithm(
+        <Handle> handle, <TensorDescriptor>xDesc, <TensorDescriptor>dyDesc,
+        <ConvolutionDescriptor>convDesc, <FilterDescriptor>dwDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionBackwardFilterAlgorithmEx(
+        size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
+        size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionBwdFilterAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardFilterAlgorithmEx(
+        <Handle> handle, <TensorDescriptor>xDesc, <void*>x,
+        <TensorDescriptor>dyDesc, <void*>dy, <ConvolutionDescriptor>convDesc,
+        <FilterDescriptor>dwDesc, <void*>dw,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0],
+        <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionBackwardFilterAlgorithm(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
@@ -617,6 +711,37 @@ cpdef convolutionBackwardFilter_v3(
             <void*>workSpace, workSpaceSizeInBytes, <void*>beta,
             <FilterDescriptor>gradDesc, <void*>gradData)
     check_status(status)
+
+cpdef findConvolutionBackwardDataAlgorithm(
+        size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc,
+        size_t dxDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionBwdDataAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardDataAlgorithm(
+        <Handle> handle, <FilterDescriptor>wDesc, <TensorDescriptor>dyDesc,
+        <ConvolutionDescriptor>convDesc, <TensorDescriptor>dxDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionBackwardDataAlgorithmEx(
+        size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
+        size_t convDesc, size_t dxDesc, size_t dx,
+        int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionBwdDataAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardDataAlgorithmEx(
+        <Handle> handle, <FilterDescriptor>wDesc, <void*>w,
+        <TensorDescriptor>dyDesc, <void*>dy, <ConvolutionDescriptor>convDesc,
+        <TensorDescriptor>dxDesc, <void*>dx,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0],
+        <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionBackwardDataAlgorithm(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
