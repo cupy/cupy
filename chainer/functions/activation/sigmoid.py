@@ -76,10 +76,11 @@ def sigmoid(x, use_cudnn=True):
 
     .. admonition:: Example
 
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> y = F.sigmoid(x)
-        >>> y.shape
-        (3, 4)
+        >>> x = np.arange(-2, 3, 2).astype('f')
+        >>> x
+        array([-2.,  0.,  2.], dtype=float32)
+        >>> F.sigmoid(x).data
+        array([ 0.11920291,  0.5       ,  0.88079709], dtype=float32)
 
     """
     return Sigmoid(use_cudnn)(x)
