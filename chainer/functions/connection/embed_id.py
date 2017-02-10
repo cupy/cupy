@@ -41,7 +41,8 @@ class EmbedIDFunction(function.Function):
             return xp.where(
                 mask[..., None], 0, W.take(xp.where(mask, 0, x), axis=0)),
 
-        if not issubclass(type(W), type(x)):
+        if (issubclass(type(W), numpy.ndarray) !=
+                issubclass(type(x), numpy.ndarray)):
             raise ValueError('numpy and cupy must not be used together\n'
                              'type(W): %s, type(x): %s' % (type(W), type(x)))
 
