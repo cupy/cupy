@@ -36,15 +36,15 @@ class EmbedIDFunction(function.Function):
                 raise ValueError('Each not ignored `x` value need to satisfy'
                                  '`0 <= x < len(W)`')
 
-        if self.ignore_label is not None:
-            mask = (x == self.ignore_label)
-            return xp.where(
-                mask[..., None], 0, W.take(xp.where(mask, 0, x), axis=0)),
-
         if (issubclass(type(W), numpy.ndarray) !=
                 issubclass(type(x), numpy.ndarray)):
             raise ValueError('numpy and cupy must not be used together\n'
                              'type(W): %s, type(x): %s' % (type(W), type(x)))
+
+        if self.ignore_label is not None:
+            mask = (x == self.ignore_label)
+            return xp.where(
+                mask[..., None], 0, W.take(xp.where(mask, 0, x), axis=0)),
 
         return W.take(x, axis=0),
 
