@@ -93,16 +93,20 @@ class TestTanhCudnnCall(unittest.TestCase):
         return functions.tanh(x, use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward(self):
-        with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
+        v3 = 'cupy.cudnn.cudnn.activationForward_v3'
+        v4 = 'cupy.cudnn.cudnn.activationForward_v4'
+        with mock.patch(v3) as func_v3,  mock.patch(v4) as func_v4:
             self.forward()
-            self.assertEqual(func.called, self.expect)
+            self.assertEqual(func_v3.called or func_v4.called, self.expect)
 
     def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
-        with mock.patch('cupy.cudnn.cudnn.activationBackward_v3') as func:
+        v3 = 'cupy.cudnn.cudnn.activationBackward_v3'
+        v4 = 'cupy.cudnn.cudnn.activationBackward_v4'
+        with mock.patch(v3) as func_v3,  mock.patch(v4) as func_v4:
             y.backward()
-            self.assertEqual(func.called, self.expect)
+            self.assertEqual(func_v3.called or func_v4.called, self.expect)
 
 
 testing.run_module(__name__, __file__)

@@ -106,6 +106,9 @@ class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
     def setUp(self):
         self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.t = cuda.cupy.random.randint(0, 3, (4, 3)).astype(numpy.int32)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -114,9 +117,11 @@ class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
 
     def test_call_cudnn_backward(self):
         y = self.forward()
-        with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
+        v3 = 'cupy.cudnn.cudnn.activationBackward_v3'
+        v4 = 'cupy.cudnn.cudnn.activationBackward_v4'
+        with mock.patch(v3) as func_v3,  mock.patch(v4) as func_v4:
             y.backward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func_v3.called or func_v4.called, self.expect)
 
     # Note that SoftmaxCrossEntropy does not use cudnn on backward
 
