@@ -152,7 +152,7 @@ class TestHDF5Deserializer(unittest.TestCase):
             with h5py.File(path, 'r') as f:
                 deserializer = hdf5.HDF5Deserializer(f)
                 ret = deserializer('str', '')
-                self.assertEqual(ret == data, (ret, data))
+                self.assertEqual(ret, data)
 
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
