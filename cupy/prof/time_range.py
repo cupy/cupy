@@ -5,26 +5,30 @@ from cupy.cuda import nvtx  # NOQA
 
 
 @contextlib.contextmanager
-def time_range(message, color=-1, use_ARGB=False):
+def time_range(message, color_id=None, argb_color=None):
     """A context manager to describe the enclosed block as a nested range
 
-    >>> with cupy.prof.time_range('some range in green', 0):
+    >>> with cupy.prof.time_range('some range in green', color_id=0):
     ...    # do something you want to measure
     ...    pass
 
     Args:
         message: Name of a range.
-        color: range color ID (int) or ARGB integer (uint32)
-        use_ARGB: use ARGB color (e.g. 0xFF00FF00 for green) or not,
-            default: ``False``, use color ID
+        color_id: range color ID
+        argb_color: range color in ARGB (e.g. 0xFF00FF00 for green)
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
-    if use_ARGB:
-        nvtx.RangePushC(message, color)
+    if color_id is not None and argb_color is not None:
+        raise ValueError('Only either color_id or argb_color can be specified')
+
+    if argb_color is not None:
+        nvtx.RangePushC(message, argb_color)
     else:
-        nvtx.RangePush(message, color)
+        if color_id is None:
+            color_id = -1
+        nvtx.RangePush(message, color_id)
     try:
         yield
     finally:
@@ -42,25 +46,28 @@ class TimeRangeDecorator(object):
 
     Args:
         message (str): Name of a range, default use ``func.__name__``.
-        color: range color ID (int) or ARGB integer (uint32)
-        use_ARGB: use ARGB color (e.g. 0xFF00FF00 for green) or not,
-            default: ``False``, use color ID
+        color_id: range color ID
+        argb_color: range color in ARGB (e.g. 0xFF00FF00 for green)
 
     .. seealso:: :func:`cupy.nvtx.range`
         :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
 
-    def __init__(self, message=None, color=0, use_ARGB=False):
+    def __init__(self, message=None, color_id=None, argb_color=None):
+        if color_id is not None and argb_color is not None:
+            raise ValueError(
+                'Only either color_id or argb_color can be specified'
+            )
         self.message = message
-        self.color = color
-        self.use_ARGB = use_ARGB
+        self.color_id = color_id if color_id is not None else -1
+        self.argb_color = argb_color
 
     def __enter__(self):
-        if self.use_ARGB:
-            nvtx.RangePushC(self.message, self.color)
+        if self.argb_color is not None:
+            nvtx.RangePushC(self.message, self.argb_color)
         else:
-            nvtx.RangePush(self.message, self.color)
+            nvtx.RangePush(self.message, self.color_id)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

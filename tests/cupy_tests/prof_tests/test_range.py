@@ -11,7 +11,7 @@ class TestTimeRange(unittest.TestCase):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePush')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
         with push_patch as push, pop_patch as pop:
-            with prof.time_range('test:time_range', -1, use_ARGB=False):
+            with prof.time_range('test:time_range', color_id=-1):
                 pass
             push.assert_called_once_with('test:time_range', -1)
             pop.assert_called_once_with()
@@ -21,7 +21,7 @@ class TestTimeRange(unittest.TestCase):
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
         with push_patch as push, pop_patch as pop:
             with prof.time_range('test:time_range_with_ARGB',
-                                 0xFF00FF00, use_ARGB=True):
+                                 argb_color=0xFF00FF00):
                 pass
             push.assert_called_once_with(
                 'test:time_range_with_ARGB', 0xFF00FF00)
@@ -54,7 +54,7 @@ class TestTimeRange(unittest.TestCase):
         push_patch = mock.patch('cupy.cuda.nvtx.RangePushC')
         pop_patch = mock.patch('cupy.cuda.nvtx.RangePop')
         with push_patch as push, pop_patch as pop:
-            @prof.TimeRangeDecorator(color=0xFFFF0000, use_ARGB=True)
+            @prof.TimeRangeDecorator(argb_color=0xFFFF0000)
             def f():
                 pass
             f()
