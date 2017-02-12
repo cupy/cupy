@@ -143,21 +143,33 @@ template <typename T, int ndim>
 class CArray {
 private:
   T* data_;
-  ptrdiff_t size_;
-  ptrdiff_t shape_[ndim];
-  ptrdiff_t strides_[ndim];
+  int size_;
+  int shape_[ndim];
+  int strides_[ndim];
 
 public:
-  __device__ ptrdiff_t size() const {
+  __device__ int size() const {
     return size_;
   }
 
-  __device__ const ptrdiff_t* shape() const {
+  __device__ const int* shape() const {
     return shape_;
   }
 
-  __device__ const ptrdiff_t* strides() const {
+  __device__ const int* strides() const {
     return strides_;
+  }
+
+  __device__ T& operator[](const int* idx) {
+    char* ptr = reinterpret_cast<char*>(data_);
+    for (int dim = 0; dim < ndim; ++dim) {
+      ptr += strides_[dim] * idx[dim];
+    }
+    return *reinterpret_cast<T*>(ptr);
+  }
+
+  __device__ T operator[](const int* idx) const {
+    return (*const_cast<CArray<T, ndim>*>(this))[idx];
   }
 
   __device__ T& operator[](const ptrdiff_t* idx) {
@@ -194,11 +206,19 @@ template <typename T>
 class CArray<T, 0> {
 private:
   T* data_;
-  ptrdiff_t size_;
+  int size_;
 
 public:
-  __device__ ptrdiff_t size() const {
+  __device__ int size() const {
     return size_;
+  }
+
+  __device__ T& operator[](const int* idx) {
+    return *reinterpret_cast<T*>(data_);
+  }
+
+  __device__ T operator[](const int* idx) const {
+    return (*const_cast<CArray<T, 0>*>(this))[idx];
   }
 
   __device__ T& operator[](const ptrdiff_t* idx) {
@@ -221,9 +241,9 @@ public:
 template <int ndim>
 class CIndexer {
 private:
-  ptrdiff_t size_;
-  ptrdiff_t shape_[ndim];
-  ptrdiff_t index_[ndim];
+  int size_;
+  int shape_[ndim];
+  int index_[ndim];
 
 public:
   __device__ ptrdiff_t size() const {
@@ -232,7 +252,7 @@ public:
 
   __device__ void set(ptrdiff_t i) {
     ptrdiff_t a = i;
-    for (ptrdiff_t dim = ndim; --dim > 0; ) {
+    for (int dim = ndim; --dim > 0; ) {
       ptrdiff_t s = shape_[dim];
       index_[dim] = (a % s);
       a /= s;
@@ -242,7 +262,7 @@ public:
     }
   }
 
-  __device__ const ptrdiff_t* get() const {
+  __device__ const int* get() const {
     return index_;
   }
 };
@@ -253,14 +273,14 @@ private:
   ptrdiff_t size_;
 
 public:
-  __device__ ptrdiff_t size() const {
+  __device__ int size() const {
     return size_;
   }
 
   __device__ void set(ptrdiff_t i) {
   }
 
-  __device__ const ptrdiff_t* get() const {
+  __device__ const int* get() const {
     return NULL;
   }
 };
