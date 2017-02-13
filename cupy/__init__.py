@@ -9,11 +9,13 @@ except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
+    exc_info = sys.exc_info()
     msg = ('CuPy is not correctly installed. Please check your environment, '
            'uninstall Chainer and reinstall it with `pip install chainer '
-           '--no-cache-dir -vvvv`.')
-    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
+           '--no-cache-dir -vvvv`.\n\n'
+           'original error: {}'.format(exc_info[1]))
 
+    six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
 
 from cupy import binary  # NOQA
 from cupy import creation  # NOQA
@@ -23,6 +25,7 @@ from cupy import linalg  # NOQA
 from cupy import logic  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import math  # NOQA
+from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
 from cupy import statistics  # NOQA
@@ -131,6 +134,7 @@ from cupy.creation.from_data import copy  # NOQA
 
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
+from cupy.creation.ranges import logspace  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
@@ -174,6 +178,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.rearrange import fliplr  # NOQA
+from cupy.manipulation.rearrange import flipud  # NOQA
 from cupy.manipulation.rearrange import roll  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -233,6 +239,7 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.indexing.generate import ix_  # NOQA
 
+from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 
@@ -314,6 +321,7 @@ from cupy.math.rounding import floor  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
 
+from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 
@@ -359,6 +367,11 @@ from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
 
 # -----------------------------------------------------------------------------
+# Padding
+# -----------------------------------------------------------------------------
+pad = padding.pad.pad
+
+# -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy.sorting.count import count_nonzero  # NOQA
@@ -394,6 +407,8 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
+
+from cupy.ext.scatter import scatter_add  # NOQA
 
 
 def asnumpy(a, stream=None):
@@ -442,7 +457,7 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
-        return _cupy
-    else:
-        return numpy
+    for arg in args:
+        if isinstance(arg, ndarray):
+            return _cupy
+    return numpy

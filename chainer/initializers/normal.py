@@ -73,7 +73,7 @@ class HeNormal(initializer.Initializer):
     :math:`scale \\times \\sqrt{\\frac{2}{fan_{in}}}`,
     where :math:`fan_{in}` is the number of input units.
 
-    Reference:  He et al., http://arxiv.org/abs/1502.01852
+    Reference:  He et al., https://arxiv.org/abs/1502.01852
 
     Args:
         scale (float): A constant that determines the scale

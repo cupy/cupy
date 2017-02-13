@@ -2,6 +2,7 @@
 
 import collections
 import ctypes
+import gc
 import warnings
 import weakref
 
@@ -358,7 +359,13 @@ cdef class SingleDeviceMemoryPool:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 self.free_all_free()
-                mem = self._alloc(size).mem
+                try:
+                    mem = self._alloc(size).mem
+                except runtime.CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    gc.collect()
+                    mem = self._alloc(size).mem
 
         self._in_use[mem.ptr] = mem
         pmem = PooledMemory(mem, self._weakref)

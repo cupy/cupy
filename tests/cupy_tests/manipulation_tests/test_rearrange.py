@@ -4,7 +4,7 @@ from cupy import testing
 
 
 @testing.gpu
-class TestRearrange(unittest.TestCase):
+class TestRoll(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
@@ -67,3 +67,51 @@ class TestRearrange(unittest.TestCase):
     def test_roll_invalid_negative_axis(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, 1, axis=-3)
+
+
+@testing.gpu
+class TestFliplr(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_fliplr_2(self, xp, dtype):
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.fliplr(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_fliplr_3(self, xp, dtype):
+        x = testing.shaped_arange((3, 4, 2), xp, dtype)
+        return xp.fliplr(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_fliplr_insufficient_ndim(self, xp, dtype):
+        x = testing.shaped_arange((3,), xp, dtype)
+        return xp.fliplr(x)
+
+
+@testing.gpu
+class TestFlipud(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_flipud_1(self, xp, dtype):
+        x = testing.shaped_arange((3,), xp, dtype)
+        return xp.flipud(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_flipud_2(self, xp, dtype):
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.flipud(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_flipud_insufficient_ndim(self, xp, dtype):
+        x = testing.shaped_arange((), xp, dtype)
+        return xp.flipud(x)

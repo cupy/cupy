@@ -83,5 +83,18 @@ class TestDropout(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x),
                             cuda.to_gpu(self.gy))
 
+    def check_immutable(self, x_data):
+        d = functions.Dropout(0.5)
+        y1 = d(chainer.Variable(x_data))
+        y2 = d(chainer.Variable(x_data))
+        testing.assert_allclose(y1.data, y2.data)
+
+    def test_immutable_cpu(self):
+        self.check_immutable(self.x)
+
+    @attr.gpu
+    def test_immutable_gpu(self):
+        self.check_immutable(cuda.to_gpu(self.x))
+
 
 testing.run_module(__name__, __file__)

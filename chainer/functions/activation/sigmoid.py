@@ -59,15 +59,27 @@ class Sigmoid(function.Function):
 
 
 def sigmoid(x, use_cudnn=True):
-    """Elementwise sigmoid logistic function :math:`f(x)=(1 + \\exp(-x))^{-1}`.
+    """Element-wise sigmoid logistic function.
+
+     .. math:: f(x)=(1 + \\exp(-x))^{-1}.
 
     Args:
-        x (~chainer.Variable): Input variable.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable. A :math:`(s_1, s_2, ..., s_n)`-shaped float array.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
             uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: Output variable. A
+        :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
+        >>> y = F.sigmoid(x)
+        >>> y.shape
+        (3, 4)
 
     """
     return Sigmoid(use_cudnn)(x)

@@ -73,7 +73,7 @@ cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
     bool: numpy.dtype(bool).type}
 for i in six.integer_types:
-    _python_type_to_numpy_type[i] = numpy.dtype(i).type
+    _python_type_to_numpy_type[i] = numpy.int64
 
 
 cpdef str _get_typename(dtype):
@@ -269,12 +269,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != p.dtype:
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != a:
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -289,12 +289,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
                 unknown_ctype.append(p.ctype)
         else:
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != p.dtype:
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != a:
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -499,6 +499,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
 
         size = kwargs.pop('size', None)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -549,7 +550,8 @@ cdef class ElementwiseKernel:
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        kern.linear_launch(indexer.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=128, stream=stream)
         return ret
 
 

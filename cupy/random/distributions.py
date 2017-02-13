@@ -72,8 +72,9 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     """Returns an array of normally distributed samples.
 
     Args:
-        loc (float): Mean of the normal distribution.
-        scale (float): Standard deviation of the normal distribution.
+        loc (float or array_like of floats): Mean of the normal distribution.
+        scale (float or array_like of floats):
+            Standard deviation of the normal distribution.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
@@ -86,7 +87,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
     """
     rs = generator.get_random_state()
-    return rs.normal(loc, scale, size=size, dtype=dtype)
+    return (rs.normal(0, 1, size, dtype) * scale + loc).astype(dtype)
 
 
 def standard_normal(size=None, dtype=float):

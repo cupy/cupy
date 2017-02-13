@@ -18,7 +18,7 @@ ext_modules = chainer_setup_build.get_ext_modules()
 
 setup(
     name='chainer',
-    version='1.19.0',
+    version='1.20.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -66,6 +66,7 @@ setup(
               'cupy.core',
               'cupy.creation',
               'cupy.cuda',
+              'cupy.ext',
               'cupy.indexing',
               'cupy.io',
               'cupy.linalg',

@@ -24,13 +24,18 @@ class TestPacking(unittest.TestCase):
         return xp.unpackbits(a)
 
     def test_packbits(self):
-        self.check_packbits([])
         self.check_packbits([0])
         self.check_packbits([1])
         self.check_packbits([0, 1])
         self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1])
         self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1, 1])
         self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2)
+
+    @testing.with_requires('numpy>=1.12')
+    def test_packbits_empty(self):
+        # Note packbits of numpy <= 1.11 has a bug against empty arrays.
+        # See https://github.com/numpy/numpy/issues/8324
+        self.check_packbits([])
 
     def test_unpackbits(self):
         self.check_unpackbits([])

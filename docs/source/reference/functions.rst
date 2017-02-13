@@ -123,6 +123,14 @@ flatten
 ~~~~~~~
 .. autofunction:: flatten
 
+fliplr
+~~~~~~
+.. autofunction:: fliplr
+
+flipud
+~~~~~~
+.. autofunction:: flipud
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
@@ -517,6 +525,10 @@ Spatial pooling
 average_pooling_2d
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: average_pooling_2d
+
+average_pooling_nd
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: average_pooling_nd
 
 max_pooling_2d
 ~~~~~~~~~~~~~~

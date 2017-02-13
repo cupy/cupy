@@ -1,4 +1,5 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+# Functions from the following NumPy document
+# http://docs.scipy.org/doc/numpy/reference/routines.padding.html
 
-# TODO(okuta): Implement pad
+# "NOQA" to suppress flake8 warning
+from cupy.padding import pad  # NOQA
