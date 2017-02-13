@@ -11,9 +11,6 @@ from chainer.training import extension
 import chainer.training.trigger as trigger_module
 
 try:
-    import matplotlib
-
-    matplotlib.use('Agg')
     from matplotlib import pyplot as plot
 
     _available = True
@@ -49,6 +46,15 @@ class PlotReport(extension.Extension):
 
     It also adds ``'epoch'`` and ``'iteration'`` entries to each result
     dictionary, which are the epoch and iteration counts at the output.
+
+    If your environment needs to specify a backend of matplotlib explicitly,
+    please call ``matplotlib.use`` before importing Chainer. For example,
+
+    .. code-block:: python
+        import matplotlib
+        matplotlib.use('Agg')
+
+        import chainer
 
     Args:
         y_keys (iterable of strs): Keys of values regarded as y. If this is
