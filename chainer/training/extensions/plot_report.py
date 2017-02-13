@@ -47,14 +47,22 @@ class PlotReport(extension.Extension):
     It also adds ``'epoch'`` and ``'iteration'`` entries to each result
     dictionary, which are the epoch and iteration counts at the output.
 
-    If your environment needs to specify a backend of matplotlib explicitly,
-    please call ``matplotlib.use`` before importing Chainer. For example,
 
-    .. code-block:: python
-        import matplotlib
-        matplotlib.use('Agg')
+    .. warning::
 
-        import chainer
+        If your environment needs to specify a backend of matplotlib
+        explicitly, please call ``matplotlib.use`` before importing Chainer.
+        For example:
+
+        .. code-block:: python
+
+            import matplotlib
+            matplotlib.use('Agg')
+
+            import chainer
+
+        Then, once ``chainer.training.extensions`` is imported,
+        ``matplotlib.use`` will never be available.
 
     Args:
         y_keys (iterable of strs): Keys of values regarded as y. If this is
