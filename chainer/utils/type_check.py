@@ -3,6 +3,7 @@ import operator
 import sys
 import threading
 
+import cupy
 import numpy
 
 from chainer import cuda
@@ -485,6 +486,14 @@ def expect(*bool_exprs):
     for expr in bool_exprs:
         assert isinstance(expr, Testable)
         expr.expect()
+
+
+def same_types(*arrays):
+    are_numpy_arrays = map(lambda x: issubclass(type(x), numpy.ndarray),
+                           [a for a in arrays])
+    are_cupy_arrays = map(lambda x: issubclass(type(x), cupy.ndarray),
+                          [a for a in arrays])
+    return all(are_numpy_arrays) or all(are_cupy_arrays)
 
 
 prod = Variable(numpy.prod, 'prod')

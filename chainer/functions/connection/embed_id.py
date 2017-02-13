@@ -27,6 +27,10 @@ class EmbedIDFunction(function.Function):
     def forward(self, inputs):
         x, W = inputs
 
+        if(not type_check.same_types(*inputs)):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): %s, type(x): %s' % (type(W), type(x)))
+
         xp = cuda.get_array_module(*inputs)
         if chainer.is_debug():
             valid_x = xp.logical_and(0 <= x, x < len(W))
@@ -35,11 +39,6 @@ class EmbedIDFunction(function.Function):
             if not valid_x.all():
                 raise ValueError('Each not ignored `x` value need to satisfy'
                                  '`0 <= x < len(W)`')
-
-        if (issubclass(type(W), numpy.ndarray) !=
-                issubclass(type(x), numpy.ndarray)):
-            raise ValueError('numpy and cupy must not be used together\n'
-                             'type(W): %s, type(x): %s' % (type(W), type(x)))
 
         if self.ignore_label is not None:
             mask = (x == self.ignore_label)
