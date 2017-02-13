@@ -12,7 +12,6 @@ This is the `CuPy <http://cupy-ndarray.org>`_ documentation.
    cupy-reference/index
    contribution
    compatibility
-   tips
    license
 
 
