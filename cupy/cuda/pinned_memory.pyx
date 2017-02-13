@@ -148,10 +148,10 @@ cdef class _EventWatcher:
             event (cupy.cuda.Event): The CUDA event to be monitored.
             obj: The object to be held.
         """
-        self.check_and_release()
-        if event.done:
-            return
         with self.lock:
+            self._check_and_release_without_lock()
+            if event.done:
+                return
             self.events.append((event, obj))
 
     cpdef check_and_release(self):
@@ -161,8 +161,11 @@ cdef class _EventWatcher:
         if len(self.events) == 0:
             return
         with self.lock:
-            while len(self.events) != 0 and self.events[0][0].done:
-                del self.events[0]
+            self._check_and_release_without_lock()
+
+    cpdef _check_and_release_without_lock(self):
+        while len(self.events) != 0 and self.events[0][0].done:
+            del self.events[0]
 
 
 cpdef PinnedMemoryPointer _malloc(Py_ssize_t size):
