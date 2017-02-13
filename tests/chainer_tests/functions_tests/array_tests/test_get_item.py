@@ -90,6 +90,10 @@ class TestGetItem(unittest.TestCase):
          'sliced_shape': (2, 2, 1)},
         {'slices': numpy.array([True] * 18 + [False] * 6).reshape(4, 3, 2),
          'sliced_shape': (18,)},
+        {'slices': numpy.array([True, False, False, True]),
+         'sliced_shape': (2, 3, 2)},
+        {'slices': (slice(None), numpy.array([True, False, True])),
+         'sliced_shape': (4, 2, 2)},
     ],
     [
         {'dtype': numpy.float32},
