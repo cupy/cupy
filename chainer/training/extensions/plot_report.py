@@ -47,7 +47,6 @@ class PlotReport(extension.Extension):
     It also adds ``'epoch'`` and ``'iteration'`` entries to each result
     dictionary, which are the epoch and iteration counts at the output.
 
-
     .. warning::
 
         If your environment needs to specify a backend of matplotlib
