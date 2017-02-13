@@ -1,8 +1,8 @@
 import sys
 import unittest
 
-import numpy
 import cupy
+import numpy
 
 from chainer import testing
 from chainer.utils import type_check as T
