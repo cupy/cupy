@@ -138,7 +138,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     mod = function.Module()
 
     if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
+        os.makedirs(cache_dir, exist_ok=True)
 
     lock_path = os.path.join(cache_dir, 'lock_file.lock')
 
