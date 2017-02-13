@@ -368,13 +368,13 @@ class TestSameTypes(unittest.TestCase):
         z = cupy.array([2])
         self.assertTrue(T.same_types(x, y, z))
 
-    def test_all_numpy_cupy_mixed_1(self):
+    def test_numpy_cupy_mixed_1(self):
         x = numpy.array([0])
         y = cupy.array([1])
         z = numpy.array([2])
         self.assertFalse(T.same_types(x, y, z))
 
-    def test_all_numpy_cupy_mixed_2(self):
+    def test_numpy_cupy_mixed_2(self):
         x = cupy.array([0])
         y = numpy.array([1])
         z = cupy.array([2])
