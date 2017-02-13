@@ -148,8 +148,6 @@ class TestHDF5Deserializer(unittest.TestCase):
 class TestHDF5DeserializerNonStrict(unittest.TestCase):
 
     def setUp(self):
-        self.data = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
