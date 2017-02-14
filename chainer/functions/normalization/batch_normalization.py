@@ -133,9 +133,9 @@ class BatchNormalizationFunction(function.Function):
 
             if self.train:
                 if self.mean_cache is None:
-                    # Output cache to speed up bacward pass.
+                    # Output cache to speed up backward pass.
                     self.mean_cache = xp.empty_like(gamma)
-                    # Output cache to speed up bacward pass.
+                    # Output cache to speed up backward pass.
                     self.var_cache = xp.empty_like(gamma)
                 # Note: cuDNN computes the mini-batch mean and variance
                 # internally. We can simply (optionally) pass
