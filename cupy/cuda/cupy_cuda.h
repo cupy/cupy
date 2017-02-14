@@ -302,6 +302,7 @@ cudaError_t cudaEventSynchronize(...) {
 
 typedef void* cublasHandle_t;
 
+typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
 typedef enum {} cublasSideMode_t;
