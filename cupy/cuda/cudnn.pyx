@@ -359,6 +359,31 @@ cdef extern from "cupy_cudnn.h":
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes) nogil
 
+    # Spatial Transformer
+    int cudnnCreateSpatialTransformerDescriptor(
+        SpatialTransformerDescriptor* stDesc) nogil
+    int cudnnDestroySpatialTransformerDescriptor(
+        SpatialTransformerDescriptor stDesc) nogil
+    int cudnnSetSpatialTransformerNdDescriptor(
+        SpatialTransformerDescriptor stDesc, SamplerType samplerType,
+        DataType dataType, int nbDims, int dimA[]) nogil
+    int cudnnSpatialTfGridGeneratorForward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* theta, void* grid) nogil
+    int cudnnSpatialTfGridGeneratorBackward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* dgrid, void* dtheta) nogil
+    int cudnnSpatialTfSamplerForward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* alpha, TensorDescriptor xDesc, void* x,
+        void* grid, void* beta, TensorDescriptor yDesc, void* y) nogil
+    int cudnnSpatialTfSamplerBackward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* alpha, TensorDescriptor xDesc, void* x, void* beta,
+        TensorDescriptor dxDesc, void* dx, void* alphaDgrid,
+        TensorDescriptor dyDesc, void* dy, void* grid,
+        void* betaDgrid, void* dgrid) nogil
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -1298,4 +1323,71 @@ cpdef RNNBackwardWeights(
             <void*>workspace, workSpaceSizeInBytes,
             <FilterDescriptor>dwDesc, <void*>dw,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+# Spatial Transformer
+
+cpdef size_t createSpatialTransformerDescriptor() except *:
+    cdef SpatialTransformerDescriptor stDesc
+    status = cudnnCreateSpatialTransformerDescriptor(&stDesc)
+    check_status(status)
+    return <size_t>stDesc
+
+
+cpdef destroySpatialTransformerDescriptor(size_t stDesc):
+    status = cudnnDestroySpatialTransformerDescriptor(
+        <SpatialTransformerDescriptor>stDesc)
+    check_status(status)
+
+
+cpdef setSpatialTransformerDescriptor(
+        size_t stDesc, size_t samplerType, int dataType,
+        int nbDims, size_t dimA):
+    status = cudnnSetSpatialTransformerNdDescriptor(
+        <SpatialTransformerDescriptor>stDesc, <SamplerType>samplerType,
+        <DataType>dataType, nbDims, <int*>dimA)
+    check_status(status)
+
+
+cpdef spatialTfGridGeneratorForward(
+        size_t handle, size_t stDesc, size_t theta, size_t grid):
+    with nogil:
+        status = cudnnSpatialTfGridGeneratorForward(
+            <Handle>handle, <SpatialTransformerDescriptor> stDesc,
+            <void*>theta, <void*>grid)
+    check_status(status)
+
+
+cpdef spatialTfGridGeneratorBackward(
+        size_t handle, size_t stDesc, size_t dgrid, size_t dtheta):
+    with nogil:
+        status = cudnnSpatialTfGridGeneratorBackward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>dgrid, <void*>dtheta)
+    check_status(status)
+
+
+cpdef spatialTfSamplerForward(
+        size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+        size_t x, size_t grid, size_t beta, size_t yDesc, size_t y):
+    with nogil:
+        status = cudnnSpatialTfSamplerForward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>alpha, <TensorDescriptor>xDesc, <void*>x, <void*>grid,
+            <void*>beta, <TensorDescriptor>yDesc, <void*>y)
+    check_status(status)
+
+
+cpdef spatialTfSamplerBackward(
+        size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+        size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
+        size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid):
+    with nogil:
+        status = cudnnSpatialTfSamplerBackward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>alpha, <TensorDescriptor>xDesc, <void*>x, <void*>beta,
+            <TensorDescriptor>dxDesc, <void*>dx, <void*>alphaDgrid,
+            <TensorDescriptor>dyDesc, <void*>dy, <void*>grid,
+            <void*>betaDgrid, <void*>dgrid)
     check_status(status)

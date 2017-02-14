@@ -51,6 +51,9 @@ cdef extern from *:
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
+    ctypedef void* SpatialTransformerDescriptor \
+        'cudnnSpatialTransformerDescriptor_t'
+    ctypedef void* SamplerType 'cudnnSamplerType_t'
 
 
 ###############################################################################
@@ -146,6 +149,8 @@ cpdef enum:
 
     CUDNN_LINEAR_INPUT = 0
     CUDNN_SKIP_INPUT = 1
+
+    CUDNN_SAMPLER_BILINEAR = 0
 
 
 ###############################################################################
@@ -366,3 +371,25 @@ cpdef activationBackward_v3(
 cpdef size_t createDropoutDescriptor() except *
 cpdef destroyDropoutDescriptor(size_t dropoutDesc)
 cpdef size_t dropoutGetStatesSize(size_t handle) except *
+
+
+###############################################################################
+# Spatial Transformer
+###############################################################################
+
+cpdef size_t createSpatialTransformerDescriptor() except *
+cpdef destroySpatialTransformerDescriptor(size_t stDesc)
+cpdef setSpatialTransformerDescriptor(
+    size_t stDesc, size_t samplerType, int dataType,
+    int nbDims, size_t dimA)
+cpdef spatialTfGridGeneratorForward(
+    size_t handle, size_t stDesc, size_t theta, size_t grid)
+cpdef spatialTfGridGeneratorBackward(
+    size_t handle, size_t stDesc, size_t dgrid, size_t dtheta)
+cpdef spatialTfSamplerForward(
+    size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+    size_t x, size_t grid, size_t beta, size_t yDesc, size_t y)
+cpdef spatialTfSamplerBackward(
+    size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+    size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
+    size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid)

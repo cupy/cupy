@@ -171,6 +171,10 @@ space2depth
 ~~~~~~~~~~~
 .. autofunction:: space2depth
 
+spatial_tf_sampler
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: spatial_tf_sampler
+
 split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
