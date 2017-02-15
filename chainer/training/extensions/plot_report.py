@@ -76,9 +76,6 @@ class PlotReport(extension.Extension):
 
         _check_available()
 
-        if not _available:
-            return
-
         self._x_key = x_key
         if isinstance(y_keys, str):
             y_keys = (y_keys,)
