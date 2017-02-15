@@ -107,7 +107,7 @@ class SpatialTfSampler(function.Function):
             tmp = tmp.reshape(out_H, out_W, C)
             tmp = tmp.transpose(2, 0, 1)
             ys.append(tmp)
-        y = xp.stack(ys)
+        y = xp.concatenate([xp.expand_dims(y, axis=0) for y in ys], axis=0)
         return y,
 
     def backward_cpu(self, inputs, grad_outputs):
@@ -199,8 +199,8 @@ class SpatialTfSampler(function.Function):
             gv_tmp = gv_tmp.reshape(out_H, out_W, C)
             gv_tmp = gv_tmp.transpose(2, 0, 1)
             gvs.append(gv_tmp)
-        gu = xp.stack(gus)
-        gv = xp.stack(gvs)
+        gu = xp.concatenate([xp.expand_dims(g, axis=0) for g in gus], axis=0)
+        gv = xp.concatenate([xp.expand_dims(g, axis=0) for g in gvs], axis=0)
 
         gu *= gy
         gv *= gy
@@ -210,7 +210,7 @@ class SpatialTfSampler(function.Function):
         gu = gu / 2. * (W - 1)
         gv = gv / 2. * (H - 1)
 
-        ggrid = xp.stack((gu, gv), axis=1)
+        ggrid = xp.concatenate((gu[:, None], gv[:, None]), axis=1)
 
         # --- gx
         gxs = []
@@ -230,7 +230,7 @@ class SpatialTfSampler(function.Function):
             gy_tmp = gy_tmp.transpose(1, 0)
             gx = dydx.dot(gy_tmp)
             gxs.append(gx.transpose(2, 0, 1))
-        gx = xp.stack(gxs)
+        gx = xp.concatenate([xp.expand_dims(g, axis=0) for g in gxs], axis=0)
         return gx, ggrid
 
 
