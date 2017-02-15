@@ -251,14 +251,30 @@ public:
   }
 
   __device__ void set(ptrdiff_t i) {
-    ptrdiff_t a = i;
-    for (int dim = ndim; --dim > 0; ) {
-      ptrdiff_t s = shape_[dim];
-      index_[dim] = (a % s);
-      a /= s;
+    if (ndim == 0) {
+      index_[0] = i;
+      return;
     }
-    if (ndim > 0) {
-      index_[0] = a;
+    if (size_ > 1LL << 31) {
+      size_t a = i;
+      for (int dim = ndim; --dim > 0; ) {
+        size_t s = shape_[dim];
+        index_[dim] = (a % s);
+        a /= s;
+      }
+      if (ndim > 0) {
+        index_[0] = a;
+      }
+    } else {
+      unsigned int a = i;
+      for (int dim = ndim; --dim > 0; ) {
+        unsigned s = shape_[dim];
+        index_[dim] = (a % s);
+        a /= s;
+      }
+      if (ndim > 0) {
+        index_[0] = a;
+      }
     }
   }
 
