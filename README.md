@@ -14,8 +14,8 @@ Please see [chainer](https://github.com/pfnet/chainer) project.
 CuPy is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use CuPy, though it may run on other systems as well.
 
 Minimum requirements:
-- Python 2.7.6+, 3.4.3+, 3.5.1+
-- NumPy 1.9, 1.10, 1.11
+- Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+
+- NumPy 1.9, 1.10, 1.11, 1.12
 - Six 1.9
 
 Requirements for some features:

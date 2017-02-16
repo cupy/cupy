@@ -43,7 +43,7 @@ between CuPy's functions and corresponding NumPy's ones.
 Parameterized dtype Test
 ------------------------
 
-The following decorators offers the standard way for
+The following decorators offer the standard way for
 parameterized test with respect to single or the
 combination of dtype(s).
 
@@ -58,3 +58,12 @@ combination of dtype(s).
 .. autofunction:: for_signed_dtypes_combination
 .. autofunction:: for_unsigned_dtypes_combination
 .. autofunction:: for_int_dtypes_combination
+
+
+Parameterized order Test
+------------------------
+The following decorators offer the standard way to parameterize tests with
+orders.
+
+.. autofunction:: for_orders
+.. autofunction:: for_CF_orders

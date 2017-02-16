@@ -17,7 +17,7 @@ except ImportError:
            '--no-cache-dir -vvvv`.\n\n'
            'original error: {}'.format(exc_info[1]))
 
-    raise six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
+    six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
 
 __version__ = pkg_resources.get_distribution('cupy').version
 
@@ -36,6 +36,9 @@ from cupy import sorting  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+
+
+__version__ = pkg_resources.get_distribution('cupy').version
 
 
 # import class and function
@@ -110,6 +113,7 @@ from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
 
+
 # =============================================================================
 # Routines
 #
@@ -183,6 +187,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.rearrange import fliplr  # NOQA
+from cupy.manipulation.rearrange import flipud  # NOQA
 from cupy.manipulation.rearrange import roll  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -324,6 +330,7 @@ from cupy.math.rounding import floor  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
 
+from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 
@@ -459,7 +466,7 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
-        return _cupy
-    else:
-        return numpy
+    for arg in args:
+        if isinstance(arg, ndarray):
+            return _cupy
+    return numpy
