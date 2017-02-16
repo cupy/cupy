@@ -3,10 +3,12 @@ import operator
 import sys
 import threading
 
-import cupy
 import numpy
 
 from chainer import cuda
+
+if cuda.available:
+    import cupy
 
 
 _thread_local = threading.local()
@@ -491,9 +493,13 @@ def expect(*bool_exprs):
 def same_types(*arrays):
     are_numpy_arrays = map(lambda x: issubclass(type(x), numpy.ndarray),
                            [a for a in arrays])
-    are_cupy_arrays = map(lambda x: issubclass(type(x), cupy.ndarray),
-                          [a for a in arrays])
-    return all(are_numpy_arrays) or all(are_cupy_arrays)
+    all_numpy_arrays = all(are_numpy_arrays)
+    if cuda.available:
+        are_cupy_arrays = map(lambda x: issubclass(type(x), cupy.ndarray),
+                              [a for a in arrays])
+        return all_numpy_arrays or all(are_cupy_arrays)
+    else:
+        return all_numpy_arrays
 
 
 prod = Variable(numpy.prod, 'prod')
