@@ -75,7 +75,7 @@ def sigmoid(x, use_cudnn=True):
         :math:`(s_1, s_2, ..., s_N)`-shaped float array.
 
     .. admonition:: Example
-    
+
         It maps the input values into the range of :math:`[0, 1]`.
         >>> x = np.arange(-2, 3, 2).astype('f')
         >>> x
