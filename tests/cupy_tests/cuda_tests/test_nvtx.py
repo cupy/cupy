@@ -1,5 +1,5 @@
-from cupy.testing import attr
 from cupy.cuda import nvtx
+from cupy.testing import attr
 import unittest
 
 
