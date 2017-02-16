@@ -13,7 +13,7 @@ from chainer.testing import condition
 @testing.parameterize(*testing.product({
     'use_cudnn': [True, False],
 }))
-class TestSpatialTfSampler(unittest.TestCase):
+class TestSpatialTransformerSampler(unittest.TestCase):
 
     in_shape = (2, 2, 4, 4)
     out_shape = (2, 2, 3, 3)
@@ -28,7 +28,7 @@ class TestSpatialTfSampler(unittest.TestCase):
             size=self.out_shape).astype(numpy.float32)
 
     def check_forward(self, x, grid, use_cudnn=True):
-        y = functions.spatial_tf_sampler(x, grid, use_cudnn)
+        y = functions.spatial_transformer_sampler(x, grid, use_cudnn)
         self.assertEqual(y.shape, self.out_shape)
 
     @condition.retry(3)
@@ -43,8 +43,8 @@ class TestSpatialTfSampler(unittest.TestCase):
 
     def check_backward(self, x, grid, grads, use_cudnn=True):
         gradient_check.check_backward(
-            functions.SpatialTfSampler(use_cudnn), (x, grid), (grads,),
-            atol=1e-2, rtol=1e-3, eps=1e-5)
+            functions.SpatialTransformerSampler(use_cudnn),
+            (x, grid), (grads,), atol=1e-2, rtol=1e-3, eps=1e-5)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -12,7 +12,7 @@ if cuda.cudnn_enabled:
     _sampler_type = libcudnn.CUDNN_SAMPLER_BILINEAR
 
 
-class SpatialTfSampler(function.Function):
+class SpatialTransformerSampler(function.Function):
 
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
@@ -234,7 +234,7 @@ class SpatialTfSampler(function.Function):
         return gx, ggrid
 
 
-def spatial_tf_sampler(x, grid, use_cudnn=True):
+def spatial_transformer_sampler(x, grid, use_cudnn=True):
     """2D Spatial Transformer sampler.
 
     This is a differentiable image sampler. With a set of sampling points
@@ -285,4 +285,4 @@ def spatial_tf_sampler(x, grid, use_cudnn=True):
             :math:`(n, c_I, h_O, w_O)`.
 
     """
-    return SpatialTfSampler(use_cudnn)(x, grid)
+    return SpatialTransformerSampler(use_cudnn)(x, grid)
