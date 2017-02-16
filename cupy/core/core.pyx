@@ -3158,6 +3158,12 @@ cpdef ndarray tensordot_core(
         if out.dtype != dtype:
             out = ndarray(ret_shape, dtype)
 
+    if m == 1 and n == 1:
+        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        if out is not ret:
+            elementwise_copy(out, ret)
+        return ret
+
     # It copies the operands if needed
     if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
         shape.clear()
