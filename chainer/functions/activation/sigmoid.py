@@ -75,11 +75,13 @@ def sigmoid(x, use_cudnn=True):
         :math:`(s_1, s_2, ..., s_N)`-shaped float array.
 
     .. admonition:: Example
-
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> y = F.sigmoid(x)
-        >>> y.shape
-        (3, 4)
+    
+        It maps the input values into the range of :math:`[0, 1]`.
+        >>> x = np.arange(-2, 3, 2).astype('f')
+        >>> x
+        array([-2.,  0.,  2.], dtype=float32)
+        >>> F.sigmoid(x).data
+        array([ 0.11920291,  0.5       ,  0.88079709], dtype=float32)
 
     """
     return Sigmoid(use_cudnn)(x)
