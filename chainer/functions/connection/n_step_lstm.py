@@ -242,7 +242,6 @@ class NStepLSTM(function.Function):
         work_size = libcudnn.getRNNWorkspaceSize(
             handle, rnn_desc.value, length, c_x_descs.data)
         workspace = cuda.cupy.empty((work_size,), dtype='b')
-        self.workspace = workspace
 
         if not self.train:
             libcudnn.RNNForwardInference(

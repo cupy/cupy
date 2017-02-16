@@ -51,6 +51,19 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
     {'shape': (2, 3, 4), 'indexes': [1, -1]},
     {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [[2, 1], [3, 1]])},
+    # mask
+    {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.array([True, False, True]))},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), slice(None),
+                 numpy.array([True, False, False, True]))},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
+    {'shape': (2, 3, 4),
+     'indexes': numpy.random.choice([False, True], (2, 3))},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -83,25 +96,33 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp(unittest.TestCase):
 @testing.parameterize(
     {'shape': (2, 3, 4), 'indexes': (slice(None),)},
     {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
-    {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
 )
 @testing.gpu
-class TestArrayAdvancedIndexingGetitemArrayClass(unittest.TestCase):
+class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_adv_getitem(self, xp, dtype):
-        indexes = list(self.indexes)
-        a = testing.shaped_arange(self.shape, xp, dtype)
+    def test_adv_getitem_cupy_indices1(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([1, 0])
+        b = a[index]
+        b_cpu = a.get()[index.get()]
+        testing.assert_array_equal(b, b_cpu)
 
-        if xp is numpy:
-            for i, s in enumerate(indexes):
-                if isinstance(s, cupy.ndarray):
-                    indexes[i] = s.get()
+    def test_adv_getitem_cupy_indices2(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([1, 0])
+        b = a[(slice(None), index)]
+        b_cpu = a.get()[(slice(None), index.get())]
+        testing.assert_array_equal(b, b_cpu)
 
-        return a[tuple(indexes)]
+    def test_adv_getitem_cupy_indices3(self):
+        shape = (2, 3, 4)
+        a = cupy.zeros(shape)
+        index = cupy.array([True, False])
+        b = a[index]
+        b_cpu = a.get()[index.get()]
+        testing.assert_array_equal(b, b_cpu)
 
 
 @testing.parameterize(
