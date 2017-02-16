@@ -15,6 +15,10 @@ from cupy import testing
      'slices': (slice(None), [[1, 2], [0, -1]],), 'value': 1},
     {'shape': (3, 4, 5),
      'slices': (slice(None), slice(None), [[1, 2], [0, 3]]), 'value': 1},
+    # array with duplicate indices
+    {'shape': (2, 3), 'slices': ([1, 1], slice(None)), 'value': 1},
+    {'shape': (2, 3), 'slices': ([1, 0, 1], slice(None)), 'value': 1},
+    {'shape': (2, 3), 'slices': (slice(1, 2), [1, 0, 1]), 'value': 1},
     # slice and array
     {'shape': (3, 4, 5),
      'slices': (slice(None), slice(1, 2), [[1, 3], [0, 2]]), 'value': 1},
@@ -35,6 +39,23 @@ from cupy import testing
     # broadcasting
     {'shape': (3, 4, 5), 'slices': (slice(None), [[1, 2], [0, -1]],),
      'value': numpy.arange(3 * 2 * 2 * 5).reshape(3, 2, 2, 5)},
+    # multiple integer arrays
+    {'shape': (2, 3, 4), 'slices': ([1, 0], [2, 1]),
+     'value': numpy.arange(2 * 4).reshape(2, 4)},
+    {'shape': (2, 3, 4), 'slices': ([1, 0], slice(None), [2, 1]),
+     'value': numpy.arange(2 * 3).reshape(2, 3)},
+    {'shape': (2, 3, 4), 'slices': ([1, 0], slice(None), [[2, 0], [3, 1]]),
+     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {'shape': (1, 1, 2, 3, 4),
+     'slices': (None, slice(None), 0, [1, 0], slice(0, 2, 2), [2, -1]),
+     'value': 1},
+    # multiple integer arrays duplicate
+    {'shape': (2, 3, 4), 'slices': ([1, 1], [1, 1]),
+     'value': numpy.arange(2 * 4).reshape(2, 4)},
+    {'shape': (2, 3, 4), 'slices': ([1, 1], slice(None), [[2, 2], [3, 1]]),
+     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {'shape': (2, 3, 4), 'slices': ([1, 1], 1, [[2, 2], [3, 1]]),
+     'value': numpy.arange(2 * 2).reshape(2, 2)},
     # mask
     {'shape': (3, 4, 5),
      'slices': (numpy.random.choice([False, True], (3, 4, 5)),),
@@ -47,42 +68,25 @@ from cupy import testing
      'value': numpy.arange(3 * 2 * 5).reshape(3, 2, 5)},
 )
 @testing.gpu
-class TestScatterAddNoDuplicate(unittest.TestCase):
+class TestScatterAddParametrized(unittest.TestCase):
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     @testing.numpy_cupy_array_equal()
     def test_scatter_add(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
             a.scatter_add(self.slices, self.value)
         else:
-            a[self.slices] = a[self.slices] + self.value
+            numpy.add.at(a, self.slices, self.value)
         return a
-
-
-@testing.parameterize(
-    {'shape': (2, 3), 'slices': ([1, 1], slice(None)), 'value': 1,
-     'expected': numpy.array([[0, 0, 0], [2, 2, 2]])},
-    {'shape': (2, 3), 'slices': ([1, 0, 1], slice(None)), 'value': 1,
-     'expected': numpy.array([[1, 1, 1], [2, 2, 2]])},
-    {'shape': (2, 3), 'slices': (slice(1, 2), [1, 0, 1]), 'value': 1,
-     'expected': numpy.array([[0, 0, 0], [1, 2, 0]])},
-)
-@testing.gpu
-class TestScatterAddDuplicateVectorValue(unittest.TestCase):
-
-    @testing.for_dtypes([numpy.float32, numpy.int32])
-    def test_scatter_add(self, dtype):
-        a = cupy.zeros(self.shape, dtype)
-        a.scatter_add(self.slices, self.value)
-
-        numpy.testing.assert_almost_equal(a.get(), self.expected)
 
 
 @testing.gpu
 class TestScatterAdd(unittest.TestCase):
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     def test_scatter_add_cupy_arguments(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
@@ -91,7 +95,8 @@ class TestScatterAdd(unittest.TestCase):
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
-    @testing.for_dtypes([numpy.float32, numpy.int32])
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong])
     def test_scatter_add_cupy_arguments_mask(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
