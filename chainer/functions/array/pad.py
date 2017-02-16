@@ -1,5 +1,4 @@
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
@@ -10,37 +9,38 @@ class Pad(function.Function):
 
     """Padding of an array"""
 
-    def __init__(self, pad_width, mode, keywords):
-        self.pad_width = pad_width
+    def __init__(self, pad_width, mode, **keywords):
         self.mode = mode
         self.keywords = keywords
-
-        # if isinstance(pad_width, six.integer_types):
-        #     self.pad_width = (pad_width,)
-        # elif isinstance(pad_width, tuple) and all(
-        #         isinstance(x, six.integer_types) for x in pad_width):
-        #     self.pad_width = pad_width
-        # elif isinstance(pad_width, tuple) and all(
-        #         isinstance(x, tuple) and all(isinstance(y, six.integer_types)
-        #                                      for y in x) for x in pad_width):
-        #     self.pad_width = pad_width
-        # else:
-        #     raise TypeError('pad_width must be int, tuple of ints or tuple of tuples')
+        pad_width = numpy.asarray(pad_width)
+        if pad_width.size == 1:
+            pad_width = numpy.repeat(pad_width, 2)
+        self.pad_width = pad_width
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        x_types = in_types[0]
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
-        return xp.pad(inputs[0], self.pad_width, self.mode, self.keywords),
+        if len(self.keywords) == 0:
+            return xp.pad(inputs[0], self.pad_width, mode=self.mode),
+        else:
+            return xp.pad(inputs[0], self.pad_width, mode=self.mode,
+                          **self.keywords),
 
     def backward(self, inputs, grads):
         xp = cuda.get_array_module(*inputs)
         gy = grads[0]
-        # inputs = xp.array(inputs)
-        for i in range(inputs.ndim):
-            gy = xp.take(gy, indices=xp.arange(self.pad_width[0], self.pad_width[0] + inputs.shape[i], axis=i))
+        array = inputs[0]
+        ndims = array.ndim
+        if self.pad_width.ndim == 1:
+            self.pad_width = numpy.tile(self.pad_width, (ndims, 1))
+        for i in range(ndims):
+            gy = xp.take(gy,
+                         indices=numpy.arange(self.pad_width[i][0],
+                                              self.pad_width[i][0]
+                                              + array.shape[i]),
+                         axis=i)
         return gy,
 
 
@@ -48,11 +48,12 @@ def pad(x, pad_width, mode, **keywords):
     """Pad an input variable.
 
     Args:
-        x (chainer.Variable or :class:``numpy.ndarray`` or cupy.ndarray): Input data.
+        x (chainer.Variable or :class:``numpy.ndarray`` or cupy.ndarray):
+            Input data.
         pad_width (int or array-like):
             Number of values padded to the edges of each axis.
         mode (str):
-            'constant'
+            `constant`
                 Pads with a constant values.
         constant_values (int or array-like):
             The values are padded for each axis.
@@ -61,4 +62,4 @@ def pad(x, pad_width, mode, **keywords):
         ~chainer.Variable: Output variable.
 
     """
-    return Pad(pad_width, mode, keywords)(x)
+    return Pad(pad_width, mode, **keywords)(x)

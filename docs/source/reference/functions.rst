@@ -131,6 +131,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+pad
+~~~
+.. autofunction:: pad
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
