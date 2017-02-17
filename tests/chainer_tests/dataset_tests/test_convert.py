@@ -210,45 +210,54 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
         self.check_concat_dicts_padding(cuda.cupy)
 
 
+@testing.parameterize(
+    {'padding': None},
+    {'padding': 0},
+)
 class TestConcatExamplesWithBuiltInTypes(unittest.TestCase):
 
-    def get_int_arrays(self):
-        return [1, 2, 3]
-
-    def get_float_arrays(self):
-        return [1.0, 2.0, 3.0]
+    int_arrays = [1, 2, 3]
+    float_arrays = [1.0, 2.0, 3.0]
 
     def check_device(self, array, device):
-        if device is not None:
+        if device is not None and device >= 0:
             self.assertIsInstance(array, cuda.ndarray)
             self.assertEqual(array.device.id, device)
+        else:
+            self.assertIsInstance(array, numpy.ndarray)
 
-    def check_concat_arrays(self, arrays, device=None, expected_type=None):
-        array = dataset.concat_examples(arrays, device)
+    def check_concat_arrays(self, arrays, device, expected_type):
+        array = dataset.concat_examples(arrays, device, self.padding)
         self.assertEqual(array.shape, (len(arrays),))
         self.check_device(array, device)
 
-        for x in array:
-            self.assertIsInstance(x, expected_type)
+        for x, y in zip(array, arrays):
+            if cuda.get_array_module(x) == numpy:
+                numpy.testing.assert_array_equal(
+                    numpy.array(x),
+                    numpy.array(y, dtype=expected_type))
+            else:
+                numpy.testing.assert_array_equal(
+                    cuda.to_cpu(x),
+                    numpy.array(y, dtype=expected_type))
 
     def test_concat_arrays_cpu(self):
-        arrays = self.get_int_arrays()
-        self.check_concat_arrays(arrays,
-                                 expected_type=numpy.int64)
-        arrays = self.get_float_arrays()
-        self.check_concat_arrays(arrays,
-                                 expected_type=numpy.float64)
+        for device in (-1, None):
+            self.check_concat_arrays(self.int_arrays,
+                                     device=device,
+                                     expected_type=numpy.int64)
+            self.check_concat_arrays(self.float_arrays,
+                                     device=device,
+                                     expected_type=numpy.float64)
 
     @attr.gpu
     def test_concat_arrays_gpu(self):
-        arrays = self.get_int_arrays()
-        self.check_concat_arrays(arrays,
+        self.check_concat_arrays(self.int_arrays,
                                  device=cuda.Device().id,
-                                 expected_type=cuda.ndarray)
-        arrays = self.get_float_arrays()
-        self.check_concat_arrays(arrays,
+                                 expected_type=numpy.int64)
+        self.check_concat_arrays(self.float_arrays,
                                  device=cuda.Device().id,
-                                 expected_type=cuda.ndarray)
+                                 expected_type=numpy.float64)
 
 
 testing.run_module(__name__, __file__)
