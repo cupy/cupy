@@ -48,7 +48,7 @@ def dropout(x, ratio=.5, train=True):
         ~chainer.Variable: Output variable.
 
     See the paper by G. Hinton: `Improving neural networks by preventing \
-    co-adaptation of feature detectors <http://arxiv.org/abs/1207.0580>`_.
+    co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_.
 
     """
     if train:

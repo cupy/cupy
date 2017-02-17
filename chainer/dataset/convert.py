@@ -4,6 +4,37 @@ import six
 from chainer import cuda
 
 
+def to_device(device, x):
+    """Send an array to a given device.
+
+    This method send a given array to a given device. This method is used in
+    :func:`~chainer.dataset.concat_examples`.
+    You can also use this method in a custom converter method used in
+    :class:`~chainer.training.Updater` and :class:`~chainer.training.Extension`
+    such as :class:`~chainer.training.StandardUpdater` and
+    :class:`~chainer.training.extensions.Evaluator`.
+
+    .. see:: :func:`chainer.dataset.concat_examples`
+
+    Args:
+        device (int or None): Device ID to which an array is sent. If it is
+            negative value, an array is sent to CPU. If it is positive, an
+            array is sent to GPU with the given ID. If it is ``None``, an
+            array is left in the original device.
+        x (numpy.ndarray or cupy.ndarray): An array to send.
+
+    Returns:
+        Converted array.
+
+    """
+    if device is None:
+        return x
+    elif device < 0:
+        return cuda.to_cpu(x)
+    else:
+        return cuda.to_gpu(x, device, cuda.Stream.null)
+
+
 def concat_examples(batch, device=None, padding=None):
     """Concatenates a list of examples into array(s).
 
@@ -50,15 +81,6 @@ def concat_examples(batch, device=None, padding=None):
     if len(batch) == 0:
         raise ValueError('batch is empty')
 
-    if device is None:
-        def to_device(x):
-            return x
-    elif device < 0:
-        to_device = cuda.to_cpu
-    else:
-        def to_device(x):
-            return cuda.to_gpu(x, device, cuda.Stream.null)
-
     first_elem = batch[0]
 
     if isinstance(first_elem, tuple):
@@ -67,7 +89,7 @@ def concat_examples(batch, device=None, padding=None):
             padding = [padding] * len(first_elem)
 
         for i in six.moves.range(len(first_elem)):
-            result.append(to_device(_concat_arrays(
+            result.append(to_device(device, _concat_arrays(
                 [example[i] for example in batch], padding[i])))
 
         return tuple(result)
@@ -78,13 +100,13 @@ def concat_examples(batch, device=None, padding=None):
             padding = {key: padding for key in first_elem}
 
         for key in first_elem:
-            result[key] = to_device(_concat_arrays(
+            result[key] = to_device(device, _concat_arrays(
                 [example[key] for example in batch], padding[key]))
 
         return result
 
     else:
-        return to_device(_concat_arrays(batch, padding))
+        return to_device(device, _concat_arrays(batch, padding))
 
 
 def _concat_arrays(arrays, padding):

@@ -1,4 +1,3 @@
-import cupy
 from cupy import core
 
 
@@ -44,7 +43,7 @@ def asarray(a, dtype=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return cupy.array(a, dtype=dtype, copy=False)
+    return core.array(a, dtype, False)
 
 
 def asanyarray(a, dtype=None):
@@ -58,7 +57,7 @@ def asanyarray(a, dtype=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return cupy.asarray(a, dtype)
+    return core.array(a, dtype, False)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -81,7 +80,7 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-def copy(a):
+def copy(a, order='C'):
     """Creates a copy of a given array on the current device.
 
     This function allocates the new array on the current device. If the given
@@ -90,6 +89,9 @@ def copy(a):
 
     Args:
         a (cupy.ndarray): The source array.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order. This function currently does not
+            support order 'A' and 'K'.
 
     Returns:
         cupy.ndarray: The copy of ``a`` on the current device.
@@ -100,8 +102,8 @@ def copy(a):
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the
     # contents over the devices.
-    # TODO(beam2d): Support ordering option
-    return a.copy()
+    # TODO(beam2d): Support ordering option 'A' and 'K'
+    return a.copy(order=order)
 
 
 # TODO(okuta): Implement frombuffer

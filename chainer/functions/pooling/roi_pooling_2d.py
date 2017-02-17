@@ -333,7 +333,7 @@ def roi_pooling_2d(x, rois, outh, outw, spatial_scale):
         ~chainer.Variable: Output variable.
 
     See the original paper proposing ROIPooling:
-    `Fast R-CNN <http://arxiv.org/abs/1504.08083>`_.
+    `Fast R-CNN <https://arxiv.org/abs/1504.08083>`_.
 
     """
     return ROIPooling2D(outh, outw, spatial_scale)(x, rois)

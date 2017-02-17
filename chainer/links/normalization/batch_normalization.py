@@ -43,7 +43,7 @@ class BatchNormalization(link.Link):
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
-          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
+          Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`_
 
     .. seealso::
        :func:`~chainer.functions.batch_normalization`,

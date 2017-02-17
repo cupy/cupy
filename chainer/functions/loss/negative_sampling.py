@@ -216,7 +216,7 @@ def negative_sampling(x, t, W, sampler, sample_size):
         sample_size (int): Number of samples.
 
     See: `Distributed Representations of Words and Phrases and their\
-         Compositionality <http://arxiv.org/abs/1310.4546>`_
+         Compositionality <https://arxiv.org/abs/1310.4546>`_
 
     .. seealso:: :class:`~chainer.links.NegativeSampling`.
 

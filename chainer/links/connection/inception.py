@@ -19,7 +19,7 @@ class Inception(link.Chain):
     satisfy this, Inception module uses appropriate padding for each
     convolution and pooling.
 
-    See: `Going Deeper with Convolutions <http://arxiv.org/abs/1409.4842>`_.
+    See: `Going Deeper with Convolutions <https://arxiv.org/abs/1409.4842>`_.
 
     Args:
         in_channels (int): Number of channels of input arrays.
