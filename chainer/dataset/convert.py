@@ -88,12 +88,17 @@ def concat_examples(batch, device=None, padding=None):
 
 
 def _concat_arrays(arrays, padding):
+    # Convert `arrays` to numpy.ndarray if `arrays` consists of the built-in
+    # types such as int or float.
+    if not isinstance(arrays[0], numpy.ndarray) and\
+       not isinstance(arrays[0], cuda.ndarray):
+        arrays = numpy.asarray(arrays)
     if padding is not None:
         return _concat_arrays_with_padding(arrays, padding)
 
     xp = cuda.get_array_module(arrays[0])
     with cuda.get_device(arrays[0]):
-        return xp.concatenate([xp.asarray(array)[None] for array in arrays])
+        return xp.concatenate([array[None] for array in arrays])
 
 
 def _concat_arrays_with_padding(arrays, padding):
