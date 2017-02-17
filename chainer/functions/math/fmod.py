@@ -36,7 +36,7 @@ def fmod(x, divisor):
     """Elementwise mod function.
 
     .. math::
-       y_i = x_i \\bmod divisor.
+       y_i = x_i \\bmod \\mathrm{divisor}.
 
     Args:
         x (~chainer.Variable): Input variable.
