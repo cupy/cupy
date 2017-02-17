@@ -144,15 +144,18 @@ class TestHDF5Deserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
     def test_string(self):
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        try:
             data = 'abc'
-            path = os.path.join(tmp_dir, 'tmp.hdf5')
             with h5py.File(path, 'w') as f:
                 f.create_dataset('str', data=data)
             with h5py.File(path, 'r') as f:
                 deserializer = hdf5.HDF5Deserializer(f)
                 ret = deserializer('str', '')
                 self.assertEqual(ret, data)
+        finally:
+            os.remove(path)
 
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
