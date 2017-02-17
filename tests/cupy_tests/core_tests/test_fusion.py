@@ -1,5 +1,6 @@
 import numpy
 import unittest
+import six
 
 import cupy
 from cupy import testing
@@ -440,6 +441,14 @@ class TestFusionArithmetic(unittest.TestCase):
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
         return a, b
 
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    @fusion_default_array_equal()
+    def check_binary_negative_float(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+        return a, b
+
     def test_add(self):
         self.check_binary('add')
 
@@ -462,7 +471,10 @@ class TestFusionArithmetic(unittest.TestCase):
         self.check_binary('power')
 
     def test_power_negative(self):
-        self.check_binary_negative('power')
+        if six.PY2:
+            self.check_binary_negative('power')
+        else:
+            self.check_binary_negative_float('power')
 
     def test_subtract(self):
         self.check_binary('subtract')
@@ -670,7 +682,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             x = 10 + (-x) * (x - y) + 10
             x = 2 * (100 - x - 30)
-            x /= y + 1 / y
+            x = x / (y + 1 / y)
             return z // x + x // z + 100 // x + 100 // z
 
         return g(a, b, c)
@@ -772,7 +784,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             x *= y
             x += y
-            x /= y
+            x = x / y
             z %= y
             x += y + z
 
@@ -811,6 +823,38 @@ class TestFusionFuse(unittest.TestCase):
 
         res = g(a, b, c)
         return c + res
+
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_fuse_int_itruediv_py3_raises(self, xp, dtype):
+        if six.PY3:
+            a = xp.array(3, dtype=dtype)
+            b = xp.array(2, dtype=dtype)
+
+            @cupy.fuse()
+            def g(x, y):
+                x /= y
+
+            g(a, b)
+        else:
+            raise Exception()
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_fuse_int_ifloordiv_py2(self, xp, dtype):
+        if six.PY2:
+            a = xp.array(3, dtype=dtype)
+            b = xp.array(2, dtype=dtype)
+
+            @cupy.fuse()
+            def g(x, y):
+                x /= y
+
+            g(a, b)
+            return a
+        else:
+            return xp.empty(0, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

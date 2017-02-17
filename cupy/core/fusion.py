@@ -1,4 +1,4 @@
-import __builtin__
+from six.moves import builtins
 import inspect
 import six
 import string
@@ -28,6 +28,10 @@ class FusionOp(object):
         self.types = types
         self.num = num
 
+    def __repr__(self):
+        return "<FusionOp, name={}, types=[{}]>".format(
+            self.name, ', '.join(_.name for _ in self.types))
+
 
 class _FusionVar(object):
 
@@ -36,16 +40,8 @@ class _FusionVar(object):
         self.ty = ty
         self.const = const
 
-
-class _Counter(object):
-
-    def __init__(self, n):
-        self.n = n
-
-    def __call__(self):
-        ret = self.n
-        self.n = self.n + 1
-        return ret
+    def __repr__(self):
+        return "<_FusionVar, num={}, ty={}, const={}>".format(self.num, self.ty, self.const)
 
 
 class _FusionMem(object):
@@ -53,6 +49,11 @@ class _FusionMem(object):
     def __init__(self, var_list):
         self.op_list = []
         self.var_list = var_list[:]
+
+    def __repr__(self):
+        return "<_FusionMem, op_list={}, var_list={}>".format(
+            self.op_list,
+            self.var_list)
 
     def get_fresh(self, ty, **kwargs):
         n = len(self.var_list)
@@ -120,11 +121,17 @@ class _FusionRef(object):
     def __truediv__(self, other):
         return true_divide(self, other)
 
+    def __itruediv__(self, other):
+        return true_divide(self, other, self)
+
     def __rtruediv__(self, other):
         return true_divide(other, self)
 
     def __floordiv__(self, other):
         return floor_divide(self, other)
+
+    def __ifloordiv__(self, other):
+        return floor_divide(self, other, self)
 
     def __rfloordiv__(self, other):
         return floor_divide(other, self)
@@ -141,11 +148,17 @@ class _FusionRef(object):
     def __lshift__(self, other):
         return left_shift(self, other)
 
+    def __ilshift__(self, other):
+        return left_shift(self, other, self)
+
     def __rlshift__(self, other):
         return left_shift(other, self)
 
     def __rshift__(self, other):
         return right_shift(self, other)
+
+    def __irshift__(self, other):
+        return right_shift(self, other, self)
 
     def __rrshift__(self, other):
         return right_shift(other, self)
@@ -153,17 +166,26 @@ class _FusionRef(object):
     def __and__(self, other):
         return bitwise_and(self, other)
 
+    def __iand__(self, other):
+        return bitwise_and(self, other, self)
+
     def __rand__(self, other):
         return bitwise_and(other, self)
 
     def __or__(self, other):
         return bitwise_or(self, other)
 
+    def __ior__(self, other):
+        return bitwise_or(self, other, self)
+
     def __ror__(self, other):
         return bitwise_or(other, self)
 
     def __xor__(self, other):
         return bitwise_xor(self, other)
+
+    def __ixor__(self, other):
+        return bitwise_xor(self, other, self)
 
     def __rxor__(self, other):
         return bitwise_xor(other, self)
@@ -221,7 +243,7 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = map(numpy.dtype, '?bhilqBHILQefd')
+_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefd']
 
 
 def _const_to_str(val):
@@ -288,7 +310,7 @@ def _convert_from_ufunc(ufunc):
 
     def res(*args, **kwargs):
         mem = get_mem(args)
-        var_list = map(lambda i: _normalize_arg(i, mem), args)
+        var_list = [_normalize_arg(_, mem) for _ in args]
         if 'out' in kwargs:
             var_list.append(_normalize_arg.pop('out'))
         if kwargs:
@@ -298,8 +320,8 @@ def _convert_from_ufunc(ufunc):
         out_vars = var_list[nin:]
         can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
         for ty_ins, ty_outs, op in ufunc._ops:
-            ty_ins = map(numpy.dtype, ty_ins)
-            ty_outs = map(numpy.dtype, ty_outs)
+            ty_ins = [numpy.dtype(_) for _ in ty_ins]
+            ty_outs = [numpy.dtype(_) for _ in ty_outs]
             if can_cast(in_vars, ty_ins):
                 param_names = (['in%d' % i for i in six.moves.range(nin)] +
                                ['out%d' % i for i in six.moves.range(nout)])
@@ -446,31 +468,30 @@ def _get_fix_code(data_type, fixed_type, operation):
 def _get_fusion(func, nin, reduce, post_map, identity, input_types):
     if nin is None:
         nin = len(inspect.getargspec(func).args)
-    assert nin == len(input_types)
     in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
     mem = _FusionMem(in_vars)
-    in_refs = map(lambda i: _FusionRef(i, mem), in_vars)
+    in_refs = [_FusionRef(_, mem) for _ in in_vars]
     out_refs = func(*in_refs)
     out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
     out_refs = filter(lambda i: i is not None, out_refs)
-    out_refs = map(lambda i: _FusionRef(_normalize_arg(i, mem), mem), out_refs)
-    out_vars = map(lambda i: _normalize_arg(copy(i), mem), out_refs)
+    out_refs = [_FusionRef(_normalize_arg(_, mem), mem) for _ in out_refs]
+    out_vars = [_normalize_arg(copy(_), mem) for _ in  out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
     tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
 
     in_params = ', '.join(_get_params(in_vars))
     out_params = ', '.join(_get_params(out_vars))
-    operation = ''.join(map(_get_declaration_from_var, tmpvars))
-    operation += ''.join(map(_get_declaration_from_op, op_list))
-    operation += '\n'.join(map(_get_operation_code, op_list))
+    operation = ''.join(_get_declaration_from_var(_) for _ in tmpvars)
+    operation += ''.join(_get_declaration_from_op(_) for _ in op_list)
+    operation += '\n'.join(_get_operation_code(_) for _ in op_list)
 
     if reduce is None:
         if not out_params:
             in_params = ', '.join(_get_params(in_vars[:-1]))
             out_params = ', '.join(_get_params([in_vars[-1]]))
         submodules = _gather_submodules(op_list)
-        submodule_code = ''.join(map(_get_submodule_code, submodules.values()))
+        submodule_code = ''.join(_get_submodule_code(_) for _ in submodules.values())
         return core.ElementwiseKernel(in_params, out_params,
                                       operation, preamble=submodule_code)
     else:
@@ -491,15 +512,15 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types):
         # post-map
         post_in = [_FusionVar(0, reduce_type)]
         mem = _FusionMem(post_in)
-        post_in_ref = map(lambda i: _FusionRef(i, mem), post_in)
+        post_in_ref = [_FusionRef(_, mem) for _ in post_in]
         post_out = _normalize_arg(post_map(*post_in_ref), mem)
         if type(post_out) == tuple:
             raise Exception("Can't reduce a tuple")
         post_vars = mem.var_list
         post_ops = mem.op_list
-        post_code = ''.join(map(_get_declaration_from_var, post_vars[1:]))
-        post_code += ''.join(map(_get_declaration_from_op, post_ops))
-        post_code += '\n'.join(map(_get_operation_code, post_ops))
+        post_code = ''.join(_get_declaration_from_var(_) for _ in post_vars[1:])
+        post_code += ''.join(_get_declaration_from_op(_) for _ in post_ops)
+        post_code += '\n'.join(_get_operation_code(_) for _ in post_ops)
         post_code = _get_post_code(post_vars, post_code, post_out)
         post_code += _get_fix_code(post_type, reduce_type, reduce_op[2][2])
 
@@ -549,8 +570,8 @@ class Fusion(object):
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
         is_cupy_data = lambda a: isinstance(a, (core.ndarray, numpy.generic))
-        if __builtin__.all(map(is_cupy_data, args)):
-            types = map(lambda x: x.dtype, args)
+        if builtins.all(is_cupy_data(_) for _ in args):
+            types = [_.dtype for _ in args]
             key = tuple(types)
             if key not in self._memo:
                 f = _get_fusion(self.func, self.input_num, self.reduce,
@@ -562,8 +583,8 @@ class Fusion(object):
             else:
                 return f(*args, axis=axis)
         else:
-            if __builtin__.any(map(lambda a: type(a) is core.ndarray, args)):
-                types = '.'.join(map(repr, map(type, args)))
+            if builtins.any(type(_) is core.ndarray for _ in args):
+                types = '.'.join(repr(type(_)) for _ in args)
                 message = "Can't fuse \n %s(%s)" % (self.name, types)
                 warnings.warn(message)
             if self.reduce is None:
@@ -613,9 +634,9 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if __builtin__.any(type(i) is _FusionRef for i in args):
+        if builtins.any(type(_) is _FusionRef for _ in args):
             return _convert(self._fusion_op)(*args, **kwargs)
-        elif __builtin__.any(type(i) is numpy.ndarray for i in args):
+        elif builtins.any(type(_) is numpy.ndarray for _ in args):
             return self._numpy_op(*args, **kwargs)
         else:
             return self._cupy_op(*args, **kwargs)
@@ -746,7 +767,7 @@ class reduction(object):
         self._numpy_op = numpy_op
 
     def __call__(self, *args, **kwargs):
-        if __builtin__.any(type(i) == numpy.ndarray for i in args):
+        if builtins.any(type(_) == numpy.ndarray for _ in args):
             return self._numpy_op(*args, **kwargs)
         else:
             return self._cupy_op(*args, **kwargs)
