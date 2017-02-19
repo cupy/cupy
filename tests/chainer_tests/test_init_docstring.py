@@ -3,6 +3,7 @@ import pkgutil
 import unittest
 
 import chainer
+from chainer import testing
 
 
 def get_init_doc(klass):
@@ -57,3 +58,6 @@ class TestInitDocstring(unittest.TestCase):
                 msg += '{}.{} has __init__.__doc__:\n{}\n\n'.format(
                     mod.__name__, value, init_doc)
             self.fail(msg)
+
+
+testing.run_module(__name__, __file__)
