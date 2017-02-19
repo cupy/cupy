@@ -138,6 +138,49 @@ class TestGetitemAdvanced(unittest.TestCase):
                             cuda.to_gpu(self.gy_data))
 
 
+class TestCupyIndicesGetItem(unittest.TestCase):
+
+    def setUp(self):
+        self.x_data = numpy.random.uniform(
+            -1, 1, (4, 3, 2)).astype(numpy.float32)
+        self.sliced_shape = (2, 2, 3)
+        self.gy_data = numpy.random.uniform(
+            -1, 1, self.sliced_shape).astype(numpy.float32)
+        self.slices = ([1, 0], slice(None), [[1, 1], [1, 1]])
+
+    def check_forward(self, x_data):
+        slices = []
+        for i, s in enumerate(self.slices):
+            if isinstance(s, numpy.ndarray):
+                s = chainer.cuda.cupy.array(s)
+            slices.append(s)
+        slices = tuple(slices)
+        x = chainer.Variable(x_data)
+        y = functions.get_item(x, slices)
+        self.assertEqual(y.data.dtype, numpy.float32)
+        numpy.testing.assert_equal(cuda.to_cpu(x_data)[self.slices],
+                                   cuda.to_cpu(y.data))
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x_data))
+
+    def check_backward(self, x_data, y_grad):
+        slices = []
+        for i, s in enumerate(self.slices):
+            if isinstance(s, numpy.ndarray):
+                s = chainer.cuda.cupy.array(s)
+            slices.append(s)
+        slices = tuple(slices)
+        gradient_check.check_backward(functions.GetItem(slices),
+                                      (x_data,), y_grad)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x_data),
+                            cuda.to_gpu(self.gy_data))
+
+
 class TestInvalidGetItem(unittest.TestCase):
 
     def setUp(self):
