@@ -360,11 +360,16 @@ class TestProd(unittest.TestCase):
 
 class TestSameTypes(unittest.TestCase):
 
-    @attr.gpu
     def test_all_numpy_array(self):
         x = numpy.array([0])
         y = numpy.array([1])
         z = numpy.array([2])
+        self.assertTrue(T.same_types(x, y, z))
+
+    def test_all_numpy_subclasses(self):
+        x = numpy.array([0])
+        y = numpy.array([[1], [2]])
+        z = numpy.matrix("3,4; 5,6")
         self.assertTrue(T.same_types(x, y, z))
 
     @attr.gpu
