@@ -132,9 +132,10 @@ def meshgrid(*xi, **kwargs):
     Given one-dimensional coordinate arrays x1, x2, ..., xn, this function
     makes N-D grids.
 
-    For ndarrays x1, x2, ..., xn with lengths ``Ni = len(xi)``, return
-    ``(N1, N2, N3, ..., Nn)`` shaped arrays if indexing='ij' or
-    ``(N2, N1, N3, ..., Nn)`` shaped arrays if indexing='xy'.
+    For one-dimensional arrays x1, x2, ..., xn with lengths ``Ni = len(xi)``,
+    this function returns ``(N1, N2, N3, ..., Nn)`` shaped arrays
+    if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
+    if indexing='xy'.
 
     Unlike NumPy, CuPy currently only supports 1-D arrays as inputs.
     Also, CuPy does not support ``sparse`` option yet.
