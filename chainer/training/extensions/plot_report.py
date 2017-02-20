@@ -89,6 +89,9 @@ class PlotReport(extension.Extension):
         self._init_summary()
         self._data = {k: [] for k in y_keys}
 
+    def available(self):
+        return _available
+
     def __call__(self, trainer):
         if not _available:
             return
