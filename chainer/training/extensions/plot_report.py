@@ -89,6 +89,7 @@ class PlotReport(extension.Extension):
         self._init_summary()
         self._data = {k: [] for k in y_keys}
 
+    @property
     def available(self):
         return _available
 
