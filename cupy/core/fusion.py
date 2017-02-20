@@ -32,6 +32,12 @@ class FusionOp(object):
         return "<FusionOp, name={}, types=[{}]>".format(
             self.name, ', '.join(_.name for _ in self.types))
 
+    def build_kernel_name(self):
+        return self.name + '_' + '_'.join([
+            'IN_' + '_'.join(build_kernel_name(_) for _ in self.in_vars),
+            'OUT_' + '_'.join(build_kernel_name(_) for _ in self.out_vars),
+        ])
+
 
 class _FusionVar(object):
 
@@ -42,6 +48,9 @@ class _FusionVar(object):
 
     def __repr__(self):
         return "<_FusionVar, num={}, ty={}, const={}>".format(self.num, self.ty, self.const)
+
+    def build_kernel_name(self):
+        return self.ty.name + '_at' + str(self.num)
 
 
 class _FusionMem(object):
@@ -78,6 +87,9 @@ class _FusionRef(object):
 
     def __repr__(self):
         return "<_FusionRef, dtype=%s>" % self.dtype
+
+    def build_kernel_name(self):
+        return build_kernel_name(self._var)
 
     def __neg__(self):
         return negative(self)
@@ -465,7 +477,7 @@ def _get_fix_code(data_type, fixed_type, operation):
     return module_code
 
 
-def _get_fusion(func, nin, reduce, post_map, identity, input_types):
+def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     if nin is None:
         nin = len(inspect.getargspec(func).args)
     in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
@@ -486,6 +498,9 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types):
     operation += ''.join(_get_declaration_from_op(_) for _ in op_list)
     operation += '\n'.join(_get_operation_code(_) for _ in op_list)
 
+    if name is None:
+        name = 'fusion__' + '__'.join(build_kernel_name(_) for _ in op_list)
+
     if reduce is None:
         if not out_params:
             in_params = ', '.join(_get_params(in_vars[:-1]))
@@ -493,7 +508,8 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types):
         submodules = _gather_submodules(op_list)
         submodule_code = ''.join(_get_submodule_code(_) for _ in submodules.values())
         return core.ElementwiseKernel(in_params, out_params,
-                                      operation, preamble=submodule_code)
+                                      operation, preamble=submodule_code,
+                                      name=name)
     else:
         if nout != 1:
             raise Exception("Wrong number of number of arguments")
@@ -611,6 +627,17 @@ def fuse(input_num=None, reduce=None, post_map=lambda x: x):
             If not assigned, post_map step is skipped.
     """
     return lambda f: Fusion(f, input_num, reduce, post_map)
+
+
+def build_kernel_name(entity):
+    if isinstance(entity, FusionOp):
+        return entity.build_kernel_name()
+    elif isinstance(entity, _FusionVar):
+        return entity.build_kernel_name()
+    elif isinstance(entity, _FusionRef):
+        return entity.build_kernel_name()
+    else:
+        assert False, type(entity)
 
 
 class ufunc(core.ufunc):
