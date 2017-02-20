@@ -151,6 +151,8 @@ class TestSumprod(unittest.TestCase):
 
 
 axes = [0, 1, 2]
+
+
 @testing.gpu
 @testing.parameterize(*testing.product({"axis": axes}))
 class TestCumsum(unittest.TestCase):

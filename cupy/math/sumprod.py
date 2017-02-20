@@ -125,7 +125,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     while pos < out.size:
         kern(pos, out, size=out.size)
         pos <<= 1
-    return out.reshape(a.shape)
+    return out.ravel()
 
 
 # TODO(okuta): Implement diff
