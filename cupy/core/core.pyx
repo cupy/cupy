@@ -2578,24 +2578,12 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
         raise ValueError('provided op is not supported')
 
 
-cpdef _scatter_op_multiple(ndarray a, list slices, v, op):
-    cdef ndarray a_interm, reduced_idx
-    cdef int li, ri
-
-    if op != 'update':
-        raise TypeError('scatter_op_multiple does not support op other than'
-                        'update yet')
-
-    a_interm, reduced_idx, li, ri =\
-        _prepare_multiple_array_indexing(a, slices)
-    _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
-
-
 cpdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
     cdef Py_ssize_t n_not_slice_none, mask_i
     cdef Py_ssize_t ellipsis_size
-    cdef ndarray v, x, y
+    cdef ndarray v, x, y, a_interm, reduced_idx
+    cdef int li, ri
 
     if not isinstance(slices, tuple):
         slices = [slices]
@@ -2694,7 +2682,11 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             _scatter_op_single(a, adv_slices[axis], value,
                                li=axis, ri=axis, op=op)
             return
-        _scatter_op_multiple(a, adv_slices, value, op)
+
+        # scatter_op with multiple integer arrays
+        a_interm, reduced_idx, li, ri =\
+            _prepare_multiple_array_indexing(a, adv_slices)
+        _scatter_op_single(a_interm, reduced_idx, value, li=li, ri=ri, op=op)
         return
 
     if op == 'update':
@@ -3157,6 +3149,12 @@ cpdef ndarray tensordot_core(
         ret = out
         if out.dtype != dtype:
             out = ndarray(ret_shape, dtype)
+
+    if m == 1 and n == 1:
+        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        if out is not ret:
+            elementwise_copy(out, ret)
+        return ret
 
     # It copies the operands if needed
     if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
