@@ -107,7 +107,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
         out[...] = a
 
     if axis is None:
-        a = a.ravel()
+        out = out.ravel()
     else:
         return _proc_as_batch(_cumsum_batch, out, axis=axis)
 
@@ -125,7 +125,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     while pos < out.size:
         kern(pos, out, size=out.size)
         pos <<= 1
-    return out.ravel()
+    return out
 
 
 # TODO(okuta): Implement diff
