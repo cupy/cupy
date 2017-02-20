@@ -34,8 +34,8 @@ def get_compiler_setting():
     if not cuda_path and os.path.exists('/usr/local/cuda'):
         cuda_path = '/usr/local/cuda'
 
-    include_dirs = ['/home/mitmul/cuda/include']
-    library_dirs = ['/home/mitmul/cuda/lib64']
+    include_dirs = []
+    library_dirs = []
     define_macros = []
 
     if cuda_path:
