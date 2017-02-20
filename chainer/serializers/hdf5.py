@@ -82,18 +82,26 @@ class HDF5Deserializer(serializer.Deserializer):
 
     Args:
         group (h5py.Group): The group that the deserialization starts from.
+        strict (bool): If ``True``, the deserializer raises an error when an
+            expected value is not found in the given HDF5 file. Otherwise,
+            it ignores the value and skip deserialization.
 
     """
 
-    def __init__(self, group):
+    def __init__(self, group, strict=True):
         _check_available()
         self.group = group
+        self.strict = strict
 
     def __getitem__(self, key):
         name = self.group.name + '/' + key
         return HDF5Deserializer(self.group.require_group(name))
 
     def __call__(self, key, value):
+        if not self.strict and key not in self.group:
+            return value
+
+        self.group.keys
         dataset = self.group[key]
         if value is None:
             return numpy.asarray(dataset)

@@ -1,9 +1,22 @@
+import contextlib
 import operator
 import sys
+import threading
 
 import numpy
 
 from chainer import cuda
+
+
+_thread_local = threading.local()
+
+
+@contextlib.contextmanager
+def get_function_check_context(f):
+    default = getattr(_thread_local, 'current_function', None)
+    _thread_local.current_function = f
+    yield
+    _thread_local.current_function = default
 
 
 class TypeInfo(object):
@@ -444,6 +457,13 @@ class InvalidType(Exception):
     def __init__(self, expect, actual, msg=None):
         if msg is None:
             msg = 'Expect: {0}\nActual: {1}'.format(expect, actual)
+            if (hasattr(_thread_local, 'current_function')
+                    and _thread_local.current_function is not None):
+                msg = '''
+Invalid operation is performed in: {0} (Forward)
+
+{1}'''.format(_thread_local.current_function.label, msg)
+
         super(InvalidType, self).__init__(msg)
 
         self.expect = expect

@@ -1073,6 +1073,13 @@ cdef class ndarray:
     def __getitem__(self, slices):
         """x.__getitem__(y) <==> x[y]
 
+        Supports both basic and advanced indexing.
+
+        .. note::
+
+            Currently, it does not support ``slices`` that consists of more
+            than one boolean arrays
+
         .. note::
 
            CuPy handles out-of-bounds indices differently from NumPy.
@@ -1121,6 +1128,7 @@ cdef class ndarray:
         # Check if advanced is true,
         # and convert list/NumPy arrays to cupy.ndarray
         advanced = False
+        mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
                 s = array(s)
@@ -1129,15 +1137,23 @@ cdef class ndarray:
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
-                    if i == 0 and internal.vector_equal(self._shape, s._shape):
-                        return _getitem_mask(self, s)
-                    else:
-                        raise ValueError('Boolean array indexing is supported '
-                                         'only for same sized array.')
+                    mask_exists = True
                 else:
                     raise IndexError(
                         'arrays used as indices must be of integer or boolean '
                         'type. (actual: {})'.format(s.dtype.type))
+
+        if mask_exists:
+            n_not_slice_none = 0
+            for i, s in enumerate(slices):
+                if not isinstance(s, slice) or s != slice(None):
+                    n_not_slice_none += 1
+                    if issubclass(s.dtype.type, numpy.bool_):
+                        mask_i = i
+            if n_not_slice_none != 1:
+                raise ValueError('currently, CuPy only supports slices that '
+                                 'consist of one boolean array.')
+            return _getitem_mask_single(self, slices[mask_i], mask_i)
 
         if advanced:
             # split slices that can be handled by basic-indexing
@@ -2368,30 +2384,55 @@ cdef _scatter_add_mask_kernel = ElementwiseKernel(
     'cupy_scatter_add_mask')
 
 
-cdef _boolean_array_indexing_nth = ElementwiseKernel(
-    'T a, bool boolean_array, S nth',
+cdef _getitem_mask_kernel = ElementwiseKernel(
+    'T a, bool mask, S mask_scanned',
     'raw T out',
-    'if (boolean_array) out[nth - 1] = a',
-    'cupy_boolean_array_indexing_nth')
+    'if (mask) out[mask_scanned - 1] = a',
+    'cupy_getitem_mask')
 
 
-cpdef ndarray _getitem_mask(ndarray a, ndarray boolean_array):
+cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
+    cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
+    cdef tuple lshape, rshape, out_shape
 
-    a = a.ravel()
-    boolean_array = boolean_array.ravel()
-    if boolean_array.size <= 2 ** 31 - 1:
-        boolean_array_type = numpy.int32
+    # Get number of True in the mask to determine the shape of the array
+    # after masking.
+    if mask.size <= 2 ** 31 - 1:
+        mask_type = numpy.int32
     else:
-        boolean_array_type = numpy.int64
-    nth_true_array = scan(
-        boolean_array.astype(boolean_array_type))  # starts with 1
+        mask_type = numpy.int64
+    mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
+    n_true = int(mask_scanned[-1])
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+    masked_shape = lshape + (n_true,) + rshape
 
-    n_true = int(nth_true_array[-1])
-    out_shape = (n_true,)
-    out = ndarray(out_shape, dtype=a.dtype)
+    # When mask covers the entire array, broadcasting is not necessary.
+    if mask.ndim == a.ndim and axis == 0:
+        return mask, mask_scanned._reshape(mask._shape), masked_shape
 
-    return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
+    # The scan of the broadcasted array is used to index on kernel.
+    mask_br = mask._reshape(
+        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
+    mask_br = broadcast_to(mask_br, a.shape)
+    if mask.size <= 2 ** 31 - 1:
+        mask_type = numpy.int32
+    else:
+        mask_type = numpy.int64
+    mask_br_scanned = scan(mask_br.astype(mask_type).ravel())
+    mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
+    return mask_br, mask_br_scanned, masked_shape
+
+
+cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
+    cdef ndarray mask_scanned
+    cdef tuple masked_shape
+
+    mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
+        a, mask, axis)
+    out = ndarray(masked_shape, dtype=a.dtype)
+    return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
 cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
@@ -2517,58 +2558,32 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
 
 
 cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
-    cdef ndarray mask_scanned, mask_br, mask_br_scanned
-    cdef int n_true
-    cdef tuple lshape, rshape, v_shape
+    cdef ndarray mask_scanned
+    cdef tuple masked_shape
+
+    mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
+        a, mask, axis)
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
     v = v.astype(a.dtype)
-
     # broadcast v to shape determined by the mask
-    if mask.size <= 2 ** 31 - 1:
-        mask_type = numpy.int32
-    else:
-        mask_type = numpy.int64
-    mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
-    n_true = int(mask_scanned[-1])
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask.ndim:]
-    v_shape = lshape + (n_true,) + rshape
-    v = broadcast_to(v, v_shape)
-
-    mask_br = mask._reshape(
-        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    mask_br = broadcast_to(mask_br, a.shape)
-    mask_br_scanned = scan(mask_br.astype(numpy.int32).ravel())
-    mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
+    v = broadcast_to(v, masked_shape)
 
     if op == 'update':
-        _scatter_update_mask_kernel(v, mask_br, mask_br_scanned, a)
+        _scatter_update_mask_kernel(v, mask, mask_scanned, a)
     elif op == 'add':
-        _scatter_add_mask_kernel(v, mask_br, mask_br_scanned, a)
+        _scatter_add_mask_kernel(v, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
-
-
-cpdef _scatter_op_multiple(ndarray a, list slices, v, op):
-    cdef ndarray a_interm, reduced_idx
-    cdef int li, ri
-
-    if op != 'update':
-        raise TypeError('scatter_op_multiple does not support op other than'
-                        'update yet')
-
-    a_interm, reduced_idx, li, ri =\
-        _prepare_multiple_array_indexing(a, slices)
-    _scatter_op_single(a_interm, reduced_idx, v, li=li, ri=ri, op=op)
 
 
 cpdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
     cdef Py_ssize_t n_not_slice_none, mask_i
     cdef Py_ssize_t ellipsis_size
-    cdef ndarray v, x, y
+    cdef ndarray v, x, y, a_interm, reduced_idx
+    cdef int li, ri
 
     if not isinstance(slices, tuple):
         slices = [slices]
@@ -2667,7 +2682,11 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             _scatter_op_single(a, adv_slices[axis], value,
                                li=axis, ri=axis, op=op)
             return
-        _scatter_op_multiple(a, adv_slices, value, op)
+
+        # scatter_op with multiple integer arrays
+        a_interm, reduced_idx, li, ri =\
+            _prepare_multiple_array_indexing(a, adv_slices)
+        _scatter_op_single(a_interm, reduced_idx, value, li=li, ri=ri, op=op)
         return
 
     if op == 'update':
@@ -3130,6 +3149,12 @@ cpdef ndarray tensordot_core(
         ret = out
         if out.dtype != dtype:
             out = ndarray(ret_shape, dtype)
+
+    if m == 1 and n == 1:
+        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        if out is not ret:
+            elementwise_copy(out, ret)
+        return ret
 
     # It copies the operands if needed
     if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
