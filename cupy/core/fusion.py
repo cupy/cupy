@@ -585,6 +585,10 @@ class Fusion(object):
         axis = kwargs['axis'] if 'axis' in kwargs else None
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
+        if builtins.any(not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic)) for _ in args):
+            raise TypeError('Invalid argument type for \'{}\': ({})'.format(
+                self.name,
+                ', '.join(repr(type(_)) for _ in args)))
         is_cupy_data = lambda a: isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
             types = [_.dtype for _ in args]
