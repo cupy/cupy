@@ -51,12 +51,48 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 # TODO(okuta): Implement cumprod
 
 
-def cumsum(a, axis=None, dtype=None, out=None):
-    if axis is None:
-        a = a.ravel()
-    else:
-        raise ValueError("'axis' option is not supported")
+def _axis_to_first(x, axis):
+    if axis < 0:
+        axis = x.ndim + axis
+    trans = [axis] + [a for a in range(x.ndim) if a != axis]
+    revert = list(range(1, axis + 1)) + [0] + list(range(axis + 1, x.ndim))
+    return trans, revert
 
+
+def _proc_as_batch(proc, x, axis):
+    trans, revert = _axis_to_first(x, axis)
+    t = x.transpose(trans)
+    s = t.shape
+    r = t.reshape(x.shape[axis], -1).T
+    result = proc(r)
+    return result.T.reshape(s).transpose(revert)
+
+
+def _cumsum_batch(out):
+    if out.ndim != 2:
+        raise ValueError("only 2-D array (Batch, N) is supported")
+
+    kern = core.ElementwiseKernel(
+        'int32 pos, int32 batch', 'raw T x',
+        '''
+        int b = i % batch;
+        int j = i / batch;
+        if (j & pos) {
+          x[(A){b, j}] += x[(A){b, j ^ pos | (pos - 1)}];
+        }
+        ''',
+        'cumsum_batch_kernel',
+        preamble="typedef const int A[2];"
+    )
+
+    pos = 1
+    while pos < out.size:
+        kern(pos, out.shape[0], out, size=out.size)
+        pos <<= 1
+    return out
+
+
+def cumsum(a, axis=None, dtype=None, out=None):
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -73,6 +109,11 @@ def cumsum(a, axis=None, dtype=None, out=None):
     else:
         out[...] = a
 
+    if axis is None:
+        a = a.ravel()
+    else:
+        return _proc_as_batch(_cumsum_batch, out, axis=axis)
+
     kern = core.ElementwiseKernel(
         'int32 pos', 'raw T x',
         '''
@@ -87,7 +128,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     while pos < out.size:
         kern(pos, out, size=out.size)
         pos <<= 1
-    return out
+    return out.reshape(a.shape)
 
 
 # TODO(okuta): Implement diff

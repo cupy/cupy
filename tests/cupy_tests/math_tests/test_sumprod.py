@@ -150,7 +150,9 @@ class TestSumprod(unittest.TestCase):
         return xp.prod(a, axis=1)
 
 
+axes = [0, 1, 2]
 @testing.gpu
+@testing.parameterize(*testing.product({"axis": axes}))
 class TestCumsum(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -166,3 +168,10 @@ class TestCumsum(unittest.TestCase):
     def test_cumsum_2dim(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumsum(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis(self, xp, dtype):
+        n = len(axes)
+        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
+        return xp.cumsum(a, axis=self.axis)
