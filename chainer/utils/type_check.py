@@ -492,11 +492,11 @@ def expect(*bool_exprs):
 
 def same_types(*arrays):
     are_numpy_arrays = map(lambda x: issubclass(type(x), numpy.ndarray),
-                           [a for a in arrays])
+                           arrays)
     all_numpy_arrays = all(are_numpy_arrays)
     if cuda.available:
         are_cupy_arrays = map(lambda x: issubclass(type(x), cupy.ndarray),
-                              [a for a in arrays])
+                              arrays)
         return all_numpy_arrays or all(are_cupy_arrays)
     else:
         return all_numpy_arrays
