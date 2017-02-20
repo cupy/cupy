@@ -61,7 +61,9 @@ class PlotReport(extension.Extension):
             import chainer
 
         Then, once ``chainer.training.extensions`` is imported,
-        ``matplotlib.use`` will never be available.
+        ``matplotlib.use`` will have no effect.
+
+	For the details, please see here: http://matplotlib.org/faq/usage_faq.html#what-is-a-backend
 
     Args:
         y_keys (iterable of strs): Keys of values regarded as y. If this is
