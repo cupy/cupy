@@ -31,7 +31,7 @@ class TestCount(unittest.TestCase):
         self.assertEqual(func(numpy), func(cupy))
 
     @testing.for_all_dtypes()
-    def test_count_nonzero_zero_axis(self, dtype=numpy.float32):
+    def test_count_nonzero_int_axis(self, dtype):
         for ax in range(3):
             def func(xp):
                 m = testing.shaped_random((2, 3, 4), xp, xp.bool_)
@@ -39,3 +39,17 @@ class TestCount(unittest.TestCase):
                 c = xp.count_nonzero(a, axis=ax)
                 return c
             testing.assert_allclose(func(numpy), func(cupy))
+
+    @testing.for_all_dtypes()
+    def test_count_nonzero_tuple_axis(self, dtype):
+        for ax in range(3):
+            for ay in range(3):
+                if ax == ay:
+                    continue
+
+                def func(xp):
+                    m = testing.shaped_random((2, 3, 4), xp, xp.bool_)
+                    a = testing.shaped_random((2, 3, 4), xp, dtype) * m
+                    c = xp.count_nonzero(a, axis=(ax, ay))
+                    return c
+                testing.assert_allclose(func(numpy), func(cupy))
