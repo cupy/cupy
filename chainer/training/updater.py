@@ -301,7 +301,7 @@ class ParallelUpdater(StandardUpdater):
         for model_key, model in six.iteritems(self._models):
             in_arrays = in_arrays_list[model_key]
             loss_func = self.loss_func or model
-            losses.append(loss_func, in_arrays)
+            losses.append(loss_func(*in_arrays))
 
         # For _uninitialized_params
         for model in six.itervalues(self._models):
