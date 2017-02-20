@@ -201,7 +201,7 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-    int upscalex, int mode)
+    int upscaley, int mode)
 cpdef setConvolution2dDescriptor_v5(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
     int upscaley, int mode, size_t computeType)
