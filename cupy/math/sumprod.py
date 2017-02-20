@@ -69,9 +69,6 @@ def _proc_as_batch(proc, x, axis):
 
 
 def _cumsum_batch(out):
-    if out.ndim != 2:
-        raise ValueError("only 2-D array (Batch, N) is supported")
-
     kern = core.ElementwiseKernel(
         'int32 pos, int32 batch', 'raw T x',
         '''
