@@ -160,7 +160,7 @@ def meshgrid(*xi, **kwargs):
     if kwargs:
         raise TypeError(
             'meshgrid() got an unexpected keyword argument \'{}\''.format(
-                        list(kwargs)[0]))
+                list(kwargs)[0]))
     if indexing not in ['xy', 'ij']:
         raise ValueError('Valid values for `indexing` are \'xy\' and \'ij\'.')
 
