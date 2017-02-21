@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+depth2space
+~~~~~~~~~~~
+.. autofunction:: depth2space
+
 dstack
 ~~~~~~
 .. autofunction:: dstack
@@ -122,6 +126,14 @@ expand_dims
 flatten
 ~~~~~~~
 .. autofunction:: flatten
+
+fliplr
+~~~~~~
+.. autofunction:: fliplr
+
+flipud
+~~~~~~
+.. autofunction:: flipud
 
 get_item
 ~~~~~~~~
@@ -150,6 +162,10 @@ select_item
 separate
 ~~~~~~~~
 .. autofunction:: separate
+
+space2depth
+~~~~~~~~~~~
+.. autofunction:: space2depth
 
 split_axis
 ~~~~~~~~~~
@@ -222,6 +238,10 @@ embed_id
 linear
 ~~~~~~
 .. autofunction:: linear
+
+n_step_lstm
+~~~~~~~~~~~
+.. autofunction:: n_step_lstm
 
 
 Evaluation functions
@@ -510,6 +530,10 @@ average_pooling_2d
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: average_pooling_2d
 
+average_pooling_nd
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: average_pooling_nd
+
 max_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: max_pooling_2d
@@ -529,6 +553,10 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+upsampling_2d
+~~~~~~~~~~~~~
+.. autofunction:: upsampling_2d
 
 
 Utility functions

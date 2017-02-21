@@ -1,6 +1,3 @@
-import numpy
-import six
-
 import cupy
 from cupy import core
 
@@ -49,34 +46,7 @@ def concatenate(tup, axis=0):
     .. seealso:: :func:`numpy.concatenate`
 
     """
-    ndim = None
-    shape = None
-    for a in tup:
-        if not isinstance(a, cupy.ndarray):
-            raise TypeError('Only cupy arrays can be concatenated')
-        if a.ndim == 0:
-            raise TypeError('zero-dimensional arrays cannot be concatenated')
-        if ndim is None:
-            ndim = a.ndim
-            shape = list(a.shape)
-            axis = _get_positive_axis(a.ndim, axis)
-            continue
-
-        if a.ndim != ndim:
-            raise ValueError(
-                'All arrays to concatenate must have the same ndim')
-        if any(i != axis and shape[i] != a.shape[i]
-               for i in six.moves.range(ndim)):
-            raise ValueError(
-                'All arrays must have same shape except the axis to '
-                'concatenate')
-        shape[axis] += a.shape[axis]
-
-    if ndim is None:
-        raise ValueError('Cannot concatenate from empty tuple')
-
-    dtype = numpy.find_common_type([a.dtype for a in tup], [])
-    return core.concatenate(tup, axis, shape, dtype)
+    return core.concatenate_method(tup, axis)
 
 
 def dstack(tup):

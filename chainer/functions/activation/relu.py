@@ -32,6 +32,7 @@ class ReLU(function.Function):
 
     def forward_gpu(self, x):
         if (cuda.cudnn_enabled and self.use_cudnn and
+                x[0].flags.c_contiguous and
                 (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             y = cudnn.activation_forward(x[0], _mode)
             self.y = y
@@ -44,6 +45,7 @@ class ReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         if (cuda.cudnn_enabled and self.use_cudnn and
+                x[0].flags.c_contiguous and gy[0].flags.c_contiguous and
                 (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             gx = cudnn.activation_backward(x[0], self.y, gy[0], _mode)
         else:
@@ -55,15 +57,31 @@ class ReLU(function.Function):
 
 
 def relu(x, use_cudnn=True):
-    """Rectified Linear Unit function :math:`f(x)=\\max(0, x)`.
+    """Rectified Linear Unit function.
+
+     .. math::`f(x)=\\max(0, x)`.
 
     Args:
-        x (~chainer.Variable): Input variable.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable. A :math:`(s_1, s_2, ..., s_n)`-shaped float array.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
             uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: Output variable. A
+        :math:`(s_1, s_2, ..., s_n)`-shaped float array.
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(-1, 1, (3, 4, 5)).astype('f')
+        >>> np.any(x < 0)
+        True
+        >>> y = F.relu(x)
+        >>> np.any(y.data < 0)
+        False
+        >>> y.shape
+        (3, 4, 5)
 
     """
     return ReLU(use_cudnn)(x)

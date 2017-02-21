@@ -222,8 +222,8 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
 
     def test_called(self):
         with mock.patch(
-                'chainer.functions.connection.convolution_2d.libcudnn'
-        ) as mlibcudnn:
+                'chainer.functions.connection.convolution_2d.libcudnn',
+                autospec=True) as mlibcudnn:
             if self.cudnn_version < 4000:
                 with self.assertRaises(ValueError):
                     x, W, b, y = self._run()
@@ -235,10 +235,12 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
             # in Convolution2DFunction.backward_gpu()
             self.assertFalse(
                 mlibcudnn.getConvolutionBackwardFilterAlgorithm.called)
-            mlibcudnn.convolutionBackwardFilter_v3.assert_called_once()
+            self.assertEqual(
+                mlibcudnn.convolutionBackwardFilter_v3.call_count, 1)
             self.assertFalse(
                 mlibcudnn.getConvolutionBackwardDataAlgorithm.called)
-            mlibcudnn.convolutionBackwardData_v3.assert_called_once()
+            self.assertEqual(
+                mlibcudnn.convolutionBackwardData_v3.call_count, 1)
 
     def test_deterministic(self):
         if self.cudnn_version < 4000:

@@ -1,9 +1,44 @@
 import cupy
 
-# TODO(okuta): Implement fliplr
+
+def fliplr(a):
+    """Flip array in the left/right direction.
+
+    Flip the entries in each row in the left/right direction. Columns
+    are preserved, but appear in a different order than before.
+
+    Args:
+        a (~cupy.ndarray): Input array.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.fliplr`
+
+    """
+    if a.ndim < 2:
+        raise ValueError('Input must be >= 2-d')
+    return cupy.take(a, cupy.arange(a.shape[1] - 1, -1, -1), axis=1)
 
 
-# TODO(okuta): Implement flipud
+def flipud(a):
+    """Flip array in the up/down direction.
+
+    Flip the entries in each column in the up/down direction. Rows are
+    preserved, but appear in a different order than before.
+
+    Args:
+        a (~cupy.ndarray): Input array.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.flipud`
+
+    """
+    if a.ndim < 1:
+        raise ValueError('Input must be >= 1-d')
+    return cupy.take(a, cupy.arange(a.shape[0] - 1, -1, -1), axis=0)
 
 
 def roll(a, shift, axis=None):

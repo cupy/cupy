@@ -72,4 +72,6 @@ Repeating part of arrays along axis
 Rearranging elements
 ====================
 
+.. autofunction:: cupy.fliplr
+.. autofunction:: cupy.flipud
 .. autofunction:: cupy.roll

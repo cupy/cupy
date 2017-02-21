@@ -47,10 +47,11 @@ before_install:
 
 install:
   - pip install -U pip wheel
-  - pip install 'cython!=0.25.2'
+  - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
   - pip install h5py pillow
+  - travis_wait pip install theano
   - pip install nose hacking mock
   - pip install autopep8
 
@@ -70,4 +71,6 @@ sudo: false
 addons:
   apt:
     packages:
+      - gfortran
       - libhdf5-serial-dev
+      - liblapack-dev

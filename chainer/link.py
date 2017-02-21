@@ -7,6 +7,7 @@ import six
 
 from chainer import cuda
 from chainer import initializers
+import chainer.serializer
 from chainer import variable
 
 
@@ -481,6 +482,9 @@ class Link(object):
             serializer(name, d[name].data)
         for name in self._persistent:
             d[name] = serializer(name, d[name])
+        if (self.has_uninitialized_params and
+                isinstance(serializer, chainer.serializer.Serializer)):
+            raise ValueError("uninitialized parameters cannot be serialized")
         for name in self._uninitialized_params.copy():
             # Note: There should only be uninitialized parameters
             # during deserialization.

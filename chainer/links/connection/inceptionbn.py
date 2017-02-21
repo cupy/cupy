@@ -19,7 +19,7 @@ class InceptionBN(link.Chain):
     pooling method is configurable.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing \
-    Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_.
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`_.
 
     Args:
         in_channels (int): Number of channels of input arrays.
@@ -118,7 +118,8 @@ class InceptionBN(link.Chain):
         outs.append(h33)
 
         if self.pooltype == 'max':
-            p = max_pooling_2d.max_pooling_2d(x, 3, stride=self.stride, pad=1)
+            p = max_pooling_2d.max_pooling_2d(x, 3, stride=self.stride, pad=1,
+                                              cover_all=False)
         else:
             p = average_pooling_2d.average_pooling_2d(x, 3, stride=self.stride,
                                                       pad=1)

@@ -63,10 +63,10 @@ class SerialIterator(iterator.Iterator):
                     numpy.random.shuffle(self._order)
                 if rest > 0:
                     if self._order is None:
-                        batch += list(self.dataset[:rest])
+                        batch.extend(self.dataset[:rest])
                     else:
-                        batch += [self.dataset[index]
-                                  for index in self._order[:rest]]
+                        batch.extend([self.dataset[index]
+                                      for index in self._order[:rest]])
                 self.current_position = rest
             else:
                 self.current_position = N

@@ -1,4 +1,4 @@
-import cupy
+from cupy import core
 
 
 # TODO(okuta): Implement asfarray
@@ -18,9 +18,7 @@ def asfortranarray(a, dtype=None):
     .. seealso:: :func:`numpy.asfortranarray`
 
     """
-    ret = cupy.empty(a.shape[::-1], a.dtype if dtype is None else dtype).T
-    ret[...] = a
-    return ret
+    return core.asfortranarray(a, dtype)
 
 
 # TODO(okuta): Implement asarray_chkfinite

@@ -2,6 +2,7 @@
 
 import collections
 import ctypes
+import gc
 import warnings
 import weakref
 
@@ -81,7 +82,7 @@ cdef class MemoryPointer:
         ptr (int): Pointer to the place within the buffer.
     """
 
-    def __init__(self, Memory mem, Py_ssize_t offset):
+    def __init__(self, mem, Py_ssize_t offset):
         self.mem = mem
         self.device = mem.device
         self.ptr = mem.ptr + offset
@@ -358,7 +359,13 @@ cdef class SingleDeviceMemoryPool:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 self.free_all_free()
-                mem = self._alloc(size).mem
+                try:
+                    mem = self._alloc(size).mem
+                except runtime.CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    gc.collect()
+                    mem = self._alloc(size).mem
 
         self._in_use[mem.ptr] = mem
         pmem = PooledMemory(mem, self._weakref)

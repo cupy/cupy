@@ -31,6 +31,8 @@ for_all_dtypes_combination = helper.for_all_dtypes_combination
 for_signed_dtypes_combination = helper.for_signed_dtypes_combination
 for_unsigned_dtypes_combination = helper.for_unsigned_dtypes_combination
 for_int_dtypes_combination = helper.for_int_dtypes_combination
+for_orders = helper.for_orders
+for_CF_orders = helper.for_CF_orders
 
 with_requires = helper.with_requires
 
