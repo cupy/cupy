@@ -12,6 +12,7 @@ from cupy import logic
 from cupy import math
 from cupy import sorting
 from cupy import statistics
+from cupy import util
 
 
 class FusionOp(object):
@@ -636,6 +637,7 @@ def fuse(input_num=None, reduce=None, post_map=lambda x: x):
         post_map (function): Mapping function for reduced values.
             If not assigned, post_map step is skipped.
     """
+    util.experimental('cupy.core.fusion')
     return lambda f: Fusion(f, input_num, reduce, post_map)
 
 

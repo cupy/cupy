@@ -466,3 +466,5 @@ def get_array_module(*args):
     return numpy
 
 fuse = fusion.fuse
+
+disable_experimental_feature_warning = False
