@@ -2,7 +2,7 @@
 CuPy -- NumPy-like API accelerated with CUDA
 ============================================
 
-This is the `CuPy <http://cupy.chainer.org>`_ documentation.
+This is the CuPy documentation.
 
 .. toctree::
    :maxdepth: 1
