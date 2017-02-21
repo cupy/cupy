@@ -12,10 +12,10 @@ class Pad(function.Function):
     def __init__(self, pad_width, mode, **keywords):
         self.mode = mode
         self.keywords = keywords
-        pad_width = numpy.asarray(pad_width)
-        if pad_width.size == 1:
-            pad_width = numpy.repeat(pad_width, 2)
         self.pad_width = pad_width
+        self.pad_bw = numpy.asarray(pad_width)
+        if self.pad_bw.size == 1:
+            self.pad_bw = numpy.repeat(self.pad_bw, 2)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -33,12 +33,12 @@ class Pad(function.Function):
         gy = grads[0]
         array = inputs[0]
         ndims = array.ndim
-        if self.pad_width.ndim == 1:
-            self.pad_width = numpy.tile(self.pad_width, (ndims, 1))
+        if self.pad_bw.ndim == 1:
+            self.pad_bw = numpy.tile(self.pad_bw, (ndims, 1))
         for i in range(ndims):
             gy = xp.take(gy,
-                         indices=numpy.arange(self.pad_width[i][0],
-                                              self.pad_width[i][0]
+                         indices=numpy.arange(self.pad_bw[i][0],
+                                              self.pad_bw[i][0]
                                               + array.shape[i]),
                          axis=i)
         return gy,
