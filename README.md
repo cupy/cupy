@@ -1,8 +1,8 @@
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
-[![GitHub license](https://img.shields.io/github/license/pfnet/cupy.svg)](https://github.com/pfnet/cupy)
-[![travis](https://img.shields.io/travis/pfnet/cupy.svg)](https://travis-ci.org/pfnet/cupy)
-[![coveralls](https://img.shields.io/coveralls/pfnet/cupy.svg)](https://coveralls.io/github/pfnet/cupy)
-[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy-ndarray.org/en/stable/?badge=stable)
+[![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
+[![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
+[![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
 
 # Please do not send a PR yet
 Please see [chainer](https://github.com/pfnet/chainer) project.
@@ -93,14 +93,13 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 
 ## More information
 
-- Official site: http://cupy-ndarray.org/
-- Official document: http://docs.cupy-ndarray.org/
-- github: https://github.com/pfnet/cupy
+- Official site: http://cupy.chainer.org/
+- Official document: http://docs.cupy.chainer.org/
+- github: https://github.com/cupy/cupy
 - Forum: https://groups.google.com/forum/#!forum/chainer
 - Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
 - Twitter: https://twitter.com/ChainerOfficial
 - Twitter (Japanese): https://twitter.com/chainerjp
-- External examples: https://github.com/pfnet/chainer/wiki/External-examples
 - Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
 
 ## License

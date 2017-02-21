@@ -22,7 +22,7 @@ setup(
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='http://cupy-ndarray.org/',
+    url='http://cupy.chainer.org/',
     license='MIT License',
     packages=['cupy',
               'cupy.binary',
