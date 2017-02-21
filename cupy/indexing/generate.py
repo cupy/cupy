@@ -12,7 +12,7 @@ from cupy.creation import from_data
 class AxisConcatenator(object):
     """Translates slice objects to concatenation along an axis.
 
-    For detailed documentation on usage, see :func:`r_`.
+    For detailed documentation on usage, see :func:`cupy.r_`.
     This implementation is partially borrowed from NumPy's one.
 
     """
