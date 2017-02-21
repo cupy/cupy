@@ -4,10 +4,9 @@
 # class s_(object):
 
 import numpy
-
-import cupy
-
 import six
+
+from cupy.creation import from_data
 
 
 class AxisConcatenator(object):
@@ -56,14 +55,14 @@ class AxisConcatenator(object):
                         'special directives must be the first entry.')
                 raise NotImplementedError
             elif type(k) in numpy.ScalarType:
-                newobj = cupy.array(k, ndmin=ndmin)
+                newobj = from_data.array(k, ndmin=ndmin)
                 scalars.append(i)
                 scalar = True
                 scalartypes.append(newobj.dtype)
             else:
-                newobj = cupy.array(k, copy=False, ndmin=ndmin)
+                newobj = from_data.array(k, copy=False, ndmin=ndmin)
                 if ndmin > 1:
-                    ndim = cupy.array(k, copy=False).ndim
+                    ndim = from_data.array(k, copy=False).ndim
                     if trans1d != -1 and ndim < ndmin:
                         newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
 
