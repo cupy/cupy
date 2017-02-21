@@ -18,7 +18,7 @@ from chainer.utils import type_check
         {'shape': (2, 3), 'pad_width': ((1, 2), (3, 4)), 'mode': 'constant'},
     ],
     [
-        # {'dtype': numpy.float16},
+        {'dtype': numpy.float16},
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ]
@@ -29,6 +29,10 @@ class TestPadDefault(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out_shape = numpy.pad(self.x, self.pad_width, self.mode).shape
         self.g = numpy.random.uniform(-1, 1, out_shape).astype(self.dtype)
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'atol': 2 ** -6, 'rtol': 2 ** -6}
 
     def check_forward(self, x_data):
         y = functions.pad(x_data, self.pad_width, self.mode)
@@ -45,7 +49,8 @@ class TestPadDefault(unittest.TestCase):
 
     def check_backward(self, x_data, g_data):
         gradient_check.check_backward(
-            functions.Pad(self.pad_width, self.mode), x_data, g_data)
+            functions.Pad(self.pad_width, self.mode), x_data, g_data,
+            **self.check_backward_options)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
@@ -65,7 +70,7 @@ class TestPadDefault(unittest.TestCase):
          'constant_values': ((1, 2), (3, 4))},
     ],
     [
-        # {'dtype': numpy.float16},
+        {'dtype': numpy.float16},
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ]
@@ -79,6 +84,10 @@ class TestPad(unittest.TestCase):
         out_shape = numpy.pad(self.x, self.pad_width, mode=self.mode,
                               constant_values=self.constant_values).shape
         self.g = numpy.random.uniform(-1, 1, out_shape).astype(self.dtype)
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'atol': 2 ** -6, 'rtol': 2 ** -6}
 
     def check_forward(self, x_data):
         y = functions.pad(x_data, self.pad_width, mode=self.mode,
@@ -99,7 +108,7 @@ class TestPad(unittest.TestCase):
         gradient_check.check_backward(
             functions.Pad(self.pad_width, mode=self.mode,
                           constant_values=self.constant_values),
-            x_data, g_data)
+            x_data, g_data, **self.check_backward_options)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
