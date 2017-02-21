@@ -93,7 +93,7 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 
 ## More information
 
-- Official site: http://cupy.chainer.org/
+- Official site: (to be appeared)
 - Official document: http://docs.cupy.chainer.org/
 - github: https://github.com/cupy/cupy
 - Forum: https://groups.google.com/forum/#!forum/chainer
