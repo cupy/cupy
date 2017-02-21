@@ -127,3 +127,7 @@ class TestAxisConcatenator(unittest.TestCase):
         cp = cuda.cupy
         with self.assertRaises(TypeError):
             cp.indexing.generate.AxisConcatenator.__init__()
+
+    def test_len(self):
+        a = AxisConcatenator()
+        self.assertEqual(len(a), 0)
