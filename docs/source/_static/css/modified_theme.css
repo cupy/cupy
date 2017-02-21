@@ -2,11 +2,11 @@
 
 /* Main background color modification */
 .btn-info, .wy-menu-vertical a:active, .wy-side-nav-search, .wy-side-nav-search img, .wy-nav .wy-menu-vertical a:hover, .wy-nav-top img, .wy-tray-item-info, .wy-side-nav-search, .wy-dropdown-menu > dd > a:hover, .wy-dropdown-menu a:hover, .wy-nav-top {
-    background-color: #d17062 !important;
+    background-color: #70c162 !important;
 }
 
 .wy-side-nav-search input[type=text] {
-    border-color: #a47224 !important;
+    border-color: #72a424 !important;
 }
 
 .rst-content .note .admonition-title {
