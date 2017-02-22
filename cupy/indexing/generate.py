@@ -6,7 +6,10 @@
 import numpy
 import six
 
+import cupy
+from cupy import core
 from cupy.creation import from_data
+from cupy.manipulation import join
 
 
 class AxisConcatenator(object):
@@ -67,7 +70,7 @@ class AxisConcatenator(object):
                         newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
 
             objs.append(newobj)
-            if not scalar and isinstance(newobj, cupy.ndarray):
+            if not scalar and isinstance(newobj, core.ndarray):
                 arraytypes.append(newobj.dtype)
 
         final_dtype = numpy.find_common_type(arraytypes, scalartypes)
@@ -75,7 +78,7 @@ class AxisConcatenator(object):
             for k in scalars:
                 objs[k] = objs[k].astype(final_dtype)
 
-        return cupy.concatenate(tuple(objs), axis=self.axis)
+        return join.concatenate(tuple(objs), axis=self.axis)
 
     def __len__(self):
         return 0
@@ -193,7 +196,7 @@ def ix_(*args):
     out = []
     nd = len(args)
     for k, new in enumerate(args):
-        new = cupy.asarray(new)
+        new = from_data.asarray(new)
         if new.ndim != 1:
             raise ValueError("Cross index must be 1 dimensional")
         if new.size == 0:
