@@ -91,6 +91,7 @@ class PlotReport(extension.Extension):
 
     @classmethod
     def available(self):
+        _check_available()
         return _available
 
     def __call__(self, trainer):
