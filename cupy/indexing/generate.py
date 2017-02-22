@@ -87,7 +87,7 @@ class AxisConcatenator(object):
 class CClass(AxisConcatenator):
 
     def __init__(self):
-        super(CClass, self).__init__(self, -1, ndmin=2, trans1d=0)
+        super(CClass, self).__init__(-1, ndmin=2, trans1d=0)
 
 c_ = CClass()
 """Translates slice objects to concatenation along the second axis.
@@ -122,7 +122,7 @@ array([[1, 2, 3, 0, 0, 4, 5, 6]])
 class RClass(AxisConcatenator):
 
     def __init__(self):
-        super(RClass, self).__init__(self)
+        super(RClass, self).__init__()
 
 r_ = RClass()
 """Translates slice objects to concatenation along the first axis.
