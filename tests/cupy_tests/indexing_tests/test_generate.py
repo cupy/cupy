@@ -2,6 +2,7 @@ import unittest
 
 from chainer import cuda
 from cupy import testing
+from cupy.indexing import generate
 
 
 @testing.gpu
@@ -129,5 +130,5 @@ class TestAxisConcatenator(unittest.TestCase):
             cp.indexing.generate.AxisConcatenator.__init__()
 
     def test_len(self):
-        a = AxisConcatenator()
+        a = generate.AxisConcatenator()
         self.assertEqual(len(a), 0)
