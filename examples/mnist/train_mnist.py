@@ -85,7 +85,7 @@ def main():
     trainer.extend(extensions.LogReport())
 
     # Save two plot images to the result dir
-    if extensions.PlotReport.available:
+    if extensions.PlotReport.available():
         trainer.extend(
             extensions.PlotReport(['main/loss', 'validation/main/loss'],
                                   'epoch', file_name='loss.png'))
