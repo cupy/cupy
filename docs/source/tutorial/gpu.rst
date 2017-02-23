@@ -34,22 +34,6 @@ The current device can be changed by :class:`cupy.cuda.Device` object as follows
 Most operations of CuPy is done on the current device.
 Be careful that it causes an error to process an array on a non-current device.
 
-CuPy provides some convenient functions to automatically switch and choose the device.
-For example, the :func:`cupy.asarray` function copies a :class:`numpy.ndarray` object to a specified device:
-
-.. testcode::
-
-   x_cpu = np.ones((5, 4, 3), dtype=np.float32)
-   x_gpu = cupy.asarray(x_cpu, device=1)
-
-It is equivalent to the following code:
-
-.. testcode::
-
-   x_cpu = np.ones((5, 4, 3), dtype=np.float32)
-   with cupy.cuda.Device(1):
-       x_gpu = cupy.array(x_cpu)
-
 Moving a device array to the host can be done by :func:`cupy.asnumpy` as follows:
 
 .. testcode::
