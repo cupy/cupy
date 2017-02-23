@@ -123,7 +123,7 @@ For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing Chainer::
+If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
   export CFLAGS=-I/path/to/cudnn/include
   export LDFLAGS=-L/path/to/cudnn/lib
