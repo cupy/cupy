@@ -12,7 +12,7 @@ There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
-3. Sending a question to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_
+3. Sending a question to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_
 4. Writing a post about CuPy
 
 This document mainly focuses on 1 and 2, though other contributions are also appreciated.
@@ -64,9 +64,9 @@ You can contain your thoughts on **how** to realize it into the feature requests
 
 .. warning::
 
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
-   We may redirect question issues to Chainer User Group.
+   We may redirect question issues to CuPy User Group.
 
 If you can write code to fix an issue, send a PR to the master branch.
 Before writing your code for PRs, read through the :ref:`coding-guide`.
@@ -170,11 +170,6 @@ For example, if you have only one GPU, launch ``nosetests`` by the following com
 
   $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
-Some tests spend too much time.
-If you want to skip such tests, pass ``--attr='!slow'`` option to the ``nosetests`` command::
-
-  $ nosetests path/to/your/test.py --attr='!slow'
-
 Tests are put into the ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
@@ -235,24 +230,7 @@ In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()``
       def test_my_two_gpu_func(self):
           ...
 
-If your test requires too much time, add ``chainer.testing.attr.slow`` decorator.
-The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is given::
-
-  import unittest
-  from chainer.testing import attr
-
-  class TestMyFunc(unittest.TestCase):
-      ...
-
-      @attr.slow
-      def test_my_slow_func(self):
-          ...
-
-.. note::
-   If you want to specify more than two attributes, separate them with a comma such as ``--attr='!gpu,!slow'``.
-   See detail in `the document of nose <https://nose.readthedocs.io/en/latest/plugins/attrib.html#simple-syntax>`_.
-
-Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_ **with --attr='!gpu,!slow' option**.
+Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/cupy/cupy/>`_ **with --attr='!gpu,!slow' option**.
 Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
 The reviewing process starts after the test passes.
 Note that reviewers will test your code without the option to check CUDA-related code.
