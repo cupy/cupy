@@ -2,15 +2,11 @@
 
 from __future__ import print_function
 
-import sys
-import warnings
-
-if 'linux' in sys.platform:
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-    except ImportError:
-        pass
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+except ImportError:
+    pass
 
 import argparse
 
