@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+import sys
+if 'linux' in sys.platform:
+    import matplotlib
+    matplotlib.use('Agg')
+
 from __future__ import print_function
 import argparse
 
