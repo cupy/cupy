@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 from chainer.training import extensions
 
@@ -12,4 +13,11 @@ class TestPlotReport(unittest.TestCase):
         except ImportError:
             available = False
 
-        self.assertEqual(extensions.PlotReport.available(), available)
+        with warnings.catch_warnings(record=True) as w:
+            self.assertEqual(extensions.PlotReport.available(), available)
+
+        # It shows warning only when matplotlib.pyplot is not available
+        if available:
+            self.assertEqual(len(w), 0)
+        else:
+            self.assertEqual(len(w), 1)
