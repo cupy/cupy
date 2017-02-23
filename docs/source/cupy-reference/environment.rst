@@ -1,7 +1,7 @@
 Environment variables
 =====================
 
-Here are the environment variables Chainer uses.
+Here are the environment variables CuPy uses.
 
 
 +--------------------+----------------------------------------------------+

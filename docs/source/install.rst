@@ -182,7 +182,7 @@ Run CuPy with Docker
 -----------------------
 
 We provide the official Docker image.
-Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run Chainer image with GPU.
+Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run CuPy image with GPU.
 You can login to the environment with bash, and run the Python interpreter::
 
   $ nvidia-docker run -it cupy/cupy /bin/bash

@@ -1,11 +1,11 @@
 API Compatibility Policy
 ========================
 
-This document expresses the design policy on compatibilities of Chainer APIs.
+This document expresses the design policy on compatibilities of CuPy APIs.
 Development team should obey this policy on deciding to add, extend, and change APIs and their behaviors.
 
 This document is written for both users and developers.
-Users can decide the level of dependencies on Chainer’s implementations in their codes based on this document.
+Users can decide the level of dependencies on CuPy’s implementations in their codes based on this document.
 Developers should read through this document before creating pull requests that contain changes on the interface.
 Note that this document may contain ambiguities on the level of supported compatibilities.
 
@@ -13,14 +13,14 @@ Note that this document may contain ambiguities on the level of supported compat
 Targeted Versions
 -----------------
 
-This policy is applied to Chainer of versions v1.5.1 and higher.
-Note that this policy is not applied to Chainer of lower versions.
+This policy is applied to CuPy of versions v1.0.0 and higher.
+Note that this policy is not applied to CuPy of lower versions.
 
 
 Versioning and Backward Compatibilities
 ---------------------------------------
 
-The updates of Chainer are classified into three levels: major, minor, and revision.
+The updates of CuPy are classified into three levels: major, minor, and revision.
 These types have distinct levels of backward compatibilities.
 
 - **Major update** contains disruptive changes that break the backward compatibility.
@@ -68,12 +68,12 @@ The actual change should be done in the following steps:
 - At the major update announced in the above update, change the API.
 
 
-.. module:: chainer.utils
+.. module:: cupy.utils
 
 Experimental APIs
 -----------------
 
-Thanks to many contributors, we have introduced many new features to Chainer.
+Thanks to many contributors, we have introduced many new features to CuPy.
 
 However, we have sometimes released new features only to later notice that their APIs are not appropriate.
 The objective of experimental APIs is to avoid such issues by allowing the developer to mark any newly added API as experimental.
@@ -85,15 +85,15 @@ Any API that is not experimental is called *stable* in this document.
     Undocumented behaviors are not considered as APIs. So they are not experimental nor stable.
     The treatment of undocumented behaviors are descibed in :ref:`undocumented_behavior` section.
 
-Chainer can change the interfaces and documents of experimental APIs at **any** version up.
+CuPy can change the interfaces and documents of experimental APIs at **any** version up.
 This change is not considered as a break of backward compatibility.
-Chainer can promote an experimental API to become stable at any **minor** or **major** version up.
+CuPy can promote an experimental API to become stable at any **minor** or **major** version up.
 Once experimental APIs become stable, they cannot revert to experimental again.
 
 When users use experimental APIs for the first time, warnings are raised once for each experimental API,
 unless users explicitly disable the emission of the warnings in advance.
 
-See the document of :meth:`chainer.utils.experimental` how developers mark APIs as experimental
+See the document of :meth:`cupy.utils.experimental` how developers mark APIs as experimental
 and how users enable or disable the warnings practically.
 
 .. note::
@@ -110,7 +110,7 @@ This section defines backward compatibilities that minor updates must maintain.
 Documented Interface
 ~~~~~~~~~~~~~~~~~~~~
 
-Chainer has the official API documentation.
+CuPy has the official API documentation.
 Many applications can be written based on the documented features.
 We support backward compatibilities of documented features.
 In other words, codes only based on the documented features run correctly with minor/revision-updated versions.
@@ -123,7 +123,7 @@ For example, attributes outside of the documented APIs should have one or more u
 Undocumented behaviors
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Behaviors of Chainer implementation not stated in the documentation are undefined.
+Behaviors of CuPy implementation not stated in the documentation are undefined.
 Undocumented behaviors are not guaranteed to be stable between different minor/revision versions.
 
 Minor update may contain changes to undocumented behaviors.
@@ -170,16 +170,6 @@ No exception is raised in the future versions with correct usages that the docum
 On the other hand, warnings may be added at any minor updates for any APIs.
 It means minor updates do not keep backward compatibility of warnings.
 
-Model Format Compatibility
---------------------------
-
-Objects serialized by official serializers that Chainer provides are correctly loaded with the higher (future) versions.
-They might not be correctly loaded with Chainer of the lower versions.
-
-.. note::
-   Current serialization APIs do not support versioning (at least in v1.6.1).
-   It prevents us from introducing changes in the layout of objects that support serialization.
-   We are discussing about introducing versioning in serialization APIs.
 
 Installation Compatibility
 --------------------------
@@ -196,6 +186,6 @@ We support environmental compatibilities in the following ways.
 - Supporting optional packages/libraries may be done in minor updates (e.g. supporting h5py in optional features).
 
 .. note::
-   The installation compatibility does not guarantee that all the features of Chainer correctly run on supported environments.
+   The installation compatibility does not guarantee that all the features of CuPy correctly run on supported environments.
    It may contain bugs that only occurs in certain environments.
    Such bugs should be fixed in some updates.

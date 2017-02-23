@@ -12,7 +12,7 @@ There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
-3. Sending a question to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_
+3. Sending a question to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_
 4. Writing a post about CuPy
 
 This document mainly focuses on 1 and 2, though other contributions are also appreciated.
@@ -64,9 +64,9 @@ You can contain your thoughts on **how** to realize it into the feature requests
 
 .. warning::
 
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
-   We may redirect question issues to Chainer User Group.
+   We may redirect question issues to CuPy User Group.
 
 If you can write code to fix an issue, send a PR to the master branch.
 Before writing your code for PRs, read through the :ref:`coding-guide`.
@@ -235,11 +235,11 @@ In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()``
       def test_my_two_gpu_func(self):
           ...
 
-If your test requires too much time, add ``chainer.testing.attr.slow`` decorator.
+If your test requires too much time, add ``cupy.testing.attr.slow`` decorator.
 The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is given::
 
   import unittest
-  from chainer.testing import attr
+  from cupy.testing import attr
 
   class TestMyFunc(unittest.TestCase):
       ...
