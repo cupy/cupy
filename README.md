@@ -74,11 +74,11 @@ And then, reinstall CuPy.
 ## Run with Docker
 
 We provide the official Docker image.
-Use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) command to run Chainer image with GPU.
+Use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) command to run CuPy image with GPU.
 You can login to the environment with bash, and run the Python interpreter.
 
 ```
-$ nvidia-docker run -it chainer/chainer /bin/bash
+$ nvidia-docker run -it cupy/cupy /bin/bash
 ```
 
 
@@ -96,8 +96,8 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 - Official site: (to be appeared)
 - Official document: http://docs.cupy.chainer.org/
 - github: https://github.com/cupy/cupy
-- Forum: https://groups.google.com/forum/#!forum/chainer
-- Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
+- Forum: https://groups.google.com/forum/#!forum/cupy
+- Forum (Japanese): https://groups.google.com/forum/#!forum/cupy-ja
 - Twitter: https://twitter.com/ChainerOfficial
 - Twitter (Japanese): https://twitter.com/chainerjp
 - Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
