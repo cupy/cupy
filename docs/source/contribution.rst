@@ -170,11 +170,6 @@ For example, if you have only one GPU, launch ``nosetests`` by the following com
 
   $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
-Some tests spend too much time.
-If you want to skip such tests, pass ``--attr='!slow'`` option to the ``nosetests`` command::
-
-  $ nosetests path/to/your/test.py --attr='!slow'
-
 Tests are put into the ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
@@ -234,23 +229,6 @@ In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()``
       @attr.multi_gpu(2)  # specify the number of required GPUs here
       def test_my_two_gpu_func(self):
           ...
-
-If your test requires too much time, add ``cupy.testing.attr.slow`` decorator.
-The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is given::
-
-  import unittest
-  from cupy.testing import attr
-
-  class TestMyFunc(unittest.TestCase):
-      ...
-
-      @attr.slow
-      def test_my_slow_func(self):
-          ...
-
-.. note::
-   If you want to specify more than two attributes, separate them with a comma such as ``--attr='!gpu,!slow'``.
-   See detail in `the document of nose <https://nose.readthedocs.io/en/latest/plugins/attrib.html#simple-syntax>`_.
 
 Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_ **with --attr='!gpu,!slow' option**.
 Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
