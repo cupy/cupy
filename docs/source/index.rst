@@ -2,7 +2,7 @@
 CuPy -- NumPy-like API accelerated with CUDA
 ============================================
 
-This is the CuPy documentation.
+This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
 
 .. module:: cupy
 
