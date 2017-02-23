@@ -106,7 +106,7 @@ class PlotReport(extension.Extension):
         self._data = {k: [] for k in y_keys}
 
     @staticmethod
-    def available(self):
+    def available():
         _check_available()
         return _available
 

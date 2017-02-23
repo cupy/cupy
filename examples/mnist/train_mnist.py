@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
-import sys
-if 'linux' in sys.platform:
-    import matplotlib
-    matplotlib.use('Agg')
-
 from __future__ import print_function
+
+import sys
+import warnings
+
+if 'linux' in sys.platform:
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+    except ImportError:
+        pass
+
 import argparse
 
 import chainer
