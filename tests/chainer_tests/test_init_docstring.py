@@ -1,3 +1,4 @@
+import importlib
 import inspect
 import pkgutil
 import unittest
@@ -35,17 +36,18 @@ class TestInitDocstring(unittest.TestCase):
     def test_init_docstring_empty(self):
         errors = []
         root = chainer.__file__
-        for importer, modname, _ in pkgutil.walk_packages(root):
+        for _, modname, _ in pkgutil.walk_packages(root):
             if 'chainer' not in modname:
                 # Skip tests
                 continue
 
-            loader = importer.find_module(modname)
             try:
-                mod = loader.load_module(modname)
+                # imoprter of pkgutil causes an error.
+                # We use importlib to import modules directly.
+                mod = importlib.import_module(modname)
             except Exception as e:
                 print('Failed to load module accidentally: %s' %
-                      loader.fullname)
+                      modname)
                 print(e)
                 print('')
                 continue
