@@ -123,7 +123,7 @@ For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing Chainer::
+If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
   export CFLAGS=-I/path/to/cudnn/include
   export LDFLAGS=-L/path/to/cudnn/lib
@@ -178,18 +178,18 @@ When you install CuPy without CUDA, and after that you want to use CUDA, please 
 You need to reinstall CuPy when you want to upgrade CUDA.
 
 
-Run Chainer with Docker
+Run CuPy with Docker
 -----------------------
 
 We provide the official Docker image.
 Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run Chainer image with GPU.
 You can login to the environment with bash, and run the Python interpreter::
 
-  $ nvidia-docker run -it chainer/chainer /bin/bash
+  $ nvidia-docker run -it cupy/cupy /bin/bash
 
 Or, run the interpreter directly::
 
-  $ nvidia-docker run -it chainer/chainer /usr/bin/python
+  $ nvidia-docker run -it cupy/cupy /usr/bin/python
 
 
 What "recommend" means?
