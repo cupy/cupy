@@ -1,6 +1,7 @@
 import unittest
 import warnings
 
+from chainer import testing
 from chainer.training import extensions
 
 
@@ -21,3 +22,6 @@ class TestPlotReport(unittest.TestCase):
             self.assertEqual(len(w), 0)
         else:
             self.assertEqual(len(w), 1)
+
+
+testing.run_module(__name__, __file__)
