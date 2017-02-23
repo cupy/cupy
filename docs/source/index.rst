@@ -4,6 +4,8 @@ CuPy -- NumPy-like API accelerated with CUDA
 
 This is the CuPy documentation.
 
+.. module:: cupy
+
 .. toctree::
    :maxdepth: 1
 
