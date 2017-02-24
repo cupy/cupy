@@ -131,6 +131,15 @@ class TestCTCWithAllPadding(TestCTC):
         self.l_length[...] = 1
 
 
+class TestCTCWithRepeatedLabel(TestCTC):
+
+    def setUp(self):
+        super(TestCTCWithRepeatedLabel, self).setUp()
+        self.t = numpy.array([[1, 1], [0, 0]]).astype(numpy.int32)
+        self.l = numpy.array([[2, 1, 2, 1, 2],
+                              [2, 0, 2, 0, 2]]).astype(numpy.int32)
+
+
 class TestCTCBlankSymbol(TestCTC):
 
     def setUp(self):
