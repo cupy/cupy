@@ -79,10 +79,17 @@ def sigmoid_cross_entropy(
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
+        keepdims (bool): Variable holding a boolean value which
+            determines whether to keep the shape of the input.
+            If true, this function computes cross entropy for each instance
+            and does not normalize it (``normalize`' option is ignored).
+            If else, it computes the sum of cross entropy
+            and normalize it according to ``normalize`` option.
 
     Returns:
-        Variable: A variable object holding a scalar array of the cross entropy
-            loss.
+        Variable: A variable object holding an array of the cross entropy.
+            If ``keepdim`` is true, the shape is same as ``x``.
+            If else, it is a scalar array.
 
     .. note::
 
