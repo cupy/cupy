@@ -75,8 +75,9 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
                     if td == -1:
                         loss_expect = 0
                     else:
-                        loss_expect = xd * (td - (xd >= 0)) \
-                            - math.log(1 + math.exp(-numpy.abs(xd)))
+                        loss_expect = -(
+                            xd * (td - (xd >= 0)) -
+                            math.log(1 + math.exp(-numpy.abs(xd))))
                     self.assertAlmostEqual(
                         loss_expect, loss_value[i, j], places=5)
 
