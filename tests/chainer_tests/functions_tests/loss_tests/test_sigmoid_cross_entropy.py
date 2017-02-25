@@ -30,6 +30,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         else:
             self.t = numpy.random.randint(-1, 2,
                                           self.shape).astype(numpy.int32)
+        self.gy = numpy.random.random(self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x_val = chainer.Variable(x_data)
@@ -100,7 +101,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         self.check_forward_without_reduction(
             cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
-    def check_backward(self, x_data, t_data, use_cudnn=True):
+    def check_backward(self, x_data, t_data, y_grad, use_cudnn=True):
         # Skip too large case. That requires a long time.
         if self.shape[0] == 65536:
             return
@@ -110,21 +111,24 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
             (x_data, t_data), None, eps=1e-2)
         gradient_check.check_backward(
             functions.SigmoidCrossEntropy(use_cudnn, keepdims=True),
-            (x_data, t_data), None, eps=1e-2)
+            (x_data, t_data), y_grad, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.t)
+        self.check_backward(self.x, self.t, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+        self.check_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.t), cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
+        self.check_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.t),
+            cuda.to_gpu(self.gy), False)
 
 
 @testing.parameterize(
