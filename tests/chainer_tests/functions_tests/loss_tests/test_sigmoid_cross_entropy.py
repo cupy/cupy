@@ -101,7 +101,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
     {'use_cudnn': False},
 )
 @attr.cudnn
-class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
+class TestSigmoidCrossEntropyCudnnCall(unittest.TestCase):
 
     def setUp(self):
         self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
