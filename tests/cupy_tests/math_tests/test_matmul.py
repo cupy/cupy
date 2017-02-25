@@ -39,10 +39,6 @@ class TestMatmul(unittest.TestCase):
 
     # _multiprocess_can_split_ = True
 
-    def setUp(self):
-        self.x1 = numpy.random.randn(*self.shape_pair[0])
-        self.x2 = numpy.random.randn(*self.shape_pair[1])
-
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     @testing.with_requires('numpy>=1.10')
@@ -52,8 +48,8 @@ class TestMatmul(unittest.TestCase):
     def test_operator_matmul(self, xp, dtype1, dtype2):
         if not numpy.result_type(dtype1, dtype2) == numpy.float32:
             return xp.array([])
-        x1 = xp.array(self.x1, dtype=dtype1)
-        x2 = xp.array(self.x2, dtype=dtype2)
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
     @testing.with_requires('numpy>=1.10')
@@ -63,6 +59,6 @@ class TestMatmul(unittest.TestCase):
     def test_cupy_matmul(self, xp, dtype1, dtype2):
         if not numpy.result_type(dtype1, dtype2) == numpy.float32:
             return xp.array([])
-        x1 = xp.array(self.x1, dtype=dtype1)
-        x2 = xp.array(self.x2, dtype=dtype2)
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return xp.matmul(x1, x2)
