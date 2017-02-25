@@ -58,19 +58,45 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
                 loss_expect /= self.t.shape[0]
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
+    def check_forward_without_reduction(self, x_data, t_data, use_cudnn=True):
+        x_val = chainer.Variable(x_data)
+        t_val = chainer.Variable(t_data)
+        loss = functions.sigmoid_cross_entropy(
+            x_val, t_val, use_cudnn, self.normalize, keepdims=True)
+        self.assertEqual(loss.data.shape, self.x.shape)
+        self.assertEqual(loss.data.dtype, numpy.float32)
+        loss_value = cuda.to_cpu(loss.data)
+
+        # Compute expected value
+        loss_expect = numpy.zeros(self.x.shape, numpy.float32)
+        if not getattr(self, 'ignore_all', False):
+            for i in six.moves.range(self.x.shape[0]):
+                for j in six.moves.range(self.x.shape[1]):
+                    xd, td = self.x[i, j], self.t[i, j]
+                    if td == -1:
+                        continue
+                    loss_expect[i, j] = xd * (td - (xd >= 0)) \
+                        - math.log(1 + math.exp(-numpy.abs(xd)))
+        self.assertAlmostEqual(loss_expect, loss_value, places=5)
+
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
+        self.check_forward_without_reduction(self.x, self.t)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+        self.check_forward_without_reduction(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
+        self.check_forward_without_reduction(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
         # Skip too large case. That requires a long time.
@@ -79,6 +105,9 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
 
         gradient_check.check_backward(
             functions.SigmoidCrossEntropy(use_cudnn),
+            (x_data, t_data), None, eps=1e-2)
+        gradient_check.check_backward(
+            functions.SigmoidCrossEntropy(use_cudnn, keepdims=True),
             (x_data, t_data), None, eps=1e-2)
 
     @condition.retry(3)
