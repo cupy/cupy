@@ -73,9 +73,10 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
                 for j in six.moves.range(self.x.shape[1]):
                     xd, td = self.x[i, j], self.t[i, j]
                     if td == -1:
-                        continue
-                    loss_expect = xd * (td - (xd >= 0)) \
-                        - math.log(1 + math.exp(-numpy.abs(xd)))
+                        loss_expect = 0
+                    else:
+                        loss_expect = xd * (td - (xd >= 0)) \
+                            - math.log(1 + math.exp(-numpy.abs(xd)))
                     self.assertAlmostEqual(
                         loss_expect, loss_value[i, j], places=5)
 
