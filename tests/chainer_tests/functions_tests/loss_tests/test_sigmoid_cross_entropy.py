@@ -68,16 +68,16 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         loss_value = cuda.to_cpu(loss.data)
 
         # Compute expected value
-        loss_expect = numpy.zeros(self.x.shape, numpy.float32)
         if not getattr(self, 'ignore_all', False):
             for i in six.moves.range(self.x.shape[0]):
                 for j in six.moves.range(self.x.shape[1]):
                     xd, td = self.x[i, j], self.t[i, j]
                     if td == -1:
                         continue
-                    loss_expect[i, j] = xd * (td - (xd >= 0)) \
+                    loss_expect = xd * (td - (xd >= 0)) \
                         - math.log(1 + math.exp(-numpy.abs(xd)))
-        self.assertAlmostEqual(loss_expect, loss_value, places=5)
+                    self.assertAlmostEqual(
+                        loss_expect, loss_value[i, j], places=5)
 
     @condition.retry(3)
     def test_forward_cpu(self):
