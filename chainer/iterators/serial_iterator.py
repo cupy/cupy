@@ -43,9 +43,13 @@ class SerialIterator(iterator.Iterator):
         self.epoch = 0
         self.is_new_epoch = False
 
+        self._previous_epoch_detail = -1.
+
     def __next__(self):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
+
+        self._previous_epoch_detail = self.epoch_detail
 
         i = self.current_position
         i_end = i + self.batch_size
@@ -85,6 +89,12 @@ class SerialIterator(iterator.Iterator):
     def epoch_detail(self):
         return self.epoch + self.current_position / len(self.dataset)
 
+    @property
+    def previous_epoch_detail(self):
+        if self._previous_epoch_detail < 0:
+            return None
+        return self._previous_epoch_detail
+
     def serialize(self, serializer):
         self.current_position = serializer('current_position',
                                            self.current_position)
@@ -92,3 +102,10 @@ class SerialIterator(iterator.Iterator):
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
         if self._order is not None:
             serializer('_order', self._order)
+        try:
+            self._previous_epoch_detail = serializer(
+                'previous_epoch_detail', self._previous_epoch_detail)
+        except KeyError:
+            # guess previous_epoch_detail for older version
+            self._previous_epoch_detail = self.epoch_detail - \
+                self.batch_size / len(self.dataset)

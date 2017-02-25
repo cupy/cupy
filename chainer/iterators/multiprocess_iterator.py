@@ -62,12 +62,16 @@ class MultiprocessIterator(iterator.Iterator):
 
         self._finalized = None
 
+        self._previous_epoch_detail = -1.
+
     def __del__(self):
         self.finalize()
 
     def __next__(self):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
+
+        self._previous_epoch_detail = self.epoch_detail
 
         self.is_new_epoch = False
         if self._finalized is None:
@@ -85,6 +89,12 @@ class MultiprocessIterator(iterator.Iterator):
     @property
     def epoch_detail(self):
         return self.epoch + self.current_position / len(self.dataset)
+
+    @property
+    def previous_epoch_detail(self):
+        if self._previous_epoch_detail < 0:
+            return None
+        return self._previous_epoch_detail
 
     def finalize(self):
         if self._finalized is None or self._finalized.is_set():
@@ -106,6 +116,13 @@ class MultiprocessIterator(iterator.Iterator):
         self.epoch = serializer('epoch', self.epoch)
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
         serializer('order', self._order)
+        try:
+            self._previous_epoch_detail = serializer(
+                'previous_epoch_detail', self._previous_epoch_detail)
+        except KeyError:
+            # guess previous_epoch_detail for older version
+            self._previous_epoch_detail = self.epoch_detail - \
+                self.batch_size / len(self.dataset)
 
     def _init(self):
         finalized = threading.Event()
