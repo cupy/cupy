@@ -106,8 +106,8 @@ class SerialIterator(iterator.Iterator):
                 'previous_epoch_detail', self._previous_epoch_detail)
         except KeyError:
             # guess previous_epoch_detail for older version
-            self._previous_epoch_detail = self.epoch_detail - \
-                self.batch_size / len(self.dataset)
+            self._previous_epoch_detail = self.epoch + \
+                (self.current_position - self.batch_size) / len(self.dataset)
 
     def reset(self):
         if self._shuffle:
