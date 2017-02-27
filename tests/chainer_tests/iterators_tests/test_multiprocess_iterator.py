@@ -1,3 +1,4 @@
+from __future__ import division
 import copy
 import unittest
 
@@ -25,25 +26,30 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
         for i in range(3):
             self.assertEqual(it.epoch, i)
+            self.assertAlmostEqual(it.epoch_detail, i + 0 / 6)
             batch1 = it.next()
             self.assertEqual(len(batch1), 2)
             self.assertIsInstance(batch1, list)
             self.assertFalse(it.is_new_epoch)
+            self.assertAlmostEqual(it.epoch_detail, i + 2 / 6)
             batch2 = it.next()
             self.assertEqual(len(batch2), 2)
             self.assertIsInstance(batch2, list)
             self.assertFalse(it.is_new_epoch)
+            self.assertAlmostEqual(it.epoch_detail, i + 4 / 6)
             batch3 = it.next()
             self.assertEqual(len(batch3), 2)
             self.assertIsInstance(batch3, list)
             self.assertTrue(it.is_new_epoch)
             self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+            self.assertAlmostEqual(it.epoch_detail, i + 6 / 6)
 
     def test_iterator_list_type(self):
         dataset = [[i, numpy.zeros((10,)) + i] for i in range(6)]
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
         for i in range(3):
             self.assertEqual(it.epoch, i)
+            self.assertAlmostEqual(it.epoch_detail, i)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -52,6 +58,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertFalse(it.is_new_epoch)
                 else:
                     self.assertTrue(it.is_new_epoch)
+                self.assertAlmostEqual(
+                    it.epoch_detail, (3 * i + j + 1) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, list)
                     self.assertIsInstance(x[1], numpy.ndarray)
@@ -66,6 +74,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
         for i in range(3):
             self.assertEqual(it.epoch, i)
+            self.assertAlmostEqual(it.epoch_detail, i)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -74,6 +83,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertFalse(it.is_new_epoch)
                 else:
                     self.assertTrue(it.is_new_epoch)
+                self.assertAlmostEqual(
+                    it.epoch_detail, (3 * i + j + 1) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, tuple)
                     self.assertIsInstance(x[1], numpy.ndarray)
@@ -88,6 +99,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
         for i in range(3):
             self.assertEqual(it.epoch, i)
+            self.assertAlmostEqual(it.epoch_detail, i)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -96,6 +108,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertFalse(it.is_new_epoch)
                 else:
                     self.assertTrue(it.is_new_epoch)
+                self.assertAlmostEqual(
+                    it.epoch_detail, (3 * i + j + 1) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, dict)
                     k = tuple(x)[0]
@@ -130,9 +144,13 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(
             dataset, 2, repeat=False, **self.options)
 
+        self.assertAlmostEqual(it.epoch_detail, 0 / 5)
         batch1 = it.next()
+        self.assertAlmostEqual(it.epoch_detail, 2 / 5)
         batch2 = it.next()
+        self.assertAlmostEqual(it.epoch_detail, 4 / 5)
         batch3 = it.next()
+        self.assertAlmostEqual(it.epoch_detail, 5 / 5)
         self.assertRaises(StopIteration, it.next)
 
         self.assertEqual(len(batch3), 1)

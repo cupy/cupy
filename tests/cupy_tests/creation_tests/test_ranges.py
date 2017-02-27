@@ -2,6 +2,7 @@ import math
 import sys
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -168,3 +169,39 @@ class TestRanges(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_logspace_base(self, xp, dtype):
         return xp.logspace(0, 2, 5, base=2.0, dtype=dtype)
+
+
+@testing.parameterize(
+    *testing.product({
+        'indexing': ['xy', 'ij'],
+        'copy': [False, True]
+    })
+)
+@testing.gpu
+class TestMeshgrid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_meshgrid0(self, dtype):
+        out = cupy.meshgrid(indexing=self.indexing, copy=self.copy)
+        assert(out == [])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_meshgrid1(self, xp, dtype):
+        x = xp.arange(2).astype(dtype)
+        return xp.meshgrid(x, indexing=self.indexing, copy=self.copy)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_meshgrid2(self, xp, dtype):
+        x = xp.arange(2).astype(dtype)
+        y = xp.arange(3).astype(dtype)
+        return xp.meshgrid(x, y, indexing=self.indexing, copy=self.copy)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_meshgrid3(self, xp, dtype):
+        x = xp.arange(2).astype(dtype)
+        y = xp.arange(3).astype(dtype)
+        z = xp.arange(4).astype(dtype)
+        return xp.meshgrid(x, y, z, indexing=self.indexing, copy=self.copy)

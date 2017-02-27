@@ -15,7 +15,7 @@ except ImportError:
            '--no-cache-dir -vvvv`.\n\n'
            'original error: {}'.format(exc_info[1]))
 
-    six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
+    six.reraise(ImportError, ImportError(msg), exc_info[2])
 
 from cupy import binary  # NOQA
 from cupy import creation  # NOQA
@@ -135,6 +135,7 @@ from cupy.creation.from_data import copy  # NOQA
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
 from cupy.creation.ranges import logspace  # NOQA
+from cupy.creation.ranges import meshgrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA

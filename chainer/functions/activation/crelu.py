@@ -46,17 +46,39 @@ class CReLU(function.Function):
 def crelu(x, axis=1):
     """Concatenated Rectified Linear Unit function.
 
-    This function is expressed as :math:`f(x) = (\\max(0, x), \\max(0, -x))`,
-    where two output values are concatenated along an axis.
+    This function is expressed as follows
+
+     .. math:: f(x) = (\\max(0, x), \\max(0, -x)).
+
+    Here, two output values are concatenated along an axis.
 
     See: https://arxiv.org/abs/1603.05201
 
     Args:
-        x (~chainer.Variable): Input variable.
-        axis (int): Axis that the output values are concatenated along
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+        axis (int): Axis that the output values are concatenated along.
+            Default is 1.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: Output variable of concatenated array.
+        If the axis is 1, A :math:`(s_1, s_2 \\times 2, ..., s_N)`-shaped float
+        array.
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(-10, 10, (3, 2)).astype('f')
+        >>> x
+        array([[ 0.97627008,  4.30378723],
+               [ 2.05526757,  0.89766365],
+               [-1.52690399,  2.9178822 ]], dtype=float32)
+        >>> y = F.crelu(x, axis=1)
+        >>> y.data
+        array([[ 0.97627008,  4.30378723,  0.        ,  0.        ],
+               [ 2.05526757,  0.89766365,  0.        ,  0.        ],
+               [ 0.        ,  2.9178822 ,  1.52690399,  0.        ]], \
+dtype=float32)
 
     """
     return CReLU(axis=axis)(x)

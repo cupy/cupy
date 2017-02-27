@@ -92,9 +92,6 @@ class PlotReport(extension.Extension):
 
         _check_available()
 
-        if not _available:
-            return
-
         self._x_key = x_key
         if isinstance(y_keys, str):
             y_keys = (y_keys,)
@@ -107,6 +104,11 @@ class PlotReport(extension.Extension):
         self._postprocess = postprocess
         self._init_summary()
         self._data = {k: [] for k in y_keys}
+
+    @staticmethod
+    def available():
+        _check_available()
+        return _available
 
     def __call__(self, trainer):
         if not _available:
