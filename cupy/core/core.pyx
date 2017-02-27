@@ -2943,9 +2943,9 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     .. note::
         Differences to numpy or missing features:
 
-        Currently the output must be float32 (float64, comlplex64
-        and complex128 follow later). This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be numpy.float32.
+        Currently the output must be real (float16, float32, uint8, ...),
+        complex64 and complex128 follow later. This means, that
+        numpy.result_type(a.dtype, b.dtype) have to be real.
 
         The out array as input is currently not supported.
 
@@ -2966,7 +2966,11 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     cdef int batchCount
     cdef ndarray out, ap, bp, outp
 
-    dtype = numpy.result_type(a.dtype, b.dtype)
+    ret_dtype = numpy.result_type(a.dtype, b.dtype)
+    dtype = numpy.find_common_type((ret_dtype, 'f'), ())
+
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
 
     if a.ndim == 1:
         a = a.reshape(1, len(a))
@@ -3098,7 +3102,12 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     else:
         raise TypeError(dtype, a.dtype, b.dtype)
 
-    return out
+    if dtype == ret_dtype:
+        return out
+    else:
+        ret = ndarray(out_shape, ret_dtype)
+        elementwise_copy(out, ret)
+        return ret
 
 
 cdef _cuda_runtime_version = None
