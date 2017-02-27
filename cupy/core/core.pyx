@@ -1261,7 +1261,7 @@ cdef class ndarray:
             >>> x = cupy.arange(3)
             >>> x[[1, 3]] = 10
             >>> x
-            array([10, 10, 2])
+            array([10, 10,  2])
 
         .. note::
 
@@ -1274,8 +1274,8 @@ cdef class ndarray:
             >>> i = cupy.arange(10000) % 2
             >>> v = cupy.arange(10000).astype(numpy.float)
             >>> a[i] = v
-            >>> a
-            array([9150., 9151.])
+            >>> a  # doctest: +SKIP
+            array([ 9150.,  9151.])
 
             On the other hand, NumPy stores the value corresponding to the
             last index among the indices referencing duplicate locations.
@@ -1286,7 +1286,7 @@ cdef class ndarray:
             >>> v_cpu = numpy.arange(10000).astype(numpy.float)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
-            array([9998., 9999.])
+            array([ 9998.,  9999.])
 
         """
         _scatter_op(self, slices, value, 'update')
