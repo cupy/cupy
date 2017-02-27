@@ -6,6 +6,7 @@ Chainer Tutorial
 
    basic
    recurrentnet
+   convnet
    gpu
    function
    type_check
