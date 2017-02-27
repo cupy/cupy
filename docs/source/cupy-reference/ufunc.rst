@@ -117,3 +117,10 @@ Floating point values
 :data:`floor`
 :data:`ceil`
 :data:`trunc`
+
+
+ufunc.at
+--------
+
+Currently, CuPy does not support ``at`` for ufuncs in general.
+However, :func:`cupy.scatter_add` can substitute ``add.at`` as both behave identically.

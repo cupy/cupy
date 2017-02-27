@@ -23,6 +23,8 @@ from chainer.functions.array import depth2space  # NOQA
 from chainer.functions.array import dstack  # NOQA
 from chainer.functions.array import expand_dims  # NOQA
 from chainer.functions.array import flatten  # NOQA
+from chainer.functions.array import fliplr  # NOQA
+from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
 from chainer.functions.array import permutate  # NOQA
@@ -105,6 +107,7 @@ from chainer.functions.pooling import max_pooling_nd  # NOQA
 from chainer.functions.pooling import roi_pooling_2d  # NOQA
 from chainer.functions.pooling import spatial_pyramid_pooling_2d  # NOQA
 from chainer.functions.pooling import unpooling_2d  # NOQA
+from chainer.functions.pooling import unpooling_nd  # NOQA
 from chainer.functions.pooling import upsampling_2d  # NOQA
 from chainer.functions.theano import theano_function  # NOQA
 from chainer.functions.util import forget  # NOQA
@@ -157,6 +160,10 @@ from chainer.functions.array.expand_dims import expand_dims  # NOQA
 from chainer.functions.array.expand_dims import ExpandDims  # NOQA
 from chainer.functions.array.flatten import flatten  # NOQA
 from chainer.functions.array.flatten import Flatten  # NOQA
+from chainer.functions.array.fliplr import fliplr  # NOQA
+from chainer.functions.array.fliplr import FlipLR  # NOQA
+from chainer.functions.array.flipud import flipud  # NOQA
+from chainer.functions.array.flipud import FlipUD  # NOQA
 from chainer.functions.array.get_item import get_item  # NOQA
 from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
@@ -346,6 +353,8 @@ from chainer.functions.pooling.spatial_pyramid_pooling_2d import spatial_pyramid
 from chainer.functions.pooling.spatial_pyramid_pooling_2d import SpatialPyramidPooling2D  # NOQA
 from chainer.functions.pooling.unpooling_2d import Unpooling2D  # NOQA
 from chainer.functions.pooling.unpooling_2d import unpooling_2d  # NOQA
+from chainer.functions.pooling.unpooling_nd import unpooling_nd  # NOQA
+from chainer.functions.pooling.unpooling_nd import UnpoolingND  # NOQA
 from chainer.functions.pooling.upsampling_2d import Upsampling2D  # NOQA
 from chainer.functions.pooling.upsampling_2d import upsampling_2d  # NOQA
 

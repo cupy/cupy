@@ -145,32 +145,37 @@ cpdef inline check_status(int status):
 
 cpdef size_t create() except *:
     cdef Handle handle
-    status = cublasCreate(&handle)
+    with nogil:
+        status = cublasCreate(&handle)
     check_status(status)
     return <size_t>handle
 
 
 cpdef void destroy(size_t handle) except *:
-    status = cublasDestroy(<Handle>handle)
+    with nogil:
+        status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
 cpdef int getVersion(size_t handle) except *:
     cdef int version
-    status = cublasGetVersion(<Handle>handle, &version)
+    with nogil:
+        status = cublasGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
 
 
 cpdef int getPointerMode(size_t handle) except *:
     cdef PointerMode mode
-    status = cublasGetPointerMode(<Handle>handle, &mode)
+    with nogil:
+        status = cublasGetPointerMode(<Handle>handle, &mode)
     check_status(status)
     return mode
 
 
 cpdef setPointerMode(size_t handle, int mode):
-    status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
+    with nogil:
+        status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
 
 
@@ -179,13 +184,15 @@ cpdef setPointerMode(size_t handle, int mode):
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream):
-    status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
+    with nogil:
+        status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(size_t handle) except *:
     cdef driver.Stream stream
-    status = cublasGetStream(<Handle>handle, &stream)
+    with nogil:
+        status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
 

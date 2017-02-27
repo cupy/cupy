@@ -143,6 +143,45 @@ class TestHDF5Deserializer(unittest.TestCase):
         ret = self.deserializer('z', z)
         self.assertEqual(ret, 10)
 
+    def test_string(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        try:
+            data = 'abc'
+            with h5py.File(path, 'w') as f:
+                f.create_dataset('str', data=data)
+            with h5py.File(path, 'r') as f:
+                deserializer = hdf5.HDF5Deserializer(f)
+                ret = deserializer('str', '')
+                self.assertEqual(ret, data)
+        finally:
+            os.remove(path)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestHDF5DeserializerNonStrict(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+        with h5py.File(path, 'w') as f:
+            f.require_group('x')
+
+        self.hdf5file = h5py.File(path, 'r')
+        self.deserializer = hdf5.HDF5Deserializer(self.hdf5file, strict=False)
+
+    def tearDown(self):
+        if hasattr(self, 'hdf5file'):
+            self.hdf5file.close()
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def test_deserialize_partial(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        ret = self.deserializer('y', y)
+        self.assertIs(ret, y)
+
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestSaveHDF5(unittest.TestCase):

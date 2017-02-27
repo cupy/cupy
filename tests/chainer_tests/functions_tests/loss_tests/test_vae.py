@@ -17,7 +17,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
         self.ln_var = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
 
         # Refer to Appendix B in the original paper
-        # Auto-Encoding Variational Bayes (http://arxiv.org/abs/1312.6114)
+        # Auto-Encoding Variational Bayes (https://arxiv.org/abs/1312.6114)
         J = self.mean.size
         self.expect = -(J + numpy.sum(self.ln_var) -
                         numpy.sum(self.mean * self.mean) -
@@ -47,7 +47,7 @@ class TestBernoulliNLL(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
 
         # Refer to Appendix C.1 in the original paper
-        # Auto-Encoding Variational Bayes (http://arxiv.org/abs/1312.6114)
+        # Auto-Encoding Variational Bayes (https://arxiv.org/abs/1312.6114)
         p = 1 / (1 + numpy.exp(-self.y))
         self.expect = - (numpy.sum(self.x * numpy.log(p)) +
                          numpy.sum((1 - self.x) * numpy.log(1 - p)))
@@ -77,7 +77,7 @@ class TestGaussianNLL(unittest.TestCase):
         self.ln_var = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
 
         # Refer to Appendix C.2 in the original paper
-        # Auto-Encoding Variational Bayes (http://arxiv.org/abs/1312.6114)
+        # Auto-Encoding Variational Bayes (https://arxiv.org/abs/1312.6114)
         D = self.x.size
         x_d = self.x - self.mean
         var = numpy.exp(self.ln_var)

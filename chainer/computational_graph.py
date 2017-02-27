@@ -10,16 +10,13 @@ class DotNode(object):
     This class represents a node of computational graph,
     with some utilities for dot language.
 
+    Args:
+        node: :class: `Variable` object or :class: `Function` object.
+        attribute (dict): Attributes for the node.
+
     """
 
     def __init__(self, node, attribute=None):
-        """Initializes DotNode.
-
-        Args:
-            node: :class: `Variable` object or :class: `Function` object.
-            attribute (dict): Attributes for the node.
-
-        """
         assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
@@ -53,23 +50,20 @@ class ComputationalGraph(object):
 
       We assume that the computational graph is directed and acyclic.
 
+    Args:
+        nodes (list): List of nodes. Each node is either
+             :class:`Variable` object or :class:`Function` object.
+        edges (list): List of edges. Each edge consists of pair of nodes.
+        variable_style (dict): Dot node style for variable.
+        function_style (dict): Dot node style for function.
+        rankdir (str): Direction of the graph that must be
+            TB (top to bottom), BT (bottom to top), LR (left to right)
+            or RL (right to left).
+
     """
 
     def __init__(self, nodes, edges, variable_style=None, function_style=None,
                  rankdir='TB'):
-        """Initializes computational graph.
-
-        Args:
-            nodes (list): List of nodes. Each node is either
-                 :class:`Variable` object or :class:`Function` object.
-            edges (list): List of edges. Each edge consists of pair of nodes.
-            variable_style (dict): Dot node style for variable.
-            function_style (dict): Dot node style for function.
-            rankdir (str): Direction of the graph that must be
-                TB (top to bottom), BT (bottom to top), LR (left to right)
-                or RL (right to left).
-
-        """
         self.nodes = nodes
         self.edges = edges
         self.variable_style = variable_style
