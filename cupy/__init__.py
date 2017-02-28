@@ -124,11 +124,11 @@ from cupy.creation.basic import ones_like  # NOQA
 from cupy.creation.basic import zeros  # NOQA
 from cupy.creation.basic import zeros_like  # NOQA
 
+from cupy.core.fusion import copy  # NOQA
 from cupy.creation.from_data import array  # NOQA
 from cupy.creation.from_data import asanyarray  # NOQA
 from cupy.creation.from_data import asarray  # NOQA
 from cupy.creation.from_data import ascontiguousarray  # NOQA
-from cupy.core.fusion import copy  # NOQA
 
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
@@ -323,9 +323,9 @@ from cupy.core.fusion import floor  # NOQA
 from cupy.core.fusion import rint  # NOQA
 from cupy.core.fusion import trunc  # NOQA
 
-from cupy.math.sumprod import cumsum  # NOQA
 from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
+from cupy.math.sumprod import cumsum  # NOQA
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
@@ -357,8 +357,8 @@ from cupy.core.fusion import remainder as mod  # NOQA
 from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
-from cupy.core.fusion import absolute  # NOQA
 from cupy.core.fusion import abs  # NOQA
+from cupy.core.fusion import absolute  # NOQA
 from cupy.core.fusion import clip  # NOQA
 from cupy.core.fusion import fmax  # NOQA
 from cupy.core.fusion import fmin  # NOQA
@@ -381,9 +381,9 @@ from cupy.sorting.count import count_nonzero  # NOQA
 from cupy.sorting.search import flatnonzero  # NOQA
 from cupy.sorting.search import nonzero  # NOQA
 
+from cupy.core.fusion import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
-from cupy.core.fusion import where  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
