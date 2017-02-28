@@ -1,6 +1,6 @@
-from six.moves import builtins
 import inspect
 import six
+from six.moves import builtins
 import string
 import warnings
 
@@ -48,7 +48,8 @@ class _FusionVar(object):
         self.const = const
 
     def __repr__(self):
-        return "<_FusionVar, num={}, ty={}, const={}>".format(self.num, self.ty, self.const)
+        return "<_FusionVar, num={}, ty={}, const={}>".format(
+            self.num, self.ty, self.const)
 
     def build_kernel_name(self):
         return self.ty.name + '_at' + str(self.num)
@@ -494,7 +495,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
     out_refs = filter(lambda i: i is not None, out_refs)
     out_refs = [_FusionRef(_normalize_arg(_, mem), mem) for _ in out_refs]
-    out_vars = [_normalize_arg(copy(_), mem) for _ in  out_refs]
+    out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
     tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
@@ -513,7 +514,8 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
             in_params = ', '.join(_get_params(in_vars[:-1]))
             out_params = ', '.join(_get_params([in_vars[-1]]))
         submodules = _gather_submodules(op_list)
-        submodule_code = ''.join(_get_submodule_code(_) for _ in submodules.values())
+        submodule_code = ''.join(_get_submodule_code(_)
+                                 for _ in submodules.values())
         return core.ElementwiseKernel(in_params, out_params,
                                       operation, preamble=submodule_code,
                                       name=name)
@@ -541,7 +543,8 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
             raise Exception("Can't reduce a tuple")
         post_vars = mem.var_list
         post_ops = mem.op_list
-        post_code = ''.join(_get_declaration_from_var(_) for _ in post_vars[1:])
+        post_code = ''.join(_get_declaration_from_var(_)
+                            for _ in post_vars[1:])
         post_code += ''.join(_get_declaration_from_op(_) for _ in post_ops)
         post_code += '\n'.join(_get_operation_code(_) for _ in post_ops)
         post_code = _get_post_code(post_vars, post_code, post_out)
@@ -592,7 +595,9 @@ class Fusion(object):
         axis = kwargs['axis'] if 'axis' in kwargs else None
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
-        if builtins.any(not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic)) for _ in args):
+        if builtins.any(
+                not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic))
+                for _ in args):
             raise TypeError('Invalid argument type for \'{}\': ({})'.format(
                 self.name,
                 ', '.join(repr(type(_)) for _ in args)))
