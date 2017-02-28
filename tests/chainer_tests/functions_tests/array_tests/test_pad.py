@@ -23,8 +23,6 @@ from chainer.utils import type_check
         {'dtype': numpy.float64},
     ]
 ))
-# Old numpy does not work with ndarray as pad_width
-@testing.with_requires('numpy>=1.10.1')
 class TestPadDefault(unittest.TestCase):
 
     def setUp(self):

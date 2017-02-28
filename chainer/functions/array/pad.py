@@ -18,15 +18,17 @@ class Pad(function.Function):
             self.pad_bw = numpy.repeat(self.pad_bw, 2)
 
     def check_type_forward(self, in_types):
+        # Depending on the arguments, pad_width and keywords, the input value
+        # may be inappropriate. In that case, numpy.pad or cupy.pad will raise
+        # errors, so that only check the size and the dtype in this function.
         type_check.expect(in_types.size() == 1)
+        x_type = in_types[0]
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
-        if len(self.keywords) == 0:
-            return xp.pad(inputs[0], self.pad_width, mode=self.mode),
-        else:
-            return xp.pad(inputs[0], self.pad_width, mode=self.mode,
-                          **self.keywords),
+        return xp.pad(inputs[0], self.pad_width, mode=self.mode,
+                      **self.keywords),
 
     def backward(self, inputs, grads):
         xp = cuda.get_array_module(*inputs)
@@ -53,6 +55,7 @@ def pad(x, pad_width, mode, **keywords):
         pad_width (int or array-like):
             Number of values padded to the edges of each axis.
         mode (str):
+            Specifies how the function fills the periphery of the array.
             `constant`
                 Pads with a constant values.
         constant_values (int or array-like):
