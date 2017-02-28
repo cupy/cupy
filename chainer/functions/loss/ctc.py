@@ -96,9 +96,9 @@ class ConnectionistTemporalClassification(function.Function):
         batch, lab = label.shape
         repeat_mask = xp.ones((batch, lab * 2 + 1))
         repeat_mask[:, 1::2] = (label -
-                             xp.take(label, (xp.arange(lab) - 1) % lab
-                                     + xp.arange(batch)[:, None] * lab)
-                             != 0).astype(xp.int32)
+                                xp.take(label, (xp.arange(lab) - 1) % lab
+                                        + xp.arange(batch)[:, None] * lab)
+                                != 0).astype(xp.int32)
         repeat_mask[:, 1] = 1
         rr = (xp.eye(max_length, dtype=dtype)[None, :] +
               xp.eye(max_length, k=1, dtype=dtype)[None, :] +
