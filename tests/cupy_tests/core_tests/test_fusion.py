@@ -471,10 +471,7 @@ class TestFusionArithmetic(unittest.TestCase):
         self.check_binary('power')
 
     def test_power_negative(self):
-        if six.PY2:
-            self.check_binary_negative('power')
-        else:
-            self.check_binary_negative_float('power')
+        self.check_binary_negative_float('power')
 
     def test_subtract(self):
         self.check_binary('subtract')
@@ -823,7 +820,6 @@ class TestFusionFuse(unittest.TestCase):
 
         res = g(a, b, c)
         return c + res
-
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_raises()
