@@ -97,7 +97,7 @@ class ConnectionistTemporalClassification(function.Function):
         repeated = xp.ones((batch, lab * 2 + 1))
         repeated[:, 1::2] = (label -
                              xp.take(label, (xp.arange(lab) - 1) % lab
-                                     + xp.arange(batch)[:, None] * batch)
+                                     + xp.arange(batch)[:, None] * lab)
                              != 0).astype(xp.int32)
         repeated[:, 1] = 1
         rr = (xp.eye(max_length, dtype=dtype)[None, :] +
@@ -153,7 +153,8 @@ class ConnectionistTemporalClassification(function.Function):
                                           path.shape[1], ret[i])
         return ret
 
-    def calc_trans(self, path, yseq, label, xp):
+    def calc_trans(self, yseq, input_length,
+                   label, label_length, path, path_length, xp):
         forward_prob = self.log_matrix(
             xp.eye(path.shape[1], dtype='f')[0], xp)[None, :]
         backward_prob = forward_prob
@@ -163,7 +164,7 @@ class ConnectionistTemporalClassification(function.Function):
         # prob[i] := forward[i] + backward[-i-1]
         index = offset + path
         frr = self.recurrence_relation(
-            label, self.path_length, path.shape[1], numpy.float32, xp)
+            label, path_length, path.shape[1], numpy.float32, xp)
         prob = xp.empty(
             (len(yseq),) + index.shape, dtype=forward_prob.dtype)
         # forward computation.
@@ -172,21 +173,21 @@ class ConnectionistTemporalClassification(function.Function):
             forward_prob = xp.take(y, index) + _log_dot(
                 forward_prob[:, None, :], frr, xp)
             prob[i] = forward_prob
-        r_index = offset + _move_label_to_back(path, self.path_length, xp)
+        r_index = offset + _move_label_to_back(path, path_length, xp)
 
         # rotate yseq with path_length
-        yseq_inv = _move_inputs(yseq, self.input_length, xp)[::-1]
+        yseq_inv = _move_inputs(yseq, input_length, xp)[::-1]
         brr = self.recurrence_relation(
-            label, self.path_length, path.shape[1], numpy.float32, xp)
-
+            _move_label_to_back(label, label_length, xp),
+            path_length, path.shape[1], numpy.float32, xp)
         # move to back.
-        prob = _move_inputs(prob, self.input_length, xp)
+        prob = _move_inputs(prob, input_length, xp)
 
         # backward computation.
         ps1 = path.shape[1]
         backward_prob_index = (
             xp.arange(0, path.size, ps1, dtype=numpy.int32)[:, None] +
-            (xp.arange(ps1) - self.path_length[:, None]) % ps1)
+            (xp.arange(ps1) - path_length[:, None]) % ps1)
         for i, y_inv in enumerate(yseq_inv):
             # calc backward probability
             backward_prob = _log_dot(backward_prob[:, None, :], brr, xp)
@@ -200,7 +201,7 @@ class ConnectionistTemporalClassification(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
         self.input_length = inputs[0]
-        label_length = inputs[1]
+        self.label_length = inputs[1]
         t = inputs[2]
         xs = inputs[3:]
 
@@ -208,20 +209,22 @@ class ConnectionistTemporalClassification(function.Function):
             # Batch size check.
             assert len(xs[0]) == len(t)
             assert len(xs[0]) == len(self.input_length)
-            assert len(xs[0]) == len(label_length)
+            assert len(xs[0]) == len(self.label_length)
 
             # Length check.
             assert len(xs) >= xp.max(self.input_length)
-            assert len(t[0]) >= xp.max(label_length)
+            assert len(t[0]) >= xp.max(self.label_length)
 
-        self.path_length = 2 * label_length + 1
+        self.path_length = 2 * self.label_length + 1
 
         batch_size = len(t)
         yseq_shape = (len(xs),) + xs[0].shape
         self.yseq = _softmax(xp.vstack(xs).reshape(yseq_shape), xp)
         log_yseq = self.log_matrix(self.yseq, xp)
         self.path = _label_to_path(t, self.blank_symbol, xp)
-        self.prob_trans = self.calc_trans(self.path, log_yseq, t, xp)
+        self.prob_trans = self.calc_trans(
+            log_yseq, self.input_length, t,
+            self.label_length, self.path, self.path_length, xp)
 
         loss = utils.force_array(xp.sum(
             _logsumexp(self.prob_trans[0], xp, axis=1)))
