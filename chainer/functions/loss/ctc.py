@@ -94,17 +94,17 @@ class ConnectionistTemporalClassification(function.Function):
         https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
         """
         batch, lab = label.shape
-        repeated = xp.ones((batch, lab * 2 + 1))
-        repeated[:, 1::2] = (label -
+        repeat_mask = xp.ones((batch, lab * 2 + 1))
+        repeat_mask[:, 1::2] = (label -
                              xp.take(label, (xp.arange(lab) - 1) % lab
                                      + xp.arange(batch)[:, None] * lab)
                              != 0).astype(xp.int32)
-        repeated[:, 1] = 1
+        repeat_mask[:, 1] = 1
         rr = (xp.eye(max_length, dtype=dtype)[None, :] +
               xp.eye(max_length, k=1, dtype=dtype)[None, :] +
               (xp.eye(max_length, k=2, dtype=dtype) *
                (xp.arange(max_length, dtype=dtype) % dtype(2))[None, :]
-               * repeated[:, None]))
+               * repeat_mask[:, None]))
         return self.log_matrix(
             rr * (path_length[:, None] > xp.arange(max_length))[..., None], xp)
 
