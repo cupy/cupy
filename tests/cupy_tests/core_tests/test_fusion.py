@@ -524,6 +524,174 @@ class TestFusionArithmetic(unittest.TestCase):
             self.check_binary_negative('remainder')
 
 
+class TestFusionUfunc(unittest.TestCase):
+
+    @cupy.fuse()
+    def sample_function(x, y, z):
+        return cupy.square(cupy.add(x, y))
+
+    def random_bool(self):
+        return numpy.random.randint(0, 1, (10, 10)) == 0
+
+    def random_int(self, lower=-1000, higher=1000):
+        return numpy.random.randint(lower, higher, (10, 10))
+
+    def random_real(self, lower=-1000, higher=1000):
+        return numpy.random.rand(10, 10) * (higher - lower) + lower
+
+    def check(self, func, n, gen, *args):
+
+        @cupy.fuse(input_num=n)
+        def f(*x):
+            return func(*x)
+
+        if type(gen) == tuple:
+            ndata = [g(*a) for i, g, a in zip(range(n), list(gen), args)]
+        else:
+            ndata = [gen(*args) for i in range(n)]
+        nret = func(*ndata)
+        fnret = f(*ndata)
+        nret = list(nret) if type(nret) == tuple else [nret]
+        fnret = list(fnret) if type(fnret) == tuple else [fnret]
+        for n, fn in zip(nret, fnret):
+            numpy.testing.assert_array_almost_equal(n, fn)
+
+        cdata = [cupy.asarray(_) for _ in ndata]
+        cret = func(*cdata)
+        fcret = f(*cdata)
+        cret = list(cret) if type(cret) == tuple else [cret]
+        fcret = list(fcret) if type(fcret) == tuple else [fcret]
+        for n, c, fc in zip(nret, cret, fcret):
+            numpy.testing.assert_array_almost_equal(n, c.get())
+            numpy.testing.assert_array_almost_equal(n, fc.get())
+
+    def check_reduce(self, func, n, reduce_f, gen, *args):
+
+        @cupy.fuse(input_num=n, reduce=reduce_f)
+        def f(*x):
+            return func(*x)
+
+        ndata = [gen(*args) for i in range(n)]
+        fnret = f(*ndata)
+        cdata = [cupy.asarray(_) for _ in ndata]
+        fcret = f(*cdata)
+        numpy.testing.assert_array_almost_equal(fnret, fcret.get())
+
+    def test_bitwise(self):
+        self.check(cupy.bitwise_and, 2, self.random_int)
+        self.check(cupy.bitwise_or, 2, self.random_int)
+        self.check(cupy.bitwise_xor, 2, self.random_int)
+        self.check(cupy.invert, 1, self.random_int)
+        self.check(cupy.left_shift, 2, self.random_int, 0, 20)
+        self.check(cupy.right_shift, 2, self.random_int, 0, 20)
+
+    def test_compare(self):
+        self.check(cupy.greater, 2, self.random_int)
+        self.check(cupy.greater_equal, 2, self.random_int)
+        self.check(cupy.less, 2, self.random_int)
+        self.check(cupy.less_equal, 2, self.random_int)
+        self.check(cupy.equal, 2, self.random_int)
+        self.check(cupy.not_equal, 2, self.random_int)
+
+    def test_logic_content(self):
+        self.check(cupy.isfinite, 1, self.random_real)
+        self.check(cupy.isinf, 1, self.random_real)
+        self.check(cupy.isnan, 1, self.random_real)
+
+    def test_logic_ops(self):
+        self.check(cupy.logical_and, 2, self.random_int, 0, 2)
+        self.check(cupy.logical_or, 2, self.random_int, 0, 2)
+        self.check(cupy.logical_not, 1, self.random_int, 0, 2)
+        self.check(cupy.logical_xor, 2, self.random_int, 0, 2)
+
+    def test_trigonometric(self):
+        self.check(cupy.sin, 1, self.random_real)
+        self.check(cupy.cos, 1, self.random_real)
+        self.check(cupy.tan, 1, self.random_real)
+        self.check(cupy.arcsin, 1, self.random_real, -1, 1)
+        self.check(cupy.arccos, 1, self.random_real, -1, 1)
+        self.check(cupy.arctan, 1, self.random_real)
+        self.check(cupy.hypot, 2, self.random_real)
+        self.check(cupy.deg2rad, 1, self.random_real)
+        self.check(cupy.rad2deg, 1, self.random_real)
+        self.check(cupy.degrees, 1, self.random_real)
+        self.check(cupy.radians, 1, self.random_real)
+
+    def test_hyperbolic(self):
+        self.check(cupy.sinh, 1, self.random_real, -10, 10)
+        self.check(cupy.cosh, 1, self.random_real, -10, 10)
+        self.check(cupy.tanh, 1, self.random_real, -10, 10)
+        self.check(cupy.arcsinh, 1, self.random_real, -10, 10)
+        self.check(cupy.arccosh, 1, self.random_real, 1, 10)
+        self.check(cupy.arctanh, 1, self.random_real, 0, 1)
+
+    def test_rounding(self):
+        self.check(cupy.rint, 1, self.random_real)
+        self.check(cupy.floor, 1, self.random_real)
+        self.check(cupy.ceil, 1, self.random_real)
+        self.check(cupy.trunc, 1, self.random_real)
+
+    def test_explog(self):
+        self.check(cupy.exp, 1, self.random_real, -10, 10)
+        self.check(cupy.expm1, 1, self.random_real, -10, 10)
+        self.check(cupy.exp2, 1, self.random_real, -10, 10)
+        self.check(cupy.log, 1, self.random_real, 0, 10)
+        self.check(cupy.log10, 1, self.random_real, 0, 10)
+        self.check(cupy.log2, 1, self.random_real, 0, 10)
+        self.check(cupy.log1p, 1, self.random_real, -1, 10)
+        self.check(cupy.logaddexp, 2, self.random_real, 0, 10)
+        self.check(cupy.logaddexp2, 2, self.random_real, 0, 10)
+
+    def test_floating(self):
+        self.check(cupy.signbit, 1, self.random_real)
+        self.check(cupy.copysign, 2, self.random_real)
+        self.check(cupy.ldexp, 2, self.random_int, 1, 10)
+        self.check(cupy.frexp, 1, self.random_real, 1, 1000)
+        self.check(cupy.nextafter, 2, self.random_real)
+
+    def test_arithmetic(self):
+        self.check(cupy.add, 2, self.random_real)
+        self.check(cupy.reciprocal, 1, self.random_real)
+        self.check(cupy.negative, 1, self.random_real)
+        self.check(cupy.multiply, 2, self.random_real)
+        self.check(cupy.divide, 2, self.random_real)
+        self.check(cupy.power, 2, self.random_real, 0, 10)
+        self.check(cupy.subtract, 2, self.random_real)
+        self.check(cupy.true_divide, 2, self.random_int, 1, 1000)
+        self.check(cupy.floor_divide, 2, self.random_real, 1, 1000)
+        self.check(cupy.fmod, 2, self.random_real)
+        self.check(cupy.mod, 2, self.random_int, 1, 1000)
+        self.check(cupy.modf, 1, self.random_real)
+        self.check(cupy.remainder, 2, self.random_int, 1, 1000)
+
+    def test_misc(self):
+        self.check(cupy.sqrt, 1, self.random_real, 0, 1000)
+        self.check(cupy.square, 1, self.random_real)
+        self.check(cupy.absolute, 1, self.random_real)
+        self.check(cupy.abs, 1, self.random_real)
+        self.check(cupy.sign, 1, self.random_real)
+        self.check(cupy.maximum, 2, self.random_real)
+        self.check(cupy.minimum, 2, self.random_real)
+        self.check(cupy.fmax, 2, self.random_real)
+        self.check(cupy.fmin, 2, self.random_real)
+
+    def test_special(self):
+        self.check(cupy.where, 3,
+                   (self.random_bool, self.random_int, self.random_int),
+                   (), (0, 100), (0, 100))
+        self.check(cupy.clip, 3,
+                   (self.random_real, self.random_real, self.random_real),
+                   (0, 1000), (0, 500), (500, 1000))
+
+    def test_reduce(self):
+        self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
+        self.check_reduce(cupy.sqrt, 1, cupy.prod, self.random_int, 1, 2)
+        self.check_reduce(cupy.sqrt, 1, cupy.prod, self.random_real, 1, 2)
+
+        self.check_reduce(lambda x: x, 1, cupy.amax, self.random_int)
+        self.check_reduce(lambda x: x, 1, cupy.amin, self.random_int)
+
+
 @testing.gpu
 class TestFusionMisc(unittest.TestCase):
 

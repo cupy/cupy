@@ -362,7 +362,10 @@ def _convert_from_ufunc(ufunc):
                 mem.set_op(ufunc.name, op, param_names, nin, nout,
                            in_vars, out_vars, ty_ins + ty_outs)
                 return ret[0] if len(ret) == 1 else tuple(ret)
-        raise TypeError('Invalid type cast')
+        raise TypeError('Invalid type cast in \'{}\': {} -> {}'.format(
+            ufunc.name,
+            [_.ty for _ in in_vars],
+            [_.ty for _ in out_vars]))
     return res
 
 
