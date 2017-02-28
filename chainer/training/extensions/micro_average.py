@@ -30,6 +30,23 @@ class MicroAverage(extension.Extension):
     It is same to the macro-average when each mini-batch has the same
     :math:`d_i`.
 
+    You need to report numerator value (the number of correct examples) and
+    denominator value (the number of examples) in your model.
+
+    >>> class MyModel(chainer.Link):
+    >>>     def __call__(self, x, y):
+    ...         loss = F.softmax_cross_entropy(x, y)
+    ...         correct = (x.data.argmax(axis=1) == y.data).sum()
+    ...         total = len(y.data)
+    ...         reporter.report({'correct': correct, 'total': total}, self)
+    ...         return loss
+
+    And then, make an extension with corresponding reporting keys and
+    register it.
+
+    >>> ext = extensions.MicroAverage(
+    ...     'main/correct', 'main/total', 'main/accuracy')
+
     Args:
         numerator_key (str): Key string of obserbation storing a numerator
             value.
