@@ -93,7 +93,7 @@ def main():
             # evaluation
             sum_accuracy = 0
             sum_loss = 0
-            model.train = False
+            model.predictor.train = False
             for batch in copy.copy(test_iter):
                 x_array, t_array = convert.concat_examples(batch, args.gpu)
                 x = chainer.Variable(x_array)
@@ -102,7 +102,7 @@ def main():
                 sum_loss += float(loss.data) * len(t.data)
                 sum_accuracy += float(model.accuracy.data) * len(t.data)
 
-            model.train = True
+            model.predictor.train = True
             print('test mean loss={}, accuracy={}'.format(
                 sum_loss / test_count, sum_accuracy / test_count))
             sum_accuracy = 0

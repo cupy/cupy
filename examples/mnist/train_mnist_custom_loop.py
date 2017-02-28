@@ -74,7 +74,7 @@ def main():
 
         if train_iter.is_new_epoch:
             print('train mean loss={}, accuracy={}'.format(
-                    sum_loss / train_count, sum_accuracy / train_count))
+                sum_loss / train_count, sum_accuracy / train_count))
             # evaluation
             sum_accuracy = 0
             sum_loss = 0
