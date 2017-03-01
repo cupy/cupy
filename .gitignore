@@ -13,3 +13,4 @@ _readthedocs_build
 chainer.egg-info/
 dist/
 htmlcov/
+.idea/
