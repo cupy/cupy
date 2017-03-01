@@ -142,7 +142,7 @@ def rot90(a, k=1, axes=(0,1)):
         raise ValueError('len(axes) must be 2')
     if axes[0] == axes[1] or abs(axes[0] - axes[1]) == a_ndim:
         raise ValueError('axes must be different')
-    if not (-a_ndim <= axes[0] < a_ndim or -a_ndim <= axes[1] < a_ndim):
+    if not (-a_ndim <= axes[0] < a_ndim and -a_ndim <= axes[1] < a_ndim):
         raise ValueError('axes must be >= %d and < %d' % (-a_ndim, a_ndim))
 
     k = k % 4
