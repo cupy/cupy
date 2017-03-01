@@ -119,7 +119,7 @@ def roll(a, shift, axis=None):
         return res
 
 
-def rot90(a, k=1, axes=(0,1)):
+def rot90(a, k=1, axes=(0, 1)):
     """Rotate an array by 90 degrees in the plane specified by axes.
 
     Args:
