@@ -1,6 +1,33 @@
 import cupy
 
 
+def flip(a, axis):
+    """Reverse the order of elements in an array along the given axis.
+
+    Args:
+        a (~cupy.ndarray): Input array.
+        axis (int): Axis in array, which entries are reversed.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.flip`
+
+    """
+    a_ndim = a.ndim
+    if a_ndim < 1:
+        raise ValueError('Input must be >= 1-d')
+
+    axis = int(axis)
+    if not -a_ndim <= axis < a_ndim:
+        raise ValueError('axis must be >= %d and < %d' % (-a_ndim, a_ndim))
+
+    indexer = [slice(None)] * a_ndim
+    indexer[axis] = slice(None, None, -1)
+
+    return a[tuple(indexer)]
+
+
 def fliplr(a):
     """Flip array in the left/right direction.
 
@@ -39,33 +66,6 @@ def flipud(a):
     if a.ndim < 1:
         raise ValueError('Input must be >= 1-d')
     return cupy.take(a, cupy.arange(a.shape[0] - 1, -1, -1), axis=0)
-
-
-def flip(a, axis):
-    """Reverse the order of elements in an array along the given axis.
-
-    Args:
-        a (~cupy.ndarray): Input array.
-        axis (int): Axis in array, which entries are reversed.
-
-    Returns:
-        ~cupy.ndarray: Output array.
-
-    .. seealso:: :func:`numpy.flip`
-
-    """
-    a_ndim = a.ndim
-    if a_ndim < 1:
-        raise ValueError('Input must be >= 1-d')
-
-    axis = int(axis)
-    if not -a_ndim <= axis < a_ndim:
-        raise ValueError('axis must be >= %d and < %d' % (-a_ndim, a_ndim))
-
-    indexer = [slice(None)] * a_ndim
-    indexer[axis] = slice(None, None, -1)
-
-    return a[tuple(indexer)]
 
 
 def roll(a, shift, axis=None):
