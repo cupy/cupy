@@ -136,12 +136,6 @@ class TestFlip(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_flip_3(self, xp, dtype):
-        x = testing.shaped_arange((3, 4, 2), xp, dtype)
-        return xp.flip(x, 1)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
     def test_flip_with_negative_axis(self, xp, dtype):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.flip(x, -1)
@@ -155,8 +149,14 @@ class TestFlip(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_flip_invalid_axis(self, xp, dtype):
-        x = testing.shaped_arange((3,), xp, dtype)
-        return xp.flip(x, 1)
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.flip(x, 2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_flip_invalid_negative_axis(self, xp, dtype):
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.flip(x, -3)
 
 
 @testing.gpu
