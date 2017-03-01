@@ -41,6 +41,33 @@ def flipud(a):
     return cupy.take(a, cupy.arange(a.shape[0] - 1, -1, -1), axis=0)
 
 
+def flip(a, axis):
+    """Reverse the order of elements in an array along the given axis.
+
+    Args:
+        a (~cupy.ndarray): Input array.
+        axis (int): Axis in array, which entries are reversed.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.flip`
+
+    """
+    a_ndim = a.ndim
+    if a_ndim < 1:
+        raise ValueError('Input must be >= 1-d')
+
+    axis = int(axis)
+    if not -a_ndim <= axis < a_ndim:
+        raise ValueError('axis must be >= %d and < %d' % (-a_ndim, a_ndim))
+
+    indexer = [slice(None)] * a_ndim
+    indexer[axis] = slice(None, None, -1)
+
+    return a[tuple(indexer)]
+
+
 def roll(a, shift, axis=None):
     """Roll array elements along a given axis.
 
@@ -91,4 +118,44 @@ def roll(a, shift, axis=None):
         res[r_ind2] = a[ind2]
         return res
 
-# TODO(okuta): Implement rot90
+
+def rot90(a, k=1, axes=(0,1)):
+    """Rotate an array by 90 degrees in the plane specified by axes.
+
+    Args:
+        a (~cupy.ndarray): Array of two or more dimensions.
+        k (int): Number of times the array is rotated by 90 degrees.
+        axes: (tuple of ints): The array is rotated in the plane defined by
+            the axes. Axes must be different.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.rot90`
+    """
+    a_ndim = a.ndim
+    if a_ndim < 2:
+        raise ValueError('Input must be >= 2-d')
+
+    axes = tuple(axes)
+    if len(axes) != 2:
+        raise ValueError('len(axes) must be 2')
+    if axes[0] == axes[1] or abs(axes[0] - axes[1]) == a_ndim:
+        raise ValueError('axes must be different')
+    if not (-a_ndim <= axes[0] < a_ndim or -a_ndim <= axes[1] < a_ndim):
+        raise ValueError('axes must be >= %d and < %d' % (-a_ndim, a_ndim))
+
+    k = k % 4
+
+    if k == 0:
+        return a[:]
+    if k == 2:
+        return flip(flip(a, axes[0]), axes[1])
+
+    axes_t = list(range(0, a.ndim))
+    axes_t[axes[0]], axes_t[axes[1]] = axes_t[axes[1]], axes_t[axes[0]]
+
+    if k == 1:
+        return cupy.transpose(flip(a, axes[1]), axes_t)
+    else:
+        return flip(cupy.transpose(a, axes_t), axes[1])
