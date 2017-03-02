@@ -22,10 +22,7 @@ def flip(a, axis):
     if not -a_ndim <= axis < a_ndim:
         raise ValueError('axis must be >= %d and < %d' % (-a_ndim, a_ndim))
 
-    indexer = [slice(None)] * a_ndim
-    indexer[axis] = slice(None, None, -1)
-
-    return a[tuple(indexer)]
+    return _flip(a, axis)
 
 
 def fliplr(a):
@@ -150,12 +147,20 @@ def rot90(a, k=1, axes=(0, 1)):
     if k == 0:
         return a[:]
     if k == 2:
-        return flip(flip(a, axes[0]), axes[1])
+        return _flip(_flip(a, axes[0]), axes[1])
 
-    axes_t = list(range(0, a.ndim))
+    axes_t = list(range(0, a_ndim))
     axes_t[axes[0]], axes_t[axes[1]] = axes_t[axes[1]], axes_t[axes[0]]
 
     if k == 1:
-        return cupy.transpose(flip(a, axes[1]), axes_t)
+        return cupy.transpose(_flip(a, axes[1]), axes_t)
     else:
-        return flip(cupy.transpose(a, axes_t), axes[1])
+        return _flip(cupy.transpose(a, axes_t), axes[1])
+
+
+def _flip(a, axis):
+    # This function flips array without checking args.
+    indexer = [slice(None)] * a.ndim
+    indexer[axis] = slice(None, None, -1)
+
+    return a[tuple(indexer)]
