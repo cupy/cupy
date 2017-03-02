@@ -392,6 +392,10 @@ exp
 ~~~
 .. autofunction:: exp
 
+fmod
+~~~~
+.. autofunction:: fmod
+
 floor
 ~~~~~
 .. autofunction:: floor
