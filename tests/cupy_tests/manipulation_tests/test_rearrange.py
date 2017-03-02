@@ -118,6 +118,7 @@ class TestFlipud(unittest.TestCase):
 
 
 @testing.gpu
+@testing.with_requires('numpy>=1.12')
 class TestFlip(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -182,12 +183,14 @@ class TestRot90(unittest.TestCase):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.rot90(x, -1)
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_rot90_with_axes(self, xp, dtype):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.rot90(x, 1, axes=(1, 2))
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_rot90_with_negative_axes(self, xp, dtype):
@@ -200,18 +203,21 @@ class TestRot90(unittest.TestCase):
         x = testing.shaped_arange((3,), xp, dtype)
         return xp.rot90(x)
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_rot90_too_much_axes(self, xp, dtype):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.rot90(x, 1, axes=(0, 1, 2))
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_rot90_invalid_axes(self, xp, dtype):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.rot90(x, 1, axes=(1, 3))
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_rot90_invalid_negative_axes(self, xp, dtype):
