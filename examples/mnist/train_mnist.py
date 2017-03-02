@@ -89,7 +89,7 @@ def main():
     trainer.extend(extensions.dump_graph('main/loss'))
 
     # Take a snapshot for each specified epoch
-    frequency = args.frequency if args.frequency is not -1 else args.epoch
+    frequency = args.epoch if args.frequency == -1 else args.frequency
     trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
