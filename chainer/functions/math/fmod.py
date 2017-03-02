@@ -40,7 +40,7 @@ def fmod(x, divisor):
 
     Args:
         x (~chainer.Variable): Input variable.
-        \\mathrm{divisor} (~chainer.Variable): Input divisor.
+        divisor (~chainer.Variable): Input divisor.
     Returns:
         ~chainer.Variable: Output variable.
     """
