@@ -10,6 +10,34 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+def _identiy_grid(in_shape):
+    mesh = numpy.meshgrid(
+        numpy.linspace(-1., 1., num=in_shape[2]),
+        numpy.linspace(-1., 1., num=in_shape[3]))
+    grid = numpy.stack(mesh).astype(numpy.float32)  # (2, H, W)
+    grid = numpy.repeat(grid[None], in_shape[0], axis=0)
+    return grid
+
+
+def _rotate_grid(in_shape):
+    mesh = numpy.meshgrid(
+        numpy.linspace(-1., 1., num=in_shape[2]),
+        numpy.linspace(-1., 1., num=in_shape[3]))
+    mesh = [numpy.rot90(mesh[0]), numpy.rot90(mesh[1])]
+    grid = numpy.stack(mesh).astype(numpy.float32)
+    grid = numpy.repeat(grid[None], in_shape[0], axis=0)
+    return grid
+
+
+def _rotate_BCHW(x):
+    tmp = []
+    for i in range(x.shape[0]):
+        x_i = x[i].transpose(1, 2, 0)
+        x_i = numpy.rot90(x_i)
+        tmp.append(x_i.transpose(2, 0, 1))
+    return numpy.stack(tmp)
+
+
 @testing.parameterize(*testing.product({
     'use_cudnn': [True, False],
 }))
@@ -57,6 +85,41 @@ class TestSpatialTransformerSampler(unittest.TestCase):
                             cuda.to_gpu(self.grid),
                             cuda.to_gpu(self.grads),
                             self.use_cudnn)
+
+
+@testing.parameterize(
+    {'grid_creator': _identiy_grid, 'operator': lambda x: x,
+     'use_cudnn': True},
+    {'grid_creator': _identiy_grid, 'operator': lambda x: x,
+     'use_cudnn': False},
+    {'grid_creator': _rotate_grid, 'operator': _rotate_BCHW,
+     'use_cudnn': True},
+    {'grid_creator': _rotate_grid, 'operator': _rotate_BCHW,
+     'use_cudnn': False},
+)
+class TestSpatialTransformerSamplerForwardToyCases(unittest.TestCase):
+
+    in_shape = (2, 2, 4, 4)
+    grid_shape = (2, 2, 3, 3)
+
+    def setUp(self):
+        self.x = numpy.random.uniform(
+            size=self.in_shape).astype(numpy.float32)
+        self.grid = self.grid_creator(self.in_shape)
+
+    def check_forward(self, x, grid, use_cudnn=True):
+        y = functions.spatial_transformer_sampler(x, grid, use_cudnn)
+        testing.assert_allclose(y.data, self.operator(self.x))
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.grid)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.grid),
+                           self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)
