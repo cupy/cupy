@@ -51,8 +51,10 @@ def get_item(x, slices):
     """Extract elements from array with specified shape, axes and offsets.
 
     Args:
-        x (tuple of Variables): A variable to be sliced.
-        slices (array_like or tuple): It is integer, slices, ellipsis,
+        x (~chainer.Variable): A variable to be sliced.
+        slices (int, slice, Ellipsis, None, integer array-like or tuple of\
+        them):
+            It is integer, slices, ellipsis,
             numpy.newaxis, integer array-like, boolean array-like or tuple of
             them.
 
