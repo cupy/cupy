@@ -763,7 +763,7 @@ class TestVariableBackwardErrorTraceback(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'in_shape': [(4, 3, 2)],
-    'out_shape': [(2, 2, 6), (2, -1, 6), 24, (-1,)],
+    'out_shape': [(2, 2, 6), (2, -1, 6), 24, (-1,), [2, 12]],
     'dtype': [np.float16, np.float32, np.float64],
 }))
 class TestReshape(unittest.TestCase):

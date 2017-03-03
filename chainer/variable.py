@@ -441,7 +441,7 @@ Actual: {0}'''.format(type(data))
            :func:`chainer.functions.reshape` for full documentation,
 
         """
-        if len(shape) == 1 and isinstance(shape[0], tuple):
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
             shape = shape[0]
         return chainer.functions.reshape(self, shape)
 
