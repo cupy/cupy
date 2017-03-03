@@ -28,6 +28,7 @@ class SpatialTransformerSampler(function.Function):
             grid_type.dtype.kind == 'f',
             x_type.ndim == 4,
             grid_type.ndim == 4,
+            grid_type.shape[1] == 2,
             x_type.shape[0] == grid_type.shape[0],
         )
 
@@ -274,11 +275,11 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
             corresponds to the location along the vertical axis.
 
             The values of this variable is clipped in range :math:`[-1, 1]`.
-            For example, a coordinate with value :math:`(-1, 1)` samples
-            most of the values from a pixel at the left bottom of the input
-            image.
+            The coordinate :math:`(-1, -1)` corresponds to the upper-left
+            corner of the input image.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-            available.
+            available. Note that, cuDNN supports SpatialTransformerSampler
+            from version 5.0.0.
 
     Returns:
         ~chainer.Variable: Output feature map of shape \
