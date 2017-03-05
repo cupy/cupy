@@ -216,4 +216,5 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         self.link.to_gpu()
         self.check_pickling(cuda.to_gpu(self.x))
 
+
 testing.run_module(__name__, __file__)

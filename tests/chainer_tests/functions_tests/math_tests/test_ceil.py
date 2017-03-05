@@ -79,4 +79,5 @@ class TestCeil(UnaryFunctionsTestBase):
     def test_label(self):
         self.check_label(F.Ceil, 'ceil')
 
+
 testing.run_module(__name__, __file__)

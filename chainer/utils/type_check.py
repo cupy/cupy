@@ -486,4 +486,5 @@ def expect(*bool_exprs):
         assert isinstance(expr, Testable)
         expr.expect()
 
+
 prod = Variable(numpy.prod, 'prod')
