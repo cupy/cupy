@@ -451,6 +451,17 @@ Actual: {0}'''.format(type(data))
             if initial_device is not None:
                 initial_device.use()
 
+    def reshape(self, *shape):
+        """Returns a variable of a different shape and the same content.
+
+        .. seealso::
+           :func:`chainer.functions.reshape` for full documentation,
+
+        """
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            shape = shape[0]
+        return chainer.functions.reshape(self, shape)
+
     def unchain_backward(self):
         """Deletes references between variables and functions backward.
 

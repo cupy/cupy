@@ -11,9 +11,6 @@ from chainer.training import extension
 import chainer.training.trigger as trigger_module
 
 try:
-    import matplotlib
-
-    matplotlib.use('Agg')
     from matplotlib import pyplot as plot
 
     _available = True
@@ -50,6 +47,25 @@ class PlotReport(extension.Extension):
     It also adds ``'epoch'`` and ``'iteration'`` entries to each result
     dictionary, which are the epoch and iteration counts at the output.
 
+    .. warning::
+
+        If your environment needs to specify a backend of matplotlib
+        explicitly, please call ``matplotlib.use`` before importing Chainer.
+        For example:
+
+        .. code-block:: python
+
+            import matplotlib
+            matplotlib.use('Agg')
+
+            import chainer
+
+        Then, once ``chainer.training.extensions`` is imported,
+        ``matplotlib.use`` will have no effect.
+
+    For the details, please see here:
+    http://matplotlib.org/faq/usage_faq.html#what-is-a-backend
+
     Args:
         y_keys (iterable of strs): Keys of values regarded as y. If this is
             None, nothing is output to the graph.
@@ -76,9 +92,6 @@ class PlotReport(extension.Extension):
 
         _check_available()
 
-        if not _available:
-            return
-
         self._x_key = x_key
         if isinstance(y_keys, str):
             y_keys = (y_keys,)
@@ -91,6 +104,11 @@ class PlotReport(extension.Extension):
         self._postprocess = postprocess
         self._init_summary()
         self._data = {k: [] for k in y_keys}
+
+    @staticmethod
+    def available():
+        _check_available()
+        return _available
 
     def __call__(self, trainer):
         if not _available:

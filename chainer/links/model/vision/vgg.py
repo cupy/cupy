@@ -1,5 +1,5 @@
 from __future__ import print_function
-from collections import OrderedDict
+import collections
 import os
 
 import numpy
@@ -110,7 +110,7 @@ class VGG16Layers(link.Chain):
         elif pretrained_model:
             npz.load_npz(pretrained_model, self)
 
-        self.functions = OrderedDict([
+        self.functions = collections.OrderedDict([
             ('conv1_1', [self.conv1_1, relu]),
             ('conv1_2', [self.conv1_2, relu]),
             ('pool1', [_max_pooling_2d]),

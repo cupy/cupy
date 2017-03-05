@@ -79,6 +79,7 @@ from chainer.functions.math import det  # NOQA
 from chainer.functions.math import exponential  # NOQA
 from chainer.functions.math import exponential_m1  # NOQA
 from chainer.functions.math import floor  # NOQA
+from chainer.functions.math import fmod  # NOQA
 from chainer.functions.math import hyperbolic  # NOQA
 from chainer.functions.math import identity  # NOQA
 from chainer.functions.math import inv  # NOQA
@@ -272,6 +273,8 @@ from chainer.functions.math.exponential_m1 import expm1  # NOQA
 from chainer.functions.math.exponential_m1 import Expm1  # NOQA
 from chainer.functions.math.floor import floor  # NOQA
 from chainer.functions.math.floor import Floor  # NOQA
+from chainer.functions.math.fmod import fmod  # NOQA
+from chainer.functions.math.fmod import Fmod  # NOQA
 from chainer.functions.math.hyperbolic import cosh  # NOQA
 from chainer.functions.math.hyperbolic import Cosh  # NOQA
 from chainer.functions.math.hyperbolic import sinh  # NOQA
