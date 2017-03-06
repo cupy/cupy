@@ -250,7 +250,7 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
 
-    def test_iterator_serialize_compat(self):
+    def test_iterator_serialize_backward_compat(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.SerialIterator(dataset, 2)
 
