@@ -143,6 +143,31 @@ class TestNpzDeserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
 
+class TestNpzDeserializerNonStrict(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+        with open(path, 'wb') as f:
+            numpy.savez(
+                f, **{'x': numpy.asarray(10)})
+
+        self.npzfile = numpy.load(path)
+        self.deserializer = npz.NpzDeserializer(self.npzfile, strict=False)
+
+    def tearDown(self):
+        if hasattr(self, 'npzfile'):
+            self.npzfile.close()
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def test_deserialize_partial(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        ret = self.deserializer('y', y)
+        self.assertIs(ret, y)
+
+
 @testing.parameterize(*testing.product({'compress': [False, True]}))
 class TestSaveNpz(unittest.TestCase):
 

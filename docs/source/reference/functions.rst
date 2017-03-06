@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+depth2space
+~~~~~~~~~~~
+.. autofunction:: depth2space
+
 dstack
 ~~~~~~
 .. autofunction:: dstack
@@ -122,6 +126,14 @@ expand_dims
 flatten
 ~~~~~~~
 .. autofunction:: flatten
+
+fliplr
+~~~~~~
+.. autofunction:: fliplr
+
+flipud
+~~~~~~
+.. autofunction:: flipud
 
 get_item
 ~~~~~~~~
@@ -150,6 +162,10 @@ select_item
 separate
 ~~~~~~~~
 .. autofunction:: separate
+
+space2depth
+~~~~~~~~~~~
+.. autofunction:: space2depth
 
 split_axis
 ~~~~~~~~~~

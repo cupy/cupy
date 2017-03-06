@@ -33,6 +33,7 @@ See :ref:`iterators` for dataset iterator implementations.
 Batch conversion function
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: concat_examples
+.. autofunction:: to_device
 
 Dataset management
 ~~~~~~~~~~~~~~~~~~

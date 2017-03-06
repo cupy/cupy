@@ -15,7 +15,7 @@ except ImportError:
            '--no-cache-dir -vvvv`.\n\n'
            'original error: {}'.format(exc_info[1]))
 
-    raise six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
+    six.reraise(RuntimeError, RuntimeError(msg), exc_info[2])
 
 from cupy import binary  # NOQA
 from cupy import creation  # NOQA
@@ -178,6 +178,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.rearrange import fliplr  # NOQA
+from cupy.manipulation.rearrange import flipud  # NOQA
 from cupy.manipulation.rearrange import roll  # NOQA
 
 # -----------------------------------------------------------------------------
