@@ -4,8 +4,8 @@ import cupy
 def flip(a, axis):
     """Reverse the order of elements in an array along the given axis.
 
-    This function was introduced since NumPy 1.12. This document is altered
-    from the original one.
+    Note that ``flip`` function has been introduced since NumPy v1.12. 
+    The contents of this document is the same as the original one.
 
     Args:
         a (~cupy.ndarray): Input array.
@@ -122,8 +122,8 @@ def roll(a, shift, axis=None):
 def rot90(a, k=1, axes=(0, 1)):
     """Rotate an array by 90 degrees in the plane specified by axes.
 
-    ``axes`` argument was introduced since NumPy 1.12. This document is
-    altered from the original one.
+    Note that ``axes`` argument has been introduced since NumPy v1.12. 
+    The contents of this document is the same as the original one.
 
     Args:
         a (~cupy.ndarray): Array of two or more dimensions.
