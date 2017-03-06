@@ -1,6 +1,8 @@
 from __future__ import print_function
 from distutils import ccompiler
+from distutils import errors
 from distutils import sysconfig
+from distutils import unixccompiler
 import os
 from os import path
 import re
@@ -320,32 +322,43 @@ def _nvcc_gencode_options():
     return gencode_options
 
 
-def customize_compiler_for_nvcc(compiler):
-    compiler.src_extensions.append('.cu')
-    default_compiler_so = compiler.compiler_so
-    super = compiler._compile
-    nvcc_path = build.get_nvcc_path()
-
-    def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
-        if os.path.splitext(src)[1] == '.cu':
-            compiler.set_executable('compiler_so', nvcc_path)
-            postargs = _nvcc_gencode_options() + ['--ptxas-options=-v',
-                                                  '--compiler-options',
-                                                  "'-fPIC'"]
-            print('NVCC options:', postargs)
-        else:
-            postargs = []
-
-        super(obj, src, ext, cc_args, postargs, pp_opts)
-        compiler.compiler_so = default_compiler_so
-
-    compiler._compile = _compile
+class NvidiaCCompiler(unixccompiler.UnixCCompiler):
+    compiler_type = "nvidia"
+    executables = dict(unixccompiler.UnixCCompiler.executables)
+    if sys.platform == 'win32':
+        executables.update({
+            'compiler': ['nvcc', '-O'],
+            'compiler_so': ['nvcc', '-O'],
+            'compiler_cxx': ['nvcc', '-O'],
+            'linker_so': ['nvcc', '-shared'],
+            'linker_exe': ['nvcc'],
+            'src_extensions': ['.cpp', '.cu'],
+        })
+    else:
+        executables.update({
+            'compiler': ['nvcc', '-O', '--compiler-options=-fPIC'],
+            'compiler_so': ['nvcc', '-O', '--compiler-options=-fPIC'],
+            'compiler_cxx': ['gcc', '-O', '--compiler-options=-fPIC'],
+            'linker_so': ['nvcc', '-shared'],
+            'linker_exe': ['nvcc'],
+            'src_extensions': ['.cpp', '.cu'],
+        })
 
 
 class custom_build_ext(build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
-    def build_extensions(self):
-        customize_compiler_for_nvcc(self.compiler)
-        build_ext.build_ext.build_extensions(self)
+    def run(self):
+        def wrap_new_compiler(func):
+            def _wrap_new_compiler(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except errors.DistutilsPlatformError:
+                    return NvidiaCCompiler(
+                        None, kwargs["dry_run"], kwargs["force"])
+            return _wrap_new_compiler
+        ccompiler.new_compiler = wrap_new_compiler(
+            ccompiler.new_compiler)
+        self.compiler = "nvidia"
+        super(custom_build_ext, self).run()

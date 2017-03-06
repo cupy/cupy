@@ -7,8 +7,8 @@ typedef short cpy_short;
 typedef unsigned short cpy_ushort;
 typedef int cpy_int;
 typedef unsigned int cpy_uint;
-typedef long cpy_long;
-typedef unsigned long cpy_ulong;
+typedef long long cpy_long;
+typedef unsigned long long cpy_ulong;
 typedef float cpy_float;
 typedef double cpy_double;
 
