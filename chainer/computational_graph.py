@@ -73,10 +73,20 @@ class ComputationalGraph(object):
         show_name (bool): If `True`, the `name` attribute of each node is
             added to the label of the node. Default is `True`.
 
+    .. note::
+
+        To make the same graph as the previous versions, specify
+        `variable_style=None`, `function_style=None`, and `show_name=False`
+        explicitly. The previous versions than `v1.21.0` outputs the same
+        results as when it takes these arguments, but after `v1.22.0`, the
+        output has the richest representation as default, namely, styles are
+        set and names are shown.
+
     """
 
-    def __init__(self, nodes, edges, variable_style=None, function_style=None,
-                 rankdir='TB', remove_variable=False):
+    def __init__(self, nodes, edges, variable_style=_var_style,
+                 function_style=_func_style, rankdir='TB',
+                 remove_variable=False, show_name=True):
         self.nodes = nodes
         self.edges = edges
         self.variable_style = variable_style
@@ -85,6 +95,7 @@ class ComputationalGraph(object):
             raise ValueError('rankdir must be in TB, BT, LR or RL.')
         self.rankdir = rankdir
         self.remove_variable = remove_variable
+        self.show_name = show_name
 
     def _to_dot(self):
         """Converts graph in dot format.
@@ -103,9 +114,10 @@ class ComputationalGraph(object):
             assert isinstance(node, (variable.Variable, function.Function))
             if isinstance(node, variable.Variable):
                 if not self.remove_variable:
-                    ret += DotNode(node, self.variable_style).label
+                    ret += DotNode(
+                        node, self.variable_style, self.show_name).label
             else:
-                ret += DotNode(node, self.function_style).label
+                ret += DotNode(node, self.function_style, self.show_name).label
 
         drawn_edges = []
         for edge in self.edges:
@@ -125,8 +137,8 @@ class ComputationalGraph(object):
                 else:
                     head_attr = self.function_style
                     tail_attr = self.function_style
-            head_node = DotNode(head, head_attr)
-            tail_node = DotNode(tail, tail_attr)
+            head_node = DotNode(head, head_attr, self.show_name)
+            tail_node = DotNode(tail, tail_attr, self.show_name)
             edge = (head_node.id_, tail_node.id_)
             if edge in drawn_edges:
                 continue
@@ -225,11 +237,14 @@ def build_computational_graph(
 
         See :class:`TestGraphBuilder` for details.
 
+    .. note::
+
         To make the same graph as the previous versions, specify
         `variable_style=None`, `function_style=None`, and `show_name=False`
-        explicitly. The previous versions than `v1.21.0` takes these arguments
-        as default, but after `v1.22.0`, these are set for the richest
-        expression as default.
+        explicitly. The previous versions than `v1.21.0` outputs the same
+        results as when it takes these arguments, but after `v1.22.0`, the
+        output has the richest representation as default, namely, styles are
+        set and names are shown.
 
     """
     if not remove_split:
