@@ -58,7 +58,7 @@ class TestIteratorCompatibility(unittest.TestCase):
             lambda: iterators.MultiprocessIterator(dataset, 2, **self.options),
         )
 
-        for it_before, it_after in itertools.permutations(iters, ):
+        for it_before, it_after in itertools.permutations(iters, 2):
             it = it_before()
 
             self.assertEqual(it.epoch, 0)
