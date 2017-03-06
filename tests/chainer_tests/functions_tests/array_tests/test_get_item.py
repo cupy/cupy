@@ -138,15 +138,21 @@ class TestGetitemAdvanced(unittest.TestCase):
                             cuda.to_gpu(self.gy_data))
 
 
+@parameterize(
+    {'slices': ([1, 0], [1, 1]), 'sliced_shape': (2, 2)},
+    {'slices': ([1, 0], slice(None), [[1, 1], [1, 1]]),
+     'sliced_shape': (2, 2, 3)},
+    {'slices': ([1, 0], [1, 1], [0, 0]), 'sliced_shape': (2,)},
+    {'slices': (slice(None), numpy.array([True, False, True])),
+     'sliced_shape': (4, 2, 2)},
+)
 class TestCupyIndicesGetItem(unittest.TestCase):
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
             -1, 1, (4, 3, 2)).astype(numpy.float32)
-        self.sliced_shape = (2, 2, 3)
         self.gy_data = numpy.random.uniform(
             -1, 1, self.sliced_shape).astype(numpy.float32)
-        self.slices = ([1, 0], slice(None), [[1, 1], [1, 1]])
 
     def check_forward(self, x_data):
         slices = []
