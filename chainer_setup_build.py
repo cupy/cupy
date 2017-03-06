@@ -361,4 +361,4 @@ class custom_build_ext(build_ext.build_ext):
         ccompiler.new_compiler = wrap_new_compiler(
             ccompiler.new_compiler)
         self.compiler = "nvidia"
-        super(custom_build_ext, self).run()
+        build_ext.build_ext.run(self)
