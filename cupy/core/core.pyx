@@ -1131,10 +1131,10 @@ cdef class ndarray:
         mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
-                dtype = None
-                if isinstance(s, list) and len(s) == 0:
-                    dtype = numpy.int32
-                s = array(s, dtype=dtype)
+                is_list = isinstance(s, list)
+                s = array(s)
+                if is_list and s.size == 0:
+                    s = s.astype(numpy.int32).ravel()
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
