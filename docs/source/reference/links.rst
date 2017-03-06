@@ -46,9 +46,9 @@ DeconvolutionND
 ~~~~~~~~~~~~~~~
 .. autoclass:: DeconvolutionND
 
-DepthwiseConvolutionND
+DepthwiseConvolution2D
 ~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: DepthwiseConvolutionND
+.. autoclass:: DepthwiseConvolution2D
 
 DilatedConvolution2D
 ~~~~~~~~~~~~~~~~~~~~
