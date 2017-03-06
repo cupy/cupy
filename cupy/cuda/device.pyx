@@ -10,7 +10,7 @@ from cupy.cuda cimport runtime
 try:
     from cupy.cuda import cusolver
     cusolver_enabled = True
-except ImportError as e:
+except ImportError:
     cusolver_enabled = False
 
 
