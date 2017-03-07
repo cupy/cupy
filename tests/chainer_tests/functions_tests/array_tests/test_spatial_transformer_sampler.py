@@ -14,8 +14,8 @@ def _identiy_grid(in_shape):
     mesh = numpy.meshgrid(
         numpy.linspace(-1., 1., num=in_shape[2]),
         numpy.linspace(-1., 1., num=in_shape[3]))
-    grid = numpy.stack(mesh).astype(numpy.float32)  # (2, H, W)
-    grid = numpy.repeat(grid[None], in_shape[0], axis=0)
+    grid = numpy.concatenate([mesh[0][None], mesh[1][None]], axis=0)
+    grid = numpy.repeat(grid[None], in_shape[0], axis=0).astype(numpy.float32)
     return grid
 
 
@@ -24,18 +24,19 @@ def _rotate_grid(in_shape):
         numpy.linspace(-1., 1., num=in_shape[2]),
         numpy.linspace(-1., 1., num=in_shape[3]))
     mesh = [numpy.rot90(mesh[0]), numpy.rot90(mesh[1])]
-    grid = numpy.stack(mesh).astype(numpy.float32)
-    grid = numpy.repeat(grid[None], in_shape[0], axis=0)
+    grid = numpy.concatenate([mesh[0][None], mesh[1][None]], axis=0)
+    grid = numpy.repeat(grid[None], in_shape[0], axis=0).astype(numpy.float32)
     return grid
 
 
 def _rotate_BCHW(x):
-    tmp = []
+    rotated_xs = []
     for i in range(x.shape[0]):
         x_i = x[i].transpose(1, 2, 0)
         x_i = numpy.rot90(x_i)
-        tmp.append(x_i.transpose(2, 0, 1))
-    return numpy.stack(tmp)
+        rotated_xs.append(x_i.transpose(2, 0, 1))
+    rotated_xs = numpy.concatenate([r_x[None] for r_x in rotated_xs], axis=0)
+    return rotated_xs
 
 
 @testing.parameterize(*testing.product({
