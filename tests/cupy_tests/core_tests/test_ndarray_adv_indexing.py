@@ -67,12 +67,18 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # empty arrays
     {'shape': (2, 3, 4), 'indexes': []},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
     {'shape': (2, 3, 4), 'indexes': [[]]},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
+    {'shape': (2, 3, 4), 'indexes': [[[]]]},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
     {'shape': (2, 3, 4), 'indexes': ([], [])},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
