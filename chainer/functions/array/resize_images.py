@@ -52,16 +52,11 @@ class ResizeImages(function.Function):
         w3 = w3.astype(x.dtype)
         w4 = w4.astype(x.dtype)
 
-        ys = []
-        for b in range(B):
-            elem = (w1[:, None] * x[b, :, v0, u0] +
-                    w2[:, None] * x[b, :, v0, u1] +
-                    w3[:, None] * x[b, :, v1, u0] +
-                    w4[:, None] * x[b, :, v1, u1])
-            elem = elem.reshape(self.out_H, self.out_W, C)
-            elem = elem.transpose(2, 0, 1)
-            ys.append(elem)
-        y = xp.concatenate([xp.expand_dims(y, axis=0) for y in ys], axis=0)
+        y = (w1[None, None, :] * x[:, :, v0, u0] +
+             w2[None, None, :] * x[:, :, v0, u1] +
+             w3[None, None, :] * x[:, :, v1, u0] +
+             w4[None, None, :] * x[:, :, v1, u1])
+        y = y.reshape(B, C, self.out_H, self.out_W)
         return y,
 
     def backward(self, inputs, grad_outputs):
