@@ -92,25 +92,21 @@ class ResizeImages(function.Function):
         wv1 = wv1.astype(gy.dtype)
 
         # --- gx
-        gxs = []
         samples_arange = xp.arange(
             self.out_H * self.out_W, dtype=numpy.int32)
-        for b in range(B):
-            dydx = xp.zeros((H, W, self.out_H * self.out_W), dtype=gy.dtype)
-            if xp is numpy:
-                scatter_add = numpy.add.at
-            else:
-                scatter_add = xp.scatter_add
-            scatter_add(dydx, (v0, u0, samples_arange), wu1 * wv1)
-            scatter_add(dydx, (v0, u1, samples_arange), wu0 * wv1)
-            scatter_add(dydx, (v1, u0, samples_arange), wu1 * wv0)
-            scatter_add(dydx, (v1, u1, samples_arange), wu0 * wv0)
+        if xp is numpy:
+            scatter_add = numpy.add.at
+        else:
+            scatter_add = xp.scatter_add
 
-            gy_elem = gy[b].reshape(C, -1)
-            gy_elem = gy_elem.transpose(1, 0)
-            gx = dydx.dot(gy_elem)
-            gxs.append(gx.transpose(2, 0, 1))
-        gx = xp.concatenate([xp.expand_dims(g, axis=0) for g in gxs], axis=0)
+        dydx = xp.zeros((H, W, self.out_H * self.out_W), dtype=gy.dtype)
+        scatter_add(dydx, (v0, u0, samples_arange), wu1 * wv1)
+        scatter_add(dydx, (v0, u1, samples_arange), wu0 * wv1)
+        scatter_add(dydx, (v1, u0, samples_arange), wu1 * wv0)
+        scatter_add(dydx, (v1, u1, samples_arange), wu0 * wv0)
+        gy = gy.transpose(0, 2, 3, 1).reshape(B, self.out_H * self.out_W, C)
+        gx = dydx.dot(gy)
+        gx = gx.transpose(2, 3, 0, 1)
         return gx,
 
 
