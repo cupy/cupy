@@ -101,13 +101,13 @@ class SpatialTransformerSampler(function.Function):
 
         ys = []
         for b in range(B):
-            tmp = (w1[b, :, None] * x[b, :, v0[b], u0[b]] +
-                   w2[b, :, None] * x[b, :, v0[b], u1[b]] +
-                   w3[b, :, None] * x[b, :, v1[b], u0[b]] +
-                   w4[b, :, None] * x[b, :, v1[b], u1[b]])
-            tmp = tmp.reshape(out_H, out_W, C)
-            tmp = tmp.transpose(2, 0, 1)
-            ys.append(tmp)
+            elem = (w1[b, :, None] * x[b, :, v0[b], u0[b]] +
+                    w2[b, :, None] * x[b, :, v0[b], u1[b]] +
+                    w3[b, :, None] * x[b, :, v1[b], u0[b]] +
+                    w4[b, :, None] * x[b, :, v1[b], u1[b]])
+            elem = elem.reshape(out_H, out_W, C)
+            elem = elem.transpose(2, 0, 1)
+            ys.append(elem)
         y = xp.concatenate([xp.expand_dims(y, axis=0) for y in ys], axis=0)
         return y,
 
@@ -186,20 +186,20 @@ class SpatialTransformerSampler(function.Function):
         gus = []
         gvs = []
         for b in range(B):
-            gu_tmp = (-wv1[b, :, None] * x[b, :, v0[b], u0[b]] +
-                      wv1[b, :, None] * x[b, :, v0[b], u1[b]] -
-                      wv0[b, :, None] * x[b, :, v1[b], u0[b]] +
-                      wv0[b, :, None] * x[b, :, v1[b], u1[b]])
-            gu_tmp = gu_tmp.reshape(out_H, out_W, C)
-            gu_tmp = gu_tmp.transpose(2, 0, 1)
-            gus.append(gu_tmp)
-            gv_tmp = (-wu1[b, :, None] * x[b, :, v0[b], u0[b]] -
-                      wu0[b, :, None] * x[b, :, v0[b], u1[b]] +
-                      wu1[b, :, None] * x[b, :, v1[b], u0[b]] +
-                      wu0[b, :, None] * x[b, :, v1[b], u1[b]])
-            gv_tmp = gv_tmp.reshape(out_H, out_W, C)
-            gv_tmp = gv_tmp.transpose(2, 0, 1)
-            gvs.append(gv_tmp)
+            gu_elem = (-wv1[b, :, None] * x[b, :, v0[b], u0[b]] +
+                       wv1[b, :, None] * x[b, :, v0[b], u1[b]] -
+                       wv0[b, :, None] * x[b, :, v1[b], u0[b]] +
+                       wv0[b, :, None] * x[b, :, v1[b], u1[b]])
+            gu_elem = gu_elem.reshape(out_H, out_W, C)
+            gu_elem = gu_elem.transpose(2, 0, 1)
+            gus.append(gu_elem)
+            gv_elem = (-wu1[b, :, None] * x[b, :, v0[b], u0[b]] -
+                       wu0[b, :, None] * x[b, :, v0[b], u1[b]] +
+                       wu1[b, :, None] * x[b, :, v1[b], u0[b]] +
+                       wu0[b, :, None] * x[b, :, v1[b], u1[b]])
+            gv_elem = gv_elem.reshape(out_H, out_W, C)
+            gv_elem = gv_elem.transpose(2, 0, 1)
+            gvs.append(gv_elem)
         gu = xp.concatenate([xp.expand_dims(g, axis=0) for g in gus], axis=0)
         gv = xp.concatenate([xp.expand_dims(g, axis=0) for g in gvs], axis=0)
 
@@ -227,9 +227,9 @@ class SpatialTransformerSampler(function.Function):
             scatter_add(dydx, (v1[b], u0[b], samples_arange), wu1[b] * wv0[b])
             scatter_add(dydx, (v1[b], u1[b], samples_arange), wu0[b] * wv0[b])
 
-            gy_tmp = gy[b].reshape(C, -1)
-            gy_tmp = gy_tmp.transpose(1, 0)
-            gx = dydx.dot(gy_tmp)
+            gy_elem = gy[b].reshape(C, -1)
+            gy_elem = gy_elem.transpose(1, 0)
+            gx = dydx.dot(gy_elem)
             gxs.append(gx.transpose(2, 0, 1))
         gx = xp.concatenate([xp.expand_dims(g, axis=0) for g in gxs], axis=0)
         return gx, ggrid
