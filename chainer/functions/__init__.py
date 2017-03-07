@@ -30,6 +30,7 @@ from chainer.functions.array import hstack  # NOQA
 from chainer.functions.array import pad  # NOQA
 from chainer.functions.array import permutate  # NOQA
 from chainer.functions.array import reshape  # NOQA
+from chainer.functions.array import resize_images  # NOQA
 from chainer.functions.array import rollaxis  # NOQA
 from chainer.functions.array import select_item  # NOQA
 from chainer.functions.array import separate  # NOQA
@@ -175,6 +176,8 @@ from chainer.functions.array.permutate import permutate  # NOQA
 from chainer.functions.array.permutate import Permutate  # NOQA
 from chainer.functions.array.reshape import reshape  # NOQA
 from chainer.functions.array.reshape import Reshape  # NOQA
+from chainer.functions.array.resize_images import resize_images  # NOQA
+from chainer.functions.array.resize_images import ResizeImages  # NOQA
 from chainer.functions.array.rollaxis import rollaxis  # NOQA
 from chainer.functions.array.rollaxis import Rollaxis  # NOQA
 from chainer.functions.array.select_item import select_item  # NOQA
