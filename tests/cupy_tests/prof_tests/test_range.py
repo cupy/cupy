@@ -47,7 +47,8 @@ class TestTimeRange(unittest.TestCase):
             def f():
                 pass
             f()
-            push.assert_called_once_with('f', 0)
+            # Default value of color id is -1
+            push.assert_called_once_with('f', -1)
             pop.assert_called_once_with()
 
     def test_TimeRangeDecorator_with_ARGB(self):
@@ -72,5 +73,6 @@ class TestTimeRange(unittest.TestCase):
                 f()
             except Exception:
                 pass
-            push.assert_called_once_with('f', 0)
+            # Default value of color id is -1
+            push.assert_called_once_with('f', -1)
             pop.assert_called_once_with()
