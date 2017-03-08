@@ -7,6 +7,7 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 from chainer.utils import type_check
 
 
@@ -40,10 +41,12 @@ class TestPadDefault(unittest.TestCase):
         self.assertEqual(y.dtype, y_expected.dtype)
         testing.assert_allclose(y.data, y_expected)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
@@ -52,10 +55,12 @@ class TestPadDefault(unittest.TestCase):
             functions.Pad(self.pad_width, self.mode), x_data, g_data,
             **self.check_backward_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
 
@@ -97,10 +102,12 @@ class TestPad(unittest.TestCase):
         self.assertEqual(y.dtype, y_expected.dtype)
         testing.assert_allclose(y.data, y_expected)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
@@ -110,10 +117,12 @@ class TestPad(unittest.TestCase):
                           constant_values=self.constant_values),
             x_data, g_data, **self.check_backward_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
 
