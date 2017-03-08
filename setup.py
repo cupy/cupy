@@ -74,6 +74,7 @@ setup(
               'cupy.manipulation',
               'cupy.math',
               'cupy.padding',
+              'cupy.prof',
               'cupy.random',
               'cupy.sorting',
               'cupy.statistics',
