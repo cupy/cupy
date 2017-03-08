@@ -174,6 +174,7 @@ def evaluate(model, test_trees):
     print(' Root accuracy: {0:.2f} %% ({1:,d}/{2:,d})'.format(
         acc_root, result['correct_root'], result['total_root']))
 
+
 vocab = {}
 if args.test:
     max_size = 10

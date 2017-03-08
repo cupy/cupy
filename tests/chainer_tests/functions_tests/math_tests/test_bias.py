@@ -66,4 +66,5 @@ class TestBiasInvalidShape(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 functions.bias(x1, x2, axis)
 
+
 testing.run_module(__name__, __file__)
