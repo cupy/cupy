@@ -9,6 +9,10 @@ import six
 
 from cupy.core import flags
 from cupy.cuda import stream
+try:
+    from cupy.cuda import thrust
+except ImportError:
+    pass
 from cupy import util
 
 cimport cpython
@@ -20,7 +24,6 @@ from cupy.cuda cimport common
 from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
-from cupy.cuda cimport thrust
 
 
 DEF MAX_NDIM = 25
@@ -685,8 +688,14 @@ cdef class ndarray:
 
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
-        cdef void* ptr
-        cdef Py_ssize_t n
+
+        try:
+            import cupy.cuda.thrust
+        except ImportError:
+            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
+                   'Toolkit with Thrust then reinstall Chainer again after '
+                   'uninstall it.')
+            raise RuntimeError(msg)
 
         if self.shape == ():
             msg = 'Sorting arrays with the rank of zero is not supported'
@@ -702,31 +711,40 @@ cdef class ndarray:
         if self.base is not None:
             raise ValueError('Sorting views is not supported')
 
-        ptr = <void *>self.data.ptr
-        n = <Py_ssize_t>self.shape[0]
-
         # TODO(takagi): Support float16 and bool
         dtype = self.dtype
+        first = self.data.ptr
+        n = self.shape[0]
         if dtype == numpy.int8:
-            thrust.sort[common.cpy_byte](ptr, n)
+            last = first + n * sizeof(common.cpy_byte)
+            thrust.stable_sort_byte(first, last)
         elif dtype == numpy.uint8:
-            thrust.sort[common.cpy_ubyte](ptr, n)
+            last = first + n * sizeof(common.cpy_ubyte)
+            thrust.stable_sort_ubyte(first, last)
         elif dtype == numpy.int16:
-            thrust.sort[common.cpy_short](ptr, n)
+            last = first + n * sizeof(common.cpy_short)
+            thrust.stable_sort_short(first, last)
         elif dtype == numpy.uint16:
-            thrust.sort[common.cpy_ushort](ptr, n)
+            last = first + n * sizeof(common.cpy_ushort)
+            thrust.stable_sort_ushort(first, last)
         elif dtype == numpy.int32:
-            thrust.sort[common.cpy_int](ptr, n)
+            last = first + n * sizeof(common.cpy_int)
+            thrust.stable_sort_int(first, last)
         elif dtype == numpy.uint32:
-            thrust.sort[common.cpy_uint](ptr, n)
+            last = first + n * sizeof(common.cpy_uint)
+            thrust.stable_sort_uint(first, last)
         elif dtype == numpy.int64:
-            thrust.sort[common.cpy_long](ptr, n)
+            last = first + n * sizeof(common.cpy_long)
+            thrust.stable_sort_long(first, last)
         elif dtype == numpy.uint64:
-            thrust.sort[common.cpy_ulong](ptr, n)
+            last = first + n * sizeof(common.cpy_ulong)
+            thrust.stable_sort_ulong(first, last)
         elif dtype == numpy.float32:
-            thrust.sort[common.cpy_float](ptr, n)
+            last = first + n * sizeof(common.cpy_float)
+            thrust.stable_sort_float(first, last)
         elif dtype == numpy.float64:
-            thrust.sort[common.cpy_double](ptr, n)
+            last = first + n * sizeof(common.cpy_double)
+            thrust.stable_sort_double(first, last)
         else:
             msg = "Sorting arrays with dtype '{}' is not supported"
             raise TypeError(msg.format(dtype))

@@ -7,7 +7,7 @@ namespace cupy {
 
 namespace thrust {
 
-template <typename T> void sort(void *, ptrdiff_t);
+template <typename T> void stable_sort(T *, T *);
 
 } // namespace thrust
 
@@ -21,7 +21,7 @@ namespace cupy {
 
 namespace thrust {
 
-template <typename T> void sort(void *, ptrdiff_t) { return; }
+template <typename T> void stable_sort(T *, T *) { return; }
 
 } // namespace thrust
 

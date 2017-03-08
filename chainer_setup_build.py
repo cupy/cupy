@@ -23,17 +23,7 @@ MODULES = [
     {
         'name': 'cuda',
         'file': [
-            # The value of the key 'file' is a list that contains extension
-            # names of tuples of an extension name and a list of other source
-            # files required such as .cpp files and .cu files.
-            #
-            #   <extension name> | (<extension name>, list of <other source>)
-            #
-            # The extension names are interpreted as the names of Python
-            # extensions to be built as well as the names of the Cython source
-            # files with appending '.pyx' extension from which the extensions
-            # are built.
-            ('cupy.core.core', ['cupy/cuda/cupy_thrust.cu']),
+            'cupy.core.core',
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',
@@ -46,7 +36,6 @@ MODULES = [
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             'cupy.util',
         ],
         'include': [
@@ -56,8 +45,6 @@ MODULES = [
             'cuda_runtime.h',
             'curand.h',
             'nvToolsExt.h',
-            'thrust/device_ptr.h',
-            'thrust/sort.h',
         ],
         'libraries': [
             'cublas',
@@ -80,6 +67,28 @@ MODULES = [
             'cudnn',
         ],
         'check_method': build.check_cudnn_version,
+    },
+    {
+        # The value of the key 'file' is a list that contains extension names
+        # or tuples of an extension name and a list of other souces files
+        # required to build the extension such as .cpp files and .cu files.
+        #
+        #   <extension name> | (<extension name>, a list of <other source>)
+        #
+        # The extension name is also interpreted as the name of the Cython
+        # source file required to build the extension with appending '.pyx'
+        # file extension.
+        'name': 'thrust',
+        'file': [
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+        ],
+        'include': [
+            'thrust/device_ptr.h',
+            'thrust/sort.h',
+        ],
+        'libraries': [
+            'cudart',
+        ],
     }
 ]
 
@@ -338,7 +347,7 @@ class NvidiaCCompiler(unixccompiler.UnixCCompiler):
         executables.update({
             'compiler': ['nvcc', '-O', '--compiler-options=-fPIC'],
             'compiler_so': ['nvcc', '-O', '--compiler-options=-fPIC'],
-            'compiler_cxx': ['gcc', '-O', '--compiler-options=-fPIC'],
+            'compiler_cxx': ['g++', '-O', '--compiler-options=-fPIC'],
             'linker_so': ['nvcc', '-shared'],
             'linker_exe': ['nvcc'],
             'src_extensions': ['.cpp', '.cu'],
