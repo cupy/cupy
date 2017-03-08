@@ -1131,7 +1131,13 @@ cdef class ndarray:
         mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
+                is_list = isinstance(s, list)
                 s = array(s)
+                # handle the case when s is an empty list
+                if is_list and s.size == 0:
+                    s = s.astype(numpy.int32)
+                    if s.ndim > 1:
+                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
@@ -2396,6 +2402,14 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
     cdef int n_true
     cdef tuple lshape, rshape, out_shape
 
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+
+    if mask.size == 0:
+        masked_shape = lshape + (0,) + rshape
+        mask_br = mask._reshape(masked_shape)
+        return mask_br, mask_br, masked_shape
+
     # Get number of True in the mask to determine the shape of the array
     # after masking.
     if mask.size <= 2 ** 31 - 1:
@@ -2404,8 +2418,6 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
         mask_type = numpy.int64
     mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
     n_true = int(mask_scanned[-1])
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask.ndim:]
     masked_shape = lshape + (n_true,) + rshape
 
     # When mask covers the entire array, broadcasting is not necessary.
@@ -2432,6 +2444,8 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
     out = ndarray(masked_shape, dtype=a.dtype)
+    if out.size == 0:
+        return out
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
