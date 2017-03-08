@@ -92,21 +92,17 @@ class ResizeImages(function.Function):
         wv1 = wv1.astype(gy.dtype)
 
         # --- gx
-        samples_arange = xp.arange(
-            self.out_H * self.out_W, dtype=numpy.int32)
         if xp is numpy:
             scatter_add = numpy.add.at
         else:
             scatter_add = xp.scatter_add
 
-        dydx = xp.zeros((H, W, self.out_H * self.out_W), dtype=gy.dtype)
-        scatter_add(dydx, (v0, u0, samples_arange), wu1 * wv1)
-        scatter_add(dydx, (v0, u1, samples_arange), wu0 * wv1)
-        scatter_add(dydx, (v1, u0, samples_arange), wu1 * wv0)
-        scatter_add(dydx, (v1, u1, samples_arange), wu0 * wv0)
-        gy = gy.transpose(0, 2, 3, 1).reshape(B, self.out_H * self.out_W, C)
-        gx = dydx.dot(gy)
-        gx = gx.transpose(2, 3, 0, 1)
+        gx = xp.zeros_like(x)
+        gy = gy.reshape(B, C, -1)
+        scatter_add(gx, (slice(None), slice(None), v0, u0), gy * wu1 * wv1)
+        scatter_add(gx, (slice(None), slice(None), v0, u1), gy * wu0 * wv1)
+        scatter_add(gx, (slice(None), slice(None), v1, u0), gy * wu1 * wv0)
+        scatter_add(gx, (slice(None), slice(None), v1, u1), gy * wu0 * wv0)
         return gx,
 
 
