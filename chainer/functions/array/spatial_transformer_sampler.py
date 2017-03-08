@@ -214,23 +214,23 @@ class SpatialTransformerSampler(function.Function):
         ggrid = xp.concatenate((gu[:, None], gv[:, None]), axis=1)
 
         # --- gx
+        if xp is numpy:
+            scatter_add = numpy.add.at
+        else:
+            scatter_add = xp.scatter_add
         gxs = []
-        samples_arange = xp.arange(out_H * out_W, dtype=numpy.int32)
+        gy = gy.reshape(B, C, -1)
         for b in range(B):
-            dydx = xp.zeros((H, W, out_H * out_W), dtype=gy.dtype)
-            if xp is numpy:
-                scatter_add = numpy.add.at
-            else:
-                scatter_add = xp.scatter_add
-            scatter_add(dydx, (v0[b], u0[b], samples_arange), wu1[b] * wv1[b])
-            scatter_add(dydx, (v0[b], u1[b], samples_arange), wu0[b] * wv1[b])
-            scatter_add(dydx, (v1[b], u0[b], samples_arange), wu1[b] * wv0[b])
-            scatter_add(dydx, (v1[b], u1[b], samples_arange), wu0[b] * wv0[b])
-
-            gy_elem = gy[b].reshape(C, -1)
-            gy_elem = gy_elem.transpose(1, 0)
-            gx = dydx.dot(gy_elem)
-            gxs.append(gx.transpose(2, 0, 1))
+            gx = xp.zeros_like(x[b])
+            scatter_add(gx, (slice(None), v0[b], u0[b]),
+                        gy[b] * wu1[b] * wv1[b])
+            scatter_add(gx, (slice(None), v0[b], u1[b]),
+                        gy[b] * wu0[b] * wv1[b])
+            scatter_add(gx, (slice(None), v1[b], u0[b]),
+                        gy[b] * wu1[b] * wv0[b])
+            scatter_add(gx, (slice(None), v1[b], u1[b]),
+                        gy[b] * wu0[b] * wv0[b])
+            gxs.append(gx)
         gx = xp.concatenate([xp.expand_dims(g, axis=0) for g in gxs], axis=0)
         return gx, ggrid
 
