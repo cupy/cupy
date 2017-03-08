@@ -6,7 +6,37 @@ import numpy
 import six
 
 from chainer import iterators
+from chainer import serializer
 from chainer import testing
+
+
+class DummySerializer(serializer.Serializer):
+
+    def __init__(self, target):
+        super(DummySerializer, self).__init__()
+        self.target = target
+
+    def __getitem__(self, key):
+        raise NotImplementedError
+
+    def __call__(self, key, value):
+        self.target[key] = value
+        return self.target[key]
+
+
+class DummyDeserializer(serializer.Deserializer):
+
+    def __init__(self, target):
+        super(DummyDeserializer, self).__init__()
+        self.target = target
+
+    def __getitem__(self, key):
+        raise NotImplementedError
+
+    def __call__(self, key, value):
+        if isinstance(value, numpy.ndarray):
+            value[:] = self.target[key]
+        return self.target[key]
 
 
 @testing.parameterize(*testing.product({
@@ -184,5 +214,51 @@ class TestMultiprocessIterator(unittest.TestCase):
         self.assertEqual(sorted(batches), dataset)
         for _ in range(2):
             self.assertRaises(StopIteration, copy_it.next)
+
+
+@testing.parameterize(*testing.product({
+    'n_prefetch': [1, 2],
+    'shared_mem': [None, 1000000],
+}))
+class TestMultiprocessIteratorSerialize(unittest.TestCase):
+
+    def setUp(self):
+        self.n_processes = 2
+        self.options = {'n_processes': self.n_processes,
+                        'n_prefetch': self.n_prefetch,
+                        'shared_mem': self.shared_mem}
+
+    def test_iterator_serialize(self):
+        dataset = [1, 2, 3, 4, 5, 6]
+        it = iterators.MultiprocessIterator(dataset, 2, **self.options)
+
+        self.assertEqual(it.epoch, 0)
+        self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        batch1 = it.next()
+        self.assertEqual(len(batch1), 2)
+        self.assertIsInstance(batch1, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        batch2 = it.next()
+        self.assertEqual(len(batch2), 2)
+        self.assertIsInstance(batch2, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+
+        target = dict()
+        it.serialize(DummySerializer(target))
+
+        it = iterators.MultiprocessIterator(dataset, 2, **self.options)
+        it.serialize(DummyDeserializer(target))
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+
+        batch3 = it.next()
+        self.assertEqual(len(batch3), 2)
+        self.assertIsInstance(batch3, list)
+        self.assertTrue(it.is_new_epoch)
+        self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+        self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+
 
 testing.run_module(__name__, __file__)

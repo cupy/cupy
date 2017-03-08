@@ -217,4 +217,5 @@ class TestZoneoutToCPUToGPU(unittest.TestCase):
         self.h.to_gpu()
         self.check_to_cpu_to_gpu(self.c, self.h)
 
+
 testing.run_module(__name__, __file__)
