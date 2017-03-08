@@ -165,6 +165,7 @@ class Im2colNDKernel(object):
     def generate(ndim):
         return _im2col_nd_kernel._generate(ndim)
 
+
 _im2col_nd_kernel = Im2colNDKernel()
 
 
@@ -288,5 +289,6 @@ class Col2imNDKernel(object):
     @chainer.cuda.memoize()
     def generate(ndim):
         return _col2im_nd_kernel._generate(ndim)
+
 
 _col2im_nd_kernel = Col2imNDKernel()
