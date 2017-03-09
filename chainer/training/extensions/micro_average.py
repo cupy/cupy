@@ -7,10 +7,10 @@ from chainer.training import util
 
 class MicroAverage(extension.Extension):
 
-    """Calculates micro-average accuracy.
+    """Calculates micro-average ratio.
 
     Give :math:`N` batches and values :math:`\\{n_1, \dots, n_N\\}` and
-    :math:`\\{d_1, \dots, d_N\\}`, this extension calculates macro-average of
+    :math:`\\{d_1, \dots, d_N\\}`, this extension calculates micro-average of
     these ratio defined as:
 
     .. math::
@@ -27,14 +27,14 @@ class MicroAverage(extension.Extension):
 
        \\frac{1}{N}\\sum_i^N (n_i / d_i),
 
-    It is same to the macro-average when each mini-batch has the same
+    It is same to the micro-average when each mini-batch has the same
     :math:`d_i`.
 
     You need to report numerator value (the number of correct examples) and
     denominator value (the number of examples) in your model.
 
     >>> class MyModel(chainer.Link):
-    >>>     def __call__(self, x, y):
+    ...     def __call__(self, x, y):
     ...         loss = F.softmax_cross_entropy(x, y)
     ...         correct = (x.data.argmax(axis=1) == y.data).sum()
     ...         total = len(y.data)
