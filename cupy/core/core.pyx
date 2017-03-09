@@ -20,6 +20,7 @@ from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
+from cupy.cuda.function cimport CPointer
 
 DEF MAX_NDIM = 25
 
@@ -64,16 +65,6 @@ cdef class ndarray:
 
 
     """
-
-    cdef:
-        readonly Py_ssize_t size
-        public vector.vector[Py_ssize_t] _shape
-        public vector.vector[Py_ssize_t] _strides
-        readonly bint _c_contiguous
-        readonly bint _f_contiguous
-        readonly object dtype
-        readonly memory.MemoryPointer data
-        readonly ndarray base
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
         cdef Py_ssize_t x
@@ -1474,6 +1465,9 @@ cdef class ndarray:
             self._update_contiguity()
         else:
             self._update_f_contiguity()
+
+    cdef CPointer get_pointer(self):
+        return CArray(self)
 
 
 cdef object newaxis = numpy.newaxis  # == None
