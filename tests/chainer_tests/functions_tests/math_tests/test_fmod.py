@@ -90,4 +90,5 @@ class TestFmod(UnaryFunctionsTestBase):
     def test_label(self):
         self.check_label(F.Fmod, 'fmod')
 
+
 testing.run_module(__name__, __file__)
