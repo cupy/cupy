@@ -189,6 +189,7 @@ class TestSerialIteratorShuffled(unittest.TestCase):
                 self.assertRaises(StopIteration, it.next)
             it.reset()
 
+
 class TestSerialIteratorSerialize(unittest.TestCase):
 
     def test_iterator_serialize(self):
