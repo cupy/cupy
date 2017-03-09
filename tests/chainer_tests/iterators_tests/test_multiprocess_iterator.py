@@ -185,4 +185,16 @@ class TestMultiprocessIterator(unittest.TestCase):
         for _ in range(2):
             self.assertRaises(StopIteration, copy_it.next)
 
+    def test_reset(self):
+        dataset = [1, 2, 3, 4, 5]
+        it = iterators.MultiprocessIterator(
+            dataset, 2, repeat=False, **self.options)
+
+        for trial in range(4):
+            batches = sum([it.next() for _ in range(3)], [])
+            self.assertEqual(sorted(batches), dataset)
+            for _ in range(2):
+                self.assertRaises(StopIteration, it.next)
+            it.reset()
+
 testing.run_module(__name__, __file__)
