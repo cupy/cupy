@@ -1,5 +1,3 @@
-import collections
-
 from chainer import reporter
 from chainer.training import extension
 from chainer.training import util
