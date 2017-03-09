@@ -87,3 +87,7 @@ class MicroAverage(extension.Extension):
             self._numerator = 0
             self._denominator = 0
             reporter.report({self._result_key: result})
+
+    def serialize(self, serializer):
+        self._numerator = serializer('_numerator', self._numerator)
+        self._denominator = serializer('_denominator', self._denominator)
