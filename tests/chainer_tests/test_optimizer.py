@@ -380,6 +380,29 @@ class TestGradientMethod(unittest.TestCase):
         self.check_clip_grads()
 
 
+class TestCleargradHook(unittest.TestCase):
+
+    def setUp(self):
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def check_cleargrad(self):
+        opt = optimizers.SGD(lr=1)
+        opt.setup(self.target)
+        opt.add_hook(CleargradHook(self))
+
+        opt.update()
+
+    def test_cleargrad_cpu(self):
+        self.check_cleargrad()
+
+    @attr.gpu
+    def test_cleargrad_gpu(self):
+        self.target.to_gpu()
+        self.check_cleargrad()
+
+
 class DummyOptimizer(chainer.GradientMethod):
 
     def __init__(self, test):
@@ -401,6 +424,21 @@ class DummyHook(object):
         for param in opt.target.params():
             # Confirm all grads are not None
             self.test.assertIsNotNone(param.grad)
+
+
+class CleargradHook(object):
+
+    name = 'Cleargrad'
+
+    def __init__(self, test):
+        self.test = test
+
+    def __call__(self, opt):
+        for param in opt.target.params():
+            # Confirm all grads are not None
+            self.test.assertIsNotNone(param.grad)
+            # Clear all grads
+            param.cleargrad()
 
 
 class TestGradientMethodClearGrads(unittest.TestCase):
