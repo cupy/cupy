@@ -152,6 +152,7 @@ else:
 # ------------------------------------------------------------------------------
 def get_device_from_id(device_id):
     """Gets the device from an ID integer.
+
     Args:
         device_id (int or None): The ID of the device which this function
             returns.
@@ -165,7 +166,9 @@ def get_device_from_id(device_id):
 
 def get_device_from_array(*arrays):
     """Gets the device from a list of CuPy array or a single CuPy array.
+
     The device on which the given CuPy array reside is returned.
+
     Args:
         array (:class:`cupy.ndarray` or list of :class:`cupy.ndarray`):
             A CuPy array which this function returns the device corresponding
