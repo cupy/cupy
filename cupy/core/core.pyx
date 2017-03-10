@@ -693,8 +693,8 @@ cdef class ndarray:
             import cupy.cuda.thrust
         except ImportError:
             msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall Chainer again after '
-                   'uninstall it.')
+                   'Toolkit with Thrust then reinstall Chainer after '
+                   'uninstalling it.')
             raise RuntimeError(msg)
 
         if self.shape == ():
