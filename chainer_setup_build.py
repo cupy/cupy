@@ -334,20 +334,22 @@ def _nvcc_gencode_options():
 class NvidiaCCompiler(unixccompiler.UnixCCompiler):
     compiler_type = "nvidia"
     executables = dict(unixccompiler.UnixCCompiler.executables)
+    postargs = _nvcc_gencode_options()
     if sys.platform == 'win32':
         executables.update({
-            'compiler': ['nvcc', '-O'],
-            'compiler_so': ['nvcc', '-O'],
-            'compiler_cxx': ['nvcc', '-O'],
+            'compiler': ['nvcc', '-O'] + postargs,
+            'compiler_so': ['nvcc', '-O'] + postargs,
+            'compiler_cxx': ['nvcc', '-O'] + postargs,
             'linker_so': ['nvcc', '-shared'],
             'linker_exe': ['nvcc'],
             'src_extensions': ['.cpp', '.cu'],
         })
     else:
+        postargs += ['--compiler-options=-fPIC']
         executables.update({
-            'compiler': ['nvcc', '-O', '--compiler-options=-fPIC'],
-            'compiler_so': ['nvcc', '-O', '--compiler-options=-fPIC'],
-            'compiler_cxx': ['g++', '-O', '--compiler-options=-fPIC'],
+            'compiler': ['nvcc', '-O'] + postargs,
+            'compiler_so': ['nvcc', '-O'] + postargs,
+            'compiler_cxx': ['g++', '-O'] + postargs,
             'linker_so': ['nvcc', '-shared'],
             'linker_exe': ['nvcc'],
             'src_extensions': ['.cpp', '.cu'],
