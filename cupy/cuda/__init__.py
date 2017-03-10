@@ -11,7 +11,7 @@ from cupy.cuda import stream  # NOQA
 try:
     from cupy.cuda import cusolver  # NOQA
     cusolver_enabled = True
-except ImportError as e:
+except ImportError:
     cusolver_enabled = False
 
 
