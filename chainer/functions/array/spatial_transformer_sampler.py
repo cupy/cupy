@@ -100,16 +100,20 @@ class SpatialTransformerSampler(function.Function):
         w3 = w3.astype(x.dtype)
         w4 = w4.astype(x.dtype)
 
-        ys = []
-        for b in range(B):
-            elem = (w1[b, :, None] * x[b, :, v0[b], u0[b]] +
-                    w2[b, :, None] * x[b, :, v0[b], u1[b]] +
-                    w3[b, :, None] * x[b, :, v1[b], u0[b]] +
-                    w4[b, :, None] * x[b, :, v1[b], u1[b]])
-            elem = elem.reshape(out_H, out_W, C)
-            elem = elem.transpose(2, 0, 1)
-            ys.append(elem)
-        y = xp.concatenate([xp.expand_dims(y, axis=0) for y in ys], axis=0)
+        x_indexed_1 = xp.concatenate([xp.expand_dims(
+            x[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_2 = xp.concatenate([xp.expand_dims(
+            x[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_3 = xp.concatenate([xp.expand_dims(
+            x[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_4 = xp.concatenate([xp.expand_dims(
+            x[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
+        y = w1[:, :, None] * x_indexed_1
+        y += w2[:, :, None] * x_indexed_2
+        y += w3[:, :, None] * x_indexed_3
+        y += w4[:, :, None] * x_indexed_4
+
+        y = y.reshape(B, out_H, out_W, C).transpose(0, 3, 1, 2)
         return y,
 
     def backward_cpu(self, inputs, grad_outputs):
@@ -185,25 +189,27 @@ class SpatialTransformerSampler(function.Function):
         wv1 = wv1.astype(gy.dtype)
 
         # --- gu, gv
-        gus = []
-        gvs = []
-        for b in range(B):
-            gu_elem = (-wv1[b, :, None] * x[b, :, v0[b], u0[b]] +
-                       wv1[b, :, None] * x[b, :, v0[b], u1[b]] -
-                       wv0[b, :, None] * x[b, :, v1[b], u0[b]] +
-                       wv0[b, :, None] * x[b, :, v1[b], u1[b]])
-            gu_elem = gu_elem.reshape(out_H, out_W, C)
-            gu_elem = gu_elem.transpose(2, 0, 1)
-            gus.append(gu_elem)
-            gv_elem = (-wu1[b, :, None] * x[b, :, v0[b], u0[b]] -
-                       wu0[b, :, None] * x[b, :, v0[b], u1[b]] +
-                       wu1[b, :, None] * x[b, :, v1[b], u0[b]] +
-                       wu0[b, :, None] * x[b, :, v1[b], u1[b]])
-            gv_elem = gv_elem.reshape(out_H, out_W, C)
-            gv_elem = gv_elem.transpose(2, 0, 1)
-            gvs.append(gv_elem)
-        gu = xp.concatenate([xp.expand_dims(g, axis=0) for g in gus], axis=0)
-        gv = xp.concatenate([xp.expand_dims(g, axis=0) for g in gvs], axis=0)
+        x_indexed_1 = xp.concatenate([xp.expand_dims(
+            x[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_2 = xp.concatenate([xp.expand_dims(
+            x[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_3 = xp.concatenate([xp.expand_dims(
+            x[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
+        x_indexed_4 = xp.concatenate([xp.expand_dims(
+            x[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
+
+        gu = -wv1[:, :, None] * x_indexed_1
+        gu += wv1[:, :, None] * x_indexed_2
+        gu -= wv0[:, :, None] * x_indexed_3
+        gu += wv0[:, :, None] * x_indexed_4
+
+        gv = -wu1[:, :, None] * x_indexed_1
+        gv -= wu0[:, :, None] * x_indexed_2
+        gv += wu1[:, :, None] * x_indexed_3
+        gv += wu0[:, :, None] * x_indexed_4
+
+        gu = gu.reshape(B, out_H, out_W, C).transpose(0, 3, 1, 2)
+        gv = gv.reshape(B, out_H, out_W, C).transpose(0, 3, 1, 2)
 
         gu *= gy
         gv *= gy
