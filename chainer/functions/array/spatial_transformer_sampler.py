@@ -78,7 +78,7 @@ class SpatialTransformerSampler(function.Function):
         u = u.clip(-1, 1)
         v = v.clip(-1, 1)
 
-        # rescale coordiantes from [-1, 1] to [0, width or height - 1]
+        # rescale coordinates from [-1, 1] to [0, width or height - 1]
         u = (u + 1) / 2 * (W - 1)
         v = (v + 1) / 2 * (H - 1)
 
@@ -259,7 +259,7 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
     - :math:`h_O` and :math:`w_O` are the height and width of the output
       image.
 
-    See detail in a paper: `Spatial Transformer Networks \
+    See detail in the following paper: `Spatial Transformer Networks \
     <https://arxiv.org/abs/1506.02025>`_.
 
     Args:
@@ -272,7 +272,7 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
             to sample the values for an output pixel at location
             :math:`(i, j)`.
 
-            In the 2nd dimension, the first coordinate corresponds to the
+            In the second dimension, the first coordinate corresponds to the
             location along the horizontal axis, and the second coordinate
             corresponds to the location along the vertical axis.
 
