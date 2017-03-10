@@ -369,15 +369,18 @@ class GradientMethod(Optimizer):
 
     """
 
+    def _replace_cleared_grads(self):
+        for name, param in self.target.namedparams():
+            if param.grad is None:
+                with cuda.get_device(param.data):
+                    xp = cuda.get_array_module(param.data)
+                    param.grad = xp.zeros_like(param.data)
+
     def call_hooks(self):
         """Invokes hook functions in registration order."""
         for hook in six.itervalues(self._hooks):
             hook(self)
-            for name, param in self.target.namedparams():
-                if param.grad is None:
-                    with cuda.get_device(param.data):
-                        xp = cuda.get_array_module(param.data)
-                        param.grad = xp.zeros_like(param.data)
+            self._replace_cleared_grads()
 
     def update(self, lossfun=None, *args, **kwds):
         """Updates parameters based on a loss function or computed gradients.
@@ -407,11 +410,7 @@ class GradientMethod(Optimizer):
 
         # TODO(unno): Some optimizers can skip this process if they does not
         # affect to a parameter when its gradient is zero.
-        for name, param in self.target.namedparams():
-            if param.grad is None:
-                with cuda.get_device(param.data):
-                    xp = cuda.get_array_module(param.data)
-                    param.grad = xp.zeros_like(param.data)
+        self._replace_cleared_grads()
 
         self.call_hooks()
         self.prepare()
