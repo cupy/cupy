@@ -409,6 +409,10 @@ cublasStatus_t cublasSgemmBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasDgemmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgemmEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }

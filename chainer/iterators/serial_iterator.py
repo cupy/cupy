@@ -69,7 +69,7 @@ class SerialIterator(iterator.Iterator):
                                       for index in self._order[:rest]])
                 self.current_position = rest
             else:
-                self.current_position = N
+                self.current_position = 0
 
             self.epoch += 1
             self.is_new_epoch = True

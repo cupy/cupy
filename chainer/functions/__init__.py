@@ -27,6 +27,7 @@ from chainer.functions.array import fliplr  # NOQA
 from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
+from chainer.functions.array import pad  # NOQA
 from chainer.functions.array import permutate  # NOQA
 from chainer.functions.array import reshape  # NOQA
 from chainer.functions.array import rollaxis  # NOQA
@@ -78,6 +79,7 @@ from chainer.functions.math import det  # NOQA
 from chainer.functions.math import exponential  # NOQA
 from chainer.functions.math import exponential_m1  # NOQA
 from chainer.functions.math import floor  # NOQA
+from chainer.functions.math import fmod  # NOQA
 from chainer.functions.math import hyperbolic  # NOQA
 from chainer.functions.math import identity  # NOQA
 from chainer.functions.math import inv  # NOQA
@@ -167,6 +169,8 @@ from chainer.functions.array.flipud import FlipUD  # NOQA
 from chainer.functions.array.get_item import get_item  # NOQA
 from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
+from chainer.functions.array.pad import pad  # NOQA
+from chainer.functions.array.pad import Pad  # NOQA
 from chainer.functions.array.permutate import permutate  # NOQA
 from chainer.functions.array.permutate import Permutate  # NOQA
 from chainer.functions.array.reshape import reshape  # NOQA
@@ -270,6 +274,8 @@ from chainer.functions.math.exponential_m1 import expm1  # NOQA
 from chainer.functions.math.exponential_m1 import Expm1  # NOQA
 from chainer.functions.math.floor import floor  # NOQA
 from chainer.functions.math.floor import Floor  # NOQA
+from chainer.functions.math.fmod import fmod  # NOQA
+from chainer.functions.math.fmod import Fmod  # NOQA
 from chainer.functions.math.hyperbolic import cosh  # NOQA
 from chainer.functions.math.hyperbolic import Cosh  # NOQA
 from chainer.functions.math.hyperbolic import sinh  # NOQA

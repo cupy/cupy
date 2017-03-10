@@ -82,4 +82,5 @@ class TestHinge(unittest.TestCase):
     def test_backward_gpu_l2(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L2')
 
+
 testing.run_module(__name__, __file__)

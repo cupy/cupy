@@ -139,6 +139,7 @@ def save_images(x, filename):
         ai.imshow(xi.reshape(28, 28))
     fig.savefig(filename)
 
+
 train_ind = [1, 3, 5, 10, 2, 0, 13, 15, 17]
 x = chainer.Variable(np.asarray(x_train[train_ind]), volatile='on')
 x1 = model(x)
