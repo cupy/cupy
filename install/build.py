@@ -9,6 +9,9 @@ from install import utils
 
 minimum_cuda_version = 6050
 minimum_cudnn_version = 2000
+# Although cuda 7.0 includes cusolver,
+# we tentatively support cusolver in cuda 8.0 only because
+# provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
 
