@@ -160,6 +160,8 @@ class TestCupyIndicesGetItem(unittest.TestCase):
         for i, s in enumerate(self.slices):
             if isinstance(s, numpy.ndarray):
                 s = chainer.cuda.cupy.array(s)
+            if isinstance(s, list):
+                s = chainer.cuda.cupy.array(s, dtype=numpy.int32)
             slices.append(s)
         slices = tuple(slices)
         x = chainer.Variable(x_data)
@@ -177,6 +179,8 @@ class TestCupyIndicesGetItem(unittest.TestCase):
         for i, s in enumerate(self.slices):
             if isinstance(s, numpy.ndarray):
                 s = chainer.cuda.cupy.array(s)
+            if isinstance(s, list):
+                s = chainer.cuda.cupy.array(s, dtype=numpy.int32)
             slices.append(s)
         slices = tuple(slices)
         gradient_check.check_backward(functions.GetItem(slices),
