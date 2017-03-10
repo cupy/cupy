@@ -70,11 +70,12 @@ def hard_sigmoid(x):
     .. admonition:: Example
 
         It maps the input values into the range of :math:`[0, 1]`.
-        >>> x = np.arange(-2, 3, 2).astype('f')
+
+        >>> x = np.array([-2.6, -1, 0, 1, 2.6])
         >>> x
-        array([-2.,  0.,  2.], dtype=float32)
+        array([-2.6, -1. ,  0. ,  1. ,  2.6])
         >>> F.hard_sigmoid(x).data
-        array([ 0.09999999,  0.5       ,  0.89999998], dtype=float32)
+        array([ 0. ,  0.3,  0.5,  0.7,  1. ])
 
     """
     return HardSigmoid()(x)
