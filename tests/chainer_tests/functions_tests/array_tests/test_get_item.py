@@ -104,7 +104,7 @@ class TestGetItem(unittest.TestCase):
         {'dtype': numpy.ulonglong},
     ]
 ))
-class TestGetitemAdvanced(unittest.TestCase):
+class TestGetItemAdvanced(unittest.TestCase):
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
