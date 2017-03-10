@@ -71,6 +71,9 @@ def cholesky(a):
 # TODO(okuta): Implement qr
 
 
+# TODO(okuta): Implement svd
+
+
 def _assertCupyArray(*arrays):
     for a in arrays:
         if not isinstance(a, cupy.core.ndarray):
@@ -98,6 +101,3 @@ def _tril(x, k=0):
     mask = v - u <= k
     x *= mask
     return x
-
-
-# TODO(okuta): Implement svd
