@@ -391,6 +391,7 @@ class TestCleargradHook(unittest.TestCase):
         opt = optimizers.SGD(lr=1)
         opt.setup(self.target)
         opt.add_hook(CleargradHook(self))
+        opt.add_hook(DummyHook(self))
 
         opt.update()
 
@@ -430,13 +431,11 @@ class CleargradHook(object):
 
     name = 'Cleargrad'
 
-    def __init__(self, test):
-        self.test = test
+    def __init__(self, _):
+        pass
 
     def __call__(self, opt):
         for param in opt.target.params():
-            # Confirm all grads are not None
-            self.test.assertIsNotNone(param.grad)
             # Clear all grads
             param.cleargrad()
 
