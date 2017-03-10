@@ -36,31 +36,32 @@ class SpatialTransformerSampler(function.Function):
         return self._forward(inputs)
 
     def forward_gpu(self, inputs):
-        if cuda.cudnn_enabled and self.use_cudnn and _cudnn_version >= 5000:
-            x, grid = inputs
-            out_shape = x.shape[:2] + grid.shape[2:]
-            y = cuda.cupy.empty(out_shape, dtype=x.dtype)
-            shape = numpy.array(out_shape, dtype=numpy.int32)
-            x = cuda.cupy.ascontiguousarray(x)
-            grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
-            grid_t = cuda.cupy.ascontiguousarray(grid_t)
+        if not (cuda.cudnn_enabled and self.use_cudnn and
+                _cudnn_version >= 5000):
+            return self._forward(inputs)
+        x, grid = inputs
+        out_shape = x.shape[:2] + grid.shape[2:]
+        y = cuda.cupy.empty(out_shape, dtype=x.dtype)
+        shape = numpy.array(out_shape, dtype=numpy.int32)
+        x = cuda.cupy.ascontiguousarray(x)
+        grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
+        grid_t = cuda.cupy.ascontiguousarray(grid_t)
 
-            handle = cudnn.get_handle()
-            x_desc = cudnn.create_tensor_descriptor(x)
-            y_desc = cudnn.create_tensor_descriptor(y)
+        handle = cudnn.get_handle()
+        x_desc = cudnn.create_tensor_descriptor(x)
+        y_desc = cudnn.create_tensor_descriptor(y)
 
-            self.st_desc =\
-                cuda.cupy.cudnn.create_spatial_transformer_descriptor(
-                    _sampler_type, grid.dtype, len(shape), shape.ctypes.data)
+        self.st_desc =\
+            cuda.cupy.cudnn.create_spatial_transformer_descriptor(
+                _sampler_type, grid.dtype, len(shape), shape.ctypes.data)
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
-            libcudnn.spatialTfSamplerForward(
-                handle, self.st_desc.value, one.data,
-                x_desc.value, x.data.ptr, grid_t.data.ptr, zero.data,
-                y_desc.value, y.data.ptr)
-            return y,
-        return self._forward(inputs)
+        one = numpy.array(1, dtype=x.dtype).ctypes
+        zero = numpy.array(0, dtype=x.dtype).ctypes
+        libcudnn.spatialTfSamplerForward(
+            handle, self.st_desc.value, one.data,
+            x_desc.value, x.data.ptr, grid_t.data.ptr, zero.data,
+            y_desc.value, y.data.ptr)
+        return y,
 
     def _forward(self, inputs):
         x, grid = inputs
@@ -115,34 +116,35 @@ class SpatialTransformerSampler(function.Function):
         return self._backward(inputs, grad_outputs)
 
     def backward_gpu(self, inputs, grad_outputs):
-        if cuda.cudnn_enabled and self.use_cudnn and _cudnn_version >= 5000:
-            x, grid = inputs
-            gy, = grad_outputs
+        if not (cuda.cudnn_enabled and self.use_cudnn and
+                _cudnn_version >= 5000):
+            return self._backward(inputs, grad_outputs)
+        x, grid = inputs
+        gy, = grad_outputs
 
-            grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
-            gx = cuda.cupy.empty_like(x)
-            ggrid_t = cuda.cupy.empty_like(grid_t)
-            grid_t = cuda.cupy.ascontiguousarray(grid_t)
+        grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
+        gx = cuda.cupy.empty_like(x)
+        ggrid_t = cuda.cupy.empty_like(grid_t)
+        grid_t = cuda.cupy.ascontiguousarray(grid_t)
 
-            handle = cudnn.get_handle()
-            x_desc = cudnn.create_tensor_descriptor(x)
-            dx_desc = cudnn.create_tensor_descriptor(gx)
-            dy_desc = cudnn.create_tensor_descriptor(gy)
+        handle = cudnn.get_handle()
+        x_desc = cudnn.create_tensor_descriptor(x)
+        dx_desc = cudnn.create_tensor_descriptor(gx)
+        dy_desc = cudnn.create_tensor_descriptor(gy)
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
-            libcudnn.spatialTfSamplerBackward(
-                handle, self.st_desc.value,
-                one.data,
-                x_desc.value, x.data.ptr,
-                zero.data,
-                dx_desc.value, gx.data.ptr,
-                one.data,
-                dy_desc.value, gy.data.ptr,
-                grid_t.data.ptr, zero.data, ggrid_t.data.ptr)
-            ggrid = cuda.cupy.transpose(ggrid_t, axes=(0, 3, 1, 2))
-            return gx, ggrid
-        return self._backward(inputs, grad_outputs)
+        one = numpy.array(1, dtype=x.dtype).ctypes
+        zero = numpy.array(0, dtype=x.dtype).ctypes
+        libcudnn.spatialTfSamplerBackward(
+            handle, self.st_desc.value,
+            one.data,
+            x_desc.value, x.data.ptr,
+            zero.data,
+            dx_desc.value, gx.data.ptr,
+            one.data,
+            dy_desc.value, gy.data.ptr,
+            grid_t.data.ptr, zero.data, ggrid_t.data.ptr)
+        ggrid = cuda.cupy.transpose(ggrid_t, axes=(0, 3, 1, 2))
+        return gx, ggrid
 
     def _backward(self, inputs, grad_outputs):
         x, grid = inputs
