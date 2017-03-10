@@ -240,11 +240,6 @@ class Optimizer(object):
         """Invokes hook functions in registration order."""
         for hook in six.itervalues(self._hooks):
             hook(self)
-            for name, param in self.target.namedparams():
-                if param.grad is None:
-                    with cuda.get_device(param.data):
-                        xp = cuda.get_array_module(param.data)
-                        param.grad = xp.zeros_like(param.data)
 
     def serialize(self, serializer):
         """Serializes or deserializes the optimizer.
@@ -373,6 +368,16 @@ class GradientMethod(Optimizer):
        :class:`GradientMethod` object for efficiency.
 
     """
+
+    def call_hooks(self):
+        """Invokes hook functions in registration order."""
+        for hook in six.itervalues(self._hooks):
+            hook(self)
+            for name, param in self.target.namedparams():
+                if param.grad is None:
+                    with cuda.get_device(param.data):
+                        xp = cuda.get_array_module(param.data)
+                        param.grad = xp.zeros_like(param.data)
 
     def update(self, lossfun=None, *args, **kwds):
         """Updates parameters based on a loss function or computed gradients.
