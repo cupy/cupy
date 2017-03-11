@@ -2,6 +2,8 @@ import numpy
 
 from cupy import core
 
+from six.moves import range
+
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
