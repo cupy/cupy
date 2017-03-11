@@ -6,6 +6,9 @@ import cupy
 from cupy import testing
 
 
+from six.moves import range
+
+
 @testing.gpu
 class TestSumprod(unittest.TestCase):
 
@@ -153,8 +156,8 @@ class TestSumprod(unittest.TestCase):
 axes = [0, 1, 2]
 
 
+@testing.parameterize(*testing.product({'axis': axes}))
 @testing.gpu
-@testing.parameterize(*testing.product({"axis": axes}))
 class TestCumsum(unittest.TestCase):
 
     _multiprocess_can_split_ = True
