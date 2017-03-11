@@ -5,6 +5,8 @@ import numpy
 import cupy
 from cupy import testing
 
+from six.moves import range
+
 
 @testing.gpu
 class TestCount(unittest.TestCase):
