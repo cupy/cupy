@@ -82,10 +82,10 @@ def _assert_cupy_array(*arrays):
 
 def _assert_rank2(*arrays):
     for a in arrays:
-        if len(a.shape) != 2:
+        if a.ndim != 2:
             raise linalg.LinAlgError(
                 '{}-dimensional array given. Array must be '
-                'two-dimensional'.format(len(a.shape)))
+                'two-dimensional'.format(a.ndim))
 
 
 def _assert_nd_squareness(*arrays):
