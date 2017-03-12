@@ -1,5 +1,5 @@
 import numpy
-from numpy.linalg import LinAlgError
+from numpy import linalg
 
 import cupy
 from cupy.cuda import cublas
@@ -58,11 +58,11 @@ def cholesky(a):
             workspace.data.ptr, buffersize, devInfo.data.ptr)
     status = int(devInfo[0])
     if status > 0:
-        raise LinAlgError(
+        raise linalg.LinAlgError(
             'The leading minor of order {} '
             'is not positive definite'.format(status))
     elif status < 0:
-        raise LinAlgError(
+        raise linalg.LinAlgError(
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
     _tril(x, k=0)
     return x
@@ -77,13 +77,13 @@ def cholesky(a):
 def _assertCupyArray(*arrays):
     for a in arrays:
         if not isinstance(a, cupy.core.ndarray):
-            raise LinAlgError('cupy.linalg only supports cupy.core.ndarray')
+            raise linalg.LinAlgError('cupy.linalg only supports cupy.core.ndarray')
 
 
 def _assertRank2(*arrays):
     for a in arrays:
         if len(a.shape) != 2:
-            raise LinAlgError(
+            raise linalg.LinAlgError(
                 '{}-dimensional array given. Array must be '
                 'two-dimensional'.format(len(a.shape)))
 
@@ -91,7 +91,7 @@ def _assertRank2(*arrays):
 def _assertNdSquareness(*arrays):
     for a in arrays:
         if max(a.shape[-2:]) != min(a.shape[-2:]):
-            raise LinAlgError('Last 2 dimensions of the array must be square')
+            raise linalg.LinAlgError('Last 2 dimensions of the array must be square')
 
 
 def _tril(x, k=0):
