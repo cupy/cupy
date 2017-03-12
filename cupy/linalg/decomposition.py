@@ -27,9 +27,9 @@ def cholesky(a):
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    _assertCupyArray(a)
-    _assertRank2(a)
-    _assertNdSquareness(a)
+    _assert_cupy_array(a)
+    _assert_rank2(a)
+    _assert_nd_squareness(a)
 
     ret_dtype = a.dtype.char
     # Cast to float32 or float64
@@ -39,24 +39,24 @@ def cholesky(a):
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
 
     x = a.astype(dtype, copy=True)
-    n = a.shape[0]
+    n = len(a)
     handle = device.get_cusolver_handle()
-    devInfo = cupy.empty(1, dtype=numpy.int32)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
     if x.dtype.char == 'f':
         buffersize = cusolver.spotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         cusolver.spotrf(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, devInfo.data.ptr)
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
     else:  # a.dtype.char == 'd'
         buffersize = cusolver.dpotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         cusolver.dpotrf(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, devInfo.data.ptr)
-    status = int(devInfo[0])
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
+    status = int(dev_info[0])
     if status > 0:
         raise linalg.LinAlgError(
             'The leading minor of order {} '
@@ -74,13 +74,13 @@ def cholesky(a):
 # TODO(okuta): Implement svd
 
 
-def _assertCupyArray(*arrays):
+def _assert_cupy_array(*arrays):
     for a in arrays:
         if not isinstance(a, cupy.core.ndarray):
             raise linalg.LinAlgError('cupy.linalg only supports cupy.core.ndarray')
 
 
-def _assertRank2(*arrays):
+def _assert_rank2(*arrays):
     for a in arrays:
         if len(a.shape) != 2:
             raise linalg.LinAlgError(
@@ -88,7 +88,7 @@ def _assertRank2(*arrays):
                 'two-dimensional'.format(len(a.shape)))
 
 
-def _assertNdSquareness(*arrays):
+def _assert_nd_squareness(*arrays):
     for a in arrays:
         if max(a.shape[-2:]) != min(a.shape[-2:]):
             raise linalg.LinAlgError('Last 2 dimensions of the array must be square')
