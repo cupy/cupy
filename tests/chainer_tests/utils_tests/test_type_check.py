@@ -8,9 +8,6 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.utils import type_check as T
 
-if cuda.available:
-    import cupy
-
 
 class TestConstant(unittest.TestCase):
 
@@ -374,23 +371,23 @@ class TestSameTypes(unittest.TestCase):
 
     @attr.gpu
     def test_all_cupy_array(self):
-        x = cupy.array([0])
-        y = cupy.array([1])
-        z = cupy.array([2])
+        x = cuda.cupy.array([0])
+        y = cuda.cupy.array([1])
+        z = cuda.cupy.array([2])
         self.assertTrue(T.same_types(x, y, z))
 
     @attr.gpu
     def test_numpy_cupy_mixed_1(self):
         x = numpy.array([0])
-        y = cupy.array([1])
+        y = cuda.cupy.array([1])
         z = numpy.array([2])
         self.assertFalse(T.same_types(x, y, z))
 
     @attr.gpu
     def test_numpy_cupy_mixed_2(self):
-        x = cupy.array([0])
+        x = cuda.cupy.array([0])
         y = numpy.array([1])
-        z = cupy.array([2])
+        z = cuda.cupy.array([2])
         self.assertFalse(T.same_types(x, y, z))
 
 

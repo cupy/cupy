@@ -7,9 +7,6 @@ import numpy
 
 from chainer import cuda
 
-if cuda.available:
-    import cupy
-
 
 _thread_local = threading.local()
 
@@ -495,7 +492,7 @@ def same_types(*arrays):
                            arrays)
     all_numpy_arrays = all(are_numpy_arrays)
     if cuda.available:
-        are_cupy_arrays = map(lambda x: issubclass(type(x), cupy.ndarray),
+        are_cupy_arrays = map(lambda x: issubclass(type(x), cuda.cupy.ndarray),
                               arrays)
         return all_numpy_arrays or all(are_cupy_arrays)
     else:
