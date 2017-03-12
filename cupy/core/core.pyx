@@ -1748,7 +1748,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
         ndim = a._shape.size()
         if ndmin > ndim:
-            if not copy:
+            if a is obj:
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
