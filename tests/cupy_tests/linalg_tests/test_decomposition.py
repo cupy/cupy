@@ -17,7 +17,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_L(self, array, xp, dtype):
         a = xp.asarray(array, dtype=dtype)
-        return getattr(xp, 'linalg').cholesky(a)
+        return xp.linalg.cholesky(a)
 
     def test_all(self):
         # A normal positive definite matrix
