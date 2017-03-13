@@ -17,6 +17,7 @@ except ImportError:
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
+
 from cupy.core import fusion  # NOQA
 from cupy import creation  # NOQA
 from cupy import indexing  # NOQA
@@ -464,6 +465,7 @@ def get_array_module(*args):
         if isinstance(arg, ndarray):
             return _cupy
     return numpy
+
 
 fuse = fusion.fuse
 

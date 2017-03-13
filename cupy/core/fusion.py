@@ -604,7 +604,9 @@ class Fusion(object):
             raise TypeError('Invalid argument type for \'{}\': ({})'.format(
                 self.name,
                 ', '.join(repr(type(_)) for _ in args)))
-        is_cupy_data = lambda a: isinstance(a, (core.ndarray, numpy.generic))
+
+        def is_cupy_data(a):
+            return isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
             types = [_.dtype for _ in args]
             key = tuple(types)
