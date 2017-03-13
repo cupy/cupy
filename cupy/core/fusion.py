@@ -764,6 +764,7 @@ rint = _create_ufunc(math.rounding.rint, numpy.rint)
 floor = _create_ufunc(math.rounding.floor, numpy.floor)
 ceil = _create_ufunc(math.rounding.ceil, numpy.ceil)
 trunc = _create_ufunc(math.rounding.trunc, numpy.trunc)
+fix = _create_ufunc(math.rounding.fix, numpy.fix)
 
 exp = _create_ufunc(math.explog.exp, numpy.exp)
 expm1 = _create_ufunc(math.explog.expm1, numpy.expm1)

@@ -294,6 +294,9 @@ class TestFusionRounding(unittest.TestCase):
     def test_trunc(self):
         self.check_unary('trunc')
 
+    def test_fix(self):
+        self.check_unary('fix')
+
 
 @testing.gpu
 class TestFusionExplog(unittest.TestCase):

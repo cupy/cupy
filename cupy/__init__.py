@@ -318,7 +318,7 @@ from cupy.core.fusion import sinh  # NOQA
 from cupy.core.fusion import tanh  # NOQA
 
 from cupy.core.fusion import ceil  # NOQA
-from cupy.math.rounding import fix  # NOQA
+from cupy.core.fusion import fix  # NOQA
 from cupy.core.fusion import floor  # NOQA
 from cupy.core.fusion import rint  # NOQA
 from cupy.core.fusion import trunc  # NOQA

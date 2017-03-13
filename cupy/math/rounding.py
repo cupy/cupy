@@ -17,9 +17,6 @@ rint = ufunc.create_math_ufunc(
     ''')
 
 
-# TODO(okuta): Implement fix
-
-
 floor = ufunc.create_math_ufunc(
     'floor', 1, 'cupy_floor',
     '''Rounds each element of an array to its floor integer.
@@ -45,6 +42,8 @@ trunc = ufunc.create_math_ufunc(
     .. seealso:: :data:`numpy.trunc`
 
     ''')
+
+
 fix = core.create_ufunc(
     'cupy_fix', ('e->e', 'f->f', 'd->d'),
     'out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)',
