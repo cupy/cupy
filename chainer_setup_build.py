@@ -369,7 +369,6 @@ class custom_build_ext(build_ext.build_ext):
                     return NvidiaCCompiler(
                         None, kwargs["dry_run"], kwargs["force"])
             return _wrap_new_compiler
-        ccompiler.new_compiler = wrap_new_compiler(
-            ccompiler.new_compiler)
+        ccompiler.new_compiler = wrap_new_compiler(ccompiler.new_compiler)
         self.compiler = "nvidia"
         build_ext.build_ext.run(self)
