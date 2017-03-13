@@ -123,7 +123,7 @@ class StandardUpdater(Updater):
             iterator = {'main': iterator}
         self._iterators = iterator
 
-        if isinstance(optimizer, optimizer_module.Optimizer):
+        if not isinstance(optimizer, dict):
             optimizer = {'main': optimizer}
         self._optimizers = optimizer
 
