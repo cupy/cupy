@@ -1,3 +1,4 @@
+import numpy
 import six
 
 from chainer import function
@@ -33,13 +34,33 @@ class PadSequence(function.Function):
         shape = (len(xs), length) + xs[0].shape[1:]
         y = xp.empty(shape, xs[0].dtype)
 
-        for i, x in enumerate(xs):
-            l = len(x)
-            if l == length:
-                y[i] = x
-            else:
-                y[i, 0:l] = x
-                y[i, l:] = self.padding
+        if xp is numpy or any(not x._c_contiguous for x in xs):
+            for i, x in enumerate(xs):
+                l = len(x)
+                if l == length:
+                    y[i] = x
+                else:
+                    y[i, 0:l] = x
+                    y[i, l:] = self.padding
+        else:
+            # This code assumes that all arrays are c_contiguous
+            ptr_shape = (Ellipsis,) + (None,) * xs[0].ndim
+            ptrs = cuda.cupy.array([x.data for x in xs], 'L')[ptr_shape]
+            lengths = cuda.cupy.array([len(x) for x in xs], 'i')[ptr_shape]
+            base = numpy.prod(xs[0].shape[1:])
+            cuda.elementwise(
+                'P ptr, int32 length, T pad, int32 base, int32 max_length',
+                'T y',
+                '''
+                int d = i / base % max_length;
+                if (d < length) {
+                  y = reinterpret_cast<const T*>(ptr)[i % (base * max_length)];
+                } else {
+                  y = pad;
+                }
+                ''',
+                'pad_sequence_fwd'
+            )(ptrs, lengths, self.padding, base, length, y)
 
         return y,
 
