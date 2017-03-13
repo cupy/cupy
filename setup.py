@@ -14,8 +14,15 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-ext_modules = chainer_setup_build.get_ext_modules()
-build_ext = chainer_setup_build.custom_build_ext
+arg_options = chainer_setup_build.parse_args()
+print('Options:', arg_options)
+
+ext_modules = chainer_setup_build.get_ext_modules(arg_options)
+
+if not arg_options['no_cuda']:
+    build_ext = chainer_setup_build.custom_build_ext
+else:
+    build_ext = build_ext.build_ext
 
 setup(
     name='chainer',
