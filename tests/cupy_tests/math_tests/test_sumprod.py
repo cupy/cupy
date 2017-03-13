@@ -5,7 +5,7 @@ import numpy
 import cupy
 from cupy import testing
 
-from six.moves import range
+import six
 
 
 @testing.gpu
@@ -177,5 +177,17 @@ class TestCumsum(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
+        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_axis_lower(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumsum(a, axis=-a.ndim - 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_axis_upper(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumsum(a, axis=a.ndim + 1)

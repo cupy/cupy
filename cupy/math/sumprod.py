@@ -2,7 +2,7 @@ import numpy
 
 from cupy import core
 
-from six.moves import range
+import six
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -56,8 +56,10 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 def _axis_to_first(x, axis):
     if axis < 0:
         axis = x.ndim + axis
-    trans = [axis] + [a for a in range(x.ndim) if a != axis]
-    revert = list(range(1, axis + 1)) + [0] + list(range(axis + 1, x.ndim))
+    trans = [axis] + [a for a in six.moves.range(x.ndim) if a != axis]
+    pre = list(six.moves.range(1, axis + 1))
+    succ = list(six.moves.range(axis + 1, x.ndim))
+    revert = pre + [0] + succ
     return trans, revert
 
 
@@ -112,7 +114,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     if axis is None:
         out = out.ravel()
     elif not (-a.ndim <= axis < a.ndim):
-        raise ValueError("axis(={}) out of bounds".format(axis))
+        raise ValueError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(_cumsum_batch, out, axis=axis)
 
