@@ -52,11 +52,13 @@ def repeat_with_success_at_least(times, min_success):
 
             for _ in six.moves.range(times):
                 suite = unittest.TestSuite()
+                # create new instance for once call setup and teardown
+                ins = type(instance)(instance._testMethodName)
                 suite.addTest(
                     unittest.FunctionTestCase(
-                        lambda: f(*args, **kwargs),
-                        setUp=instance.setUp,
-                        tearDown=instance.tearDown))
+                        lambda: f(ins, *args[1:], **kwargs),
+                        setUp=ins.setUp,
+                        tearDown=ins.tearDown))
 
                 result = QuietTestRunner().run(suite)
                 if result.wasSuccessful():
