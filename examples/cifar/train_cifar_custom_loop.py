@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+"""Convnet example using CIFAR10 or CIFAR100 dataset
+
+This code is a custom loop version of train_cifar.py. That is, we train
+models without using the Trainer class in chainer and instead write a
+training loop that manually computes the loss of minibatches and
+applies an optimizer to update the model.
+"""
 from __future__ import print_function
 import argparse
 import copy
@@ -17,10 +25,8 @@ def main():
     parser = argparse.ArgumentParser(description='Chainer CIFAR example:')
     parser.add_argument('--dataset', '-d', default='cifar10',
                         help='The dataset to use: cifar10 or cifar100')
-    parser.add_argument('--batchsize', '-b', type=int, default=64,
+    parser.add_argument('--batchsize', '-b', type=int, default=128,
                         help='Number of images in each mini-batch')
-    parser.add_argument('--learnrate', '-l', type=float, default=0.05,
-                        help='Learning rate for SGD')
     parser.add_argument('--epoch', '-e', type=int, default=300,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=0,
@@ -64,7 +70,7 @@ def main():
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU
 
-    optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
+    optimizer = chainer.optimizers.MomentumSGD(0.1)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
@@ -90,7 +96,8 @@ def main():
         sum_accuracy += float(model.accuracy.data) * len(t.data)
 
         if train_iter.is_new_epoch:
-            print('train mean loss={}, accuracy={}'.format(
+            print('epoch: ', train_iter.epoch)
+            print('train mean loss: {}, accuracy: {}'.format(
                 sum_loss / train_count, sum_accuracy / train_count))
             # evaluation
             sum_accuracy = 0
@@ -105,7 +112,7 @@ def main():
                 sum_accuracy += float(model.accuracy.data) * len(t.data)
 
             model.predictor.train = True
-            print('test mean loss={}, accuracy={}'.format(
+            print('test mean  loss: {}, accuracy: {}'.format(
                 sum_loss / test_count, sum_accuracy / test_count))
             sum_accuracy = 0
             sum_loss = 0

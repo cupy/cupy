@@ -4,7 +4,10 @@
 This code is ported from the following implementation written in Torch.
 https://github.com/tomsercu/lstm
 
-This version implements a custom training loop.
+This code is a custom loop version of train_ptb.py. That is, we train
+models without using the Trainer class in chainer and instead write a
+training loop that manually computes the loss of minibatches and
+applies an optimizer to update the model.
 """
 from __future__ import print_function
 import argparse
@@ -44,7 +47,6 @@ def main():
 
     def evaluate(model, iter):
         # Evaluation routine to be used for validation and test.
-        # This assumes that the mini-batch size is 1.
         model.predictor.train = False
         evaluator = model.copy()  # to use different state
         evaluator.predictor.reset_state()  # initialize state
@@ -103,22 +105,23 @@ def main():
             x, t = convert.concat_examples(batch, args.gpu)
             # Compute the loss at this time step and accumulate it
             loss += optimizer.target(chainer.Variable(x), chainer.Variable(t))
-            sum_perp += loss.data
             count += 1
 
+        sum_perp += loss.data
         optimizer.target.cleargrads()  # Clear the parameter gradients
         loss.backward()  # Backprop
         loss.unchain_backward()  # Truncate the graph
         optimizer.update()  # Update the parameters
 
         if iteration % 10 == 0:
-            print('training perplexity: ', sum_perp / (count*args.batchsize))
+            print('iteration: ', iteration)
+            print('training perplexity: ', sum_perp / count)
             sum_perp = 0
             count = 0
 
         if train_iter.is_new_epoch:
-            perp = evaluate(model, val_iter)
-            print('validation perplexity: ', perp)
+            print('epoch: ', train_iter.epoch)
+            print('validation perplexity: ', evaluate(model, val_iter))
 
     # Evaluate on test dataset
     print('test')

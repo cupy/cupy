@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-from __future__ import print_function
+"""Fully-connected neural network example using MNIST dataset
 
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-except ImportError:
-    pass
+This code is a custom loop version of train_mnist.py. That is, we train
+models without using the Trainer class in chainer and instead write a
+training loop that manually computes the loss of minibatches and
+applies an optimizer to update the model.
+"""
+from __future__ import print_function
 
 import argparse
 import copy
@@ -73,7 +74,8 @@ def main():
         sum_accuracy += float(model.accuracy.data) * len(t.data)
 
         if train_iter.is_new_epoch:
-            print('train mean loss={}, accuracy={}'.format(
+            print('epoch: ', train_iter.epoch)
+            print('train mean loss: {}, accuracy: {}'.format(
                 sum_loss / train_count, sum_accuracy / train_count))
             # evaluation
             sum_accuracy = 0
@@ -86,7 +88,7 @@ def main():
                 sum_loss += float(loss.data) * len(t.data)
                 sum_accuracy += float(model.accuracy.data) * len(t.data)
 
-            print('test mean loss={}, accuracy={}'.format(
+            print('test mean  loss: {}, accuracy: {}'.format(
                 sum_loss / test_count, sum_accuracy / test_count))
             sum_accuracy = 0
             sum_loss = 0
