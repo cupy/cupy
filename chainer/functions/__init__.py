@@ -28,6 +28,7 @@ from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
 from chainer.functions.array import pad  # NOQA
+from chainer.functions.array import pad_sequence  # NOQA
 from chainer.functions.array import permutate  # NOQA
 from chainer.functions.array import reshape  # NOQA
 from chainer.functions.array import resize_images  # NOQA
@@ -173,6 +174,8 @@ from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
 from chainer.functions.array.pad import pad  # NOQA
 from chainer.functions.array.pad import Pad  # NOQA
+from chainer.functions.array.pad_sequence import pad_sequence  # NOQA
+from chainer.functions.array.pad_sequence import PadSequence  # NOQA
 from chainer.functions.array.permutate import permutate  # NOQA
 from chainer.functions.array.permutate import Permutate  # NOQA
 from chainer.functions.array.reshape import reshape  # NOQA
