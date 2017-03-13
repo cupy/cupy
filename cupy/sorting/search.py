@@ -118,6 +118,7 @@ def where(condition, x=None, y=None):
 
     return _where_ufunc(condition.astype('?'), x, y)
 
+
 _where_ufunc = core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
