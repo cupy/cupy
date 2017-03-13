@@ -72,16 +72,15 @@ def elu(x, alpha=1.0):
 
     .. admonition:: Example
 
-        >>> x = np.random.randint(-10, 10, (3, 2)).astype('f')
+        >>> x = np.array([[-1, 0], [2, -3]], 'f')
         >>> x
-        array([[  2.,   5.],
-               [-10.,  -7.],
-               [ -7.,  -3.]], dtype=float32)
+        array([[-1.,  0.],
+               [ 2., -3.]], dtype=float32)
+        >>> y = F.crelu(x, axis=1)
         >>> y = F.elu(x, alpha=1.)
         >>> y.data
-        array([[ 2.        ,  5.        ],
-               [-0.99995458, -0.99908811],
-               [-0.99908811, -0.95021296]], dtype=float32)
+        array([[-0.63212055,  0.        ],
+               [ 2.        , -0.95021296]], dtype=float32)
 
     """
     return ELU(alpha=alpha)(x)

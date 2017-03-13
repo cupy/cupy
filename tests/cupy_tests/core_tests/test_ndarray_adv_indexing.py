@@ -64,6 +64,21 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
      'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
     {'shape': (2, 3, 4),
      'indexes': numpy.random.choice([False, True], (2, 3))},
+    # empty arrays
+    {'shape': (2, 3, 4), 'indexes': []},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
+    {'shape': (2, 3, 4), 'indexes': [[]]},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
+    {'shape': (2, 3, 4), 'indexes': [[[]]]},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
+    {'shape': (2, 3, 4), 'indexes': ([], [])},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -128,6 +143,7 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 @testing.parameterize(
     {'shape': (), 'indexes': ([1],)},
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
+    {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float)},
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):

@@ -108,4 +108,5 @@ class TestLogSoftmaxCudnnCall(unittest.TestCase):
             y.backward()
             self.assertEqual(func.called, self.expect)
 
+
 testing.run_module(__name__, __file__)
