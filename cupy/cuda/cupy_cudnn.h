@@ -23,7 +23,6 @@ typedef enum {} cudnnConvolutionFwdAlgo_t;
 typedef enum {} cudnnConvolutionFwdPreference_t;
 typedef enum {} cudnnConvolutionMode_t;
 typedef enum {} cudnnDataType_t;
-typedef enum {} cudnnNanPropagation_t;
 typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
 typedef enum {} cudnnSoftmaxMode_t;
@@ -94,14 +93,6 @@ cudnnStatus_t cudnnCreateFilterDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetFilter4dDescriptor(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
-
-cudnnStatus_t cudnnSetFilterNdDescriptor(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
-
 cudnnStatus_t cudnnDestroyFilterDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -112,7 +103,7 @@ cudnnStatus_t cudnnCreateConvolutionDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetConvolution2dDescriptor(...) {
+cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
@@ -141,14 +132,6 @@ cudnnStatus_t cudnnCreatePoolingDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnSetPooling2dDescriptor(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
-
-cudnnStatus_t cudnnSetPoolingNdDescriptor(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
-
 cudnnStatus_t cudnnDestroyPoolingDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -170,13 +153,7 @@ cudnnStatus_t cudnnSoftmaxForward(...) {
 cudnnStatus_t cudnnSoftmaxBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
-cudnnStatus_t cudnnActivationForward(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
 
-cudnnStatus_t cudnnActivationBackward(...) {
-    return CUDNN_STATUS_SUCCESS;
-}
 
 } // extern "C"
 
@@ -189,9 +166,17 @@ cudnnStatus_t cudnnActivationBackward(...) {
 
 extern "C" {
 
+
+#if !defined(CUPY_NO_CUDA)
+
+#define cudnnSetConvolution2dDescriptor_v4 cudnnSetConvolution2dDescriptor
+
+#endif // #if !define(CUPY_NO_CUDA)
+
+
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
-// ***_v3 functions are not declared in cuDNN v4.
-// Following definitions are for compatibility with cuDNN v2 and v3.
+// ***_v3 functions are not declared in cuDNN v2.
+// Following definitions are for compatibility with cuDNN v3.
 
 typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
@@ -260,11 +245,34 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnSetFilter4dDescriptor_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFilterNdDescriptor_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetPooling2dDescriptor_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetPoolingNdDescriptor_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnActivationForward_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnActivationBackward_v3(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
 
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 4000)
-
 // ***_v2 functions are not declared in cuDNN v2 and v3.
 // Following definitions are for compatibility with cuDNN v4.
 
@@ -275,7 +283,23 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
 
 
 typedef enum {} cudnnBatchNormMode_t;
+typedef enum {} cudnnNanPropagation_t;
 
+
+typedef void* cudnnActivationDescriptor_t;
+
+
+cudnnStatus_t cudnnSetFilter4dDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFilterNdDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFilterNdDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
 
 cudnnStatus_t cudnnDeriveBNTensorDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -293,12 +317,38 @@ cudnnStatus_t cudnnBatchNormalizationBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnSetPooling2dDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetPoolingNdDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateActivationDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetActivationDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyActivationDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnActivationForward_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnActivationBackward_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 4000)
 
 
-#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
-// ***_v3 functions are not declared in cuDNN v2, v3 and v4.
-// Following definitions are for compatibility with cuDNN v5.
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 5000)
 
 #define cudnnActivationForward_v3 cudnnActivationForward
 #define cudnnActivationBackward_v3 cudnnActivationBackward
@@ -307,6 +357,12 @@ cudnnStatus_t cudnnBatchNormalizationBackward(...) {
 #define cudnnSetPooling2dDescriptor_v3 cudnnSetPooling2dDescriptor
 #define cudnnSetPoolingNdDescriptor_v3 cudnnSetPoolingNdDescriptor
 
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 5000)
+
+
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
+// ***_v3 functions are not declared in cuDNN v2, v3 and v4.
+// Following definitions are for compatibility with cuDNN v5.
 
 typedef enum {} cudnnRNNMode_t;
 typedef enum {} cudnnDirectionMode_t;
@@ -315,6 +371,10 @@ typedef enum {} cudnnRNNInputMode_t;
 typedef void* cudnnDropoutDescriptor_t;
 typedef void* cudnnRNNDescriptor_t;
 
+
+cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
 
 cudnnStatus_t cudnnGetFilterNdDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -419,7 +479,6 @@ cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx(...) {
 #define cudnnConvolutionBackwardData_v3 cudnnConvolutionBackwardData
 #define cudnnConvolutionBackwardFilter_v3 cudnnConvolutionBackwardFilter
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
-#define cudnnGetFilterNdDescriptor_v5 cudnnGetFilterNdDescriptor
 
 #endif // #if !defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
 
@@ -452,6 +511,7 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(...) {
 }
 
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
+
 
 } // extern "C"
 

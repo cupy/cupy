@@ -334,4 +334,5 @@ class TestFunctionSet(TestFunctionSetBase):
     def test_gradients_setter_invalid_2_gpu(self):
         self._check_setter_invalid(self.fs, -1, cuda.cupy, 'gradients')
 
+
 testing.run_module(__name__, __file__)

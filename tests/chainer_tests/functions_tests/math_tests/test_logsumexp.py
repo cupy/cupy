@@ -201,4 +201,5 @@ class TestLogSumExp(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.x.sum(axis=(1, -2))
 
+
 testing.run_module(__name__, __file__)

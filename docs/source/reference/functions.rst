@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+pad
+~~~
+.. autofunction:: pad
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -391,6 +395,10 @@ cosh
 exp
 ~~~
 .. autofunction:: exp
+
+fmod
+~~~~
+.. autofunction:: fmod
 
 floor
 ~~~~~
