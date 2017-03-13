@@ -1,16 +1,16 @@
-from cupy.cuda cimport device as _device
+from cupy.cuda cimport device as device_mod
 
 cdef class Memory:
 
     cdef:
-        public _device.Device device
+        public device_mod.Device device
         public size_t ptr
         public Py_ssize_t size
 
 cdef class ManagedMemory(Memory):
 
     cpdef prefetch(self, stream)
-    cpdef advise(self, int advice, _device.Device device)
+    cpdef advise(self, int advice, device_mod.Device device)
 
 cdef class Chunk:
 
@@ -27,7 +27,7 @@ cdef class Chunk:
 cdef class MemoryPointer:
 
     cdef:
-        readonly _device.Device device
+        readonly device_mod.Device device
         readonly object mem
         readonly size_t ptr
 

@@ -11,11 +11,11 @@ import six
 from cupy.cuda import runtime
 from cupy.cuda import stream
 
-from cupy.cuda cimport device as _device
+from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport runtime
 
 
-_cuda_version = None
+_cuda_version = runtime.runtimeGetVersion()
 
 
 cdef class Memory:
@@ -35,7 +35,7 @@ cdef class Memory:
         self.device = None
         self.ptr = 0
         if size > 0:
-            self.device = _device.Device()
+            self.device = device_mod.Device()
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
@@ -64,7 +64,7 @@ cdef class ManagedMemory(Memory):
         self.device = None
         self.ptr = 0
         if size > 0:
-            self.device = _device.Device()
+            self.device = device_mod.Device()
             self.ptr = runtime.mallocManaged(size)
 
     cpdef prefetch(self, stream):
@@ -74,14 +74,11 @@ cdef class ManagedMemory(Memory):
             stream (cupy.cuda.Stream): Stream
 
         """
-        global _cuda_version
-        if _cuda_version is None:
-            _cuda_version = runtime.runtimeGetVersion()
         if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
             runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
                                      stream.ptr)
 
-    cpdef advise(self, int advise, _device.Device device):
+    cpdef advise(self, int advise, device_mod.Device device):
         """ Advise about the usage of this memory.
 
         Args:
@@ -89,9 +86,6 @@ cdef class ManagedMemory(Memory):
             device (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        global _cuda_version
-        if _cuda_version is None:
-            _cuda_version = runtime.runtimeGetVersion()
         if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
             runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
@@ -353,8 +347,8 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
 
 
 cpdef MemoryPointer _mallocManaged(Py_ssize_t size):
+    cdef ManagedMemory mem
     mem = ManagedMemory(size)
-
     mem.advise(runtime.cudaMemAdviseSetPreferredLocation, mem.device)
     mem.prefetch(stream.Stream.null)
     return MemoryPointer(mem, 0)
