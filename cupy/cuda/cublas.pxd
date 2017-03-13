@@ -28,6 +28,9 @@ cpdef enum:
     CUBLAS_SIDE_LEFT = 0
     CUBLAS_SIDE_RIGHT = 1
 
+    CUBLAS_FILL_MODE_LOWER = 0
+    CUBLAS_FILL_MODE_UPPER = 1
+
 
 ###############################################################################
 # Context
@@ -94,6 +97,10 @@ cpdef dgemm(size_t handle, int transa, int transb,
 cpdef sgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, float alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, float beta, size_t Carray, int ldc,
+                   int batchCount)
+cpdef dgemmBatched(size_t handle, int transa, int transb,
+                   int m, int n, int k, double alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, double beta, size_t Carray, int ldc,
                    int batchCount)
 
 ###############################################################################

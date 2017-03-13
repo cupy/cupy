@@ -1,5 +1,5 @@
 from __future__ import print_function
-from collections import OrderedDict
+import collections
 import os
 
 import numpy
@@ -94,7 +94,7 @@ class ResNet50Layers(link.Chain):
                 'ResNet-50-model.npz', 'ResNet-50-model.caffemodel', self)
         elif pretrained_model:
             npz.load_npz(pretrained_model, self)
-        self.functions = OrderedDict([
+        self.functions = collections.OrderedDict([
             ('conv1', [self.conv1, self.bn1, relu]),
             ('pool1', [lambda x: max_pooling_2d(x, ksize=3, stride=2)]),
             ('res2', [self.res2]),

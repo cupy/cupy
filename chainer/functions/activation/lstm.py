@@ -215,8 +215,8 @@ def lstm(c_prev, x):
         >>> y = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> h = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> c = chainer.Variable(np.zeros((1, n_units), 'f'))
-        >>> model = chainer.Chain(w=F.Linear(n_units, 4 * n_units),
-        ...                       v=F.Linear(n_units, 4 * n_units),)
+        >>> model = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
+        ...                       v=L.Linear(n_units, 4 * n_units),)
         >>> x = model.w(y) + model.v(h)
         >>> c, h = F.lstm(c, x)
 

@@ -10,6 +10,7 @@ class TestImportError(unittest.TestCase):
         except Exception as e:
             self.assertIsInstance(e, RuntimeError)
 
+
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
 if __name__ == '__main__':

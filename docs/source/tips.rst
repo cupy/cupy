@@ -34,7 +34,7 @@ We are suspecting it is caused by vecLib, that is a default BLAS library install
 We recommend to use other BLAS libraries such as `OpenBLAS <http://www.openblas.net/>`_.
 We empirically found that it fixes this problem.
 It is necessary to reinstall NumPy to use replaced BLAS library.
-Here is an instruction to install NumPy with OpneBLAS using `Homebrew <http://brew.sh/>`_.
+Here is an instruction to install NumPy with OpenBLAS using `Homebrew <http://brew.sh/>`_.
 
 ::
 

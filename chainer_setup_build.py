@@ -69,6 +69,19 @@ MODULES = [
         'check_method': build.check_cudnn_version,
     },
     {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cusolver_version,
+    },
+    {
         # The value of the key 'file' is a list that contains extension names
         # or tuples of an extension name and a list of other souces files
         # required to build the extension such as .cpp files and .cu files.
