@@ -179,9 +179,11 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
 from cupy.manipulation.rearrange import flipud  # NOQA
 from cupy.manipulation.rearrange import roll  # NOQA
+from cupy.manipulation.rearrange import rot90  # NOQA
 
 # -----------------------------------------------------------------------------
 # Binary operations
@@ -318,6 +320,7 @@ from cupy.math.hyperbolic import sinh  # NOQA
 from cupy.math.hyperbolic import tanh  # NOQA
 
 from cupy.math.rounding import ceil  # NOQA
+from cupy.math.rounding import fix  # NOQA
 from cupy.math.rounding import floor  # NOQA
 from cupy.math.rounding import rint  # NOQA
 from cupy.math.rounding import trunc  # NOQA
@@ -371,6 +374,7 @@ from cupy.math.misc import square  # NOQA
 # Padding
 # -----------------------------------------------------------------------------
 pad = padding.pad.pad
+
 
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting

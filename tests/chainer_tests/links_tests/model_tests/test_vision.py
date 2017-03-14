@@ -218,4 +218,5 @@ class TestVGG16Layers(unittest.TestCase):
         self.link.to_gpu()
         self.check_predict()
 
+
 testing.run_module(__name__, __file__)

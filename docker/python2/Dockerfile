@@ -6,4 +6,4 @@ RUN apt-get update -y && \
     python-pip && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install chainer==1.21.0
+RUN pip install chainer==1.22.0

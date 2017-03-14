@@ -68,17 +68,14 @@ def crelu(x, axis=1):
 
     .. admonition:: Example
 
-        >>> x = np.random.uniform(-10, 10, (3, 2)).astype('f')
+        >>> x = np.array([[-1, 0], [2, -3]], 'f')
         >>> x
-        array([[ 0.97627008,  4.30378723],
-               [ 2.05526757,  0.89766365],
-               [-1.52690399,  2.9178822 ]], dtype=float32)
+        array([[-1.,  0.],
+               [ 2., -3.]], dtype=float32)
         >>> y = F.crelu(x, axis=1)
         >>> y.data
-        array([[ 0.97627008,  4.30378723,  0.        ,  0.        ],
-               [ 2.05526757,  0.89766365,  0.        ,  0.        ],
-               [ 0.        ,  2.9178822 ,  1.52690399,  0.        ]], \
-dtype=float32)
+        array([[ 0.,  0.,  1.,  0.],
+               [ 2.,  0.,  0.,  3.]], dtype=float32)
 
     """
     return CReLU(axis=axis)(x)
