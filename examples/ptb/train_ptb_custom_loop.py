@@ -12,6 +12,7 @@ applies an optimizer to update the model.
 from __future__ import print_function
 import argparse
 import copy
+import numpy as np
 
 import chainer
 from chainer.dataset import convert
@@ -59,7 +60,7 @@ def main():
             sum_perp += loss.data
             data_count += 1
         model.predictor.train = True
-        return sum_perp / data_count
+        return np.exp(float(sum_perp) / data_count)
 
     # Load the Penn Tree Bank long word sequence dataset
     train, val, test = chainer.datasets.get_ptb_words()
@@ -113,9 +114,9 @@ def main():
         loss.unchain_backward()  # Truncate the graph
         optimizer.update()  # Update the parameters
 
-        if iteration % 10 == 0:
+        if iteration % 20 == 0:
             print('iteration: ', iteration)
-            print('training perplexity: ', sum_perp / count)
+            print('training perplexity: ', np.exp(float(sum_perp) / count))
             sum_perp = 0
             count = 0
 
