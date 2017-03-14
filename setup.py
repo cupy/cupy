@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from setuptools.command import build_ext as _build_ext
 from setuptools import setup
 
 import chainer_setup_build
@@ -15,15 +14,8 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-arg_options = chainer_setup_build.parse_args()
-print('Options:', arg_options)
-
-ext_modules = chainer_setup_build.get_ext_modules(arg_options)
-
-if not arg_options['no_cuda']:
-    build_ext = chainer_setup_build.custom_build_ext
-else:
-    build_ext = _build_ext.build_ext
+ext_modules = chainer_setup_build.get_ext_modules()
+build_ext = chainer_setup_build.custom_build_ext
 
 setup(
     name='chainer',
