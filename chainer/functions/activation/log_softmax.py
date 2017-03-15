@@ -87,17 +87,16 @@ class LogSoftmax(function.Function):
 
 
 def log_softmax(x, use_cudnn=True):
-    """Channelwise log-softmax function.
+    """Channel-wise log-softmax function.
 
     This function computes its logarithm of softmax along the second axis. Let
-    :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
-    array and :math:`f(x_1, \\dots, x_d)` be the corresponding input array.
-    For each index :math:`x` in the input array, it computes the logarithm
-    of the probability :math:`\log p(x)` defined as
+    :math:`x = (x_1, x_2, \\dots, x_D)^{\\top}` be the D dimensional input
+    array.
+    For each input array :math:`x`, it computes the logarithm of the function
+    :math:`\log f(x)` defined as
 
     .. math::
-        p(x) = {\\exp(f(x_1, x_2, \\dots, x_d))
-                \\over \\sum_{x'_2} \\exp(f(x_1, x'_2, \\dots, x_d))}.
+        f(x) = {\\exp(x) \\over \\sum_{x_d} \\exp(x_d)}.
 
     This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
@@ -108,15 +107,29 @@ def log_softmax(x, use_cudnn=True):
         ``log_softmax`` method is more stable.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If ``True``, cuDNN is enabled and cuDNN ver. 3 or
-            later is used, then this function uses cuDNN as the core
-            implementation.
+        X (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable.
+            A :math:`n`-dimensional (:math:`n \\geq 2`) float array.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable.
+        A :math:`n`-dimensional (:math:`n \\geq 2`) float array, which is the
+        same shape with X.
 
     .. seealso:: :func:`~chainer.functions.softmax`
+
+    .. admonition:: Example
+
+        >>> x = np.array([[0, 1, 2], [0, 2, 4]], 'f')
+        >>> x
+        array([[ 0.,  1.,  2.],
+               [ 0.,  2.,  4.]], dtype=float32)
+        >>> F.log_softmax(x).data
+        array([[-2.40760589, -1.40760589, -0.40760589],
+               [-4.14293146, -2.14293146, -0.14293146]], dtype=float32)
 
     """
     return LogSoftmax(use_cudnn)(x)
