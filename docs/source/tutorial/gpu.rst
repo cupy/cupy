@@ -18,6 +18,10 @@ CuPy implements many functions on :class:`cupy.ndarray` objects.
 Understanding NumPy might help utilizing most features of CuPy.
 `See the NumPy documentation for learning it <http://docs.scipy.org/doc/numpy/index.html>`_.
 
+.. testcode::
+
+   x_gpu = cupy.array([1, 2, 3, 4, 5])
+
 The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that the content is allocated on the device memory.
 The allocation takes place on the current device by default.
 The current device can be changed by :class:`cupy.cuda.Device` object as follows:
