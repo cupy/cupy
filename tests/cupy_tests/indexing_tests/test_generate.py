@@ -1,8 +1,8 @@
 import unittest
 
 from chainer import cuda
-from cupy import testing
 from cupy.indexing import generate
+from cupy import testing
 
 
 @testing.gpu
