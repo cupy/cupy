@@ -16,7 +16,7 @@ from chainer.utils import type_check
 
 
 def gen_mask(ratio, shape):
-    return numpy.random.rand(*shape) >= ratio
+    return numpy.random.rand(*shape) >= ratio * (1. / (1 - ratio))
 
 
 @testing.parameterize(*testing.product({

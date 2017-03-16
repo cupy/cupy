@@ -74,6 +74,7 @@ class Dropconnect(function.Function):
 
         # ij,ijk->ik
         gx = xp.matmul(gy[:, None, :], W).reshape(inputs[0].shape)
+        gx = gx.astype(x.dtype, copy=False)
 
         # ij,ik,ijk->jk
         gW = (gy[:, :, None] * x[:, None, :] * self.mask).sum(0) * scale
@@ -98,13 +99,13 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     In testing mode, zero will be used as dropconnect ratio instead of
     ``ratio``.
 
-    There are two differences between the current implementation and the
+    Notice:
+    This implementation cannot be used for reproduction of the paper.
+    There is a differences between the current implementation and the
     original version dropconnect.
-    The original version uses a different mask for each sample in the mini
-    batch, but the current implementation uses a single same mask.
-    In addition, not approximation by Gaussian distribution as original
-    version, current implementation uses approximation by averaging before
-    activation at inference time.
+    The original version uses sampling with gaussian distribution before
+    passing activation function, the current implementation averages
+    before activation.
 
     Args:
         x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
@@ -122,7 +123,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
         mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
             If not ``None``, this value is used as a dropconnect mask.
-            Scaling will not be executed.
             The mask shape must be ``(M, N)``.
             Main purpose of the latter option is debugging.
 
