@@ -2580,6 +2580,8 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
+    if internal.prod(masked_shape) == 0:
+        return
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
@@ -2635,7 +2637,13 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     mask_exists = False
     for i, s in enumerate(slices):
         if isinstance(s, (list, numpy.ndarray)):
+            is_list = isinstance(s, list)
             s = array(s)
+            # handle the case when s is an empty list
+            if is_list and s.size == 0:
+                s = s.astype(numpy.int32)
+                if s.ndim > 1:
+                    s = s[0]
             slices[i] = s
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):
