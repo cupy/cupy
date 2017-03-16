@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 cimport cpython
 cimport cython
 
@@ -84,14 +86,21 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize) except *:
+        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+        bint is_c_contiguous) except *:
     cdef vector.vector[Py_ssize_t] strides
     cdef Py_ssize_t st, sh
+    cdef int i, idx
     strides.resize(shape.size(), 0)
     st = itemsize
-    for i in range(shape.size() - 1, -1, -1):
-        strides[i] = st
-        sh = shape[i]
+
+    for i in range(shape.size()):
+        if is_c_contiguous:
+            idx = shape.size() - 1 - i
+        else:
+            idx = i
+        strides[idx] = st
+        sh = shape[idx]
         if sh > 1:
             st *= sh
     return strides
@@ -133,6 +142,14 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
+cpdef int _extract_slice_element(x) except *:
+    try:
+        return x.__index__()
+    except AttributeError:
+        return int(x)
+
+
+@cython.profile(False)
 cpdef slice complete_slice(slice slc, Py_ssize_t dim):
     cpdef Py_ssize_t start=0, stop=0, step=0
     cpdef bint start_none, stop_none
@@ -140,10 +157,11 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
         step = 1
     else:
         try:
-            step = int(slc.step)
+            step = _extract_slice_element(slc.step)
         except TypeError:
-            raise IndexError(
-                'slice.step must be int or None: {}'.format(slc))
+            raise TypeError(
+                'slice.step must be int or None or have __index__ method: '
+                '{}'.format(slc))
 
     if step == 0:
         raise ValueError('Slice step must be nonzero.')
@@ -151,20 +169,24 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
     start_none = slc.start is None
     if not start_none:
         try:
-            start = int(slc.start)
+            start = _extract_slice_element(slc.start)
         except TypeError:
-            raise IndexError(
-                'slice.start must be int or None: {}'.format(slc))
+            raise TypeError(
+                'slice.start must be int or None or have __index__ method: '
+                '{}'.format(slc))
+
         if start < 0:
             start += dim
 
     stop_none = slc.stop is None
     if not stop_none:
         try:
-            stop = int(slc.stop)
+            stop = _extract_slice_element(slc.stop)
         except TypeError:
-            raise IndexError(
-                'slice.stop must be int or None: {}'.format(slc))
+            raise TypeError(
+                'slice.stop must be int or None or have __index__ method: '
+                '{}'.format(slc))
+
         if stop < 0:
             stop += dim
 

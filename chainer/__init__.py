@@ -78,6 +78,7 @@ def get_function_hooks():
         thread_local.function_hooks = collections.OrderedDict()
     return thread_local.function_hooks
 
+
 _debug = False
 
 
@@ -127,5 +128,8 @@ class DebugMode(object):
     def __exit__(self, *_):
         set_debug(self._old)
 
+
 basic_math.install_variable_arithmetics()
 array.get_item.install_variable_get_item()
+
+disable_experimental_feature_warning = False

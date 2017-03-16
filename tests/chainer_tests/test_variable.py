@@ -34,12 +34,17 @@ def constant(xs, value):
     return Constant(value)(*xs)
 
 
+@testing.parameterize(
+    {'x_shape': (10,), 'c_shape': (2, 5), 'label': '(2, 5), float32'},
+    {'x_shape': (), 'c_shape': (1,), 'label': '(1), float32'},
+)
 class TestVariable(unittest.TestCase):
 
     def setUp(self):
-        self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
-        self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
-        self.c = np.arange(10).reshape(2, 5).astype(np.float32)
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.a = np.random.uniform(0.1, 10, self.x_shape).astype(np.float32)
+        self.size = int(np.prod(self.x_shape))
+        self.c = np.arange(self.size).reshape(self.c_shape).astype(np.float32)
 
     def test_repr(self):
         x = chainer.Variable(self.x, name='x')
@@ -71,7 +76,7 @@ class TestVariable(unittest.TestCase):
         if gpu:
             x = cuda.to_gpu(x)
         x = chainer.Variable(x)
-        self.assertEqual(len(x), 10)
+        self.assertEqual(len(x), self.size)
 
     def test_len_cpu(self):
         self.check_len(False)
@@ -85,12 +90,13 @@ class TestVariable(unittest.TestCase):
         if gpu:
             x_data = cuda.to_gpu(x_data)
         x = chainer.Variable(x_data)
-        slices = slice(2, 5)
-        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
-                                cuda.to_cpu(x_data[slices]))
-        slices = slice(2, 5),
-        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
-                                cuda.to_cpu(x_data[slices]))
+        if len(self.x_shape) > 0:
+            slices = slice(2, 5)
+            np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                    cuda.to_cpu(x_data[slices]))
+            slices = slice(2, 5),
+            np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                    cuda.to_cpu(x_data[slices]))
 
     def test_get_item_cpu(self):
         self.check_get_item(False)
@@ -107,11 +113,11 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(c.label, expected)
 
     def test_label_cpu(self):
-        self.check_label('(2, 5), float32', False)
+        self.check_label(self.label, False)
 
     @attr.gpu
     def test_label_gpu(self):
-        self.check_label('(2, 5), float32', True)
+        self.check_label(self.label, True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
         for o in outputs:
@@ -145,8 +151,27 @@ class TestVariable(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
-        ret = self.create_linear_chain(2, True)
+        ret = self.create_linear_chain(2, False)
         self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), False)
+
+    def check_backward_accumulate(self, gpu):
+        if gpu:
+            x = chainer.Variable(cuda.to_gpu(self.x))
+            xp = cuda.cupy
+        else:
+            x = chainer.Variable(self.x)
+            xp = np
+        y = constant((x, x, x), (self.a, ))
+        y.grad = xp.zeros_like(y.data)
+        y.backward()
+        self.assertEqual(x.grad.shape, self.x_shape)
+
+    def test_backward_accumulate_cpu(self):
+        self.check_backward_accumulate(False)
+
+    @attr.gpu
+    def test_backward_accumulate_gpu(self):
+        self.check_backward_accumulate(True)
 
     def test_backward_cpu_retain_grad(self):
         ret = self.create_linear_chain(2, False)
@@ -734,6 +759,84 @@ class TestVariableBackwardErrorTraceback(unittest.TestCase):
     @attr.gpu
     def test_traceback_gpu(self):
         self.check_traceback(cuda.to_gpu(self.x))
+
+
+@testing.parameterize(*testing.product({
+    'in_shape': [(4, 3, 2)],
+    'out_shape': [(2, 2, 6), (2, -1, 6), 24, (-1,), [2, 12]],
+    'dtype': [np.float16, np.float32, np.float64],
+}))
+class TestReshape(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
+
+    def check_forward(self, x_data):
+        shape = self.out_shape
+        x = chainer.Variable(x_data)
+        y = x.reshape(shape)
+        self.assertEqual(y.data.dtype, self.dtype)
+        self.assertTrue((self.x.reshape(shape) == cuda.to_cpu(y.data)).all())
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x))
+
+    def check_backward(self, x_data):
+        x = chainer.Variable(x_data)
+        y = x.reshape(self.out_shape)
+        y.grad = y.data
+        y.backward()
+        testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x))
+
+
+@testing.parameterize(*testing.product({
+    'in_shape': [(4, 3, 2)],
+    'axes': [(-1, 0, 1), None, [-1, 0, 1]],
+    'dtype': [np.float16, np.float32, np.float32],
+}))
+class TestTranspose(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
+
+    def check_forward(self, x_data):
+        axes = self.axes
+        x = chainer.Variable(x_data)
+        y = x.transpose(axes)
+        self.assertEqual(y.data.dtype, self.dtype)
+        self.assertTrue((self.x.transpose(axes) == cuda.to_cpu(y.data)).all())
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x))
+
+    def check_backward(self, x_data):
+        x = chainer.Variable(x_data)
+        y = x.transpose(self.axes)
+        y.grad = y.data
+        y.backward()
+        testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x))
 
 
 testing.run_module(__name__, __file__)

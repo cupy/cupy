@@ -1,5 +1,4 @@
 import numpy
-from six import moves
 
 from chainer import cuda
 from chainer import function
@@ -12,7 +11,7 @@ if cuda.cudnn_enabled:
     libcudnn = cuda.cudnn.cudnn
     _cudnn_version = libcudnn.getVersion()
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
-    if _cudnn_version >= 4000:
+    if _cudnn_version >= 3000:
         _bwd_filter_pref = \
             libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
         _bwd_data_pref = \
@@ -132,7 +131,7 @@ class Deconvolution2DFunction(function.Function):
             one = numpy.array(1, dtype=oz_dtype).ctypes
             zero = numpy.array(0, dtype=oz_dtype).ctypes
 
-            if _cudnn_version >= 4000:
+            if _cudnn_version >= 3000:
                 workspace_size = cuda.get_max_workspace_size()
                 workspace = cuda.cupy.empty((workspace_size,), dtype='b')
                 if not self.deterministic:
@@ -159,13 +158,13 @@ class Deconvolution2DFunction(function.Function):
                     handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
         else:
-            W_mat = W.reshape(in_c, c * kh * kw)
-            x_mats = x.reshape(n, in_c, in_h * in_w)
-            gcol = cuda.cupy.empty(
-                (n, c, kh, kw, in_h, in_w), dtype=x.dtype)
-            gcol_mats = gcol.reshape(n, c * kh * kw, in_h * in_w)
-            for i in moves.range(n):
-                gcol_mats[i] = cuda.cupy.dot(W_mat.T, x_mats[i])
+            gcol = cuda.cupy.tensordot(W, x, (0, 1)).astype(x.dtype,
+                                                            copy=False)
+            # - k, m, n: shape of out_channel
+            # - b: number of inputs
+            # - h, w: height and width of kernels
+            # k, m, n, b, h, w -> b, k, m, n, h, w
+            gcol = cuda.cupy.rollaxis(gcol, 3)
             y = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
             if b is not None:
@@ -235,7 +234,7 @@ class Deconvolution2DFunction(function.Function):
                     zero.data, self.bias_desc.value, gb.data.ptr)
             gW = cuda.cupy.empty_like(W)
             # filter backward
-            if _cudnn_version >= 4000:
+            if _cudnn_version >= 3000:
                 if not self.deterministic:
                     algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                         handle, gy_desc.value, gx_desc.value,
@@ -252,7 +251,7 @@ class Deconvolution2DFunction(function.Function):
             else:
                 if self.deterministic:
                     raise ValueError("'deterministic' option not available "
-                                     "for cuDNN versions < v4")
+                                     "for cuDNN versions < v3")
                 libcudnn.convolutionBackwardFilter_v2(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     gx_desc.value, x.data.ptr, self.conv_desc.value,
@@ -262,23 +261,15 @@ class Deconvolution2DFunction(function.Function):
             col = conv.im2col_gpu(
                 gy, kh, kw, self.sy, self.sx, self.ph, self.pw)
 
-            W_mat = W.reshape(in_c, c * kh * kw)
-            col_mats = col.reshape(
-                n, c * kh * kw, in_h * in_w)
-            gx_mats = gx.reshape(n, in_c, in_h * in_w)
-            for i in moves.range(n):
-                gx_mats[i] = W_mat.dot(col_mats[i])
+            gW = cuda.cupy.tensordot(
+                x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype, copy=False)
+            gx = cuda.cupy.tensordot(
+                col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype, copy=False)
+            gx = cuda.cupy.rollaxis(gx, 3, 1)
 
             # bias backward
             if b is not None:
                 gb = gy.sum(axis=(0, 2, 3))
-
-            # filter backward
-            gW = cuda.cupy.zeros_like(W)
-            gW_mat = gW.reshape(in_c, c * kh * kw)
-            x_mats = x.reshape(n, in_c, in_h * in_w)
-            for i in moves.range(n):
-                gW_mat += x_mats[i].dot(col_mats[i].T)
 
         if b is None:
             return gx, gW
@@ -313,7 +304,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             non-deterministic when it uses cuDNN.
             If this option is ``True``, then it forces cuDNN to use
             a deterministic algorithm. This option is only available for
-            cuDNN version >= v4.
+            cuDNN version >= v3.
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`

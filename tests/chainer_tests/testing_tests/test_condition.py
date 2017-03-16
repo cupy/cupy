@@ -14,24 +14,32 @@ class MockUnitTest(unittest.TestCase):
     probabilistic_case_success_counter = 0
     probabilistic_case_failure_counter = 0
 
+    @staticmethod
+    def clear_counter():
+        MockUnitTest.failure_case_counter = 0
+        MockUnitTest.success_case_counter = 0
+        MockUnitTest.probabilistic_case_counter = 0
+        MockUnitTest.probabilistic_case_success_counter = 0
+        MockUnitTest.probabilistic_case_failure_counter = 0
+
     def failure_case(self):
-        self.failure_case_counter += 1
+        MockUnitTest.failure_case_counter += 1
         self.fail()
 
     def success_case(self):
-        self.success_case_counter += 1
+        MockUnitTest.success_case_counter += 1
         self.assertTrue(True)
 
     def error_case(self):
         raise Exception()
 
     def probabilistic_case(self):
-        self.probabilistic_case_counter += 1
-        if self.probabilistic_case_counter % 2 == 0:
-            self.probabilistic_case_success_counter += 1
+        MockUnitTest.probabilistic_case_counter += 1
+        if MockUnitTest.probabilistic_case_counter % 2 == 0:
+            MockUnitTest.probabilistic_case_success_counter += 1
             self.assertTrue(True)
         else:
-            self.probabilistic_case_failure_counter += 1
+            MockUnitTest.probabilistic_case_failure_counter += 1
             self.fail()
 
     def runTest(self):
@@ -60,6 +68,7 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
 
     def setUp(self):
         self.unit_test = MockUnitTest()
+        MockUnitTest.clear_counter()
 
     def test_all_trials_fail(self):
         f = self._decorate(MockUnitTest.failure_case, 10, 1)
@@ -111,6 +120,7 @@ class TestRepeat(unittest.TestCase):
 
     def setUp(self):
         self.unit_test = MockUnitTest()
+        MockUnitTest.clear_counter()
 
     def test_failure_case(self):
         f = self._decorate(MockUnitTest.failure_case, 10)
@@ -138,6 +148,7 @@ class TestRetry(unittest.TestCase):
 
     def setUp(self):
         self.unit_test = MockUnitTest()
+        MockUnitTest.clear_counter()
 
     def test_failure_case(self):
         f = self._decorate(MockUnitTest.failure_case, 10)

@@ -73,7 +73,7 @@ cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
     bool: numpy.dtype(bool).type}
 for i in six.integer_types:
-    _python_type_to_numpy_type[i] = numpy.dtype(i).type
+    _python_type_to_numpy_type[i] = numpy.int64
 
 
 cpdef str _get_typename(dtype):
@@ -134,10 +134,9 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
             t = _get_typename(dtype)
             if is_array:
                 t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s%s %s%s' % ('const ' if p.is_const else '',
-                                  t,
-                                  '_raw_' if is_array and not p.raw else '',
-                                  p.name))
+        ret.append('%s %s%s' % (t,
+                                '_raw_' if is_array and not p.raw else '',
+                                p.name))
     return ', '.join(ret)
 
 
@@ -185,13 +184,14 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if cnt == ndim:
         return args, shape
     if cnt == 1:
-        newshape.assign(1, vecshape[axis])
+        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
         ret = []
         for i, a in enumerate(args):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
-                newstrides.assign(1, arr._strides[axis])
+                newstrides.assign(
+                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
@@ -268,12 +268,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != numpy.dtype(p.dtype):
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != numpy.dtype(a):
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -288,12 +288,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
                 unknown_ctype.append(p.ctype)
         else:
             if p.dtype is not None:
-                if a != p.dtype:
+                if numpy.dtype(a) != numpy.dtype(p.dtype):
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if t != a:
+                if numpy.dtype(t) != numpy.dtype(a):
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -397,7 +397,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     for p, a in six.moves.zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
+                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))
@@ -498,6 +498,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
 
         size = kwargs.pop('size', None)
+        stream = kwargs.pop('stream', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -548,7 +549,8 @@ cdef class ElementwiseKernel:
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        kern.linear_launch(indexer.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=128, stream=stream)
         return ret
 
 

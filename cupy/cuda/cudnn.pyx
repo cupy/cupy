@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """Thin wrapper of cuDNN."""
 # NOTE: This wrapper does not cover all APIs of cuDNN v4.
 cimport cython
@@ -53,16 +55,26 @@ cdef extern from "cupy_cudnn.h":
     int cudnnSetFilterNdDescriptor_v3(
         FilterDescriptor filterDesc, DataType dataType, int nbDims,
         int* filterDimA) nogil
-    int cudnnGetFilterNdDescriptor_v5(
+    int cudnnSetFilter4dDescriptor_v4(
+        FilterDescriptor filterDesc, DataType dataType,
+        TensorFormat format, int k, int c, int h, int w) nogil
+    int cudnnSetFilterNdDescriptor_v4(
+        FilterDescriptor filterDesc, DataType dataType,
+        TensorFormat format, int nbDims, const int filterDimA[]) nogil
+    int cudnnGetFilterNdDescriptor_v4(
         FilterDescriptor wDesc, int nbDimsRequested, DataType* dataType,
         TensorFormat* format, int* nbDims, int filterDimA[]) nogil
     int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc) nogil
 
     # Convolution
     int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc) nogil
-    int cudnnSetConvolution2dDescriptor(
+    int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int upscalex, int upscaley, ConvolutionMode mode) nogil
+    int cudnnSetConvolution2dDescriptor_v5(
+        ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
+        int v, int upscalex, int upscaley, ConvolutionMode mode,
+        DataType computeType) nogil
     int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* upscaleA, ConvolutionMode mode) nogil
@@ -71,6 +83,17 @@ cdef extern from "cupy_cudnn.h":
         int* filterStrideA, int* upscaleA, ConvolutionMode mode,
         DataType dataType) nogil
     int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) nogil
+    int cudnnFindConvolutionForwardAlgorithm(
+        Handle handle, TensorDescriptor xDesc, FilterDescriptor wDesc,
+        ConvolutionDescriptor convDesc, TensorDescriptor yDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionFwdAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionForwardAlgorithmEx(
+        Handle handle, TensorDescriptor xDesc, void* x,
+        FilterDescriptor wDesc, void* w, ConvolutionDescriptor convDesc,
+        TensorDescriptor yDesc, void* y, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionFwdAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
@@ -91,6 +114,17 @@ cdef extern from "cupy_cudnn.h":
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
         TensorDescriptor destDesc, void* destData) nogil
+    int cudnnFindConvolutionBackwardFilterAlgorithm(
+        Handle handle, TensorDescriptor xDesc, TensorDescriptor dyDesc,
+        ConvolutionDescriptor convDesc, FilterDescriptor dwDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionBwdFilterAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionBackwardFilterAlgorithmEx(
+        Handle handle, TensorDescriptor xDesc, void* x,
+        TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
+        FilterDescriptor dwDesc, void* dw, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionBwdFilterAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionBackwardFilterAlgorithm(
         Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
@@ -119,6 +153,17 @@ cdef extern from "cupy_cudnn.h":
         ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
         ConvolutionBwdDataPreference preference,
         size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo) nogil
+    int cudnnFindConvolutionBackwardDataAlgorithm(
+        Handle handle, TensorDescriptor wDesc, TensorDescriptor dyDesc,
+        ConvolutionDescriptor convDesc, FilterDescriptor dxDesc,
+        int requestedAlgoCount, int* returnedAlgoCount,
+        ConvolutionBwdDataAlgoPerf* perfResults) nogil
+    int cudnnFindConvolutionBackwardDataAlgorithmEx(
+        Handle handle, FilterDescriptor wDesc, void* w,
+        TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
+        TensorDescriptor dxDesc, void* dx, int requestedAlgoCount,
+        int* returnedAlgoCount, ConvolutionBwdDataAlgoPerf* perfResults,
+        void* workSpace, size_t workSpaceSizeInBytes) nogil
     int cudnnGetConvolutionBackwardDataWorkspaceSize(
         Handle handle, FilterDescriptor filterDesc,
         TensorDescriptor diffDesc,
@@ -145,8 +190,17 @@ cdef extern from "cupy_cudnn.h":
         int windowHeight, int windowWidth,
         int verticalPadding, int horizontalPadding,
         int verticalStride, int horizontalStride) nogil
+    int cudnnSetPooling2dDescriptor_v4(
+        PoolingDescriptor poolingDesc, PoolingMode mode,
+        NanPropagation maxpoolingNanOpt, int windowHeight, int windowWidth,
+        int verticalPadding, int horizontalPadding, int verticalStride,
+        int horizontalStride) nogil
     int cudnnSetPoolingNdDescriptor_v3(
         PoolingDescriptor poolingDesc, PoolingMode mode, int nbDims,
+        int* windowDimA, int* paddingA, int* strideA) nogil
+    int cudnnSetPoolingNdDescriptor_v4(
+        PoolingDescriptor poolingDesc, PoolingMode mode,
+        NanPropagation maxpoolingNanOpt, int nbDims,
         int* windowDimA, int* paddingA, int* strideA) nogil
     int cudnnDestroyPoolingDescriptor(PoolingDescriptor poolingDesc) nogil
     int cudnnPoolingForward(
@@ -192,6 +246,13 @@ cdef extern from "cupy_cudnn.h":
         double epsilon, void* savedMean, void* savedInvVariance) nogil
 
     # Activation
+    int cudnnCreateActivationDescriptor(
+        ActivationDescriptor* activationDesc) nogil
+    int cudnnSetActivationDescriptor(
+        ActivationDescriptor activationDesc, ActivationMode mode,
+        NanPropagation reluNanOpt, double reluCeiling) nogil
+    int cudnnDestroyActivationDescriptor(
+        ActivationDescriptor activationDesc) nogil
     int cudnnSoftmaxForward(
         Handle handle, SoftmaxAlgorithm algorithm, SoftmaxMode mode,
         void* alpha, TensorDescriptor srcDesc, void* srcData,
@@ -205,8 +266,18 @@ cdef extern from "cupy_cudnn.h":
         Handle handle, ActivationMode mode, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
         TensorDescriptor dstDesc, void* dstData) nogil
+    int cudnnActivationForward_v4(
+        Handle handle, ActivationDescriptor activationDesc, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor dstDesc, void* dstData) nogil
     int cudnnActivationBackward_v3(
         Handle handle, ActivationMode mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor srcDiffDesc, void* srcDiffData,
+        TensorDescriptor destDesc, void* destData, void* beta,
+        TensorDescriptor destDiffDesc, void* destDiffData) nogil
+    int cudnnActivationBackward_v4(
+        Handle handle, ActivationDescriptor activationDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor srcDiffDesc, void* srcDiffData,
         TensorDescriptor destDesc, void* destData, void* beta,
@@ -446,6 +517,24 @@ cpdef setFilterNdDescriptor_v3(
     check_status(status)
 
 
+cpdef setFilter4dDescriptor_v4(
+        size_t filterDesc, int dataType,
+        int format, int k, int c, int h, int w):
+    status = cudnnSetFilter4dDescriptor_v4(
+        <FilterDescriptor>filterDesc, <DataType> dataType,
+        <TensorFormat> format, k, c, h, w)
+    check_status(status)
+
+
+cpdef setFilterNdDescriptor_v4(
+        size_t filterDesc, int dataType,
+        int format, int nbDims, size_t filterDimA):
+    status = cudnnSetFilterNdDescriptor_v4(
+        <FilterDescriptor>filterDesc, <DataType>dataType,
+        <TensorFormat>format, nbDims, <int*>filterDimA)
+    check_status(status)
+
+
 cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested):
     cdef DataType dataType
     cdef TensorFormat format
@@ -453,7 +542,7 @@ cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested):
     cdef vector.vector[int] filterDimA
     filterDimA.resize(nbDimsRequested)
 
-    status = cudnnGetFilterNdDescriptor_v5(
+    status = cudnnGetFilterNdDescriptor_v4(
         <FilterDescriptor>wDesc, nbDimsRequested, &dataType,
         &format, &nbDims, &filterDimA[0])
     check_status(status)
@@ -476,12 +565,21 @@ cpdef size_t createConvolutionDescriptor() except *:
     return <size_t>desc
 
 
-cpdef setConvolution2dDescriptor(
+cpdef setConvolution2dDescriptor_v4(
         size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
         int upscaley, int mode):
-    status = cudnnSetConvolution2dDescriptor(
+    status = cudnnSetConvolution2dDescriptor_v4(
         <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
         upscaley, <ConvolutionMode>mode)
+    check_status(status)
+
+
+cpdef setConvolution2dDescriptor_v5(
+        size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
+        int upscaley, int mode, size_t computeType):
+    status = cudnnSetConvolution2dDescriptor_v5(
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
+        upscaley, <ConvolutionMode>mode, <DataType>computeType)
     check_status(status)
 
 
@@ -509,6 +607,36 @@ cpdef destroyConvolutionDescriptor(size_t convDesc):
         <ConvolutionDescriptor>convDesc)
     check_status(status)
 
+cpdef findConvolutionForwardAlgorithm(
+        size_t handle, size_t xDesc, size_t wDesc, size_t convDesc,
+        size_t yDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionFwdAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionForwardAlgorithm(
+        <Handle> handle, <TensorDescriptor>xDesc, <FilterDescriptor>wDesc,
+        <ConvolutionDescriptor>convDesc, <TensorDescriptor>yDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionForwardAlgorithmEx(
+        size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
+        size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionFwdAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionForwardAlgorithmEx(
+        <Handle> handle, <TensorDescriptor>xDesc, <void*>x,
+        <FilterDescriptor>wDesc, <void*>w, <ConvolutionDescriptor>convDesc,
+        <TensorDescriptor>yDesc, <void*>y, requestedAlgoCount,
+        &returnedAlgoCount[0], &perfResults[0], <void*>workSpace,
+        workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
@@ -561,6 +689,37 @@ cpdef convolutionBackwardBias(
             <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
             <TensorDescriptor>destDesc, <void*>destData)
     check_status(status)
+
+cpdef findConvolutionBackwardFilterAlgorithm(
+        size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc,
+        size_t dwDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionBwdFilterAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardFilterAlgorithm(
+        <Handle> handle, <TensorDescriptor>xDesc, <TensorDescriptor>dyDesc,
+        <ConvolutionDescriptor>convDesc, <FilterDescriptor>dwDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionBackwardFilterAlgorithmEx(
+        size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
+        size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionBwdFilterAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardFilterAlgorithmEx(
+        <Handle> handle, <TensorDescriptor>xDesc, <void*>x,
+        <TensorDescriptor>dyDesc, <void*>dy, <ConvolutionDescriptor>convDesc,
+        <FilterDescriptor>dwDesc, <void*>dw,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0],
+        <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionBackwardFilterAlgorithm(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
@@ -615,6 +774,37 @@ cpdef convolutionBackwardFilter_v3(
             <void*>workSpace, workSpaceSizeInBytes, <void*>beta,
             <FilterDescriptor>gradDesc, <void*>gradData)
     check_status(status)
+
+cpdef findConvolutionBackwardDataAlgorithm(
+        size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc,
+        size_t dxDesc, int requestedAlgoCount):
+    cdef vector.vector[ConvolutionBwdDataAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardDataAlgorithm(
+        <Handle> handle, <FilterDescriptor>wDesc, <TensorDescriptor>dyDesc,
+        <ConvolutionDescriptor>convDesc, <TensorDescriptor>dxDesc,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0])
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
+
+cpdef findConvolutionBackwardDataAlgorithmEx(
+        size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
+        size_t convDesc, size_t dxDesc, size_t dx,
+        int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
+    cdef vector.vector[ConvolutionBwdDataAlgoPerf] perfResults
+    cdef vector.vector[int] returnedAlgoCount
+    perfResults.resize(requestedAlgoCount)
+    returnedAlgoCount.resize(1)
+    status = cudnnFindConvolutionBackwardDataAlgorithmEx(
+        <Handle> handle, <FilterDescriptor>wDesc, <void*>w,
+        <TensorDescriptor>dyDesc, <void*>dy, <ConvolutionDescriptor>convDesc,
+        <TensorDescriptor>dxDesc, <void*>dx,
+        requestedAlgoCount, &returnedAlgoCount[0], &perfResults[0],
+        <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+    return returnedAlgoCount[0], perfResults
 
 cpdef int getConvolutionBackwardDataAlgorithm(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
@@ -691,11 +881,32 @@ cpdef setPooling2dDescriptor_v3(
     check_status(status)
 
 
+cpdef setPooling2dDescriptor_v4(
+        size_t poolingDesc, int mode, int maxpoolingNanOpt, int windowHeight,
+        int windowWidth, int verticalPadding, int horizontalPadding,
+        int verticalStride, int horizontalStride):
+    status = cudnnSetPooling2dDescriptor_v4(
+        <PoolingDescriptor>poolingDesc, <PoolingMode>mode,
+        <NanPropagation>maxpoolingNanOpt, windowHeight, windowWidth,
+        verticalPadding, horizontalPadding, verticalStride, horizontalStride)
+    check_status(status)
+
+
 cpdef setPoolingNdDescriptor_v3(
         size_t poolingDesc, int mode, int nbDims, size_t windowDimA,
         size_t paddingA, size_t strideA):
     status = cudnnSetPoolingNdDescriptor_v3(
         <PoolingDescriptor>poolingDesc, <PoolingMode>mode, nbDims,
+        <int*>windowDimA, <int*>paddingA, <int*>strideA)
+    check_status(status)
+
+
+cpdef setPoolingNdDescriptor_v4(
+        size_t poolingDesc, int mode, int maxpoolingNanOpt, int nbDims,
+        size_t windowDimA, size_t paddingA, size_t strideA):
+    status = cudnnSetPoolingNdDescriptor_v4(
+        <PoolingDescriptor>poolingDesc, <PoolingMode>mode,
+        <NanPropagation>maxpoolingNanOpt, nbDims,
         <int*>windowDimA, <int*>paddingA, <int*>strideA)
     check_status(status)
 
@@ -803,6 +1014,24 @@ cpdef batchNormalizationBackward(
 # Activation
 ###############################################################################
 
+cpdef size_t createActivationDescriptor() except *:
+    cdef ActivationDescriptor activationDesc
+    status = cudnnCreateActivationDescriptor(&activationDesc)
+    check_status(status)
+    return <size_t>activationDesc
+
+cpdef setActivationDescriptor(
+        size_t activationDesc, int mode, int reluNanOpt, double reluCeiling):
+    status = cudnnSetActivationDescriptor(
+        <ActivationDescriptor>activationDesc, <ActivationMode>mode,
+        <NanPropagation>reluNanOpt, reluCeiling)
+    check_status(status)
+
+cpdef destroyActivationDescriptor(size_t activationDesc):
+    status = cudnnDestroyActivationDescriptor(
+        <ActivationDescriptor>activationDesc)
+    check_status(status)
+
 cpdef softmaxForward(
         size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
         size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
@@ -838,6 +1067,17 @@ cpdef activationForward_v3(
     check_status(status)
 
 
+cpdef activationForward_v4(
+        size_t handle, size_t activationDesc, size_t alpha, size_t srcDesc,
+        size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
+    with nogil:
+        status = cudnnActivationForward_v4(
+            <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
+            <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+            <TensorDescriptor>dstDesc, <void*>dstData)
+    check_status(status)
+
+
 cpdef activationBackward_v3(
         size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
         size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
@@ -846,6 +1086,21 @@ cpdef activationBackward_v3(
     with nogil:
         status = cudnnActivationBackward_v3(
             <Handle>handle, <ActivationMode>mode, <void*>alpha,
+            <TensorDescriptor>srcDesc, <void*>srcData,
+            <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
+            <TensorDescriptor>destDesc, <void*>destData, <void*>beta,
+            <TensorDescriptor>destDiffDesc, <void*>destDiffData)
+    check_status(status)
+
+
+cpdef activationBackward_v4(
+        size_t handle, size_t activationDesc, size_t alpha, size_t srcDesc,
+        size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
+        size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
+        size_t destDiffData):
+    with nogil:
+        status = cudnnActivationBackward_v4(
+            <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
             <TensorDescriptor>srcDesc, <void*>srcData,
             <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
             <TensorDescriptor>destDesc, <void*>destData, <void*>beta,

@@ -84,6 +84,7 @@ class TestArrayIndexingParameterized(unittest.TestCase):
     {'shape': (2, 3, 4), 'transpose': None,
      'indexes': (slice(None, None, (0, 0)), )},
 )
+@testing.with_requires('numpy>=1.12.0')
 @testing.gpu
 class TestArrayInvalidIndex(unittest.TestCase):
 

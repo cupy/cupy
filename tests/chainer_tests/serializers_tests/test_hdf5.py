@@ -143,6 +143,45 @@ class TestHDF5Deserializer(unittest.TestCase):
         ret = self.deserializer('z', z)
         self.assertEqual(ret, 10)
 
+    def test_string(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        try:
+            data = 'abc'
+            with h5py.File(path, 'w') as f:
+                f.create_dataset('str', data=data)
+            with h5py.File(path, 'r') as f:
+                deserializer = hdf5.HDF5Deserializer(f)
+                ret = deserializer('str', '')
+                self.assertEqual(ret, data)
+        finally:
+            os.remove(path)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestHDF5DeserializerNonStrict(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+        with h5py.File(path, 'w') as f:
+            f.require_group('x')
+
+        self.hdf5file = h5py.File(path, 'r')
+        self.deserializer = hdf5.HDF5Deserializer(self.hdf5file, strict=False)
+
+    def tearDown(self):
+        if hasattr(self, 'hdf5file'):
+            self.hdf5file.close()
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def test_deserialize_partial(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        ret = self.deserializer('y', y)
+        self.assertIs(ret, y)
+
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestSaveHDF5(unittest.TestCase):
@@ -263,24 +302,17 @@ class TestGroupHierachy(unittest.TestCase):
         with h5py.File(self.temp_file_path) as h5:
             self._load(h5, self.optimizer, 'test')
 
-original_import = __import__
-
-
-def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
-    if name == 'h5py':
-        raise ImportError()
-    else:
-        return original_import(name, _globals, _locals, fromlist, level)
-
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestNoH5py(unittest.TestCase):
 
     def setUp(self):
-        __builtins__['__import__'] = no_h5py
+        # Remove h5py from sys.modules to emulate situation that h5py is not
+        # installed.
+        sys.modules['h5py'] = None
 
     def tearDown(self):
-        __builtins__['__import__'] = original_import
+        sys.modules['h5py'] = h5py
 
     def test_raise(self):
         del sys.modules['chainer.serializers.hdf5']
@@ -288,6 +320,7 @@ class TestNoH5py(unittest.TestCase):
         del sys.modules['chainer.serializers']
 
         import chainer.serializers
+        self.assertFalse(chainer.serializers.hdf5._available)
         with self.assertRaises(RuntimeError):
             chainer.serializers.save_hdf5(None, None, None)
         with self.assertRaises(RuntimeError):

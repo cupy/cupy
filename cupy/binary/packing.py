@@ -24,9 +24,6 @@ def packbits(myarray):
         raise TypeError(
             'Expected an input array of integer or boolean data type')
 
-    if myarray.size == 0:
-        return cupy.empty_like(myarray)
-
     myarray = myarray.ravel()
     packed_size = (myarray.size + 7) // 8
     packed = cupy.zeros((packed_size,), dtype=cupy.uint8)

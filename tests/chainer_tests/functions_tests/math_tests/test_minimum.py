@@ -104,4 +104,5 @@ class TestMinimumInconsistentShapes(unittest.TestCase):
         with self.assertRaises(type_check.InvalidType):
             functions.minimum(x1, x2)
 
+
 testing.run_module(__name__, __file__)

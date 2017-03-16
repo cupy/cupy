@@ -38,6 +38,23 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_no_copy(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=False)
+        a.fill(0)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_no_copy_ndmin(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=False, ndmin=5)
+        self.assertEqual(a.shape, (2, 3, 4))
+        a.fill(0)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_asarray(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.asarray(a)
@@ -62,19 +79,21 @@ class TestFromData(unittest.TestCase):
         b = cupy.ascontiguousarray(a)
         self.assertIs(a, b)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_copy(self, xp, dtype):
+    def test_copy(self, xp, dtype, order):
         a = xp.zeros((2, 3, 4), dtype=dtype)
-        b = a.copy()
+        b = a.copy(order=order)
         a[1] = 1
         return b
 
     @testing.multi_gpu(2)
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    def test_copy_multigpu(self, dtype):
+    def test_copy_multigpu(self, dtype, order):
         with cuda.Device(0):
             src = cupy.random.uniform(-1, 1, (2, 3)).astype(dtype)
         with cuda.Device(1):
-            dst = src.copy()
+            dst = src.copy(order)
         testing.assert_allclose(src, dst, rtol=0, atol=0)

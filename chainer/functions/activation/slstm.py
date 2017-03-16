@@ -234,7 +234,7 @@ def slstm(c_prev1, c_prev2, x1, x2):
             the cell state. ``h`` indicates the outgoing signal.
 
     See detail in paper: `Long Short-Term Memory Over Tree Structures \
-    <http://arxiv.org/abs/1503.04881>`_.
+    <https://arxiv.org/abs/1503.04881>`_.
 
     """
     return SLSTM()(c_prev1, c_prev2, x1, x2)

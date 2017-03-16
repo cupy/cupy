@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """
 Wrapper for NVIDIA Tools Extension Library (NVTX)
 
@@ -41,11 +43,11 @@ cdef extern from "cupy_cuda.h":
         int32_t    messageType
         message_t  message
     ctypedef nvtxEventAttributes_v1 nvtxEventAttributes_t
-    void nvtxMarkA(const char *message)
-    void nvtxMarkEx(const nvtxEventAttributes_t *eventAttrib)
-    int nvtxRangePushA(const char *message)
-    int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib)
-    int nvtxRangePop()
+    void nvtxMarkA(const char *message) nogil
+    void nvtxMarkEx(const nvtxEventAttributes_t *eventAttrib) nogil
+    int nvtxRangePushA(const char *message) nogil
+    int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib) nogil
+    int nvtxRangePop() nogil
 
 cdef int num_colors = 10
 cdef uint32_t colors[10]
@@ -115,11 +117,11 @@ cpdef void RangePushC(str message, uint32_t color=0) except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
 
     Args:
         message (str): Name of a range.
-        color (uint32): Color for a range.
+        color (uint32): ARGB color for a range.
     """
     cdef bytes b_message = message.encode()
     if NVTX_VERSION != 1 and NVTX_VERSION != 2:
@@ -144,7 +146,7 @@ cpdef void RangePush(str message, int id_color=-1) except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
 
     Args:
         message (str): Name of a range.
@@ -165,6 +167,6 @@ cpdef void RangePop() except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
     """
     nvtxRangePop()

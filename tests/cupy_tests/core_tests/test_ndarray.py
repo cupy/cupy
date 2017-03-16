@@ -49,12 +49,47 @@ class TestNdarrayInit(unittest.TestCase):
 
 
 @testing.gpu
+class TestNdarrayOrder(unittest.TestCase):
+
+    shape = (2, 3, 4)
+
+    def test_order(self):
+        a = core.ndarray(self.shape, order='F')
+        a_cpu = numpy.ndarray(self.shape, order='F')
+        self.assertTupleEqual(a.strides, a_cpu.strides)
+        self.assertTrue(a.flags.f_contiguous)
+        self.assertTrue(not a.flags.c_contiguous)
+
+
+@testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
         arr = numpy.ndarray((2, 3), dtype=object)
         with self.assertRaises(ValueError):
             core.array(arr)
+
+
+@testing.gpu
+class TestNdarrayShape(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = (3, 2)
+        return xp.array(arr.shape)
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set_infer(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = (3, -1)
+        return xp.array(arr.shape)
+
+    @testing.numpy_cupy_array_equal()
+    def test_shape_set_int(self, xp):
+        arr = xp.ndarray((2, 3))
+        arr.shape = 6
+        return xp.array(arr.shape)
 
 
 @testing.parameterize(
@@ -104,6 +139,7 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
+@testing.gpu
 class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -125,6 +161,7 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
         'axis': [None, 0, -1],
     })
 )
+@testing.gpu
 class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = ()
@@ -158,6 +195,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 4)},
     {"shape": (), "indices": 0, "out_shape": (1,)}
 )
+@testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -173,6 +211,7 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
     {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 3)},
     {"shape": (), "indices": 0, "out_shape": ()}
 )
+@testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
     @testing.numpy_cupy_raises()

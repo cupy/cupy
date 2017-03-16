@@ -85,7 +85,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         gcol = numpy.zeros(
             (n * c * out_h * out_w * kh * kw), dtype=x[0].dtype)
 
-        indexes = self.indexes.ravel()
+        indexes = self.indexes.flatten()
         indexes += numpy.arange(0, indexes.size * kh * kw, kh * kw)
 
         gcol[indexes] = gy[0].ravel()

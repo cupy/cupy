@@ -9,11 +9,28 @@ cdef extern from *:
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
+    ctypedef struct ConvolutionBwdDataAlgoPerf \
+        'cudnnConvolutionBwdDataAlgoPerf_t':  # NOQA: E125
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
     ctypedef int ConvolutionBwdFilterPreference \
         'cudnnConvolutionBwdFilterPreference_t'
+    ctypedef struct ConvolutionBwdFilterAlgoPerf \
+        'cudnnConvolutionBwdFilterAlgoPerf_t':  # NOQA: E125
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
+    ctypedef struct ConvolutionFwdAlgoPerf 'cudnnConvolutionFwdAlgoPerf_t':
+        int algo
+        int status
+        float time
+        size_t memory
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
     ctypedef int DirectionMode 'cudnnDirectionMode_t'
@@ -26,6 +43,7 @@ cdef extern from *:
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
 
+    ctypedef void* ActivationDescriptor 'cudnnActivationDescriptor_t'
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
     ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
@@ -70,6 +88,8 @@ cpdef enum:
     CUDNN_CONVOLUTION_FWD_ALGO_DIRECT = 3
     CUDNN_CONVOLUTION_FWD_ALGO_FFT = 4
     CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING = 5
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD = 6
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED = 7
 
     CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE = 0
     CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST = 1
@@ -79,6 +99,8 @@ cpdef enum:
     CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1
     CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 2
     CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD = 4
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED = 5
 
     CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE = 0
     CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST = 1
@@ -88,6 +110,8 @@ cpdef enum:
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 2
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING = 3
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD = 4
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED = 5
 
     CUDNN_SOFTMAX_FAST = 0
     CUDNN_SOFTMAX_ACCURATE = 1
@@ -163,6 +187,10 @@ cpdef setFilter4dDescriptor_v3(
     size_t filterDesc, int dataType, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor_v3(
     size_t filterDesc, int dataType, int nbDims, size_t filterDimA)
+cpdef setFilter4dDescriptor_v4(
+    size_t filterDesc, int dataType, int format, int k, int c, int h, int w)
+cpdef setFilterNdDescriptor_v4(
+    size_t filterDesc, int dataType, int format, int nbDims, size_t filterDimA)
 cpdef destroyFilterDescriptor(size_t filterDesc)
 
 
@@ -171,9 +199,12 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 ###############################################################################
 
 cpdef size_t createConvolutionDescriptor() except *
-cpdef setConvolution2dDescriptor(
+cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
     int upscaley, int mode)
+cpdef setConvolution2dDescriptor_v5(
+    size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
+    int upscaley, int mode, size_t computeType)
 cpdef setConvolutionNdDescriptor_v2(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t upscaleA, int mode)
@@ -181,6 +212,13 @@ cpdef setConvolutionNdDescriptor_v3(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t upscaleA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
+cpdef findConvolutionForwardAlgorithm(
+    size_t handle, size_t xDesc, size_t wDesc, size_t convDesc, size_t yDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionForwardAlgorithmEx(
+    size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
+    size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, ConvolutionFwdPreference preference,
@@ -196,6 +234,13 @@ cpdef convolutionForward(
 cpdef convolutionBackwardBias(
     size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
     size_t beta, size_t destDesc, size_t destData)
+cpdef findConvolutionBackwardFilterAlgorithm(
+    size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc, size_t dwDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionBackwardFilterAlgorithmEx(
+    size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, ConvolutionBwdFilterPreference preference,
@@ -212,6 +257,13 @@ cpdef convolutionBackwardFilter_v3(
     size_t diffDesc, size_t diffData, size_t convDesc, int algo,
     size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
     size_t gradDesc, size_t gradData)
+cpdef findConvolutionBackwardDataAlgorithm(
+    size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
+    int requestedAlgoCount)
+cpdef findConvolutionBackwardDataAlgorithmEx(
+    size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dxDesc, size_t dx,
+    int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardDataAlgorithm(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, size_t preference,
@@ -286,10 +338,15 @@ cpdef batchNormalizationBackward(
     size_t dBnScaleResult, size_t dBnBiasResult,
     double epsilon, size_t savedMean, size_t savedInvVariance)
 
+
 ###############################################################################
 # Activation
 ###############################################################################
 
+cpdef size_t createActivationDescriptor() except *
+cpdef setActivationDescriptor(
+    size_t activationDesc, int mode, int reluNanOpt, double reluCeiling)
+cpdef destroyActivationDescriptor(size_t activationDesc)
 cpdef softmaxForward(
     size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
     size_t srcData, size_t beta, size_t dstDesc, size_t dstData)

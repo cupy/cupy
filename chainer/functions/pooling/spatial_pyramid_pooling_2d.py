@@ -92,7 +92,7 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
 
     See detail in paper: `Spatial Pyramid Pooling in Deep Convolutional \
     Networks for Visual Recognition \
-    <http://arxiv.org/abs/1406.4729>`_.
+    <https://arxiv.org/abs/1406.4729>`_.
 
     Args:
         x (~chainer.Variable): Input variable. The shape of ``x`` should be

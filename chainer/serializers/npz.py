@@ -82,20 +82,27 @@ class NpzDeserializer(serializer.Deserializer):
     Args:
         npz: `npz` file object.
         path: The base path that the deserialization starts from.
+        strict (bool): If ``True``, the deserializer raises an error when an
+            expected value is not found in the given NPZ file. Otherwise,
+            it ignores the value and skip deserialization.
 
     """
 
-    def __init__(self, npz, path=''):
+    def __init__(self, npz, path='', strict=True):
         self.npz = npz
         self.path = path
+        self.strict = strict
 
     def __getitem__(self, key):
         key = key.strip('/')
         return NpzDeserializer(self.npz, self.path + key + '/')
 
     def __call__(self, key, value):
-        key = key.lstrip('/')
-        dataset = self.npz[self.path + key]
+        key = self.path + key.lstrip('/')
+        if not self.strict and key not in self.npz:
+            return value
+
+        dataset = self.npz[key]
         if value is None:
             return dataset
         elif isinstance(value, numpy.ndarray):

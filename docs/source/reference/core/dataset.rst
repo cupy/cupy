@@ -9,7 +9,7 @@ Chainer has a support of common interface of training and validation datasets. T
 
 **Iterator** iterates over the dataset, and at each iteration, it yields a mini batch of examples as a list. Iterators should support the :class:`Iterator` interface, which includes the standard iterator protocol of Python. Iterators manage where to read next, which means they are `stateful`.
 
-**Batch conversion function** converts the mini batch into arrays to feed to the neural nets. They are also responsible to send each array to an appropriate device. Chainer currently provides :func:`concat_example` as the only example of batch conversion functions.
+**Batch conversion function** converts the mini batch into arrays to feed to the neural nets. They are also responsible to send each array to an appropriate device. Chainer currently provides :func:`concat_examples` as the only example of batch conversion functions.
 
 These components are all customizable, and designed to have a minimum interface to restrict the types of datasets and ways to handle them. In most cases, though, implementations provided by Chainer itself are enough to cover the usages.
 
@@ -33,6 +33,7 @@ See :ref:`iterators` for dataset iterator implementations.
 Batch conversion function
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: concat_examples
+.. autofunction:: to_device
 
 Dataset management
 ~~~~~~~~~~~~~~~~~~

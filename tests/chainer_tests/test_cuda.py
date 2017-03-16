@@ -65,6 +65,19 @@ class TestCuda(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 cuda.to_gpu(x)
 
+    def test_get_array_module_for_numpy(self):
+        self.assertIs(cuda.get_array_module(numpy.array([])), numpy)
+        self.assertIs(
+            cuda.get_array_module(chainer.Variable(numpy.array([]))),
+            numpy)
+
+    @attr.gpu
+    def test_get_array_module_for_cupy(self):
+        self.assertIs(cuda.get_array_module(cuda.cupy.array([])), cuda.cupy)
+        self.assertIs(
+            cuda.get_array_module(chainer.Variable(cuda.cupy.array([]))),
+            cuda.cupy)
+
     def test_empy_unavailable(self):
         if not cuda.available:
             with self.assertRaises(RuntimeError):

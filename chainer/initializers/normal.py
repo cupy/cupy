@@ -27,8 +27,13 @@ class Normal(initializer.Initializer):
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
-        array[...] = xp.random.normal(
-            loc=0.0, scale=self.scale, size=array.shape)
+        args = {'loc': 0.0, 'scale': self.scale, 'size': array.shape}
+        if xp is not numpy:
+            # Only CuPy supports dtype option
+            if self.dtype == numpy.float32 or self.dtype == numpy.float16:
+                # float16 is not supported in cuRAND
+                args['dtype'] = numpy.float32
+        array[...] = xp.random.normal(**args)
 
 
 class GlorotNormal(initializer.Initializer):
@@ -73,7 +78,7 @@ class HeNormal(initializer.Initializer):
     :math:`scale \\times \\sqrt{\\frac{2}{fan_{in}}}`,
     where :math:`fan_{in}` is the number of input units.
 
-    Reference:  He et al., http://arxiv.org/abs/1502.01852
+    Reference:  He et al., https://arxiv.org/abs/1502.01852
 
     Args:
         scale (float): A constant that determines the scale

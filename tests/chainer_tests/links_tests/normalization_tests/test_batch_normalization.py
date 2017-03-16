@@ -244,20 +244,27 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         self.assertFalse(hasattr(self.link, 'gamma'))
         self.assertFalse(hasattr(self.link, 'beta'))
 
-    def check_forward(self, x_data, y_expected):
+    def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = self.link(x, test=self.test)
-        testing.assert_allclose(y_expected, y.data)
+        testing.assert_allclose(self.y_expected, y.data)
 
     def test_forward_cpu(self):
-        self.check_forward(self.x, self.y_expected)
+        self.check_forward(self.x)
 
     @attr.gpu
     def test_forward_gpu(self):
         self.link.to_gpu()
         x = cuda.to_gpu(self.x)
-        y_expected = cuda.to_gpu(self.y_expected)
-        self.check_forward(x, y_expected)
+        self.check_forward(x)
+
+    @attr.multi_gpu(2)
+    def test_forward_gpu_multi(self):
+        with cuda.get_device(0):
+            self.link.to_gpu()
+            x = cuda.to_gpu(self.x)
+        with cuda.get_device(1):
+            self.check_forward(x)
 
     @attr.cudnn
     def test_forward_gpu_without_cudnn(self):

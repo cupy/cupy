@@ -201,9 +201,9 @@ class MultiprocessIterator(iterator.Iterator):
             if i >= n:
                 self.epoch += 1
                 self.is_new_epoch = True
+                i = 0
                 if not self._repeat:
                     break
-                i = 0
         self.current_position = i
         # Eventually overwrite the (possibly shuffled) order.
         self._order = self._prefetch_order

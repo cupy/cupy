@@ -1,5 +1,9 @@
+# distutils: language = c++
+
 import collections
 import ctypes
+import gc
+import warnings
 import weakref
 
 import six
@@ -78,7 +82,7 @@ cdef class MemoryPointer:
         ptr (int): Pointer to the place within the buffer.
     """
 
-    def __init__(self, Memory mem, Py_ssize_t offset):
+    def __init__(self, mem, Py_ssize_t offset):
         self.mem = mem
         self.device = mem.device
         self.ptr = mem.ptr + offset
@@ -156,9 +160,10 @@ cdef class MemoryPointer:
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
-            src (ctypes.c_void_p): Source memory pointer. It must be a pinned
+            mem (ctypes.c_void_p): Source memory pointer. It must be a pinned
                 memory.
             size (int): Size of the sequence in bytes.
+            stream (cupy.cuda.Stream): CUDA stream.
 
         """
         if size > 0:
@@ -354,7 +359,13 @@ cdef class SingleDeviceMemoryPool:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 self.free_all_free()
-                mem = self._alloc(size).mem
+                try:
+                    mem = self._alloc(size).mem
+                except runtime.CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    gc.collect()
+                    mem = self._alloc(size).mem
 
         self._in_use[mem.ptr] = mem
         pmem = PooledMemory(mem, self._weakref)
@@ -369,8 +380,14 @@ cdef class SingleDeviceMemoryPool:
         free = self._free[size]
         free.append(mem)
 
-    cpdef free_all_free(self):
+    cpdef free_all_blocks(self):
         self._free = collections.defaultdict(list)
+
+    cpdef free_all_free(self):
+        warnings.warn(
+            'free_all_free is deprecated. Use free_all_blocks instead.',
+            DeprecationWarning)
+        self.free_all_blocks()
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
@@ -429,10 +446,17 @@ cdef class MemoryPool(object):
         dev = device.get_device_id()
         return self._pools[dev].malloc(size)
 
-    cpdef free_all_free(self):
+    cpdef free_all_blocks(self):
         """Release free blocks."""
         dev = device.get_device_id()
-        self._pools[dev].free_all_free()
+        self._pools[dev].free_all_blocks()
+
+    cpdef free_all_free(self):
+        """Release free blocks."""
+        warnings.warn(
+            'free_all_free is deprecated. Use free_all_blocks instead.',
+            DeprecationWarning)
+        self.free_all_blocks()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.

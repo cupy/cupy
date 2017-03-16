@@ -28,6 +28,9 @@ cpdef enum:
     CUBLAS_SIDE_LEFT = 0
     CUBLAS_SIDE_RIGHT = 1
 
+    CUBLAS_FILL_MODE_LOWER = 0
+    CUBLAS_FILL_MODE_UPPER = 1
+
 
 ###############################################################################
 # Context
@@ -95,11 +98,21 @@ cpdef sgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, float alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, float beta, size_t Carray, int ldc,
                    int batchCount)
+cpdef dgemmBatched(size_t handle, int transa, int transb,
+                   int m, int n, int k, double alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, double beta, size_t Carray, int ldc,
+                   int batchCount)
 
 ###############################################################################
 # BLAS extension
 ###############################################################################
 
+cpdef sgeam(size_t handle, int transa, int transb, int m, int n,
+            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
+            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t C, int ldc)
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
 cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,

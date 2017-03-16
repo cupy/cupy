@@ -14,11 +14,11 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-chainer_setup_build.parse_args()
+ext_modules = chainer_setup_build.get_ext_modules()
 
 setup(
     name='chainer',
-    version='1.18.0',
+    version='1.22.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -38,6 +38,7 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.functions.theano',
               'chainer.functions.util',
               'chainer.function_hooks',
               'chainer.iterators',
@@ -52,6 +53,7 @@ setup(
               'chainer.links.model',
               'chainer.links.model.vision',
               'chainer.links.normalization',
+              'chainer.links.theano',
               'chainer.optimizers',
               'chainer.serializers',
               'chainer.testing',
@@ -64,6 +66,7 @@ setup(
               'cupy.core',
               'cupy.creation',
               'cupy.cuda',
+              'cupy.ext',
               'cupy.indexing',
               'cupy.io',
               'cupy.linalg',
@@ -71,6 +74,7 @@ setup(
               'cupy.manipulation',
               'cupy.math',
               'cupy.padding',
+              'cupy.prof',
               'cupy.random',
               'cupy.sorting',
               'cupy.statistics',
@@ -83,9 +87,5 @@ setup(
     install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
-    # To trick build into running build_ext
-    ext_modules=[chainer_setup_build.dummy_extension],
-    cmdclass={
-        'build_ext': chainer_setup_build.chainer_build_ext,
-    },
+    ext_modules=ext_modules,
 )

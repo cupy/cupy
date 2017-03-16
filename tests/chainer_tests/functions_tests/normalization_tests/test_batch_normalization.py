@@ -22,6 +22,7 @@ def _batch_normalization(expander, gamma, beta, x, mean, var):
 
 
 @testing.parameterize(*testing.product({
+    'param_shape': [(3,), (3, 4), (3, 4, 5)],
     'ndim': [0, 1, 2, 3],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
@@ -29,27 +30,29 @@ class TestBatchNormalization(unittest.TestCase):
 
     def setUp(self):
         self.expander = (None, Ellipsis) + (None,) * self.ndim
-        self.aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
         self.eps = 2e-5
         self.decay = 0.9
 
-        self.gamma = numpy.random.uniform(.5, 1, (3,)).astype(self.dtype)
-        self.beta = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
-
-        shape = (5, 3) + (2,) * self.ndim
+        self.gamma = numpy.random.uniform(.5, 1,
+                                          self.param_shape).astype(self.dtype)
+        self.beta = numpy.random.uniform(-1, 1,
+                                         self.param_shape).astype(self.dtype)
+        head_ndim = self.gamma.ndim + 1
+        shape = (5,) + self.param_shape + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
 
         self.args = [self.x, self.gamma, self.beta]
+        self.aggr_axes = (0,) + tuple(six.moves.range(head_ndim, self.x.ndim))
         self.mean = self.x.mean(axis=self.aggr_axes)
         self.var = self.x.var(axis=self.aggr_axes) + self.eps
         self.train = True
         self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
         self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
-            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_forward_options = {'atol': 1e-2, 'rtol': 1e-2}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 1e-2, 'rtol': 1e-2}
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.batch_normalization(
@@ -97,34 +100,37 @@ class TestBatchNormalization(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'param_shape': [(3,), (3, 4), (3, 4, 5)],
     'ndim': [0, 1, 2, 3],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestFixedBatchNormalization(unittest.TestCase):
 
     def setUp(self):
-        self.gamma = numpy.random.uniform(.5, 1, (3,)).astype(self.dtype)
-        self.beta = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
+        self.gamma = numpy.random.uniform(.5, 1,
+                                          self.param_shape).astype(self.dtype)
+        self.beta = numpy.random.uniform(-1, 1,
+                                         self.param_shape).astype(self.dtype)
         self.expander = (None, Ellipsis) + (None,) * self.ndim
-
-        shape = (5, 3) + (2,) * self.ndim
+        shape = (5,) + self.param_shape + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.eps = 2e-5
         self.decay = 0.0
-        self.aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
-
-        self.mean = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
+        head_ndim = self.gamma.ndim + 1
+        self.aggr_axes = (0,) + tuple(six.moves.range(head_ndim, self.x.ndim))
+        self.mean = numpy.random.uniform(-1, 1,
+                                         self.param_shape).astype(self.dtype)
         self.var = numpy.random.uniform(
-            0.5, 1, (3,)).astype(self.dtype)
+            0.5, 1, self.param_shape).astype(self.dtype)
         self.args = [self.x, self.gamma, self.beta, self.mean, self.var]
         self.train = False
         self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
         self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
-            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_forward_options = {'atol': 1e-2, 'rtol': 1e-2}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 1e-2, 'rtol': 1e-2}
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.fixed_batch_normalization(
@@ -180,18 +186,27 @@ class TestBatchNormalizationCudnnCall(unittest.TestCase):
 
     def setUp(self):
         ndim = 0
-        self.gamma = cuda.cupy.random.uniform(.5, 1, (3,)).astype(self.dtype)
-        self.beta = cuda.cupy.random.uniform(-1, 1, (3,)).astype(self.dtype)
+        param_shape = (3,)
+        self.gamma = cuda.cupy.random.uniform(.5, 1,
+                                              param_shape).astype(self.dtype)
+        self.beta = cuda.cupy.random.uniform(-1, 1,
+                                             param_shape).astype(self.dtype)
         self.eps = 2e-5
-        shape = (7, 3) + (2,) * ndim
+        shape = (7,) + param_shape + (2,) * ndim
+        print('za shape: ', shape)
         self.x = cuda.cupy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = cuda.cupy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.args = [self.x, self.gamma, self.beta]
-        self.aggr_axes = (0,) + tuple(six.moves.range(2, ndim + 2))
+        head_ndim = self.gamma.ndim + 1
+        print('head_ndim: ', head_ndim)
+        self.aggr_axes = (0,) + tuple(six.moves.range(head_ndim, self.x.ndim))
+        print('self.aggr_axes: ', self.aggr_axes)
         self.mean = self.x.mean(axis=self.aggr_axes)
+        print('setUp, self.mean.shape: ', self.mean.shape)
         self.var = self.x.var(axis=self.aggr_axes) + self.eps
         self.expect = self.use_cudnn and (
             cuda.cudnn.cudnn.getVersion() >= 5000)
+        print('self.expect: ', self.expect)
 
     def forward(self):
         return functions.batch_normalization(
@@ -211,5 +226,6 @@ class TestBatchNormalizationCudnnCall(unittest.TestCase):
         with mock.patch('cupy.cudnn.cudnn.batchNormalizationBackward') as func:
             y.backward()
             self.assertEqual(func.called, self.expect)
+
 
 testing.run_module(__name__, __file__)
