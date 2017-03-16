@@ -93,7 +93,7 @@ def log_softmax(x, use_cudnn=True):
     :math:`x = (x_1, x_2, \\dots, x_D)^{\\top}` be the D dimensional input
     array.
     For each input array :math:`x`, it computes the logarithm of the function
-    :math:`\log f(x)` defined as
+    :math:`f(x)` defined as
 
     .. math::
         f(x) = {\\exp(x) \\over \\sum_{x_d} \\exp(x_d)}.
@@ -107,7 +107,7 @@ def log_softmax(x, use_cudnn=True):
         ``log_softmax`` method is more stable.
 
     Args:
-        X (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
             Input variable.
             A :math:`n`-dimensional (:math:`n \\geq 2`) float array.
@@ -117,7 +117,7 @@ def log_softmax(x, use_cudnn=True):
     Returns:
         ~chainer.Variable: Output variable.
         A :math:`n`-dimensional (:math:`n \\geq 2`) float array, which is the
-        same shape with X.
+        same shape with x.
 
     .. seealso:: :func:`~chainer.functions.softmax`
 
