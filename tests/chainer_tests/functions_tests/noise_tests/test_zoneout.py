@@ -76,4 +76,5 @@ class TestZoneout(unittest.TestCase):
                             cuda.to_gpu(self.x),
                             cuda.to_gpu(self.gy))
 
+
 testing.run_module(__name__, __file__)

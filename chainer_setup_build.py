@@ -62,6 +62,19 @@ MODULES = [
             'cudnn',
         ],
         'check_method': build.check_cudnn_version,
+    },
+    {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cusolver_version,
     }
 ]
 

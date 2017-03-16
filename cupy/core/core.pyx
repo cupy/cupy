@@ -1131,7 +1131,13 @@ cdef class ndarray:
         mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
+                is_list = isinstance(s, list)
                 s = array(s)
+                # handle the case when s is an empty list
+                if is_list and s.size == 0:
+                    s = s.astype(numpy.int32)
+                    if s.ndim > 1:
+                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
@@ -1261,7 +1267,7 @@ cdef class ndarray:
             >>> x = cupy.arange(3)
             >>> x[[1, 3]] = 10
             >>> x
-            array([10, 10, 2])
+            array([10, 10,  2])
 
         .. note::
 
@@ -1274,8 +1280,8 @@ cdef class ndarray:
             >>> i = cupy.arange(10000) % 2
             >>> v = cupy.arange(10000).astype(numpy.float)
             >>> a[i] = v
-            >>> a
-            array([9150., 9151.])
+            >>> a  # doctest: +SKIP
+            array([ 9150.,  9151.])
 
             On the other hand, NumPy stores the value corresponding to the
             last index among the indices referencing duplicate locations.
@@ -1286,7 +1292,7 @@ cdef class ndarray:
             >>> v_cpu = numpy.arange(10000).astype(numpy.float)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
-            array([9998., 9999.])
+            array([ 9998.,  9999.])
 
         """
         _scatter_op(self, slices, value, 'update')
@@ -1661,7 +1667,7 @@ __device__ min_max_st<T> my_argmax_float(
 '''
 
 
-cdef _amin = create_reduction_func(
+_amin = create_reduction_func(
     'cupy_min',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1673,7 +1679,7 @@ cdef _amin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _amax = create_reduction_func(
+_amax = create_reduction_func(
     'cupy_max',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1742,6 +1748,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
         ndim = a._shape.size()
         if ndmin > ndim:
+            if a is obj:
+                # When `copy` is False, `a` is same as `obj`.
+                a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
         return a
     else:
@@ -2396,6 +2405,14 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
     cdef int n_true
     cdef tuple lshape, rshape, out_shape
 
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+
+    if mask.size == 0:
+        masked_shape = lshape + (0,) + rshape
+        mask_br = mask._reshape(masked_shape)
+        return mask_br, mask_br, masked_shape
+
     # Get number of True in the mask to determine the shape of the array
     # after masking.
     if mask.size <= 2 ** 31 - 1:
@@ -2404,8 +2421,6 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
         mask_type = numpy.int64
     mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
     n_true = int(mask_scanned[-1])
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask.ndim:]
     masked_shape = lshape + (n_true,) + rshape
 
     # When mask covers the entire array, broadcasting is not necessary.
@@ -2432,6 +2447,8 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
     out = ndarray(masked_shape, dtype=a.dtype)
+    if out.size == 0:
+        return out
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
@@ -2943,9 +2960,9 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     .. note::
         Differences to numpy or missing features:
 
-        Currently the output must be float32 (float64, comlplex64
-        and complex128 follow later). This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be numpy.float32.
+        Currently the output must be real (float16, float32, uint8, ...),
+        complex64 and complex128 follow later. This means, that
+        numpy.result_type(a.dtype, b.dtype) have to be real.
 
         The out array as input is currently not supported.
 
@@ -2966,7 +2983,11 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     cdef int batchCount
     cdef ndarray out, ap, bp, outp
 
-    dtype = numpy.result_type(a.dtype, b.dtype)
+    ret_dtype = numpy.result_type(a.dtype, b.dtype)
+    dtype = numpy.find_common_type((ret_dtype, 'f'), ())
+
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
 
     if a.ndim == 1:
         a = a.reshape(1, len(a))
@@ -3098,7 +3119,12 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     else:
         raise TypeError(dtype, a.dtype, b.dtype)
 
-    return out
+    if dtype == ret_dtype:
+        return out
+    else:
+        ret = ndarray(out_shape, ret_dtype)
+        elementwise_copy(out, ret)
+        return ret
 
 
 cdef _cuda_runtime_version = None
@@ -3284,7 +3310,7 @@ not_equal = create_comparison(
     ''')
 
 
-cdef _all = create_reduction_func(
+_all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3292,7 +3318,7 @@ cdef _all = create_reduction_func(
     'true', '')
 
 
-cdef _any = create_reduction_func(
+_any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3304,7 +3330,7 @@ cdef _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-cdef _sum = create_reduction_func(
+_sum = create_reduction_func(
     'cupy_sum',
     ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3313,7 +3339,7 @@ cdef _sum = create_reduction_func(
     ('in0', 'a + b', 'out0 = a', None), 0)
 
 
-cdef _prod = create_reduction_func(
+_prod = create_reduction_func(
     'cupy_prod',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3468,7 +3494,7 @@ sqrt = create_ufunc(
     'out0 = sqrt(in0)')
 
 
-cdef _clip = create_ufunc(
+_clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),

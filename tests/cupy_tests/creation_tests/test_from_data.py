@@ -38,6 +38,23 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_no_copy(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=False)
+        a.fill(0)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_no_copy_ndmin(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=False, ndmin=5)
+        self.assertEqual(a.shape, (2, 3, 4))
+        a.fill(0)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_asarray(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.asarray(a)

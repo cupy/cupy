@@ -84,7 +84,7 @@ Please install theano to activate theano function.
 
         gs = tuple(
             o.type('g_{}'.format(i)) for i, o in enumerate(outputs))
-        known_grads = dict(zip(outputs, gs))
+        known_grads = collections.OrderedDict(zip(outputs, gs))
         grad = theano.tensor.grad(
             cost=None, wrt=inputs, known_grads=known_grads,
             disconnected_inputs='ignore')
