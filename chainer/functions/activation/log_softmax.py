@@ -130,6 +130,8 @@ def log_softmax(x, use_cudnn=True):
         >>> F.log_softmax(x).data
         array([[-2.40760589, -1.40760589, -0.40760589],
                [-4.14293146, -2.14293146, -0.14293146]], dtype=float32)
+        >>> np.allclose(F.log_softmax(x).data, F.log(F.softmax(x)).data)
+        True
 
     """
     return LogSoftmax(use_cudnn)(x)
