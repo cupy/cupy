@@ -13,13 +13,13 @@ if cusolver_enabled:
 def cholesky(a):
     '''Cholesky decomposition.
 
-    Decompose a given two-dimensional square matrix into `L * L.T`,
-    where `L` is a lower-triangular matrix and `.T` is a conjugate transpose
-    operator. Note that in the current implementation `a` must be a real
-    matrix, and only float32 and float64 are supported.
+    Decompose a given two-dimensional square matrix into ``L * L.T``,
+    where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
+    transpose operator. Note that in the current implementation ``a`` must be
+    a real matrix, and only float32 and float64 are supported.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension `(N, N)`
+        a (cupy.ndarray): The input matrix with dimension ``(N, N)``
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     '''
