@@ -115,14 +115,14 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
     """Two-dimensional depthwise convolution function.
 
     This is an implementation of two-dimensional depthwise convolution.
-    It takes three variables: the input image ``x``, the filter weight ``W``,
-    and the bias vector ``b``.
+    It takes two or three variables: the input image ``x``, the filter weight
+    ``W``, and optionally, the bias vector ``b``.
 
     Notation: here is a notation for dimensionalities.
 
     - :math:`n` is the batch size.
     - :math:`c_I` is the number of the input.
-    - :math:`c_M` is the number of the channel multiplier.
+    - :math:`c_M` is the channel multiplier.
     - :math:`h` and :math:`w` are the height and width of the input image,
       respectively.
     - :math:`h_O` and :math:`w_O` are the height and width of the output image,
@@ -145,17 +145,17 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
 
     Returns:
         ~chainer.Variable:
-            Output variable. The shape is :math:`(n, c_I * c_M, h_O, w_O)`.
+            Output variable. Its shape is :math:`(n, c_I * c_M, h_O, w_O)`.
 
     Like ``Convolution2D``, ``DepthwiseConvolution2D`` function computes
     correlations between filters and patches of size :math:`(k_H, k_W)` in
     ``x``.
-    But unlike ``Convolution2D``, ``DepthwiseConvolution2D`` not adds up
-    between input channels of filters but concatenates.
+    But unlike ``Convolution2D``, ``DepthwiseConvolution2D`` does not add up
+    input channels of filters but concatenates them.
     For that reason, the shape of outputs of depthwise convolution are
-    :math:`(n, c_I * c_M, h_O, w_O)`, :math:`c_M` called channel_multiplier.
+    :math:`(n, c_I * c_M, h_O, w_O)`, :math:`c_M` is called channel_multiplier.
 
-    :math:`(h_O, w_O)` is determined by the equivalent equation with
+    :math:`(h_O, w_O)` is determined by the equivalent equation of
     ``Convolution2D``.
 
     If the bias vector is given, then it is added to all spatial locations of
@@ -168,9 +168,9 @@ def depthwise_convolution_2d(x, W, b=None, stride=1, pad=0):
 
     .. admonition:: Example
 
-        >>> x = np.random.uniform(0, 1, (2, 3, 4, 7)).astype('f')
-        >>> W = np.random.uniform(0, 1, (2, 3, 3, 3)).astype('f')
-        >>> b = np.random.uniform(0, 1, (6,)).astype('f')
+        >>> x = np.random.uniform(0, 1, (2, 3, 4, 7))
+        >>> W = np.random.uniform(0, 1, (2, 3, 3, 3))
+        >>> b = np.random.uniform(0, 1, (6,))
         >>> y = F.depthwise_convolution_2d(x, W, b)
         >>> y.shape
         (2, 6, 2, 5)
