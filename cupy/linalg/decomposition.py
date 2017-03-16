@@ -108,7 +108,7 @@ def qr(a, mode='reduced'):
     x = a.transpose().astype(dtype, copy=True)
     mn = min(m, n)
     handle = device.get_cusolver_handle()
-    devInfo = cupy.empty(1, dtype=numpy.int32)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
     # compute working space of geqrf and ormqr, and solve R
     if x.dtype.char == 'f':
         buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, n)
@@ -116,15 +116,15 @@ def qr(a, mode='reduced'):
         tau = cupy.empty(mn, dtype=numpy.float32)
         cusolver.sgeqrf(
             handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, devInfo.data.ptr)
+            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     else:  # a.dtype.char == 'd'
         buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         tau = cupy.empty(mn, dtype=numpy.float64)
         cusolver.dgeqrf(
             handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, devInfo.data.ptr)
-    status = int(devInfo[0])
+            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
+    status = int(dev_info[0])
     if status < 0:
         raise linalg.LinAlgError(
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
@@ -157,14 +157,14 @@ def qr(a, mode='reduced'):
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         cusolver.sorgqr(
             handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, devInfo.data.ptr)
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
     else:
         buffersize = cusolver.dorgqr_bufferSize(
             handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         cusolver.dorgqr(
             handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, devInfo.data.ptr)
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
 
     q = q[:mc].transpose().astype(dtype, copy=True)
     r = x[:, :mc].transpose().astype(dtype, copy=True)
