@@ -4,7 +4,6 @@ from __future__ import division
 import ctypes
 import sys
 
-import copy
 import numpy
 import six
 
@@ -1102,7 +1101,7 @@ cdef class ndarray:
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
-            slices = copy.copy(slices)
+            slices = list(slices)  # copy list
             single_integer_array_indexing = True
             for s in slices:
                 if not isinstance(s, int):
