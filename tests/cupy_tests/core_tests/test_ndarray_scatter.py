@@ -97,6 +97,16 @@ from cupy import testing
      'value': 1},
     {'shape': (2, 3, 4), 'slices': numpy.array([[]], dtype=numpy.bool),
      'value': numpy.random.uniform(size=(4,))},
+    # list indexes
+    {'shape': (2, 3, 4), 'slices': [1], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [1, 1],
+     'value': numpy.arange(2 * 3 * 4).reshape(2, 3, 4)},
+    {'shape': (2, 3, 4), 'slices': [[1]], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [[1, 1]], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [[1], [1]], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [[1, 1], 1], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [[1], slice(1, 2)], 'value': 1},
+    {'shape': (2, 3, 4), 'slices': [[[1]], slice(1, 2)], 'value': 1},
 )
 @testing.gpu
 class TestScatterAddParametrized(unittest.TestCase):
