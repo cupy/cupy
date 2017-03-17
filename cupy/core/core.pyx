@@ -1145,8 +1145,6 @@ cdef class ndarray:
                 # handle the case when s is an empty list
                 if is_list and s.size == 0:
                     s = s.astype(numpy.int32)
-                    if s.ndim > 1:
-                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
