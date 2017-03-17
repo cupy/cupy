@@ -90,7 +90,10 @@ cpdef list _preprocess_args(args):
 
     for arg in args:
         if type(arg) in _python_scalar_type_set:
-            arg = _python_type_to_numpy_type[type(arg)](arg)
+            if numpy.array(arg).dtype == numpy.int32:
+                arg = numpy.int32(arg)
+            else:
+                arg = _python_type_to_numpy_type[type(arg)](arg)
         elif type(arg) in _numpy_scalar_type_set:
             pass
         elif isinstance(arg, ndarray):
