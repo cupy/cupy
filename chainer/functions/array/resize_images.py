@@ -124,7 +124,8 @@ def resize_images(x, output_shape):
     Args:
         x (~chainer.Variable):  Input variable of shape :math:`(n, c_I, h, w)`.
         output_shape (tuple): This is a tuple of length 2 whose values are
-            :obj:`(h_O, w_O)`.
+            :obj:`(h_O, w_O)`. Note that the order of height and width is
+            opposite of the one in OpenCV.
 
     Returns:
         ~chainer.Variable: Resized image whose shape is \
