@@ -17,7 +17,7 @@ class ResizeImages(function.Function):
 
         x_type = in_types[0]
         type_check.expect(
-            x_type.dtype.kind == 'f',
+            x_type.dtype.char == 'f',
             x_type.ndim == 4
         )
 
