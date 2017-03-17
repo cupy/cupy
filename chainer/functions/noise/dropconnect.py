@@ -102,7 +102,7 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
 
     Notice:
     This implementation cannot be used for reproduction of the paper.
-    There is a differences between the current implementation and the
+    There is a difference between the current implementation and the
     original version dropconnect.
     The original version uses sampling with gaussian distribution before
     passing activation function, the current implementation averages
