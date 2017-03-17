@@ -31,18 +31,17 @@ def cholesky(a):
     _assert_rank2(a)
     _assert_nd_squareness(a)
 
-    ret_dtype = a.dtype.char
     # Cast to float32 or float64
-    if ret_dtype == 'f' or ret_dtype == 'd':
-        dtype = ret_dtype
+    if a.dtype.char == 'f' or a.dtype.char == 'd':
+        dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
+        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     x = a.astype(dtype, copy=True)
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-    if x.dtype.char == 'f':
+    if a.dtype.char == 'f':
         buffersize = cusolver.spotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
