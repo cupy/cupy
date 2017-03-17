@@ -315,8 +315,8 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
      'indexes': (1, slice(None), [[2, 0], [3, 1]]),
      'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [1], 'value': numpy.arange(3 * 4).reshape(3, 4)},
-
+    {'shape': (2, 3, 4), 'indexes': [1],
+     'value': numpy.arange(3 * 4).reshape(3, 4)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
