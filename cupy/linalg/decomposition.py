@@ -41,14 +41,14 @@ def cholesky(a):
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-    if x.dtype.char == 'f':
+    if dtype == 'f':
         buffersize = cusolver.spotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         cusolver.spotrf(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:  # x.dtype.char == 'd'
+    else:  # dtype == 'd'
         buffersize = cusolver.dpotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
