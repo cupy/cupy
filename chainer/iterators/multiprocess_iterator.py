@@ -22,6 +22,9 @@ class MultiprocessIterator(iterator.Iterator):
     Note that this iterator effectively prefetches the examples for the next
     batch asynchronously after the current batch is returned.
 
+    This iterator saves ``-1`` instead of ``None`` in snapshots since some
+    serializers do not support ``None``.
+
     Args:
         dataset (~chainer.dataset.Dataset): Dataset to iterate.
         batch_size (int): Number of examples within each batch.
@@ -62,6 +65,7 @@ class MultiprocessIterator(iterator.Iterator):
 
         self._finalized = None
 
+        # use -1 instead of None internally.
         self._previous_epoch_detail = -1.
 
     def __del__(self):

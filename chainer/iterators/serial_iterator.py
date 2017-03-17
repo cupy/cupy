@@ -19,6 +19,9 @@ class SerialIterator(iterator.Iterator):
     order of examples has an important meaning and the updater depends on the
     original order, this option should be set to ``False``.
 
+    This iterator saves ``-1`` instead of ``None`` in snapshots since some
+    serializers do not support ``None``.
+
     Args:
         dataset: Dataset to iterate.
         batch_size (int): Number of examples within each batch.
@@ -43,6 +46,7 @@ class SerialIterator(iterator.Iterator):
         self.epoch = 0
         self.is_new_epoch = False
 
+        # use -1 instead of None internally.
         self._previous_epoch_detail = -1.
 
     def __next__(self):
