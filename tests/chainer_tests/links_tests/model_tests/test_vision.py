@@ -3,9 +3,9 @@ import unittest
 import numpy
 
 from chainer import cuda
+from chainer.links.model.vision import googlenet
 from chainer.links.model.vision import resnet
 from chainer.links.model.vision import vgg
-from chainer.links.model.vision import googlenet
 from chainer import testing
 from chainer.testing import attr
 from chainer.variable import Variable

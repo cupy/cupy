@@ -17,11 +17,11 @@ from chainer.functions.activation.relu import relu
 from chainer.functions.activation.softmax import softmax
 from chainer.functions.array.reshape import reshape
 from chainer.functions.math.sum import sum as sum_function
-from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
-from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
+from chainer.functions.noise.dropout import dropout
 from chainer.functions.normalization.local_response_normalization import (
     local_response_normalization)
-from chainer.functions.noise.dropout import dropout
+from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
+from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
 from chainer.initializers import uniform
 from chainer import link
@@ -370,7 +370,7 @@ def _max_pooling_2d(x):
 
 
 def _local_response_normalization(x):
-    return local_response_normalization(x, n=5, k=1, alpha=1e-4/5)
+    return local_response_normalization(x, n=5, k=1, alpha=1e-4 / 5)
 
 
 def _average_pooling_2d_k5(x):
