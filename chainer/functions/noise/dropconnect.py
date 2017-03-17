@@ -43,7 +43,8 @@ class Dropconnect(function.Function):
     def forward(self, inputs):
         scale = inputs[1].dtype.type(1. / (1 - self.ratio))
         xp = cuda.get_array_module(*inputs)
-        mask_shape = (inputs[0].shape[0], *inputs[1].shape)
+        mask_shape = (inputs[0].shape[0], inputs[1].shape[0],
+                      inputs[1].shape[1])
         if self.mask is None:
             if xp == numpy:
                 self.mask = xp.random.rand(*mask_shape) >= self.ratio
@@ -116,7 +117,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
         b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
         ratio (float):
             Dropconnect ratio.
-            If ``mask`` is not ``None``, this value is ignored.
         train (bool):
             If ``True``, executes dropconnect.
             Otherwise, dropconnect function works as a linear function.
