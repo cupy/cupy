@@ -4,6 +4,7 @@ from __future__ import division
 import ctypes
 import sys
 
+import copy
 import numpy
 import six
 
@@ -1098,10 +1099,18 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if not isinstance(slices, tuple):
-            slices = [slices]
-        else:
+        if isinstance(slices, tuple):
             slices = list(slices)
+        elif isinstance(slices, list):
+            slices = copy.copy(slices)
+            single_integer_array_indexing = True
+            for s in slices:
+                if not isinstance(s, int):
+                    single_integer_array_indexing = False
+            if single_integer_array_indexing:
+                slices = [slices]
+        else:
+            slices = [slices]
 
         # Expand ellipsis into empty slices
         ellipsis = -1
