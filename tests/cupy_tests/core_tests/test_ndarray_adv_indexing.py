@@ -75,6 +75,7 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
     {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
     {'shape': (2, 3, 4), 'indexes': ([], [])},
+    {'shape': (2, 3, 4), 'indexes': ([[]],)},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
