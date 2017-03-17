@@ -253,6 +253,14 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool),
      'value': numpy.random.uniform(size=(4,))},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
@@ -306,6 +314,9 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': (1, slice(None), [[2, 0], [3, 1]]),
      'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [1], 'value': numpy.arange(3 * 4).reshape(3, 4)},
+
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
