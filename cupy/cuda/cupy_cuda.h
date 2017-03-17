@@ -24,9 +24,7 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
-#ifndef _WIN32
 #include <nvToolsExt.h>
-#endif
 
 extern "C" {
 

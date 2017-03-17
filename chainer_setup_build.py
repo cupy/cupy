@@ -80,9 +80,8 @@ MODULES = [
 
 if sys.platform == 'win32':
     mod_cuda = MODULES[0]
-    mod_cuda['file'].remove('cupy.cuda.nvtx')
-    mod_cuda['include'].remove('nvToolsExt.h')
     mod_cuda['libraries'].remove('nvToolsExt')
+    mod_cuda['libraries'].append('nvToolsExt64_1')
 
 
 def check_readthedocs_environment():
