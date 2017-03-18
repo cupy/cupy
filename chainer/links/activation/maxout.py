@@ -34,7 +34,8 @@ class Maxout(link.Chain):
         pool_size (int): Number of channels.
         wscale (float): Scaling factor of the weight matrix.
         initialW (3-D array or None): Initial weight value.
-            If ``None``, then this function uses ``wscale`` to initialize.
+            If ``None``, then this function uses scaled Gaussian ditribution
+            scaled by ``w_scale`` to initialize weight.
         initial_bias (2-D array, float or None): Initial bias value.
             If it is float, initial bias is filled with this value.
             If ``None``, bias is omitted.
