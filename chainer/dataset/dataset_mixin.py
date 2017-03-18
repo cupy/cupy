@@ -1,5 +1,3 @@
-import array
-
 import numpy
 import six
 
