@@ -1,3 +1,6 @@
+import six
+
+
 class DatasetMixin(object):
 
     """Default implementation of dataset indexing.
@@ -15,18 +18,18 @@ class DatasetMixin(object):
     def __getitem__(self, index):
         """Returns an example or a sequence of examples.
 
-        It implements the standard Python indexing. It uses the
-        :meth:`get_example` method by default, but it may be overridden by the
-        implementation to, for example, improve the slicing performance.
+        It implements the standard Python indexing and numpy like advanced
+        indexing. It uses the :meth:`get_example` method by default, but it may
+        be overridden by the implementation to, for example, improve the
+        slicing performance.
 
         """
         if isinstance(index, slice):
             current, stop, step = index.indices(len(self))
-            ret = []
-            while current < stop and step > 0 or current > stop and step < 0:
-                ret.append(self.get_example(current))
-                current += step
-            return ret
+            return [self.get_example(i) for i in
+                    six.moves.range(current, stop, step)]
+        elif isinstance(index, list):
+            return [self.get_example(i) for i in index]
         else:
             return self.get_example(index)
 

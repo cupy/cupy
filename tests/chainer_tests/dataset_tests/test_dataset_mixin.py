@@ -1,4 +1,5 @@
 import unittest
+import numpy
 
 from chainer import dataset
 from chainer import testing
@@ -52,6 +53,26 @@ class TestDatasetMixin(unittest.TestCase):
         self.assertEqual(ds[1:4:2], ds.values[1:4:2])
         self.assertEqual(ds[::-2], ds.values[::-2])
         self.assertEqual(ds[:10], ds.values[:10])
+
+    def test_advanced_indexing(self):
+        ds = self.ds
+        self.assertEqual(ds[[1, 2, 3]], [ds.values[1], ds.values[2], ds.values[3]])
+        self.assertEqual(ds[[1, 2, 3]], ds[1:4])
+        self.assertEqual(ds[[0, 4, 3]], [ds.values[0], ds.values[4], ds.values[3]])
+        self.assertEqual(ds[[4]], [ds.values[4]])
+        self.assertEqual(ds[[4, 1, 3, 2, 2, 1]],
+                         [ds.values[4], ds.values[1], ds.values[3], ds.values[2], ds.values[2], ds.values[1]])
+        self.assertEqual(ds[[0, -2, -1]], [ds.values[0], ds.values[-2], ds.values[-1]])
+
+    def test_large_dataset(self):
+        # Check performance of __get_item__ with large size of dataset
+        ds = SimpleDataset(list(numpy.arange(1000000)))
+        self.assertEqual(ds[3453], ds.values[3453])
+        self.assertEqual(ds[:], ds.values)
+        self.assertEqual(ds[2:987654:7], ds.values[2:987654:7])
+        self.assertEqual(ds[::-3], ds.values[::-3])
+        for i in range(100):
+            self.assertEqual(ds[i*4096:(i+1)*4096], ds.values[i*4096:(i+1)*4096])
 
 
 testing.run_module(__name__, __file__)
