@@ -63,6 +63,8 @@ class TestDatasetMixin(unittest.TestCase):
         self.assertEqual(ds[[4, 1, 3, 2, 2, 1]],
                          [ds.values[4], ds.values[1], ds.values[3], ds.values[2], ds.values[2], ds.values[1]])
         self.assertEqual(ds[[0, -2, -1]], [ds.values[0], ds.values[-2], ds.values[-1]])
+        # test ndarray
+        self.assertEqual(ds[numpy.asarray([1, 2, 3])], ds[1:4])
 
     def test_large_dataset(self):
         # Check performance of __get_item__ with large size of dataset

@@ -1,3 +1,6 @@
+import array
+
+import numpy
 import six
 
 
@@ -28,7 +31,7 @@ class DatasetMixin(object):
             current, stop, step = index.indices(len(self))
             return [self.get_example(i) for i in
                     six.moves.range(current, stop, step)]
-        elif isinstance(index, list):
+        elif isinstance(index, list) or isinstance(index, numpy.ndarray):
             return [self.get_example(i) for i in index]
         else:
             return self.get_example(index)
