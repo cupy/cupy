@@ -6,6 +6,8 @@ import cupy
 from cupy import testing
 
 
+@unittest.skipUnless(
+    cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestEigenvalue(unittest.TestCase):
 

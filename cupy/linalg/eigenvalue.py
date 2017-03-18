@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import cuda
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
@@ -62,6 +63,8 @@ def _syevd(a, UPLO, with_eigen_vector):
 
 
 def eigh(a, UPLO='L'):
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, True)
 
 
@@ -69,4 +72,6 @@ def eigh(a, UPLO='L'):
 
 
 def eigvals(a, UPLO='L'):
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, False)[0]
