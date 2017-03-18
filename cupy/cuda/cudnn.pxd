@@ -43,6 +43,7 @@ cdef extern from *:
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
 
+    ctypedef void* ActivationDescriptor 'cudnnActivationDescriptor_t'
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
     ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
@@ -186,6 +187,10 @@ cpdef setFilter4dDescriptor_v3(
     size_t filterDesc, int dataType, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor_v3(
     size_t filterDesc, int dataType, int nbDims, size_t filterDimA)
+cpdef setFilter4dDescriptor_v4(
+    size_t filterDesc, int dataType, int format, int k, int c, int h, int w)
+cpdef setFilterNdDescriptor_v4(
+    size_t filterDesc, int dataType, int format, int nbDims, size_t filterDimA)
 cpdef destroyFilterDescriptor(size_t filterDesc)
 
 
@@ -194,9 +199,12 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 ###############################################################################
 
 cpdef size_t createConvolutionDescriptor() except *
-cpdef setConvolution2dDescriptor(
+cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
     int upscaley, int mode)
+cpdef setConvolution2dDescriptor_v5(
+    size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
+    int upscaley, int mode, size_t computeType)
 cpdef setConvolutionNdDescriptor_v2(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t upscaleA, int mode)
@@ -330,10 +338,15 @@ cpdef batchNormalizationBackward(
     size_t dBnScaleResult, size_t dBnBiasResult,
     double epsilon, size_t savedMean, size_t savedInvVariance)
 
+
 ###############################################################################
 # Activation
 ###############################################################################
 
+cpdef size_t createActivationDescriptor() except *
+cpdef setActivationDescriptor(
+    size_t activationDesc, int mode, int reluNanOpt, double reluCeiling)
+cpdef destroyActivationDescriptor(size_t activationDesc)
 cpdef softmaxForward(
     size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
     size_t srcData, size_t beta, size_t dstDesc, size_t dstData)

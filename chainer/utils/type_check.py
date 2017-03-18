@@ -486,4 +486,17 @@ def expect(*bool_exprs):
         assert isinstance(expr, Testable)
         expr.expect()
 
+
+def same_types(*arrays):
+    are_numpy_arrays = map(lambda x: issubclass(type(x), numpy.ndarray),
+                           arrays)
+    all_numpy_arrays = all(are_numpy_arrays)
+    if cuda.available:
+        are_cupy_arrays = map(lambda x: issubclass(type(x), cuda.cupy.ndarray),
+                              arrays)
+        return all_numpy_arrays or all(are_cupy_arrays)
+    else:
+        return all_numpy_arrays
+
+
 prod = Variable(numpy.prod, 'prod')

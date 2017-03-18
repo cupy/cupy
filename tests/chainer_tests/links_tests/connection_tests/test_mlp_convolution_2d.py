@@ -82,11 +82,13 @@ class TestMLPConvolution2DCudnnCall(unittest.TestCase):
         y = self.forward()
         print(y.data.shape)
         y.grad = self.gy
-        v2 = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
-        v3 = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
-        with mock.patch(v2) as func_v2,  mock.patch(v3) as func_v3:
+        if cuda.cudnn.cudnn.getVersion() >= 3000:
+            patch = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        else:
+            patch = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        with mock.patch(patch) as func:
             y.backward()
-            self.assertEqual(func_v2.called or func_v3.called, self.use_cudnn)
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 @testing.parameterize(
