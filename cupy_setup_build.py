@@ -96,6 +96,7 @@ MODULES = [
         ],
         'libraries': [
             'cusolver',
+            'gomp',
         ],
         'check_method': build.check_cusolver_version,
     },
