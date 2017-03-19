@@ -12,20 +12,20 @@ try:
         libcudnn.CUDNN_ACTIVATION_RELU,
         libcudnn.CUDNN_ACTIVATION_TANH,
     ]
+    import cupy.cudnn
 except ImportError:
     cudnn_enabled = False
     modes = []
-import cupy.cudnn
 from cupy import testing
 
 
-@unittest.skipUnless(
-    cudnn_enabled and libcudnn.getVersion() >= 3000,
-    'cuDNN >= 3.0 is supported')
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
     'mode': modes,
 }))
+@unittest.skipUnless(
+    cudnn_enabled and libcudnn.getVersion() >= 3000,
+    'cuDNN >= 3.0 is supported')
 class TestCudnnActivation(unittest.TestCase):
 
     def setUp(self):
