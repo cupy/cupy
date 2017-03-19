@@ -13,22 +13,6 @@ class PrintHook(function.FunctionHook):
     ``forward`` and ``backward`` methods involved in the hooked functions
     at preprocessing time (that is, just before each method is called).
 
-    The basic usage is to use it with ``with`` statement.
-
-    >>> import chainer, chainer.functions as F, chainer.links as L
-    ... from chainer import function_hooks
-    ... l = L.Linear(10, 10)
-    ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
-    ... with function_hooks.PrintHook():
-    ...     y = l(x)
-    ...     z = F.sum(y)
-    ...     z.backward()
-
-    In this example, ``PrintHook`` shows the debug information of
-    forward propagation of ``LinearFunction`` (which is implicitly
-    called by ``l``) and ``Sum`` (called by ``F.sum``)
-    and backward propagation of ``z`` and ``y``.
-
     Unlike simple "debug print" technique, where users insert print functions
     at every function to be inspected, we can show the information
     of all functions involved with single ``with`` statement.
@@ -43,6 +27,24 @@ class PrintHook(function.FunctionHook):
         file: Output file_like object that that redirect to.
         flush: If ``True``, this hook forcibly flushes the text stream
             at the end of preprocessing.
+
+    .. admonition:: Example
+
+        The basic usage is to use it with ``with`` statement.
+
+        >>> from chainer import function_hooks
+        >>> l = L.Linear(10, 10)
+        >>> x = chainer.Variable(np.zeros((1, 10), 'f'))
+        >>> with chainer.function_hooks.PrintHook():
+        ...     y = l(x)
+        ...     z = F.sum(y)
+        ...     z.backward()
+
+        In this example, ``PrintHook`` shows the debug information of
+        forward propagation of ``LinearFunction`` (which is implicitly
+        called by ``l``) and ``Sum`` (called by ``F.sum``)
+        and backward propagation of ``z`` and ``y``.
+
     """
 
     name = 'PrintHook'
