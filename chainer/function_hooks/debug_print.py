@@ -38,7 +38,7 @@ class PrintHook(function.FunctionHook):
         >>> with chainer.function_hooks.PrintHook():
         ...     y = l(x)
         ...     z = F.sum(y)
-        ...     z.backward()
+        ...     z.backward() # doctest:+SKIP
 
         In this example, ``PrintHook`` shows the debug information of
         forward propagation of ``LinearFunction`` (which is implicitly
