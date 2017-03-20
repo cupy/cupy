@@ -75,12 +75,12 @@ class ComputationalGraph(object):
 
     .. note::
 
-        To make the same graph as the previous versions, specify
-        `variable_style=None`, `function_style=None`, and `show_name=False`
-        explicitly. The previous versions than `v1.21.0` outputs the same
-        results as when it takes these arguments, but after `v1.22.0`, the
-        output has the richest representation as default, namely, styles are
-        set and names are shown.
+        The default behavior of :class:`~chainer.ComputationalGraph` has been
+        changed from v1.23.0, so that it ouputs the richest representation of
+        a graph as default, namely, styles are set and names of functions and
+        variables are shown. To reproduce the same result as previous versions
+        (<= v1.22.0), please specify `variable_style=None`,
+        `function_style=None`, and `show_name=False` explicitly.
 
     """
 
@@ -239,12 +239,12 @@ def build_computational_graph(
 
     .. note::
 
-        To make the same graph as the previous versions, specify
-        `variable_style=None`, `function_style=None`, and `show_name=False`
-        explicitly. The previous versions than `v1.21.0` outputs the same
-        results as when it takes these arguments, but after `v1.22.0`, the
-        output has the richest representation as default, namely, styles are
-        set and names are shown.
+        The default behavior of :class:`~chainer.ComputationalGraph` has been
+        changed from v1.23.0, so that it ouputs the richest representation of
+        a graph as default, namely, styles are set and names of functions and
+        variables are shown. To reproduce the same result as previous versions
+        (<= v1.22.0), please specify `variable_style=None`,
+        `function_style=None`, and `show_name=False` explicitly.
 
     """
     if not remove_split:
