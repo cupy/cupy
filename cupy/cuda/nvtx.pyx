@@ -117,11 +117,11 @@ cpdef void RangePushC(str message, uint32_t color=0) except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
 
     Args:
         message (str): Name of a range.
-        color (uint32): Color for a range.
+        color (uint32): ARGB color for a range.
     """
     cdef bytes b_message = message.encode()
     if NVTX_VERSION != 1 and NVTX_VERSION != 2:
@@ -146,7 +146,7 @@ cpdef void RangePush(str message, int id_color=-1) except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
 
     Args:
         message (str): Name of a range.
@@ -167,6 +167,6 @@ cpdef void RangePop() except *:
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
-    pair of RangePush*() to RangePop() calls.
+    pair of ``RangePush*()`` to ``RangePop()`` calls.
     """
     nvtxRangePop()

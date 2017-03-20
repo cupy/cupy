@@ -1131,7 +1131,13 @@ cdef class ndarray:
         mask_exists = False
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
+                is_list = isinstance(s, list)
                 s = array(s)
+                # handle the case when s is an empty list
+                if is_list and s.size == 0:
+                    s = s.astype(numpy.int32)
+                    if s.ndim > 1:
+                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
@@ -1661,7 +1667,7 @@ __device__ min_max_st<T> my_argmax_float(
 '''
 
 
-cdef _amin = create_reduction_func(
+_amin = create_reduction_func(
     'cupy_min',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1673,7 +1679,7 @@ cdef _amin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _amax = create_reduction_func(
+_amax = create_reduction_func(
     'cupy_max',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1742,6 +1748,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
         ndim = a._shape.size()
         if ndmin > ndim:
+            if a is obj:
+                # When `copy` is False, `a` is same as `obj`.
+                a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
         return a
     else:
@@ -2396,6 +2405,14 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
     cdef int n_true
     cdef tuple lshape, rshape, out_shape
 
+    lshape = a.shape[:axis]
+    rshape = a.shape[axis + mask.ndim:]
+
+    if mask.size == 0:
+        masked_shape = lshape + (0,) + rshape
+        mask_br = mask._reshape(masked_shape)
+        return mask_br, mask_br, masked_shape
+
     # Get number of True in the mask to determine the shape of the array
     # after masking.
     if mask.size <= 2 ** 31 - 1:
@@ -2404,8 +2421,6 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, int axis):
         mask_type = numpy.int64
     mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
     n_true = int(mask_scanned[-1])
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask.ndim:]
     masked_shape = lshape + (n_true,) + rshape
 
     # When mask covers the entire array, broadcasting is not necessary.
@@ -2432,6 +2447,8 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
     out = ndarray(masked_shape, dtype=a.dtype)
+    if out.size == 0:
+        return out
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
@@ -2563,6 +2580,8 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
+    if internal.prod(masked_shape) == 0:
+        return
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
@@ -2618,7 +2637,13 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     mask_exists = False
     for i, s in enumerate(slices):
         if isinstance(s, (list, numpy.ndarray)):
+            is_list = isinstance(s, list)
             s = array(s)
+            # handle the case when s is an empty list
+            if is_list and s.size == 0:
+                s = s.astype(numpy.int32)
+                if s.ndim > 1:
+                    s = s[0]
             slices[i] = s
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):
@@ -3293,7 +3318,7 @@ not_equal = create_comparison(
     ''')
 
 
-cdef _all = create_reduction_func(
+_all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3301,7 +3326,7 @@ cdef _all = create_reduction_func(
     'true', '')
 
 
-cdef _any = create_reduction_func(
+_any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3313,7 +3338,7 @@ cdef _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-cdef _sum = create_reduction_func(
+_sum = create_reduction_func(
     'cupy_sum',
     ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3322,7 +3347,7 @@ cdef _sum = create_reduction_func(
     ('in0', 'a + b', 'out0 = a', None), 0)
 
 
-cdef _prod = create_reduction_func(
+_prod = create_reduction_func(
     'cupy_prod',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3477,7 +3502,7 @@ sqrt = create_ufunc(
     'out0 = sqrt(in0)')
 
 
-cdef _clip = create_ufunc(
+_clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),

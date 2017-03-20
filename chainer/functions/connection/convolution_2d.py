@@ -10,7 +10,7 @@ if cuda.cudnn_enabled:
     libcudnn = cuda.cudnn.cudnn
     _cudnn_version = libcudnn.getVersion()
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
-    if _cudnn_version >= 4000:
+    if _cudnn_version >= 3000:
         _bwd_filter_pref = \
             libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
         _bwd_data_pref = \
@@ -183,7 +183,7 @@ class Convolution2DFunction(function.Function):
             zero = numpy.array(0, dtype=oz_dtype).ctypes
             gx = cuda.cupy.empty_like(x)
 
-            if _cudnn_version >= 4000:
+            if _cudnn_version >= 3000:
                 workspace_size = cuda.get_max_workspace_size()
                 workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
@@ -217,7 +217,7 @@ class Convolution2DFunction(function.Function):
             else:
                 if self.deterministic:
                     raise ValueError("'deterministic' option not available "
-                                     "for cuDNN versions < v4")
+                                     "for cuDNN versions < v3")
                 libcudnn.convolutionBackwardFilter_v2(
                     handle, one.data, x_desc.value, x.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
@@ -287,7 +287,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             non-deterministic when it uses cuDNN.
             If this option is ``True``, then it forces cuDNN to use
             a deterministic algorithm. This option is only available for
-            cuDNN version >= v4.
+            cuDNN version >= v3.
 
 
     Returns:
