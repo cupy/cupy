@@ -63,7 +63,7 @@ class DepthwiseConvolution2D(function.Function):
         y = xp.matmul(c_, w_).astype(x.dtype, copy=False)
 
         # (C, B*IY*IX, D) -> (B, C*D, IY, IX)
-        y = y.reshape((C, B, IY, IX, D)).transpose(1, 0, 4, 2, 3) \
+        y = y.reshape((C, B, IY * IX, D)).transpose(1, 0, 3, 2) \
             .reshape((B, C * D, IY, IX))
 
         if b is not None:
@@ -81,6 +81,7 @@ class DepthwiseConvolution2D(function.Function):
         B, C, KY, KX, IY, IX = self.col.shape
         D = W.shape[0]
 
+        # (B, C*D, IY, IX) -> (C, D, B*IY*IX, D)
         gy_ = gy.reshape((B, C, D, IY * IX)).transpose(1, 2, 0, 3) \
             .reshape((C, D, B * IY * IX))
         c_ = self.col.transpose(1, 0, 4, 5, 2, 3) \
