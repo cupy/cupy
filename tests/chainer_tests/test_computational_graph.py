@@ -244,4 +244,5 @@ class TestGraphBuilderRemoveVariable(unittest.TestCase):
         self.assertNotIn(str(id(self.x1)), self.g.dump())
         self.assertNotIn(str(id(self.x2)), self.g.dump())
 
+
 testing.run_module(__name__, __file__)
