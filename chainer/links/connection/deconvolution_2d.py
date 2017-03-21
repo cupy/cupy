@@ -37,7 +37,7 @@ class Deconvolution2D(link.Link):
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
         initialW (4-D array): Initial weight value. If ``None``, then this
-            function uses Gaussian ditribution scaled by ``w_scale`` to
+            function uses Gaussian distribution scaled by ``w_scale`` to
             initialize weight.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.

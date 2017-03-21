@@ -29,7 +29,7 @@ class Linear(link.Link):
         bias (float): Initial bias value.
         nobias (bool): If ``True``, then this function does not use the bias.
         initialW (2-D array): Initial weight value. If ``None``, then this
-            function uses Gaussian ditribution scaled by ``w_scale`` to
+            function uses Gaussian distribution scaled by ``w_scale`` to
             initialize weight.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.

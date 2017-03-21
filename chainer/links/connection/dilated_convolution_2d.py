@@ -31,7 +31,7 @@ class DilatedConvolution2D(link.Link):
         nobias (bool): If ``True``, then this link does not use the bias term.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
-            function uses scaled Gaussian ditribution to initialize weight.
+            function uses scaled Gaussian distribution to initialize weight.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
