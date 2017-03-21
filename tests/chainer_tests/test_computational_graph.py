@@ -230,4 +230,18 @@ class TestGraphBuilderRankdir(unittest.TestCase):
                           c.build_computational_graph, (self.y,), rankdir='TL')
 
 
+class TestGraphBuilderRemoveVariable(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype('f'))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype('f'))
+        self.y = self.x1 + self.x2
+        self.f = self.y.creator
+        self.g = c.build_computational_graph((self.y,), remove_variable=True)
+
+    def test_remove_variable(self):
+        self.assertIn(self.f.label, self.g.dump())
+        self.assertNotIn(str(id(self.x1)), self.g.dump())
+        self.assertNotIn(str(id(self.x2)), self.g.dump())
+
 testing.run_module(__name__, __file__)
