@@ -1,4 +1,3 @@
-from libc cimport stdint
 from libcpp cimport vector
 from cupy.cuda cimport memory
 

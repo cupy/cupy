@@ -17,10 +17,9 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
+from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
-
-from cupy.cuda.function cimport CPointer
 
 DEF MAX_NDIM = 25
 
@@ -1466,7 +1465,7 @@ cdef class ndarray:
         else:
             self._update_f_contiguity()
 
-    cdef CPointer get_pointer(self):
+    cdef function.CPointer get_pointer(self):
         return CArray(self)
 
 
