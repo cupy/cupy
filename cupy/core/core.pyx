@@ -2608,11 +2608,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
         slices = list(slices)
     elif isinstance(slices, list):
         slices = list(slices)  # copy list
-        single_integer_array_indexing = True
-        for s in slices:
-            if not isinstance(s, int):
-                single_integer_array_indexing = False
-        if single_integer_array_indexing:
+        if all([isinstance(s, int) for s in slices]):
             slices = [slices]
     else:
         slices = [slices]
