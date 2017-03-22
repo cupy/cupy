@@ -285,6 +285,7 @@ class ResNet50Layers(ResNetLayers):
             used by ``__call__`` and ``extract`` methods.
 
     """
+
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-50-model.caffemodel'
@@ -332,6 +333,7 @@ class ResNet101Layers(ResNetLayers):
             used by ``__call__`` and ``extract`` methods.
 
     """
+
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-101-model.caffemodel'
@@ -379,6 +381,7 @@ class ResNet152Layers(ResNetLayers):
             used by ``__call__`` and ``extract`` methods.
 
     """
+
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-152-model.caffemodel'
