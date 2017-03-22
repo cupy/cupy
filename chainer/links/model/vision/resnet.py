@@ -105,7 +105,8 @@ class ResNetLayers(link.Chain):
             fc6=Linear(2048, 1000),
         )
         if pretrained_model and pretrained_model.endswith('.caffemodel'):
-            _retrieve('ResNet-%d-model.npz' % n_layers, pretrained_model, self)
+            _retrieve(n_layers, 'ResNet-%d-model.npz' % n_layers,
+                      pretrained_model, self)
         elif pretrained_model:
             npz.load_npz(pretrained_model, self)
         self.functions = collections.OrderedDict([
@@ -630,22 +631,28 @@ def _transfer_resnet152(src, dst):
     dst.fc6.b.data[:] = src.fc1000.b.data
 
 
-def _make_npz(path_npz, path_caffemodel, model):
+def _make_npz(path_npz, path_caffemodel, model, n_layers):
     print('Now loading caffemodel (usually it may take few minutes)')
     if not os.path.exists(path_caffemodel):
         raise IOError(
             'The pre-trained caffemodel does not exist. Please download it '
             'from \'https://github.com/KaimingHe/deep-residual-networks\', '
             'and place it on {}'.format(path_caffemodel))
-    ResNet50Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+
+    if n_layers == 50:
+        ResNet50Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+    elif n_layers == 101:
+        ResNet101Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+    elif n_layers == 152:
+        ResNet152Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
     npz.load_npz(path_npz, model)
     return model
 
 
-def _retrieve(name_npz, name_caffemodel, model):
+def _retrieve(n_layers, name_npz, name_caffemodel, model):
     root = download.get_dataset_directory('pfnet/chainer/models/')
     path = os.path.join(root, name_npz)
     path_caffemodel = os.path.join(root, name_caffemodel)
     return download.cache_or_load_file(
-        path, lambda path: _make_npz(path, path_caffemodel, model),
+        path, lambda path: _make_npz(path, path_caffemodel, model, n_layers),
         lambda path: npz.load_npz(path, model))
