@@ -104,7 +104,7 @@ class ResNetLayers(link.Chain):
             res5=BuildingBlock(block[3], 1024, 512, 2048, 2, **kwargs),
             fc6=Linear(2048, 1000),
         )
-        if pretraine_model.endswith('.caffemodel'):
+        if pretrained_model.endswith('.caffemodel'):
             _retrieve('ResNet-%d-model.npz' % n_layers, pretrained_model, self)
         elif pretrained_model:
             npz.load_npz(pretrained_model, self)
