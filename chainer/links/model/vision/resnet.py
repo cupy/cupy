@@ -51,8 +51,6 @@ class ResNetLayers(link.Chain):
         <https://arxiv.org/abs/1512.03385>`_
 
     Args:
-        n_layers (int): The number of layers of this model. It should be either
-            50, 101, or 152.
         pretrained_model (str): the destination of the pre-trained
             chainer model serialized as a ``.npz`` file.
             If this argument is specified as ``auto``,
@@ -69,6 +67,8 @@ class ResNetLayers(link.Chain):
             are not initialized by the pre-trained model, but the default
             initializer used in the original paper, i.e.,
             ``chainer.initializers.HeNormal(scale=1.0)``.
+        n_layers (int): The number of layers of this model. It should be either
+            50, 101, or 152.
 
     Attributes:
         available_layers (list of str): The list of available layer names
@@ -76,7 +76,7 @@ class ResNetLayers(link.Chain):
 
     """
 
-    def __init__(self, n_layers, pretrained_model):
+    def __init__(self, pretrained_model, n_layers):
         if pretrained_model:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
@@ -288,7 +288,7 @@ class ResNet50Layers(ResNetLayers):
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-50-model.caffemodel'
-        super(ResNet50Layers, self).__init__(50, pretrained_model)
+        super(ResNet50Layers, self).__init__(pretrained_model, 50)
 
 
 class ResNet101Layers(ResNetLayers):
@@ -335,7 +335,7 @@ class ResNet101Layers(ResNetLayers):
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-101-model.caffemodel'
-        super(ResNet101Layers, self).__init__(101, pretrained_model)
+        super(ResNet101Layers, self).__init__(pretrained_model, 101)
 
 
 class ResNet152Layers(ResNetLayers):
@@ -382,7 +382,7 @@ class ResNet152Layers(ResNetLayers):
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-152-model.caffemodel'
-        super(ResNet152Layers, self).__init__(152, pretrained_model)
+        super(ResNet152Layers, self).__init__(pretrained_model, 152)
 
 
 def prepare(image, size=(224, 224)):
@@ -599,7 +599,6 @@ def _transfer_resnet50(src, dst):
 
 def _transfer_resnet101(src, dst):
     dst.conv1.W.data[:] = src.conv1.W.data
-    dst.conv1.b.data[:] = src.conv1.b.data
     dst.bn1.avg_mean[:] = src.bn_conv1.avg_mean
     dst.bn1.avg_var[:] = src.bn_conv1.avg_var
     dst.bn1.gamma.data[:] = src.scale_conv1.W.data
@@ -607,7 +606,7 @@ def _transfer_resnet101(src, dst):
 
     _transfer_block(src, dst.res2, ['2a', '2b', '2c'])
     _transfer_block(src, dst.res3, ['3a', '3b1', '3b2', '3b3'])
-    _transfer_block(src, dst.res4, ['4a'] + ['4b%d' % i for i in range(1, 24)])
+    _transfer_block(src, dst.res4, ['4a'] + ['4b%d' % i for i in range(1, 23)])
     _transfer_block(src, dst.res5, ['5a', '5b', '5c'])
 
     dst.fc6.W.data[:] = src.fc1000.W.data
@@ -616,7 +615,6 @@ def _transfer_resnet101(src, dst):
 
 def _transfer_resnet152(src, dst):
     dst.conv1.W.data[:] = src.conv1.W.data
-    dst.conv1.b.data[:] = src.conv1.b.data
     dst.bn1.avg_mean[:] = src.bn_conv1.avg_mean
     dst.bn1.avg_var[:] = src.bn_conv1.avg_var
     dst.bn1.gamma.data[:] = src.scale_conv1.W.data
