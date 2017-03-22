@@ -334,7 +334,7 @@ class ResNet101Layers(ResNetLayers):
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-101-model.caffemodel'
-        super(ResNet50Layers, self).__init__(101, pretrained_model)
+        super(ResNet101Layers, self).__init__(101, pretrained_model)
 
 
 class ResNet152Layers(ResNetLayers):
@@ -381,7 +381,7 @@ class ResNet152Layers(ResNetLayers):
     def __init__(self, pretrained_model='auto'):
         if pretrained_model == 'auto':
             pretrained_model = 'ResNet-152-model.caffemodel'
-        super(ResNet50Layers, self).__init__(152, pretrained_model)
+        super(ResNet152Layers, self).__init__(152, pretrained_model)
 
 
 def prepare(image, size=(224, 224)):
