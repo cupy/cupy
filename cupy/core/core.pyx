@@ -1098,10 +1098,14 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if not isinstance(slices, tuple):
-            slices = [slices]
-        else:
+        if isinstance(slices, tuple):
             slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)  # copy list
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
 
         # Expand ellipsis into empty slices
         ellipsis = -1
@@ -1136,8 +1140,6 @@ cdef class ndarray:
                 # handle the case when s is an empty list
                 if is_list and s.size == 0:
                     s = s.astype(numpy.int32)
-                    if s.ndim > 1:
-                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
