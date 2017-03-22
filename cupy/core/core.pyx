@@ -2606,10 +2606,14 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     cdef ndarray v, x, y, a_interm, reduced_idx
     cdef int li, ri
 
-    if not isinstance(slices, tuple):
-        slices = [slices]
-    else:
+    if isinstance(slices, tuple):
         slices = list(slices)
+    elif isinstance(slices, list):
+        slices = list(slices)  # copy list
+        if all([isinstance(s, int) for s in slices]):
+            slices = [slices]
+    else:
+        slices = [slices]
 
     # Expand ellipsis into empty slices
     ellipsis = -1
@@ -2644,8 +2648,6 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             # handle the case when s is an empty list
             if is_list and s.size == 0:
                 s = s.astype(numpy.int32)
-                if s.ndim > 1:
-                    s = s[0]
             slices[i] = s
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):
