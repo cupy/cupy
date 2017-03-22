@@ -640,11 +640,13 @@ def _make_npz(path_npz, path_caffemodel, model, n_layers):
             'and place it on {}'.format(path_caffemodel))
 
     if n_layers == 50:
-        ResNet50Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+        ResNet50Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz, 50)
     elif n_layers == 101:
-        ResNet101Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+        ResNet101Layers.convert_caffemodel_to_npz(
+            path_caffemodel, path_npz, 101)
     elif n_layers == 152:
-        ResNet152Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+        ResNet152Layers.convert_caffemodel_to_npz(
+            path_caffemodel, path_npz, 152)
     npz.load_npz(path_npz, model)
     return model
 
