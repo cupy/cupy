@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import pkg_resources
 import pkgutil
 import unittest
 
@@ -18,6 +19,15 @@ def get_init_doc(klass):
     return None
 
 
+def get_protobuf_version():
+    ws = pkg_resources.WorkingSet()
+    try:
+        ws.require('protobuf<3.0.0')
+        return 2
+    except pkg_resources.VersionConflict:
+        return 3
+
+
 class TestInitDocstring(unittest.TestCase):
 
     def check_init_docstring(self, mod, errors):
@@ -34,11 +44,17 @@ class TestInitDocstring(unittest.TestCase):
                 errors.append((mod, value, init_doc))
 
     def test_init_docstring_empty(self):
+        protobuf_ver = get_protobuf_version()
         errors = []
         root = chainer.__file__
         for _, modname, _ in pkgutil.walk_packages(root):
             if 'chainer' not in modname:
                 # Skip tests
+                continue
+
+            if protobuf_ver != 2 and 'protobuf2':
+                continue
+            if protobuf_ver != 3 and 'protobuf3':
                 continue
 
             try:
