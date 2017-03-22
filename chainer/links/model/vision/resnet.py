@@ -30,147 +30,6 @@ from chainer.utils import imgproc
 from chainer.variable import Variable
 
 
-class ResNet50Layers(ResNetLayers):
-
-    """A pre-trained CNN model with 50 layers provided by MSRA [1].
-
-    When you specify the path of the pre-trained chainer model serialized as
-    a ``.npz`` file in the constructor, this chain model automatically
-    initializes all the parameters with it.
-    This model would be useful when you want to extract a semantic feature
-    vector per image, or fine-tune the model on a different dataset.
-    Note that unlike ``VGG16Layers``, it does not automatically download a
-    pre-trained caffemodel. This caffemodel can be downloaded at
-    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
-
-    If you want to manually convert the pre-trained caffemodel to a chainer
-    model that can be specified in the constructor,
-    please use ``convert_caffemodel_to_npz`` classmethod instead.
-
-    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
-        <https://arxiv.org/abs/1512.03385>`_
-
-    Args:
-        pretrained_model (str): the destination of the pre-trained
-            chainer model serialized as a ``.npz`` file.
-            If this argument is specified as ``auto``,
-            it automatically loads and converts the caffemodel from
-            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-50-model.caffemodel``,
-            where ``$CHAINER_DATASET_ROOT`` is set as
-            ``$HOME/.chainer/dataset`` unless you specify another value
-            by modifying the environment variable. Note that in this case the
-            converted chainer model is stored on the same directory and
-            automatically used from the next time.
-            If this argument is specified as ``None``, all the parameters
-            are not initialized by the pre-trained model, but the default
-            initializer used in the original paper, i.e.,
-            ``chainer.initializers.HeNormal(scale=1.0)``.
-
-    Attributes:
-        available_layers (list of str): The list of available layer names
-            used by ``__call__`` and ``extract`` methods.
-
-    """
-    def __init__(self, pretrained_model='auto'):
-        if pretrained_model == 'auto':
-            pretrained_model = 'ResNet-50-model.caffemodel'
-        super(ResNet50Layers, self).__init__(50, pretrained_model)
-
-
-class ResNet101Layers(ResNetLayers):
-
-    """A pre-trained CNN model with 101 layers provided by MSRA [1].
-
-    When you specify the path of the pre-trained chainer model serialized as
-    a ``.npz`` file in the constructor, this chain model automatically
-    initializes all the parameters with it.
-    This model would be useful when you want to extract a semantic feature
-    vector per image, or fine-tune the model on a different dataset.
-    Note that unlike ``VGG16Layers``, it does not automatically download a
-    pre-trained caffemodel. This caffemodel can be downloaded at
-    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
-
-    If you want to manually convert the pre-trained caffemodel to a chainer
-    model that can be specified in the constructor,
-    please use ``convert_caffemodel_to_npz`` classmethod instead.
-
-    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
-        <https://arxiv.org/abs/1512.03385>`_
-
-    Args:
-        pretrained_model (str): the destination of the pre-trained
-            chainer model serialized as a ``.npz`` file.
-            If this argument is specified as ``auto``,
-            it automatically loads and converts the caffemodel from
-            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-101-model.caffemodel``,
-            where ``$CHAINER_DATASET_ROOT`` is set as
-            ``$HOME/.chainer/dataset`` unless you specify another value
-            by modifying the environment variable. Note that in this case the
-            converted chainer model is stored on the same directory and
-            automatically used from the next time.
-            If this argument is specified as ``None``, all the parameters
-            are not initialized by the pre-trained model, but the default
-            initializer used in the original paper, i.e.,
-            ``chainer.initializers.HeNormal(scale=1.0)``.
-
-    Attributes:
-        available_layers (list of str): The list of available layer names
-            used by ``__call__`` and ``extract`` methods.
-
-    """
-    def __init__(self, pretrained_model='auto'):
-        if pretrained_model == 'auto':
-            pretrained_model = 'ResNet-101-model.caffemodel'
-        super(ResNet50Layers, self).__init__(101, pretrained_model)
-
-
-class ResNet152Layers(ResNetLayers):
-
-    """A pre-trained CNN model with 152 layers provided by MSRA [1].
-
-    When you specify the path of the pre-trained chainer model serialized as
-    a ``.npz`` file in the constructor, this chain model automatically
-    initializes all the parameters with it.
-    This model would be useful when you want to extract a semantic feature
-    vector per image, or fine-tune the model on a different dataset.
-    Note that unlike ``VGG16Layers``, it does not automatically download a
-    pre-trained caffemodel. This caffemodel can be downloaded at
-    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
-
-    If you want to manually convert the pre-trained caffemodel to a chainer
-    model that can be specified in the constructor,
-    please use ``convert_caffemodel_to_npz`` classmethod instead.
-
-    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
-        <https://arxiv.org/abs/1512.03385>`_
-
-    Args:
-        pretrained_model (str): the destination of the pre-trained
-            chainer model serialized as a ``.npz`` file.
-            If this argument is specified as ``auto``,
-            it automatically loads and converts the caffemodel from
-            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-152-model.caffemodel``,
-            where ``$CHAINER_DATASET_ROOT`` is set as
-            ``$HOME/.chainer/dataset`` unless you specify another value
-            by modifying the environment variable. Note that in this case the
-            converted chainer model is stored on the same directory and
-            automatically used from the next time.
-            If this argument is specified as ``None``, all the parameters
-            are not initialized by the pre-trained model, but the default
-            initializer used in the original paper, i.e.,
-            ``chainer.initializers.HeNormal(scale=1.0)``.
-
-    Attributes:
-        available_layers (list of str): The list of available layer names
-            used by ``__call__`` and ``extract`` methods.
-
-    """
-    def __init__(self, pretrained_model='auto'):
-        if pretrained_model == 'auto':
-            pretrained_model = 'ResNet-152-model.caffemodel'
-        super(ResNet50Layers, self).__init__(152, pretrained_model)
-
-
 class ResNetLayers(link.Chain):
 
     """A pre-trained CNN model provided by MSRA [1].
@@ -382,6 +241,147 @@ class ResNetLayers(link.Chain):
             y = reshape(y, (n, 10) + y_shape)
             y = sum(y, axis=1) / 10
         return y
+
+
+class ResNet50Layers(ResNetLayers):
+
+    """A pre-trained CNN model with 50 layers provided by MSRA [1].
+
+    When you specify the path of the pre-trained chainer model serialized as
+    a ``.npz`` file in the constructor, this chain model automatically
+    initializes all the parameters with it.
+    This model would be useful when you want to extract a semantic feature
+    vector per image, or fine-tune the model on a different dataset.
+    Note that unlike ``VGG16Layers``, it does not automatically download a
+    pre-trained caffemodel. This caffemodel can be downloaded at
+    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
+
+    If you want to manually convert the pre-trained caffemodel to a chainer
+    model that can be specified in the constructor,
+    please use ``convert_caffemodel_to_npz`` classmethod instead.
+
+    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
+        <https://arxiv.org/abs/1512.03385>`_
+
+    Args:
+        pretrained_model (str): the destination of the pre-trained
+            chainer model serialized as a ``.npz`` file.
+            If this argument is specified as ``auto``,
+            it automatically loads and converts the caffemodel from
+            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-50-model.caffemodel``,
+            where ``$CHAINER_DATASET_ROOT`` is set as
+            ``$HOME/.chainer/dataset`` unless you specify another value
+            by modifying the environment variable. Note that in this case the
+            converted chainer model is stored on the same directory and
+            automatically used from the next time.
+            If this argument is specified as ``None``, all the parameters
+            are not initialized by the pre-trained model, but the default
+            initializer used in the original paper, i.e.,
+            ``chainer.initializers.HeNormal(scale=1.0)``.
+
+    Attributes:
+        available_layers (list of str): The list of available layer names
+            used by ``__call__`` and ``extract`` methods.
+
+    """
+    def __init__(self, pretrained_model='auto'):
+        if pretrained_model == 'auto':
+            pretrained_model = 'ResNet-50-model.caffemodel'
+        super(ResNet50Layers, self).__init__(50, pretrained_model)
+
+
+class ResNet101Layers(ResNetLayers):
+
+    """A pre-trained CNN model with 101 layers provided by MSRA [1].
+
+    When you specify the path of the pre-trained chainer model serialized as
+    a ``.npz`` file in the constructor, this chain model automatically
+    initializes all the parameters with it.
+    This model would be useful when you want to extract a semantic feature
+    vector per image, or fine-tune the model on a different dataset.
+    Note that unlike ``VGG16Layers``, it does not automatically download a
+    pre-trained caffemodel. This caffemodel can be downloaded at
+    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
+
+    If you want to manually convert the pre-trained caffemodel to a chainer
+    model that can be specified in the constructor,
+    please use ``convert_caffemodel_to_npz`` classmethod instead.
+
+    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
+        <https://arxiv.org/abs/1512.03385>`_
+
+    Args:
+        pretrained_model (str): the destination of the pre-trained
+            chainer model serialized as a ``.npz`` file.
+            If this argument is specified as ``auto``,
+            it automatically loads and converts the caffemodel from
+            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-101-model.caffemodel``,
+            where ``$CHAINER_DATASET_ROOT`` is set as
+            ``$HOME/.chainer/dataset`` unless you specify another value
+            by modifying the environment variable. Note that in this case the
+            converted chainer model is stored on the same directory and
+            automatically used from the next time.
+            If this argument is specified as ``None``, all the parameters
+            are not initialized by the pre-trained model, but the default
+            initializer used in the original paper, i.e.,
+            ``chainer.initializers.HeNormal(scale=1.0)``.
+
+    Attributes:
+        available_layers (list of str): The list of available layer names
+            used by ``__call__`` and ``extract`` methods.
+
+    """
+    def __init__(self, pretrained_model='auto'):
+        if pretrained_model == 'auto':
+            pretrained_model = 'ResNet-101-model.caffemodel'
+        super(ResNet50Layers, self).__init__(101, pretrained_model)
+
+
+class ResNet152Layers(ResNetLayers):
+
+    """A pre-trained CNN model with 152 layers provided by MSRA [1].
+
+    When you specify the path of the pre-trained chainer model serialized as
+    a ``.npz`` file in the constructor, this chain model automatically
+    initializes all the parameters with it.
+    This model would be useful when you want to extract a semantic feature
+    vector per image, or fine-tune the model on a different dataset.
+    Note that unlike ``VGG16Layers``, it does not automatically download a
+    pre-trained caffemodel. This caffemodel can be downloaded at
+    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
+
+    If you want to manually convert the pre-trained caffemodel to a chainer
+    model that can be specified in the constructor,
+    please use ``convert_caffemodel_to_npz`` classmethod instead.
+
+    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
+        <https://arxiv.org/abs/1512.03385>`_
+
+    Args:
+        pretrained_model (str): the destination of the pre-trained
+            chainer model serialized as a ``.npz`` file.
+            If this argument is specified as ``auto``,
+            it automatically loads and converts the caffemodel from
+            ``$CHAINER_DATASET_ROOT/pfnet/chainer/models/ResNet-152-model.caffemodel``,
+            where ``$CHAINER_DATASET_ROOT`` is set as
+            ``$HOME/.chainer/dataset`` unless you specify another value
+            by modifying the environment variable. Note that in this case the
+            converted chainer model is stored on the same directory and
+            automatically used from the next time.
+            If this argument is specified as ``None``, all the parameters
+            are not initialized by the pre-trained model, but the default
+            initializer used in the original paper, i.e.,
+            ``chainer.initializers.HeNormal(scale=1.0)``.
+
+    Attributes:
+        available_layers (list of str): The list of available layer names
+            used by ``__call__`` and ``extract`` methods.
+
+    """
+    def __init__(self, pretrained_model='auto'):
+        if pretrained_model == 'auto':
+            pretrained_model = 'ResNet-152-model.caffemodel'
+        super(ResNet50Layers, self).__init__(152, pretrained_model)
 
 
 def prepare(image, size=(224, 224)):
