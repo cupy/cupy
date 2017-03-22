@@ -621,7 +621,7 @@ def _transfer_resnet152(src, dst):
     dst.bn1.beta.data[:] = src.scale_conv1.bias.b.data
 
     _transfer_block(src, dst.res2, ['2a', '2b', '2c'])
-    _transfer_block(src, dst.res3, ['3a'] + ['3b%d' % i for i in range(1, 9)])
+    _transfer_block(src, dst.res3, ['3a'] + ['3b%d' % i for i in range(1, 8)])
     _transfer_block(src, dst.res4, ['4a'] + ['4b%d' % i for i in range(1, 36)])
     _transfer_block(src, dst.res5, ['5a', '5b', '5c'])
 
