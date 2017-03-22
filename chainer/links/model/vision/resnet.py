@@ -283,7 +283,7 @@ class ResNetLayers(link.Chain):
             _transfer_resnet50(caffemodel, chainermodel)
         elif n_layers == 101:
             _transfer_resnet101(caffemodel, chainermodel)
-        elif n_layers = 152:
+        elif n_layers == 152:
             _transfer_resnet152(caffemodel, chainermodel)
         else:
             raise ValueError('The n_layers argument should be either 50, 101,'
