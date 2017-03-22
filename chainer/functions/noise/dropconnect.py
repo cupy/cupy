@@ -103,14 +103,14 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     Notice:
     This implementation cannot be used for reproduction of the paper.
     There is a difference between the current implementation and the
-    original version dropconnect.
+    original one.
     The original version uses sampling with gaussian distribution before
     passing activation function, the current implementation averages
     before activation.
 
     Args:
         x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Input variable. Its first dimension is assumed
+            Input variable. Its first dimension ``n`` is assumed
             to be the *minibatch dimension*. The other dimensions are treated
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
@@ -120,11 +120,14 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
         train (bool):
             If ``True``, executes dropconnect.
             Otherwise, dropconnect function works as a linear function.
-        mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+        mask (None or chainer.Variable or :class:`numpy.ndarray` or
+            cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
-            If not ``None``, this value is used as a dropconnect mask.
-            The mask shape must be ``(M, N)``.
-            Main purpose of the latter option is debugging.
+            Otherwise, The mask must be ``(n, M, N)`` shaped array.
+            Main purpose of this option is debugging.
+            `mask` array will be used as a dropconnect mask.
+
+
 
     Returns:
         ~chainer.Variable: Output variable.

@@ -64,16 +64,17 @@ class Dropconnect(link.Link):
 
         Args:
             x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-                Batch of input vectors.
+                Batch of input vectors. Its first dimension ``n`` is assumed
+                to be the *minibatch dimension*.
             train (bool):
                 If ``True``, executes dropconnect.
                 Otherwise, dropconnect link works as a linear unit.
-            mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            mask (None or chainer.Variable or :class:`numpy.ndarray` or
+                cupy.ndarray):
                 If ``None``, randomized dropconnect mask is generated.
-                If not ``None``, this value is used as a dropconnect mask.
-                Scaling will not be executed.
-                The mask shape must be ``(M, N)``.
-                Main purpose of the latter option is debugging.
+                Otherwise, The mask must be ``(n, M, N)`` shaped array.
+                Main purpose of this option is debugging.
+                `mask` array will be used as a dropconnect mask.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.
