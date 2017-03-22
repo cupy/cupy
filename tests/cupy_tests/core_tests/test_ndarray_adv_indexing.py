@@ -64,6 +64,31 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
      'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
     {'shape': (2, 3, 4),
      'indexes': numpy.random.choice([False, True], (2, 3))},
+    # empty arrays
+    {'shape': (2, 3, 4), 'indexes': []},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
+    {'shape': (2, 3, 4), 'indexes': [[]]},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
+    {'shape': (2, 3, 4), 'indexes': [[[]]]},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
+    {'shape': (2, 3, 4), 'indexes': ([], [])},
+    {'shape': (2, 3, 4), 'indexes': ([[]],)},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool)},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [1]},
+    {'shape': (2, 3, 4), 'indexes': [1, 1]},
+    {'shape': (2, 3, 4), 'indexes': [[1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1, 1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1], [1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -128,6 +153,8 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 @testing.parameterize(
     {'shape': (), 'indexes': ([1],)},
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
+    {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float)},
+    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
@@ -206,6 +233,45 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
      'value': 1},
     {'shape': (2, 3, 4),
      'indexes': (slice(None), [0, -1], [[1, 0], [0, 1], [-1, 1]]), 'value': 1},
+    # empty arrays
+    {'shape': (2, 3, 4), 'indexes': [], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [],
+     'value': numpy.array([1, 1, 1, 1])},
+    {'shape': (2, 3, 4), 'indexes': [],
+     'value': numpy.random.uniform(size=(3, 4))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[]],
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32),
+     'value': numpy.random.uniform(size=(3, 4))},
+    {'shape': (2, 3, 4), 'indexes': [[[]]],
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]],
+     'value': 1},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]],
+     'value': 1},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]],
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), []),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': ([], []),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool),
+     'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), numpy.array([], dtype=numpy.bool)),
+     'value': 1},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool),
+     'value': numpy.random.uniform(size=(4,))},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
@@ -259,6 +325,9 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': (1, slice(None), [[2, 0], [3, 1]]),
      'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [1],
+     'value': numpy.arange(3 * 4).reshape(3, 4)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):

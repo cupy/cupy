@@ -210,6 +210,17 @@ class TestSerialIteratorShuffled(unittest.TestCase):
         out = sum([it.next() for _ in range(7)], [])
         self.assertNotEqual(out[0:10], out[10:20])
 
+    def test_reset(self):
+        dataset = [1, 2, 3, 4, 5]
+        it = iterators.SerialIterator(dataset, 2, repeat=False)
+
+        for trial in range(4):
+            batches = sum([it.next() for _ in range(3)], [])
+            self.assertEqual(sorted(batches), dataset)
+            for _ in range(2):
+                self.assertRaises(StopIteration, it.next)
+            it.reset()
+
 
 class TestSerialIteratorSerialize(unittest.TestCase):
 

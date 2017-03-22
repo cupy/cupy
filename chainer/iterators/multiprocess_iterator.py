@@ -48,16 +48,8 @@ class MultiprocessIterator(iterator.Iterator):
         self.dataset = dataset
         self.batch_size = batch_size
         self._repeat = repeat
-        if shuffle:
-            self._order = numpy.random.permutation(len(dataset))
-        else:
-            self._order = None
+        self._shuffle = shuffle
         self._prefetch_order = None  # used at the end of each epoch
-
-        self.current_position = 0
-        self.epoch = 0
-        self.is_new_epoch = False
-        self._pushed_position = None  # initialized at the first iteration
 
         self.n_processes = n_processes or multiprocessing.cpu_count()
         self.n_prefetch = max(n_prefetch, 1)
@@ -65,8 +57,7 @@ class MultiprocessIterator(iterator.Iterator):
 
         self._finalized = None
 
-        # use -1 instead of None internally.
-        self._previous_epoch_detail = -1.
+        self.reset()
 
     def __del__(self):
         self.finalize()
@@ -229,6 +220,39 @@ class MultiprocessIterator(iterator.Iterator):
         # Eventually overwrite the (possibly shuffled) order.
         self._order = self._prefetch_order
         return batch
+
+    def reset(self):
+        if getattr(self, 'current_position', 0) != 0:
+            raise NotImplementedError(
+                'Reset of MultiProcessIterator in the middle of a epoch is '
+                'currently not supported.')
+        if getattr(self, 'epoch', 0) != 0 and self._repeat:
+            raise NotImplementedError(
+                'Reset of repeating MultiProcessIterator is currently not '
+                'supported.')
+        if getattr(self, '_finalized', None) is not None and \
+                self._finalized.is_set():
+            raise NotImplementedError(
+                'Reset of finalized MultiProcessIterator is currently not '
+                'supported.')
+
+        self.current_position = 0
+        self.epoch = 0
+        self.is_new_epoch = False
+
+        # use -1 instead of None internally.
+        self._previous_epoch_detail = -1.
+
+        self._pushed_position = None  # initialized at the first iteration
+
+        if self._shuffle:
+            self._order = numpy.random.permutation(len(self.dataset))
+        else:
+            self._order = None
+
+        if self._finalized is not None:
+            for _ in six.moves.range(self.n_prefetch):
+                self._invoke_prefetch()
 
 
 def _get_data_loop(data_queue, ordered_data_queue, mem_list,

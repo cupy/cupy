@@ -9,6 +9,10 @@ from install import utils
 
 minimum_cuda_version = 6050
 minimum_cudnn_version = 2000
+# Although cuda 7.0 includes cusolver,
+# we tentatively support cusolver in cuda 8.0 only because
+# provided functions are insufficient to implement cupy.linalg
+minimum_cusolver_cuda_version = 8000
 
 
 def get_compiler_setting():
@@ -104,6 +108,31 @@ def check_cudnn_version(compiler, settings):
         utils.print_warning(
             'cuDNN version is too old: %d' % cudnn_version,
             'cuDNN v2 or newer is required')
+        return False
+
+    return True
+
+
+def check_cusolver_version(compiler, settings):
+    # As an initial cusolver does not have cusolverGetProperty,
+    # we use CUDA_VERSION instead.
+    try:
+        out = build_and_run(compiler, '''
+        #include <cuda.h>
+        #include <stdio.h>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUDA_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check CUDA version', str(e))
+        return False
+
+    cuda_version = int(out)
+
+    if cuda_version < minimum_cusolver_cuda_version:
         return False
 
     return True
