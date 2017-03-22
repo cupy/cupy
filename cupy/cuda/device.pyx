@@ -7,12 +7,19 @@ import six
 from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 
+try:
+    from cupy.cuda import cusolver
+    cusolver_enabled = True
+except ImportError:
+    cusolver_enabled = False
+
 
 cpdef int get_device_id() except *:
     return runtime.getDevice()
 
 
 cdef dict _cublas_handles = {}
+cdef dict _cusolver_handles = {}
 
 
 cpdef get_cublas_handle():
@@ -20,6 +27,13 @@ cpdef get_cublas_handle():
     if dev_id in _cublas_handles:
         return _cublas_handles[dev_id]
     return Device().cublas_handle
+
+
+cpdef get_cusolver_handle():
+    dev_id = get_device_id()
+    if dev_id in _cusolver_handles:
+        return _cusolver_handles[dev_id]
+    return Device().cusolver_handle
 
 
 cdef class Device:
@@ -111,6 +125,24 @@ cdef class Device:
         with self:
             handle = cublas.create()
             _cublas_handles[self.id] = handle
+            return handle
+
+    @property
+    def cusolver_handle(self):
+        """The cuSOLVER handle for this device.
+
+        The same handle is used for the same device even if the Device instance
+        itself is different.
+
+        """
+        if not cusolver_enabled:
+            raise RuntimeError(
+                'Current cupy only supports cusolver in CUDA 8.0')
+        if self.id in _cusolver_handles:
+            return _cusolver_handles[self.id]
+        with self:
+            handle = cusolver.create()
+            _cusolver_handles[self.id] = handle
             return handle
 
     def __richcmp__(Device self, Device other, int op):

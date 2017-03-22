@@ -15,7 +15,10 @@ class TestMeanAbsoluteError(unittest.TestCase):
 
     def setUp(self):
         self.x0 = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.x1 = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        # Add sufficient margin to prevent computational error
+        diff = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        diff[abs(diff) < 0.01] = 0.5
+        self.x1 = self.x0 + diff
 
     def check_forward(self, x0_data, x1_data):
         x0 = chainer.Variable(x0_data)

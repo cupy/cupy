@@ -39,3 +39,8 @@ Profiler
 .. autofunction:: cupy.cuda.profiler.initialize
 .. autofunction:: cupy.cuda.profiler.start
 .. autofunction:: cupy.cuda.profiler.stop
+.. autofunction:: cupy.cuda.nvtx.Mark
+.. autofunction:: cupy.cuda.nvtx.MarkC
+.. autofunction:: cupy.cuda.nvtx.RangePush
+.. autofunction:: cupy.cuda.nvtx.RangePushC
+.. autofunction:: cupy.cuda.nvtx.RangePop
