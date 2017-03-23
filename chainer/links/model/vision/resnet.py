@@ -105,7 +105,7 @@ class ResNetLayers(link.Chain):
             fc6=Linear(2048, 1000),
         )
         if pretrained_model and pretrained_model.endswith('.caffemodel'):
-            _retrieve(n_layers, 'ResNet-%d-model.npz' % n_layers,
+            _retrieve(n_layers, 'ResNet-{}-model.npz'.format(n_layers),
                       pretrained_model, self)
         elif pretrained_model:
             npz.load_npz(pretrained_model, self)
@@ -261,6 +261,15 @@ class ResNet50Layers(ResNetLayers):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
+    ResNet50 has 25557096 trainable parameters, and it's 58% and 43% fewer
+    than ResNet101 and ResNet152, respectively. On the other hand, the top-5
+    classification accuracy on ImageNet dataset drops only 0.7% and 1.1% from
+    ResNet101 and ResNet152, respectively. Therefore, ResNet50 may have the
+    best balance between the accuracy and the model size. It would be basically
+    just enough for many cases, but some advanced models for object detection
+    or semantic segmentation use deeper ones as their building blocks, so these
+    deeper ResNets are here for making reproduction work easier.
+
     .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
         <https://arxiv.org/abs/1512.03385>`_
 
@@ -309,6 +318,11 @@ class ResNet101Layers(ResNetLayers):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
+    ResNet101 has 44549224 trainable parameters, and it's 43% fewer than
+    ResNet152 model, while the top-5 classification accuracy on ImageNet
+    dataset drops 1.1% from ResNet152. For many cases, ResNet50 may have the
+    best balance between the accuracy and the model size.
+
     .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
         <https://arxiv.org/abs/1512.03385>`_
 
@@ -356,6 +370,10 @@ class ResNet152Layers(ResNetLayers):
     If you want to manually convert the pre-trained caffemodel to a chainer
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
+
+    ResNet152 has 60192872 trainable parameters, and it's the deepest ResNet
+    model and it achieves the best result on ImageNet classification task in
+    `ILSVRC 2015 <http://image-net.org/challenges/LSVRC/2015/results#loc>`_.
 
     .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
         <https://arxiv.org/abs/1512.03385>`_
@@ -609,7 +627,8 @@ def _transfer_resnet101(src, dst):
 
     _transfer_block(src, dst.res2, ['2a', '2b', '2c'])
     _transfer_block(src, dst.res3, ['3a', '3b1', '3b2', '3b3'])
-    _transfer_block(src, dst.res4, ['4a'] + ['4b%d' % i for i in range(1, 23)])
+    _transfer_block(src, dst.res4,
+                    ['4a'] + ['4b'.format(i) for i in range(1, 23)])
     _transfer_block(src, dst.res5, ['5a', '5b', '5c'])
 
     dst.fc6.W.data[:] = src.fc1000.W.data
@@ -624,8 +643,10 @@ def _transfer_resnet152(src, dst):
     dst.bn1.beta.data[:] = src.scale_conv1.bias.b.data
 
     _transfer_block(src, dst.res2, ['2a', '2b', '2c'])
-    _transfer_block(src, dst.res3, ['3a'] + ['3b%d' % i for i in range(1, 8)])
-    _transfer_block(src, dst.res4, ['4a'] + ['4b%d' % i for i in range(1, 36)])
+    _transfer_block(src, dst.res3,
+                    ['3a'] + ['3b{}'.format(i) for i in range(1, 8)])
+    _transfer_block(src, dst.res4,
+                    ['4a'] + ['4b{}'.format(i) for i in range(1, 36)])
     _transfer_block(src, dst.res5, ['5a', '5b', '5c'])
 
     dst.fc6.W.data[:] = src.fc1000.W.data
