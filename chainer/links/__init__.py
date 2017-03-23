@@ -63,6 +63,8 @@ from chainer.links.loss.hierarchical_softmax import BinaryHierarchicalSoftmax  #
 from chainer.links.loss.negative_sampling import NegativeSampling  # NOQA
 from chainer.links.model.classifier import Classifier  # NOQA
 from chainer.links.model.vision.resnet import ResNet50Layers  # NOQA
+from chainer.links.model.vision.resnet import ResNet101Layers  # NOQA
+from chainer.links.model.vision.resnet import ResNet152Layers  # NOQA
 from chainer.links.model.vision.vgg import VGG16Layers  # NOQA
 from chainer.links.normalization.batch_normalization import BatchNormalization  # NOQA
 from chainer.links.normalization.layer_normalization import LayerNormalization  # NOQA
