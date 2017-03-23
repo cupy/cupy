@@ -74,6 +74,17 @@ class Deconvolution2DFunction(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
         gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype, copy=False)
@@ -98,6 +109,17 @@ class Deconvolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
         c = W.shape[1]  # out_c
@@ -174,6 +196,17 @@ class Deconvolution2DFunction(function.Function):
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         gy = grad_outputs[0]
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
@@ -193,6 +226,17 @@ class Deconvolution2DFunction(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         gy = grad_outputs[0]
         n, in_c, in_h, in_w = x.shape
         _, out_channels, kh, kw = W.shape

@@ -63,6 +63,17 @@ class Convolution2DFunction(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
@@ -76,6 +87,16 @@ class Convolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
 
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape
@@ -145,6 +166,17 @@ class Convolution2DFunction(function.Function):
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
@@ -163,6 +195,17 @@ class Convolution2DFunction(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if(not type_check.same_types(*inputs)):
+            if b:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s, type(b): %s'
+                                 % (type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): %s, type(x): %s'
+                                 % (type(W), type(x)))
+
         gy = grad_outputs[0]
         _, out_c, out_h, out_w = gy.shape
         n, c, h, w = x.shape
