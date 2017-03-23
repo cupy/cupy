@@ -369,7 +369,7 @@ class GradientMethod(Optimizer):
 
     """
 
-    def _replace_cleared_grads(self):
+    def reallocate_cleared_grads(self):
         for name, param in self.target.namedparams():
             if param.grad is None:
                 with cuda.get_device(param.data):
@@ -380,7 +380,7 @@ class GradientMethod(Optimizer):
         """Invokes hook functions in registration order."""
         for hook in six.itervalues(self._hooks):
             hook(self)
-            self._replace_cleared_grads()
+            self.reallocate_cleared_grads()
 
     def update(self, lossfun=None, *args, **kwds):
         """Updates parameters based on a loss function or computed gradients.
@@ -408,9 +408,7 @@ class GradientMethod(Optimizer):
             loss.backward()
             del loss
 
-        # TODO(unno): Some optimizers can skip this process if they does not
-        # affect to a parameter when its gradient is zero.
-        self._replace_cleared_grads()
+        self.reallocate_cleared_grads()
 
         self.call_hooks()
         self.prepare()
