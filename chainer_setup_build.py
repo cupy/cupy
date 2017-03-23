@@ -81,7 +81,12 @@ MODULES = [
 if sys.platform == 'win32':
     mod_cuda = MODULES[0]
     mod_cuda['libraries'].remove('nvToolsExt')
-    mod_cuda['libraries'].append('nvToolsExt64_1')
+    if utils.search_on_path(['nvToolsExt64_1.dll']) is None:
+        mod_cuda['file'].remove('cupy.cuda.nvtx')
+        utils.print_warning(
+            'Cannot find nvToolsExt. nvtx was disabled.')
+    else:
+        mod_cuda['libraries'].append('nvToolsExt64_1')
 
 
 def check_readthedocs_environment():
