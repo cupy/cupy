@@ -96,9 +96,9 @@ from chainer.functions.math import square  # NOQA
 from chainer.functions.math import squared_difference  # NOQA
 from chainer.functions.math import sum  # NOQA
 from chainer.functions.math import trigonometric  # NOQA
-from chainer.functions.noise import dropconnect  # NOQA
 from chainer.functions.noise import dropout  # NOQA
 from chainer.functions.noise import gaussian  # NOQA
+from chainer.functions.noise import simplified_dropconnect  # NOQA
 from chainer.functions.noise import zoneout  # NOQA
 from chainer.functions.normalization import batch_normalization  # NOQA
 from chainer.functions.normalization import l2_normalization  # NOQA
@@ -332,12 +332,12 @@ from chainer.functions.math.trigonometric import Sin  # NOQA
 from chainer.functions.math.trigonometric import tan  # NOQA
 from chainer.functions.math.trigonometric import Tan  # NOQA
 
-from chainer.functions.noise.dropconnect import dropconnect  # NOQA
-from chainer.functions.noise.dropconnect import Dropconnect  # NOQA
 from chainer.functions.noise.dropout import dropout  # NOQA
 from chainer.functions.noise.dropout import Dropout  # NOQA
 from chainer.functions.noise.gaussian import gaussian  # NOQA
 from chainer.functions.noise.gaussian import Gaussian  # NOQA
+from chainer.functions.noise.simplified_dropconnect import simplified_dropconnect  # NOQA
+from chainer.functions.noise.simplified_dropconnect import SimplifiedDropconnect  # NOQA
 from chainer.functions.noise.zoneout import zoneout  # NOQA
 from chainer.functions.noise.zoneout import Zoneout  # NOQA
 

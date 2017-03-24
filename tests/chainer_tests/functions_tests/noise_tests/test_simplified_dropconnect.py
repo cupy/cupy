@@ -5,7 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer.functions.noise import dropconnect
+from chainer.functions.noise import simplified_dropconnect
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -18,7 +18,7 @@ from chainer.testing import condition
     'ratio': [0.0, 0.9],
     'train': [True, False],
 }))
-class TestDropconnect(unittest.TestCase):
+class TestSimplifiedDropconnect(unittest.TestCase):
 
     def setUp(self):
         self.W = numpy.random.uniform(
@@ -40,14 +40,16 @@ class TestDropconnect(unittest.TestCase):
                 'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, W_data, b_data):
-        # Check only data type, y is tested by Dropconnect link test.
+        # Check only data type, y is tested by SimplifiedDropconnect link test.
         x = chainer.Variable(x_data)
         W = chainer.Variable(W_data)
         if b_data is None:
-            y = functions.dropconnect(x, W, None, self.ratio, self.train)
+            y = functions.simplified_dropconnect(x, W, None, self.ratio,
+                                                 self.train)
         else:
             b = chainer.Variable(b_data)
-            y = functions.dropconnect(x, W, b, self.ratio, self.train)
+            y = functions.simplified_dropconnect(x, W, b, self.ratio,
+                                                 self.train)
         self.assertEqual(y.data.dtype, self.x_dtype)
 
     @condition.retry(3)
@@ -76,8 +78,8 @@ class TestDropconnect(unittest.TestCase):
             args = args + (b_data,)
 
         gradient_check.check_backward(
-            dropconnect.Dropconnect(self.ratio), args, y_grad,
-            eps=1e-2, **self.check_backward_options)
+            simplified_dropconnect.SimplifiedDropconnect(self.ratio), args,
+            y_grad, eps=1e-2, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -12,9 +12,9 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
-class Dropconnect(function.Function):
+class SimplifiedDropconnect(function.Function):
 
-    """Linear unit regularized by dropconnect."""
+    """Linear unit regularized by simplified dropconnect."""
 
     def __init__(self, ratio, mask=None):
         self.ratio = ratio
@@ -88,17 +88,17 @@ class Dropconnect(function.Function):
             return gx, gW
 
 
-def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
-    """Linear unit regularized by dropconnect.
+def simplified_dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
+    """Linear unit regularized by simplified dropconnect.
 
-    Dropconnect drops weight matrix elements randomly with probability
-    ``ratio`` and scales the remaining elements by factor ``1 / (1 - ratio)``.
-    It accepts two or three arguments: an input minibatch ``x``, a weight
-    matrix ``W``, and optionally a bias vector ``b``. It computes
-    :math:`Y = xW^\\top + b`.
+    Simplified dropconnect drops weight matrix elements randomly with
+    probability ``ratio`` and scales the remaining elements by factor
+    ``1 / (1 - ratio)``. It accepts two or three arguments: an input minibatch
+    ``x``, a weight matrix ``W``, and optionally a bias vector ``b``. It
+    computes :math:`Y = xW^\\top + b`.
 
-    In testing mode, zero will be used as dropconnect ratio instead of
-    ``ratio``.
+    In testing mode, zero will be used as simplified dropconnect ratio instead
+    of ``ratio``.
 
     Notice:
     This implementation cannot be used for reproduction of the paper.
@@ -118,8 +118,9 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
         ratio (float):
             Dropconnect ratio.
         train (bool):
-            If ``True``, executes dropconnect.
-            Otherwise, dropconnect function works as a linear function.
+            If ``True``, executes simplified dropconnect.
+            Otherwise, simplified dropconnect function works as a linear
+            function.
         mask (None or chainer.Variable or :class:`numpy.ndarray` or
             cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
@@ -138,6 +139,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     if not train:
         ratio = 0
     if b is None:
-        return Dropconnect(ratio, mask)(x, W)
+        return SimplifiedDropconnect(ratio, mask)(x, W)
     else:
-        return Dropconnect(ratio, mask)(x, W, b)
+        return SimplifiedDropconnect(ratio, mask)(x, W, b)

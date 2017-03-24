@@ -24,7 +24,7 @@ def gen_mask(ratio, shape):
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
-class TestDropconnect(unittest.TestCase):
+class TestSimplifiedDropconnect(unittest.TestCase):
 
     out_size = 2
     ratio = 0.5
@@ -32,7 +32,7 @@ class TestDropconnect(unittest.TestCase):
     def setUp(self):
         in_size = numpy.prod(self.in_shape)
 
-        self.link = links.Dropconnect(
+        self.link = links.SimplifiedDropconnect(
             in_size, self.out_size,
             initialW=chainer.initializers.Normal(1, self.W_dtype),
             initial_bias=chainer.initializers.Normal(1, self.x_dtype))
@@ -92,7 +92,7 @@ class TestDropconnect(unittest.TestCase):
                             cuda.to_gpu(self.mask))
 
 
-class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
+class TestSimplifiedDropconnectParameterShapePlaceholder(unittest.TestCase):
 
     in_size = 3
     in_shape = (in_size,)
@@ -101,7 +101,8 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
     ratio = 0.5
 
     def setUp(self):
-        self.link = links.Dropconnect(self.in_size_or_none, self.out_size)
+        self.link = links.SimplifiedDropconnect(self.in_size_or_none,
+                                                self.out_size)
         temp_x = numpy.random.uniform(-1, 1,
                                       (self.out_size,
                                        self.in_size)).astype(numpy.float32)
@@ -155,7 +156,7 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
                             cuda.to_gpu(self.mask))
 
     def test_serialization(self):
-        lin1 = links.Dropconnect(None, self.out_size)
+        lin1 = links.SimplifiedDropconnect(None, self.out_size)
         x = chainer.Variable(self.x)
         # Must call the link to initialize weights.
         lin1(x)
@@ -169,10 +170,10 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.assertEqual((w1 == w2).all(), True)
 
 
-class TestInvalidDropconnect(unittest.TestCase):
+class TestInvalidSimplifiedDropconnect(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Dropconnect(3, 2)
+        self.link = links.SimplifiedDropconnect(3, 2)
         self.x = numpy.random.uniform(-1, 1, (4, 1, 2)).astype(numpy.float32)
 
     def test_invalid_size(self):

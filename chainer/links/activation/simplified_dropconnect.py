@@ -1,14 +1,14 @@
 import math
 
 from chainer import cuda
-from chainer.functions.noise import dropconnect
+from chainer.functions.noise import simplified_dropconnect
 from chainer import initializers
 from chainer import link
 
 
-class Dropconnect(link.Link):
+class SimplifiedDropconnect(link.Link):
 
-    """Fully-connected layer with dropconnect regularization.
+    """Fully-connected layer with simplified dropconnect regularization.
 
     Args:
         in_size (int): Dimension of input vectors. If ``None``, parameter
@@ -26,7 +26,7 @@ class Dropconnect(link.Link):
         W (~chainer.Variable): Weight parameter.
         b (~chainer.Variable): Bias parameter.
 
-    .. seealso:: :func:`~chainer.functions.dropconnect`
+    .. seealso:: :func:`~chainer.functions.simplified_dropconnect`
 
     .. seealso::
         Li, W., Matthew Z., Sixin Z., Yann L., Rob F. (2013).
@@ -37,7 +37,7 @@ class Dropconnect(link.Link):
 
     def __init__(self, in_size, out_size, wscale=1,
                  ratio=.5, initialW=None, initial_bias=0):
-        super(Dropconnect, self).__init__()
+        super(SimplifiedDropconnect, self).__init__()
 
         self.out_size = out_size
         self.ratio = ratio
@@ -60,24 +60,24 @@ class Dropconnect(link.Link):
                        initializer=self._W_initializer)
 
     def __call__(self, x, train=True, mask=None):
-        """Applies the dropconnect layer.
+        """Applies the simplified dropconnect layer.
 
         Args:
             x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
                 Batch of input vectors. Its first dimension ``n`` is assumed
                 to be the *minibatch dimension*.
             train (bool):
-                If ``True``, executes dropconnect.
-                Otherwise, dropconnect link works as a linear unit.
+                If ``True``, executes simplified dropconnect.
+                Otherwise, simplified dropconnect link works as a linear unit.
             mask (None or chainer.Variable or :class:`numpy.ndarray` or
                 cupy.ndarray):
-                If ``None``, randomized dropconnect mask is generated.
-                Otherwise, The mask must be ``(n, M, N)`` shaped array.
-                Main purpose of this option is debugging.
+                If ``None``, randomized simplified dropconnect mask is
+                generated. Otherwise, The mask must be ``(n, M, N)``
+                shaped array. Main purpose of this option is debugging.
                 `mask` array will be used as a dropconnect mask.
 
         Returns:
-            ~chainer.Variable: Output of the dropconnect layer.
+            ~chainer.Variable: Output of the simplified dropconnect layer.
 
         """
         if self.has_uninitialized_params:
@@ -85,5 +85,6 @@ class Dropconnect(link.Link):
                 self._initialize_params(x.size // len(x.data))
         if mask is not None and 'mask' not in self.__dict__:
             self.add_persistent('mask', mask)
-        return dropconnect.dropconnect(x, self.W, self.b,
-                                       self.ratio, train, mask)
+        return simplified_dropconnect.simplified_dropconnect(x, self.W, self.b,
+                                                             self.ratio, train,
+                                                             mask)

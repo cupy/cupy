@@ -502,10 +502,6 @@ tan
 Noise injections
 ----------------
 
-dropconnect
-~~~~~~~~~~~
-.. autofunction:: dropconnect
-
 dropout
 ~~~~~~~
 .. autofunction:: dropout
@@ -513,6 +509,10 @@ dropout
 gaussian
 ~~~~~~~~
 .. autofunction:: gaussian
+
+simplified_dropconnect
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: simplified_dropconnect
 
 
 Normalization functions

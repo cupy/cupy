@@ -144,9 +144,9 @@ CRF1d
 .. autoclass:: CRF1d
    :members:
 
-Dropconnect
-~~~~~~~~~~~
-.. autoclass:: Dropconnect
+SimplifiedDropconnect
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: SimplifiedDropconnect
    :members:
 
 PReLU
