@@ -3,7 +3,6 @@ import six
 
 from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
-from chainer import optimizer as optimizer_module
 from chainer import variable
 
 
@@ -123,7 +122,7 @@ class StandardUpdater(Updater):
             iterator = {'main': iterator}
         self._iterators = iterator
 
-        if isinstance(optimizer, optimizer_module.Optimizer):
+        if not isinstance(optimizer, dict):
             optimizer = {'main': optimizer}
         self._optimizers = optimizer
 

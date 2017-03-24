@@ -34,14 +34,9 @@ class SerialIterator(iterator.Iterator):
         self.dataset = dataset
         self.batch_size = batch_size
         self._repeat = repeat
-        if shuffle:
-            self._order = numpy.random.permutation(len(dataset))
-        else:
-            self._order = None
+        self._shuffle = shuffle
 
-        self.current_position = 0
-        self.epoch = 0
-        self.is_new_epoch = False
+        self.reset()
 
     def __next__(self):
         if not self._repeat and self.epoch > 0:
@@ -92,3 +87,13 @@ class SerialIterator(iterator.Iterator):
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
         if self._order is not None:
             serializer('_order', self._order)
+
+    def reset(self):
+        if self._shuffle:
+            self._order = numpy.random.permutation(len(self.dataset))
+        else:
+            self._order = None
+
+        self.current_position = 0
+        self.epoch = 0
+        self.is_new_epoch = False
