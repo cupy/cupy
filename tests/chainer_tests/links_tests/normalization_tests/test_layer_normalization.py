@@ -24,7 +24,7 @@ def _create_ln(*args, **kwargs):
 @testing.parameterize(*(testing.product({
     'volatile': ['on', 'off'],
     'batchsize': [1, 5],
-    'size': [10, 100],
+    'size': [10, 20],
     'dtype': [numpy.float32],
 })))
 class LayerNormalizationTest(unittest.TestCase):
