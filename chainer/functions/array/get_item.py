@@ -13,7 +13,11 @@ class GetItem(function.Function):
     """Function that slices array and extract elements."""
 
     def __init__(self, slices):
-        if not isinstance(slices, tuple):
+        if isinstance(slices, list):
+            if all([isinstance(s, int) for s in slices]):
+                slices = slices,
+            slices = tuple(slices)
+        elif not isinstance(slices, tuple):
             slices = slices,
 
         if chainer.is_debug():
