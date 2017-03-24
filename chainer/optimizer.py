@@ -370,6 +370,14 @@ class GradientMethod(Optimizer):
     """
 
     def reallocate_cleared_grads(self):
+        """Reallocate gradients cleared by :meth:`~chainer.Variable.cleargrad`.
+
+        This method allocates arrays for all gradients which have :obj:`None`.
+        This method is called before and after every optimizer hook.
+        If an inheriting optimizer does not require this allocation,
+        the optimizer can override this method with a blank function.
+
+        """
         for name, param in self.target.namedparams():
             if param.grad is None:
                 with cuda.get_device(param.data):
