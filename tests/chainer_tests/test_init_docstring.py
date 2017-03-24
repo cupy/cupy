@@ -54,9 +54,9 @@ class TestInitDocstring(unittest.TestCase):
 
             # Skip inconsistent test cases because invalid combination
             # causes segmentation fault and cannot raise an error.
-            if protobuf_ver != 2 and 'protobuf2':
+            if protobuf_ver != 2 and 'protobuf2' in modname:
                 continue
-            if protobuf_ver != 3 and 'protobuf3':
+            if protobuf_ver != 3 and 'protobuf3' in modname:
                 continue
 
             try:
