@@ -102,6 +102,8 @@ class TestGetItem(unittest.TestCase):
          'sliced_shape': (2, 3, 2)},
         {'slices': (slice(None), numpy.array([True, False, True])),
          'sliced_shape': (4, 2, 2)},
+        {'slices': numpy.array([False, False, False, False]),
+         'sliced_shape': (0, 3, 2)},
     ],
     [
         {'dtype': numpy.float32},
