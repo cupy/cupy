@@ -79,6 +79,11 @@ class TestGetItem(unittest.TestCase):
 @testing.parameterize(*testing.product_dict(
     [
         {'slices': [], 'sliced_shape': (0, 3, 2)},
+        {'slices': [[]], 'sliced_shape': (0, 3, 2)},
+        {'slices': [[[]]], 'sliced_shape': (1, 0, 3, 2)},
+        {'slices': ([[]],), 'sliced_shape': (1, 0, 3, 2)},
+        {'slices': [1, [1]], 'sliced_shape': (1, 2)},
+        {'slices': [[1], slice(1, 2)], 'sliced_shape': (1, 1, 2)},
         {'slices': [1, 0], 'sliced_shape': (2, 3, 2)},
         {'slices': ([1, 0],), 'sliced_shape': (2, 3, 2)},
         {'slices': numpy.array([[1, 0], [2, 3]]),
