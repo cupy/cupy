@@ -59,15 +59,15 @@ class TestL2Normalization(unittest.TestCase):
 
     def check_backward(self, x_data, axis, y_grad):
         gradient_check.check_backward(
-            functions.NormalizeL2(axis=axis), x_data, y_grad,
+            functions.NormalizeL2(eps=1e-6, axis=axis), x_data, y_grad,
             rtol=1e-3, atol=1e-4)
 
-    @condition.retry(3)
+    @condition.retry(5)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.axis, self.gy)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(5)
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), self.axis, cuda.to_gpu(self.gy))
