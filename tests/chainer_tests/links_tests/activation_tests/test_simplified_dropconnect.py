@@ -164,7 +164,7 @@ class TestSimplifiedDropconnectParameterShapePlaceholder(unittest.TestCase):
         fd, temp_file_path = tempfile.mkstemp()
         os.close(fd)
         npz.save_npz(temp_file_path, lin1)
-        lin2 = links.Dropconnect(None, self.out_size)
+        lin2 = links.SimplifiedDropconnect(None, self.out_size)
         npz.load_npz(temp_file_path, lin2)
         w2 = lin2.W.data
         self.assertEqual((w1 == w2).all(), True)
