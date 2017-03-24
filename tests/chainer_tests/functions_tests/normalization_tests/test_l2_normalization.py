@@ -27,9 +27,10 @@ class TestL2Normalization(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, axis):
+        eps = 1e-5
         x = chainer.Variable(x_data)
 
-        y = functions.normalize(x, axis=axis)
+        y = functions.normalize(x, eps=eps, axis=axis)
         self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
@@ -43,7 +44,8 @@ class TestL2Normalization(unittest.TestCase):
                 indices.append([slice(None)])
         indices_tuple = list(itertools.product(*indices))
         for index in indices_tuple:
-            y_expect[index] = self.x[index] / numpy.linalg.norm(self.x[index])
+            numerator = numpy.linalg.norm(self.x[index]) + eps
+            y_expect[index] = self.x[index] / numerator
         testing.assert_allclose(y_expect, y_data)
 
     @condition.retry(3)
