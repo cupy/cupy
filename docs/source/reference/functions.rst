@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+im2col
+~~~~~~
+.. autofunction:: im2col
+
 pad
 ~~~
 .. autofunction:: pad
