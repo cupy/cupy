@@ -179,6 +179,10 @@ space2depth
 ~~~~~~~~~~~
 .. autofunction:: space2depth
 
+spatial_transformer_grid
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: spatial_transformer_grid
+
 spatial_transformer_sampler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: spatial_transformer_sampler
