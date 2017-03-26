@@ -95,7 +95,8 @@ class HDF5Deserializer(serializer.Deserializer):
 
     def __getitem__(self, key):
         name = self.group.name + '/' + key
-        return HDF5Deserializer(self.group.require_group(name))
+        return HDF5Deserializer(
+            self.group.require_group(name), strict=self.strict)
 
     def __call__(self, key, value):
         if not self.strict and key not in self.group:
