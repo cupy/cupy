@@ -994,6 +994,8 @@ class TestFusionFuse(unittest.TestCase):
         res = g(a, b, c)
         return c + res
 
+    # NumPy 1.9 accepts itruediv between integers
+    @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_raises()
     def test_fuse_int_itruediv_py3_raises(self, xp, dtype):
