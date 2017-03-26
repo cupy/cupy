@@ -175,10 +175,11 @@ def lstm(c_prev, x):
 
     .. math::
 
-        c &= \\tanh(a) \\text{sigmoid}(i)
-           + c_{\\text{prev}} \\text{sigmoid}(f), \\\\
-        h &= \\tanh(c) \\text{sigmoid}(o).
+        c &= \\tanh(a) \\sigma(i)
+           + c_{\\text{prev}} \\sigma(f), \\\\
+        h &= \\tanh(c) \\sigma(o),
 
+    where :math:`\\sigma` is the elementwise sigmoid function.
     These are returned as a tuple of two variables.
 
     This function supports variable length inputs. The mini-batch size of
@@ -190,15 +191,18 @@ def lstm(c_prev, x):
     applying the function.
 
     Args:
-        c_prev (~chainer.Variable): Variable that holds the previous cell
-            state. The cell state should be a zero array or the output of the
-            previous call of LSTM.
-        x (~chainer.Variable): Variable that holds the incoming signal. It must
-            have the second dimension four times of that of the cell state,
+        c_prev (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the previous cell state. The cell state
+            should be a zero array or the output of the previous call of LSTM.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the incoming signal. It must have the second
+            dimension whose size is four times of that of the cell state.
 
     Returns:
-        tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
-            the updated cell state. ``h`` indicates the outgoing signal.
+        tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``.
+        ``c`` is the updated cell state. ``h`` indicates the outgoing signal.
 
     See the original paper proposing LSTM with forget gates:
     `Long Short-Term Memory in Recurrent Neural Networks \
