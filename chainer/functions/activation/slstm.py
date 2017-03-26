@@ -218,23 +218,58 @@ def slstm(c_prev1, c_prev2, x1, x2):
     The function returns :math:`c` and :math:`h` as a tuple.
 
     Args:
-        c_prev1 (~chainer.Variable): Variable that holds the previous cell
-            state of the first child node. The cell state should be a zero
-            array or the output of the  previous call of LSTM.
-        c_prev2 (~chainer.Variable): Variable that holds the previous cell
-            state of the second child node.
-        x1 (~chainer.Variable): Variable that holds the incoming signal from
-            the first child node. It must have the second dimension four times
-            of that of the cell state,
-        x2 (~chainer.Variable): Variable that holds the incoming signal from
-            the second child node.
+        c_prev1 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the previous cell state of the first child
+            node. The cell state should be a zero array or the output of
+            the previous call of LSTM.
+        c_prev2 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the previous cell state of the second child
+            node.
+        x1 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the incoming signal from the first child node.
+            It must have the second dimension four times of that of the cell
+            state.
+        x2 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable that holds the incoming signal from the second child node.
 
     Returns:
         tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
-            the cell state. ``h`` indicates the outgoing signal.
+        the cell state. ``h`` indicates the outgoing signal.
 
     See detail in paper: `Long Short-Term Memory Over Tree Structures \
     <https://arxiv.org/abs/1503.04881>`_.
+
+    .. admonition:: Example
+
+        Assuming ``c1``, ``c2`` is the previous cell state of children,
+        and ``h1``, ``h2`` is the previous output signal from children.
+        Each of ``c1``, ``c2``, ``h1`` and ``h2`` has ``n_units`` channels.
+        Most typical preparation of ``x1``, ``x2`` is:
+
+        >>> n_units = 100
+        >>> h1 = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> h2 = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> h = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> c1 = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> c2 = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> c = chainer.Variable(np.zeros((1, n_units), 'f'))
+        >>> model1 = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
+        ...                        v=L.Linear(n_units, 4 * n_units))
+        >>> model2 = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
+        ...                        v=L.Linear(n_units, 4 * n_units))
+        >>> x1 = model1.w(c1) + model1.v(h1)
+        >>> x2 = model2.w(c2) + model2.v(h2)
+        >>> c, h = F.slstm(c1, c2, x1, x2)
+
+        It corresponds to calculate the input sources
+        :math:`a_1, i_1, f_1, o_1` from the previous cell state of first
+        child node ``c1``, and the previous output signal from first child node
+        ``h1``. Different parameters are used for different kind of input
+        sources.
 
     """
     return SLSTM()(c_prev1, c_prev2, x1, x2)
