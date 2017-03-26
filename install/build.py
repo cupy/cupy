@@ -58,6 +58,8 @@ def get_compiler_setting():
         if os.path.exists(nvtoolsext_path):
             include_dirs.append(os.path.join(nvtoolsext_path, 'include'))
             library_dirs.append(os.path.join(nvtoolsext_path, 'lib', 'x64'))
+        else:
+            define_macros.append(('CUPY_NO_NVTX', '1'))
 
     return {
         'include_dirs': include_dirs,
