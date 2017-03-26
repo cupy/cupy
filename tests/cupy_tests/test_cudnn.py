@@ -46,7 +46,7 @@ class TestCudnnActivation(unittest.TestCase):
         if libcudnn.getVersion() >= 4000:
             patch = 'cupy.cuda.cudnn.activationBackward_v4'
         else:
-            patch = 'cupy.cuda.cudnn.activationBakward_v3'
+            patch = 'cupy.cuda.cudnn.activationBackward_v3'
         with mock.patch(patch) as func:
             cupy.cudnn.activation_backward(self.x, self.y, self.g, self.mode)
             self.assertEqual(func.called, True)
