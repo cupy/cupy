@@ -9,8 +9,8 @@ def average(x, axis=None, weights=None):
     Args:
         x (~chainer.Variable): Elements to sum.
         axis (None or int): Axis which the method is performed.
-            The default (axis = None) is perform a mean over all the dimensions
-            of the input array.
+            With the default (axis = None) it performs a mean over all the
+            dimensions of the input array.
         weights (None or ~chainer.Variable): An array holding weights to
             calculate weighted average. If it is ``None``, all weights are
             assumed to be one.
