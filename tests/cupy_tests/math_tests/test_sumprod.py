@@ -1,11 +1,10 @@
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import testing
-
-import six
 
 
 @testing.gpu
