@@ -17,6 +17,7 @@ from chainer.links.connection import inceptionbn  # NOQA
 from chainer.links.connection import linear  # NOQA
 from chainer.links.connection import lstm  # NOQA
 from chainer.links.connection import mlp_convolution_2d  # NOQA
+from chainer.links.connection import n_step_gru  # NOQA
 from chainer.links.connection import n_step_lstm  # NOQA
 from chainer.links.connection import n_step_rnn  # NOQA
 from chainer.links.connection import parameter  # NOQA
@@ -53,6 +54,8 @@ from chainer.links.connection.linear import Linear  # NOQA
 from chainer.links.connection.lstm import LSTM  # NOQA
 from chainer.links.connection.lstm import StatelessLSTM  # NOQA
 from chainer.links.connection.mlp_convolution_2d import MLPConvolution2D  # NOQA
+from chainer.links.connection.n_step_gru import NStepBiGRU  # NOQA
+from chainer.links.connection.n_step_gru import NStepGRU  # NOQA
 from chainer.links.connection.n_step_lstm import NStepLSTM  # NOQA
 from chainer.links.connection.n_step_rnn import NStepBiRNN  # NOQA
 from chainer.links.connection.n_step_rnn import NStepRNN  # NOQA
