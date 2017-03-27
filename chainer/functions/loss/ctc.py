@@ -95,10 +95,10 @@ class ConnectionistTemporalClassification(function.Function):
         """
         batch, lab = label.shape
         repeat_mask = xp.ones((batch, lab * 2 + 1))
-        repeat_mask[:, 1::2] = (label -
-                                xp.take(label, (xp.arange(lab) - 1) % lab
-                                        + xp.arange(batch)[:, None] * lab)
-                                != 0).astype(xp.int32)
+        repeat_mask[:, 1::2] = (label !=
+                                xp.take(label, xp.arange(-1, lab - 1)
+                                        % lab + xp.arange(0, batch * lab,
+                                                          lab)[:, None]))
         repeat_mask[:, 1] = 1
         rr = (xp.eye(max_length, dtype=dtype)[None, :] +
               xp.eye(max_length, k=1, dtype=dtype)[None, :] +
@@ -201,7 +201,7 @@ class ConnectionistTemporalClassification(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
         self.input_length = inputs[0]
-        self.label_length = inputs[1]
+        label_length = inputs[1]
         t = inputs[2]
         xs = inputs[3:]
 
@@ -209,13 +209,13 @@ class ConnectionistTemporalClassification(function.Function):
             # Batch size check.
             assert len(xs[0]) == len(t)
             assert len(xs[0]) == len(self.input_length)
-            assert len(xs[0]) == len(self.label_length)
+            assert len(xs[0]) == len(label_length)
 
             # Length check.
             assert len(xs) >= xp.max(self.input_length)
-            assert len(t[0]) >= xp.max(self.label_length)
+            assert len(t[0]) >= xp.max(label_length)
 
-        self.path_length = 2 * self.label_length + 1
+        self.path_length = 2 * label_length + 1
 
         batch_size = len(t)
         yseq_shape = (len(xs),) + xs[0].shape
@@ -224,7 +224,7 @@ class ConnectionistTemporalClassification(function.Function):
         self.path = _label_to_path(t, self.blank_symbol, xp)
         self.prob_trans = self.calc_trans(
             log_yseq, self.input_length, t,
-            self.label_length, self.path, self.path_length, xp)
+            label_length, self.path, self.path_length, xp)
 
         loss = utils.force_array(xp.sum(
             _logsumexp(self.prob_trans[0], xp, axis=1)))
