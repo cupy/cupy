@@ -352,7 +352,7 @@ Actual: {0}'''.format(type(data))
         if self.creator is None:
             return
         initial_device = None
-        if cuda.available:
+        if cuda.available and isinstance(self.data, cuda.cupy.ndarray):
             try:
                 initial_device = cuda.Device()
             except cuda.cupy.cuda.runtime.CUDARuntimeError as e:

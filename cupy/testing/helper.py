@@ -146,7 +146,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     >>> import unittest
     >>> from cupy import testing
-    ... @testing.gpu
+    >>> @testing.gpu
     ... class TestFoo(unittest.TestCase):
     ...
     ...     @testing.numpy_cupy_allclose()

@@ -1,7 +1,6 @@
 import unittest
 
-from chainer import testing
-from chainer.testing import condition
+from cupy.testing import condition
 
 
 # The test fixtures of this TestCase is used to be decorated by
@@ -168,6 +167,3 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(
             self.unit_test.probabilistic_case_success_counter, 0)
         self.assertLess(self.unit_test.probabilistic_case_failure_counter, 10)
-
-
-testing.run_module(__name__, __file__)

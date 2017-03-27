@@ -155,6 +155,10 @@ reshape
 ~~~~~~~
 .. autofunction:: reshape
 
+resize_images
+~~~~~~~~~~~~~
+.. autofunction:: resize_images
+
 rollaxis
 ~~~~~~~~
 .. autofunction:: rollaxis

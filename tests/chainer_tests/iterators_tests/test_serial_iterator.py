@@ -32,9 +32,13 @@ class DummyDeserializer(serializer.Deserializer):
         raise NotImplementedError
 
     def __call__(self, key, value):
-        if isinstance(value, numpy.ndarray):
-            value[:] = self.target[key]
-        return self.target[key]
+        if value is None:
+            value = self.target[key]
+        elif isinstance(value, numpy.ndarray):
+            numpy.copyto(value, self.target[key])
+        else:
+            value = type(value)(numpy.asarray(self.target[key]))
+        return value
 
 
 class TestSerialIterator(unittest.TestCase):
@@ -178,6 +182,17 @@ class TestSerialIteratorShuffled(unittest.TestCase):
         out = sum([it.next() for _ in range(7)], [])
         self.assertNotEqual(out[0:10], out[10:20])
 
+    def test_reset(self):
+        dataset = [1, 2, 3, 4, 5]
+        it = iterators.SerialIterator(dataset, 2, repeat=False)
+
+        for trial in range(4):
+            batches = sum([it.next() for _ in range(3)], [])
+            self.assertEqual(sorted(batches), dataset)
+            for _ in range(2):
+                self.assertRaises(StopIteration, it.next)
+            it.reset()
+
 
 class TestSerialIteratorSerialize(unittest.TestCase):
 
@@ -200,6 +215,41 @@ class TestSerialIteratorSerialize(unittest.TestCase):
 
         target = dict()
         it.serialize(DummySerializer(target))
+
+        it = iterators.SerialIterator(dataset, 2)
+        it.serialize(DummyDeserializer(target))
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+
+        batch3 = it.next()
+        self.assertEqual(len(batch3), 2)
+        self.assertIsInstance(batch3, list)
+        self.assertTrue(it.is_new_epoch)
+        self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+        self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+
+    def test_iterator_serialize_backward_compat(self):
+        dataset = [1, 2, 3, 4, 5, 6]
+        it = iterators.SerialIterator(dataset, 2)
+
+        self.assertEqual(it.epoch, 0)
+        self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        batch1 = it.next()
+        self.assertEqual(len(batch1), 2)
+        self.assertIsInstance(batch1, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        batch2 = it.next()
+        self.assertEqual(len(batch2), 2)
+        self.assertIsInstance(batch2, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+
+        target = dict()
+        it.serialize(DummySerializer(target))
+        # older version uses '_order'
+        target['_order'] = target['order']
+        del target['order']
 
         it = iterators.SerialIterator(dataset, 2)
         it.serialize(DummyDeserializer(target))

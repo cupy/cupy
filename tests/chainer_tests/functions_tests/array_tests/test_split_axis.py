@@ -142,4 +142,19 @@ class TestSplitAxisForceArray(unittest.TestCase):
         self.check_forward_single(cuda.to_gpu(self.x), axis=self.axis)
 
 
+class TestSplitAxisInvalidSections(unittest.TestCase):
+
+    def setUp(self):
+        self.default_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.default_debug)
+
+    def test_invalid_sections(self):
+        x = numpy.zeros((2, 3, 4), dtype='f')
+        with self.assertRaises(ValueError):
+            functions.split_axis(x, [2, 1], 1)
+
+
 testing.run_module(__name__, __file__)
