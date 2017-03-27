@@ -168,10 +168,11 @@ class BaseNStepRNN(function.Function):
         self.states = states
         self.use_cell = _rnn_params_use_cell[self.rnn_mode]
         self.n_cell = self.rnn_params['n_cell']
-        self.n_W = self.n_layers * self.rnn_direction * self.rnn_params['n_W']
+        self.n_W = self.rnn_params['n_W']
+        self.n_params = self.n_layers * self.rnn_direction * self.n_W
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() > self.n_cell + self.n_W * 2)
+        type_check.expect(in_types.size() > self.n_cell + self.n_params * 2)
 
         if self.use_cell:
             (h_type, c_type), in_types = _split(in_types, self.n_cell)
@@ -200,8 +201,8 @@ class BaseNStepRNN(function.Function):
                 h_type.shape[0] == self.n_layers * self.rnn_direction,
             )
 
-        w_types, in_types = _split(in_types, self.n_W)
-        b_types, in_types = _split(in_types, self.n_W)
+        w_types, in_types = _split(in_types, self.n_params)
+        b_types, in_types = _split(in_types, self.n_params)
 
         x_types = in_types
         for x_type in x_types:
@@ -219,23 +220,23 @@ class BaseNStepRNN(function.Function):
         out_size = h_type.shape[2]
 
         for layer in six.moves.range(self.n_layers):
-            for i in six.moves.range(self.rnn_params['n_W']):
+            for i in six.moves.range(self.n_W):
                 for di in six.moves.range(self.rnn_direction):
                     ind = (layer * self.rnn_direction +
-                           di) * self.rnn_params['n_W'] + i
+                           di) * self.n_W + i
                     w_type = w_types[ind]
                     b_type = b_types[ind]
                     if self.rnn_direction == 1:
                         # Uni-direction
-                        if layer == 0 and i < (self.rnn_params['n_W'] // 2):
+                        if layer == 0 and i < (self.n_W // 2):
                             w_in = in_size
                         else:
                             w_in = out_size
                     else:
                         # Bi-direction
-                        if layer == 0 and i < (self.rnn_params['n_W'] // 2):
+                        if layer == 0 and i < (self.n_W // 2):
                             w_in = in_size
-                        elif layer > 0 and i < (self.rnn_params['n_W'] // 2):
+                        elif layer > 0 and i < (self.n_W // 2):
                             w_in = out_size * self.rnn_direction
                         else:
                             w_in = out_size
@@ -276,8 +277,8 @@ class BaseNStepRNN(function.Function):
             cx_desc_value = 0
             cy_desc_value = 0
 
-        ws, inputs = _split(inputs, self.n_W)
-        bs, inputs = _split(inputs, self.n_W)
+        ws, inputs = _split(inputs, self.n_params)
+        bs, inputs = _split(inputs, self.n_params)
         x_list = inputs
         hx = cuda.cupy.ascontiguousarray(hx)
         x_desc = cudnn.create_tensor_nd_descriptor(x_list[0][..., None])
@@ -309,14 +310,14 @@ class BaseNStepRNN(function.Function):
         for layer in six.moves.range(self.n_layers):
             for di in six.moves.range(self.rnn_direction):
                 # di = 0: forward, 1: backward
-                for lin_layer_id in six.moves.range(self.rnn_params['n_W']):
+                for lin_layer_id in six.moves.range(self.n_W):
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
                         handle, rnn_desc,
                         layer * self.rnn_direction + di,
                         x_desc, w_desc, w,
                         lin_layer_id)
-                    _W_index = ((layer * self.rnn_direction + di) *
-                                self.rnn_params['n_W'] + lin_layer_id)
+                    _W_index = ((layer * self.rnn_direction + di) * self.n_W +
+                                lin_layer_id)
                     m = mat.reshape(mat.size)
                     m[...] = ws[_W_index].ravel()
                     bias = cudnn.get_rnn_lin_layer_bias_params(
@@ -409,9 +410,9 @@ class BaseNStepRNN(function.Function):
             dcy_desc_value = 0
 
         ws, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.rnn_params['n_W'])
+                            self.n_W)
         bs, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.rnn_params['n_W'])
+                            self.n_W)
         x_list = inputs
         hx = cuda.cupy.ascontiguousarray(hx)
 
@@ -473,21 +474,17 @@ class BaseNStepRNN(function.Function):
         dbs = []
         for layer in six.moves.range(self.n_layers):
             for di in six.moves.range(self.rnn_direction):
-                for lin_layer_id in six.moves.range(self.rnn_params['n_W']):
+                for lin_layer_id in six.moves.range(self.n_W):
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
                         handle, rnn_desc, layer * self.rnn_direction + di,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    dws.append(mat.reshape(ws[(layer *
-                                               self.rnn_direction + di) *
-                                              self.rnn_params['n_W'] +
-                                              lin_layer_id].shape))
+                    _W_index = ((layer * self.rnn_direction + di) * self.n_W +
+                                lin_layer_id)
+                    dws.append(mat.reshape(ws[_W_index].shape))
                     bias = cudnn.get_rnn_lin_layer_bias_params(
                         handle, rnn_desc, layer * self.rnn_direction + di,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    dbs.append(bias.reshape(bs[(layer *
-                                                self.rnn_direction + di) *
-                                               self.rnn_params['n_W'] +
-                                               lin_layer_id].shape))
+                    dbs.append(bias.reshape(bs[_W_index].shape))
 
         if self.use_cell:
             # LSTM
