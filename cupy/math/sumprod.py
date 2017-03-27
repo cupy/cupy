@@ -1,8 +1,7 @@
 import numpy
+import six
 
 from cupy import core
-
-import six
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
