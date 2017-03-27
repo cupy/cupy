@@ -8,7 +8,6 @@ applies an optimizer to update the model.
 """
 from __future__ import print_function
 import argparse
-import copy
 
 import chainer
 from chainer.dataset import convert
@@ -25,8 +24,10 @@ def main():
     parser = argparse.ArgumentParser(description='Chainer CIFAR example:')
     parser.add_argument('--dataset', '-d', default='cifar10',
                         help='The dataset to use: cifar10 or cifar100')
-    parser.add_argument('--batchsize', '-b', type=int, default=128,
+    parser.add_argument('--batchsize', '-b', type=int, default=64,
                         help='Number of images in each mini-batch')
+    parser.add_argument('--learnrate', '-l', type=float, default=0.05,
+                        help='Learning rate for SGD')
     parser.add_argument('--epoch', '-e', type=int, default=300,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=0,
@@ -70,7 +71,7 @@ def main():
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU
 
-    optimizer = chainer.optimizers.MomentumSGD(0.1)
+    optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
@@ -103,7 +104,7 @@ def main():
             sum_accuracy = 0
             sum_loss = 0
             model.predictor.train = False
-            for batch in copy.copy(test_iter):
+            for batch in test_iter:
                 x_array, t_array = convert.concat_examples(batch, args.gpu)
                 x = chainer.Variable(x_array)
                 t = chainer.Variable(t_array)
@@ -111,6 +112,7 @@ def main():
                 sum_loss += float(loss.data) * len(t.data)
                 sum_accuracy += float(model.accuracy.data) * len(t.data)
 
+            test_iter.reset()
             model.predictor.train = True
             print('test mean  loss: {}, accuracy: {}'.format(
                 sum_loss / test_count, sum_accuracy / test_count))
