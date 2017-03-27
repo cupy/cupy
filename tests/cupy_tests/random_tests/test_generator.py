@@ -257,10 +257,10 @@ class TestInterval(unittest.TestCase):
     {'a': 3, 'size': 2, 'p': None},
     {'a': 3, 'size': 2, 'p': [0.3, 0.3, 0.4]},
     {'a': 3, 'size': (5, 5), 'p': [0.3, 0.3, 0.4]},
-    {'a': 3, 'size': (5, 5), 'p': cupy.array([0.3, 0.3, 0.4])},
+    {'a': 3, 'size': (5, 5), 'p': numpy.array([0.3, 0.3, 0.4])},
     {'a': 3, 'size': (), 'p': None},
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
-    {'a': cupy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
+    {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.gpu
 class TestChoice(unittest.TestCase):
