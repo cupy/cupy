@@ -212,7 +212,9 @@ from chainer.functions.connection.deconvolution_nd import deconvolution_nd  # NO
 from chainer.functions.connection.dilated_convolution_2d import dilated_convolution_2d  # NOQA
 from chainer.functions.connection.embed_id import embed_id  # NOQA
 from chainer.functions.connection.linear import linear  # NOQA
+from chainer.functions.connection.n_step_lstm import n_step_bilstm  # NOQA
 from chainer.functions.connection.n_step_lstm import n_step_lstm  # NOQA
+from chainer.functions.connection.n_step_lstm import NStepBiLSTM  # NOQA
 from chainer.functions.connection.n_step_lstm import NStepLSTM  # NOQA
 from chainer.functions.connection.n_step_rnn import n_step_birnn  # NOQA
 from chainer.functions.connection.n_step_rnn import n_step_rnn  # NOQA
