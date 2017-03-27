@@ -47,7 +47,7 @@ class TheanoFunctionTestBase(object):
 
         self.assertEqual(len(outputs), len(expect))
         for o, e in zip(outputs, expect):
-            gradient_check.assert_allclose(
+            testing.assert_allclose(
                 o.data, e, **self.forward_test_options)
 
     def test_forward_cpu(self):
