@@ -364,6 +364,10 @@ argmin
 ~~~~~~
 .. autofunction:: argmin
 
+average
+~~~~~~~
+.. autofunction:: average
+
 batch_inv
 ~~~~~~~~~
 .. autofunction:: batch_inv
