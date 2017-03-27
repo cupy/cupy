@@ -287,6 +287,9 @@ class TestSerialIteratorSerialize(unittest.TestCase):
 
         target = dict()
         it.serialize(DummySerializer(target))
+        # older version uses '_order'
+        target['_order'] = target['order']
+        del target['order']
         # older version does not have previous_epoch_detail
         del target['previous_epoch_detail']
 
@@ -303,41 +306,6 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
-
-    def test_iterator_serialize_backward_compat(self):
-        dataset = [1, 2, 3, 4, 5, 6]
-        it = iterators.SerialIterator(dataset, 2)
-
-        self.assertEqual(it.epoch, 0)
-        self.assertAlmostEqual(it.epoch_detail, 0 / 6)
-        batch1 = it.next()
-        self.assertEqual(len(batch1), 2)
-        self.assertIsInstance(batch1, list)
-        self.assertFalse(it.is_new_epoch)
-        self.assertAlmostEqual(it.epoch_detail, 2 / 6)
-        batch2 = it.next()
-        self.assertEqual(len(batch2), 2)
-        self.assertIsInstance(batch2, list)
-        self.assertFalse(it.is_new_epoch)
-        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
-
-        target = dict()
-        it.serialize(DummySerializer(target))
-        # older version uses '_order'
-        target['_order'] = target['order']
-        del target['order']
-
-        it = iterators.SerialIterator(dataset, 2)
-        it.serialize(DummyDeserializer(target))
-        self.assertFalse(it.is_new_epoch)
-        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
-
-        batch3 = it.next()
-        self.assertEqual(len(batch3), 2)
-        self.assertIsInstance(batch3, list)
-        self.assertTrue(it.is_new_epoch)
-        self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
-        self.assertAlmostEqual(it.epoch_detail, 6 / 6)
 
 
 testing.run_module(__name__, __file__)
