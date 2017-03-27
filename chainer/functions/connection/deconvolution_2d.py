@@ -75,15 +75,15 @@ class Deconvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
 
-        if(not type_check.same_types(*inputs)):
-            if b:
+        if not type_check.same_types(*inputs):
+            if b is not None:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s, type(b): %s'
-                                 % (type(W), type(x), type(b)))
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
             else:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s'
-                                 % (type(W), type(x)))
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
@@ -110,15 +110,15 @@ class Deconvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
 
-        if(not type_check.same_types(*inputs)):
-            if b:
+        if not type_check.same_types(*inputs):
+            if b is not None:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s, type(b): %s'
-                                 % (type(W), type(x), type(b)))
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
             else:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s'
-                                 % (type(W), type(x)))
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
@@ -197,15 +197,15 @@ class Deconvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
 
-        if(not type_check.same_types(*inputs)):
-            if b:
+        if not type_check.same_types(*inputs):
+            if b is not None:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s, type(b): %s'
-                                 % (type(W), type(x), type(b)))
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
             else:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s'
-                                 % (type(W), type(x)))
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         gy = grad_outputs[0]
         kh, kw = W.shape[2:]
@@ -227,15 +227,15 @@ class Deconvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
 
-        if(not type_check.same_types(*inputs)):
-            if b:
+        if not type_check.same_types(*inputs):
+            if b is not None:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s, type(b): %s'
-                                 % (type(W), type(x), type(b)))
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
             else:
                 raise ValueError('numpy and cupy must not be used together\n'
-                                 'type(W): %s, type(x): %s'
-                                 % (type(W), type(x)))
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         gy = grad_outputs[0]
         n, in_c, in_h, in_w = x.shape
