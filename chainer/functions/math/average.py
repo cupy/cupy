@@ -11,7 +11,7 @@ def average(x, axis=None, weights=None):
         axis (None or int): Axis which the method is performed.
             With the default (axis = None) it performs a mean over all the
             dimensions of the input array.
-        weights (None or ~chainer.Variable): An array holding weights to
+        weights (None or chainer.Variable): An array holding weights to
             calculate weighted average. If it is ``None``, all weights are
             assumed to be one.
             When ``axis`` is ``None``, ``weights`` must have the same shape
