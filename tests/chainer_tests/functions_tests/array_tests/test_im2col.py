@@ -1,4 +1,3 @@
-
 import unittest
 
 import numpy
@@ -121,3 +120,6 @@ class TestIm2Col(unittest.TestCase):
             cuda.to_gpu(self.x),
             self.ksize, self.stride, self.pad, self.cover_all, self.dilate,
             cuda.to_gpu(self.gy))
+
+
+testing.run_module(__name__, __file__)
