@@ -34,9 +34,13 @@ class DummyDeserializer(serializer.Deserializer):
         raise NotImplementedError
 
     def __call__(self, key, value):
-        if isinstance(value, numpy.ndarray):
-            value[:] = self.target[key]
-        return self.target[key]
+        if value is None:
+            value = self.target[key]
+        elif isinstance(value, numpy.ndarray):
+            numpy.copyto(value, self.target[key])
+        else:
+            value = type(value)(numpy.asarray(self.target[key]))
+        return value
 
 
 @testing.parameterize(*testing.product({
