@@ -96,7 +96,6 @@ MODULES = [
         ],
         'libraries': [
             'cusolver',
-            'gomp',
         ],
         'check_method': build.check_cusolver_version,
     },
@@ -211,6 +210,13 @@ def make_extensions(options, compiler, use_cython):
                               for p in settings['library_dirs']))
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
+
+    if compiler.compiler_type == 'unix':
+        args = settings.setdefault('extra_link_args', [])
+        args.append('-fopenmp')
+    elif compiler.cipmiler_type == 'msvc':
+        args = settings.setdefault('extra_link_args', [])
+        args.append('/openmp')
 
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
