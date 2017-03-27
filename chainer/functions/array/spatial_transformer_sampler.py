@@ -166,7 +166,7 @@ class SpatialTransformerSampler(function.Function):
         u = u.clip(-1, 1)
         v = v.clip(-1, 1)
 
-        # rescale coordiantes from [-1, 1] to [0, width or height - 1]
+        # rescale coordinates from [-1, 1] to [0, width or height - 1]
         u = (u + 1) / 2. * (W - 1)
         v = (v + 1) / 2. * (H - 1)
 
