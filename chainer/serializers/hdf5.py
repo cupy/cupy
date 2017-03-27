@@ -95,14 +95,21 @@ class HDF5Deserializer(serializer.Deserializer):
 
     def __getitem__(self, key):
         name = self.group.name + '/' + key
-        return HDF5Deserializer(
-            self.group.require_group(name), strict=self.strict)
+        try:
+            group = self.group.require_group(name)
+            return HDF5Deserializer(group, strict=self.strict)
+        except ValueError:
+            # require_group raises ValueError if there does not exist
+            # the given group and the file is read mode.
+            return HDF5Deserializer(None, strict=self.strict)
 
     def __call__(self, key, value):
-        if not self.strict and key not in self.group:
-            return value
+        if self.group is None:
+            if not self.strict:
+                return value
+            else:
+                raise ValueError('Inexistent group is specified')
 
-        self.group.keys
         dataset = self.group[key]
         if value is None:
             return numpy.asarray(dataset)

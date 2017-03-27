@@ -165,8 +165,11 @@ class TestHDF5DeserializerNonStrict(unittest.TestCase):
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
-        with h5py.File(path, 'w') as f:
-            f.require_group('x')
+
+        child = link.Chain(linear=links.Linear(2, 3))
+        parent = link.Chain(linear=links.Linear(3, 2), child=child)
+        hdf5.save_hdf5(self.temp_file_path, parent)
+        self.source = parent
 
         self.hdf5file = h5py.File(path, 'r')
         self.deserializer = hdf5.HDF5Deserializer(self.hdf5file, strict=False)
@@ -178,9 +181,20 @@ class TestHDF5DeserializerNonStrict(unittest.TestCase):
             os.remove(self.temp_file_path)
 
     def test_deserialize_partial(self):
-        y = numpy.empty((2, 3), dtype=numpy.float32)
-        ret = self.deserializer('y', y)
-        self.assertIs(ret, y)
+        child = link.Chain(linear2=links.Linear(2, 3))
+        target = link.Chain(linear=links.Linear(3, 2), child=child)
+        target_child_W = numpy.copy(child.linear2.W.data)
+        target_child_b = numpy.copy(child.linear2.b.data)
+        self.deserializer.load(target)
+
+        self.assertTrue(numpy.array_equal(
+            self.source.linear.W.data, target.linear.W.data))
+        self.assertTrue(numpy.array_equal(
+            self.source.linear.b.data, target.linear.b.data))
+        self.assertTrue(numpy.array_equal(
+            target.child.linear2.W.data, target_child_W))
+        self.assertTrue(numpy.array_equal(
+            target.child.linear2.b.data, target_child_b))
 
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
