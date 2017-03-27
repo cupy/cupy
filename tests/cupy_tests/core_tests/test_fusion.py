@@ -761,7 +761,9 @@ class TestFusionMisc(unittest.TestCase):
         ty = numpy.dtype(dtype).type
         return g(a, ty(3), ty(13))
 
+    @testing.with_requires('numpy>=1.11.2')
     def test_sqrt(self):
+        # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
     def test_square(self):
@@ -992,6 +994,8 @@ class TestFusionFuse(unittest.TestCase):
         res = g(a, b, c)
         return c + res
 
+    # NumPy 1.9 accepts itruediv between integers
+    @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_raises()
     def test_fuse_int_itruediv_py3_raises(self, xp, dtype):
