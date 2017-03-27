@@ -261,7 +261,7 @@ class ResNet50Layers(ResNetLayers):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    ResNet50 has 25557096 trainable parameters, and it's 58% and 43% fewer
+    ResNet50 has 25,557,096 trainable parameters, and it's 58% and 43% fewer
     than ResNet101 and ResNet152, respectively. On the other hand, the top-5
     classification accuracy on ImageNet dataset drops only 0.7% and 1.1% from
     ResNet101 and ResNet152, respectively. Therefore, ResNet50 may have the
@@ -318,7 +318,7 @@ class ResNet101Layers(ResNetLayers):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    ResNet101 has 44549224 trainable parameters, and it's 43% fewer than
+    ResNet101 has 44,549,224 trainable parameters, and it's 43% fewer than
     ResNet152 model, while the top-5 classification accuracy on ImageNet
     dataset drops 1.1% from ResNet152. For many cases, ResNet50 may have the
     best balance between the accuracy and the model size.
@@ -371,7 +371,7 @@ class ResNet152Layers(ResNetLayers):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    ResNet152 has 60192872 trainable parameters, and it's the deepest ResNet
+    ResNet152 has 60,192,872 trainable parameters, and it's the deepest ResNet
     model and it achieves the best result on ImageNet classification task in
     `ILSVRC 2015 <http://image-net.org/challenges/LSVRC/2015/results#loc>`_.
 
