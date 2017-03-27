@@ -40,14 +40,21 @@ def expected_unpooling_nd(x_data, outs, ksize, stride, pad):
     return y_expected
 
 
-@testing.parameterize(*testing.product({
-    'dims': [(5,), (5, 4), (5, 4, 3)],
+@testing.parameterize(*(testing.product({
+    'dims': [(5,), (2, 3, 4)],
+    '_ksize': [3],
+    '_stride': [3],
+    '_pad': [1],
+    'cover_all': [True],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}) + testing.product({
+    'dims': [(3, 2)],
     '_ksize': [1, 2, 3],
     '_stride': [1, 2, 3],
     '_pad': [0, 1],
-    'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'cover_all': [True, False],
-}))
+    'dtype': [numpy.float32],
+})))
 class TestUnpoolingND(unittest.TestCase):
 
     def setUp(self):
