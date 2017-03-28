@@ -112,8 +112,8 @@ Returns:
 
 Examples
 --------
->>> a = cupy.array([1, 2, 3], dtype=np.int32)
->>> b = cupy.array([4, 5, 6], dtype=np.int32)
+>>> a = cupy.array([[1, 2, 3]], dtype=np.int32)
+>>> b = cupy.array([[4, 5, 6]], dtype=np.int32)
 >>> cupy.c_[a, 0, 0, b]
 array([[1, 2, 3, 0, 0, 4, 5, 6]], dtype=int32)
 
