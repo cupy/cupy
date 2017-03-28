@@ -24,7 +24,6 @@ def permutate_list(lst, indices, inv):
     return ret
 
 
-
 class NStepRNNBase(link.ChainList):
     """Stacked RNN for sequnces.
 

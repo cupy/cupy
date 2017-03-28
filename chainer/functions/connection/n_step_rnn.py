@@ -190,15 +190,16 @@ class BaseNStepRNN(function.Function):
         type_check.expect(in_types.size() > self.n_cell + self.n_params * 2)
 
         if self.use_cell:
-            (h_type, c_type), in_types = _split(in_types, self.n_cell)
+            (h_type, c_type), in_types = _split(in_types, 2)
+            h_size = self.n_layers * self.rnn_direction
             type_check.expect(
                 h_type.dtype == numpy.float32,
                 c_type.dtype == numpy.float32,
 
                 h_type.ndim == 3,
-                h_type.shape[0] == self.n_layers * self.rnn_direction,
+                h_type.shape[0] == h_size,
                 c_type.ndim == 3,
-                c_type.shape[0] == self.n_layers * self.rnn_direction,
+                c_type.shape[0] == h_size,
 
                 # mini-batch size
                 h_type.shape[1] == c_type.shape[1],
@@ -208,12 +209,13 @@ class BaseNStepRNN(function.Function):
             )
 
         else:
-            (h_type, ), in_types = _split(in_types, self.n_cell)
+            (h_type, ), in_types = _split(in_types, 1)
+            h_size = self.n_layers * self.rnn_direction
             type_check.expect(
                 h_type.dtype == numpy.float32,
 
                 h_type.ndim == 3,
-                h_type.shape[0] == self.n_layers * self.rnn_direction,
+                h_type.shape[0] == h_size,
             )
 
         w_types, in_types = _split(in_types, self.n_params)
