@@ -22,9 +22,9 @@ def _pair(x):
 
 
 @parameterize(*(testing.product({
-    'c_contiguous': [True, False],
+    'c_contiguous': [True],
     'test_outsize': [True, False],
-    'nobias': [True, False],
+    'nobias': [True],
     'stride': [1, 2],
     'use_cudnn': [True],
     'x_dtype': [numpy.float32],

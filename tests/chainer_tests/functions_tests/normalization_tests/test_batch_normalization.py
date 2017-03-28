@@ -21,11 +21,15 @@ def _batch_normalization(expander, gamma, beta, x, mean, var):
     return y_expect
 
 
-@testing.parameterize(*testing.product({
-    'param_shape': [(3,), (3, 4), (3, 4, 5)],
-    'ndim': [0, 1, 2, 3],
+@testing.parameterize(*(testing.product({
+    'param_shape': [(3, 4), (3, 2, 3)],
+    'ndim': [0, 1, 2],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'param_shape': [(3,)],
+    'ndim': [1],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestBatchNormalization(unittest.TestCase):
 
     def setUp(self):
@@ -99,11 +103,15 @@ class TestBatchNormalization(unittest.TestCase):
             [cuda.to_gpu(i) for i in self.args], cuda.to_gpu(self.gy))
 
 
-@testing.parameterize(*testing.product({
-    'param_shape': [(3,), (3, 4), (3, 4, 5)],
-    'ndim': [0, 1, 2, 3],
+@testing.parameterize(*(testing.product({
+    'param_shape': [(3, 4), (3, 2, 3)],
+    'ndim': [0, 1, 2],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'param_shape': [(3,)],
+    'ndim': [1],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestFixedBatchNormalization(unittest.TestCase):
 
     def setUp(self):
