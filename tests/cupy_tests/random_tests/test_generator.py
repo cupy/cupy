@@ -274,7 +274,10 @@ class TestChoice(unittest.TestCase):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
-        expected_dtype = 'float' if isinstance(self.a, numpy.ndarray) else 'int'
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int'
         self.assertEqual(v.dtype, expected_dtype)
         self.assertEqual(v.shape, expected_shape)
 
