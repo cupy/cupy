@@ -86,7 +86,10 @@ class SerialIterator(iterator.Iterator):
         self.epoch = serializer('epoch', self.epoch)
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
         if self._order is not None:
-            serializer('_order', self._order)
+            try:
+                serializer('order', self._order)
+            except KeyError:
+                serializer('_order', self._order)
 
     def reset(self):
         if self._shuffle:

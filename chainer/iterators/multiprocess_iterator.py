@@ -99,7 +99,10 @@ class MultiprocessIterator(iterator.Iterator):
                                            self.current_position)
         self.epoch = serializer('epoch', self.epoch)
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
-        serializer('order', self._order)
+        try:
+            serializer('order', self._order)
+        except KeyError:
+            serializer('_order', self._order)
 
     def _init(self):
         finalized = threading.Event()

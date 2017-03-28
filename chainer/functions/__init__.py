@@ -71,6 +71,7 @@ from chainer.functions.loss import sigmoid_cross_entropy  # NOQA
 from chainer.functions.loss import softmax_cross_entropy  # NOQA
 from chainer.functions.loss import triplet  # NOQA
 from chainer.functions.loss import vae  # NOQA  # NOQA
+from chainer.functions.math import average  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared  # NOQA
 from chainer.functions.math import bias  # NOQA
@@ -254,6 +255,7 @@ from chainer.functions.loss.vae import bernoulli_nll  # NOQA
 from chainer.functions.loss.vae import gaussian_kl_divergence  # NOQA
 from chainer.functions.loss.vae import gaussian_nll  # NOQA
 
+from chainer.functions.math.average import average  # NOQA
 from chainer.functions.math.basic_math import absolute  # NOQA
 from chainer.functions.math.batch_l2_norm_squared import batch_l2_norm_squared  # NOQA
 from chainer.functions.math.batch_l2_norm_squared import BatchL2NormSquared  # NOQA
