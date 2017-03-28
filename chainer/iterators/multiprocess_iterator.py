@@ -121,6 +121,11 @@ class MultiprocessIterator(iterator.Iterator):
             # guess previous_epoch_detail for older version
             self._previous_epoch_detail = self.epoch + \
                 (self.current_position - self.batch_size) / len(self.dataset)
+            if self.epoch_detail > 0:
+                self._previous_epoch_detail = max(
+                    self._previous_epoch_detail, 0.)
+            else:
+                self._previous_epoch_detail = -1.
 
     def _init(self):
         finalized = threading.Event()
