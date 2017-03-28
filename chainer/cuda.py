@@ -157,7 +157,7 @@ def get_device_from_id(device_id):
         device_id (int or None): The ID of the device which this function
             returns.
     """
-    if type(device_id) in _integer_types:
+    if device_id is not None:
         check_cuda_available()
         return Device(device_id)
     else:
