@@ -139,14 +139,14 @@ if cuda.cudnn_enabled and _cudnn_version >= 5000:
 
     _rnn_params_modes = {
         # Todo: check this is ok.
-        libcudnn.CUDNN_RNN_RELU: {'n_W': 2, 'n_cell': 1},
-        libcudnn.CUDNN_RNN_TANH: {'n_W': 2, 'n_cell': 1},
-        libcudnn.CUDNN_GRU: {'n_W': 6, 'n_cell': 1},
-        libcudnn.CUDNN_LSTM: {'n_W': 8, 'n_cell': 2},
+        libcudnn.CUDNN_RNN_RELU: 2,
+        libcudnn.CUDNN_RNN_TANH: 2,
+        libcudnn.CUDNN_GRU: 6,
+        libcudnn.CUDNN_LSTM: 8,
     }
     _rnn_params_direction = {
-        libcudnn.CUDNN_UNIDIRECTIONAL: {'n': 1},
-        libcudnn.CUDNN_BIDIRECTIONAL: {'n': 2}
+        libcudnn.CUDNN_UNIDIRECTIONAL: 1,
+        libcudnn.CUDNN_BIDIRECTIONAL: 2,
     }
 
     _rnn_params_use_cell = {
@@ -157,18 +157,33 @@ if cuda.cudnn_enabled and _cudnn_version >= 5000:
     }
 
 
+def _make_n_cell(use_cell):
+    if use_cell:
+        n_cell = 2
+    else:
+        n_cell = 1
+    return n_cell
+
+
 class BaseNStepRNN(function.Function):
     def __init__(self, n_layers, states, rnn_dir, rnn_mode, train=True):
-        self.rnn_dir = _rnn_dirs[rnn_dir.lower()]
-        self.rnn_mode = _rnn_modes[rnn_mode.lower()]
-        self.rnn_params = _rnn_params_modes[self.rnn_mode]
-        self.rnn_direction = _rnn_params_direction[self.rnn_dir]['n']
+        if rnn_dir not in _rnn_dirs:
+            candidate_list = ','.join(_rnn_dirs.keys())
+            raise ValueError('Invalid rnn_dir: "%s". Please select from [%s]'
+                             % (rnn_dir, candidate_list))
+        if rnn_mode not in _rnn_modes:
+            candidate_list = ','.join(_rnn_modes.keys())
+            raise ValueError('Invalid rnn_mode: "%s". Please select from [%s]'
+                             % (rnn_mode, candidate_list))
+        self.rnn_dir = _rnn_dirs[rnn_dir]
+        self.rnn_mode = _rnn_modes[rnn_mode]
+        self.rnn_direction = _rnn_params_direction[self.rnn_dir]
         self.n_layers = n_layers
         self.train = train
         self.states = states
         self.use_cell = _rnn_params_use_cell[self.rnn_mode]
-        self.n_cell = self.rnn_params['n_cell']
-        self.n_W = self.rnn_params['n_W']
+        self.n_cell = _make_n_cell(self.use_cell)
+        self.n_W = _rnn_params_modes[self.rnn_mode]
         self.n_params = self.n_layers * self.rnn_direction * self.n_W
 
     def check_type_forward(self, in_types):
@@ -222,8 +237,7 @@ class BaseNStepRNN(function.Function):
         for layer in six.moves.range(self.n_layers):
             for i in six.moves.range(self.n_W):
                 for di in six.moves.range(self.rnn_direction):
-                    ind = (layer * self.rnn_direction +
-                           di) * self.n_W + i
+                    ind = (layer * self.rnn_direction + di) * self.n_W + i
                     w_type = w_types[ind]
                     b_type = b_types[ind]
                     if self.rnn_direction == 1:
@@ -270,12 +284,9 @@ class BaseNStepRNN(function.Function):
         else:
             # RNN, GRU
             (hx, ), inputs = _split(inputs, self.n_cell)
-            cx = None
-            cy = None
-            cx_data_ptr = 0
-            cy_data_ptr = 0
-            cx_desc_value = 0
-            cy_desc_value = 0
+            cx = cy = None
+            cx_data_ptr = cy_data_ptr = 0
+            cx_desc_value = cy_desc_value = 0
 
         ws, inputs = _split(inputs, self.n_params)
         bs, inputs = _split(inputs, self.n_params)
@@ -311,22 +322,18 @@ class BaseNStepRNN(function.Function):
             for di in six.moves.range(self.rnn_direction):
                 # di = 0: forward, 1: backward
                 for lin_layer_id in six.moves.range(self.n_W):
+                    mat_index = layer * self.rnn_direction + di
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
-                        handle, rnn_desc,
-                        layer * self.rnn_direction + di,
-                        x_desc, w_desc, w,
-                        lin_layer_id)
-                    _W_index = ((layer * self.rnn_direction + di) * self.n_W +
-                                lin_layer_id)
+                        handle, rnn_desc, mat_index,
+                        x_desc, w_desc, w, lin_layer_id)
+                    W_index = mat_index * self.n_W + lin_layer_id
                     m = mat.reshape(mat.size)
-                    m[...] = ws[_W_index].ravel()
+                    m[...] = ws[W_index].ravel()
                     bias = cudnn.get_rnn_lin_layer_bias_params(
-                        handle, rnn_desc,
-                        layer * self.rnn_direction + di,
-                        x_desc, w_desc, w,
-                        lin_layer_id)
+                        handle, rnn_desc, mat_index,
+                        x_desc, w_desc, w, lin_layer_id)
                     b = bias.reshape(bias.size)
-                    b[...] = bs[_W_index]
+                    b[...] = bs[W_index]
         self.w = w
         self.w_desc = w_desc
 
@@ -399,20 +406,13 @@ class BaseNStepRNN(function.Function):
             # GRU, RNN
             (hx, ), inputs = _split(inputs, self.n_cell)
             dhy, = grads[:self.n_cell]
-            dcy = None
-            cx = None
-            dcx = None
-            cx_data_ptr = 0
-            dcy_data_ptr = 0
-            dcx_data_ptr = 0
-            cx_desc_value = 0
-            dcx_desc_value = 0
-            dcy_desc_value = 0
+            dcy = cx = dcx = None
+            cx_data_ptr = dcy_data_ptr = dcx_data_ptr = 0
+            cx_desc_value = dcx_desc_value = dcy_desc_value = 0
 
-        ws, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.n_W)
-        bs, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.n_W)
+        ws_size = self.n_layers * self.rnn_direction * self.n_W
+        ws, inputs = _split(inputs, ws_size)
+        bs, inputs = _split(inputs, ws_size)
         x_list = inputs
         hx = cuda.cupy.ascontiguousarray(hx)
 
@@ -475,16 +475,16 @@ class BaseNStepRNN(function.Function):
         for layer in six.moves.range(self.n_layers):
             for di in six.moves.range(self.rnn_direction):
                 for lin_layer_id in six.moves.range(self.n_W):
+                    mat_index = layer * self.rnn_direction + di
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
-                        handle, rnn_desc, layer * self.rnn_direction + di,
+                        handle, rnn_desc, mat_index,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    _W_index = ((layer * self.rnn_direction + di) * self.n_W +
-                                lin_layer_id)
-                    dws.append(mat.reshape(ws[_W_index].shape))
+                    W_index = mat_index * self.n_W + lin_layer_id
+                    dws.append(mat.reshape(ws[W_index].shape))
                     bias = cudnn.get_rnn_lin_layer_bias_params(
-                        handle, rnn_desc, layer * self.rnn_direction + di,
+                        handle, rnn_desc, mat_index,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    dbs.append(bias.reshape(bs[_W_index].shape))
+                    dbs.append(bias.reshape(bs[W_index].shape))
 
         if self.use_cell:
             # LSTM
@@ -590,6 +590,12 @@ def n_step_rnn(
               units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     """
+
+    if activation not in ['tanh', 'relu']:
+        candidate = 'tanh, relu'
+        raise ValueError('Invalid activation: "%s". Please select from [%s]'
+                         % (activation, candidate))
+
     xp = cuda.get_array_module(hx)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
@@ -727,6 +733,11 @@ def n_step_birnn(
               units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     """
+    if activation not in ['tanh', 'relu']:
+        candidate = 'tanh, relu'
+        raise ValueError('Invalid activation: "%s". Please select from [%s]'
+                         % (activation, candidate))
+
     xp = cuda.get_array_module(hx)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
