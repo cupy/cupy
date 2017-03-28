@@ -145,7 +145,7 @@ def spatial_transformer_grid(theta, output_shape, use_cudnn=True):
             the warping described above.
         output_shape (tuple): A tuple of 2 elements: :math:`h_O, w_O`.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-            available. Note that, cuDNN supports SpatialTransformerSampler
+            available. Note that, cuDNN supports SpatialTransformerGrid
             from version 5.0.0.
 
     Returns:
