@@ -97,11 +97,11 @@ class HDF5Deserializer(serializer.Deserializer):
         name = self.group.name + '/' + key
         try:
             group = self.group.require_group(name)
-            return HDF5Deserializer(group, strict=self.strict)
         except ValueError:
             # require_group raises ValueError if there does not exist
             # the given group and the file is read mode.
-            return HDF5Deserializer(None, strict=self.strict)
+            group = None
+        return HDF5Deserializer(group, strict=self.strict)
 
     def __call__(self, key, value):
         if self.group is None:
