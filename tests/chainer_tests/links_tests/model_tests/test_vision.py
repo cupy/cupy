@@ -10,10 +10,10 @@ from chainer.testing import attr
 from chainer.variable import Variable
 
 
-@unittest.skipUnless(resnet.available, 'Pillow is required')
 @testing.parameterize(*testing.product({
     'n_layers': [50, 101, 152],
 }))
+@unittest.skipUnless(resnet.available, 'Pillow is required')
 @attr.slow
 class TestResNetLayers(unittest.TestCase):
 
