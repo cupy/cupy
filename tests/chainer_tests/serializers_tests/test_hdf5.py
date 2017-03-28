@@ -165,6 +165,31 @@ class TestHDF5DeserializerNonStrict(unittest.TestCase):
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
+        with h5py.File(path, 'w') as f:
+            f.require_group('x')
+
+        self.hdf5file = h5py.File(path, 'r')
+        self.deserializer = hdf5.HDF5Deserializer(self.hdf5file, strict=False)
+
+    def tearDown(self):
+        if hasattr(self, 'hdf5file'):
+            self.hdf5file.close()
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def test_deserialize_partial(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        ret = self.deserializer('y', y)
+        self.assertIs(ret, y)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestHDF5DeserializerNonStrictGroupHierachy(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
 
         child = link.Chain(linear=links.Linear(2, 3))
         parent = link.Chain(linear=links.Linear(3, 2), child=child)
@@ -180,7 +205,7 @@ class TestHDF5DeserializerNonStrict(unittest.TestCase):
         if hasattr(self, 'temp_file_path'):
             os.remove(self.temp_file_path)
 
-    def test_deserialize_partial(self):
+    def test_deserialize_hierarchy(self):
         child = link.Chain(linear2=links.Linear(2, 3))
         target = link.Chain(linear=links.Linear(3, 2), child=child)
         target_child_W = numpy.copy(child.linear2.W.data)

@@ -109,6 +109,8 @@ class HDF5Deserializer(serializer.Deserializer):
                 return value
             else:
                 raise ValueError('Inexistent group is specified')
+        if not self.strict and key not in self.group:
+            return value
 
         dataset = self.group[key]
         if value is None:
