@@ -196,14 +196,16 @@ class TestNpzDeserializerNonStrictGroupHierachy(unittest.TestCase):
         target_child_b = numpy.copy(child.linear2.b.data)
         self.deserializer.load(target)
 
-        self.assertTrue(numpy.array_equal(
-            self.source.linear.W.data, target.linear.W.data))
-        self.assertTrue(numpy.array_equal(
-            self.source.linear.b.data, target.linear.b.data))
-        self.assertTrue(numpy.array_equal(
-            target.child.linear2.W.data, target_child_W))
-        self.assertTrue(numpy.array_equal(
-            target.child.linear2.b.data, target_child_b))
+        numpy.testing.assert_array_equal(
+            self.source.linear.W.data, target.linear.W.data)
+        numpy.testing.assert_array_equal(
+            self.source.linear.W.data, target.linear.W.data)
+        numpy.testing.assert_array_equal(
+            self.source.linear.b.data, target.linear.b.data)
+        numpy.testing.assert_array_equal(
+            target.child.linear2.W.data, target_child_W)
+        numpy.testing.assert_array_equal(
+            target.child.linear2.b.data, target_child_b)
 
 
 @testing.parameterize(*testing.product({'compress': [False, True]}))
