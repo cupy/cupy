@@ -253,6 +253,103 @@ class TestInterval(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.parameterize(
+    {'a': 3, 'size': 2, 'p': None},
+    {'a': 3, 'size': 2, 'p': [0.3, 0.3, 0.4]},
+    {'a': 3, 'size': (5, 5), 'p': [0.3, 0.3, 0.4]},
+    {'a': 3, 'size': (5, 5), 'p': numpy.array([0.3, 0.3, 0.4])},
+    {'a': 3, 'size': (), 'p': None},
+    {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
+    {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
+)
+@testing.gpu
+class TestChoice(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_dtype_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, p=self.p)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int'
+        self.assertEqual(v.dtype, expected_dtype)
+        self.assertEqual(v.shape, expected_shape)
+
+    @condition.repeat(10)
+    def test_within_choice_and_shape(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        minimum = -1
+        maximum = 3
+        numpy.testing.assert_array_less(
+            numpy.full(self.size, minimum, dtype=numpy.int64), val)
+        numpy.testing.assert_array_less(
+            val, numpy.full(self.size, maximum, dtype=numpy.int64))
+
+    @condition.retry(20)
+    def test_lower_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        val = val.item() if self.size == () else val.item(0)
+        lower = 0
+        self.assertEqual(lower, val)
+
+    @condition.retry(20)
+    def test_upper_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+        val = val.item() if self.size == () else val.item(0)
+        upper = 2
+        self.assertEqual(upper, val)
+
+
+@testing.gpu
+class TestChoiceChi(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_goodness_of_fit(self):
+        trial = 100
+        vals = [self.rs.choice(3, 1, True, [0.3, 0.3, 0.4]).get()
+                for _ in six.moves.xrange(trial)]
+        counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
+        expected = numpy.array([30, 30, 40])
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        vals = self.rs.choice(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
+        expected = numpy.array([30, 30, 40])
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+
+
+@testing.parameterize(
+    {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': -3, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': [[0, 1], [2]], 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': [], 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': 3, 'size': 1, 'p': [[0.1, 0.1], [0.8]]},
+    {'a': 2, 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},
+    {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
+)
+@testing.gpu
+class TestChoiceFailure(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_choice_invalid_value(self):
+        with self.assertRaises(ValueError):
+            self.rs.choice(a=self.a, size=self.size, p=self.p)
+
+
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):

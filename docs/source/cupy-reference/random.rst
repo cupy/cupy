@@ -13,6 +13,7 @@ This option enables us to generate float32 values directly without any space ove
 Sample random data
 ------------------
 
+.. autofunction:: cupy.random.choice
 .. autofunction:: cupy.random.rand
 .. autofunction:: cupy.random.randn
 .. autofunction:: cupy.random.randint
