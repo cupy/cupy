@@ -3,83 +3,93 @@ import unittest
 import mock
 import numpy
 
+from chainer import cuda
 from chainer import testing
+from chainer.testing import attr
 from chainer.training import extensions
 
 
 @testing.parameterize(
-    {'x': [1.0, 2.0, 0.0, -1.0, 0.5], 'min': -1.0, 'max': 2.0, 'mean': 0.5,
-     'std': 1.0, 'zeros': 1, 'percentiles': [-0.9948, -0.9088, -0.3652, 0.5,
-                                             1.3652, 1.9088, 1.9948]},
-    {'x': [0], 'min': 0.0, 'max': 0.0, 'mean': 0.0, 'std': 0.0, 'zeros': 1,
-     'percentiles': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+    {'in_x': [1.0, 2.0, 0.0, -1.0, 0.5],
+     'target_min': -1.0,
+     'target_max': 2.0,
+     'target_mean': 0.5,
+     'target_std': 1.0,
+     'target_zeros': 1,
+     'target_percentiles': [-0.9948, -0.9088, -0.3652, 0.5,
+                            1.3652, 1.9088, 1.9948],
+     'dtype': numpy.float32},
+    {'in_x': [0],
+     'target_min': 0.0,
+     'target_max': 0.0,
+     'target_mean': 0.0,
+     'target_std': 0.0,
+     'target_zeros': 1,
+     'target_percentiles': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     'dtype': numpy.float32},
 )
-class TestParameterStatisticsValid(unittest.TestCase):
+class TestParameterStatistics(unittest.TestCase):
 
     def setUp(self):
         self.trainer = mock.MagicMock()
         self.links = mock.MagicMock()
         self.extension = extensions.ParameterStatistics(self.links)
+        self.x = numpy.array(self.in_x, dtype=self.dtype)
 
-    def test_call(self):
-        self.extension(self.trainer)
+    def test_statistics_cpu(self):
+        report = self.extension.statistics_report(self.x)
 
-    def test_statistics(self):
-        statistics = self.extension.statistics(numpy.array(self.x))
-        for f, s in statistics.items():
-            self.assertEqual(s, getattr(self, f))
+        for f, s in report.items():
+            self.assertIsInstance(s, self.dtype)
+            self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
 
-    def test_percentiles(self):
-        percentiles = self.extension.percentiles(numpy.array(self.x))
-        for p, e in zip(percentiles, self.percentiles):
-            self.assertAlmostEqual(p, e)
+    @attr.gpu
+    def test_statistics_gpu(self):
+        report = self.extension.statistics_report(cuda.to_gpu(self.x))
 
-    def test_sparsity(self):
-        zeros = self.extension.sparsity(numpy.array(self.x))
-        self.assertEqual(zeros, self.zeros)
+        for f, s in report.items():
+            self.assertIsInstance(s, cuda.ndarray)
+            self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
 
+    def test_percentiles_cpu(self):
+        report = self.extension.percentiles_report(self.x)
 
-class TestParameterStatisticsEmpty(unittest.TestCase):
+        for i, tp in enumerate(self.target_percentiles):
+            p = report['percentile/{}'.format(i)]
+            self.assertIsInstance(p, self.dtype)
+            self.assertAlmostEqual(p, tp)
 
-    def setUp(self):
-        self.x = []
-        self.links = mock.MagicMock()
-        self.extension = extensions.ParameterStatistics(self.links)
+    @attr.gpu
+    def test_percentiles_gpu(self):
+        report = self.extension.percentiles_report(cuda.to_gpu(self.x))
 
-    def test_statistics(self):
-        statistics = self.extension.statistics(numpy.array(self.x))
-        for s in statistics.values():
-            self.assertTrue(numpy.isnan(s))
+        for i, tp in enumerate(self.target_percentiles):
+            p = report['percentile/{}'.format(i)]
+            self.assertIsInstance(p, cuda.ndarray)
+            self.assertAlmostEqual(cuda.to_cpu(p), tp)
 
-    def test_percentiles(self):
-        percentiles = self.extension.percentiles(numpy.array(self.x))
-        for p in percentiles:
-            self.assertTrue(numpy.isnan(p))
+    def test_zeros_cpu(self):
+        report = self.extension.zeros_report(self.x)
 
-    def test_sparsity(self):
-        zeros = self.extension.sparsity(numpy.array(self.x))
-        self.assertEqual(zeros, 0)
+        z = report['zeros']
+        self.assertIsInstance(z, int)
+        self.assertEqual(z, self.target_zeros)
 
+    @attr.gpu
+    def test_zeros_gpu(self):
+        report = self.extension.zeros_report(cuda.to_gpu(self.x))
 
-class TestParameterStatisticsNone(unittest.TestCase):
-
-    def setUp(self):
-        self.x = None
-        self.links = mock.MagicMock()
-        self.extension = extensions.ParameterStatistics(self.links)
-
-    def test_none(self):
-        with self.assertRaises(ValueError):
-            self.extension.sparsity(numpy.array(self.x))
+        z = report['zeros']
+        self.assertIsInstance(z, int)
+        self.assertEqual(z, self.target_zeros)
 
 
 @testing.parameterize(
-    {'stats': {'key_1': 0, 'key_2': 0}}
+    {'stats': {'key_1': 0, 'key_2': 0}, 'prefix': 'prefix'}
 )
 class TestParameterStatisticsPostProcess(unittest.TestCase):
 
     def setUp(self):
-        self.prefix = 'prefix'
         self.links = mock.MagicMock()
         self.extension = extensions.ParameterStatistics(self.links,
                                                         prefix=self.prefix)
