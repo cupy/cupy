@@ -1,6 +1,5 @@
 import numpy
-
-import cupy
+import six
 
 from chainer import cuda
 from chainer import reporter
@@ -14,39 +13,28 @@ def _iterable(x):
     return x,
 
 
-def _prefix_statistics(prefix, stats):
-    """Prefix all keys in a statistic dictionary."""
-    for key in list(stats.keys()):
-        stats['{}/{}'.format(prefix, key)] = stats.pop(key)
-    return stats
+def _prefix_dict_keys(prefix, x):
+    return {'{}/{}'.format(prefix, k): v for k, v in six.iteritems(x)}
 
 
-def _statistic_key(link, param_names, attr_names):
-    """Generate a statistic dictionary key based on context."""
-    param_names = _iterable(param_names)
-    attr_names = _iterable(attr_names)
-
-    link_name = 'None' if not hasattr(link, 'name') else link.name
-    param_name = '-'.join(param_names)
-    attr_name = '-'.join(attr_names)
+def _target_name(link, param_names, attr_names):
+    """Generate a dictionary key based on context."""
+    link_name = getattr(link, 'name', 'None')
+    param_name = '-'.join(_iterable(param_names))
+    attr_name = '-'.join(_iterable(attr_names))
 
     return '{}/{}/{}'.format(link_name, param_name, attr_name)
 
 
-def _flatten_link(link, param_names, attr_names):
-    """Flatten a link into an array."""
-    param_names = _iterable(param_names)
-    attr_names = _iterable(attr_names)
-
+def _get_link_params(link, param_names, attr_names):
+    """Flatten link parameters into a single array and return a copy."""
     params = []
     for param in link.params():
-        if param.name in param_names:
-            for attr_name in attr_names:
-                p = getattr(param, attr_name)
-                p = p.flatten()
-                params.append(p)
+        if param.name in _iterable(param_names):
+            for attr_name in _iterable(attr_names):
+                params.append(getattr(param, attr_name).ravel())
 
-    return link.xp.concatenate(params)
+    return link.xp.concatenate(params) if params else link.xp.array([])
 
 
 def _statistics(x, functions):
@@ -63,9 +51,11 @@ def _statistics(x, functions):
     stats = {}
     for f in functions:
         try:
-            stats[f] = getattr(x, f)()
-        except ValueError:
+            # nan if x.size == 0 and f in ('mean', 'std')
+            stats[f] = getattr(x, f, lambda: float('NaN'))()
+        except ValueError:  # x.size == 0 and f in ('min, 'max')
             stats[f] = float('NaN')
+
     return stats
 
 
@@ -82,18 +72,18 @@ def _percentiles(x, sigmas):
     """
     def _percentiles_cpu(_x):
         try:
-            return numpy.percentile(_x, sigmas)
-        except IndexError:
-            return numpy.array((float('NaN'),) * 7)
+            return numpy.percentile(_x, sigmas).astype(_x.dtype)
+        except IndexError:  # _x.size == 0
+            return numpy.array((float('NaN'),) * len(sigmas))
 
-    # TODO(hvy): Make percentile computation faster for GPUs
-    if isinstance(x, cupy.ndarray):
-        x = cupy.asnumpy(x)
-        return cupy.asarray(_percentiles_cpu(x))
+    if cuda.available and isinstance(x, cuda.ndarray):
+        # cuda.cupy.percentile() is not implemented
+        return cuda.to_gpu(_percentiles_cpu(cuda.to_cpu(x)))
+
     return _percentiles_cpu(x)
 
 
-def _sparsity(x):
+def _zeros(x):
     """Count the number of zeros in the given array.
 
     Args:
@@ -103,8 +93,7 @@ def _sparsity(x):
         int: Number of zeros.
     """
     if x.ndim == 0:
-        raise ValueError(
-            'Cannot compute sparsity for shape {}'.format(x.shape))
+        raise ValueError('Cannot count zeros for shape {}'.format(x.shape))
 
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
@@ -117,14 +106,8 @@ class ParameterStatistics(extension.Extension):
     aggregated over all its children.
 
     Statistics that can be collected and reporter using the current scope are
-    as follows. However, the list may extend to other statistics depending on
-    the type of parameter container.
-
-    - Weight percentiles.
-    - Bias percentiles.
-    - Weight gradient percentiles.
-    - Bias gradients percentiles.
-    - Sparsity (counting number of zeros).
+    minimum and maximum values, means, standard deviations, percentiles and
+    zero counts.
 
     Args:
         links (~chainer.Link or iterable of ~chainer.Link): Links containing
@@ -132,34 +115,29 @@ class ParameterStatistics(extension.Extension):
             attribute which is used as a part of a key in the report.
         trigger: Trigger that decides when to aggregate the results and report
             the values.
-        sparsity (bool): If ``True``, include sparsity statistics.
-        sparsity_include_bias (bool): If ``True``, take biases into account
-            when computing the sparsity statistics. Otherwise, only consider
-            weights. Does nothing if ``sparsity`` is ``False``.
+        count_zeros (bool): If ``True``, count the number of zero elements and
+            include those statistics in the report. Else, do not compute the
+            number of zero elements.
         prefix (str): Prefix to prepend to the report keys.
+        targets (iterable of tuples): Target parameters and their attributes
+            to consider in this extension.
     """
     default_name = 'parameter_statistics'
     priority = extension.PRIORITY_WRITER
 
-    def __init__(self, links, trigger=(1, 'epoch'), sparsity=True,
-                 sparsity_include_bias=True, prefix=None):
+    def __init__(self, links, trigger=(1, 'epoch'), count_zeros=False,
+                 prefix=None, targets=(('W', 'data'),
+                                       ('b', 'data'),
+                                       ('W', 'grad'),
+                                       ('b', 'grad'))):
 
-        if not isinstance(links, (tuple, list)):
-            links = links,
-
-        self._links = links
+        self._links = _iterable(links)
         self._trigger = training.trigger.get_trigger(trigger)
+        self._count_zeros = count_zeros
         self._prefix = prefix
-        self._summary = reporter.DictSummary()
-        self._targets = [('W', 'data'), ('b', 'data'),
-                         ('W', 'grad'), ('b', 'grad')]
-        self._sparsity_targets = []
+        self._targets = targets
 
-        if sparsity:
-            if sparsity_include_bias:
-                self._sparsity_targets.append((('W', 'b'), 'data'))
-            else:
-                self._sparsity_targets.append((('W'), 'data'))
+        self._summary = reporter.DictSummary()
 
         self._statistic_functions = ('min', 'max', 'mean', 'std')
         self._percentile_sigmas = (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)
@@ -179,55 +157,31 @@ class ParameterStatistics(extension.Extension):
         """
         for link in self._links:
             for target in self._targets:
-                stats = self.get_statistics(link, *target)
-                stats = self.post_process(stats)
-                self._summary.add(stats)
-
-            for target in self._sparsity_targets:
-                stats = self.get_sparsity(link, *target)
-                stats = self.post_process(stats)
-                self._summary.add(stats)
+                params = _get_link_params(link, *target)
+                if params.size > 0:
+                    prefix = _target_name(link, *target) + '/'
+                    stats = self.statistics_report(params, prefix)
+                    stats.update(self.percentiles_report(params, prefix))
+                    if self._count_zeros:
+                        stats.update(self.zeros_report(params, prefix))
+                    self._summary.add(self.post_process(stats))
 
         if self._trigger(trainer):
             reporter.report(self._summary.compute_mean())
             self._summary = reporter.DictSummary()  # Clear summary
 
+    def statistics_report(self, params, prefix=''):
+        return {'{}{}'.format(prefix, f): s for f, s in
+                six.iteritems(_statistics(params, self._statistic_functions))}
+
+    def percentiles_report(self, params, prefix=''):
+        return {'{}percentile/{}'.format(prefix, i): p for i, p
+                in enumerate(_percentiles(params, self._percentile_sigmas))}
+
+    def zeros_report(self, params, prefix=''):
+        return {'{}zeros'.format(prefix): _zeros(params)}
+
     def post_process(self, stats):
-        """Post processing of the data before adding them to the summary."""
         if self._prefix is not None:
-            _prefix_statistics(self._prefix, stats)
-
+            stats = _prefix_dict_keys(self._prefix, stats)
         return stats
-
-    def statistics(self, params):
-        return _statistics(params, self._statistic_functions)
-
-    def percentiles(self, params):
-        return _percentiles(params, self._percentile_sigmas)
-
-    def sparsity(self, params):
-        return _sparsity(params)
-
-    def get_statistics(self, link, param_names, attr_names):
-
-        key = _statistic_key(link, param_names, attr_names)
-        params = _flatten_link(link, param_names, attr_names)
-        stats = {}
-
-        for f, s in self.statistics(params).items():
-            stats['{}/{}'.format(key, f)] = s
-
-        for i, p in enumerate(self.percentiles(params)):
-            stats['{}/percentile/{}'.format(key, i)] = p
-
-        return stats
-
-    def get_sparsity(self, link, param_names, attr_names):
-
-        key = _statistic_key(link, param_names, attr_names)
-        key += '/zeros'
-
-        params = _flatten_link(link, param_names, attr_names)
-        zeros = self.sparsity(params)
-
-        return {key: zeros}
