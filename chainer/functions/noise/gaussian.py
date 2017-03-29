@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 
@@ -32,8 +33,8 @@ class Gaussian(function.Function):
             self.eps = numpy.random.standard_normal(ln_var.shape) \
                                    .astype(numpy.float32)
 
-        self.noise = numpy.exp(ln_var * 0.5) * self.eps
-        return mean + self.noise,
+        self.noise = numpy.exp(ln_var * mean.dtype.type(0.5)) * self.eps
+        return utils.force_array(mean + self.noise),
 
     def forward_gpu(self, inputs):
         cupy = cuda.cupy
@@ -52,7 +53,7 @@ class Gaussian(function.Function):
 
     def backward(self, inputs, grad_output):
         g, = grad_output
-        return g, g * self.noise * g.dtype.type(0.5),
+        return g, utils.force_array(g * self.noise * g.dtype.type(0.5))
 
 
 def gaussian(mean, ln_var):

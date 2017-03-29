@@ -15,6 +15,7 @@ from cupy.random.generator import get_random_state  # NOQA
 from cupy.random.generator import RandomState  # NOQA
 from cupy.random.generator import reset_states  # NOQA
 from cupy.random.generator import seed  # NOQA
+from cupy.random.sample import choice  # NOQA
 from cupy.random.sample import rand  # NOQA
 from cupy.random.sample import randint  # NOQA
 from cupy.random.sample import randn  # NOQA

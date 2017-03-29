@@ -50,7 +50,7 @@ class ELU(function.Function):
 def elu(x, alpha=1.0):
     """Exponential Linear Unit function.
 
-    This function is expressed as
+    For a parameter :math:`\\alpha`, it is expressed as
 
     .. math::
         f(x) = \\left \\{ \\begin{array}{ll}
@@ -58,15 +58,28 @@ def elu(x, alpha=1.0):
         \\alpha (\\exp(x) - 1) & {\\rm if}~ x < 0,
         \\end{array} \\right.
 
-    where :math:`\\alpha` is a parameter.
     See: https://arxiv.org/abs/1511.07289
 
     Args:
-        x (~chainer.Variable): Input variable.
-        alpha (float): Parameter :math:`\\alpha`.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+        alpha (float): Parameter :math:`\\alpha`. Default is 1.0.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: Output variable. A
+        :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+
+    .. admonition:: Example
+
+        >>> x = np.array([[-1, 0], [2, -3]], 'f')
+        >>> x
+        array([[-1.,  0.],
+               [ 2., -3.]], dtype=float32)
+        >>> y = F.elu(x, alpha=1.)
+        >>> y.data
+        array([[-0.63212055,  0.        ],
+               [ 2.        , -0.95021296]], dtype=float32)
 
     """
     return ELU(alpha=alpha)(x)

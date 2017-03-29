@@ -269,15 +269,8 @@ class Function(object):
 
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)
-        try:
+        with type_check.get_function_check_context(self):
             self.check_type_forward(in_type)
-        except type_check.InvalidType as e:
-            msg = """
-Invalid operation is performed in: {0} (Forward)
-
-{1}""".format(self.label, str(e))
-            six.raise_from(
-                type_check.InvalidType(e.expect, e.actual, msg=msg), None)
 
     def check_type_forward(self, in_types):
         """Checks types of input data before forward propagation.
@@ -502,32 +495,35 @@ class FunctionHook(object):
     in this way are registered to all functions within ``with`` statement
     and are unregistered at the end of ``with`` statement.
 
-    The following code is a simple example in which
-    we measure the elapsed time of a part of forward propagation procedure
-    with :class:`~chainer.function_hooks.TimerHook`, which is a subclass of
-    :class:`~chainer.function.FunctionHook`.
+    .. admonition:: Example
 
-    >>> import chainer, chainer.links as L, chainer.functions as F
-    ... class Model(chainer.Chain):
-    ...     def __call__(self, x1):
-    ...         return F.exp(self.l(x1))
-    ... model1 = Model(l=L.Linear(10, 10))
-    ... model2 = Model(l=L.Linear(10, 10))
-    ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
-    ... with chainer.function_hooks.TimerHook() as m:
-    ...     _ = model1(x)
-    ...     y = model2(x)
-    ...     print(m.total_time())
-    ... model3 = Model(l=L.Linear(10, 10))
-    ... z = model3(y)
+        The following code is a simple example in which
+        we measure the elapsed time of a part of forward propagation procedure
+        with :class:`~chainer.function_hooks.TimerHook`, which is a subclass of
+        :class:`~chainer.function.FunctionHook`.
 
-    In this example, we measure the elapsed times for each forward propagation
-    of all functions in ``model1`` and ``model2`` (specifically,
-    :class:`~chainer.functions.LinearFunction` and
-    :class:`~chainer.functions.Exp` of ``model1`` and ``model2``).
-    Note that ``model3`` is not a target of measurement
-    as :class:`~chainer.function_hooks.TimerHook` is unregistered
-    before forward propagation of ``model3``.
+        >>> from chainer import function_hooks
+        >>> class Model(chainer.Chain):
+        ...     def __call__(self, x1):
+        ...         return F.exp(self.l(x1))
+        >>> model1 = Model(l=L.Linear(10, 10))
+        >>> model2 = Model(l=L.Linear(10, 10))
+        >>> x = chainer.Variable(np.zeros((1, 10), 'f'))
+        >>> with chainer.function_hooks.TimerHook() as m:
+        ...     _ = model1(x)
+        ...     y = model2(x)
+        ...     print("Total time : " + str(m.total_time()))
+        ...     model3 = Model(l=L.Linear(10, 10))
+        ...     z = model3(y) # doctest:+ELLIPSIS
+        Total time : ...
+
+        In this example, we measure the elapsed times for each forward
+        propagation of all functions in ``model1`` and ``model2``
+        (specifically, :class:`~chainer.functions.LinearFunction` and
+        :class:`~chainer.functions.Exp` of ``model1`` and ``model2``).
+        Note that ``model3`` is not a target of measurement
+        as :class:`~chainer.function_hooks.TimerHook` is unregistered
+        before forward propagation of ``model3``.
 
     .. note::
 

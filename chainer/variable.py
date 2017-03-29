@@ -352,8 +352,12 @@ Actual: {0}'''.format(type(data))
         if self.creator is None:
             return
         initial_device = None
-        if cuda.available:
-            initial_device = cuda.Device()
+        if cuda.available and isinstance(self.data, cuda.cupy.ndarray):
+            try:
+                initial_device = cuda.Device()
+            except cuda.cupy.cuda.runtime.CUDARuntimeError as e:
+                if e.status != 38:  # cudaErrorNoDevice
+                    raise
 
         is_debug = chainer.is_debug()
 
@@ -446,6 +450,29 @@ Actual: {0}'''.format(type(data))
             del gxs  # to reduce memory usage
             if initial_device is not None:
                 initial_device.use()
+
+    def reshape(self, *shape):
+        """Returns a variable of a different shape and the same content.
+
+        .. seealso::
+           :func:`chainer.functions.reshape` for full documentation,
+
+        """
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            shape = shape[0]
+        return chainer.functions.reshape(self, shape)
+
+    def transpose(self, *axes):
+        """Permute the dimensions of an input variable without copy.
+
+        .. seealso::
+           :func:`chainer.functions.transpose` for full documentation.
+
+        """
+        if len(axes) == 1 and (isinstance(axes[0], (tuple, list)) or
+                               axes[0] is None):
+            axes = axes[0]
+        return chainer.functions.transpose(self, axes)
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.
