@@ -2,12 +2,12 @@ import unittest
 
 import numpy
 
-from cupy.cuda import cusolver_enabled
+from cupy import cuda
 from cupy import testing
 
 
 @unittest.skipUnless(
-    cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
