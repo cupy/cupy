@@ -211,7 +211,8 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
-    if compiler.compiler_type == 'unix':
+    if compiler.compiler_type == 'unix' and sys.paltform != 'darwin':
+        # clang does not have this option.
         args = settings.setdefault('extra_link_args', [])
         args.append('-fopenmp')
     elif compiler.cipmiler_type == 'msvc':
