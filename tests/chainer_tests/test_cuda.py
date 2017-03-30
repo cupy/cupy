@@ -53,10 +53,11 @@ class TestCuda(unittest.TestCase):
         self.assertIn('get_device is deprecated. Please use get_device_from_id'
                       ' or get_device_from_array instead.', str(w[0].message))
 
+    @attr.gpu
     def test_get_device_for_array_warning(self):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            cuda.get_device(numpy.array([1]))
+            cuda.get_device(cuda.cupy.array([1]))
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, DeprecationWarning)
