@@ -59,3 +59,49 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
+
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestSVD(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_float_dtypes(no_float16=True)
+    def check_usv(self, array, full_matrices, dtype):
+        a_cpu = numpy.asarray(array, dtype=dtype)
+        a_gpu = cupy.asarray(array, dtype=dtype)
+        result_cpu = numpy.linalg.svd(a_cpu, full_matrices=full_matrices)
+        result_gpu = cupy.linalg.svd(a_gpu, full_matrices=full_matrices)
+        for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+            # Use abs to support an inverse vector
+            cupy.testing.assert_allclose(
+                numpy.abs(b_cpu), cupy.abs(b_gpu), atol=1e-4)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4)
+    def check_singular(self, array, xp, dtype, full_matrices):
+        a = xp.asarray(array, dtype=dtype)
+        result = xp.linalg.svd(
+            a, full_matrices=full_matrices, compute_uv=False)
+        return result
+
+    def test_svd_full_matrices(self):
+        self.check_usv(numpy.random.randn(2, 3), full_matrices=True)
+        self.check_usv(numpy.random.randn(2, 2), full_matrices=True)
+        self.check_usv(numpy.random.randn(3, 2), full_matrices=True)
+
+    def test_svd_no_full_matrices(self):
+        self.check_usv(numpy.random.randn(2, 3), full_matrices=False)
+        self.check_usv(numpy.random.randn(2, 2), full_matrices=False)
+        self.check_usv(numpy.random.randn(3, 2), full_matrices=False)
+
+    def test_svd_no_uv(self):
+        self.check_singular(numpy.random.randn(2, 3), full_matrices=True)
+        self.check_singular(numpy.random.randn(2, 2), full_matrices=True)
+        self.check_singular(numpy.random.randn(3, 2), full_matrices=True)
+
+        self.check_singular(numpy.random.randn(2, 3), full_matrices=False)
+        self.check_singular(numpy.random.randn(2, 2), full_matrices=False)
+        self.check_singular(numpy.random.randn(3, 2), full_matrices=False)
