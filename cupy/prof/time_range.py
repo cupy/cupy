@@ -8,6 +8,7 @@ from cupy.cuda import nvtx  # NOQA
 def time_range(message, color_id=None, argb_color=None):
     """A context manager to describe the enclosed block as a nested range
 
+    >>> from cupy import prof
     >>> with cupy.prof.time_range('some range in green', color_id=0):
     ...    # do something you want to measure
     ...    pass
@@ -40,6 +41,7 @@ class TimeRangeDecorator(object):
 
     Decorated function calls are marked as ranges in NVIDIA profiler timeline.
 
+    >>> from cupy import prof
     >>> @cupy.prof.TimeRangeDecorator()
     ... def function_to_profile():
     ...     pass

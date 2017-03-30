@@ -17,9 +17,9 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
+from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
-
 
 DEF MAX_NDIM = 25
 
@@ -64,16 +64,6 @@ cdef class ndarray:
 
 
     """
-
-    cdef:
-        readonly Py_ssize_t size
-        public vector.vector[Py_ssize_t] _shape
-        public vector.vector[Py_ssize_t] _strides
-        readonly bint _c_contiguous
-        readonly bint _f_contiguous
-        readonly object dtype
-        readonly memory.MemoryPointer data
-        readonly ndarray base
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
         cdef Py_ssize_t x
@@ -1098,10 +1088,14 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if not isinstance(slices, tuple):
-            slices = [slices]
-        else:
+        if isinstance(slices, tuple):
             slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)  # copy list
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
 
         # Expand ellipsis into empty slices
         ellipsis = -1
@@ -1136,8 +1130,6 @@ cdef class ndarray:
                 # handle the case when s is an empty list
                 if is_list and s.size == 0:
                     s = s.astype(numpy.int32)
-                    if s.ndim > 1:
-                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
@@ -1475,6 +1467,9 @@ cdef class ndarray:
         else:
             self._update_f_contiguity()
 
+    cdef function.CPointer get_pointer(self):
+        return CArray(self)
+
 
 cdef object newaxis = numpy.newaxis  # == None
 
@@ -1667,7 +1662,7 @@ __device__ min_max_st<T> my_argmax_float(
 '''
 
 
-cdef _amin = create_reduction_func(
+_amin = create_reduction_func(
     'cupy_min',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1679,7 +1674,7 @@ cdef _amin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _amax = create_reduction_func(
+_amax = create_reduction_func(
     'cupy_max',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -1711,11 +1706,11 @@ nanmax = create_reduction_func(
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l',
-     ('e->l', (None, 'my_argmin_float(a, b)', None, None)),
-     ('f->l', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->l', (None, 'my_argmin_float(a, b)', None, None))),
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -1723,11 +1718,11 @@ cdef _argmin = create_reduction_func(
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l',
-     ('e->l', (None, 'my_argmax_float(a, b)', None, None)),
-     ('f->l', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->l', (None, 'my_argmax_float(a, b)', None, None))),
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -1748,6 +1743,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
         ndim = a._shape.size()
         if ndmin > ndim:
+            if a is obj:
+                # When `copy` is False, `a` is same as `obj`.
+                a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
         return a
     else:
@@ -2577,6 +2575,8 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, int axis, op):
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
+    if internal.prod(masked_shape) == 0:
+        return
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
@@ -2599,10 +2599,14 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     cdef ndarray v, x, y, a_interm, reduced_idx
     cdef int li, ri
 
-    if not isinstance(slices, tuple):
-        slices = [slices]
-    else:
+    if isinstance(slices, tuple):
         slices = list(slices)
+    elif isinstance(slices, list):
+        slices = list(slices)  # copy list
+        if all([isinstance(s, int) for s in slices]):
+            slices = [slices]
+    else:
+        slices = [slices]
 
     # Expand ellipsis into empty slices
     ellipsis = -1
@@ -2632,7 +2636,11 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     mask_exists = False
     for i, s in enumerate(slices):
         if isinstance(s, (list, numpy.ndarray)):
+            is_list = isinstance(s, list)
             s = array(s)
+            # handle the case when s is an empty list
+            if is_list and s.size == 0:
+                s = s.astype(numpy.int32)
             slices[i] = s
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):
@@ -3307,7 +3315,7 @@ not_equal = create_comparison(
     ''')
 
 
-cdef _all = create_reduction_func(
+_all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3315,7 +3323,7 @@ cdef _all = create_reduction_func(
     'true', '')
 
 
-cdef _any = create_reduction_func(
+_any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -3327,7 +3335,7 @@ cdef _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-cdef _sum = create_reduction_func(
+_sum = create_reduction_func(
     'cupy_sum',
     ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3336,7 +3344,7 @@ cdef _sum = create_reduction_func(
     ('in0', 'a + b', 'out0 = a', None), 0)
 
 
-cdef _prod = create_reduction_func(
+_prod = create_reduction_func(
     'cupy_prod',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
@@ -3491,7 +3499,7 @@ sqrt = create_ufunc(
     'out0 = sqrt(in0)')
 
 
-cdef _clip = create_ufunc(
+_clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),

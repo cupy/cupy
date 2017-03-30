@@ -63,8 +63,10 @@ script:
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
   - cd tests
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest chainer_tests
-  - cd ..
-  - READTHEDOCS=True python setup.py develop
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+      cd ..;
+      READTHEDOCS=True python setup.py develop;
+    fi
 
 sudo: false
 
