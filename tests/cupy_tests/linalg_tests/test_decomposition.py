@@ -16,7 +16,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64])
-    @testing.numpy_cupy_allclose(atol=1e-4)
+    @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp, dtype):
         a = xp.asarray(array, dtype=dtype)
         return xp.linalg.cholesky(a)
