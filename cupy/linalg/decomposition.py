@@ -97,12 +97,11 @@ def qr(a, mode='reduced'):
         else:
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
 
-    ret_dtype = a.dtype.char
     # Cast to float32 or float64
-    if ret_dtype == 'f' or ret_dtype == 'd':
-        dtype = ret_dtype
+    if a.dtype.char == 'f' or a.dtype.char == 'd':
+        dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
+        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     m, n = a.shape
     x = a.transpose().astype(dtype, copy=True)
@@ -110,14 +109,14 @@ def qr(a, mode='reduced'):
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
     # compute working space of geqrf and ormqr, and solve R
-    if x.dtype.char == 'f':
+    if dtype == 'f':
         buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         tau = cupy.empty(mn, dtype=numpy.float32)
         cusolver.sgeqrf(
             handle, m, n, x.data.ptr, m,
             tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:  # a.dtype.char == 'd'
+    else:  # dtype == 'd'
         buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         tau = cupy.empty(mn, dtype=numpy.float64)
@@ -134,7 +133,7 @@ def qr(a, mode='reduced'):
         return _triu(r)
 
     if mode == 'raw':
-        if ret_dtype == 'f':
+        if a.dtype.char == 'f':
             # The original numpy.linalg.qr returns float64 in raw mode,
             # whereas the cusolver returns float32. We agree that the
             # following code would be inappropriate, however, in this time
@@ -151,7 +150,7 @@ def qr(a, mode='reduced'):
     q[:n] = x
 
     # solve Q
-    if x.dtype.char == 'f':
+    if dtype == 'f':
         buffersize = cusolver.sorgqr_bufferSize(
             handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
