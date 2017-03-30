@@ -215,7 +215,7 @@ def make_extensions(options, compiler, use_cython):
         # clang does not have this option.
         args = settings.setdefault('extra_link_args', [])
         args.append('-fopenmp')
-    elif compiler.cipmiler_type == 'msvc':
+    elif compiler.compiler_type == 'msvc':
         args = settings.setdefault('extra_link_args', [])
         args.append('/openmp')
 
