@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import cuda
 from cupy import testing
 
@@ -31,21 +32,23 @@ class TestCholeskyDecomposition(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_mode(self, array, xp, dtype, mode, index=None):
-        a = xp.asarray(array, dtype=dtype)
-        result = xp.linalg.qr(a, mode=mode)
-        if type(result) == tuple:
-            return result[index]
+    def check_mode(self, array, mode, dtype):
+        a_cpu = numpy.asarray(array, dtype=dtype)
+        a_gpu = cupy.asarray(array, dtype=dtype)
+        result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+        result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
+        if isinstance(result_cpu, tuple):
+            for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+                cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
-            return result
+            cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     def test_r_mode(self):
         self.check_mode(numpy.random.randn(2, 3), mode='r')
@@ -53,25 +56,16 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(4, 2), mode='r')
 
     def test_raw_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='raw', index=0)
-        self.check_mode(numpy.random.randn(1, 5), mode='raw', index=1)
-        self.check_mode(numpy.random.randn(2, 3), mode='raw', index=0)
-        self.check_mode(numpy.random.randn(4, 3), mode='raw', index=1)
-        self.check_mode(numpy.random.randn(4, 5), mode='raw', index=0)
-        self.check_mode(numpy.random.randn(3, 3), mode='raw', index=1)
+        self.check_mode(numpy.random.randn(2, 4), mode='raw')
+        self.check_mode(numpy.random.randn(2, 3), mode='raw')
+        self.check_mode(numpy.random.randn(4, 5), mode='raw')
 
     def test_complete_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='complete', index=0)
-        self.check_mode(numpy.random.randn(1, 5), mode='complete', index=1)
-        self.check_mode(numpy.random.randn(2, 3), mode='complete', index=0)
-        self.check_mode(numpy.random.randn(4, 3), mode='complete', index=1)
-        self.check_mode(numpy.random.randn(4, 5), mode='complete', index=0)
-        self.check_mode(numpy.random.randn(3, 3), mode='complete', index=1)
+        self.check_mode(numpy.random.randn(2, 4), mode='complete')
+        self.check_mode(numpy.random.randn(2, 3), mode='complete')
+        self.check_mode(numpy.random.randn(4, 5), mode='complete')
 
     def test_reduced_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='reduced', index=0)
-        self.check_mode(numpy.random.randn(1, 5), mode='reduced', index=1)
-        self.check_mode(numpy.random.randn(2, 3), mode='reduced', index=0)
-        self.check_mode(numpy.random.randn(4, 3), mode='reduced', index=1)
-        self.check_mode(numpy.random.randn(4, 5), mode='reduced', index=0)
-        self.check_mode(numpy.random.randn(3, 3), mode='reduced', index=1)
+        self.check_mode(numpy.random.randn(2, 4), mode='reduced')
+        self.check_mode(numpy.random.randn(2, 3), mode='reduced')
+        self.check_mode(numpy.random.randn(4, 5), mode='reduced')
