@@ -2,11 +2,11 @@ import numpy
 from numpy import linalg
 
 import cupy
+from cupy import cuda
 from cupy.cuda import cublas
-from cupy.cuda import cusolver_enabled
 from cupy.cuda import device
 
-if cusolver_enabled:
+if cuda.cusolver_enabled:
     from cupy.cuda import cusolver
 
 
@@ -23,7 +23,7 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     '''
-    if not cusolver_enabled:
+    if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
