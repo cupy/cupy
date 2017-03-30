@@ -83,7 +83,7 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     '''
-    if not cusolver_enabled:
+    if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
