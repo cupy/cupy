@@ -15,13 +15,13 @@ from chainer.utils import conv
 
 
 @parameterize(*testing.product({
-    'dims': [(5, 4, 3), (4, 3), (3,)],
+    'dims': [(3, 2), (2,)],
     'nobias': [True, False],
     'dtype': [numpy.float32],
     'use_cudnn': [True, False],
     'used_outsize': ['case1', 'case2', 'None'],
 }) + testing.product({
-    'dims': [(5, 4, 3)],
+    'dims': [(4, 3, 2)],
     'nobias': [False],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'use_cudnn': [True],

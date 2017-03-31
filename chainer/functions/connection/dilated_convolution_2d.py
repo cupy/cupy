@@ -64,6 +64,17 @@ class DilatedConvolution2DFunction(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
+
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
@@ -77,6 +88,16 @@ class DilatedConvolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape
@@ -144,15 +165,13 @@ class DilatedConvolution2DFunction(function.Function):
             self.col = conv.im2col_gpu(
                 x, kh, kw, self.sy, self.sx, self.ph, self.pw,
                 cover_all=self.cover_all, dy=self.dy, dx=self.dx)
-            W_mat = W.reshape(out_c, -1)
-            col_mats = self.col.reshape(n, -1, out_h * out_w)
-            y_mats = y.reshape(n, out_c, -1)
-            # TODO(beam2d): Use streams or batch gemm
-            for i in moves.range(n):
-                y_mats[i] = W_mat.dot(col_mats[i])
+            y = cuda.cupy.tensordot(
+                self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype,
+                                                            copy=False)
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                y += b[:, None, None]
+                y += b
+            y = cuda.cupy.rollaxis(y, 3, 1)
 
         return y,
 
@@ -286,21 +305,12 @@ class DilatedConvolution2DFunction(function.Function):
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
         else:
-            gW_mat = gW.reshape(out_c, c * kh * kw)
-            col_mats = self.col.reshape(n, c * kh * kw, out_h * out_w)
-            gy_mats = gy.reshape(n, out_c, out_h * out_w)
-            # TODO(beam2d): Use streams or batch gemm
-            gW_mat[...] = 0
-            for i in moves.range(n):
-                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
-
-            W_mat = W.reshape(out_c, -1)
-            gcol = cuda.cupy.empty_like(self.col)
-            gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
-
-            for i in moves.range(n):
-                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
-
+            gW = cuda.cupy.tensordot(
+                gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype,
+                                                             copy=False)
+            gcol = cuda.cupy.tensordot(W, gy, (0, 1)).astype(x.dtype,
+                                                             copy=False)
+            gcol = cuda.cupy.rollaxis(gcol, 3)
             gx = conv.col2im_gpu(gcol, self.sy, self.sx, self.ph, self.pw,
                                  h, w, dy=self.dy, dx=self.dx)
 

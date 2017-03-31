@@ -14,7 +14,7 @@ from chainer.testing import condition
 
 
 @testing.parameterize(*(testing.product({
-    'c_contiguous': [True, False],
+    'c_contiguous': [True],
     'cover_all': [True, False],
     'x_dtype': [numpy.float32],
     'W_dtype': [numpy.float32],

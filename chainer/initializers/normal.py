@@ -27,8 +27,13 @@ class Normal(initializer.Initializer):
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
-        array[...] = xp.random.normal(
-            loc=0.0, scale=self.scale, size=array.shape)
+        args = {'loc': 0.0, 'scale': self.scale, 'size': array.shape}
+        if xp is not numpy:
+            # Only CuPy supports dtype option
+            if self.dtype == numpy.float32 or self.dtype == numpy.float16:
+                # float16 is not supported in cuRAND
+                args['dtype'] = numpy.float32
+        array[...] = xp.random.normal(**args)
 
 
 class GlorotNormal(initializer.Initializer):

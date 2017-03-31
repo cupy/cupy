@@ -136,4 +136,31 @@ def random_sample(size=None, dtype=float):
     return rs.random_sample(size=size, dtype=dtype)
 
 
-# TODO(okuta): Implement choice
+def choice(a, size=None, replace=True, p=None):
+    """Returns an array of random values from a given 1-D array.
+
+    Each element of the returned array is independently sampled
+    from ``a`` according to ``p`` or uniformly.
+
+    Args:
+        a (1-D array-like or int):
+            If an array-like,
+            a random sample is generated from its elements.
+            If an int, the random sample is generated as if ``a`` was
+            ``cupy.arange(n)``
+        size (int or tuple of ints): The shape of the array.
+        replace (boolean): Whether the sample is with or without replacement
+        p (1-D array-like):
+            The probabilities associated with each entry in ``a``.
+            If not given the sample assumes a uniform distribution over all
+            entries in ``a``.
+
+    Returns:
+        cupy.ndarray: An array of ``a`` values distributed according to
+                      ``p`` or uniformly.
+
+    .. seealso:: :func:`numpy.random.choice`
+
+    """
+    rs = generator.get_random_state()
+    return rs.choice(a, size, replace, p)

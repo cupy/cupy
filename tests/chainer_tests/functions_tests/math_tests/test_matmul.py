@@ -45,6 +45,7 @@ class _TestMatMul(unittest.TestCase):
             cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
             cuda.to_gpu(self.gy), atol=1e-2, rtol=1e-2)
 
+
 m = 2
 k = 5
 n = 10
@@ -129,6 +130,7 @@ class TestMatMulVectorVectorT(_TestMatMul):
         self.op = lambda x, y: F.matmul(x, y, transb=True)
         self.forward_answer = numpy.dot(
             self.x1.reshape(m, 1), self.x2.reshape(1, m))
+
 
 batch_size = 10
 
@@ -268,5 +270,6 @@ class TestBatchMatMulBroadcastedMatrix2(_TestMatMul):
         self.forward_answer = numpy.array([
             numpy.dot(self.x1[i], self.x2)
             for i in six.moves.range(batch_size)])
+
 
 testing.run_module(__name__, __file__)
