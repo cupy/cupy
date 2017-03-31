@@ -163,9 +163,10 @@ class MultiprocessParallelUpdater(StandardUpdater):
 
         with cuda.Device(self._devices[0]):
             self._master.to_gpu(self._devices[0])
-            comm_id = nccl.get_unique_id()
-            self._send_message(("set comm_di", comm_id))
-            self.comm = nccl.NcclCommunicator(len(self._devices), comm_id, 0)
+            if len(self._devices) > 1:
+                comm_id = nccl.get_unique_id()
+                self._send_message(("set comm_di", comm_id))
+                self.comm = nccl.NcclCommunicator(len(self._devices), comm_id, 0)
 
     def update_core(self):
         self.setup_workers()
@@ -185,17 +186,19 @@ class MultiprocessParallelUpdater(StandardUpdater):
             loss.backward()
 
             # NCCL: reduce grads
-            gg = self._master.gather_grads()
             null_stream = cuda.Stream.null
-            self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
-                             nccl.NCCL_FLOAT, nccl.NCCL_SUM,
-                             0, null_stream.ptr)
-            self._master.scatter_grads(gg)
-            del gg
+            if self.comm is not None:
+                gg = self._master.gather_grads()
+                self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
+                                 nccl.NCCL_FLOAT, nccl.NCCL_SUM,
+                                 0, null_stream.ptr)
+                self._master.scatter_grads(gg)
+                del gg
             optimizer.update()
-            pp = self._master.gather_params()
-            self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT,
-                            0, null_stream.ptr)
+            if self.comm is not None:
+                pp = self._master.gather_params()
+                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT,
+                                0, null_stream.ptr)
 
             # Sending observation via pipe is too slow.
             # for pipe in self._pipes:
@@ -207,5 +210,3 @@ class MultiprocessParallelUpdater(StandardUpdater):
         for worker in self._workers:
             print("join", worker)
             worker.join()
-
-            # chainer.serializers.save_npz('dump_model_root', self._master, compression=False)
