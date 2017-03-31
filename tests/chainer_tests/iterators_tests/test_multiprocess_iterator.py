@@ -34,9 +34,13 @@ class DummyDeserializer(serializer.Deserializer):
         raise NotImplementedError
 
     def __call__(self, key, value):
-        if isinstance(value, numpy.ndarray):
-            value[:] = self.target[key]
-        return self.target[key]
+        if value is None:
+            value = self.target[key]
+        elif isinstance(value, numpy.ndarray):
+            numpy.copyto(value, self.target[key])
+        else:
+            value = type(value)(numpy.asarray(self.target[key]))
+        return value
 
 
 @testing.parameterize(*testing.product({
@@ -57,22 +61,29 @@ class TestMultiprocessIterator(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i + 0 / 6)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             batch1 = it.next()
             self.assertEqual(len(batch1), 2)
             self.assertIsInstance(batch1, list)
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 2 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 0 / 6)
             batch2 = it.next()
             self.assertEqual(len(batch2), 2)
             self.assertIsInstance(batch2, list)
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 4 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 2 / 6)
             batch3 = it.next()
             self.assertEqual(len(batch3), 2)
             self.assertIsInstance(batch3, list)
             self.assertTrue(it.is_new_epoch)
             self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
             self.assertAlmostEqual(it.epoch_detail, i + 6 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 4 / 6)
 
     def test_iterator_list_type(self):
         dataset = [[i, numpy.zeros((10,)) + i] for i in range(6)]
@@ -80,6 +91,10 @@ class TestMultiprocessIterator(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -90,6 +105,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertTrue(it.is_new_epoch)
                 self.assertAlmostEqual(
                     it.epoch_detail, (3 * i + j + 1) * 2 / 6)
+                self.assertAlmostEqual(
+                    it.previous_epoch_detail, (3 * i + j) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, list)
                     self.assertIsInstance(x[1], numpy.ndarray)
@@ -105,6 +122,10 @@ class TestMultiprocessIterator(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -115,6 +136,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertTrue(it.is_new_epoch)
                 self.assertAlmostEqual(
                     it.epoch_detail, (3 * i + j + 1) * 2 / 6)
+                self.assertAlmostEqual(
+                    it.previous_epoch_detail, (3 * i + j) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, tuple)
                     self.assertIsInstance(x[1], numpy.ndarray)
@@ -130,6 +153,10 @@ class TestMultiprocessIterator(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             batches = {}
             for j in range(3):
                 batch = it.next()
@@ -140,6 +167,8 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertTrue(it.is_new_epoch)
                 self.assertAlmostEqual(
                     it.epoch_detail, (3 * i + j + 1) * 2 / 6)
+                self.assertAlmostEqual(
+                    it.previous_epoch_detail, (3 * i + j) * 2 / 6)
                 for x in batch:
                     self.assertIsInstance(x, dict)
                     k = tuple(x)[0]
@@ -175,12 +204,16 @@ class TestMultiprocessIterator(unittest.TestCase):
             dataset, 2, repeat=False, **self.options)
 
         self.assertAlmostEqual(it.epoch_detail, 0 / 5)
+        self.assertIsNone(it.previous_epoch_detail)
         batch1 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 2 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 5)
         batch2 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 4 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 5)
         batch3 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 5 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 5)
         self.assertRaises(StopIteration, it.next)
 
         self.assertEqual(len(batch3), 1)
@@ -270,16 +303,19 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
 
         self.assertEqual(it.epoch, 0)
         self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        self.assertIsNone(it.previous_epoch_detail)
         batch1 = it.next()
         self.assertEqual(len(batch1), 2)
         self.assertIsInstance(batch1, list)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 6)
         batch2 = it.next()
         self.assertEqual(len(batch2), 2)
         self.assertIsInstance(batch2, list)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
         target = dict()
         it.serialize(DummySerializer(target))
@@ -288,6 +324,7 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
         it.serialize(DummyDeserializer(target))
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
         batch3 = it.next()
         self.assertEqual(len(batch3), 2)
@@ -295,6 +332,46 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
+
+    def test_iterator_serialize_backward_compat(self):
+        dataset = [1, 2, 3, 4, 5, 6]
+        it = iterators.MultiprocessIterator(dataset, 2, **self.options)
+
+        self.assertEqual(it.epoch, 0)
+        self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        self.assertIsNone(it.previous_epoch_detail)
+        batch1 = it.next()
+        self.assertEqual(len(batch1), 2)
+        self.assertIsInstance(batch1, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 6)
+        batch2 = it.next()
+        self.assertEqual(len(batch2), 2)
+        self.assertIsInstance(batch2, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
+
+        target = dict()
+        it.serialize(DummySerializer(target))
+        # older version does not have previous_epoch_detail
+        del target['previous_epoch_detail']
+
+        it = iterators.MultiprocessIterator(dataset, 2, **self.options)
+        it.serialize(DummyDeserializer(target))
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
+
+        batch3 = it.next()
+        self.assertEqual(len(batch3), 2)
+        self.assertIsInstance(batch3, list)
+        self.assertTrue(it.is_new_epoch)
+        self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+        self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
 
 
 testing.run_module(__name__, __file__)

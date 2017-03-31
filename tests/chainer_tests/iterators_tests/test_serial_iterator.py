@@ -32,9 +32,13 @@ class DummyDeserializer(serializer.Deserializer):
         raise NotImplementedError
 
     def __call__(self, key, value):
-        if isinstance(value, numpy.ndarray):
-            value[:] = self.target[key]
-        return self.target[key]
+        if value is None:
+            value = self.target[key]
+        elif isinstance(value, numpy.ndarray):
+            numpy.copyto(value, self.target[key])
+        else:
+            value = type(value)(numpy.asarray(self.target[key]))
+        return value
 
 
 class TestSerialIterator(unittest.TestCase):
@@ -45,15 +49,22 @@ class TestSerialIterator(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i + 0 / 6)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             self.assertEqual(it.next(), [1, 2])
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 2 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 0 / 6)
             self.assertEqual(it.next(), [3, 4])
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 4 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 2 / 6)
             self.assertEqual(it.next(), [5, 6])
             self.assertTrue(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 6 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 4 / 6)
 
     def test_iterator_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]
@@ -61,38 +72,48 @@ class TestSerialIterator(unittest.TestCase):
 
         self.assertEqual(it.epoch, 0)
         self.assertAlmostEqual(it.epoch_detail, 0 / 5)
+        self.assertIsNone(it.previous_epoch_detail)
         self.assertEqual(it.next(), [1, 2])
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 2 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 5)
         self.assertEqual(it.next(), [3, 4])
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 5)
         self.assertEqual(it.next(), [5, 1])
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 1)
         self.assertAlmostEqual(it.epoch_detail, 6 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 5)
 
         self.assertEqual(it.next(), [2, 3])
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 8 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 6 / 5)
         self.assertEqual(it.next(), [4, 5])
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 2)
         self.assertAlmostEqual(it.epoch_detail, 10 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 8 / 5)
 
     def test_iterator_not_repeat(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.SerialIterator(dataset, 2, repeat=False, shuffle=False)
 
         self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        self.assertIsNone(it.previous_epoch_detail)
         self.assertEqual(it.next(), [1, 2])
         self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 6)
         self.assertEqual(it.next(), [3, 4])
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
         self.assertEqual(it.next(), [5, 6])
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 1)
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
         for i in range(2):
             self.assertRaises(StopIteration, it.next)
 
@@ -101,14 +122,18 @@ class TestSerialIterator(unittest.TestCase):
         it = iterators.SerialIterator(dataset, 2, repeat=False, shuffle=False)
 
         self.assertAlmostEqual(it.epoch_detail, 0 / 5)
+        self.assertIsNone(it.previous_epoch_detail)
         self.assertEqual(it.next(), [1, 2])
         self.assertAlmostEqual(it.epoch_detail, 2 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 5)
         self.assertEqual(it.next(), [3, 4])
         self.assertAlmostEqual(it.epoch_detail, 4 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 5)
         self.assertEqual(it.next(), [5])
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 1)
         self.assertAlmostEqual(it.epoch_detail, 5 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 5)
         self.assertRaises(StopIteration, it.next)
 
 
@@ -120,19 +145,26 @@ class TestSerialIteratorShuffled(unittest.TestCase):
         for i in range(3):
             self.assertEqual(it.epoch, i)
             self.assertAlmostEqual(it.epoch_detail, i + 0 / 6)
+            if i == 0:
+                self.assertIsNone(it.previous_epoch_detail)
+            else:
+                self.assertAlmostEqual(it.previous_epoch_detail, i - 2 / 6)
             batch1 = it.next()
             self.assertEqual(len(batch1), 2)
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 2 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 0 / 6)
             batch2 = it.next()
             self.assertEqual(len(batch2), 2)
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, i + 4 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 2 / 6)
             batch3 = it.next()
             self.assertEqual(len(batch3), 2)
             self.assertTrue(it.is_new_epoch)
             self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
             self.assertAlmostEqual(it.epoch_detail, i + 6 / 6)
+            self.assertAlmostEqual(it.previous_epoch_detail, i + 4 / 6)
 
     def test_iterator_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]
@@ -156,12 +188,16 @@ class TestSerialIteratorShuffled(unittest.TestCase):
         it = iterators.SerialIterator(dataset, 2, repeat=False)
 
         self.assertAlmostEqual(it.epoch_detail, 0 / 5)
+        self.assertIsNone(it.previous_epoch_detail)
         batch1 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 2 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 5)
         batch2 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 4 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 5)
         batch3 = it.next()
         self.assertAlmostEqual(it.epoch_detail, 5 / 5)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 5)
         self.assertRaises(StopIteration, it.next)
 
         self.assertEqual(len(batch3), 1)
@@ -198,16 +234,19 @@ class TestSerialIteratorSerialize(unittest.TestCase):
 
         self.assertEqual(it.epoch, 0)
         self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        self.assertIsNone(it.previous_epoch_detail)
         batch1 = it.next()
         self.assertEqual(len(batch1), 2)
         self.assertIsInstance(batch1, list)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 6)
         batch2 = it.next()
         self.assertEqual(len(batch2), 2)
         self.assertIsInstance(batch2, list)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
         target = dict()
         it.serialize(DummySerializer(target))
@@ -216,6 +255,7 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         it.serialize(DummyDeserializer(target))
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
         batch3 = it.next()
         self.assertEqual(len(batch3), 2)
@@ -223,6 +263,49 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
+
+    def test_iterator_serialize_backward_compat(self):
+        dataset = [1, 2, 3, 4, 5, 6]
+        it = iterators.SerialIterator(dataset, 2)
+
+        self.assertEqual(it.epoch, 0)
+        self.assertAlmostEqual(it.epoch_detail, 0 / 6)
+        self.assertIsNone(it.previous_epoch_detail)
+        batch1 = it.next()
+        self.assertEqual(len(batch1), 2)
+        self.assertIsInstance(batch1, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 2 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 0 / 6)
+        batch2 = it.next()
+        self.assertEqual(len(batch2), 2)
+        self.assertIsInstance(batch2, list)
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
+
+        target = dict()
+        it.serialize(DummySerializer(target))
+        # older version uses '_order'
+        target['_order'] = target['order']
+        del target['order']
+        # older version does not have previous_epoch_detail
+        del target['previous_epoch_detail']
+
+        it = iterators.SerialIterator(dataset, 2)
+        it.serialize(DummyDeserializer(target))
+        self.assertFalse(it.is_new_epoch)
+        self.assertAlmostEqual(it.epoch_detail, 4 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
+
+        batch3 = it.next()
+        self.assertEqual(len(batch3), 2)
+        self.assertIsInstance(batch3, list)
+        self.assertTrue(it.is_new_epoch)
+        self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+        self.assertAlmostEqual(it.epoch_detail, 6 / 6)
+        self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
 
 
 testing.run_module(__name__, __file__)

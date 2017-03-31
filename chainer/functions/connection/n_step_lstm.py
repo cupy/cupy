@@ -186,6 +186,9 @@ class NStepLSTM(function.Function):
         bs, inputs = _split(inputs, self.n_layers * 8)
         x_list = inputs
 
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together')
+
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
 
@@ -275,6 +278,9 @@ class NStepLSTM(function.Function):
         ws, inputs = _split(inputs, self.n_layers * 8)
         bs, inputs = _split(inputs, self.n_layers * 8)
         x_list = inputs
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together')
 
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)

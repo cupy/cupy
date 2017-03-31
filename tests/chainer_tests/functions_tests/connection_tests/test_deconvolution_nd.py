@@ -19,14 +19,21 @@ from chainer.utils import type_check
 
 
 @parameterize(*testing.product({
-    'dims': [(5, 4, 3), (4, 3), (3,)],
+    'dims': [(4, 3, 2), (2,)],
+    'nobias': [False],
+    'test_outsize': [False],
+    'c_contiguous': [True],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'dims': [(3, 2)],
     'nobias': [False],
     'test_outsize': [False],
     'c_contiguous': [True],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
 }) + testing.product({
-    'dims': [(5, 4, 3)],
+    'dims': [(3, 2)],
     'nobias': [True, False],
     'test_outsize': [True, False],
     'c_contiguous': [True, False],
