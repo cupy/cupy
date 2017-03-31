@@ -690,6 +690,8 @@ cdef class ndarray:
         # TODO(takagi): Support kind argument.
 
         try:
+            # Try to import cupy.cuda.thrust here just for checking its
+            # existence.
             import cupy.cuda.thrust
         except ImportError:
             msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
