@@ -41,7 +41,7 @@ class ManualScheduleTrigger(object):
             epoch_detail = updater.epoch_detail
             previous_epoch_detail = updater.previous_epoch_detail
             if previous_epoch_detail is None:
-                previous_epoch_detail = -1
+                previous_epoch_detail = float('-inf')
             return any(
                 previous_epoch_detail < p <= epoch_detail
                 for p in self.points)
