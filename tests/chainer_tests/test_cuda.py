@@ -43,37 +43,16 @@ class TestCuda(unittest.TestCase):
         self.assertIs(cuda.get_device(x), cuda.DummyDevice)
 
     @attr.gpu
-    def test_get_device_for_int_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            cuda.get_device(0)
-
-        self.assertEqual(len(w), 1)
-        self.assertIs(w[0].category, DeprecationWarning)
-        self.assertIn('get_device is deprecated. Please use get_device_from_id'
-                      ' or get_device_from_array instead.', str(w[0].message))
-
-    @attr.gpu
-    def test_get_device_for_array_warning(self):
+    def test_get_device_creates_warning(self):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             cuda.get_device(cuda.cupy.array([1]))
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, DeprecationWarning)
-        self.assertIn('get_device is deprecated. Please use get_device_from_id'
-                      ' or get_device_from_array instead.', str(w[0].message))
-
-    @attr.gpu
-    def test_get_device_for_device_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            cuda.get_device(cuda.Device(0))
-
-        self.assertEqual(len(w), 1)
-        self.assertIs(w[0].category, DeprecationWarning)
-        self.assertIn('get_device is deprecated. Please use get_device_from_id'
-                      ' or get_device_from_array instead.', str(w[0].message))
+        self.assertIn(
+            'get_device is deprecated. Please use get_device_from_id'
+            ' or get_device_from_array instead.', str(w[0].message))
 
     @attr.gpu
     def test_get_device_from_id(self):
