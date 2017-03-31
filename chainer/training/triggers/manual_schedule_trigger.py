@@ -1,10 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-from __future__ import division
-import math
-
-
 class ManualScheduleTrigger(object):
 
     """Trigger invoked at specified point(s) of iterations or epochs.
@@ -44,11 +37,14 @@ class ManualScheduleTrigger(object):
         """
 
         updater = trainer.updater
-        iteration = updater.iteration
-        epoch = updater.epoch_detail
         if self.unit == 'epoch':
+            epoch_detail = updater.epoch_detail
+            previous_epoch_detail = updater.previous_epoch_detail
+            if previous_epoch_detail is None:
+                previous_epoch_detail = -1
             return any(
-                math.ceil(p * iteration / epoch) == iteration
+                previous_epoch_detail < p <= epoch_detail
                 for p in self.points)
         else:
+            iteration = updater.iteration
             return iteration > 0 and iteration in self.points
