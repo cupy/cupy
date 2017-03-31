@@ -31,6 +31,12 @@ class DummyUpdater(training.Updater):
         return self.iteration / self.iters_per_epoch
 
     @property
+    def previous_epoch_detail(self):
+        if self.iteration == 0:
+            return None
+        return (self.iteration - 1) / self.iters_per_epoch
+
+    @property
     def is_new_epoch(self):
         return 0 <= self.iteration % self.iters_per_epoch < 1
 
