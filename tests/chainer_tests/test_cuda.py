@@ -63,7 +63,7 @@ class TestCuda(unittest.TestCase):
         self.assertIs(w[0].category, DeprecationWarning)
         self.assertIn('get_device is deprecated. Please use get_device_from_id'
                       ' or get_device_from_array instead.', str(w[0].message))
-    
+
     @attr.gpu
     def test_get_device_for_device_warning(self):
         with warnings.catch_warnings(record=True) as w:
