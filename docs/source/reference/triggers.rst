@@ -20,3 +20,4 @@ Minimum and maximum values
 
 .. autoclass:: MinValueTrigger
    :members:
+
