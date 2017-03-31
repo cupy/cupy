@@ -1,18 +1,17 @@
-import copy
 import multiprocessing
 
 import six
 
 from chainer.dataset import convert
-from chainer.dataset import iterator as iterator_module
-from chainer import optimizer as optimizer_module
-from chainer import variable
 from chainer import cuda
 import chainer
-from cupy.cuda import nccl
 from chainer.training.updater import StandardUpdater, _calc_loss
 
-import os
+try:
+    from cupy.cuda import nccl
+    _available = True
+except ImportError:
+    _available = False
 
 
 class _Worker(multiprocessing.Process):
@@ -108,6 +107,10 @@ class MultiprocessParallelUpdater(StandardUpdater):
 
     def __init__(self, iterators, optimizer, converter=convert.concat_examples,
                  devices=None):
+        if not MultiprocessParallelUpdater.available():
+            raise Exception('NCCL is not enabled. MultiprocessParallelUpdater requires NCCL.\n'
+                            'Please reinstall chainer after you install NCCL.\n'
+                            '(see https://github.com/pfnet/chainer#installation).')
 
         assert len(iterators) == len(devices)
         for iterator in iterators[1:]:
@@ -143,6 +146,10 @@ class MultiprocessParallelUpdater(StandardUpdater):
         self._pipes = []
         self._workers = []
         self.comm = None
+
+    @staticmethod
+    def available():
+        return _available
 
     def _send_message(self, message):
         for pipe in self._pipes:

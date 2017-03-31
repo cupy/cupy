@@ -109,6 +109,19 @@ pip install h5py
 ```
 
 
+### Multi-GPU Support
+
+If you want to use MultiprocessParallelUpdater, please install [NCCL](https://github.com/NVIDIA/nccl) manually as
+following.
+
+```
+git clone https://github.com/NVIDIA/nccl.git
+make
+cp -r build/include /path/to/your/include
+cp -r build/lib /path/to/your/lib
+```
+
+
 ## Run with Docker
 
 We provide the official Docker image.

@@ -122,6 +122,20 @@ def check_cudnn_version(compiler, settings):
 
 
 def check_nccl_version(compiler, settings):
+    # NCCL does not provide version information.
+    # It only check whether there is nccl.h.
+    try:
+        out = build_and_run(compiler, '''
+        #include <nccl.h>
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot include NCCL')
+        return False
+
     return True
 
 
