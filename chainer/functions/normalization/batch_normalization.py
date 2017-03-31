@@ -104,19 +104,19 @@ class BatchNormalizationFunction(function.Function):
         # into a 2-dim array with channels as second dim and m=<product
         # of all dimensions except the 2nd dimension> as the first
         # dimension.
-        self.cudnn_dim_ok = x.ndim == 2 or x.ndim == 4
+        self.cudnn_dim_ok = x.ndim == 2 or (x.ndim == 4 and head_ndim == 2)
 
         cudnn_updated_running_stats = False
         if xp is not numpy and cuda.cudnn_enabled and self.use_cudnn and \
                 self.cudnn_dim_ok and _cudnn_version >= 5000:
-            if x.ndim == 4:
+            x = cuda.cupy.ascontiguousarray(x)
+            if x.ndim == 4 and head_ndim == 2:
                 # for convolutional layer
                 self.mode = libcudnn.CUDNN_BATCHNORM_SPATIAL
             else:
                 # for linear layer
                 self.mode = libcudnn.CUDNN_BATCHNORM_PER_ACTIVATION
 
-            x = cuda.cupy.ascontiguousarray(x)
             gamma = cuda.cupy.ascontiguousarray(gamma)
             beta = cuda.cupy.ascontiguousarray(beta)
             dtype = x.dtype
@@ -133,9 +133,9 @@ class BatchNormalizationFunction(function.Function):
 
             if self.train:
                 if self.mean_cache is None:
-                    # Output cache to speed up bacward pass.
+                    # Output cache to speed up backward pass.
                     self.mean_cache = xp.empty_like(gamma)
-                    # Output cache to speed up bacward pass.
+                    # Output cache to speed up backward pass.
                     self.var_cache = xp.empty_like(gamma)
                 # Note: cuDNN computes the mini-batch mean and variance
                 # internally. We can simply (optionally) pass
@@ -163,7 +163,7 @@ class BatchNormalizationFunction(function.Function):
                 var += self.eps
             else:
                 mean = self.fixed_mean
-                var = self.fixed_var
+                var = self.fixed_var + self.eps
             self.std = xp.sqrt(var, dtype=var.dtype)
             if xp is numpy:
                 self.x_hat = _xhat(x, mean, self.std, expander)
@@ -273,12 +273,25 @@ def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
     """Batch normalization function.
 
     It takes the input variable ``x`` and two parameter variables ``gamma`` and
-    ``beta``. The input must have the batch size and the features (or channels)
-    as the first two dimensions of its shape. The input can have more than two
-    dimensions, where the remaining dimensions are considered as spatial
-    dimensions, which are considered as a part of the batch size. That is,
+    ``beta``. The parameter variables must both have the same dimensionality,
+    which is referred to as the channel shape. This channel shape corresponds
+    to the dimensions in the input which are not averaged over. Since the
+    first dimension of the input corresponds to the batch size, the second
+    dimension of `x` will correspond to the first dimension of the channel
+    shape, the third dimension of `x` will correspond to the second channel
+    dimension (if it exists) and so on. Therefore, the dimensionality of the
+    input must be at least one plus the number of channel dimensions. The
+    total effective "batch size" will then be considered to be the product of
+    all dimensions in `x` except for the channel dimensions.
+
+    As an example, if the input is four dimensional and the parameter
+    variables are one dimensional, then it is assumed that the first
+    dimension of the input is the batch size, the second dimension is the
+    channel size, and the remaining two dimensions are considered
+    to be spatial dimensions that will be averaged over along with the
+    batch size in the batch normalization computations. That is,
     the total batch size will be considered to be the product of all
-    dimensions except the second dimension.
+    input dimensions except the second dimension.
 
     Note: If this function is called, it will not be possible to access the
     updated running mean and variance statistics, because they are members

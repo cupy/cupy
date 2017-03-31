@@ -73,6 +73,11 @@ cdef extern from 'cupy_cuda.h':
         int n, int k, const float* alpha, const float** Aarray,
         int lda, const float** Barray, int ldb, const float* beta,
         float** Carray, int ldc, int batchCount) nogil
+    int cublasDgemmBatched(
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, const double* alpha, const double** Aarray,
+        int lda, const double** Barray, int ldb, const double* beta,
+        double** Carray, int ldc, int batchCount) nogil
 
     # BLAS extension
     int cublasSgeam(
@@ -140,32 +145,37 @@ cpdef inline check_status(int status):
 
 cpdef size_t create() except *:
     cdef Handle handle
-    status = cublasCreate(&handle)
+    with nogil:
+        status = cublasCreate(&handle)
     check_status(status)
     return <size_t>handle
 
 
 cpdef void destroy(size_t handle) except *:
-    status = cublasDestroy(<Handle>handle)
+    with nogil:
+        status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
 cpdef int getVersion(size_t handle) except *:
     cdef int version
-    status = cublasGetVersion(<Handle>handle, &version)
+    with nogil:
+        status = cublasGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
 
 
 cpdef int getPointerMode(size_t handle) except *:
     cdef PointerMode mode
-    status = cublasGetPointerMode(<Handle>handle, &mode)
+    with nogil:
+        status = cublasGetPointerMode(<Handle>handle, &mode)
     check_status(status)
     return mode
 
 
 cpdef setPointerMode(size_t handle, int mode):
-    status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
+    with nogil:
+        status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
 
 
@@ -174,13 +184,15 @@ cpdef setPointerMode(size_t handle, int mode):
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream):
-    status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
+    with nogil:
+        status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(size_t handle) except *:
     cdef driver.Stream stream
-    status = cublasGetStream(<Handle>handle, &stream)
+    with nogil:
+        status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
 
@@ -337,6 +349,18 @@ cpdef sgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
             &alpha, <const float**>Aarray, lda, <const float**>Barray, ldb,
             &beta, <float**>Carray, ldc, batchCount)
+    check_status(status)
+
+
+cpdef dgemmBatched(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        double alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        double beta, size_t Carray, int ldc, int batchCount):
+    with nogil:
+        status = cublasDgemmBatched(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha, <const double**>Aarray, lda, <const double**>Barray, ldb,
+            &beta, <double**>Carray, ldc, batchCount)
     check_status(status)
 
 ###############################################################################

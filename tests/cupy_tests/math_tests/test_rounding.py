@@ -34,3 +34,6 @@ class TestRounding(unittest.TestCase):
 
     def test_trunc(self):
         self.check_unary('trunc')
+
+    def test_fix(self):
+        self.check_unary('fix')

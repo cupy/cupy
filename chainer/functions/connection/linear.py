@@ -33,6 +33,12 @@ class LinearFunction(function.Function):
     def forward(self, inputs):
         x = _as_mat(inputs[0])
         W = inputs[1]
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(x): {1}'
+                             .format(type(W), type(x)))
+
         y = x.dot(W.T).astype(x.dtype, copy=False)
         if len(inputs) == 3:
             b = inputs[2]
@@ -43,6 +49,11 @@ class LinearFunction(function.Function):
         x = _as_mat(inputs[0])
         W = inputs[1]
         gy = grad_outputs[0]
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(x): {1}'
+                             .format(type(W), type(x)))
 
         gx = gy.dot(W).astype(x.dtype, copy=False).reshape(inputs[0].shape)
         gW = gy.T.dot(x).astype(W.dtype, copy=False)
@@ -59,15 +70,6 @@ def linear(x, W, b=None):
     It accepts two or three arguments: an input minibatch ``x``, a weight
     matrix ``W``, and optionally a bias vector ``b``. It computes
      .. math:: Y = xW^\\top + b.
-
-    .. admonition:: Example
-
-        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
-        >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
-        >>> b = np.random.uniform(0, 1, (5,)).astype('f')
-        >>> y = F.linear(x, W, b)
-        >>> y.shape
-        (3, 5)
 
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
@@ -88,6 +90,15 @@ def linear(x, W, b=None):
         of :math:`(s_B, M)`.
 
     .. seealso:: :class:`~chainer.links.Linear`
+
+    .. admonition:: Example
+
+        >>> x = np.random.uniform(0, 1, (3, 4)).astype('f')
+        >>> W = np.random.uniform(0, 1, (5, 4)).astype('f')
+        >>> b = np.random.uniform(0, 1, (5,)).astype('f')
+        >>> y = F.linear(x, W, b)
+        >>> y.shape
+        (3, 5)
 
     """
     if b is None:

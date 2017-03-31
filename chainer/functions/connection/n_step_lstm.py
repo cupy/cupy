@@ -186,6 +186,9 @@ class NStepLSTM(function.Function):
         bs, inputs = _split(inputs, self.n_layers * 8)
         x_list = inputs
 
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together')
+
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
 
@@ -242,7 +245,6 @@ class NStepLSTM(function.Function):
         work_size = libcudnn.getRNNWorkspaceSize(
             handle, rnn_desc.value, length, c_x_descs.data)
         workspace = cuda.cupy.empty((work_size,), dtype='b')
-        self.workspace = workspace
 
         if not self.train:
             libcudnn.RNNForwardInference(
@@ -276,6 +278,9 @@ class NStepLSTM(function.Function):
         ws, inputs = _split(inputs, self.n_layers * 8)
         bs, inputs = _split(inputs, self.n_layers * 8)
         x_list = inputs
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together')
 
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
@@ -340,22 +345,18 @@ class NStepLSTM(function.Function):
         dx = dx_list[0]
         dx = dx.reshape(dx.shape + (1,))
         dx_desc = cudnn.create_tensor_nd_descriptor(dx)
-        dws = [cuda.cupy.empty_like(w) for w in ws]
-        dbs = [cuda.cupy.empty_like(b) for b in bs]
+        dws = []
+        dbs = []
         for layer in six.moves.range(self.n_layers):
             for lin_layer_id in six.moves.range(8):
                 mat = cudnn.get_rnn_lin_layer_matrix_params(
                     handle, rnn_desc, layer, dx_desc, dw_desc, dw,
                     lin_layer_id)
-                v = dws[layer * 8 + lin_layer_id]
-                v = v.reshape(v.size)
-                v[:] = mat.ravel()
+                dws.append(mat.reshape(ws[layer * 8 + lin_layer_id].shape))
                 bias = cudnn.get_rnn_lin_layer_bias_params(
                     handle, rnn_desc, layer, dx_desc, dw_desc, dw,
                     lin_layer_id)
-                v = dbs[layer * 8 + lin_layer_id]
-                v = v.reshape(v.size)
-                v[:] = bias.ravel()
+                dbs.append(bias.reshape(bs[layer * 8 + lin_layer_id].shape))
 
         return tuple([dhx, dcx] + dws + dbs + dx_list)
 

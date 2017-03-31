@@ -51,6 +51,11 @@ class BilinearFunction(function.Function):
         e2 = array.as_mat(inputs[1])
         W = inputs[2]
 
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(e1): {1}, type(e2): {2}'
+                             .format(type(W), type(e1), type(e2)))
+
         xp = cuda.get_array_module(*inputs)
         if xp is numpy:
             y = numpy.einsum('ij,ik,jkl->il', e1, e2, W)
@@ -77,6 +82,12 @@ class BilinearFunction(function.Function):
         e1 = array.as_mat(inputs[0])
         e2 = array.as_mat(inputs[1])
         W = inputs[2]
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(e1): {1}, type(e2): {2}'
+                             .format(type(W), type(e1), type(e2)))
+
         gy = grad_outputs[0]
 
         xp = cuda.get_array_module(*inputs)

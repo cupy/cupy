@@ -16,6 +16,7 @@ def sigmoid(x):
 
 @testing.parameterize(*testing.product({
     'use_cudnn': [True, False],
+    'hidden_none': [True, False],
 }))
 class TestNStepLSTM(unittest.TestCase):
 
@@ -27,8 +28,11 @@ class TestNStepLSTM(unittest.TestCase):
 
     def setUp(self):
         shape = (self.n_layer, len(self.lengths), self.out_size)
-        self.h = numpy.random.uniform(-1, 1, shape).astype('f')
-        self.c = numpy.random.uniform(-1, 1, shape).astype('f')
+        if self.hidden_none:
+            self.h = self.c = numpy.zeros(shape, 'f')
+        else:
+            self.h = numpy.random.uniform(-1, 1, shape).astype('f')
+            self.c = numpy.random.uniform(-1, 1, shape).astype('f')
         self.xs = [
             numpy.random.uniform(-1, 1, (l, self.in_size)).astype('f')
             for l in self.lengths]
@@ -48,13 +52,16 @@ class TestNStepLSTM(unittest.TestCase):
         self.rnn.zerograds()
 
     def check_forward(self, h_data, c_data, xs_data):
-        h = chainer.Variable(h_data)
-        c = chainer.Variable(c_data)
+        if self.hidden_none:
+            h = c = None
+        else:
+            h = chainer.Variable(h_data)
+            c = chainer.Variable(c_data)
         xs = [chainer.Variable(x) for x in xs_data]
         hy, cy, ys = self.rnn(h, c, xs)
 
-        self.assertEqual(hy.data.shape, h.data.shape)
-        self.assertEqual(cy.data.shape, c.data.shape)
+        self.assertEqual(hy.data.shape, h_data.shape)
+        self.assertEqual(cy.data.shape, c_data.shape)
         self.assertEqual(len(xs), len(ys))
         for x, y in zip(xs, ys):
             self.assertEqual(len(x.data), len(y.data))
@@ -107,8 +114,12 @@ class TestNStepLSTM(unittest.TestCase):
             self, h_data, c_data, xs_data, gh_data, gc_data, gys_data):
 
         def fun(*args):
-            h, c = args[:2]
-            xs = args[2:]
+            if self.hidden_none:
+                h = c = None
+                xs = args
+            else:
+                h, c = args[:2]
+                xs = args[2:]
             hy, cy, ys = self.rnn(h, c, xs)
             return tuple([hy, cy] + list(ys))
 
@@ -117,8 +128,12 @@ class TestNStepLSTM(unittest.TestCase):
             for p in layer.params():
                 params.append(p)
 
+        if self.hidden_none:
+            in_data = xs_data
+        else:
+            in_data = [h_data, c_data] + xs_data
         gradient_check.check_backward(
-            fun, tuple([h_data, c_data] + xs_data),
+            fun, tuple(in_data),
             tuple([gh_data, gc_data] + gys_data),
             tuple(params), eps=1e-2, rtol=1e-3, atol=1e-3)
 
