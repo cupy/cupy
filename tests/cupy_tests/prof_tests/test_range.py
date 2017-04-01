@@ -2,9 +2,11 @@ import unittest
 
 import mock
 
+from cupy import cuda
 from cupy import prof
 
 
+@unittest.skipUnless(cuda.nvtx_enabled, 'nvtx is required for time_range')
 class TestTimeRange(unittest.TestCase):
 
     def test_time_range(self):
