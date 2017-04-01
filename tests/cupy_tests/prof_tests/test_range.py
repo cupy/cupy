@@ -78,3 +78,22 @@ class TestTimeRange(unittest.TestCase):
             # Default value of color id is -1
             push.assert_called_once_with('f', -1)
             pop.assert_called_once_with()
+
+
+class TestTimeRangeNVTXUnavailable(unittest.TestCase):
+
+    def setUp(self):
+        self.nvtx_enabled = cuda.nvtx_enabled
+        cuda.nvtx_enabled = False
+
+    def tearDown(self):
+        cuda.nvtx_enabled = self.nvtx_enabled
+
+    def test_time_range(self):
+        with self.assertRaises(RuntimeError):
+            with prof.time_range(''):
+                pass
+
+    def test_time_range_decorator(self):
+        with self.assertRaises(RuntimeError):
+            prof.TimeRangeDecorator()
