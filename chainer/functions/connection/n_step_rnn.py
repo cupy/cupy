@@ -156,7 +156,6 @@ if cuda.cudnn_enabled and _cudnn_version >= 5000:
     }
 
 
-
 class BaseNStepRNN(function.Function):
     def __init__(self, n_layers, states, rnn_dir, rnn_mode, train=True):
         if rnn_dir not in _rnn_dirs:
