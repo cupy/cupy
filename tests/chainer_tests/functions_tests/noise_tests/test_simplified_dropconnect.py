@@ -52,22 +52,18 @@ class TestSimplifiedDropconnect(unittest.TestCase):
                                                  self.train)
         self.assertEqual(y.data.dtype, self.x_dtype)
 
-    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.W, self.b)
 
-    @condition.retry(3)
     def test_forward_cpu_nobias(self):
         self.check_forward(self.x, self.W, None)
 
     @attr.gpu
-    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b))
 
     @attr.gpu
-    @condition.retry(3)
     def test_forward_gpu_nobias(self):
         self.check_forward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.W), None)

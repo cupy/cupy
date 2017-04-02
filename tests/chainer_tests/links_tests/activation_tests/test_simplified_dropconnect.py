@@ -16,7 +16,7 @@ from chainer.utils import type_check
 
 
 def gen_mask(ratio, shape):
-    return numpy.random.rand(*shape) >= ratio * (1. / (1 - ratio))
+    return numpy.random.rand(*shape) >= ratio
 
 
 @testing.parameterize(*testing.product({
@@ -45,7 +45,10 @@ class TestSimplifiedDropconnect(unittest.TestCase):
             -1, 1, (4, self.out_size)).astype(self.x_dtype)
         W = self.link.W.data
         b = self.link.b.data
-        self.y_expect = self.x.reshape(4, -1).dot(W.T * self.mask.T) + b
+        W = (W * self.mask) * (1. / (1 - self.ratio))
+        x = self.x.reshape(4, -1)
+        self.y_expect = numpy.matmul(W, x[:, :, None]).reshape(4, -1) + b
+
         self.check_forward_options = {}
         self.check_backward_options = {}
         if self.x_dtype == numpy.float16:
@@ -61,12 +64,10 @@ class TestSimplifiedDropconnect(unittest.TestCase):
         testing.assert_allclose(self.y_expect, y.data,
                                 **self.check_forward_options)
 
-    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.mask)
 
     @attr.gpu
-    @condition.retry(3)
     def test_forward_gpu(self):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.mask))
@@ -104,21 +105,22 @@ class TestSimplifiedDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.link = links.SimplifiedDropconnect(self.in_size_or_none,
                                                 self.out_size)
         temp_x = numpy.random.uniform(-1, 1,
-                                      (self.out_size,
-                                       self.in_size)).astype(numpy.float32)
+                                      (4, self.in_size)).astype(numpy.float32)
         self.link(chainer.Variable(temp_x))
         W = self.link.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.cleargrads()
-        self.mask = gen_mask(self.ratio, self.link.W.shape)
+        mask_shape = (4, self.out_size, self.in_size)
+        self.mask = gen_mask(self.ratio, mask_shape)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         self.gy = numpy.random.uniform(
             -1, 1, (4, self.out_size)).astype(numpy.float32)
-        self.y_expect = self.x.reshape(4, -1).dot(W.T * self.mask.T) + b
+        W = (W * self.mask) * (1. / (1 - self.ratio))
+        self.y_expect = numpy.matmul(W, self.x[:, :, None]).reshape(4, -1) + b
 
     def check_forward(self, x_data, mask):
         x = chainer.Variable(x_data)
@@ -126,12 +128,10 @@ class TestSimplifiedDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         testing.assert_allclose(self.y_expect, y.data)
 
-    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.mask)
 
     @attr.gpu
-    @condition.retry(3)
     def test_forward_gpu(self):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.mask))
