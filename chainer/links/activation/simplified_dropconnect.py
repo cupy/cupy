@@ -10,6 +10,14 @@ class SimplifiedDropconnect(link.Link):
 
     """Fully-connected layer with simplified dropconnect regularization.
 
+    Notice:
+    This implementation cannot be used for reproduction of the paper.
+    There is a difference between the current implementation and the
+    original one.
+    The original version uses sampling with gaussian distribution before
+    passing activation function, whereas the current implementation averages
+    before activation.
+
     Args:
         in_size (int): Dimension of input vectors. If ``None``, parameter
             initialization will be deferred until the first forward data pass

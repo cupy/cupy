@@ -93,9 +93,10 @@ def simplified_dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
 
     Simplified dropconnect drops weight matrix elements randomly with
     probability ``ratio`` and scales the remaining elements by factor
-    ``1 / (1 - ratio)``. It accepts two or three arguments: an input minibatch
-    ``x``, a weight matrix ``W``, and optionally a bias vector ``b``. It
-    computes :math:`Y = xW^\\top + b`.
+    ``1 / (1 - ratio)``. Which element is dropped depends on each sample.
+    It accepts two or three arguments: an input minibatch ``x``, a weight
+    matrix ``W``, and optionally a bias vector ``b``. It computes
+    :math:`Y = xW^\\top + b`.
 
     In testing mode, zero will be used as simplified dropconnect ratio instead
     of ``ratio``.
@@ -105,7 +106,7 @@ def simplified_dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     There is a difference between the current implementation and the
     original one.
     The original version uses sampling with gaussian distribution before
-    passing activation function, the current implementation averages
+    passing activation function, whereas the current implementation averages
     before activation.
 
     Args:
@@ -128,13 +129,16 @@ def simplified_dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
             Main purpose of this option is debugging.
             `mask` array will be used as a dropconnect mask.
 
-
-
     Returns:
         ~chainer.Variable: Output variable.
 
     .. seealso:: :class:`~chainer.links.Dropconnect`
 
+    .. seealso::
+        Li, W., Matthew Z., Sixin Z., Yann L., Rob F. (2013).
+        Regularization of Neural Network using DropConnect.
+        International Conference on Machine Learning.
+        `URL <http://cs.nyu.edu/~wanli/dropc/>`_
     """
     if not train:
         ratio = 0
