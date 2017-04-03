@@ -71,8 +71,8 @@ class GoogLeNet(link.Chain):
             automatically used from the second time.
             If the argument is specified as ``None``, all the parameters
             are not initialized by the pre-trained model, but the default
-            initializer used in the original paper, i.e.,
-            ``chainer.initializers.GlorotUniform(scale=1.0)``.
+            initializer used to train the caffe model, i.e.,
+            ``chainer.initializers.LeCunUniform(scale=1.0)``.
 
     Attributes:
         available_layers (list of str): The list of available layer names
@@ -89,7 +89,7 @@ class GoogLeNet(link.Chain):
             kwargs = {'initialW': constant.Zero()}
         else:
             # employ default initializers used in the original paper
-            kwargs = {'initialW': uniform.GlorotUniform(scale=1.0)}
+            kwargs = {'initialW': uniform.LeCunUniform(scale=1.0)}
         super(GoogLeNet, self).__init__(
             conv1=Convolution2D(3, 64, 7, stride=2, pad=3, **kwargs),
             conv2_reduce=Convolution2D(64, 64, 1, **kwargs),
