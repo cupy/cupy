@@ -312,6 +312,7 @@ class TestChoiceChi(unittest.TestCase):
     def setUp(self):
         self.rs = generator.RandomState()
 
+    @condition.retry(5)
     def test_goodness_of_fit(self):
         trial = 100
         vals = [self.rs.choice(3, 1, True, [0.3, 0.3, 0.4]).get()
