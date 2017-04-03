@@ -45,7 +45,8 @@ def main():
                         help='Learning minibatch size')
     parser.add_argument('--epoch', '-E', type=int, default=10,
                         help='Number of epochs to train')
-    parser.add_argument('--gpus', '-g', type=int, nargs="*", default=[0, 1, 2, 3])
+    parser.add_argument('--gpus', '-g', type=int, nargs="*",
+                        default=[0, 1, 2, 3])
     parser.add_argument('--initmodel',
                         help='Initialize the model from given file')
     parser.add_argument('--loaderjob', '-j', type=int,
@@ -80,10 +81,11 @@ def main():
     # the training/validation.
     devices = tuple(args.gpus)
 
-    train_iters = [chainer.iterators.MultiprocessIterator(
-                        i, args.batchsize, n_processes=args.loaderjob)
-                   for i in chainer.datasets.split_dataset_n_random(train,
-                                                                    len(devices))]
+    train_iters = [
+        chainer.iterators.MultiprocessIterator(i,
+                                               args.batchsize,
+                                               n_processes=args.loaderjob)
+        for i in chainer.datasets.split_dataset_n_random(train, len(devices))]
     val_iter = chainer.iterators.MultiprocessIterator(
         val, args.val_batchsize, repeat=False, n_processes=args.loaderjob)
 

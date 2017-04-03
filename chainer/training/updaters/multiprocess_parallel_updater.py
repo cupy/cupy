@@ -2,9 +2,9 @@ import multiprocessing
 
 import six
 
+import chainer
 from chainer.dataset import convert
 from chainer import cuda
-import chainer
 from chainer.training.updater import StandardUpdater, _calc_loss
 
 try:
@@ -45,7 +45,6 @@ class _Worker(multiprocessing.Process):
             job, data = self.pipe.recv()
             if job == 'finalize':
                 dev.synchronize()
-                # chainer.serializers.save_npz('dump_model_{}'.format(self.device), self.model, compression=False)
                 break
             if job == 'update':
                 # For reducing memory
@@ -64,12 +63,14 @@ class _Worker(multiprocessing.Process):
                 gg = self.model.gather_grads()
                 null_stream = cuda.Stream.null
                 self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
-                                 nccl.NCCL_FLOAT, nccl.NCCL_SUM, 0, null_stream.ptr)
+                                 nccl.NCCL_FLOAT, nccl.NCCL_SUM, 0,
+                                 null_stream.ptr)
                 del gg
                 self.model.cleargrads()
                 if pp is None:
                     pp = self.model.gather_params()
-                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, 0, null_stream.ptr)
+                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, 0,
+                                null_stream.ptr)
                 self.model.scatter_params(pp)
                 pp = None
 
@@ -91,8 +92,8 @@ class MultiprocessParallelUpdater(StandardUpdater):
     parameters only in the main device.
 
     Args:
-        iterators: List of dataset iterator for the training dataset. The number
-            of the iterators must be same to the number of GPUs you use.
+        iterators: List of dataset iterator for the training dataset. The
+            number of the iterators must be same to the number of GPUs you use.
         optimizer: Optimizer to update parameters. The model should be attached
             to the optimizer.
         converter: Converter function to build input arrays. Each batch
@@ -108,9 +109,11 @@ class MultiprocessParallelUpdater(StandardUpdater):
     def __init__(self, iterators, optimizer, converter=convert.concat_examples,
                  devices=None):
         if not MultiprocessParallelUpdater.available():
-            raise Exception('NCCL is not enabled. MultiprocessParallelUpdater requires NCCL.\n'
-                            'Please reinstall chainer after you install NCCL.\n'
-                            '(see https://github.com/pfnet/chainer#installation).')
+            raise Exception(
+                'NCCL is not enabled. MultiprocessParallelUpdater '
+                'requires NCCL.\n'
+                'Please reinstall chainer after you install NCCL.\n'
+                '(see https://github.com/pfnet/chainer#installation).')
 
         assert len(iterators) == len(devices)
         for iterator in iterators[1:]:
@@ -173,7 +176,8 @@ class MultiprocessParallelUpdater(StandardUpdater):
             if len(self._devices) > 1:
                 comm_id = nccl.get_unique_id()
                 self._send_message(("set comm_di", comm_id))
-                self.comm = nccl.NcclCommunicator(len(self._devices), comm_id, 0)
+                self.comm = nccl.NcclCommunicator(len(self._devices),
+                                                  comm_id, 0)
 
     def update_core(self):
         self.setup_workers()
