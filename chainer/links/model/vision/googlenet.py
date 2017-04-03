@@ -47,6 +47,15 @@ class GoogLeNet(link.Chain):
     model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
+    GoogLeNet, which is also called Inception-v1, is an architecture of
+    convolutional neural network proposed in 2014. This model is relatively
+    lightweight and requires small memory footprint during training compared
+    with modern architectures such as ResNet. Therefore, if you fine-tune your
+    network based on a model pre-trained by Imagenet and need to train it with
+    large batch size, GoogLeNet may be useful. On the other hand, if you just
+    want an off-the-shelf classifier, we recommend you to use ResNet50 or other
+    models since they are more accurate than GoogLeNet.
+
     .. [1] `<https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet>`_
 
     Args:
