@@ -31,6 +31,9 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(numpy.array([[1, 2], [1, 9]]))
 
 
+@testing.parameterize(*testing.product({
+    'mode': ['r', 'raw', 'complete', 'reduced'],
+}))
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
@@ -50,22 +53,7 @@ class TestQRDecomposition(unittest.TestCase):
         else:
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
-    def test_r_mode(self):
-        self.check_mode(numpy.random.randn(2, 3), mode='r')
-        self.check_mode(numpy.random.randn(3, 3), mode='r')
-        self.check_mode(numpy.random.randn(4, 2), mode='r')
-
-    def test_raw_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='raw')
-        self.check_mode(numpy.random.randn(2, 3), mode='raw')
-        self.check_mode(numpy.random.randn(4, 5), mode='raw')
-
-    def test_complete_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='complete')
-        self.check_mode(numpy.random.randn(2, 3), mode='complete')
-        self.check_mode(numpy.random.randn(4, 5), mode='complete')
-
-    def test_reduced_mode(self):
-        self.check_mode(numpy.random.randn(2, 4), mode='reduced')
-        self.check_mode(numpy.random.randn(2, 3), mode='reduced')
-        self.check_mode(numpy.random.randn(4, 5), mode='reduced')
+    def test_mode(self):
+        self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(4, 5), mode=self.mode)
