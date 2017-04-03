@@ -72,7 +72,7 @@ class Im2Col(function.Function):
 def im2col(x, ksize, stride=1, pad=0, cover_all=False, dilate=1):
     """Extract patches from an image based on the filter.
 
-    This function rearranges patches of an image and put them in channel
+    This function rearranges patches of an image and put them in the channel
     dimension of the output.
 
     Patches are extracted at positions shifted by multiples of ``stride`` from
@@ -80,24 +80,35 @@ def im2col(x, ksize, stride=1, pad=0, cover_all=False, dilate=1):
     The right-most (or bottom-most) patches do not run over the padded spatial
     size.
 
-    Notation: here is a notation for dimensionalities.
+    Notation: here is a notation.
 
     - :math:`n` is the batch size.
-    - :math:`c` are the number of the input channels.
+    - :math:`c` is the number of the input channels.
     - :math:`h` and :math:`w` are the height and width of the input image,
       respectively.
     - :math:`k_H` and :math:`k_W` are the height and width of the filters,
       respectively.
-    - :math:`s_Y` and :math:`s_X` are the stride of the filter.
-    - :math:`p_H` and :math:`p_W` are the spatial padding size.
+    - :math:`s_Y` and :math:`s_X` are the strides of the filter.
+    - :math:`p_H` and :math:`p_W` are the spatial padding sizes.
+    - :math:`d_Y` and :math:`d_X` are the dilation factors of filter \
+        application.
 
     The output size :math:`(h_O, w_O)` is determined by the following
-    equations:
+    equations when ``cover_all = False``:
 
     .. math::
 
-       h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
-       w_O &= (w + 2p_W - k_W) / s_X + 1.
+       h_O &= (h + 2p_H - k_H - (k_H - 1) * (d_Y - 1)) / s_Y + 1,\\\\
+       w_O &= (w + 2p_W - k_W - (k_W - 1) * (d_X - 1)) / s_X + 1.
+
+    When ``cover_all = True``, the output size is determined by
+    the following equations:
+
+    .. math::
+
+       h_O &= (h + 2p_H - k_H - (k_H - 1) * (d_Y - 1) + s_Y - 1) / s_Y + 1,\\\\
+       w_O &= (w + 2p_W - k_W - (k_W - 1) * (d_X - 1) + s_X - 1) / s_X + 1.
+
 
     Args:
         x (~chainer.Variable): Input variable of shape :math:`(n, c, h, w)`.
