@@ -129,7 +129,7 @@ def qr(a, mode='reduced'):
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
 
     if mode == 'r':
-        r = x[:, :mn].transpose().astype(dtype, copy=True)
+        r = x[:, :mn].transpose()
         return _triu(r)
 
     if mode == 'raw':
@@ -165,8 +165,8 @@ def qr(a, mode='reduced'):
             handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
 
-    q = q[:mc].transpose().astype(dtype, copy=True)
-    r = x[:, :mc].transpose().astype(dtype, copy=True)
+    q = q[:mc].transpose()
+    r = x[:, :mc].transpose()
     return q, _triu(r)
 
 
