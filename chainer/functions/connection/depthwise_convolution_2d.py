@@ -12,6 +12,15 @@ def _pair(x):
     return x, x
 
 
+def _matmul(a, b, xp):
+    if xp is numpy:
+        # numpy 1.9 does not support matmul.
+        # So we use numpy.einsum instead of numpy.matmul.
+        return xp.einsum('ijk,ikl->ijl', a, b)
+    else:
+        return xp.matmul(a, b)
+
+
 class DepthwiseConvolution2D(function.Function):
 
     def __init__(self, stride=1, pad=0):
@@ -60,7 +69,7 @@ class DepthwiseConvolution2D(function.Function):
         w_ = W.transpose(1, 2, 3, 0).reshape((C, KY * KX, D))
 
         # (C, B*IY*IX, KY*KX), (C, KY*KX, D)-> (C, B*IY*IX, D)
-        y = xp.matmul(c_, w_).astype(x.dtype, copy=False)
+        y = _matmul(c_, w_, xp).astype(x.dtype, copy=False)
 
         # (C, B*IY*IX, D) -> (B, C*D, IY, IX)
         y = y.reshape((C, B, IY * IX, D)).transpose(1, 0, 3, 2) \
@@ -87,13 +96,13 @@ class DepthwiseConvolution2D(function.Function):
         c_ = self.col.transpose(1, 0, 4, 5, 2, 3) \
             .reshape((C, B * IY * IX, KY * KX))
         # (C, D, B*IY*IX), (C, B*IY*IX, KY*KX) -> (C, D, KY*KX)
-        gW_ = xp.matmul(gy_, c_)
+        gW_ = _matmul(gy_, c_, xp)
         gW = gW_.reshape((C, D, KY, KX)).transpose(1, 0, 2, 3)
         gW = gW.astype(W.dtype, copy=False)
 
         w_ = W.transpose(1, 2, 3, 0).reshape((C, KY * KX, D))
         # (C, KY*KX, D), (C, D, B*IY*IX) -> (C, KY*KX, B*IY*IX)
-        gcol = xp.matmul(w_, gy_).reshape((C, KY, KX, B, IY, IX))
+        gcol = _matmul(w_, gy_, xp).reshape((C, KY, KX, B, IY, IX))
         gcol = gcol.astype(x.dtype, copy=False)
         gcol = xp.rollaxis(gcol, 3)
 
