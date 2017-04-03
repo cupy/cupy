@@ -671,7 +671,7 @@ cdef class ndarray:
 
         return out
 
-    cpdef sort(self):
+    def sort(self):
         """Sort an array, in-place with a stable sorting algorithm.
 
         .. note::
@@ -689,19 +689,6 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
-        try:
-            # Try to import cupy.cuda.thrust here just for checking its
-            # existence.
-            import cupy.cuda.thrust
-        except ImportError:
-            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall Chainer after '
-                   'uninstalling it.')
-            raise RuntimeError(msg)
-
-        cdef void* ptr
-        cdef Py_ssize_t n
-
         if self.shape == ():
             msg = 'Sorting arrays with the rank of zero is not supported'
             raise ValueError(msg)
@@ -716,34 +703,14 @@ cdef class ndarray:
         if self.base is not None:
             raise ValueError('Sorting views is not supported')
 
-        ptr = <void *>self.data.ptr
-        n = <Py_ssize_t>self.shape[0]
-
         # TODO(takagi): Support float16 and bool
-        dtype = self.dtype
-        if dtype == numpy.int8:
-            thrust.sort[common.cpy_byte](ptr, n)
-        elif dtype == numpy.uint8:
-            thrust.sort[common.cpy_ubyte](ptr, n)
-        elif dtype == numpy.int16:
-            thrust.sort[common.cpy_short](ptr, n)
-        elif dtype == numpy.uint16:
-            thrust.sort[common.cpy_ushort](ptr, n)
-        elif dtype == numpy.int32:
-            thrust.sort[common.cpy_int](ptr, n)
-        elif dtype == numpy.uint32:
-            thrust.sort[common.cpy_uint](ptr, n)
-        elif dtype == numpy.int64:
-            thrust.sort[common.cpy_long](ptr, n)
-        elif dtype == numpy.uint64:
-            thrust.sort[common.cpy_ulong](ptr, n)
-        elif dtype == numpy.float32:
-            thrust.sort[common.cpy_float](ptr, n)
-        elif dtype == numpy.float64:
-            thrust.sort[common.cpy_double](ptr, n)
-        else:
-            msg = "Sorting arrays with dtype '{}' is not supported"
-            raise TypeError(msg.format(dtype))
+        try:
+            thrust.sort(self.dtype, self.data.ptr, self.shape[0])
+        except NameError:
+            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
+                   'Toolkit with Thrust then reinstall Chainer after '
+                   'uninstalling it.')
+            raise RuntimeError(msg)
 
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition
