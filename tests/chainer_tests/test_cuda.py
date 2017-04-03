@@ -49,7 +49,7 @@ class TestCuda(unittest.TestCase):
         # for Python2.7
         if six.PY3:
             with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter('error')
+                warnings.simplefilter('always')
                 cuda.get_device(cuda.cupy.array([1]))
 
             self.assertEqual(len(w), 1)
