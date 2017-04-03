@@ -144,6 +144,10 @@ class StandardUpdater(Updater):
         return self._iterators['main'].epoch_detail
 
     @property
+    def previous_epoch_detail(self):
+        return self._iterators['main'].previous_epoch_detail
+
+    @property
     def is_new_epoch(self):
         return self._iterators['main'].is_new_epoch
 

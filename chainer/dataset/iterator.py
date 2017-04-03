@@ -22,6 +22,8 @@ class Iterator(object):
     - ``epoch_detail``: Floating point number version of the epoch. For
       example, if the iterator is at the middle of the dataset at the third
       epoch, then this value is 2.5.
+    - ``previous_epoch_detail``: The value of ``epoch_detail`` at the previous
+      iteration. This value is ``None`` before the first iteration.
     - ``is_new_epoch``: ``True`` if the epoch count was incremented at the last
       update.
 
