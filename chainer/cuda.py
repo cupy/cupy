@@ -179,9 +179,7 @@ def get_device_from_array(*arrays):
             the first device object of an array in the list.
     """
     for array in arrays:
-        if isinstance(array, ndarray):
-            if array.device is None:
-                continue
+        if isinstance(array, ndarray) and array.device is not None:
             return array.device
     return DummyDevice
 
