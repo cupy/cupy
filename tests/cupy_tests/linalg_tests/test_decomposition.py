@@ -57,5 +57,5 @@ class TestQRDecomposition(unittest.TestCase):
 
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
-        self.check_mode(numpy.random.randn(2, 3), mode=self.mode)
-        self.check_mode(numpy.random.randn(4, 5), mode=self.mode)
+        self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
