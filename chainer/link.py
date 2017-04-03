@@ -505,6 +505,9 @@ class Link(object):
         Return:
             cupy.ndarray
         """
+        if self._cpu:
+            raise RuntimeError('Link.gather_grads works only on GPU.')
+
         size, num = self.size_num_grads()
         # print("size:{}, num:{}".format(size, num))
 
@@ -538,6 +541,9 @@ class Link(object):
         Return:
             cupy.ndarray
         """
+        if self._cpu:
+            raise RuntimeError('Link.gather_params works only on GPU.')
+
         size, num = self.size_num_grads()
         # print("size:{}, num:{}".format(size, num))
 

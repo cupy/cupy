@@ -555,6 +555,32 @@ class TestChain(unittest.TestCase):
         cupy.testing.assert_array_equal(model0.fc.W.data, model1.fc.W.data)
         cupy.testing.assert_array_equal(model0.fc.b.data, model1.fc.b.data)
 
+    def test_gather_grads_raise_on_cpu(self):
+        model = SimpleNet()
+        with self.assertRaises(RuntimeError):
+            model.gather_grads()
+
+    @attr.gpu
+    def test_gather_scatter_params(self):
+        model0 = SimpleNet()
+        model1 = SimpleNet()
+
+        model0.to_gpu()
+        model1.to_gpu()
+
+        gp0 = model0.gather_params()
+        model1.scatter_params(gp0)
+
+        cupy.testing.assert_array_equal(model0.conv.W.data, model1.conv.W.data)
+        cupy.testing.assert_array_equal(model0.conv.b.data, model1.conv.b.data)
+        cupy.testing.assert_array_equal(model0.fc.W.data, model1.fc.W.data)
+        cupy.testing.assert_array_equal(model0.fc.b.data, model1.fc.b.data)
+
+    def test_gather_params_raise_on_cpu(self):
+        model = SimpleNet()
+        with self.assertRaises(RuntimeError):
+            model.gather_params()
+
 
 class TestChainList(unittest.TestCase):
 
