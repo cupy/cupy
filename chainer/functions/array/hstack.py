@@ -53,10 +53,30 @@ def hstack(xs):
     """Concatenate variables horizontally (column wise).
 
     Args:
-        xs (list of chainer.Variable): Variables to be concatenated.
+        xs (list of :class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variables to be concatenated. The variables must have the
+            same shape, except in the horizontal (column wise) dimension.
 
     Returns:
         ~chainer.Variable: Output variable.
+
+    .. admonition:: Example
+
+        >>> x1 = np.arange(0, 12).reshape(3, 4)
+        >>> x1
+        array([[ 0,  1,  2,  3],
+               [ 4,  5,  6,  7],
+               [ 8,  9, 10, 11]])
+        >>> x2 = np.arange(12, 18).reshape(3, 2)
+        >>> x2
+        array([[12, 13],
+               [14, 15],
+               [16, 17]])
+        >>> F.hstack([x1, x2]).data
+        array([[ 0,  1,  2,  3, 12, 13],
+               [ 4,  5,  6,  7, 14, 15],
+               [ 8,  9, 10, 11, 16, 17]])
 
     """
 
