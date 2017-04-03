@@ -54,7 +54,6 @@ class Im2Col(function.Function):
     def backward(self, inputs, grad_outputs):
         x, = inputs
         xp = cuda.get_array_module(x)
-        _, _, h, w = x.shape
         gy, = grad_outputs
 
         n, _, out_h, out_w = gy.shape
