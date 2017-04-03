@@ -49,8 +49,10 @@ class TestQRDecomposition(unittest.TestCase):
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
             for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+                self.assertEqual(b_cpu.dtype, b_gpu.dtype)
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
+            self.assertEqual(result_cpu.dtype, result_gpu.dtype)
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     def test_mode(self):
