@@ -80,7 +80,7 @@ class GoogLeNet(link.Chain):
 
     """
 
-    image_mean = numpy.array([104, 117, 123], dtype=numpy.float32)  # BGR
+    image_mean = numpy.array([104.0, 117.0, 123.0], dtype=numpy.float32)  # BGR
 
     def __init__(self, pretrained_model='auto'):
         if pretrained_model:
