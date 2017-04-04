@@ -16,7 +16,7 @@ from chainer import flag
 from chainer.functions.activation.relu import relu
 from chainer.functions.activation.softmax import softmax
 from chainer.functions.array.reshape import reshape
-from chainer.functions.math.sum import sum as sum_function
+from chainer.functions.math.average import average
 from chainer.functions.noise.dropout import dropout
 from chainer.functions.normalization.local_response_normalization import (
     local_response_normalization)
@@ -274,7 +274,7 @@ class GoogLeNet(link.Chain):
             n = y.data.shape[0] // 10
             y_shape = y.data.shape[1:]
             y = reshape(y, (n, 10) + y_shape)
-            y = sum_function(y, axis=1) / 10
+            y = average(y, axis=1)
         return y
 
 
