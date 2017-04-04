@@ -1,8 +1,8 @@
 import numpy
 import six
 
-from chainer import function
 from chainer import cuda
+from chainer import function
 from chainer.utils import type_check
 
 
@@ -66,8 +66,7 @@ class PadSequence(function.Function):
 
     def backward(self, xs, grad):
         xp = cuda.get_array_module(*xs)
-        g = grad[0]
-        gs = xp.split(g, len(xs), axis=0)
+        gs = xp.split(grad[0], len(xs), axis=0)
         return tuple([g[0, 0:len(x)] for g, x in six.moves.zip(gs, xs)])
 
 
