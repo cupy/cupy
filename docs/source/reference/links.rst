@@ -191,19 +191,19 @@ where ``fc7`` denotes a layer before the last fully-connected layer.
 Unlike the usual links, these classes automatically load all the
 parameters from the pre-trained models during initialization.
 
-GoogLeNet
-~~~~~~~~~
-.. autoclass:: GoogLeNet
-   :members:
-
-.. autofunction:: chainer.links.model.vision.googlenet.prepare
-
 VGG16Layers
 ~~~~~~~~~~~
 .. autoclass:: VGG16Layers
    :members:
 
 .. autofunction:: chainer.links.model.vision.vgg.prepare
+
+GoogLeNet
+~~~~~~~~~
+.. autoclass:: GoogLeNet
+   :members:
+
+.. autofunction:: chainer.links.model.vision.googlenet.prepare
 
 Residual Networks
 ~~~~~~~~~~~~~~
