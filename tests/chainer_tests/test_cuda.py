@@ -47,7 +47,7 @@ class TestCuda(unittest.TestCase):
     @unittest.skipUnless(six.PY3)
     def test_get_device_warning(self):
         # NOTE: Python2.7 has a bug in catch_warnings, so this test is skipped
-        # for Python2.7        
+        # for Python2.7
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             cuda.get_device(cuda.cupy.array([1]))
