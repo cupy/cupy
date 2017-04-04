@@ -25,12 +25,13 @@ class DatasetMixin(object):
         slicing performance.
 
         Args:
-            index (int, slice, list or numpy.ndarray): An index of example
+            index (int, slice, list or numpy.ndarray): An index of an example
                 or indexes of examples.
 
-        Returns: If index is int, returns an example created by `get_example`.
-        If index is either slice or one-dimensional list or numpy.ndarray,
-        returns a list of examples created by `get_example`.
+        Returns:
+            If index is int, returns an example created by `get_example`.
+            If index is either slice or one-dimensional list or numpy.ndarray,
+            returns a list of examples created by `get_example`.
 
         .. admonition:: Example
            >>> import numpy
