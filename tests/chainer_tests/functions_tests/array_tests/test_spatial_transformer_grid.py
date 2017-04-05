@@ -17,7 +17,7 @@ class TestSpatialTransformerGrid(unittest.TestCase):
 
     def setUp(self):
         B = 3
-        self.theta = numpy.random.uniform(size=(B, 2, 3))
+        self.theta = numpy.random.uniform(size=(B, 2, 3)).astype(numpy.float32)
         self.output_shape = (5, 6)
         self.grads = numpy.random.uniform(
             size=(B, 2) + self.output_shape).astype(self.theta.dtype)
@@ -39,6 +39,7 @@ class TestSpatialTransformerGrid(unittest.TestCase):
         expected = numpy.array(
             expected).reshape(B, H, W, 2).transpose(0, 3, 1, 2)
         testing.assert_allclose(grid, expected)
+        self.assertEqual(grid.dtype, theta.dtype)
 
     def test_forward_cpu(self):
         self.check_forward(self.theta, self.output_shape)
