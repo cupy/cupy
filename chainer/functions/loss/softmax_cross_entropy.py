@@ -195,7 +195,8 @@ def softmax_cross_entropy(
             to 2, it computes a cross entropy of the replicated softmax if the
             number of dimensions is greater than 2.
         t (~chainer.Variable): Variable holding an int32 vector of ground truth
-            labels. If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            labels. If ``t[i] == ignore_label``, corresponding ``x[i]`` is
+            ignored.
         normalize (bool): If ``True``, this function normalizes the cross
             entropy loss across all instances. If ``False``, it only
             normalizes along a batch size.
@@ -210,6 +211,8 @@ def softmax_cross_entropy(
             ``y[:, i]`` that is the corresponding log-softmax output of ``x``
             and has the same shape as ``x`` before calculating the actual loss
             value.
+        ignore_label (int): Label value you want to ignore. Its default value
+            is ``-1``. See description of the argument `t`.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
