@@ -103,9 +103,9 @@ def _zeros(x):
 class ParameterStatistics(extension.Extension):
     """Trainer extension to report parameter statistics.
 
-    The statistics are collected for a given `~chainer.Link` or an iterable of
-    `~chainer.Link`s. If a link contains child links, the statistics are
-    aggregated over all its children.
+    The statistics are collected for a given :class:`~chainer.Link` or an
+    iterable of :class:`~chainer.Link`s. If a link contains child links, the
+    statistics are aggregated over all its children.
 
     Statistics that can be collected and reporter using the current scope are
     minimum and maximum values, means, standard deviations, percentiles and
