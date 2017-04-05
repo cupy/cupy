@@ -27,6 +27,15 @@ from chainer.training import extensions
      'target_zeros': 1,
      'target_percentiles': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
      'dtype': numpy.float32},
+    {'in_x': [],
+     'target_min': numpy.nan,
+     'target_max': numpy.nan,
+     'target_mean': numpy.nan,
+     'target_std': numpy.nan,
+     'target_zeros': 0,
+     'target_percentiles': [numpy.nan, numpy.nan, numpy.nan, numpy.nan,
+                            numpy.nan, numpy.nan],
+     'dtype': numpy.float32},
 )
 class TestParameterStatistics(unittest.TestCase):
 
@@ -40,24 +49,34 @@ class TestParameterStatistics(unittest.TestCase):
         report = self.extension.statistics_report(self.x)
 
         for f, s in report.items():
-            self.assertIsInstance(s, self.dtype)
-            self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
+            if self.x.size == 0:
+                self.assertTrue(numpy.isnan(s))
+            else:
+                self.assertIsInstance(s, self.dtype)
+                self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
 
     @attr.gpu
     def test_statistics_gpu(self):
         report = self.extension.statistics_report(cuda.to_gpu(self.x))
 
         for f, s in report.items():
-            self.assertIsInstance(s, cuda.ndarray)
-            self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
+            if self.x.size == 0:
+                self.assertTrue(cuda.get_array_module(s).isnan(s))
+            else:
+                self.assertIsInstance(s, cuda.ndarray)
+                self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
+
 
     def test_percentiles_cpu(self):
         report = self.extension.percentiles_report(self.x)
 
         for i, tp in enumerate(self.target_percentiles):
             p = report['percentile/{}'.format(i)]
-            self.assertIsInstance(p, self.dtype)
-            self.assertAlmostEqual(p, tp)
+            if self.x.size == 0:
+                self.assertTrue(numpy.isnan(p))
+            else:
+                self.assertIsInstance(p, self.dtype)
+                self.assertAlmostEqual(p, tp)
 
     @attr.gpu
     def test_percentiles_gpu(self):
@@ -65,8 +84,11 @@ class TestParameterStatistics(unittest.TestCase):
 
         for i, tp in enumerate(self.target_percentiles):
             p = report['percentile/{}'.format(i)]
-            self.assertIsInstance(p, cuda.ndarray)
-            self.assertAlmostEqual(cuda.to_cpu(p), tp)
+            if self.x.size == 0:
+                self.assertTrue(cuda.get_array_module(p).isnan(p))
+            else:
+                self.assertIsInstance(p, cuda.ndarray)
+                self.assertAlmostEqual(cuda.to_cpu(p), tp)
 
     def test_zeros_cpu(self):
         report = self.extension.zeros_report(self.x)
