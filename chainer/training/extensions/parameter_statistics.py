@@ -93,7 +93,7 @@ def _zeros(x):
         int: Number of zeros.
     """
     if x.ndim == 0:
-        raise ValueError('Cannot count zeros for shape {}'.format(x.shape))
+        return 0
 
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
