@@ -52,7 +52,7 @@ class TestSpatialTransformerGrid(unittest.TestCase):
     def check_backward(self, theta, output_shape, grads, use_cudnn=True):
         gradient_check.check_backward(
             functions.SpatialTransformerGrid(output_shape, use_cudnn),
-            (theta,), (grads,))
+            (theta,), (grads,), atol=1e-4, rtol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):
