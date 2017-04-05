@@ -9,6 +9,9 @@ cdef class Memory:
 
 cdef class ManagedMemory(Memory):
 
+    cdef:
+        readonly bint _support_prefetch_advise
+
     cpdef prefetch(self, stream)
     cpdef advise(self, int advice, device_mod.Device device)
 

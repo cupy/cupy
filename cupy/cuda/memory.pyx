@@ -66,6 +66,9 @@ cdef class ManagedMemory(Memory):
         if size > 0:
             self.device = device_mod.Device()
             self.ptr = runtime.mallocManaged(size)
+            self._support_prefetch_advise = (
+                _cuda_version >= 8000 and
+                int(self.device.compute_capability) >= 60)
 
     cpdef prefetch(self, stream):
         """ Prefetch.
@@ -74,7 +77,7 @@ cdef class ManagedMemory(Memory):
             stream (cupy.cuda.Stream): Stream
 
         """
-        if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
+        if self._support_prefetch_advise:
             runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
                                      stream.ptr)
 
@@ -86,7 +89,7 @@ cdef class ManagedMemory(Memory):
             device (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
+        if self._support_prefetch_advise:
             runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
@@ -347,10 +350,7 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
 
 
 cpdef MemoryPointer _mallocManaged(Py_ssize_t size):
-    cdef ManagedMemory mem
     mem = ManagedMemory(size)
-    mem.advise(runtime.cudaMemAdviseSetPreferredLocation, mem.device)
-    mem.prefetch(stream.Stream.null)
     return MemoryPointer(mem, 0)
 
 
