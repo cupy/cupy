@@ -88,8 +88,8 @@ def sigmoid_cross_entropy(
 
     Returns:
         Variable: A variable object holding an array of the cross entropy.
-            If ``reduce`` is True, it is a scalar array.
-            If else, the shape is same as ``x``.
+        If ``reduce`` is True, it is a scalar array.
+        If else, the shape is same as ``x``.
 
     .. note::
 
