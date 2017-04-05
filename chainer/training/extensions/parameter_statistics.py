@@ -156,10 +156,10 @@ class ParameterStatistics(extension.Extension):
                 invoked this extension.
         """
         for link in self._links:
-            for target in self._targets:
-                params = _get_link_params(link, *target)
+            for param_name, attr_name in self._targets:
+                params = _get_link_params(link, param_name, attr_name)
                 if params.size > 0:
-                    prefix = _target_name(link, *target) + '/'
+                    prefix = _target_name(link, param_name, attr_name) + '/'
                     stats = self.statistics_report(params, prefix)
                     stats.update(self.percentiles_report(params, prefix))
                     if self._count_zeros:
