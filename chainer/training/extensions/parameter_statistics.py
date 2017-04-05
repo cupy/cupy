@@ -74,10 +74,9 @@ def _percentiles(x, sigmas):
             ``sigma``.
     """
     def _percentiles_cpu(_x):
-        try:
-            return numpy.percentile(_x, sigmas).astype(_x.dtype)
-        except IndexError:  # _x.size == 0
+        if _x.size == 0:
             return numpy.array((float('NaN'),) * len(sigmas))
+        return numpy.percentile(_x, sigmas).astype(_x.dtype)
 
     if cuda.available and isinstance(x, cuda.ndarray):
         # cuda.cupy.percentile() is not implemented
