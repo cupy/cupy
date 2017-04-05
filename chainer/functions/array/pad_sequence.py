@@ -51,7 +51,7 @@ class PadSequence(function.Function):
             ptr_shape = (Ellipsis,) + (None,) * xs[0].ndim
             ptrs = cuda.cupy.array([x.data for x in xs], 'L')[ptr_shape]
             lengths = cuda.cupy.array([len(x) for x in xs], 'i')[ptr_shape]
-            base = numpy.prod(xs[0].shape[1:])
+            base = numpy.prod(xs[0].shape[1:], dtype='i')
             cuda.elementwise(
                 'P ptr, int32 length, T pad, int32 base, int32 max_length',
                 'T y',
