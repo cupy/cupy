@@ -79,8 +79,10 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
     return _get_cifar('cifar-100', withlabel, ndim, scale)
 
 
-def _get_cifar(name, *args):
-    npz_path = os.path.join(_root, '{}.npz'.format(name))
+def _get_cifar(name, withlabel, ndim, scale):
+    root = download.get_dataset_directory(os.path.join('pfnet', 'chainer',
+                                                       'cifar'))
+    npz_path = os.path.join(root, '{}.npz'.format(name))
     url = 'https://www.cs.toronto.edu/~kriz/{}-python.tar.gz'.format(name)
 
     def creator(path):
@@ -117,8 +119,8 @@ def _get_cifar(name, *args):
                 y = numpy.array(d['fine_labels'], dtype=numpy.uint8)
                 return x, y
 
-            archive_path = download.cached_download(url)
-            with tarfile.open(archive_path, 'r:gz') as archive:
+            with tarfile.open(download.cached_download(url), 'r:gz') as \
+                    archive:
                 train_x, train_y = load(archive, 'cifar-100-python/train')
                 test_x, test_y = load(archive, 'cifar-100-python/test')
 
@@ -128,10 +130,10 @@ def _get_cifar(name, *args):
                 'test_x': test_x, 'test_y': test_y}
 
     raw = download.cache_or_load_file(npz_path, creator, numpy.load)
-    train = _preprocess_cifar(raw['train_x'], raw['train_y'],
-                              *args)
-    test = _preprocess_cifar(raw['test_x'], raw['test_y'],
-                             *args)
+    train = _preprocess_cifar(raw['train_x'], raw['train_y'], withlabel,
+                              ndim, scale)
+    test = _preprocess_cifar(raw['test_x'], raw['test_y'], withlabel, ndim,
+                             scale)
     return train, test
 
 
@@ -150,10 +152,6 @@ def _preprocess_cifar(images, labels, withlabel, ndim, scale):
         return tuple_dataset.TupleDataset(images, labels)
     else:
         return images
-
-
-_root = download.get_dataset_directory(os.path.join('pfnet', 'chainer',
-                                                    'cifar'))
 
 
 def _pickle_load(f):
