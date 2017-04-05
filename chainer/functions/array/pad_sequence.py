@@ -13,6 +13,8 @@ class PadSequence(function.Function):
         self.padding = padding
 
     def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() > 0)
+
         for in_type in in_types:
             type_check.expect(
                 in_type.ndim > 0,
@@ -33,6 +35,8 @@ class PadSequence(function.Function):
 
         shape = (len(xs), length) + xs[0].shape[1:]
         y = xp.empty(shape, xs[0].dtype)
+        if length == 0:
+            return y,
 
         if xp is numpy or any(not x._c_contiguous for x in xs):
             for i, x in enumerate(xs):
