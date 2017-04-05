@@ -34,7 +34,8 @@ class TestPadSequence(unittest.TestCase):
 
     def check_forward(self, xs):
         # Non-finite values does not work for integer values.
-        if not numpy.isfinite(self.pad) and numpy.dtype(self.dtype).kind != 'f':
+        if not numpy.isfinite(self.pad) and \
+           numpy.dtype(self.dtype).kind != 'f':
             return
 
         y = functions.pad_sequence(xs, length=self.length, padding=self.pad)
