@@ -66,7 +66,6 @@ class TestParameterStatistics(unittest.TestCase):
                 self.assertIsInstance(s, cuda.ndarray)
                 self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
 
-
     def test_percentiles_cpu(self):
         report = self.extension.percentiles_report(self.x)
 
