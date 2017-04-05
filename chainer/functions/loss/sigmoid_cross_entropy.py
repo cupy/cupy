@@ -84,12 +84,12 @@ def sigmoid_cross_entropy(
             If true, it computes the sum of cross entropy
             and normalize it according to ``normalize`` option.
             If else, this function computes cross entropy for each instance
-            and does not normalize it (``normalize`' option is ignored).
+            and does not normalize it (``normalize`` option is ignored).
 
     Returns:
         Variable: A variable object holding an array of the cross entropy.
-            If ``keepdim`` is true, the shape is same as ``x``.
-            If else, it is a scalar array.
+            If ``reduce`` is True, it is a scalar array.
+            If else, the shape is same as ``x``.
 
     .. note::
 
