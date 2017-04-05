@@ -64,6 +64,17 @@ class DilatedConvolution2DFunction(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
+
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
@@ -77,6 +88,16 @@ class DilatedConvolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape

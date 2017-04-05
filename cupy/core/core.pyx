@@ -17,9 +17,9 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
+from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
-
 
 DEF MAX_NDIM = 25
 
@@ -64,16 +64,6 @@ cdef class ndarray:
 
 
     """
-
-    cdef:
-        readonly Py_ssize_t size
-        public vector.vector[Py_ssize_t] _shape
-        public vector.vector[Py_ssize_t] _strides
-        readonly bint _c_contiguous
-        readonly bint _f_contiguous
-        readonly object dtype
-        readonly memory.MemoryPointer data
-        readonly ndarray base
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
         cdef Py_ssize_t x
@@ -1098,10 +1088,14 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if not isinstance(slices, tuple):
-            slices = [slices]
-        else:
+        if isinstance(slices, tuple):
             slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)  # copy list
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
 
         # Expand ellipsis into empty slices
         ellipsis = -1
@@ -1136,8 +1130,6 @@ cdef class ndarray:
                 # handle the case when s is an empty list
                 if is_list and s.size == 0:
                     s = s.astype(numpy.int32)
-                    if s.ndim > 1:
-                        s = s[0]
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
@@ -1475,6 +1467,9 @@ cdef class ndarray:
         else:
             self._update_f_contiguity()
 
+    cdef function.CPointer get_pointer(self):
+        return CArray(self)
+
 
 cdef object newaxis = numpy.newaxis  # == None
 
@@ -1711,11 +1706,11 @@ nanmax = create_reduction_func(
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l',
-     ('e->l', (None, 'my_argmin_float(a, b)', None, None)),
-     ('f->l', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->l', (None, 'my_argmin_float(a, b)', None, None))),
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -1723,11 +1718,11 @@ cdef _argmin = create_reduction_func(
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l',
-     ('e->l', (None, 'my_argmax_float(a, b)', None, None)),
-     ('f->l', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->l', (None, 'my_argmax_float(a, b)', None, None))),
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2604,10 +2599,14 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     cdef ndarray v, x, y, a_interm, reduced_idx
     cdef int li, ri
 
-    if not isinstance(slices, tuple):
-        slices = [slices]
-    else:
+    if isinstance(slices, tuple):
         slices = list(slices)
+    elif isinstance(slices, list):
+        slices = list(slices)  # copy list
+        if all([isinstance(s, int) for s in slices]):
+            slices = [slices]
+    else:
+        slices = [slices]
 
     # Expand ellipsis into empty slices
     ellipsis = -1
@@ -2642,8 +2641,6 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             # handle the case when s is an empty list
             if is_list and s.size == 0:
                 s = s.astype(numpy.int32)
-                if s.ndim > 1:
-                    s = s[0]
             slices[i] = s
         if isinstance(s, ndarray):
             if issubclass(s.dtype.type, numpy.integer):

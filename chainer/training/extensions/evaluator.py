@@ -156,7 +156,13 @@ class Evaluator(extension.Extension):
 
         if self.eval_hook:
             self.eval_hook(self)
-        it = copy.copy(iterator)
+
+        if hasattr(iterator, 'reset'):
+            iterator.reset()
+            it = iterator
+        else:
+            it = copy.copy(iterator)
+
         summary = reporter_module.DictSummary()
 
         for batch in it:
