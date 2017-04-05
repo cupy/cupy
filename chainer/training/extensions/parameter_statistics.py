@@ -28,10 +28,13 @@ def _target_name(link, param_names, attr_names):
 
 def _get_link_params(link, param_names, attr_names):
     """Flatten link parameters into a single array and return a copy."""
+    param_names = _iterable(param_names)
+    attr_names = _iterable(attr_names)
+
     params = []
     for param in link.params():
-        if param.name in _iterable(param_names):
-            for attr_name in _iterable(attr_names):
+        if param.name in param_names:
+            for attr_name in attr_names:
                 params.append(getattr(param, attr_name).ravel())
 
     return link.xp.concatenate(params) if params else link.xp.array([])
