@@ -12,6 +12,15 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
+def _matmul(a, b, xp):
+    if xp is numpy:
+        # numpy 1.9 does not support matmul.
+        # So we use numpy.einsum instead of numpy.matmul.
+        return xp.einsum('ijk,ikl->ijl', a, b)
+    else:
+        return xp.matmul(a, b)
+
+
 class SimplifiedDropconnect(function.Function):
 
     """Linear unit regularized by simplified dropconnect."""
@@ -58,7 +67,7 @@ class SimplifiedDropconnect(function.Function):
         W = inputs[1] * scale * self.mask
 
         # ijk,ik->ij
-        y = xp.matmul(W, x[:, :, None])
+        y = _matmul(W, x[:, :, None], xp)
         y = y.reshape(y.shape[0], y.shape[1]).astype(x.dtype, copy=False)
 
         if len(inputs) == 3:
@@ -74,7 +83,7 @@ class SimplifiedDropconnect(function.Function):
         xp = cuda.get_array_module(*inputs)
 
         # ij,ijk->ik
-        gx = xp.matmul(gy[:, None, :], W).reshape(inputs[0].shape)
+        gx = _matmul(gy[:, None, :], W, xp).reshape(inputs[0].shape)
         gx = gx.astype(x.dtype, copy=False)
 
         # ij,ik,ijk->jk
