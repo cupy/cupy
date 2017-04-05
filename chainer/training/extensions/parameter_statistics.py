@@ -55,7 +55,7 @@ def _statistics(x, functions):
     for f in functions:
         try:
             # nan if x.size == 0 and f in ('mean', 'std')
-            stats[f] = getattr(x, f, lambda: float('NaN'))()
+            stats[f] = getattr(x, f)()
         except ValueError:  # x.size == 0 and f in ('min, 'max')
             stats[f] = float('NaN')
 
@@ -94,9 +94,6 @@ def _zeros(x):
     Returns:
         int: Number of zeros.
     """
-    if x.ndim == 0:
-        return 0
-
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
 
