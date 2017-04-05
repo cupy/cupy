@@ -65,7 +65,9 @@ class SpatialTransformerGrid(function.Function):
 
         ys, xs = xp.meshgrid(
             xp.linspace(-1, 1, H, dtype=numpy.float32),
-            xp.linspace(-1, 1, W, dtype=numpy.float32), indexing='ij')
+            xp.linspace(-1, 1, W, dtype=numpy.float32), indexing='ij',
+            copy=False
+        )
 
         coords = xp.concatenate(
             [xs[None], ys[None], xp.ones((1, H, W), dtype=numpy.float32)],
@@ -100,7 +102,9 @@ class SpatialTransformerGrid(function.Function):
 
         ys, xs = xp.meshgrid(
             xp.linspace(-1, 1, H, dtype=numpy.float32),
-            xp.linspace(-1, 1, W, dtype=numpy.float32), indexing='ij')
+            xp.linspace(-1, 1, W, dtype=numpy.float32), indexing='ij',
+            copy=False
+        )
 
         coords = xp.concatenate(
             [xs[None], ys[None], xp.ones((1, H, W), dtype=numpy.float32)],
