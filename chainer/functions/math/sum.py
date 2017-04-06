@@ -6,7 +6,9 @@ from chainer.utils import type_check
 class Sum(function.Function):
     """Sum of array elements over a given axis."""
 
-    def __init__(self, axis=None):
+    keepdims = False
+
+    def __init__(self, axis=None, keepdims=False):
         if axis is None:
             self.axis = None
         elif isinstance(axis, int):
@@ -18,6 +20,8 @@ class Sum(function.Function):
             self.axis = axis
         else:
             raise TypeError('None, int or tuple of int are required')
+
+        self.keepdims = keepdims
 
     def check_type_forward(self, in_types):
         type_check.expect(
@@ -38,7 +42,7 @@ class Sum(function.Function):
 
     def forward(self, x):
         xp = cuda.get_array_module(*x)
-        return xp.asarray(x[0].sum(axis=self.axis)),
+        return xp.asarray(x[0].sum(axis=self.axis, keepdims=self.keepdims)),
 
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
@@ -50,19 +54,20 @@ class Sum(function.Function):
             gx[:] = gy[0]
         else:
             gy = gy[0]
-            actual_axis = []
-            for axis in self.axis:
-                if axis < 0:
-                    axis += len(gx.shape)
-                actual_axis.append(axis)
-            for axis in sorted(actual_axis):
-                gy = xp.expand_dims(gy, axis=axis)
+            if not self.keepdims:
+                actual_axis = []
+                for axis in self.axis:
+                    if axis < 0:
+                        axis += len(gx.shape)
+                    actual_axis.append(axis)
+                for axis in sorted(actual_axis):
+                    gy = xp.expand_dims(gy, axis=axis)
             gx[:] = gy
 
         return gx,
 
 
-def sum(x, axis=None):
+def sum(x, axis=None, keepdims=False):
     """Sum of array elements over a given axis.
 
     Args:
@@ -70,9 +75,10 @@ def sum(x, axis=None):
         axis (None, int, or tuple of int): Axis which a sum is performed.
             The default (axis = None) is perform a sum over all the dimensions
             of the input array.
+        keepdims (bool): 
 
     Returns:
         ~chainer.Variable: Output variable.
 
     """
-    return Sum(axis)(x)
+    return Sum(axis, keepdims)(x)

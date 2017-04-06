@@ -13,19 +13,21 @@ from chainer.testing import condition
 
 @testing.parameterize(*testing.product({
     'axis': [None, 0, 1, 2, -1, (0, 1), (1, 0), (0, -1), (-2, 0)],
+    'keepdims': [True, False],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestSum(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
+        g_shape = self.x.sum(axis=self.axis, keepdims=self.keepdims).shape
+        self.gy = numpy.random.uniform(-1, 1, g_shape).astype(self.dtype)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = functions.sum(x, axis=self.axis)
+        y = functions.sum(x, axis=self.axis, keepdims=self.keepdims)
         self.assertEqual(y.data.dtype, self.dtype)
-        y_expect = self.x.sum(axis=self.axis)
+        y_expect = self.x.sum(axis=self.axis, keepdims=self.keepdims)
 
         if self.dtype == numpy.float16:
             options = {'atol': 1e-3, 'rtol': 1e-3}
@@ -45,25 +47,17 @@ class TestSum(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            functions.Sum(self.axis), x_data, y_grad, atol=1e-4,
+            functions.Sum(self.axis, self.keepdims), x_data, y_grad, atol=1e-4,
             dtype=numpy.float64)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        if self.axis is None:
-            gy = self.gy
-        else:
-            gy = numpy.ones_like(self.x.sum(axis=self.axis)) * self.gy
-        self.check_backward(self.x, gy)
+        self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_axis_gpu(self):
-        if self.axis is None:
-            gy = self.gy
-        else:
-            gy = numpy.ones_like(self.x.sum(axis=self.axis)) * self.gy
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 @testing.parameterize(*testing.product({
