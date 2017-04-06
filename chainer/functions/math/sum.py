@@ -47,22 +47,17 @@ class Sum(function.Function):
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
 
-        gx = xp.empty_like(x[0])
-        if gx.ndim == 0:
-            gx = gy[0]
-        elif self.axis is None:
-            gx[:] = gy[0]
-        else:
-            gy = gy[0]
-            if not self.keepdims:
-                actual_axis = []
-                for axis in self.axis:
-                    if axis < 0:
-                        axis += len(gx.shape)
-                    actual_axis.append(axis)
-                for axis in sorted(actual_axis):
-                    gy = xp.expand_dims(gy, axis=axis)
-            gx[:] = gy
+        x = x[0]
+        gy = gy[0]
+        if not (x.ndim == 0 or self.axis is None or self.keepdims):
+            actual_axis = []
+            for axis in self.axis:
+                if axis < 0:
+                    axis += len(x.shape)
+                actual_axis.append(axis)
+            for axis in sorted(actual_axis):
+                gy = xp.expand_dims(gy, axis=axis)
+        _, gx = xp.broadcast_arrays(x, gy)
 
         return gx,
 
