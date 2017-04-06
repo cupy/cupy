@@ -1,6 +1,3 @@
-import numbers
-import warnings
-
 import numpy as np
 
 import cupy
@@ -9,23 +6,13 @@ import cupy
 class GaussianMixture(object):
 
     def __init__(self, n_components=1, tol=1e-3, reg_covar=1e-6, max_iter=100,
-                 random_state=None):
+                 seed=None):
         self.n_components = n_components
         self.tol = tol
         self.reg_covar = reg_covar
         self.max_iter = max_iter
-        self.random_state = random_state
+        self.seed = seed
         self.xp = None
-
-    def check_random_state(self, seed):
-        if seed is None or seed is self.xp.random:
-            return self.xp.random.mtrand._rand
-        if isinstance(seed, (numbers.Integral, self.xp.integer)):
-            return self.xp.random.RandomState(seed)
-        if isinstance(seed, self.xp.random.RandomState):
-            return seed
-        raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                         ' instance' % seed)
 
     def _compute_precision_cholesky(self, covariances):
         estimate_precision_error_message = (
@@ -62,8 +49,7 @@ class GaussianMixture(object):
         self.precisions_cholesky_ = \
             self._compute_precision_cholesky(covariances)
 
-    def _initialize_parameters(self, X, random_state):
-        n_samples, _ = X.shape
+    def initialize_parameters(self, X, n_samples, random_state):
         resp = random_state.rand(n_samples, self.n_components)
         resp /= resp.sum(axis=1)[:, self.xp.newaxis]
         self._initialize(X, resp, n_samples)
@@ -112,38 +98,37 @@ class GaussianMixture(object):
     def fit(self, X, y=None):
         self.xp = cupy.get_array_module(X)
 
-        random_state = self.check_random_state(self.random_state)
+        random_state = self.xp.random.RandomState(self.seed)
         max_lower_bound = -np.infty
-        self.converged_ = False
-        n_samples, _ = X.shape
+        lower_bound = -np.infty
+        converged = False
+        n_samples = X.shape[0]
 
-        self._initialize_parameters(X, random_state)
-        self.lower_bound_ = -np.infty
+        self.initialize_parameters(X, n_samples, random_state)
 
         for n_iter in range(self.max_iter):
-            prev_lower_bound = self.lower_bound_
+            prev_lower_bound = lower_bound
 
             log_prob_norm, log_resp = self._e_step(X)
             self._m_step(X, log_resp)
-            self.lower_bound_ = log_prob_norm
+            lower_bound = log_prob_norm
 
-            change = self.lower_bound_ - prev_lower_bound
+            change = lower_bound - prev_lower_bound
 
             if abs(change) < self.tol:
-                self.converged_ = True
+                converged = True
                 break
 
-        if self.lower_bound_ > max_lower_bound:
-            max_lower_bound = self.lower_bound_
+        if lower_bound > max_lower_bound:
+            max_lower_bound = lower_bound
             best_params = (self.weights_, self.means_, self.covariances_,
                            self.precisions_cholesky_)
             best_n_iter = n_iter
 
-        if not self.converged_:
-            warnings.warn('Initialization did not converge. '
-                          'Try different init parameters, '
-                          'or increase max_iter, tol '
-                          'or check for degenerate data.')
+        if not converged:
+            msg = 'Failed to converge. Try different init parameters, \
+                   or increase max_iter, tol or check for degenerate data.'
+            print("%s" % msg)
 
         self._set_parameters(best_params)
         self.n_iter_ = best_n_iter

@@ -29,7 +29,9 @@ def run_gmm(X_train, y_train, X_test, y_test, estimator, n_classes):
 
 def run():
     X_train = np.random.rand(60000, 784)
+    print(X_train.nbytes)
     X_test = np.random.rand(10000, 784)
+    print(X_test.nbytes)
     y_train = np.random.randint(10, size=60000)
     y_test = np.random.randint(10, size=10000)
     n_classes = 10
@@ -37,7 +39,7 @@ def run():
     repeat = 1
 
     estimator_cpu = gmm.GaussianMixture(n_components=n_classes,
-                                        max_iter=max_iter, random_state=0)
+                                        max_iter=max_iter, seed=0)
     with timer(' CPU '):
         for i in range(repeat):
             train_acc, test_acc = run_gmm(X_train, y_train, X_test, y_test,
@@ -51,7 +53,7 @@ def run():
     y_test = cupy.asarray(y_test)
     X_test = cupy.asarray(X_test)
     estimator_gpu = gmm.GaussianMixture(n_components=n_classes,
-                                        max_iter=max_iter, random_state=0)
+                                        max_iter=max_iter, seed=0)
     with timer(' GPU '):
         for i in range(repeat):
             train_acc, test_acc = run_gmm(X_train, y_train, X_test, y_test,
