@@ -63,7 +63,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         x_val = chainer.Variable(x_data)
         t_val = chainer.Variable(t_data)
         loss = functions.sigmoid_cross_entropy(
-            x_val, t_val, use_cudnn, self.normalize, reduce=False)
+            x_val, t_val, use_cudnn, self.normalize, reduce='no')
         self.assertEqual(loss.data.shape, self.x.shape)
         self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = cuda.to_cpu(loss.data)
@@ -110,7 +110,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
             functions.SigmoidCrossEntropy(use_cudnn),
             (x_data, t_data), None, eps=1e-2)
         gradient_check.check_backward(
-            functions.SigmoidCrossEntropy(use_cudnn, reduce=False),
+            functions.SigmoidCrossEntropy(use_cudnn, reduce='no'),
             (x_data, t_data), y_grad, eps=1e-2)
 
     @condition.retry(3)

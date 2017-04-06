@@ -13,9 +13,13 @@ class SigmoidCrossEntropy(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, use_cudnn=True, normalize=True, reduce=True):
+    def __init__(self, use_cudnn=True, normalize=True, reduce='mean'):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
+        if reduce not in ('mean', 'no'):
+            raise ValueError(
+                "only 'mean' and 'no' are valid for 'reduce', but '%s' is "
+                'given' % reduce)
         self.reduce = reduce
 
     def check_type_forward(self, in_types):
@@ -38,7 +42,7 @@ class SigmoidCrossEntropy(function.Function):
             self.ignore_mask *
             (x * (t - (x >= 0)) - xp.log1p(xp.exp(-xp.abs(x)))))
 
-        if not self.reduce:
+        if not self.reduce == 'mean':
             return utils.force_array(loss.astype(x.dtype)),
 
         if self.normalize:
@@ -55,7 +59,7 @@ class SigmoidCrossEntropy(function.Function):
         x, t = inputs
         gloss = grad_outputs[0]
         y, = sigmoid.Sigmoid(self.use_cudnn).forward((x,))
-        if self.reduce:
+        if self.reduce == 'mean':
             gx = xp.divide(
                 gloss * self.ignore_mask * (y - t), self.count,
                 dtype=y.dtype)
@@ -65,7 +69,7 @@ class SigmoidCrossEntropy(function.Function):
 
 
 def sigmoid_cross_entropy(
-        x, t, use_cudnn=True, normalize=True, reduce=True):
+        x, t, use_cudnn=True, normalize=True, reduce='mean'):
     """Computes cross entropy loss for pre-sigmoid activations.
 
     Args:
