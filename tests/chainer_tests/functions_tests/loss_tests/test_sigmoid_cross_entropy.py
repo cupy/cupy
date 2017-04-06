@@ -43,20 +43,21 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
 
         # Compute expected value
         loss_expect = 0
-        if not getattr(self, 'ignore_all', False):
-            non_ignore_count = 0
-            for i in six.moves.range(self.x.shape[0]):
-                for j in six.moves.range(self.x.shape[1]):
-                    xd, td = self.x[i, j], self.t[i, j]
-                    if td == -1:
-                        continue
-                    loss_expect -= xd * (td - (xd >= 0)) \
-                        - math.log(1 + math.exp(-numpy.abs(xd)))
-                    non_ignore_count += 1
-            if self.normalize:
-                loss_expect /= non_ignore_count
-            else:
-                loss_expect /= self.t.shape[0]
+        non_ignore_count = 0
+        for i in six.moves.range(self.x.shape[0]):
+            for j in six.moves.range(self.x.shape[1]):
+                xd, td = self.x[i, j], self.t[i, j]
+                if td == -1:
+                    continue
+                loss_expect -= xd * (td - (xd >= 0)) \
+                    - math.log(1 + math.exp(-numpy.abs(xd)))
+                non_ignore_count += 1
+        if non_ignore_count == 0:
+            loss_expect = 0
+        elif self.normalize:
+            loss_expect /= non_ignore_count
+        else:
+            loss_expect /= self.t.shape[0]
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
     def check_forward_without_reduction(self, x_data, t_data, use_cudnn=True):
