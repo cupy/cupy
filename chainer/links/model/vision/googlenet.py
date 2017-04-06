@@ -80,8 +80,6 @@ class GoogLeNet(link.Chain):
 
     """
 
-    image_mean = numpy.array([104.0, 117.0, 123.0], dtype=numpy.float32)  # BGR
-
     def __init__(self, pretrained_model='auto'):
         if pretrained_model:
             # As a sampling process is time-consuming,
@@ -316,7 +314,7 @@ def prepare(image, size=(224, 224)):
         image = image.resize(size)
     image = numpy.asarray(image, dtype=numpy.float32)
     image = image[:, :, ::-1]
-    image -= GoogLeNet.image_mean
+    image -= numpy.array([104.0, 117.0, 123.0], dtype=numpy.float32)  # BGR
     image = image.transpose((2, 0, 1))
     return image
 
