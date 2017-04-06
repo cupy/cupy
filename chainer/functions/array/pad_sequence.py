@@ -80,18 +80,18 @@ class PadSequence(function.Function):
 
 
 def pad_sequence(xs, length=None, padding=0):
-    """Pad given arrays to make their lengths same.
+    """Pad given arrays to make a matrix.
 
     Args:
-        xs (list of ~chainer.Variable): Variables you want to reshpae.
-        length (None or int): Size of the first dimension of resphed arrays.
-            If it is ``None``, longest size of the first dimension of ``xs``
-            are used.
+        xs (list of ~chainer.Variable): Variables you want to concatenate.
+        length (None or int): Size of the first dimension of a padded array.
+            If it is ``None``, the longest size of the first dimension of
+            ``xs`` is used.
         padding (int or float): Value to fill.
 
     Returns:
-        tuple: Returns a tuple of ~chainer.Variable. Each variable has the same
-            shape.
+        ~chainer.Variable: It returns a padded matrix. Its shape is
+            ``(n, length, ...)``, where ``n == len(xs)``.
 
     """
     return PadSequence(length, padding)(*xs)
