@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+pad
+~~~
+.. autofunction:: pad
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -150,6 +154,10 @@ permutate
 reshape
 ~~~~~~~
 .. autofunction:: reshape
+
+resize_images
+~~~~~~~~~~~~~
+.. autofunction:: resize_images
 
 rollaxis
 ~~~~~~~~
@@ -356,6 +364,10 @@ argmin
 ~~~~~~
 .. autofunction:: argmin
 
+average
+~~~~~~~
+.. autofunction:: average
+
 batch_inv
 ~~~~~~~~~
 .. autofunction:: batch_inv
@@ -391,6 +403,10 @@ cosh
 exp
 ~~~
 .. autofunction:: exp
+
+fmod
+~~~~
+.. autofunction:: fmod
 
 floor
 ~~~~~

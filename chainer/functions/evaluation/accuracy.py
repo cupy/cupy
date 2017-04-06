@@ -56,7 +56,7 @@ class Accuracy(function.Function):
 
 
 def accuracy(y, t, ignore_label=None):
-    """Computes muticlass classification accuracy of the minibatch.
+    """Computes multiclass classification accuracy of the minibatch.
 
     Args:
         y (Variable): Variable holding a matrix whose (i, j)-th element

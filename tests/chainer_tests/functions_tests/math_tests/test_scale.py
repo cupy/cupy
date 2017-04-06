@@ -66,4 +66,5 @@ class TestScaleInvalidShape(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 functions.scale(x1, x2, axis)
 
+
 testing.run_module(__name__, __file__)

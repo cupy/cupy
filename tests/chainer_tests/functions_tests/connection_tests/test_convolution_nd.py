@@ -17,7 +17,7 @@ from chainer.utils import conv
 
 
 @testing.parameterize(*(testing.product({
-    'dims': [(6,), (5, 4), (4, 3, 3)],
+    'dims': [(5,), (4, 3), (3, 4, 3)],
     'cover_all': [True, False],
     'c_contiguous': [True],
     'x_dtype': [numpy.float32],
@@ -25,7 +25,7 @@ from chainer.utils import conv
 }) + testing.product({
     'dims': [(4,)],
     'cover_all': [False],
-    'c_contiguous': [True, False],
+    'c_contiguous': [False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
 })))

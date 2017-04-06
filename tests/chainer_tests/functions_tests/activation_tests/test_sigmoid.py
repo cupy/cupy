@@ -97,14 +97,18 @@ class TestSigmoidCudnnCall(unittest.TestCase):
         return functions.tanh(x, use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward(self):
-        with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
+        default_func = cuda.cupy.cudnn.activation_forward
+        with mock.patch('cupy.cudnn.activation_forward') as func:
+            func.side_effect = default_func
             self.forward()
             self.assertEqual(func.called, self.expect)
 
     def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
-        with mock.patch('cupy.cudnn.cudnn.activationBackward_v3') as func:
+        default_func = cuda.cupy.cudnn.activation_backward
+        with mock.patch('cupy.cudnn.activation_backward') as func:
+            func.side_effect = default_func
             y.backward()
             self.assertEqual(func.called, self.expect)
 
