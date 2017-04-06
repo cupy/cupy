@@ -349,7 +349,15 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
     return MemoryPointer(mem, 0)
 
 
-cpdef MemoryPointer _mallocManaged(Py_ssize_t size):
+cpdef MemoryPointer malloc_managed(Py_ssize_t size):
+    """Allocate managed memory
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
     mem = ManagedMemory(size)
     return MemoryPointer(mem, 0)
 
