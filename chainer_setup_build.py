@@ -353,16 +353,16 @@ class NvidiaCCompiler(unixccompiler.UnixCCompiler):
             self, verbose=verbose, dry_run=dry_run, force=force)
         postargs = _nvcc_gencode_options()
         if sys.platform == 'win32':
-            self.set_executables(compiler=['nvcc', '-O'] + postargs,
-                                 compiler_so=['nvcc', '-O'] + postargs,
-                                 compiler_cxx=['nvcc', '-O'] + postargs,
+            self.set_executables(compiler=['nvcc', '-O2'] + postargs,
+                                 compiler_so=['nvcc', '-O2'] + postargs,
+                                 compiler_cxx=['nvcc', '-O2'] + postargs,
                                  linker_so=['nvcc', '-shared'],
                                  linker_exe=['nvcc'])
         else:
             postargs += ['--compiler-options=-fPIC']
-            self.set_executables(compiler=['nvcc', '-O'] + postargs,
-                                 compiler_so=['nvcc', '-O'] + postargs,
-                                 compiler_cxx=['g++', '-O'] + postargs,
+            self.set_executables(compiler=['nvcc', '-O2'] + postargs,
+                                 compiler_so=['nvcc', '-O2'] + postargs,
+                                 compiler_cxx=['g++', '-O2'] + postargs,
                                  linker_so=['nvcc', '-shared'],
                                  linker_exe=['nvcc'])
 
