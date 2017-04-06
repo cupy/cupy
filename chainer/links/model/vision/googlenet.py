@@ -75,8 +75,10 @@ class GoogLeNet(link.Chain):
             ``chainer.initializers.LeCunUniform(scale=1.0)``.
             Note that, in Caffe, when weight_filler is specified as
             "xavier" type without variance_norm parameter, the weights are
-            initialized by Uniform(-s, s), where s = (3 / fan_in). This
-            corresponds to LeCunUniform in Chainer but not GlorotUniform.
+            initialized by Uniform(-s, s), where
+            :math:`s = \\sqrt{\\frac{3}{fan_{in}}}` and :math:`fan_{in}` is the
+            number of input units. This corresponds to LeCunUniform in Chainer
+            but not GlorotUniform.
 
     Attributes:
         available_layers (list of str): The list of available layer names
