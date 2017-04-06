@@ -3,7 +3,7 @@ from chainer.functions.array import reshape
 from chainer.functions.math import sum as sum_mod
 
 
-def average(x, axis=None, weights=None):
+def average(x, axis=None, weights=None, keepdims=False):
     """Calculate weighted average of array elements over a given axis.
 
     Args:
@@ -17,6 +17,8 @@ def average(x, axis=None, weights=None):
             When ``axis`` is ``None``, ``weights`` must have the same shape
             of ``x``. And when ``axis`` is ``int``, it must be 1-D array
             satisfing ``weights.shape == (x.shape[axis],)``.
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -31,15 +33,16 @@ def average(x, axis=None, weights=None):
             weights = broadcast.broadcast_to(
                 reshape.reshape(weights, w_shape), x.shape)
 
-            d_shape = [d for i, d in enumerate(x.shape) if i != axis]
-            divider = broadcast.broadcast_to(divider, d_shape)
         x = x * weights
     else:
-        # We do not need to call broadcast because divider here is not a
-        # Variable but a scalar
         if axis is None:
             divider = x.size
         else:
             divider = x.shape[axis]
 
-    return sum_mod.sum(x, axis) / divider
+    x_sum = sum_mod.sum(x, axis, keepdims=keepdims)
+    if weights is not None:
+        # We do not need to call broadcast whene weights is None because
+        # divider here is not a Variable but a scalar
+        divider = broadcast.broadcast_to(divider, x_sum.shape)
+    return x_sum / divider
