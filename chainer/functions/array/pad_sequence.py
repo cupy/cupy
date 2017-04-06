@@ -70,7 +70,12 @@ class PadSequence(function.Function):
 
     def backward(self, xs, grad):
         xp = cuda.get_array_module(*xs)
-        gs = xp.split(grad[0], len(xs), axis=0)
+        gs = grad[0]
+        if gs.size == 0:
+            # `split` in NumPy 1.9 behaves inconsistently when size is zero.
+            gs = [gs]
+        else:
+            gs = xp.split(gs, len(xs), axis=0)
         return tuple([g[0, 0:len(x)] for g, x in six.moves.zip(gs, xs)])
 
 
