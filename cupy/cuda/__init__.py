@@ -8,6 +8,18 @@ from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
 
+try:
+    from cupy.cuda import cusolver  # NOQA
+    cusolver_enabled = True
+except ImportError:
+    cusolver_enabled = False
+
+try:
+    from cupy.cuda import nvtx  # NOQA
+    nvtx_enabled = True
+except ImportError:
+    nvtx_enabled = False
+
 
 # import class and function
 from cupy.cuda.compiler import compile_with_cache  # NOQA

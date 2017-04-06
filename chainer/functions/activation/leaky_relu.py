@@ -43,15 +43,33 @@ class LeakyReLU(function.Function):
 def leaky_relu(x, slope=0.2):
     """Leaky Rectified Linear Unit function.
 
-    This function is expressed as :math:`f(x) = \\max(x, ax)`, where :math:`a`
-    is a configurable slope value.
+    This function is expressed as
+
+    .. math:: f(x)=\\max(x, ax),
+
+    where :math:`a` is a configurable slope value.
 
     Args:
-        x (~chainer.Variable): Input variable.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
         slope (float): Slope value :math:`a`.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable: Output variable. A
+        :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+
+    .. admonition:: Example
+
+        >>> x = np.array([[-1, 0], [2, -3], [-2, 1]], 'f')
+        >>> x
+        array([[-1.,  0.],
+               [ 2., -3.],
+               [-2.,  1.]], dtype=float32)
+        >>> F.leaky_relu(x, slope=0.2).data
+        array([[-0.2       ,  0.        ],
+               [ 2.        , -0.60000002],
+               [-0.40000001,  1.        ]], dtype=float32)
 
     """
     return LeakyReLU(slope)(x)

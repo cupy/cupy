@@ -79,4 +79,5 @@ class TestFloor(UnaryFunctionsTestBase):
     def test_label(self):
         self.check_label(F.Floor, 'floor')
 
+
 testing.run_module(__name__, __file__)

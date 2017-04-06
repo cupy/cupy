@@ -71,4 +71,5 @@ class TestUpsampling2D(unittest.TestCase):
         self.check_backward(cuda.to_gpu(
             self.pooled_y.data), cuda.to_gpu(self.gy))
 
+
 testing.run_module(__name__, __file__)

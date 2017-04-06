@@ -24,9 +24,9 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
-#ifndef _WIN32
+#ifndef CUPY_NO_NVTX
 #include <nvToolsExt.h>
-#endif
+#endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
 
@@ -302,6 +302,7 @@ cudaError_t cudaEventSynchronize(...) {
 
 typedef void* cublasHandle_t;
 
+typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
 typedef enum {} cublasSideMode_t;

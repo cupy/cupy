@@ -28,6 +28,9 @@ cpdef enum:
     CUBLAS_SIDE_LEFT = 0
     CUBLAS_SIDE_RIGHT = 1
 
+    CUBLAS_FILL_MODE_LOWER = 0
+    CUBLAS_FILL_MODE_UPPER = 1
+
 
 ###############################################################################
 # Context

@@ -61,9 +61,14 @@ class TestFmod(UnaryFunctionsTestBase):
         x = numpy.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
         divisor = numpy.random.uniform(-1.0, 1.0,
                                        self.shape).astype(self.dtype)
+        # division with too small divisor is unstable.
+        for i in numpy.ndindex(self.shape):
+            if math.fabs(divisor[i]) < 0.1:
+                divisor[i] += 1.0
+        # make enough margin
         for i in numpy.ndindex(self.shape):
             m = math.fabs(x[i] % divisor[i])
-            if m < 0.001 or m > (divisor[i] - 0.001):
+            if m < 0.01 or m > (divisor[i] - 0.01):
                 x[i] = 0.5
                 divisor[i] = 0.3
         gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -89,5 +94,6 @@ class TestFmod(UnaryFunctionsTestBase):
 
     def test_label(self):
         self.check_label(F.Fmod, 'fmod')
+
 
 testing.run_module(__name__, __file__)

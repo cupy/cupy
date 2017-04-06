@@ -131,7 +131,7 @@ class VGG16Layers(link.Chain):
             ('pool5', [_max_pooling_2d]),
             ('fc6', [self.fc6, relu, dropout]),
             ('fc7', [self.fc7, relu, dropout]),
-            ('fc8', [self.fc8, relu]),
+            ('fc8', [self.fc8]),
             ('prob', [softmax]),
         ])
 

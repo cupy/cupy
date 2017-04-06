@@ -7,6 +7,7 @@ cimport cpython
 from libcpp cimport vector
 
 from cupy.cuda cimport driver
+from cupy.core cimport core
 
 
 cdef extern from "cupy_stdint.h" nogil:
@@ -64,8 +65,10 @@ cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
     if x is None:
         return CPointer()
-    if hasattr(x, 'cstruct'):
-        return x.cstruct
+    if isinstance(x, core.ndarray):
+        return (<core.ndarray>x).get_pointer()
+    if isinstance(x, core.Indexer):
+        return (<core.Indexer>x).get_pointer()
 
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):
@@ -98,6 +101,7 @@ cdef void _launch(size_t func, int grid0, int grid1, int grid2,
                   args, int shared_mem, size_t stream) except *:
     cdef list pargs = []
     cdef vector.vector[void*] kargs
+    cdef CPointer cp
     kargs.reserve(len(args))
     for a in args:
         cp = _pointer(a)

@@ -27,8 +27,10 @@ from chainer.functions.array import fliplr  # NOQA
 from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
+from chainer.functions.array import pad  # NOQA
 from chainer.functions.array import permutate  # NOQA
 from chainer.functions.array import reshape  # NOQA
+from chainer.functions.array import resize_images  # NOQA
 from chainer.functions.array import rollaxis  # NOQA
 from chainer.functions.array import select_item  # NOQA
 from chainer.functions.array import separate  # NOQA
@@ -70,6 +72,7 @@ from chainer.functions.loss import sigmoid_cross_entropy  # NOQA
 from chainer.functions.loss import softmax_cross_entropy  # NOQA
 from chainer.functions.loss import triplet  # NOQA
 from chainer.functions.loss import vae  # NOQA  # NOQA
+from chainer.functions.math import average  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared  # NOQA
 from chainer.functions.math import bias  # NOQA
@@ -169,10 +172,14 @@ from chainer.functions.array.flipud import FlipUD  # NOQA
 from chainer.functions.array.get_item import get_item  # NOQA
 from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
+from chainer.functions.array.pad import pad  # NOQA
+from chainer.functions.array.pad import Pad  # NOQA
 from chainer.functions.array.permutate import permutate  # NOQA
 from chainer.functions.array.permutate import Permutate  # NOQA
 from chainer.functions.array.reshape import reshape  # NOQA
 from chainer.functions.array.reshape import Reshape  # NOQA
+from chainer.functions.array.resize_images import resize_images  # NOQA
+from chainer.functions.array.resize_images import ResizeImages  # NOQA
 from chainer.functions.array.rollaxis import rollaxis  # NOQA
 from chainer.functions.array.rollaxis import Rollaxis  # NOQA
 from chainer.functions.array.select_item import select_item  # NOQA
@@ -250,6 +257,7 @@ from chainer.functions.loss.vae import bernoulli_nll  # NOQA
 from chainer.functions.loss.vae import gaussian_kl_divergence  # NOQA
 from chainer.functions.loss.vae import gaussian_nll  # NOQA
 
+from chainer.functions.math.average import average  # NOQA
 from chainer.functions.math.basic_math import absolute  # NOQA
 from chainer.functions.math.batch_l2_norm_squared import batch_l2_norm_squared  # NOQA
 from chainer.functions.math.batch_l2_norm_squared import BatchL2NormSquared  # NOQA
