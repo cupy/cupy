@@ -83,16 +83,18 @@ def sigmoid_cross_entropy(
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
-        reduce (bool): Variable holding a boolean value which
+        reduce (bool): Variable holding a string value which
             determines whether to reduce the shape of the input.
-            If true, it computes the sum of cross entropy
+            If it is `mean`, it computes the sum of cross entropy
             and normalize it according to ``normalize`` option.
-            If else, this function computes cross entropy for each instance
-            and does not normalize it (``normalize`` option is ignored).
+            If is is `no`, this function computes cross entropy for each
+            instance and does not normalize it (``normalize`` option is
+            ignored). In this case, the loss value of the ignored instance,
+            which has ``-1`` as its target value, is set to ``0``.
 
     Returns:
         Variable: A variable object holding an array of the cross entropy.
-        If ``reduce`` is True, it is a scalar array.
+        If ``reduce`` is ``True``, it is a scalar array.
         If else, the shape is same as ``x``.
 
     .. note::
