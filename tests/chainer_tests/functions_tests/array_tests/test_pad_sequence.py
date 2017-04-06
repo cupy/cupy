@@ -12,7 +12,7 @@ from chainer.testing import attr
 
 @testing.parameterize(*testing.product({
     'lengths': [[2, 1, 5, 3], [2], [0]],
-    'length': [None, 6, 5],
+    'length': [None, 6, 'max'],
     'shape': [(3, 4), ()],
     'pad': [0, -1, float('inf'), float('nan')],
     'dtype': [numpy.bool_, numpy.int8, numpy.int16, numpy.int32,
@@ -25,6 +25,10 @@ class TestPadSequence(unittest.TestCase):
         self.xs = [
             numpy.random.uniform(-1, 1, (l,) + self.shape).astype(self.dtype)
             for l in self.lengths]
+
+        if self.length == 'max':
+            self.length = max(self.lengths)
+
         if self.length:
             max_length = self.length
         else:
