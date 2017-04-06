@@ -332,6 +332,17 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
        h_O &= (h_I + 2h_P - h_K) / s_Y + 1,\\\\
        w_O &= (w_I + 2w_P - w_K) / s_X + 1.
 
+    If ``cover_all`` option is ``True``, the filter will cover the all
+    spatial locations. So, if the last stride of filter does not cover the
+    end of spatial locations, an addtional stride will be applied to the end
+    part of spatial locations. In this case, the output size :math:`(h_O, w_O)`
+    is determined by the following equations:
+
+    .. math::
+
+       h_O &= (h_I + 2h_P - h_K + s_Y - 1) / s_Y + 1,\\\\
+       w_O &= (w_I + 2w_P - w_K + s_X - 1) / s_X + 1.
+
     If the bias vector is given, then it is added to all spatial locations of
     the output of convolution.
 
@@ -355,7 +366,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
         cover_all (bool): If ``True``, all spatial locations are convoluted
-            into some output pixels. It may make the output size larger.
+            into some output pixels.
         deterministic (bool): The output of this function can be
             non-deterministic when it uses cuDNN.
             If this option is ``True``, then it forces cuDNN to use
@@ -384,13 +395,17 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
         >>> b = np.random.uniform(0, 1, (c_o,)).astype('f')
         >>> b.shape
         (1,)
-        >>> s_y, s_x = 2, 2
+        >>> s_y, s_x = 5, 7
         >>> y = F.convolution_2d(x, W, b, stride=(s_y, s_x), pad=(h_p, w_p))
         >>> y.shape
-        (10, 1, 16, 21)
+        (10, 1, 7, 6)
         >>> h_o = int((h_i + 2 * h_p - h_k) / s_y + 1)
         >>> w_o = int((w_i + 2 * w_p - w_k) / s_x + 1)
         >>> y.shape == (n, c_o, h_o, w_o)
+        True
+        >>> y = F.convolution_2d(x, W, b, stride=(s_y, s_x), pad=(h_p, w_p), \
+cover_all=True)
+        >>> y.shape == (n, c_o, h_o, w_o + 1)
         True
 
     """
