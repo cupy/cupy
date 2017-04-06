@@ -71,8 +71,12 @@ class GoogLeNet(link.Chain):
             automatically used from the second time.
             If the argument is specified as ``None``, all the parameters
             are not initialized by the pre-trained model, but the default
-            initializer used to train the caffe model, i.e.,
+            initializer used in BVLC, i.e.,
             ``chainer.initializers.LeCunUniform(scale=1.0)``.
+            Note that, in Caffe, when weight_filler is specified as
+            "xavier" type without variance_norm parameter, the weights are
+            initialized by Uniform(-s, s), where s = (3 / fan_in). This
+            corresponds to LeCunUniform in Chainer but not GlorotUniform.
 
     Attributes:
         available_layers (list of str): The list of available layer names
@@ -86,7 +90,8 @@ class GoogLeNet(link.Chain):
             # we employ a zero initializer for faster computation.
             kwargs = {'initialW': constant.Zero()}
         else:
-            # employ default initializers used in the original paper
+            # employ default initializers used in BVLC. For more detail, see
+            # https://github.com/pfnet/chainer/pull/2424#discussion_r109642209
             kwargs = {'initialW': uniform.LeCunUniform(scale=1.0)}
         super(GoogLeNet, self).__init__(
             conv1=Convolution2D(3, 64, 7, stride=2, pad=3, **kwargs),
