@@ -70,7 +70,8 @@ def sum(x, axis=None, keepdims=False):
         axis (None, int, or tuple of int): Axis which a sum is performed.
             The default (axis = None) is perform a sum over all the dimensions
             of the input array.
-        keepdims (bool): 
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
 
     Returns:
         ~chainer.Variable: Output variable.
