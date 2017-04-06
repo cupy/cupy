@@ -37,7 +37,6 @@ class TestSimplifiedDropconnect(unittest.TestCase):
             initialW=chainer.initializers.Normal(1, self.W_dtype),
             initial_bias=chainer.initializers.Normal(1, self.x_dtype))
         self.link.cleargrads()
-        self.mask = gen_mask(self.ratio, self.link.W.shape)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
@@ -45,9 +44,17 @@ class TestSimplifiedDropconnect(unittest.TestCase):
             -1, 1, (4, self.out_size)).astype(self.x_dtype)
         W = self.link.W.data
         b = self.link.b.data
+
+        mask_shape = (4, ) + self.link.W.shape
+        self.mask = gen_mask(self.ratio, mask_shape)
+
         W = (W * self.mask) * (1. / (1 - self.ratio))
         x = self.x.reshape(4, -1)
-        self.y_expect = numpy.matmul(W, x[:, :, None]).reshape(4, -1) + b
+
+        # numpy 1.9 does not support matmul.
+        # So we use numpy.einsum instead of numpy.matmul.
+        self.y_expect = numpy.einsum('ijk,ikl->ijl',
+                                     W, x[:, :, None]).reshape(4, -1) + b
 
         self.check_forward_options = {}
         self.check_backward_options = {}
@@ -120,7 +127,11 @@ class TestSimplifiedDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (4, self.out_size)).astype(numpy.float32)
         W = (W * self.mask) * (1. / (1 - self.ratio))
-        self.y_expect = numpy.matmul(W, self.x[:, :, None]).reshape(4, -1) + b
+
+        # numpy 1.9 does not support matmul.
+        # So we use numpy.einsum instead of numpy.matmul.
+        self.y_expect = numpy.einsum('ijk,ikl->ijl',
+                                     W, self.x[:, :, None]).reshape(4, -1) + b
 
     def check_forward(self, x_data, mask):
         x = chainer.Variable(x_data)
