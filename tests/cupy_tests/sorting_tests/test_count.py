@@ -31,6 +31,7 @@ class TestCount(unittest.TestCase):
             return c
         self.assertEqual(func(numpy), func(cupy))
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     def test_count_nonzero_int_axis(self, dtype):
         for ax in six.moves.range(3):
@@ -40,6 +41,7 @@ class TestCount(unittest.TestCase):
                 return xp.count_nonzero(a, axis=ax)
             testing.assert_allclose(func(numpy), func(cupy))
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     def test_count_nonzero_tuple_axis(self, dtype):
         for ax in six.moves.range(3):
