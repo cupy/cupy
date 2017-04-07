@@ -17,7 +17,7 @@ ext_modules = cupy_setup_build.get_ext_modules()
 
 setup(
     name='cupy',
-    version='1.0.0a1',
+    version='1.0.0b1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
