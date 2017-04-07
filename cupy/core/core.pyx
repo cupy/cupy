@@ -700,8 +700,8 @@ cdef class ndarray:
             raise ValueError(msg)
 
         # TODO(takagi): Support sorting views
-        if self.base is not None:
-            raise ValueError('Sorting views is not supported')
+        if not self._c_contiguous:
+            raise ValueError('Sorting non-contiguous array is not supported.')
 
         # TODO(takagi): Support float16 and bool
         try:

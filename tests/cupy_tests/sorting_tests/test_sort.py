@@ -62,14 +62,25 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(TypeError):
             return cupy.sort(a)
 
-    # Test views
+    # Test contiguous arrays
 
-    def test_sort_view(self):
-        a = testing.shaped_random((10,), cupy)[::]  # with making a view
+    @testing.numpy_cupy_allclose()
+    def test_sort_contiguous(self, xp):
+        a = testing.shaped_random((10,), xp)[::]  # C contiguous view
+        a.sort()
+        return a
+
+    def test_sort_non_contiguous(self):
+        a = testing.shaped_random((10,), cupy)[::2]  # Non contiguous view
         with self.assertRaises(ValueError):
             a.sort()
 
     @testing.numpy_cupy_allclose()
-    def test_external_sort_view(self, xp):
-        a = testing.shaped_random((10,), xp)[::]  # with making a view
+    def test_external_sort_contiguous(self, xp):
+        a = testing.shaped_random((10,), xp)[::]  # C contiguous view
+        return xp.sort(a)
+
+    @testing.numpy_cupy_allclose()
+    def test_external_sort_non_contiguous(self, xp):
+        a = testing.shaped_random((10,), xp)[::2]  # Non contiguous view
         return xp.sort(a)
