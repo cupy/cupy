@@ -10,8 +10,11 @@ def stack(xs, axis=0):
         :class:`cupy.ndarray`):
             Input variables to be concatenated. The variables must have the
             same shape.
-        axis (int): The axis along which the arrays will be stacked. Default
-            is 0.
+        axis (int): The axis along which the arrays will be stacked. The
+            ``axis`` parameter is acceptable when
+            :math:`-ndim - 1 \\leq axis \\leq ndim`. (``ndim`` is the
+            dimension of input variables). When :math:`axis < 0`, the result
+            is the same with :math:`ndim + 1 - |axis|`.
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -19,16 +22,23 @@ def stack(xs, axis=0):
     .. admonition:: Example
 
         >>> x1 = np.arange(0, 12).reshape(3, 4)
+        >>> x1.shape
+        (3, 4)
         >>> x1
         array([[ 0,  1,  2,  3],
                [ 4,  5,  6,  7],
                [ 8,  9, 10, 11]])
         >>> x2 = np.arange(12, 24).reshape(3, 4)
+        >>> x2.shape
+        (3, 4)
         >>> x2
         array([[12, 13, 14, 15],
                [16, 17, 18, 19],
                [20, 21, 22, 23]])
-        >>> F.stack([x1, x2], axis=0).data
+        >>> y = F.stack([x1, x2], axis=0)
+        >>> y.shape
+        (2, 3, 4)
+        >>> y.data
         array([[[ 0,  1,  2,  3],
                 [ 4,  5,  6,  7],
                 [ 8,  9, 10, 11]],
@@ -36,7 +46,10 @@ def stack(xs, axis=0):
                [[12, 13, 14, 15],
                 [16, 17, 18, 19],
                 [20, 21, 22, 23]]])
-        >>> F.stack([x1, x2], axis=1).data
+        >>> y = F.stack([x1, x2], axis=1)
+        >>> y.shape
+        (3, 2, 4)
+        >>> y.data
         array([[[ 0,  1,  2,  3],
                 [12, 13, 14, 15]],
         <BLANKLINE>
@@ -45,7 +58,10 @@ def stack(xs, axis=0):
         <BLANKLINE>
                [[ 8,  9, 10, 11],
                 [20, 21, 22, 23]]])
-        >>> F.stack([x1, x2], axis=2).data
+        >>> y = F.stack([x1, x2], axis=2)
+        >>> y.shape
+        (3, 4, 2)
+        >>> y.data
         array([[[ 0, 12],
                 [ 1, 13],
                 [ 2, 14],
@@ -60,6 +76,9 @@ def stack(xs, axis=0):
                 [ 9, 21],
                 [10, 22],
                 [11, 23]]])
+        >>> y = F.stack([x1, x2], axis=-1)
+        >>> y.shape
+        (3, 4, 2)
 
     """
     xs = [expand_dims.expand_dims(x, axis=axis) for x in xs]
