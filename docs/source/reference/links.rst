@@ -199,7 +199,7 @@ VGG16Layers
 .. autofunction:: chainer.links.model.vision.vgg.prepare
 
 Residual Networks
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 .. autoclass:: chainer.links.model.vision.resnet.ResNetLayers
    :members:
 
