@@ -3,7 +3,6 @@ import math
 from chainer.functions.activation import softplus
 from chainer.functions.math import exponential
 from chainer.functions.math import sum
-from chainer import variable
 
 
 def gaussian_kl_divergence(mean, ln_var):
@@ -22,9 +21,11 @@ def gaussian_kl_divergence(mean, ln_var):
     and :math:`I` is an identity matrix.
 
     Args:
-        mean (~chainer.Variable): A variable representing mean of given
+        mean (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing mean of given
             gaussian distribution, :math:`\\mu`.
-        ln_var (~chainer.Variable): A variable representing logarithm of
+        ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing logarithm of
             variance of given gaussian distribution, :math:`\\log(\\sigma^2)`.
 
     Returns:
@@ -32,9 +33,6 @@ def gaussian_kl_divergence(mean, ln_var):
             given gaussian distribution and the standard gaussian.
 
     """
-    assert isinstance(mean, variable.Variable)
-    assert isinstance(ln_var, variable.Variable)
-
     J = mean.size
     var = exponential.exp(ln_var)
     return (sum.sum(mean * mean) + sum.sum(var) - sum.sum(ln_var) - J) * 0.5
@@ -60,17 +58,16 @@ def bernoulli_nll(x, y):
        directly.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        y (~chainer.Variable): A variable representing the parameter of
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable.
+        y (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing the parameter of
             Bernoulli distribution.
 
     Returns:
         ~chainer.Variable: A variable representing negative log-likelihood.
 
     """
-    assert isinstance(x, variable.Variable)
-    assert isinstance(y, variable.Variable)
-
     return sum.sum(softplus.softplus(y)) - sum.sum(x * y)
 
 
@@ -91,20 +88,19 @@ def gaussian_nll(x, mean, ln_var):
     matrix where :math:`S_{ii} = \\sigma_i^2`.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        mean (~chainer.Variable): A variable representing mean of a Gaussian
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable.
+        mean (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing mean of a Gaussian
             distribution, :math:`\\mu`.
-        ln_var (~chainer.Variable): A variable representing logarithm of
+        ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing logarithm of
             variance of a Gaussian distribution, :math:`\\log(\\sigma^2)`.
 
     Returns:
         ~chainer.Variable: A variable representing the negative log-likelihood.
 
     """
-    assert isinstance(x, variable.Variable)
-    assert isinstance(mean, variable.Variable)
-    assert isinstance(ln_var, variable.Variable)
-
     D = x.size
     x_prec = exponential.exp(-ln_var)
     x_diff = x - mean

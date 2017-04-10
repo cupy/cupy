@@ -10,6 +10,10 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'variable_wrap': True},
+    {'variable_wrap': False}
+)
 class TestGaussianKLDivergence(unittest.TestCase):
 
     def setUp(self):
@@ -24,9 +28,10 @@ class TestGaussianKLDivergence(unittest.TestCase):
                         numpy.sum(numpy.exp(self.ln_var))) * 0.5
 
     def check_gaussian_kl_divergence(self, mean, ln_var):
-        m = chainer.Variable(mean)
-        v = chainer.Variable(ln_var)
-        actual = cuda.to_cpu(vae.gaussian_kl_divergence(m, v).data)
+        if self.variable_wrap:
+            mean = chainer.Variable(mean)
+            ln_var = chainer.Variable(ln_var)
+        actual = cuda.to_cpu(vae.gaussian_kl_divergence(mean, ln_var).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
@@ -40,6 +45,10 @@ class TestGaussianKLDivergence(unittest.TestCase):
                                           cuda.to_gpu(self.ln_var))
 
 
+@testing.parameterize(
+    {'variable_wrap': True},
+    {'variable_wrap': False}
+)
 class TestBernoulliNLL(unittest.TestCase):
 
     def setUp(self):
@@ -52,9 +61,10 @@ class TestBernoulliNLL(unittest.TestCase):
         self.expect = - (numpy.sum(self.x * numpy.log(p)) +
                          numpy.sum((1 - self.x) * numpy.log(1 - p)))
 
-    def check_bernoulli_nll(self, x_data, y_data):
-        x = chainer.Variable(x_data)
-        y = chainer.Variable(y_data)
+    def check_bernoulli_nll(self, x, y):
+        if self.variable_wrap:
+            x = chainer.Variable(x)
+            y = chainer.Variable(y)
         actual = cuda.to_cpu(vae.bernoulli_nll(x, y).data)
         testing.assert_allclose(self.expect, actual)
 
@@ -69,6 +79,10 @@ class TestBernoulliNLL(unittest.TestCase):
                                  cuda.to_gpu(self.y))
 
 
+@testing.parameterize(
+    {'variable_wrap': True},
+    {'variable_wrap': False}
+)
 class TestGaussianNLL(unittest.TestCase):
 
     def setUp(self):
@@ -86,10 +100,11 @@ class TestGaussianNLL(unittest.TestCase):
                        0.5 * numpy.sum(self.ln_var) +
                        numpy.sum(x_d * x_d / var) * 0.5)
 
-    def check_gaussian_nll(self, x_data, mean_data, ln_var_data):
-        x = chainer.Variable(x_data)
-        mean = chainer.Variable(mean_data)
-        ln_var = chainer.Variable(ln_var_data)
+    def check_gaussian_nll(self, x, mean, ln_var):
+        if self.variable_wrap:
+            x = chainer.Variable(x)
+            mean = chainer.Variable(mean)
+            ln_var = chainer.Variable(ln_var)
         actual = cuda.to_cpu(vae.gaussian_nll(x, mean, ln_var).data)
         testing.assert_allclose(self.expect, actual)
 
