@@ -143,20 +143,20 @@ template <typename T, int ndim>
 class CArray {
 private:
   T* data_;
-  int size_;
-  int shape_[ndim];
-  int strides_[ndim];
+  ptrdiff_t size_;
+  ptrdiff_t shape_[ndim];
+  ptrdiff_t strides_[ndim];
 
 public:
   __device__ int size() const {
     return size_;
   }
 
-  __device__ const int* shape() const {
+  __device__ const ptrdiff_t* shape() const {
     return shape_;
   }
 
-  __device__ const int* strides() const {
+  __device__ const ptrdiff_t* strides() const {
     return strides_;
   }
 
@@ -206,11 +206,19 @@ template <typename T>
 class CArray<T, 0> {
 private:
   T* data_;
-  int size_;
+  ptrdiff_t size_;
 
 public:
   __device__ int size() const {
     return size_;
+  }
+
+  __device__ const ptrdiff_t* shape() const {
+    return NULL;
+  }
+
+  __device__ const ptrdiff_t* strides() const {
+    return NULL;
   }
 
   __device__ T& operator[](const int* idx) {
@@ -241,9 +249,9 @@ public:
 template <int ndim>
 class CIndexer {
 private:
-  int size_;
-  int shape_[ndim];
-  int index_[ndim];
+  ptrdiff_t size_;
+  ptrdiff_t shape_[ndim];
+  ptrdiff_t index_[ndim];
 
 public:
   __device__ ptrdiff_t size() const {
@@ -278,7 +286,7 @@ public:
     }
   }
 
-  __device__ const int* get() const {
+  __device__ const ptrdiff_t* get() const {
     return index_;
   }
 };
@@ -296,7 +304,7 @@ public:
   __device__ void set(ptrdiff_t i) {
   }
 
-  __device__ const int* get() const {
+  __device__ const ptrdiff_t* get() const {
     return NULL;
   }
 };
