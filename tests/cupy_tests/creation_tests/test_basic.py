@@ -19,15 +19,11 @@ class TestBasic(unittest.TestCase):
         a.fill(0)
         return a
 
-    """
-    @testing.attr.slow
-    @testing.for_dtypes(['?', 'b', 'h', 'e'])
-    @testing.numpy_cupy_array_equal()
-    def test_empty_huge(self, xp, dtype):
-        a = xp.empty((1024, 1024, 2048), dtype=dtype)
+    @testing.slow
+    def test_empty_huge(self):
+        a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(0)
-        return a
-    """
+        self.assertFalse(a.any())
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -45,15 +41,11 @@ class TestBasic(unittest.TestCase):
         a.fill(0)
         return a
 
-    """
-    @testing.attr.slow
-    @testing.for_dtypes(['?', 'b', 'h', 'e'])
-    @testing.numpy_cupy_array_equal()
-    def test_empty_huge_int(self, xp, dtype):
-        a = xp.empty(2 ** 31, dtype=dtype)
+    @testing.slow
+    def test_empty_huge_int(self):
+        a = cupy.empty(2 ** 31, dtype='b')
         a.fill(0)
-        return a
-    """
+        self.assertFalse(a.any())
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
