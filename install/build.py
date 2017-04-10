@@ -14,23 +14,14 @@ minimum_cudnn_version = 2000
 # provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
-get_nvcc_path_warned = False
-
-
-def get_nvcc_path():
-    global get_nvcc_path_warned
-    nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
-    if nvcc_path is None and not get_nvcc_path_warned:
-        utils.print_warning('nvcc not in path.',
-                            'Please set path to nvcc.')
-        get_nvcc_path_warned = True
-    return nvcc_path
-
 
 def get_compiler_setting():
-    nvcc_path = get_nvcc_path()
+    nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if nvcc_path is not None:
+    if nvcc_path is None:
+        utils.print_warning('nvcc not in path.',
+                            'Please set path to nvcc.')
+    else:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
