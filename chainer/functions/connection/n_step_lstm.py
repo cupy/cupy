@@ -135,12 +135,32 @@ def n_step_bilstm(
     time :math:`t` from input :math:`x_t`.
 
     .. math::
-       i_t &= \\sigma(W_0 x_t + W_4 h_{t-1} + b_0 + b_4) \\\\
-       f_t &= \\sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5) \\\\
-       o_t &= \\sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6) \\\\
-       a_t &= \\tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7) \\\\
-       c_t &= f_t \\dot c_{t-1} + i_t \\dot a_t \\\\
-       h_t &= o_t \\dot \\tanh(c_t)
+        i^{f}_t &=& \\sigma(W^{f}_0 x_t + W^{f}_4 h_{t-1} + b^{f}_0 + b^{f}_4),
+        \\\\
+        f^{f}_t &=& \\sigma(W^{f}_1 x_t + W^{f}_5 h_{t-1} + b^{f}_1 + b^{f}_5),
+        \\\\
+        o^{f}_t &=& \\sigma(W^{f}_2 x_t + W^{f}_6 h_{t-1} + b^{f}_2 + b^{f}_6),
+        \\\\
+        a^{f}_t &=& \\tanh(W^{f}_3 x_t + W^{f}_7 h_{t-1} + b^{f}_3 + b^{f}_7),
+        \\\\
+        c^{f}_t &=& f^{f}_t \\dot c^{f}_{t-1} + i^{f}_t \\dot a^{f}_t,
+        \\\\
+        h^{f}_t &=& o^{f}_t \\dot \\tanh(c^{f}_t),
+        \\\\
+        i^{b}_t &=& \\sigma(W^{b}_0 x_t + W^{b}_4 h_{t-1} + b^{b}_0 + b^{b}_4),
+        \\\\
+        f^{b}_t &=& \\sigma(W^{b}_1 x_t + W^{b}_5 h_{t-1} + b^{b}_1 + b^{b}_5),
+        \\\\
+        o^{b}_t &=& \\sigma(W^{b}_2 x_t + W^{b}_6 h_{t-1} + b^{b}_2 + b^{b}_6),
+        \\\\
+        a^{b}_t &=& \\tanh(W^{b}_3 x_t + W^{b}_7 h_{t-1} + b^{b}_3 + b^{b}_7),
+        \\\\
+        c^{b}_t &=& f^{b}_t \\dot c^{b}_{t-1} + i^{b}_t \\dot a^{b}_t, \\\\
+        h^{b}_t &=& o^{b}_t \\dot \\tanh(c^{b}_t), \\\\
+        h_t &=& [h^{f}; h^{b}]
+
+    where :math:`W^{f}` is weight matrices for forward-LSTM, :math:`W^{b}` is
+    weight matrices for backward-LSTM.
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are

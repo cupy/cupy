@@ -121,7 +121,6 @@ class NStepLSTMBase(link.ChainList):
 
 
 class NStepLSTM(NStepLSTMBase):
-
     """Stacked LSTM for sequnces.
 
     This link is stacked version of LSTM for sequences. It calculates hidden
@@ -150,7 +149,6 @@ class NStepLSTM(NStepLSTMBase):
 
 
 class NStepBiLSTM(NStepLSTMBase):
-
     """Stacked Bi-direction LSTM for sequnces.
 
     This link is stacked version of Bi-LSTM for sequences. It calculates hidden
