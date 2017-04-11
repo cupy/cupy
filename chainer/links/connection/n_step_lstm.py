@@ -144,8 +144,9 @@ class NStepLSTM(NStepLSTMBase):
         :func:`chainer.functions.n_step_lstm`
 
     """
-    NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
-                           use_cudnn, use_bi_direction=False)
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
+                               use_cudnn, use_bi_direction=False)
 
 
 class NStepBiLSTM(NStepLSTMBase):
@@ -172,5 +173,6 @@ class NStepBiLSTM(NStepLSTMBase):
         :func:`chainer.functions.n_step_bilstm`
 
     """
-    NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
-                           use_cudnn, use_bi_direction=True)
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
+                               use_cudnn, use_bi_direction=True)
