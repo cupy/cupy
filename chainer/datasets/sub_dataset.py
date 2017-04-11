@@ -137,7 +137,7 @@ def split_dataset_n(dataset, n, order=None):
 
     Args:
         dataset: Dataset to split.
-        n(int):
+        n(int): The number of subsets.
         order (sequence of ints): Permutation of indexes in the base dataset.
             See the document of :class:`SubDataset` for details.
 
@@ -158,7 +158,7 @@ def split_dataset_n_random(dataset, n, seed=None):
 
     Args:
         dataset: Dataset to split.
-        n(int):
+        n(int): The number of subsets.
         order (sequence of ints): Permutation of indexes in the base dataset.
             See the document of :class:`SubDataset` for details.
 
