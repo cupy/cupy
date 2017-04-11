@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+im2col
+~~~~~~
+.. autofunction:: im2col
+
 pad
 ~~~
 .. autofunction:: pad
@@ -235,6 +239,10 @@ deconvolution_nd
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_nd
 
+depthwise_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: depthwise_convolution_2d
+
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
@@ -246,6 +254,14 @@ embed_id
 linear
 ~~~~~~
 .. autofunction:: linear
+
+n_step_birnn
+~~~~~~~~~~~~
+.. autofunction:: n_step_birnn
+
+n_step_rnn
+~~~~~~~~~~
+.. autofunction:: n_step_rnn
 
 n_step_lstm
 ~~~~~~~~~~~
@@ -517,6 +533,10 @@ dropout
 gaussian
 ~~~~~~~~
 .. autofunction:: gaussian
+
+simplified_dropconnect
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: simplified_dropconnect
 
 
 Normalization functions
