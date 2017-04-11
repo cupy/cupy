@@ -73,11 +73,10 @@ class TestNStepRNN(unittest.TestCase):
                 h_prev = self.h[layer, batch]
                 hs = []
                 for x in seq:
-                    e_h = numpy.tanh(x.dot(p.w0.data.T) +
-                                     h_prev.dot(p.w1.data.T) +
-                                     p.b0.data + p.b1.data)
-                    h_prev = e_h
-                    hs.append(e_h)
+                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
+                                        h_prev.dot(p.w1.data.T) +
+                                        p.b0.data + p.b1.data)
+                    hs.append(h_prev)
 
                 seq = hs
                 testing.assert_allclose(hy.data[layer, batch], h_prev)
@@ -199,11 +198,10 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_f = []
                 for x in seq:
-                    e_h = numpy.tanh(x.dot(p.w0.data.T) +
-                                     h_prev.dot(p.w1.data.T) +
-                                     p.b0.data + p.b1.data)
-                    h_prev = e_h
-                    hs_f.append(e_h)
+                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
+                                        h_prev.dot(p.w1.data.T) +
+                                        p.b0.data + p.b1.data)
+                    hs_f.append(h_prev)
 
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
 
@@ -214,11 +212,10 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_b = []
                 for x in reversed(seq):
-                    e_h = numpy.tanh(x.dot(p.w0.data.T) +
-                                     h_prev.dot(p.w1.data.T) +
-                                     p.b0.data + p.b1.data)
-                    h_prev = e_h
-                    hs_b.append(e_h)
+                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
+                                        h_prev.dot(p.w1.data.T) +
+                                        p.b0.data + p.b1.data)
+                    hs_b.append(h_prev)
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
 
                 hs_b.reverse()

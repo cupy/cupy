@@ -124,13 +124,10 @@ def get_random_state():
     return rs
 
 if cuda.cudnn_enabled and _cudnn_version >= 5000:
-    # Map string names to enums.
-    # Keep enums in the same dict, so that interfaces support both.
+    # Define RNN parameters using dict.
     _rnn_dirs = {
         'uni': libcudnn.CUDNN_UNIDIRECTIONAL,
         'bi':  libcudnn.CUDNN_BIDIRECTIONAL,
-        libcudnn.CUDNN_UNIDIRECTIONAL: libcudnn.CUDNN_UNIDIRECTIONAL,
-        libcudnn.CUDNN_BIDIRECTIONAL: libcudnn.CUDNN_BIDIRECTIONAL,
     }
 
     _rnn_modes = {
@@ -138,59 +135,100 @@ if cuda.cudnn_enabled and _cudnn_version >= 5000:
         'rnn_tanh': libcudnn.CUDNN_RNN_TANH,
         'gru': libcudnn.CUDNN_GRU,
         'lstm': libcudnn.CUDNN_LSTM,
-        libcudnn.CUDNN_RNN_RELU: libcudnn.CUDNN_RNN_RELU,
-        libcudnn.CUDNN_RNN_TANH: libcudnn.CUDNN_RNN_TANH,
-        libcudnn.CUDNN_GRU: libcudnn.CUDNN_GRU,
-        libcudnn.CUDNN_LSTM: libcudnn.CUDNN_LSTM
-
     }
 
-    _rnn_params_modes = {
-        # Todo: check this is ok.
-        libcudnn.CUDNN_RNN_RELU: {'n_W': 2, 'n_Wb': 2 * 2, 'n_cell': 1},
-        libcudnn.CUDNN_RNN_TANH: {'n_W': 2, 'n_Wb': 2 * 2, 'n_cell': 1},
-        libcudnn.CUDNN_GRU: {'n_W': 6, 'n_Wb': 2 * 6, 'n_cell': 1},
-        libcudnn.CUDNN_LSTM: {'n_W': 8, 'n_Wb': 2 * 8, 'n_cell': 2},
+    _rnn_n_params = {
+        libcudnn.CUDNN_RNN_RELU: 2,
+        libcudnn.CUDNN_RNN_TANH: 2,
+        libcudnn.CUDNN_GRU: 6,
+        libcudnn.CUDNN_LSTM: 8,
     }
+
     _rnn_params_direction = {
-        libcudnn.CUDNN_UNIDIRECTIONAL: {'n': 1},
-        libcudnn.CUDNN_BIDIRECTIONAL: {'n': 2}
+        libcudnn.CUDNN_UNIDIRECTIONAL: 1,
+        libcudnn.CUDNN_BIDIRECTIONAL: 2,
+    }
+
+    _rnn_params_use_cell = {
+        libcudnn.CUDNN_RNN_RELU: False,
+        libcudnn.CUDNN_RNN_TANH: False,
+        libcudnn.CUDNN_GRU: False,
+        libcudnn.CUDNN_LSTM: True,
     }
 
 
 class BaseNStepRNN(function.Function):
-    def __init__(self, n_layers, states, rnn_dir='uni', rnn_mode='lstm',
-                 train=True):
-        self.rnn_dir = _rnn_dirs[rnn_dir.lower()]
-        self.rnn_mode = _rnn_modes[rnn_mode.lower()]
-        self.rnn_params = _rnn_params_modes[self.rnn_mode]
-        self.rnn_direction = _rnn_params_direction[self.rnn_dir]['n']
+    def __init__(self, n_layers, states, rnn_dir, rnn_mode, train=True):
+        if rnn_dir not in _rnn_dirs:
+            candidate_list = ','.join(_rnn_dirs.keys())
+            raise ValueError('Invalid rnn_dir: "%s". Please select from [%s]'
+                             % (rnn_dir, candidate_list))
+        if rnn_mode not in _rnn_modes:
+            candidate_list = ','.join(_rnn_modes.keys())
+            raise ValueError('Invalid rnn_mode: "%s". Please select from [%s]'
+                             % (rnn_mode, candidate_list))
+        self.rnn_dir = _rnn_dirs[rnn_dir]
+        self.rnn_mode = _rnn_modes[rnn_mode]
+        self.rnn_direction = _rnn_params_direction[self.rnn_dir]
         self.n_layers = n_layers
         self.train = train
         self.states = states
+        self.use_cell = _rnn_params_use_cell[self.rnn_mode]
+        self.n_W = _rnn_n_params[self.rnn_mode]
 
-    def _check_type_cell(self):
-        raise NotImplementedError()
+    @property
+    def _n_cell(self):
+        if self.use_cell:
+            return 2
+        else:
+            return 1
+
+    @property
+    def _n_params(self):
+        return self.n_layers * self.rnn_direction * self.n_W
 
     def check_type_forward(self, in_types):
-        n_cell = self.rnn_params['n_cell']
-        type_check.expect(in_types.size() > n_cell + self.rnn_params['n_Wb'] *
-                          self.n_layers * self.rnn_direction)
-        h_type, in_types = self._check_type_cell(in_types, n_cell)
+        type_check.expect(in_types.size() > self._n_cell + self._n_params * 2)
 
-        w_types, in_types = _split(in_types,
-                                   self.n_layers * self.rnn_direction *
-                                   self.rnn_params['n_W'])
-        b_types, in_types = _split(in_types,
-                                   self.n_layers * self.rnn_direction *
-                                   self.rnn_params['n_W'])
+        if self.use_cell:
+            (h_type, c_type), in_types = _split(in_types, 2)
+            h_size = self.n_layers * self.rnn_direction
+            type_check.expect(
+                h_type.dtype == numpy.float32,
+                c_type.dtype == numpy.float32,
+
+                h_type.ndim == 3,
+                h_type.shape[0] == h_size,
+                c_type.ndim == 3,
+                c_type.shape[0] == h_size,
+
+                # mini-batch size
+                h_type.shape[1] == c_type.shape[1],
+
+                # hidden size
+                h_type.shape[2] == c_type.shape[2],
+            )
+
+        else:
+            (h_type, ), in_types = _split(in_types, 1)
+            h_size = self.n_layers * self.rnn_direction
+            type_check.expect(
+                h_type.dtype == numpy.float32,
+
+                h_type.ndim == 3,
+                h_type.shape[0] == h_size,
+            )
+
+        w_types, in_types = _split(in_types, self._n_params)
+        b_types, in_types = _split(in_types, self._n_params)
+
         x_types = in_types
         for x_type in x_types:
             type_check.expect(
                 x_type.dtype == numpy.float32,
                 x_type.ndim == 2,
             )
-        for x1_type, x2_type in zip(x_types, x_types[1:]):
+        for x1_type, x2_type in six.moves.zip(x_types, x_types[1:]):
             type_check.expect(
                 # Check if xs are sorted by descending lengths
                 x1_type.shape[0] >= x2_type.shape[0],
@@ -200,23 +238,22 @@ class BaseNStepRNN(function.Function):
         out_size = h_type.shape[2]
 
         for layer in six.moves.range(self.n_layers):
-            for i in six.moves.range(self.rnn_params['n_W']):
+            for i in six.moves.range(self.n_W):
                 for di in six.moves.range(self.rnn_direction):
-                    ind = (layer * self.rnn_direction +
-                           di) * self.rnn_params['n_W'] + i
+                    ind = (layer * self.rnn_direction + di) * self.n_W + i
                     w_type = w_types[ind]
                     b_type = b_types[ind]
                     if self.rnn_direction == 1:
                         # Uni-direction
-                        if layer == 0 and i < (self.rnn_params['n_W'] / 2):
+                        if layer == 0 and i < (self.n_W // 2):
                             w_in = in_size
                         else:
                             w_in = out_size
                     else:
                         # Bi-direction
-                        if layer == 0 and i < (self.rnn_params['n_W'] / 2):
+                        if layer == 0 and i < (self.n_W // 2):
                             w_in = in_size
-                        elif layer > 0 and i < (self.rnn_params['n_W'] / 2):
+                        elif layer > 0 and i < (self.n_W // 2):
                             w_in = out_size * self.rnn_direction
                         else:
                             w_in = out_size
@@ -232,24 +269,30 @@ class BaseNStepRNN(function.Function):
                         b_type.shape[0] == out_size,
                     )
 
-    def _forward_init(self):
-        raise NotImplementedError()
-
-    def _forward_create_variable(self):
-        raise NotImplementedError()
-
     def forward(self, inputs):
-        n_cell = self.rnn_params['n_cell']
+        if self.use_cell:
+            # LSTM
+            (hx, cx), inputs = _split(inputs, self._n_cell)
+            cx = cuda.cupy.ascontiguousarray(cx)
+            cx_desc = cudnn.create_tensor_nd_descriptor(cx)
 
-        (hx, cx, inputs, cy, cx_data_ptr, cy_data_ptr, cx_desc_value,
-         cy_desc_value) = self._forward_init(inputs, n_cell)
+            cy = cuda.cupy.empty_like(cx)
+            cy_desc = cudnn.create_tensor_nd_descriptor(cy)
 
-        ws, inputs = _split(inputs,
-                            self.n_layers *
-                            self.rnn_direction * self.rnn_params['n_W'])
-        bs, inputs = _split(inputs,
-                            self.n_layers *
-                            self.rnn_direction * self.rnn_params['n_W'])
+            cx_data_ptr = cx.data.ptr
+            cy_data_ptr = cy.data.ptr
+
+            cx_desc_value = cx_desc.value
+            cy_desc_value = cy_desc.value
+        else:
+            # RNN, GRU
+            (hx, ), inputs = _split(inputs, self._n_cell)
+            cx = cy = None
+            cx_data_ptr = cy_data_ptr = 0
+            cx_desc_value = cy_desc_value = 0
+
+        ws, inputs = _split(inputs, self._n_params)
+        bs, inputs = _split(inputs, self._n_params)
         x_list = inputs
         hx = cuda.cupy.ascontiguousarray(hx)
         x_desc = cudnn.create_tensor_nd_descriptor(x_list[0][..., None])
@@ -281,23 +324,19 @@ class BaseNStepRNN(function.Function):
         for layer in six.moves.range(self.n_layers):
             for di in six.moves.range(self.rnn_direction):
                 # di = 0: forward, 1: backward
-                for lin_layer_id in six.moves.range(self.rnn_params['n_W']):
+                for lin_layer_id in six.moves.range(self.n_W):
+                    mat_index = layer * self.rnn_direction + di
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
-                        handle, rnn_desc,
-                        layer * self.rnn_direction + di,
-                        x_desc, w_desc, w,
-                        lin_layer_id)
+                        handle, rnn_desc, mat_index,
+                        x_desc, w_desc, w, lin_layer_id)
+                    W_index = mat_index * self.n_W + lin_layer_id
                     m = mat.reshape(mat.size)
-                    m[...] = ws[(layer * self.rnn_direction + di) *
-                                self.rnn_params['n_W'] + lin_layer_id].ravel()
+                    m[...] = ws[W_index].ravel()
                     bias = cudnn.get_rnn_lin_layer_bias_params(
-                        handle, rnn_desc,
-                        layer * self.rnn_direction + di,
-                        x_desc, w_desc, w,
-                        lin_layer_id)
+                        handle, rnn_desc, mat_index,
+                        x_desc, w_desc, w, lin_layer_id)
                     b = bias.reshape(bias.size)
-                    b[...] = bs[(layer * self.rnn_direction + di) *
-                                self.rnn_params['n_W'] + lin_layer_id]
+                    b[...] = bs[W_index]
         self.w = w
         self.w_desc = w_desc
 
@@ -338,33 +377,52 @@ class BaseNStepRNN(function.Function):
         self.ys = ys
         self.c_x_descs = c_x_descs
 
-        return self._forward_create_variable(hy, cy, y_list)
-
-    def _backward_init(self):
-        raise NotImplementedError()
-
-    def _backward_create_variable(self):
-        raise NotImplementedError()
+        if self.use_cell:
+            # LSTM
+            return tuple([hy, cy] + y_list)
+        else:
+            # GRU, RNN
+            return tuple([hy, ] + y_list)
 
     def backward(self, inputs, grads):
-        # n_cell = 2 or 1 (LSTM or GRU, RNN)
-        n_cell = self.rnn_params['n_cell']
-        (hx, cx, inputs, dcx, dhy, dcy,
-         cx_data_ptr, dcy_data_ptr, dcx_data_ptr,
-         cx_desc_value, dcx_desc_value,
-         dcy_desc_value) = self._backward_init(inputs, n_cell, grads)
+        if self.use_cell:
+            # LSTM
+            (hx, cx), inputs = _split(inputs, self._n_cell)
+            dhy, dcy = grads[:self._n_cell]
+            if dcy is None:
+                dcy = cuda.cupy.zeros_like(cx)
 
-        ws, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.rnn_params['n_W'])
-        bs, inputs = _split(inputs, self.n_layers * self.rnn_direction *
-                            self.rnn_params['n_W'])
+            cx = cuda.cupy.ascontiguousarray(cx)
+            dcx = cuda.cupy.empty_like(cx)
+
+            cx_desc = cudnn.create_tensor_nd_descriptor(cx)
+            dcx_desc = cudnn.create_tensor_nd_descriptor(dcx)
+            dcy_desc = cudnn.create_tensor_nd_descriptor(dcy)
+
+            cx_data_ptr = cx.data.ptr
+            dcy_data_ptr = dcy.data.ptr
+            dcx_data_ptr = dcx.data.ptr
+            cx_desc_value = cx_desc.value
+            dcx_desc_value = dcx_desc.value
+            dcy_desc_value = dcy_desc.value
+        else:
+            # GRU, RNN
+            (hx, ), inputs = _split(inputs, self._n_cell)
+            dhy, = grads[:self._n_cell]
+            dcy = cx = dcx = None
+            cx_data_ptr = dcy_data_ptr = dcx_data_ptr = 0
+            cx_desc_value = dcx_desc_value = dcy_desc_value = 0
+
+        ws_size = self.n_layers * self.rnn_direction * self.n_W
+        ws, inputs = _split(inputs, ws_size)
+        bs, inputs = _split(inputs, ws_size)
         x_list = inputs
         hx = cuda.cupy.ascontiguousarray(hx)
 
         if dhy is None:
             dhy = cuda.cupy.zeros_like(hx)
 
-        dy_list = list(grads[n_cell:])
+        dy_list = list(grads[self._n_cell:])
         for i in six.moves.range(len(dy_list)):
             if dy_list[i] is None:
                 dy_list[i] = cuda.cupy.zeros_like(x_list[i])
@@ -419,172 +477,53 @@ class BaseNStepRNN(function.Function):
         dbs = []
         for layer in six.moves.range(self.n_layers):
             for di in six.moves.range(self.rnn_direction):
-                for lin_layer_id in six.moves.range(self.rnn_params['n_W']):
+                for lin_layer_id in six.moves.range(self.n_W):
+                    mat_index = layer * self.rnn_direction + di
                     mat = cudnn.get_rnn_lin_layer_matrix_params(
-                        handle, rnn_desc, layer * self.rnn_direction + di,
+                        handle, rnn_desc, mat_index,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    dws.append(mat.reshape(ws[(layer *
-                                               self.rnn_direction + di) *
-                                              self.rnn_params['n_W'] +
-                                              lin_layer_id].shape))
+                    W_index = mat_index * self.n_W + lin_layer_id
+                    dws.append(mat.reshape(ws[W_index].shape))
                     bias = cudnn.get_rnn_lin_layer_bias_params(
-                        handle, rnn_desc, layer * self.rnn_direction + di,
+                        handle, rnn_desc, mat_index,
                         dx_desc, dw_desc, dw, lin_layer_id)
-                    dbs.append(bias.reshape(bs[(layer *
-                                                self.rnn_direction + di) *
-                                               self.rnn_params['n_W'] +
-                                               lin_layer_id].shape))
+                    dbs.append(bias.reshape(bs[W_index].shape))
 
-        return self._backward_create_variable(dhx, dcx, dws, dbs, dx_list)
-
-
-class BaseNStepRNNCell(BaseNStepRNN):
-    def __init__(self, n_layers, states, rnn_dir, rnn_mode, train):
-        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir, rnn_mode, train)
-
-    def _check_type_cell(self, in_types, n_cell):
-        (h_type, c_type), in_types = _split(in_types, n_cell)
-        type_check.expect(
-            h_type.dtype == numpy.float32,
-            c_type.dtype == numpy.float32,
-
-            h_type.ndim == 3,
-            h_type.shape[0] == self.n_layers * self.rnn_direction,
-            c_type.ndim == 3,
-            c_type.shape[0] == self.n_layers * self.rnn_direction,
-
-            # mini-batch size
-            h_type.shape[1] == c_type.shape[1],
-
-            # hidden size
-            h_type.shape[2] == c_type.shape[2],
-        )
-        return h_type, in_types
-
-    def _forward_init(self, inputs, n_cell):
-        (hx, cx), inputs = _split(inputs, n_cell)
-        cx = cuda.cupy.ascontiguousarray(cx)
-        cx_desc = cudnn.create_tensor_nd_descriptor(cx)
-
-        cy = cuda.cupy.empty_like(cx)
-        cy_desc = cudnn.create_tensor_nd_descriptor(cy)
-
-        cx_data_ptr = cx.data.ptr
-        cy_data_ptr = cy.data.ptr
-
-        cx_desc_value = cx_desc.value
-        cy_desc_value = cy_desc.value
-
-        return (hx, cx, inputs, cy, cx_data_ptr,
-                cy_data_ptr, cx_desc_value, cy_desc_value)
-
-    def _forward_create_variable(self, hy, cy, y_list):
-        return tuple([hy, cy] + y_list)
-
-    def _backward_init(self, inputs, n_cell, grads):
-        (hx, cx), inputs = _split(inputs, n_cell)
-        dhy, dcy = grads[:n_cell]
-        if dcy is None:
-            dcy = cuda.cupy.zeros_like(cx)
-
-        cx = cuda.cupy.ascontiguousarray(cx)
-        dcx = cuda.cupy.empty_like(cx)
-
-        cx_desc = cudnn.create_tensor_nd_descriptor(cx)
-        dcx_desc = cudnn.create_tensor_nd_descriptor(dcx)
-        dcy_desc = cudnn.create_tensor_nd_descriptor(dcy)
-
-        cx_data_ptr = cx.data.ptr
-        dcy_data_ptr = dcy.data.ptr
-        dcx_data_ptr = dcx.data.ptr
-        cx_desc_value = cx_desc.value
-        dcx_desc_value = dcx_desc.value
-        dcy_desc_value = dcy_desc.value
-
-        return (hx, cx, inputs, dcx, dhy, dcy, cx_data_ptr, dcy_data_ptr,
-                dcx_data_ptr, cx_desc_value, dcx_desc_value, dcy_desc_value)
-
-    def _backward_create_variable(self, dhx, dcx, dws, dbs, dx_list):
-        return tuple([dhx, dcx] + dws + dbs + dx_list)
+        if self.use_cell:
+            # LSTM
+            return tuple([dhx, dcx] + dws + dbs + dx_list)
+        else:
+            # GRU, RNN
+            return tuple([dhx, ] + dws + dbs + dx_list)
 
 
-class BaseNStepRNNNoCell(BaseNStepRNN):
-    def __init__(self, n_layers, states, rnn_dir, rnn_mode, train):
-        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir, rnn_mode, train)
-
-    def _check_type_cell(self, in_types, n_cell):
-        (h_type, ), in_types = _split(in_types, n_cell)
-        type_check.expect(
-            h_type.dtype == numpy.float32,
-
-            h_type.ndim == 3,
-            h_type.shape[0] == self.n_layers * self.rnn_direction,
-        )
-        return h_type, in_types
-
-    def _forward_init(self, inputs, n_cell):
-        # RNN, GRU
-        (hx, ), inputs = _split(inputs, n_cell)
-        cx = None
-        cy = None
-        cx_data_ptr = 0
-        cy_data_ptr = 0
-        cx_desc_value = 0
-        cy_desc_value = 0
-        return (hx, cx, inputs, cy, cx_data_ptr,
-                cy_data_ptr, cx_desc_value, cy_desc_value)
-
-    def _forward_create_variable(self, hy, cy, y_list):
-        return tuple([hy, ] + y_list)
-
-    def _backward_init(self, inputs, n_cell, grads):
-        (hx, ), inputs = _split(inputs, n_cell)
-        dhy, = grads[:n_cell]
-        dcy = None
-        cx = None
-        dcx = None
-        cx_data_ptr = 0
-        dcy_data_ptr = 0
-        dcx_data_ptr = 0
-        cx_desc_value = 0
-        dcx_desc_value = 0
-        dcy_desc_value = 0
-        return (hx, cx, inputs, dcx, dhy, dcy, cx_data_ptr, dcy_data_ptr,
-                dcx_data_ptr, cx_desc_value, dcx_desc_value, dcy_desc_value)
-
-    def _backward_create_variable(self, dhx, dcx, dws, dbs, dx_list):
-        return tuple([dhx, ] + dws + dbs + dx_list)
-
-
-class NStepRNNTanh(BaseNStepRNNNoCell):
+class NStepRNNTanh(BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
-        BaseNStepRNNNoCell.__init__(self, n_layers, states, rnn_dir='uni',
-                                    rnn_mode='rnn_tanh', train=train)
+        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='uni',
+                              rnn_mode='rnn_tanh', train=train)
 
 
-class NStepRNNReLU(BaseNStepRNNNoCell):
+class NStepRNNReLU(BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
-        BaseNStepRNNNoCell.__init__(self, n_layers, states, rnn_dir='uni',
-                                    rnn_mode='rnn_relu', train=train)
+        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='uni',
+                              rnn_mode='rnn_relu', train=train)
 
 
-class NStepBiRNNTanh(BaseNStepRNNNoCell):
+class NStepBiRNNTanh(BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
-        BaseNStepRNNNoCell.__init__(self, n_layers, states, rnn_dir='bi',
-                                    rnn_mode='rnn_tanh', train=train)
+        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='bi',
+                              rnn_mode='rnn_tanh', train=train)
 
 
-class NStepBiRNNReLU(BaseNStepRNNNoCell):
+class NStepBiRNNReLU(BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
-        BaseNStepRNNNoCell.__init__(self, n_layers, states, rnn_dir='bi',
-                                    rnn_mode='rnn_relu', train=train)
+        BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='bi',
+                              rnn_mode='rnn_relu', train=train)
 
 
-def n_step_rnn(
-        n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
-        use_cudnn=True, activation='tanh'):
-    """Stacked RNN function for sequence inputs.
-
+def n_step_rnn(n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
+               use_cudnn=True, activation='tanh'):
+    """Stacked Uni-directional RNN function for sequence inputs.
 
     This function calculates stacked RNN with sequences. This function gets
     an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
@@ -594,12 +533,202 @@ def n_step_rnn(
     time :math:`t` from input :math:`x_t`.
 
     .. math::
-       h_t &= \\activation(W_0 x_t + W_1 h_{t-1} + b_0 + b_1) \\\\
+       h_t = f(W_0 x_t + W_1 h_{t-1} + b_0 + b_1)
+
+    where :math:`f` is an activation function.
+
+    Weight matrices :math:`W` contains two matrices :math:`W_0` and
+    :math:`W_1`. :math:`W_0` is a parameter for an input sequence.
+    :math:`W_1` is a parameter for a hidden state.
+    Bias matrices :math:`b` contains two matrices :math:`b_0` and :math:`b_1`.
+    :math:`b_0` is a parameter for an input sequence.
+    :math:`b_1` is a parameter for a hidden state.
+
+
+    As the function accepts a sequence, it calculates :math:`h_t` for all
+    :math:`t` with one call. Two weight matrices and two bias vectors are
+    required for each layer. So, when :math:`S` layers exist, you need to
+    prepare :math:`2S` weigth matrices and :math:`2S` bias vectors.
+
+    If the number of layers ``n_layers`` is greather than :math:`1`, input
+    of ``k``-th layer is hidden state ``h_t`` of ``k-1``-th layer.
+    Note that all input variables except first layer may have different shape
+    from the first layer.
+
+    Args:
+        n_layers(int): Number of layers.
+        dropout_ratio(float): Dropout ratio.
+        hx (chainer.Variable): Variable holding stacked hidden states.
+            Its shape is ``(S, B, N)`` where ``S`` is number of layers and is
+            equal to ``n_layers``, ``B`` is mini-batch size, and ``N`` is
+            dimention of hidden units.
+        ws (list of list of chainer.Variable): Weight matrices. ``ws[i]``
+            represents weights for i-th layer.
+            Each ``ws[i]`` is a list containing two matrices.
+            ``ws[i][j]`` is corresponding with ``W_j`` in the equation.
+            Only ``ws[0][j]`` where ``0 <= j < 1`` is ``(I, N)`` shape as they
+            are multiplied with input variables. All other matrices has
+            ``(N, N)`` shape.
+        bs (list of list of chainer.Variable): Bias vectors. ``bs[i]``
+            represnents biases for i-th layer.
+            Each ``bs[i]`` is a list containing two vectors.
+            ``bs[i][j]`` is corresponding with ``b_j`` in the equation.
+            Shape of each matrix is ``(N,)`` where ``N`` is dimention of
+            hidden units.
+        xs (list of chainer.Variable): A list of :class:`~chainer.Variable`
+            holding input values. Each element ``xs[t]`` holds input value
+            for time ``t``. Its shape is ``(B_t, I)``, where ``B_t`` is
+            mini-batch size for time ``t``, and ``I`` is size of input units.
+            Note that this functions supports variable length sequences.
+            When sequneces has different lengths, sort sequences in descending
+            order by length, and transpose the sorted sequence.
+            :func:`~chainer.functions.transpose_sequence` transpose a list
+            of :func:`~chainer.Variable` holding sequence.
+            So ``xs`` needs to satisfy
+            ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
+        train (bool): If ``True``, this function executes dropout.
+        use_cudnn (bool): If ``True``, this function uses cuDNN if available.
+        activation (str): Activation function name.
+            Please select ``tanh`` or ``relu``.
+
+    Returns:
+        tuple: This functions returns a tuple concaining three elements,
+            ``hy`` and ``ys``.
+
+            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
+            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
+              ``ys[t]`` holds hidden states of the last layer corresponding
+              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
+              mini-batch size for time ``t``, and ``N`` is size of hidden
+              units. Note that ``B_t`` is the same value as ``xs[t]``.
+
+    """
+    return n_step_rnn_base(n_layers, dropout_ratio, hx, ws, bs, xs, train,
+                           use_cudnn, activation, use_bi_direction=False)
+
+
+def n_step_birnn(n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
+                 use_cudnn=True, activation='tanh'):
+    """Stacked Bi-directional RNN function for sequence inputs.
+
+    This function calculates stacked RNN with sequences. This function gets
+    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
+    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
+    :math:`b`.
+    This function calculates hidden states :math:`h_t` and :math:`c_t` for each
+    time :math:`t` from input :math:`x_t`.
+
+    .. math::
+        hf_t &=& f(W^{f}_0 x_t + W^{f}_1 hf_{t-1} + b^{f}_0 + b^{f}_1), \\\\
+        hb_t &=& f(W^{b}_0 x_t + W^{b}_1 hb_{t-1} + b^{b}_0 + b^{b}_1), \\\\
+        h_t  &=& [hf_t; hb_t], \\\\
+
+    where :math:`f` is an activation function.
+
+    Weight matrices :math:`W` contains two matrices :math:`W^{f}` and
+    :math:`W^{b}`. :math:`W^{f}` is weight matrices for forward directional
+    RNN. :math:`W^{b}` is weight matrices for backward directional RNN.
+
+    :math:`W^{f}` contains :math:`W^{f}_0` for an input sequence and
+    :math:`W^{f}_1` for a hidden state.
+    :math:`W^{b}` contains :math:`W^{b}_0` for an input sequence and
+    :math:`W^{b}_1` for a hidden state.
+
+    Bias matrices :math:`b` contains two matrices :math:`b^{f}` and
+    :math:`b^{f}`. :math:`b^{f}` contains :math:`b^{f}_0` for an input sequence
+    and :math:`b^{f}_1` for a hidden state.
+    :math:`b^{b}` contains :math:`b^{b}_0` for an input sequence and
+    :math:`b^{b}_1` for a hidden state.
+
+    As the function accepts a sequence, it calculates :math:`h_t` for all
+    :math:`t` with one call. Two weight matrices and two bias vectors are
+    required for each layer. So, when :math:`S` layers exist, you need to
+    prepare :math:`2S` weigth matrices and :math:`2S` bias vectors.
+
+    If the number of layers ``n_layers`` is greather than :math:`1`, input
+    of ``k``-th layer is hidden state ``h_t`` of ``k-1``-th layer.
+    Note that all input variables except first layer may have different shape
+    from the first layer.
+
+    Args:
+        n_layers(int): Number of layers.
+        dropout_ratio(float): Dropout ratio.
+        hx (chainer.Variable): Variable holding stacked hidden states.
+            Its shape is ``(S, B, N)`` where ``S`` is number of layers and is
+            equal to ``n_layers``, ``B`` is mini-batch size, and ``N`` is
+            dimention of hidden units.
+        ws (list of list of chainer.Variable): Weight matrices. ``ws[i + di]``
+            represents weights for i-th layer.
+            Note that ``di = 0`` for forward-RNN and ``di = 1`` for
+            backward-RNN.
+            Each ``ws[i + di]`` is a list containing two matrices.
+            ``ws[i + di][j]`` is corresponding with ``W^{f}_j`` if ``di = 0``
+            and corresponding with ``W^{b}_j`` if ``di = 1`` in the equation.
+            Only ``ws[0][j]`` and ``ws[1][j]`` where ``0 <= j < 1`` are
+            ``(I, N)`` shape as they are multiplied with input variables.
+            All other matrices has ``(N, N)`` shape.
+        bs (list of list of chainer.Variable): Bias vectors. ``bs[i + di]``
+            represnents biases for i-th layer.
+            Note that ``di = 0`` for forward-RNN and ``di = 1`` for
+            backward-RNN.
+            Each ``bs[i + di]`` is a list containing two vectors.
+            ``bs[i + di][j]`` is corresponding with ``b^{f}_j`` if ``di = 0``
+            and corresponding with ``b^{b}_j`` if ``di = 1`` in the equation.
+            Shape of each matrix is ``(N,)`` where ``N`` is dimention of
+            hidden units.
+        xs (list of chainer.Variable): A list of :class:`~chainer.Variable`
+            holding input values. Each element ``xs[t]`` holds input value
+            for time ``t``. Its shape is ``(B_t, I)``, where ``B_t`` is
+            mini-batch size for time ``t``, and ``I`` is size of input units.
+            Note that this functions supports variable length sequences.
+            When sequneces has different lengths, sort sequences in descending
+            order by length, and transpose the sorted sequence.
+            :func:`~chainer.functions.transpose_sequence` transpose a list
+            of :func:`~chainer.Variable` holding sequence.
+            So ``xs`` needs to satisfy
+            ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
+        train (bool): If ``True``, this function executes dropout.
+        use_cudnn (bool): If ``True``, this function uses cuDNN if available.
+        activation (str): Activation function name.
+            Please select ``tanh`` or ``relu``.
+
+    Returns:
+        tuple: This functions returns a tuple concaining three elements,
+            ``hy`` and ``ys``.
+
+            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
+            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
+              ``ys[t]`` holds hidden states of the last layer corresponding
+              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t``
+              is mini-batch size for time ``t``, and ``N`` is size of hidden
+              units. Note that ``B_t`` is the same value as ``xs[t]``.
+
+    """
+    return n_step_rnn_base(n_layers, dropout_ratio, hx, ws, bs, xs, train,
+                           use_cudnn, activation, use_bi_direction=True)
+
+
+def n_step_rnn_base(n_layers, dropout_ratio, hx, ws, bs, xs, train,
+                    use_cudnn, activation, use_bi_direction):
+    """Stacked RNN Base function for sequence inputs.
+
+    This function calculates stacked RNN with sequences. This function gets
+    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
+    an input sequence :math:`x`, weight matrices :math:`W_0` for an input
+    sequence, weight matrices :math:`W_1` for a hidden state, and bias vectors
+    :math:`b`.
+    This function calculates hidden states :math:`h_t` and :math:`c_t` for each
+    time :math:`t` from input :math:`x_t`.
+
+    .. math::
+       h_t = f(W_0 x_t + W_1 h_{t-1} + b_0 + b_1)
+
+    where :math:`f` is an activation function.
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are
-    required for each layers. So, when :math:`S` layers exists, you need to
-    prepare :math:`8S` weigth matrices and :math:`8S` bias vectors.
+    required for each layer. So, when :math:`S` layers exist, you need to
+    prepare :math:`2S` weigth matrices and :math:`2S` bias vectors.
 
     If the number of layers ``n_layers`` is greather than :math:`1`, input
     of ``k``-th layer is hidden state ``h_t`` of ``k-1``-th layer.
@@ -617,7 +746,7 @@ def n_step_rnn(
             represents weights for i-th layer.
             Each ``ws[i]`` is a list containing eight matrices.
             ``ws[i][j]`` is corresponding with ``W_j`` in the equation.
-            Only ``ws[0][j]`` where ``0 <= j < 4`` is ``(I, N)`` shape as they
+            Only ``ws[0][j]`` where ``0 <= j < 1`` is ``(I, N)`` shape as they
             are multiplied with input variables. All other matrices has
             ``(N, N)`` shape.
         bs (list of list of chainer.Variable): Bias vectors. ``bs[i]``
@@ -639,6 +768,10 @@ def n_step_rnn(
             ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
         train (bool): If ``True``, this function executes dropout.
         use_cudnn (bool): If ``True``, this function uses cuDNN if available.
+        activation (str): Activation function name.
+            Please select ``tanh`` or ``relu``.
+        use_bi_direction (bool): If ``True``, this function uses
+            Bi-direction RNN.
 
     Returns:
         tuple: This functions returns a tuple concaining three elements,
@@ -651,7 +784,13 @@ def n_step_rnn(
               units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     """
-    xp = cuda.get_array_module(hx, hx.data)
+    activation_list = ['tanh', 'relu']
+    if activation not in activation_list:
+        candidate = ','.join(activation_list)
+        raise ValueError('Invalid activation: "%s". Please select from [%s]'
+                         % (activation, candidate))
+
+    xp = cuda.get_array_module(hx)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
        _cudnn_version >= 5000:
@@ -662,17 +801,29 @@ def n_step_rnn(
             itertools.chain.from_iterable(ws),
             itertools.chain.from_iterable(bs),
             xs))
-        if activation == 'tanh':
-            rnn = NStepRNNTanh(n_layers, states, train=train)
-        elif activation == 'relu':
-            rnn = NStepRNNReLU(n_layers, states, train=train)
+        if use_bi_direction:
+            # Bi-directional RNN
+            if activation == 'tanh':
+                rnn = NStepBiRNNTanh(n_layers, states, train=train)
+            elif activation == 'relu':
+                rnn = NStepBiRNNReLU(n_layers, states, train=train)
+        else:
+            # Uni-directional RNN
+            if activation == 'tanh':
+                rnn = NStepRNNTanh(n_layers, states, train=train)
+            elif activation == 'relu':
+                rnn = NStepRNNReLU(n_layers, states, train=train)
+
         ret = rnn(*inputs)
         hy, = ret[:1]
         ys = ret[1:]
         return hy, ys
 
     else:
-        hx = split_axis.split_axis(hx, n_layers, axis=0, force_tuple=True)
+
+        direction = 2 if use_bi_direction else 1
+        hx = split_axis.split_axis(hx, n_layers * direction, axis=0,
+                                   force_tuple=True)
         hx = [reshape.reshape(h, h.shape[1:]) for h in hx]
 
         xws = [_stack_weight([w[0]]) for w in ws]
@@ -683,205 +834,56 @@ def n_step_rnn(
         xs_next = xs
         hy = []
         for layer in six.moves.range(n_layers):
-            h = hx[layer]
-            h_forward = []
-            for x in xs_next:
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                else:
-                    h_rest = None
 
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
-                rnn_in = linear.linear(x, xws[layer], xbs[layer]) + \
-                    linear.linear(h, hws[layer], hbs[layer])
-                if activation == 'tanh':
-                    h_bar = tanh.tanh(rnn_in)
-                elif activation == 'relu':
-                    h_bar = relu.relu(rnn_in)
+            def _one_directional_loop(di):
+                # di=0, forward RNN
+                # di=1, backward RNN
+                xs_list = xs_next if di == 0 else reversed(xs_next)
+                layer_idx = direction * layer + di
+                h = hx[layer_idx]
+                h_list = []
+                for x in xs_list:
+                    batch = x.shape[0]
+                    if h.shape[0] > batch:
+                        h, h_rest = split_axis.split_axis(h, [batch], axis=0)
+                    else:
+                        h_rest = None
 
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                else:
-                    h = h_bar
-                h_forward.append(h_bar)
+                    if layer > 0:
+                        x = dropout.dropout(x, ratio=dropout_ratio,
+                                            train=train)
 
-            xs_next = h_forward
+                    rnn_in = (linear.linear(x, xws[layer_idx],
+                                            xbs[layer_idx]) +
+                              linear.linear(h, hws[layer_idx], hbs[layer_idx]))
+                    if activation == 'tanh':
+                        h_bar = tanh.tanh(rnn_in)
+                    elif activation == 'relu':
+                        h_bar = relu.relu(rnn_in)
 
+                    if h_rest is not None:
+                        h = concat.concat([h_bar, h_rest], axis=0)
+                    else:
+                        h = h_bar
+                    h_list.append(h_bar)
+                return h, h_list
+
+            # Forward RNN
+            h, h_forward = _one_directional_loop(di=0)
             hy.append(h)
 
-        ys = h_forward
-        hy = stack.stack(hy)
-        return hy, tuple(ys)
+            if use_bi_direction:
+                # Backward RNN
+                h, h_backward = _one_directional_loop(di=1)
+                h_backward.reverse()
+                # Concat
+                xs_next = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
+                           six.moves.zip(h_forward, h_backward)]
+                hy.append(h)
+            else:
+                # Uni-directional RNN
+                xs_next = h_forward
 
-
-def n_step_birnn(
-        n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
-        use_cudnn=True, activation='tanh'):
-    """Stacked RNN function for sequence inputs.
-
-
-    This function calculates stacked RNN with sequences. This function gets
-    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
-    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
-    :math:`b`.
-    This function calculates hidden states :math:`h_t` and :math:`c_t` for each
-    time :math:`t` from input :math:`x_t`.
-
-    .. math::
-       h_t &= \\activation(W_0 x_t + W_1 h_{t-1} + b_0 + b_1) \\\\
-
-    As the function accepts a sequence, it calculates :math:`h_t` for all
-    :math:`t` with one call. Eight weight matrices and eight bias vectors are
-    required for each layers. So, when :math:`S` layers exists, you need to
-    prepare :math:`8S` weigth matrices and :math:`8S` bias vectors.
-
-    If the number of layers ``n_layers`` is greather than :math:`1`, input
-    of ``k``-th layer is hidden state ``h_t`` of ``k-1``-th layer.
-    Note that all input variables except first layer may have different shape
-    from the first layer.
-
-    Args:
-        n_layers(int): Number of layers.
-        dropout_ratio(float): Dropout ratio.
-        hx (chainer.Variable): Variable holding stacked hidden states.
-            Its shape is ``(S, B, N)`` where ``S`` is number of layers and is
-            equal to ``n_layers``, ``B`` is mini-batch size, and ``N`` is
-            dimention of hidden units.
-        ws (list of list of chainer.Variable): Weight matrices. ``ws[i]``
-            represents weights for i-th layer.
-            Each ``ws[i]`` is a list containing eight matrices.
-            ``ws[i][j]`` is corresponding with ``W_j`` in the equation.
-            Only ``ws[0][j]`` where ``0 <= j < 4`` is ``(I, N)`` shape as they
-            are multiplied with input variables. All other matrices has
-            ``(N, N)`` shape.
-        bs (list of list of chainer.Variable): Bias vectors. ``bs[i]``
-            represnents biases for i-th layer.
-            Each ``bs[i]`` is a list containing eight vectors.
-            ``bs[i][j]`` is corresponding with ``b_j`` in the equation.
-            Shape of each matrix is ``(N,)`` where ``N`` is dimention of
-            hidden units.
-        xs (list of chainer.Variable): A list of :class:`~chainer.Variable`
-            holding input values. Each element ``xs[t]`` holds input value
-            for time ``t``. Its shape is ``(B_t, I)``, where ``B_t`` is
-            mini-batch size for time ``t``, and ``I`` is size of input units.
-            Note that this functions supports variable length sequences.
-            When sequneces has different lengths, sort sequences in descending
-            order by length, and transpose the sorted sequence.
-            :func:`~chainer.functions.transpose_sequence` transpose a list
-            of :func:`~chainer.Variable` holding sequence.
-            So ``xs`` needs to satisfy
-            ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
-        train (bool): If ``True``, this function executes dropout.
-        use_cudnn (bool): If ``True``, this function uses cuDNN if available.
-
-    Returns:
-        tuple: This functions returns a tuple concaining three elements,
-            ``hy`` and ``ys``.
-            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
-            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
-              ``ys[t]`` holds hidden states of the last layer corresponding
-              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
-              mini-batch size for time ``t``, and ``N`` is size of hidden
-              units. Note that ``B_t`` is the same value as ``xs[t]``.
-
-    """
-    xp = cuda.get_array_module(hx, hx.data)
-
-    if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
-       _cudnn_version >= 5000:
-        states = get_random_state().create_dropout_states(dropout_ratio)
-        # flatten all input variables
-        inputs = tuple(itertools.chain(
-            (hx, ),
-            itertools.chain.from_iterable(ws),
-            itertools.chain.from_iterable(bs),
-            xs))
-        if activation == 'tanh':
-            rnn = NStepBiRNNTanh(n_layers, states, train=train)
-        elif activation == 'relu':
-            rnn = NStepBiRNNReLU(n_layers, states, train=train)
-        ret = rnn(*inputs)
-        hy, = ret[:1]
-        ys = ret[1:]
-        return hy, ys
-
-    else:
-        hx = split_axis.split_axis(hx, n_layers * 2, axis=0, force_tuple=True)
-        hx = [reshape.reshape(h, h.shape[1:]) for h in hx]
-
-        xws = [_stack_weight([w[0]]) for w in ws]
-        hws = [_stack_weight([w[1]]) for w in ws]
-        xbs = [_stack_weight([b[0]]) for b in bs]
-        hbs = [_stack_weight([b[1]]) for b in bs]
-
-        xs_next = xs
-        hy = []
-        for layer in six.moves.range(n_layers):
-            h_forward = []
-            h_backward = []
-            # forward RNN
-            di = 0
-            layer_idx = 2 * layer + di
-            h = hx[layer_idx]
-            for x in xs_next:
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                else:
-                    h_rest = None
-
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
-                rnn_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
-                    linear.linear(h, hws[layer_idx], hbs[layer_idx])
-                if activation == 'tanh':
-                    h_bar = tanh.tanh(rnn_in)
-                elif activation == 'relu':
-                    h_bar = relu.relu(rnn_in)
-
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                else:
-                    h = h_bar
-                h_forward.append(h_bar)
-            hy.append(h)
-            # backward RNN
-            di = 1
-            layer_idx = 2 * layer + di
-            h = hx[layer_idx]
-            for x in reversed(xs_next):
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                else:
-                    h_rest = None
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
-                rnn_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
-                    linear.linear(h, hws[layer_idx], hbs[layer_idx])
-                if activation == 'tanh':
-                    h_bar = tanh.tanh(rnn_in)
-                elif activation == 'relu':
-                    h_bar = relu.relu(rnn_in)
-
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                else:
-                    h = h_bar
-                h_backward.append(h_bar)
-
-            h_backward.reverse()
-            # concat
-            xs_next = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
-                       zip(h_forward, h_backward)]
-
-            hy.append(h)
-
-        # last layer
-        ys = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
-              zip(h_forward, h_backward)]
-
+        ys = xs_next
         hy = stack.stack(hy)
         return hy, tuple(ys)

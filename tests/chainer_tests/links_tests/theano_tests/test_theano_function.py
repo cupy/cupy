@@ -9,6 +9,7 @@ from chainer import links
 from chainer.links.theano import theano_function
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if theano_function._available:
@@ -63,10 +64,12 @@ class TheanoFunctionTestBase(object):
         gradient_check.check_backward(
             func, input_data, grad_data, **self.backward_test_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.input_data, self.grad_data)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         inputs = [cuda.to_gpu(x) for x in self.input_data]
         grads = [cuda.to_gpu(x) for x in self.grad_data]

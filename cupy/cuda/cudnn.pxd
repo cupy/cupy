@@ -200,17 +200,17 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 
 cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor_v4(
-    size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-    int upscaley, int mode)
+    size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+    int dilation_w, int mode)
 cpdef setConvolution2dDescriptor_v5(
-    size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-    int upscaley, int mode, size_t computeType)
+    size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+    int dilation_w, int mode, size_t computeType)
 cpdef setConvolutionNdDescriptor_v2(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-    size_t upscaleA, int mode)
+    size_t dilationA, int mode)
 cpdef setConvolutionNdDescriptor_v3(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-    size_t upscaleA, int mode, int dataType)
+    size_t dilationA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef findConvolutionForwardAlgorithm(
     size_t handle, size_t xDesc, size_t wDesc, size_t convDesc, size_t yDesc,
