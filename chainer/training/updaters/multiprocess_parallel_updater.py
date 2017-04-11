@@ -5,14 +5,16 @@ import six
 import chainer
 from chainer import cuda
 from chainer.dataset import convert
-from chainer.training.updater import _calc_loss
 from chainer.training.updater import StandardUpdater
+from chainer import variable
 
 try:
     from cupy.cuda import nccl
     _available = True
 except ImportError:
     _available = False
+
+import numpy
 
 
 class _Worker(multiprocessing.Process):
@@ -42,7 +44,7 @@ class _Worker(multiprocessing.Process):
         dev = cuda.Device(self.device)
         dev.use()
         self.setup()
-        pp = None
+        gp = None
         while True:
             job, data = self.pipe.recv()
             if job == 'finalize':
@@ -62,22 +64,18 @@ class _Worker(multiprocessing.Process):
 
                 del loss
 
-                gg = self.model.gather_grads()
+                gg = gather_grads(self.model)
                 null_stream = cuda.Stream.null
                 self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
                                  nccl.NCCL_FLOAT, nccl.NCCL_SUM, 0,
                                  null_stream.ptr)
                 del gg
                 self.model.cleargrads()
-                if pp is None:
-                    pp = self.model.gather_params()
-                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT, 0,
+                gp = gather_params(self.model)
+                self.comm.bcast(gp.data.ptr, gp.size, nccl.NCCL_FLOAT, 0,
                                 null_stream.ptr)
-                self.model.scatter_params(pp)
-                pp = None
-
-                # Sending observation via pipe is too slow.
-                # self.pipe.send(observation)
+                scatter_params(self.model, gp)
+                gp = None
 
 
 class MultiprocessParallelUpdater(StandardUpdater):
@@ -93,6 +91,10 @@ class MultiprocessParallelUpdater(StandardUpdater):
     GPUs in one machine. It is based on synchronous parallel SGD: it
     parallelizes the gradient computation over a mini-batch, and updates the
     parameters only in the main device.
+
+    It does not transfer the values collected by :class:`Reporter` in the sub
+    devices to the main device. So you can only see the reported values in
+    the main device.
 
     Args:
         iterators: List of dataset iterator for the training dataset. The
@@ -128,7 +130,7 @@ class MultiprocessParallelUpdater(StandardUpdater):
             optimizer.eps *= len(devices)
         elif optim in ('RMSpropGraves', 'AdaDelta'):
             optimizer.eps *= len(devices) ** 2  # not quite right for AdaDelta
-        else:
+        elif hasattr(optimizer, 'lr'):
             optimizer.lr /= len(devices)
 
         super(MultiprocessParallelUpdater, self).__init__(
@@ -202,21 +204,17 @@ class MultiprocessParallelUpdater(StandardUpdater):
             # NCCL: reduce grads
             null_stream = cuda.Stream.null
             if self.comm is not None:
-                gg = self._master.gather_grads()
+                gg = gather_grads(self._master)
                 self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
                                  nccl.NCCL_FLOAT, nccl.NCCL_SUM,
                                  0, null_stream.ptr)
-                self._master.scatter_grads(gg)
+                scatter_grads(self._master, gg)
                 del gg
             optimizer.update()
             if self.comm is not None:
-                pp = self._master.gather_params()
-                self.comm.bcast(pp.data.ptr, pp.size, nccl.NCCL_FLOAT,
+                gp = gather_params(self._master)
+                self.comm.bcast(gp.data.ptr, gp.size, nccl.NCCL_FLOAT,
                                 0, null_stream.ptr)
-
-            # Sending observation via pipe is too slow.
-            # for pipe in self._pipes:
-            #     chainer.reporter.report(pipe.recv())
 
     def finalize(self):
         self._send_message(('finalize', None))
@@ -224,3 +222,155 @@ class MultiprocessParallelUpdater(StandardUpdater):
         for worker in self._workers:
             print("join", worker)
             worker.join()
+
+
+def _calc_loss(model, in_arrays):
+    if isinstance(in_arrays, tuple):
+        in_vars = tuple(variable.Variable(x) for x in in_arrays)
+        return model(*in_vars)
+    elif isinstance(in_arrays, dict):
+        in_vars = {key: variable.Variable(x)
+                   for key, x in six.iteritems(in_arrays)}
+        return model(**in_vars)
+    else:
+        in_vars = variable.Variable(in_arrays)
+        return model(in_vars)
+
+
+def size_num_grads(link):
+    """Count total size of all gradient arrays of a given link
+
+    Args:
+        link (chainer.link.Link): Target link object.
+    """
+    size = 0
+    num = 0
+    for param in link.params():
+        if param.size == 0:
+            continue
+        size += param.size
+        num += 1
+    return size, num
+
+
+_batch_memcpy = cuda.cupy.ElementwiseKernel(
+    'raw T ptrs, raw X info',
+    'raw float32 dst',
+    '''
+        int id_min = id_pre;
+        int id_max = num_src;
+        while (id_max - id_min > 1) {
+            int id = (id_max + id_min) / 2;
+            if (i < info[id]) id_max = id;
+            else              id_min = id;
+        }
+        int id = id_min;
+        float *src = (float *)(ptrs[id]);
+        int i_dst = i;
+        int i_src = i;
+        if (id > 0) i_src -= info[id];
+        dst[i_dst] = 0;
+        if (src != NULL) {
+            dst[i_dst] = src[i_src];
+        }
+        id_pre = id;
+    ''',
+    'batch_memcpy',
+    loop_prep='''
+            int num_src = info[0];
+            int id_pre = 0;
+        ''')
+
+
+def gather_grads(link):
+    """Put together all gradient arrays and make a single array
+
+    Args:
+        link (chainer.link.Link): Target link object.
+    Return:
+        cupy.ndarray
+    """
+    if link._cpu:
+        raise RuntimeError('gather_grads works only on GPU.')
+
+    size, num = size_num_grads(link)
+
+    ptrs = numpy.empty(num, dtype=numpy.uint64)
+    info = numpy.empty(num + 1, dtype=numpy.int32)
+    info[0] = 0
+    i = 0
+    for param in link.params():
+        if param.size == 0:
+            continue
+        ptrs[i] = 0  # NULL pointer
+        if param._grad is not None:
+            ptrs[i] = param._grad.data.ptr
+        info[i + 1] = info[i] + param.size
+        i += 1
+    info[0] = num
+
+    ptrs = cuda.to_gpu(ptrs, stream=cuda.Stream.null)
+    info = cuda.to_gpu(info, stream=cuda.Stream.null)
+
+    return _batch_memcpy(ptrs, info, size=size)
+
+
+def gather_params(link):
+    """Put together all gradient arrays and make a single array
+
+    Args:
+        link (chainer.link.Link): Target link object.
+    Return:
+        cupy.ndarray
+    """
+    if link._cpu:
+        raise RuntimeError('Link.gather_params works only on GPU.')
+
+    size, num = size_num_grads(link)
+
+    ptrs = numpy.empty(num, dtype=numpy.uint64)
+    info = numpy.empty(num + 1, dtype=numpy.int32)
+    info[0] = 0
+    i = 0
+    for param in link.params():
+        if param.size == 0:
+            continue
+        ptrs[i] = 0  # NULL pointer
+        if param.data is not None:
+            ptrs[i] = param.data.data.ptr
+        info[i + 1] = info[i] + param.size
+        i += 1
+    info[0] = num
+
+    ptrs = cuda.to_gpu(ptrs, stream=cuda.Stream.null)
+    info = cuda.to_gpu(info, stream=cuda.Stream.null)
+
+    return _batch_memcpy(ptrs, info, size=size)
+
+
+def scatter_grads(link, array):
+    """Put back contents of the specified array to the related gradient arrays
+
+    Args:
+        link (chainer.link.Link): Target link object.
+        array (cupy.ndarray): gathered array created by gather_grads()
+    """
+    offset = 0
+    for param in link.params():
+        next_offset = offset + param.size
+        param._grad = array[offset:next_offset].reshape(param.data.shape)
+        offset = next_offset
+
+
+def scatter_params(link, array):
+    """Put back contents of the specified array to the related gradient arrays
+
+    Args:
+        link (chainer.link.Link): Target link object.
+        array (cupy.ndarray): gathered array created by gather_params()
+    """
+    offset = 0
+    for param in link.params():
+        next_offset = offset + param.size
+        param.data = array[offset:next_offset].reshape(param.data.shape)
+        offset = next_offset

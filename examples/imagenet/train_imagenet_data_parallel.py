@@ -1,11 +1,15 @@
 #!/usr/bin/env python
-"""Example code of learning a large scale convnet from ILSVRC2012 dataset.
+"""Example code of learning a large scale convnet from LSVRC2012 dataset
+with multiple GPUs using data parallelism.
 
 Prerequisite: To run this example, crop the center of ILSVRC2012 training and
 validation images, scale them to 256x256 and convert them to RGB, and make
 two lists of space-separated CSV whose first column is full path to image and
 second column is zero-origin label (this format is same as that used by Caffe's
 ImageDataLayer).
+
+You need to install chainer with NCCL to run this example.
+Please see https://github.com/pfnet/chainer#installation .
 
 """
 from __future__ import print_function
