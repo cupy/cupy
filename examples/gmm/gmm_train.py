@@ -1,3 +1,4 @@
+import argparse
 import contextlib
 import time
 
@@ -27,13 +28,12 @@ def run_gmm(X_train, y_train, X_test, y_test, estimator, n_classes):
     return train_accuracy, test_accuracy
 
 
-def run():
+def run(gpuid):
     X_train = np.random.rand(60000, 784)
-    print(X_train.nbytes)
     X_test = np.random.rand(10000, 784)
-    print(X_test.nbytes)
     y_train = np.random.randint(10, size=60000)
     y_test = np.random.randint(10, size=10000)
+
     n_classes = 10
     max_iter = 30
     repeat = 1
@@ -44,10 +44,10 @@ def run():
         for i in range(repeat):
             train_acc, test_acc = run_gmm(X_train, y_train, X_test, y_test,
                                           estimator_cpu, n_classes)
-    print("train_accuracy : %f" % train_acc)
-    print("test_accuracy : %f" % test_acc)
+    print('train_accuracy : %f' % train_acc)
+    print('test_accuracy : %f' % test_acc)
 
-    cupy.cuda.Device(1)
+    cupy.cuda.Device(gpuid)
     X_train = cupy.asarray(X_train)
     y_train = cupy.asarray(y_train)
     y_test = cupy.asarray(y_test)
@@ -58,9 +58,13 @@ def run():
         for i in range(repeat):
             train_acc, test_acc = run_gmm(X_train, y_train, X_test, y_test,
                                           estimator_gpu, n_classes)
-    print("train_accuracy : %f" % train_acc)
-    print("test_accuracy : %f" % test_acc)
+    print('train_accuracy : %f' % train_acc)
+    print('test_accuracy : %f' % test_acc)
 
 
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu-id', '-g', default=0, type=int, dest='gpuid',
+                        help='ID of GPU.')
+    args = parser.parse_args()
+    run(args.gpuid)
