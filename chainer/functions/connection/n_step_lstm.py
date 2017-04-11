@@ -118,76 +118,9 @@ def n_step_lstm(
 
     """
 
-    xp = cuda.get_array_module(hx, hx.data)
+    return n_step_lstm_base(n_layers, dropout_ratio, hx, cx, ws, bs, xs, train,
+                            use_cudnn, use_bi_direction=False)
 
-    if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
-       _cudnn_version >= 5000:
-        states = get_random_state().create_dropout_states(dropout_ratio)
-        # flatten all input variables
-        inputs = tuple(itertools.chain(
-            (hx, cx),
-            itertools.chain.from_iterable(ws),
-            itertools.chain.from_iterable(bs),
-            xs))
-        rnn = NStepLSTM(n_layers, states, train=train)
-        ret = rnn(*inputs)
-        hy, cy = ret[:2]
-        ys = ret[2:]
-        return hy, cy, ys
-
-    else:
-        hx = split_axis.split_axis(hx, n_layers, axis=0, force_tuple=True)
-        hx = [reshape.reshape(h, h.shape[1:]) for h in hx]
-        cx = split_axis.split_axis(cx, n_layers, axis=0, force_tuple=True)
-        cx = [reshape.reshape(c, c.shape[1:]) for c in cx]
-
-        xws = [_stack_weight([w[2], w[0], w[1], w[3]]) for w in ws]
-        hws = [_stack_weight([w[6], w[4], w[5], w[7]]) for w in ws]
-        xbs = [_stack_weight([b[2], b[0], b[1], b[3]]) for b in bs]
-        hbs = [_stack_weight([b[6], b[4], b[5], b[7]]) for b in bs]
-
-        xs_next = xs
-        hy = []
-        cy = []
-        for layer in six.moves.range(n_layers):
-            h = hx[layer]
-            c = cx[layer]
-            h_forward = []
-            c_forward = []
-            for x in xs_next:
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                    c, c_rest = split_axis.split_axis(c, [batch], axis=0)
-                else:
-                    h_rest = None
-                    c_rest = None
-
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
-                lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
-                    linear.linear(h, hws[layer], hbs[layer])
-
-                c_bar, h_bar = lstm.lstm(c, lstm_in)
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                    c = concat.concat([c_bar, c_rest], axis=0)
-                else:
-                    h = h_bar
-                    c = c_bar
-                h_forward.append(h_bar)
-                c_forward.append(c_bar)
-
-            xs_next = h_forward
-
-            hy.append(h)
-            cy.append(c)
-
-        ys = h_forward
-
-    hy = stack.stack(hy)
-    cy = stack.stack(cy)
-    return hy, cy, tuple(ys)
 
 def n_step_bilstm(
         n_layers, dropout_ratio, hx, cx, ws, bs, xs, train=True,
@@ -271,7 +204,13 @@ def n_step_bilstm(
        :func:`chainer.functions.lstm`
 
     """
+    return n_step_lstm_base(n_layers, dropout_ratio, hx, cx, ws, bs, xs, train,
+                            use_cudnn, use_bi_direction=True)
 
+
+def n_step_lstm_base(
+        n_layers, dropout_ratio, hx, cx, ws, bs, xs, train, use_cudnn,
+        use_bi_direction):
     xp = cuda.get_array_module(hx, hx.data)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
@@ -283,16 +222,22 @@ def n_step_bilstm(
             itertools.chain.from_iterable(ws),
             itertools.chain.from_iterable(bs),
             xs))
-        rnn = NStepBiLSTM(n_layers, states, train=train)
+        if use_bi_direction:
+            rnn = NStepBiLSTM(n_layers, states, train=train)
+        else:
+            rnn = NStepLSTM(n_layers, states, train=train)
+
         ret = rnn(*inputs)
         hy, cy = ret[:2]
         ys = ret[2:]
         return hy, cy, ys
 
     else:
-        hx = split_axis.split_axis(hx, n_layers * 2, axis=0, force_tuple=True)
+        direction = 2 if use_bi_direction else 1
+        split_size = n_layers * direction
+        hx = split_axis.split_axis(hx, split_size, axis=0, force_tuple=True)
         hx = [reshape.reshape(h, h.shape[1:]) for h in hx]
-        cx = split_axis.split_axis(cx, n_layers * 2, axis=0, force_tuple=True)
+        cx = split_axis.split_axis(cx, split_size, axis=0, force_tuple=True)
         cx = [reshape.reshape(c, c.shape[1:]) for c in cx]
 
         xws = [_stack_weight([w[2], w[0], w[1], w[3]]) for w in ws]
@@ -304,7 +249,10 @@ def n_step_bilstm(
         hy = []
         cy = []
         for layer in six.moves.range(n_layers):
+
             def _one_directional_loop(di):
+                # di=0, forward LSTM
+                # di=1, backward LSTM
                 h_list = []
                 c_list = []
                 layer_idx = 2 * layer + di
@@ -323,7 +271,8 @@ def n_step_bilstm(
                         h_rest = None
                         c_rest = None
                     x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                    lstm_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
+                    lstm_in = linear.linear(x, xws[layer_idx],
+                                            xbs[layer_idx]) + \
                         linear.linear(h, hws[layer_idx], hbs[layer_idx])
 
                     c_bar, h_bar = lstm.lstm(c, lstm_in)
@@ -341,18 +290,19 @@ def n_step_bilstm(
             hy.append(h)
             cy.append(c)
 
-            h, c, h_backward, c_backward = _one_directional_loop(di=1)
-            hy.append(h)
-            cy.append(c)
+            if use_bi_direction:
+                # BiLSTM
+                h, c, h_backward, c_backward = _one_directional_loop(di=1)
+                hy.append(h)
+                cy.append(c)
 
-            h_backward.reverse()
-            # concat
-            xs_next = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
-                       zip(h_forward, h_backward)]
-
-        # last layer
-        ys = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
-              zip(h_forward, h_backward)]
+                h_backward.reverse()
+                # concat
+                xs_next = [concat.concat([hfi, hbi], axis=1) for (hfi, hbi) in
+                           zip(h_forward, h_backward)]
+            else:
+                # Uni-directional RNN
+                xs_next = h_forward
 
         hy = stack.stack(hy)
         cy = stack.stack(cy)
