@@ -24,15 +24,15 @@ if cuda.cudnn_enabled:
 class NStepLSTM(n_step_rnn.BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
         n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
-                                             rnn_dir='uni', rnn_mode='lstm',
-                                             train=train)
+                                         rnn_dir='uni', rnn_mode='lstm',
+                                         train=train)
 
 
 class NStepBiLSTM(n_step_rnn.BaseNStepRNN):
     def __init__(self, n_layers, states, train=True):
         n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
-                                             rnn_dir='bi', rnn_mode='lstm',
-                                             train=train)
+                                         rnn_dir='bi', rnn_mode='lstm',
+                                         train=train)
 
 
 def n_step_lstm(
@@ -304,43 +304,47 @@ def n_step_bilstm(
         hy = []
         cy = []
         for layer in six.moves.range(n_layers):
-            h_forward = []
-            c_forward = []
-            h_backward = []
-            c_backward = []
-            # forward LSTM
-            di = 0
-            layer_idx = 2 * layer + di
-            h = hx[layer_idx]
-            c = cx[layer_idx]
-            for x in xs_next:
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                    c, c_rest = split_axis.split_axis(c, [batch], axis=0)
-                else:
-                    h_rest = None
-                    c_rest = None
+            def _one_directional_loop(di):
+                # di=0, forward LSTM
+                # di=1, backward LSTM
+                h_list = []
+                c_list = []
+                layer_idx = 2 * layer + di
+                h = hx[layer_idx]
+                c = cx[layer_idx]
+                for x in xs_next:
+                    batch = x.shape[0]
+                    if h.shape[0] > batch:
+                        h, h_rest = split_axis.split_axis(h, [batch], axis=0)
+                        c, c_rest = split_axis.split_axis(c, [batch], axis=0)
+                    else:
+                        h_rest = None
+                        c_rest = None
 
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                lstm_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
-                    linear.linear(h, hws[layer_idx], hbs[layer_idx])
+                    x = dropout.dropout(x, ratio=dropout_ratio, train=train)
+                    lstm_in = linear.linear(x, xws[layer_idx],
+                                            xbs[layer_idx]) + \
+                        linear.linear(h, hws[layer_idx], hbs[layer_idx])
 
-                c_bar, h_bar = lstm.lstm(c, lstm_in)
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                    c = concat.concat([c_bar, c_rest], axis=0)
-                else:
-                    h = h_bar
-                    c = c_bar
+                    c_bar, h_bar = lstm.lstm(c, lstm_in)
+                    if h_rest is not None:
+                        h = concat.concat([h_bar, h_rest], axis=0)
+                        c = concat.concat([c_bar, c_rest], axis=0)
+                    else:
+                        h = h_bar
+                        c = c_bar
 
-                h_forward.append(h_bar)
-                c_forward.append(c_bar)
+                    h_list.append(h_bar)
+                    c_list.append(c_bar)
+                return h, c, h_list, c_list
 
+            h, c, h_forward, c_forward = _one_directional_loop(di=0)
             hy.append(h)
             cy.append(c)
 
             # backward LSTM
+            h_backward = []
+            c_backward = []
             di = 1
             layer_idx = 2 * layer + di
             h = hx[layer_idx]
