@@ -24,7 +24,7 @@ Requirements for some features:
   - filelock
   - g++ 4.8.4+
 - cuDNN support
-  - cuDNN v2, v3, v4, v5, v5.1
+  - cuDNN v2, v3, v4, v5, v5.1, v6
 - Testing utilities
   - Mock
   - Nose

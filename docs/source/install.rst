@@ -42,7 +42,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1, v6
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
 
