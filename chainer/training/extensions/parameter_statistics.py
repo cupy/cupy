@@ -89,7 +89,7 @@ class ParameterStatistics(extension.Extension):
             report such as weight and bias values.
         report_param_grads (bool): If ``True``, include parameter statistics
             in the report such as weight and bias gradients.
-        report_zeros (bool): If ``True``, count the number of zero elements and
+        count_zeros (bool): If ``True``, count the number of zero elements and
             include those statistics in the report. Else, do not compute the
             number of zero elements.
         prefix (str): Prefix to prepend to the report keys.
@@ -100,13 +100,14 @@ class ParameterStatistics(extension.Extension):
     priority = extension.PRIORITY_WRITER
 
     def __init__(self, links, trigger=(1, 'epoch'), report_params=True,
-                 report_param_grads=True, report_zeros=False, prefix=None):
+                 report_param_grads=True, count_zeros=False, prefix=None):
 
         if not isinstance(links, (list, tuple)):
             links = links,
         self._links = links
 
         self._trigger = training.trigger.get_trigger(trigger)
+        self._count_zeros = count_zeros
         self._prefix = prefix
 
         self._attrs = []
@@ -114,7 +115,6 @@ class ParameterStatistics(extension.Extension):
             self._attrs.append('data')
         if report_param_grads:
             self._attrs.append('grad')
-        self._report_zeros = report_zeros
 
         self._statistic_functions = ('min', 'max', 'mean', 'std')
         self._percentile_sigmas = (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)
@@ -148,7 +148,7 @@ class ParameterStatistics(extension.Extension):
                     stats = {}
                     stats.update(self.statistics_report(params, prefix))
                     stats.update(self.percentiles_report(params, prefix))
-                    if self._report_zeros:
+                    if self._count_zeros:
                         stats.update(self.zeros_report(params, prefix))
                     self._summary.add(self.post_process(stats))
 
