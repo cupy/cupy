@@ -255,7 +255,7 @@ def n_step_lstm_base(
                 # di=1, backward LSTM
                 h_list = []
                 c_list = []
-                layer_idx = 2 * layer + di
+                layer_idx = direction * layer + di
                 h = hx[layer_idx]
                 c = cx[layer_idx]
                 if di == 0:
