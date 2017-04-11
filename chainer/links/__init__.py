@@ -2,6 +2,7 @@
 
 from chainer.links.activation import maxout  # NOQA
 from chainer.links.activation import prelu  # NOQA
+from chainer.links.activation import simplified_dropconnect  # NOQA
 from chainer.links.connection import bias  # NOQA
 from chainer.links.connection import bilinear  # NOQA
 from chainer.links.connection import convolution_2d  # NOQA
@@ -35,6 +36,7 @@ from chainer.links.theano import theano_function  # NOQA
 # import class and function
 from chainer.links.activation.maxout import Maxout  # NOQA
 from chainer.links.activation.prelu import PReLU  # NOQA
+from chainer.links.activation.simplified_dropconnect import SimplifiedDropconnect  # NOQA
 from chainer.links.connection.bias import Bias  # NOQA
 from chainer.links.connection.bilinear import Bilinear  # NOQA
 from chainer.links.connection.convolution_2d import Convolution2D  # NOQA

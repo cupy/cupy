@@ -518,6 +518,10 @@ gaussian
 ~~~~~~~~
 .. autofunction:: gaussian
 
+simplified_dropconnect
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: simplified_dropconnect
+
 
 Normalization functions
 -----------------------
