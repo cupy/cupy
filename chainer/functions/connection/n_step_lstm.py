@@ -305,14 +305,16 @@ def n_step_bilstm(
         cy = []
         for layer in six.moves.range(n_layers):
             def _one_directional_loop(di):
-                # di=0, forward LSTM
-                # di=1, backward LSTM
                 h_list = []
                 c_list = []
                 layer_idx = 2 * layer + di
                 h = hx[layer_idx]
                 c = cx[layer_idx]
-                for x in xs_next:
+                if di == 0:
+                    xs_list = xs_next
+                else:
+                    xs_list = reversed(xs_next)
+                for x in xs_list:
                     batch = x.shape[0]
                     if h.shape[0] > batch:
                         h, h_rest = split_axis.split_axis(h, [batch], axis=0)
@@ -320,10 +322,8 @@ def n_step_bilstm(
                     else:
                         h_rest = None
                         c_rest = None
-
                     x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                    lstm_in = linear.linear(x, xws[layer_idx],
-                                            xbs[layer_idx]) + \
+                    lstm_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
                         linear.linear(h, hws[layer_idx], hbs[layer_idx])
 
                     c_bar, h_bar = lstm.lstm(c, lstm_in)
@@ -333,7 +333,6 @@ def n_step_bilstm(
                     else:
                         h = h_bar
                         c = c_bar
-
                     h_list.append(h_bar)
                     c_list.append(c_bar)
                 return h, c, h_list, c_list
@@ -342,36 +341,7 @@ def n_step_bilstm(
             hy.append(h)
             cy.append(c)
 
-            # backward LSTM
-            h_backward = []
-            c_backward = []
-            di = 1
-            layer_idx = 2 * layer + di
-            h = hx[layer_idx]
-            c = cx[layer_idx]
-            for x in reversed(xs_next):
-                batch = x.shape[0]
-                if h.shape[0] > batch:
-                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
-                    c, c_rest = split_axis.split_axis(c, [batch], axis=0)
-                else:
-                    h_rest = None
-                    c_rest = None
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
-                lstm_in = linear.linear(x, xws[layer_idx], xbs[layer_idx]) + \
-                    linear.linear(h, hws[layer_idx], hbs[layer_idx])
-
-                c_bar, h_bar = lstm.lstm(c, lstm_in)
-                if h_rest is not None:
-                    h = concat.concat([h_bar, h_rest], axis=0)
-                    c = concat.concat([c_bar, c_rest], axis=0)
-                else:
-                    h = h_bar
-                    c = c_bar
-                h_backward.append(h_bar)
-                c_backward.append(c_bar)
-
+            h, c, h_backward, c_backward = _one_directional_loop(di=1)
             hy.append(h)
             cy.append(c)
 
