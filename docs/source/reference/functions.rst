@@ -235,6 +235,10 @@ deconvolution_nd
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_nd
 
+depthwise_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: depthwise_convolution_2d
+
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
