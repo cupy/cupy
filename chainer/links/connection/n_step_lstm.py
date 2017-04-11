@@ -6,8 +6,8 @@ from chainer import cuda
 from chainer.functions.array import permutate
 from chainer.functions.array import transpose_sequence
 from chainer.functions.connection import n_step_lstm as rnn
-from chainer.functions.connection.n_step_rnn import argsort_list_descent
-from chainer.functions.connection.n_step_rnn import permutate_list
+from chainer.links.connection.n_step_rnn import argsort_list_descent
+from chainer.links.connection.n_step_rnn import permutate_list
 from chainer import link
 
 
