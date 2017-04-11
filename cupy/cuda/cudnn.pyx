@@ -70,17 +70,17 @@ cdef extern from "cupy_cudnn.h":
     int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc) nogil
     int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
-        int v, int upscalex, int upscaley, ConvolutionMode mode) nogil
+        int v, int dilation_h, int dilation_w, ConvolutionMode mode) nogil
     int cudnnSetConvolution2dDescriptor_v5(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
-        int v, int upscalex, int upscaley, ConvolutionMode mode,
+        int v, int dilation_h, int dilation_w, ConvolutionMode mode,
         DataType computeType) nogil
     int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode) nogil
+        int* filterStrideA, int* dilationA, ConvolutionMode mode) nogil
     int cudnnSetConvolutionNdDescriptor_v3(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode,
+        int* filterStrideA, int* dilationA, ConvolutionMode mode,
         DataType dataType) nogil
     int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) nogil
     int cudnnFindConvolutionForwardAlgorithm(
@@ -566,38 +566,38 @@ cpdef size_t createConvolutionDescriptor() except *:
 
 
 cpdef setConvolution2dDescriptor_v4(
-        size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-        int upscaley, int mode):
+        size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+        int dilation_w, int mode):
     status = cudnnSetConvolution2dDescriptor_v4(
-        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
-        upscaley, <ConvolutionMode>mode)
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
+        dilation_w, <ConvolutionMode>mode)
     check_status(status)
 
 
 cpdef setConvolution2dDescriptor_v5(
-        size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-        int upscaley, int mode, size_t computeType):
+        size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+        int dilation_w, int mode, size_t computeType):
     status = cudnnSetConvolution2dDescriptor_v5(
-        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
-        upscaley, <ConvolutionMode>mode, <DataType>computeType)
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
+        dilation_w, <ConvolutionMode>mode, <DataType>computeType)
     check_status(status)
 
 
 cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode):
+        size_t dilationA, int mode):
     status = cudnnSetConvolutionNdDescriptor_v2(
         <ConvolutionDescriptor>convDesc, arrayLength, <int*>padA,
-        <int*>filterStrideA, <int*>upscaleA, <ConvolutionMode>mode)
+        <int*>filterStrideA, <int*>dilationA, <ConvolutionMode>mode)
     check_status(status)
 
 
 cpdef setConvolutionNdDescriptor_v3(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode, int dataType):
+        size_t dilationA, int mode, int dataType):
     status = cudnnSetConvolutionNdDescriptor_v3(
         <ConvolutionDescriptor>convDesc, arrayLength, <int*>padA,
-        <int*>filterStrideA, <int*>upscaleA, <ConvolutionMode>mode,
+        <int*>filterStrideA, <int*>dilationA, <ConvolutionMode>mode,
         <DataType>dataType)
     check_status(status)
 

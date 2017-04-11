@@ -1,5 +1,3 @@
-import collections
-
 import numpy
 
 import chainer
@@ -15,18 +13,18 @@ class GetItem(function.Function):
     """Function that slices array and extract elements."""
 
     def __init__(self, slices):
-        if not isinstance(slices, collections.Iterable):
-            slices = tuple([slices])
+        if isinstance(slices, list):
+            if all([isinstance(s, int) for s in slices]):
+                slices = slices,
+            slices = tuple(slices)
+        elif not isinstance(slices, tuple):
+            slices = slices,
 
         if chainer.is_debug():
             n_ellipses = 0
             for s in slices:
-                if numpy.isscalar(s) or s is None or isinstance(s, slice):
-                    pass
-                elif s is Ellipsis:
+                if s is Ellipsis:
                     n_ellipses += 1
-                else:
-                    raise ValueError('Only basic indexing is supported')
             if n_ellipses > 1:
                 raise ValueError('Only one Ellipsis is allowed')
 
@@ -34,18 +32,22 @@ class GetItem(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        valid_slice = len(self.slices) - self.slices.count(None)
+        n_nones = len([item for item in self.slices if item is None])
+        valid_slice = len(self.slices) - n_nones
         type_check.expect(in_types[0].ndim >= valid_slice)
 
     def forward(self, xs):
         ary = xs[0]
-        return utils.force_array(ary[tuple(self.slices)]),
+        return utils.force_array(ary[self.slices]),
 
     def backward(self, xs, gys):
         xp = cuda.get_array_module(*xs)
         gy = gys[0]
         gx = xp.zeros_like(xs[0])
-        gx[tuple(self.slices)] = gy
+        if xp is numpy:
+            numpy.add.at(gx, self.slices, gy)
+        else:
+            gx.scatter_add(self.slices, gy)
         return gx,
 
 
@@ -53,14 +55,27 @@ def get_item(x, slices):
     """Extract elements from array with specified shape, axes and offsets.
 
     Args:
-        x (tuple of Variables): Variable to be sliced.
-        slices (int, slice, None or Ellipsis or tuple of them): Basic slicing
-            to slice a variable. It supports ``int``, ``slice``, ``newaxis``
-            (equivalent to ``None``) and ``Ellipsis``.
+        x (~chainer.Variable): A variable to be sliced.
+        slices (int, slice, Ellipsis, None, integer array-like, boolean\
+        array-like or tuple of them):
+            It is an integer, a slice, an ellipsis,
+            a numpy.newaxis, an integer array-like, a boolean array-like
+            or tuple of them.
 
     Returns:
         Variable: :class:`~chainer.Variable` object
             which contains sliced array of ``x``.
+
+    .. note::
+
+        It only supports types that are supported by CUDA's atomicAdd when
+        an integer array is included in ``slices``.
+        The supported types are ``numpy.float32``, ``numpy.int32``,
+        ``numpy.uint32``, ``numpy.uint64`` and ``numpy.ulonglong``.
+
+    .. note::
+
+        It does not support ``slices`` that contains multiple boolean arrays.
 
     .. note::
 

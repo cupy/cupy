@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+im2col
+~~~~~~
+.. autofunction:: im2col
+
 pad
 ~~~
 .. autofunction:: pad
@@ -234,6 +238,10 @@ deconvolution_2d
 deconvolution_nd
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_nd
+
+depthwise_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: depthwise_convolution_2d
 
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -525,6 +533,10 @@ dropout
 gaussian
 ~~~~~~~~
 .. autofunction:: gaussian
+
+simplified_dropconnect
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: simplified_dropconnect
 
 
 Normalization functions
