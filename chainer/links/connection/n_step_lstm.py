@@ -47,7 +47,7 @@ class NStepLSTMBase(link.ChainList):
                     if i == 0 and j < 4:
                         w_in = in_size
                     elif i > 0 and j < 4:
-                        w_in = out_size * 2
+                        w_in = out_size * direction
                     else:
                         w_in = out_size
                     weight.add_param('w%d' % j, (out_size, w_in))
