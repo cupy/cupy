@@ -10,7 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 import copy
-import cupy
 
 
 class TestLink(unittest.TestCase):
@@ -269,7 +268,7 @@ class SimpleNet(chainer.Chain):
         super(SimpleNet, self).__init__(
             conv=chainer.links.Convolution2D(2, 2, 3),
             fc=chainer.links.Linear(18, 2),
-            )
+        )
         self.train = True
 
     def clear(self):
@@ -510,6 +509,7 @@ class TestChain(unittest.TestCase):
 
     @attr.gpu
     def test_gather_scatter_grads(self):
+        cupy = cuda.cupy
         model0 = SimpleNet()
         model1 = copy.deepcopy(model0)
 
@@ -562,6 +562,7 @@ class TestChain(unittest.TestCase):
 
     @attr.gpu
     def test_gather_scatter_params(self):
+        cupy = cuda.cupy
         model0 = SimpleNet()
         model1 = SimpleNet()
 

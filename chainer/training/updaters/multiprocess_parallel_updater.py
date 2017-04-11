@@ -3,9 +3,10 @@ import multiprocessing
 import six
 
 import chainer
-from chainer.dataset import convert
 from chainer import cuda
-from chainer.training.updater import StandardUpdater, _calc_loss
+from chainer.dataset import convert
+from chainer.training.updater import _calc_loss
+from chainer.training.updater import StandardUpdater
 
 try:
     from cupy.cuda import nccl
@@ -15,6 +16,7 @@ except ImportError:
 
 
 class _Worker(multiprocessing.Process):
+
     def __init__(self, proc_id, pipe, master):
         super(_Worker, self).__init__()
         self.proc_id = proc_id
@@ -79,6 +81,7 @@ class _Worker(multiprocessing.Process):
 
 
 class MultiprocessParallelUpdater(StandardUpdater):
+
     """Implementation of a multiprocess parallel GPU Updater.
 
     This is an implementation of :class:`Updater` that uses multiple GPUs

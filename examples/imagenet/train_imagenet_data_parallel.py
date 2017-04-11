@@ -18,11 +18,11 @@ from chainer import training
 from chainer.training import extensions
 from chainer.training import updaters
 
-import train_imagenet
 import alex
 import googlenet
 import googlenetbn
 import nin
+import train_imagenet
 
 
 def main():
