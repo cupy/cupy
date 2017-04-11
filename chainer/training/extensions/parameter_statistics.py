@@ -7,12 +7,6 @@ from chainer import training
 from chainer.training import extension
 
 
-def _iterable(x):
-    if isinstance(x, (list, tuple)):
-        return x
-    return x,
-
-
 def _prefix_dict_keys(prefix, x):
     return {'{}/{}'.format(prefix, k): v for k, v in six.iteritems(x)}
 
