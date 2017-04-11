@@ -27,6 +27,7 @@ from chainer.functions.array import fliplr  # NOQA
 from chainer.functions.array import flipud  # NOQA
 from chainer.functions.array import get_item  # NOQA
 from chainer.functions.array import hstack  # NOQA
+from chainer.functions.array import im2col  # NOQA
 from chainer.functions.array import pad  # NOQA
 from chainer.functions.array import pad_sequence  # NOQA
 from chainer.functions.array import permutate  # NOQA
@@ -174,6 +175,8 @@ from chainer.functions.array.flipud import FlipUD  # NOQA
 from chainer.functions.array.get_item import get_item  # NOQA
 from chainer.functions.array.get_item import GetItem  # NOQA
 from chainer.functions.array.hstack import hstack  # NOQA
+from chainer.functions.array.im2col import im2col  # NOQA
+from chainer.functions.array.im2col import Im2Col  # NOQA
 from chainer.functions.array.pad import pad  # NOQA
 from chainer.functions.array.pad import Pad  # NOQA
 from chainer.functions.array.pad_sequence import pad_sequence  # NOQA
