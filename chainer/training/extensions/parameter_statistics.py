@@ -17,29 +17,6 @@ def _prefix_dict_keys(prefix, x):
     return {'{}/{}'.format(prefix, k): v for k, v in six.iteritems(x)}
 
 
-def _target_name(link, param_names, attr_names):
-    """Generate a dictionary key based on context."""
-    link_name = getattr(link, 'name', 'None')
-    param_name = '-'.join(_iterable(param_names))
-    attr_name = '-'.join(_iterable(attr_names))
-
-    return '{}/{}/{}'.format(link_name, param_name, attr_name)
-
-
-def _get_link_params(link, param_names, attr_names):
-    """Flatten link parameters into a single array and return a copy."""
-    param_names = _iterable(param_names)
-    attr_names = _iterable(attr_names)
-
-    params = []
-    for param in link.params():
-        if param.name in param_names:
-            for attr_name in attr_names:
-                params.append(getattr(param, attr_name).ravel())
-
-    return link.xp.concatenate(params) if params else link.xp.array([])
-
-
 def _statistics(x, functions):
     """Compute statisticts for the given array.
 
@@ -102,7 +79,7 @@ class ParameterStatistics(extension.Extension):
 
     The statistics are collected for a given :class:`~chainer.Link` or an
     iterable of :class:`~chainer.Link`s. If a link contains child links, the
-    statistics are aggregated over all its children.
+    statistics are collected separately for each child.
 
     Statistics that can be collected and reporter using the current scope are
     minimum and maximum values, means, standard deviations, percentiles and
@@ -114,7 +91,11 @@ class ParameterStatistics(extension.Extension):
             attribute which is used as a part of a key in the report.
         trigger: Trigger that decides when to aggregate the results and report
             the values.
-        count_zeros (bool): If ``True``, count the number of zero elements and
+        report_params (bool): If ``True``, include parameter statistics in the
+            report such as weight and bias values.
+        report_param_grads (bool): If ``True``, include parameter statistics
+            in the report such as weight and bias gradients.
+        report_zeros (bool): If ``True``, count the number of zero elements and
             include those statistics in the report. Else, do not compute the
             number of zero elements.
         prefix (str): Prefix to prepend to the report keys.
@@ -124,22 +105,27 @@ class ParameterStatistics(extension.Extension):
     default_name = 'parameter_statistics'
     priority = extension.PRIORITY_WRITER
 
-    def __init__(self, links, trigger=(1, 'epoch'), count_zeros=False,
-                 prefix=None, targets=(('W', 'data'),
-                                       ('b', 'data'),
-                                       ('W', 'grad'),
-                                       ('b', 'grad'))):
+    def __init__(self, links, trigger=(1, 'epoch'), report_params=True,
+                 report_param_grads=True, report_zeros=False, prefix=None):
 
-        self._links = _iterable(links)
+        if not isinstance(links, (list, tuple)):
+            links = links,
+        self._links = links
+
         self._trigger = training.trigger.get_trigger(trigger)
-        self._count_zeros = count_zeros
         self._prefix = prefix
-        self._targets = targets
 
-        self._summary = reporter.DictSummary()
+        self._attrs = []
+        if report_params:
+            self._attrs.append('data')
+        if report_param_grads:
+            self._attrs.append('grad')
+        self._report_zeros = report_zeros
 
         self._statistic_functions = ('min', 'max', 'mean', 'std')
         self._percentile_sigmas = (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)
+
+        self._summary = reporter.DictSummary()
 
     def __call__(self, trainer):
         """Execute the statistics extension.
@@ -154,14 +140,21 @@ class ParameterStatistics(extension.Extension):
             trainer (~chainer.training.Trainer): Associated trainer that
                 invoked this extension.
         """
+
         for link in self._links:
-            for param_name, attr_name in self._targets:
-                params = _get_link_params(link, param_name, attr_name)
-                if params.size > 0:
-                    prefix = _target_name(link, param_name, attr_name) + '/'
-                    stats = self.statistics_report(params, prefix)
+            link_name = getattr(link, 'name', 'None')
+            for param_name, param in link.namedparams():
+                for attr_name in self._attrs:
+                    prefix = '{}{}/{}/'.format(link_name,
+                                               param_name,
+                                               attr_name)
+
+                    params = getattr(param, attr_name).ravel()
+
+                    stats = {}
+                    stats.update(self.statistics_report(params, prefix))
                     stats.update(self.percentiles_report(params, prefix))
-                    if self._count_zeros:
+                    if self._report_zeros:
                         stats.update(self.zeros_report(params, prefix))
                     self._summary.add(self.post_process(stats))
 
