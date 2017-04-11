@@ -49,9 +49,10 @@ cdef class Memory:
 
 cdef class ManagedMemory(Memory):
 
-    """Memory allocation on a CUDA device.
+    """Managed memory allocation on a CUDA device.
 
-    This class provides an RAII interface of the CUDA memory allocation.
+    This class provides an RAII interface of the CUDA managed memory
+    allocation.
 
     Args:
         device (cupy.cuda.Device): Device whose memory the pointer refers to.
@@ -77,9 +78,11 @@ cdef class ManagedMemory(Memory):
             stream (cupy.cuda.Stream): Stream
 
         """
-        if self._support_prefetch_advise:
-            runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
-                                     stream.ptr)
+        if not self._support_prefetch_advise:
+            warnings.warn('This device do not support prefetch method.')
+            return
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+                                 stream.ptr)
 
     cpdef advise(self, int advise, device_mod.Device device):
         """ Advise about the usage of this memory.
@@ -89,8 +92,10 @@ cdef class ManagedMemory(Memory):
             device (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        if self._support_prefetch_advise:
-            runtime.memAdvise(self.ptr, self.size, advise, device.id)
+        if not self._support_prefetch_advise:
+            warnings.warn('This device do not support prefetch method.')
+            return
+        runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
 cdef set _peer_access_checked = set()
