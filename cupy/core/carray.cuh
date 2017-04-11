@@ -163,7 +163,7 @@ public:
   __device__ T& operator[](const int* idx) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {
-      ptr += strides_[dim] * idx[dim];
+      ptr += static_cast<int64_t>(strides_[dim]) * idx[dim];
     }
     return *reinterpret_cast<T*>(ptr);
   }
@@ -175,11 +175,11 @@ public:
   __device__ T& operator[](int i) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
-      ptr += strides_[dim] * (i % shape_[dim]);
+      ptr += static_cast<int64_t>(strides_[dim]) * (i % shape_[dim]);
       i /= shape_[dim];
     }
     if (ndim > 0) {
-      ptr += strides_[0] * i;
+      ptr += static_cast<int64_t>(strides_[0]) * i;
     }
 
     return *reinterpret_cast<T*>(ptr);
