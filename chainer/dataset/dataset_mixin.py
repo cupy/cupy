@@ -34,6 +34,7 @@ class DatasetMixin(object):
             returns a list of examples created by `get_example`.
 
         .. admonition:: Example
+
            >>> import numpy
            >>> from chainer import dataset
            >>> class SimpleDataset(dataset.DatasetMixin):
