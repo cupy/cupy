@@ -45,12 +45,6 @@ class SplitAxis(function.Function):
             cdimx = x[0].shape[self.axis]
             ind = list(self.indices_or_sections)
             ind.append(cdimx)
-            prev_i = 0
-            for i in ind:
-                cdimy = max(0, min(i, cdimx) - prev_i)
-                if cdimy == 0:
-                    raise ValueError('Not support if shape contains 0')
-                prev_i = i
         xp = cuda.get_array_module(*x)
         return tuple(xp.split(x[0], self.indices_or_sections, self.axis))
 
