@@ -18,9 +18,9 @@ class TransformDataset(dataset_mixin.DatasetMixin):
     >>> from chainer.datasets import TransformDataset
     >>> dataset, _ = get_mnist()
     >>> def transform(in_data):
-    >>>     img, label = in_data
-    >>>     img -= 0.5  # scale to [-0.5, -0.5]
-    >>>     return img, label
+    ...     img, label = in_data
+    ...     img -= 0.5  # scale to [-0.5, -0.5]
+    ...     return img, label
     >>> dataset = TransformDataset(dataset, transform)
 
     Args:
