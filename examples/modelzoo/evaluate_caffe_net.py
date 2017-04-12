@@ -58,7 +58,7 @@ print('Loading Caffe model file %s...' % args.model, file=sys.stderr)
 func = caffe.CaffeFunction(args.model)
 print('Loaded', file=sys.stderr)
 if args.gpu >= 0:
-    cuda.get_device(args.gpu).use()
+    cuda.get_device_from_id(args.gpu).use()
     func.to_gpu()
 
 if args.model_type == 'alexnet' or args.model_type == 'caffenet':

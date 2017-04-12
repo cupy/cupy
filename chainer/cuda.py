@@ -153,14 +153,14 @@ else:
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
-def get_device_from_id(device_id):
+def get_device_from_id(device_id=None):
     """Gets the device from an ID integer.
 
     Args:
         device_id (int or None): The ID of the device which this function
             returns.
     """
-    if device_id is not None:
+    if type(device_id) in _integer_types:
         check_cuda_available()
         return Device(device_id)
     else:

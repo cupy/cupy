@@ -90,7 +90,7 @@ class NStepLSTM(link.ChainList):
 
         xs = permutate_list(xs, indices, inv=False)
         if hx is None:
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 hx = chainer.Variable(
                     self.xp.zeros(
                         (self.n_layers, len(xs), self.out_size),
@@ -100,7 +100,7 @@ class NStepLSTM(link.ChainList):
             hx = permutate.permutate(hx, indices, axis=1, inv=False)
 
         if cx is None:
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 cx = chainer.Variable(
                     self.xp.zeros(
                         (self.n_layers, len(xs), self.out_size),

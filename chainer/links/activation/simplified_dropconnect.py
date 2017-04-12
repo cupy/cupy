@@ -89,7 +89,7 @@ class SimplifiedDropconnect(link.Link):
 
         """
         if self.has_uninitialized_params:
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 self._initialize_params(x.size // len(x.data))
         if mask is not None and 'mask' not in self.__dict__:
             self.add_persistent('mask', mask)

@@ -75,7 +75,7 @@ class LinearModel(object):
         optimizer = self.optimizer
         model.to_gpu(device=device)
         optimizer.setup(model)
-        with cuda.get_device(device):
+        with cuda.get_device_from_id(device.id):
             return self._train_linear_classifier(model, optimizer, True)
 
 

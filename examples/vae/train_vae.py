@@ -68,7 +68,7 @@ N_test = y_test.size
 # Prepare VAE model, defined in net.py
 model = net.VAE(784, n_latent, 500)
 if args.gpu >= 0:
-    cuda.get_device(args.gpu).use()
+    cuda.get_device_from_id(args.gpu).use()
     model.to_gpu()
 xp = np if args.gpu < 0 else cuda.cupy
 

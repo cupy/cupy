@@ -18,7 +18,7 @@ class SMORMS3(optimizer.GradientMethod):
 
     def init_state(self, param, state):
         xp = cuda.get_array_module(param.data)
-        with cuda.get_device(param.data):
+        with cuda.get_device_from_array(param.data):
             state['mem'] = xp.ones_like(param.data)
             state['g'] = xp.zeros_like(param.data)
             state['g2'] = xp.zeros_like(param.data)

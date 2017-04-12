@@ -43,9 +43,9 @@ class Copy(function.Function):
 
     def backward_gpu(self, x, gy):
         if self.out_device == -1:
-            return cuda.to_gpu(gy[0], device=cuda.get_device(x[0])),
+            return cuda.to_gpu(gy[0], device=cuda.get_device_from_array(x[0])),
         else:
-            return cuda.copy(gy[0], out_device=cuda.get_device(x[0])),
+            return cuda.copy(gy[0], out_device=cuda.get_device_from_array(x[0])),
 
 
 def copy(x, dst):

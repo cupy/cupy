@@ -58,7 +58,8 @@ def main():
         raise RuntimeError('Invalid dataset choice.')
     model = L.Classifier(models.VGG.VGG(class_labels))
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
+        # Make a specified GPU current
+        chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()  # Copy the model to the GPU
 
     optimizer = chainer.optimizers.MomentumSGD(0.1)
