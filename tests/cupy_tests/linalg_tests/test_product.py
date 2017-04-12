@@ -1,6 +1,6 @@
 import unittest
 
-import numpy as np
+import numpy
 
 from cupy import testing
 
@@ -258,14 +258,16 @@ class TestProduct(unittest.TestCase):
         b = testing.shaped_arange((4, 3, 2), xp, dtype).transpose(2, 0, 1)
         return xp.tensordot(a, b)
 
-    @testing.for_all_dtypes(excludes=(np.uint8, np.int8, np.uint16, np.int16))
+    @testing.for_all_dtypes(excludes=(numpy.uint8, numpy.int8, numpy.uint16,
+                                      numpy.int16))
     @testing.numpy_cupy_allclose()
     def test_tensordot_with_int_axes(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
         b = testing.shaped_arange((3, 4, 5, 2), xp, dtype)
         return xp.tensordot(a, b, axes=3)
 
-    @testing.for_all_dtypes(excludes=(np.uint8, np.int8, np.uint16, np.int16))
+    @testing.for_all_dtypes(excludes=(numpy.uint8, numpy.int8, numpy.uint16,
+                                      numpy.int16))
     @testing.numpy_cupy_allclose()
     def test_transposed_tensordot_with_int_axes(self, xp, dtype):
         a = testing.shaped_arange(
@@ -274,14 +276,16 @@ class TestProduct(unittest.TestCase):
             (5, 4, 3, 2), xp, dtype).transpose(3, 0, 2, 1)
         return xp.tensordot(a, b, axes=3)
 
-    @testing.for_all_dtypes(excludes=(np.uint8, np.int8, np.uint16, np.int16))
+    @testing.for_all_dtypes(excludes=(numpy.uint8, numpy.int8, numpy.uint16,
+                                      numpy.int16))
     @testing.numpy_cupy_allclose()
     def test_tensordot_with_list_axes(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
         b = testing.shaped_arange((3, 5, 4, 2), xp, dtype)
         return xp.tensordot(a, b, axes=([3, 2, 1], [1, 2, 0]))
 
-    @testing.for_all_dtypes(excludes=(np.uint8, np.int8, np.uint16, np.int16))
+    @testing.for_all_dtypes(excludes=(numpy.uint8, numpy.int8, numpy.uint16,
+                                      numpy.int16))
     @testing.numpy_cupy_allclose()
     def test_transposed_tensordot_with_list_axes(self, xp, dtype):
         a = testing.shaped_arange(

@@ -1,13 +1,11 @@
 import hashlib
 import os
 import re
-import subprocess
-import sys
 import tempfile
 
+import filelock
 import six
 
-import filelock
 from cupy.cuda import device
 from cupy.cuda import function
 from pynvrtc.compiler import NVRTCInterface
@@ -31,7 +29,6 @@ def _get_arch():
 
 
 class TemporaryDirectory(object):
-
     def __enter__(self):
         self.path = tempfile.mkdtemp()
         return self.path
@@ -52,7 +49,6 @@ def nvrtc(source, options=(), arch=None):
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path
-        ptx_path = '%s.ptx' % path
 
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
@@ -64,11 +60,10 @@ def nvrtc(source, options=(), arch=None):
 
 
 def preprocess(source, options=()):
-    with TemporaryDirectory() as root_dir:
-        pp_src = Program(six.b(source), six.b('')).compile()
-        if isinstance(pp_src, six.binary_type):
-            pp_src = pp_src.decode('utf-8')
-        return re.sub('(?m)^#.*$', '', pp_src)
+    pp_src = Program(six.b(source), six.b('')).compile()
+    if isinstance(pp_src, six.binary_type):
+        pp_src = pp_src.decode('utf-8')
+    return re.sub('(?m)^#.*$', '', pp_src)
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
