@@ -82,7 +82,6 @@ class TestGaussianNLL(unittest.TestCase):
 
         # Refer to Appendix C.2 in the original paper
         # Auto-Encoding Variational Bayes (https://arxiv.org/abs/1312.6114)
-        D = self.x.size
         x_d = self.x - self.mean
         var = numpy.exp(self.ln_var)
 
@@ -96,7 +95,8 @@ class TestGaussianNLL(unittest.TestCase):
         x = chainer.Variable(x_data)
         mean = chainer.Variable(mean_data)
         ln_var = chainer.Variable(ln_var_data)
-        actual = cuda.to_cpu(vae.gaussian_nll(x, mean, ln_var, self.reduce).data)
+        actual = cuda.to_cpu(
+            vae.gaussian_nll(x, mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
