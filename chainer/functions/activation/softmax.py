@@ -29,12 +29,6 @@ class Softmax(function.Function):
             x_type.ndim > 1,
         )
 
-    def _get_cube_shape(self, shape):
-        left_shape = numpy.prod(shape[slice(0, self.axis)], dtype=numpy.int)
-        center_shape = shape[self.axis]
-        right_shape = numpy.prod(shape[slice(self.axis+1, len(shape))], dtype=numpy.int)
-        return left_shape, center_shape, right_shape
-
     def forward(self, x):
         xp = cuda.get_array_module(*x)
         if (xp != numpy and cuda.cudnn_enabled and self.use_cudnn and
@@ -78,6 +72,13 @@ class Softmax(function.Function):
             gx -= self.y * sumdx
 
         return gx,
+
+    def _get_cube_shape(self, shape):
+        left_shape = numpy.prod(shape[slice(0, self.axis)], dtype=numpy.int)
+        center_shape = shape[self.axis]
+        right_shape = numpy.prod(
+            shape[slice(self.axis + 1, len(shape))], dtype=numpy.int)
+        return left_shape, center_shape, right_shape
 
 
 def softmax(x, use_cudnn=True, axis=1):

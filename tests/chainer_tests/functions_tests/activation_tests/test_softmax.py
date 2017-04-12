@@ -12,10 +12,9 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-f = open('out', 'w')
 @testing.parameterize(*testing.product({
     'shape_axis':
-        [{'shape': None, 'axis': 1},] +
+        [{'shape': None, 'axis': 1}, ] +
         testing.product({'shape': ((3, 4),), 'axis': (0, 1)}) +
         testing.product({'shape': ((3, 4, 5),), 'axis': (0, 1, 2)}) +
         testing.product({'shape': ((3, 4, 5, 6),), 'axis': (0, 1, 2, 3)}),
@@ -26,7 +25,6 @@ class TestSoftmax(unittest.TestCase):
     def setUp(self):
         self.shape = self.shape_axis['shape']
         self.axis = self.shape_axis['axis']
-        f.write(str(self.shape) + str(self.axis) + str(self.dtype) + '\n')
         if self.shape is None:
             # For checking numerical stability
             value = -5 if self.dtype == numpy.float16 else -1000
@@ -71,7 +69,8 @@ class TestSoftmax(unittest.TestCase):
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
-            functions.Softmax(use_cudnn=use_cudnn, axis=self.axis), x_data, gy_data,
+            functions.Softmax(use_cudnn=use_cudnn,
+                              axis=self.axis), x_data, gy_data,
             **self.check_backward_options)
 
     @condition.retry(10)
