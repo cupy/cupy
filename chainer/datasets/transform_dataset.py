@@ -9,6 +9,8 @@ class TransformDataset(dataset_mixin.DatasetMixin):
     dataset's :meth:`__getitem__`. Arrays returned by :meth:`__getitem__` of
     the base dataset with integer as an argument are transformed by the given
     function :obj:`transform`.
+    Also, :meth:`__len__` returns the integer returned by the base dataset's
+    :meth:`__len__`.
 
     The function :obj:`transform` takes, as an argument, :obj:`in_data`, which
     is the output of the base dataset's :meth:`__getitem__`, and returns
@@ -25,7 +27,9 @@ class TransformDataset(dataset_mixin.DatasetMixin):
 
     Args:
         dataset: The underlying dataset. The index of this dataset corresponds
-            to the index of the base dataset.
+            to the index of the base dataset. This object needs to support
+            functions :meth:`__getitem__` and :meth:`__len__` as described
+            above.
         transform (callable): A function that is called to transform values
             returned by the underlying dataset's :meth:`__getitem__`.
 
