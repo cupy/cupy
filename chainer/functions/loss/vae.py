@@ -92,8 +92,8 @@ def gaussian_nll(x, mean, ln_var, reduce='sum'):
     matrix where :math:`S_{ii} = \\sigma_i^2`.
 
     The output is a varialbe whose value depends on the value of
-    the option `reduce`. If it is `'no'`, it holds the elementwise
-    loss values. If it is `'sum'`, loss values are summed up.
+    the option ``reduce``. If it is ``'no'``, it holds the elementwise
+    loss values. If it is ``'sum'``, loss values are summed up.
 
     Args:
         x (~chainer.Variable): Input variable.
@@ -102,13 +102,14 @@ def gaussian_nll(x, mean, ln_var, reduce='sum'):
         ln_var (~chainer.Variable): A variable representing logarithm of
             variance of a Gaussian distribution, :math:`\\log(\\sigma^2)`.
         recude (str): Reduction option. Its value must be either
-            `'sum'` or `'no'`. Otherwise, `ValueError` is raised.
+            ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
-        ~chainer.Variable: A variable representing the negative log-likelihood.
-            If `reduce` is `'no'`, the output varialbe holds array
+        ~chainer.Variable:
+            A variable representing the negative log-likelihood.
+            If ``reduce`` is ``'no'``, the output varialbe holds array
             whose shape is same as one of (hence both of) input variables.
-            If it is `'sum'`, the output variable holds a scalar value.
+            If it is ``'sum'``, the output variable holds a scalar value.
 
     """
     assert isinstance(x, variable.Variable)
