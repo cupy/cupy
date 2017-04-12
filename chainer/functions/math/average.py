@@ -40,7 +40,7 @@ def average(x, axis=None, weights=None, keepdims=False):
         else:
             divider = x.shape[axis]
 
-    x_sum = sum_mod.sum(x, axis, keepdims=keepdims)
+    x_sum = sum_mod.sum(x, axis, keepdims)
     if weights is not None:
         # We do not need to call broadcast whene weights is None because
         # divider here is not a Variable but a scalar
