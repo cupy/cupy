@@ -24,7 +24,7 @@ class SpatialTransformerGrid(function.Function):
 
         theta_type = in_types[0]
         type_check.expect(
-            theta_type.dtype.kind == 'f',
+            theta_type.dtype.char == 'f',
             theta_type.ndim == 3,
             theta_type.shape[1] == 2,
             theta_type.shape[2] == 3,
