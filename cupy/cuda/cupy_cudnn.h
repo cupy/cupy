@@ -167,13 +167,6 @@ cudnnStatus_t cudnnSoftmaxBackward(...) {
 extern "C" {
 
 
-#if !defined(CUPY_NO_CUDA)
-
-#define cudnnSetConvolution2dDescriptor_v4 cudnnSetConvolution2dDescriptor
-
-#endif // #if !define(CUPY_NO_CUDA)
-
-
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
 // ***_v3 functions are not declared in cuDNN v2.
 // Following definitions are for compatibility with cuDNN v3.
@@ -245,6 +238,11 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
+
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000) || (CUDNN_VERSION >= 6000)
+// some ***_v3 functions are not declared in cuDNN v2 and v6.
+
 cudnnStatus_t cudnnSetFilter4dDescriptor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -269,7 +267,7 @@ cudnnStatus_t cudnnActivationBackward_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000) || (CUDNN_VERSION >= 6000)
 
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 4000)
@@ -370,6 +368,8 @@ typedef enum {} cudnnRNNInputMode_t;
 
 typedef void* cudnnDropoutDescriptor_t;
 typedef void* cudnnRNNDescriptor_t;
+typedef void* cudnnSpatialTransformerDescriptor_t;
+typedef void* cudnnSamplerType_t;
 
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
@@ -468,6 +468,34 @@ cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnCreateSpatialTransformerDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroySpatialTransformerDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetSpatialTransformerNdDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfGridGeneratorForward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfGridGeneratorBackward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfSamplerForward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
@@ -511,6 +539,28 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(...) {
 }
 
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 6000)
+
+#define cudnnSetConvolution2dDescriptor_v4 cudnnSetConvolution2dDescriptor
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 6000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 6000)
+// Some functions are renamed in cuDNN v6.
+// Following definitions are for compatibility with cuDNN v6 and higher.
+
+#define cudnnSetFilter4dDescriptor_v4 cudnnSetFilter4dDescriptor
+#define cudnnSetFilterNdDescriptor_v4 cudnnSetFilterNdDescriptor
+#define cudnnGetFilterNdDescriptor_v4 cudnnGetFilterNdDescriptor
+#define cudnnSetPooling2dDescriptor_v4 cudnnSetPooling2dDescriptor
+#define cudnnSetPoolingNdDescriptor_v4 cudnnSetPoolingNdDescriptor
+#define cudnnActivationForward_v4 cudnnActivationForward
+#define cudnnActivationBackward_v4 cudnnActivationBackward
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 6000)
 
 
 } // extern "C"

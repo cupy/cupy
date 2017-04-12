@@ -46,6 +46,10 @@ DeconvolutionND
 ~~~~~~~~~~~~~~~
 .. autoclass:: DeconvolutionND
 
+DepthwiseConvolution2D
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: DepthwiseConvolution2D
+
 DilatedConvolution2D
 ~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: DilatedConvolution2D
@@ -144,6 +148,11 @@ CRF1d
 .. autoclass:: CRF1d
    :members:
 
+SimplifiedDropconnect
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: SimplifiedDropconnect
+   :members:
+
 PReLU
 ~~~~~
 .. autoclass:: PReLU
@@ -198,9 +207,18 @@ VGG16Layers
 
 .. autofunction:: chainer.links.model.vision.vgg.prepare
 
-ResNet50Layers
-~~~~~~~~~~~~~~
+Residual Networks
+~~~~~~~~~~~~~~~~~
+.. autoclass:: chainer.links.model.vision.resnet.ResNetLayers
+   :members:
+
 .. autoclass:: ResNet50Layers
+   :members:
+
+.. autoclass:: ResNet101Layers
+   :members:
+
+.. autoclass:: ResNet152Layers
    :members:
 
 .. autofunction:: chainer.links.model.vision.resnet.prepare

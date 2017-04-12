@@ -13,9 +13,14 @@ class SigmoidCrossEntropy(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, use_cudnn=True, normalize=True):
+    def __init__(self, use_cudnn=True, normalize=True, reduce='mean'):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
+        if reduce not in ('mean', 'no'):
+            raise ValueError(
+                "only 'mean' and 'no' are valid for 'reduce', but '%s' is "
+                'given' % reduce)
+        self.reduce = reduce
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -31,29 +36,40 @@ class SigmoidCrossEntropy(function.Function):
         xp = cuda.get_array_module(*inputs)
         x, t = inputs
         self.ignore_mask = (t != self.ignore_label)
+
+        # stable computation of the cross entropy.
+        loss = -(
+            self.ignore_mask *
+            (x * (t - (x >= 0)) - xp.log1p(xp.exp(-xp.abs(x)))))
+
+        if not self.reduce == 'mean':
+            return utils.force_array(loss.astype(x.dtype)),
+
         if self.normalize:
             count = xp.maximum(1, self.ignore_mask.sum())
         else:
             count = max(1, len(x))
         self.count = count
-        # stable computation of the cross entropy.
-        loss = -xp.sum(
-            self.ignore_mask * (x * (t - (x >= 0)) -
-                                xp.log1p(xp.exp(-xp.abs(x)))))
-        return utils.force_array(xp.divide(loss, self.count, dtype=x.dtype)),
+
+        return utils.force_array(
+            xp.divide(xp.sum(loss), self.count, dtype=x.dtype)),
 
     def backward(self, inputs, grad_outputs):
         xp = cuda.get_array_module(*inputs)
         x, t = inputs
         gloss = grad_outputs[0]
         y, = sigmoid.Sigmoid(self.use_cudnn).forward((x,))
-        gx = xp.divide(
-            gloss * self.ignore_mask * (y - t), self.count,
-            dtype=y.dtype)
+        if self.reduce == 'mean':
+            gx = xp.divide(
+                gloss * self.ignore_mask * (y - t), self.count,
+                dtype=y.dtype)
+        else:
+            gx = (gloss * self.ignore_mask * (y - t)).astype(y.dtype)
         return gx, None
 
 
-def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
+def sigmoid_cross_entropy(
+        x, t, use_cudnn=True, normalize=True, reduce='mean'):
     """Computes cross entropy loss for pre-sigmoid activations.
 
     Args:
@@ -67,14 +83,23 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
+        reduce (str): Variable holding a ``str`` which
+            determines whether to reduce the shape of the input.
+            If it is ``'mean'``, it computes the sum of cross entropy
+            and normalize it according to ``normalize`` option.
+            If is is ``'no'``, this function computes cross entropy for each
+            instance and does not normalize it (``normalize`` option is
+            ignored). In this case, the loss value of the ignored instance,
+            which has ``-1`` as its target value, is set to ``0``.
 
     Returns:
-        Variable: A variable object holding a scalar array of the cross entropy
-            loss.
+        Variable: A variable object holding an array of the cross entropy.
+        If ``reduce`` is ``'mean'``, it is a scalar array.
+        If ``reduce`` is ``'no'``, the shape is same as ``x``.
 
     .. note::
 
        This function is differentiable only by ``x``.
 
     """
-    return SigmoidCrossEntropy(use_cudnn, normalize)(x, t)
+    return SigmoidCrossEntropy(use_cudnn, normalize, reduce)(x, t)

@@ -213,6 +213,30 @@ class TestGraphBuilderStylization(unittest.TestCase):
                 self.assertIn('{0}="{1}"'.format(key, value), dotfile_content)
 
 
+class TestGraphBuilderShowName(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(
+            np.zeros((1, 2)).astype(np.float32), name='x1')
+        self.x2 = variable.Variable(
+            np.zeros((1, 2)).astype(np.float32), name='x2')
+        self.y = self.x1 + self.x2
+        self.y.name = 'y'
+
+    def test_show_name(self):
+        g = c.build_computational_graph((self.x1, self.x2, self.y))
+        dotfile_content = g.dump()
+        for var in [self.x1, self.x2, self.y]:
+            self.assertIn('label="%s:' % var.name, dotfile_content)
+
+    def test_dont_show_name(self):
+        g = c.build_computational_graph(
+            (self.x1, self.x2, self.y), show_name=False)
+        dotfile_content = g.dump()
+        for var in [self.x1, self.x2, self.y]:
+            self.assertNotIn('label="%s:' % var.name, dotfile_content)
+
+
 class TestGraphBuilderRankdir(unittest.TestCase):
 
     def setUp(self):
@@ -228,6 +252,21 @@ class TestGraphBuilderRankdir(unittest.TestCase):
     def test_randir_invalid(self):
         self.assertRaises(ValueError,
                           c.build_computational_graph, (self.y,), rankdir='TL')
+
+
+class TestGraphBuilderRemoveVariable(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype('f'))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype('f'))
+        self.y = self.x1 + self.x2
+        self.f = self.y.creator
+        self.g = c.build_computational_graph((self.y,), remove_variable=True)
+
+    def test_remove_variable(self):
+        self.assertIn(self.f.label, self.g.dump())
+        self.assertNotIn(str(id(self.x1)), self.g.dump())
+        self.assertNotIn(str(id(self.x2)), self.g.dump())
 
 
 testing.run_module(__name__, __file__)

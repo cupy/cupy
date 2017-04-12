@@ -2,7 +2,6 @@ import numpy
 
 from chainer import cuda
 from chainer import function
-from chainer.utils import array
 from chainer.utils import type_check
 
 
@@ -10,8 +9,9 @@ class NormalizeL2(function.Function):
 
     """L2 normalization"""
 
-    def __init__(self, eps=1e-5):
+    def __init__(self, eps=1e-5, axis=1):
         self.eps = eps
+        self.axis = axis
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -19,96 +19,59 @@ class NormalizeL2(function.Function):
 
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim == 2,
         )
 
-    def forward_cpu(self, inputs):
-        x = array.as_mat(inputs[0])
-        norm = numpy.linalg.norm(x, axis=1) + self.eps
-        return x / norm[:, numpy.newaxis],
-
-    def forward_gpu(self, inputs):
-        x = array.as_mat(inputs[0])
-        l2norm_kernel = cuda.cupy.ReductionKernel(
-            'T x, float32 eps',
-            'T y',
-            'x * x',
-            'a + b',
-            'y = sqrt(a) + eps',
-            '0',
-            'l2norm'
-        )
-        norm = cuda.cupy.broadcast_to(
-            l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
-            x.shape
-        )
-
+    def forward(self, inputs):
+        x, = inputs
+        xp = cuda.get_array_module(x)
+        norm = xp.linalg.norm(x, axis=self.axis) + self.eps
+        norm = xp.expand_dims(norm, self.axis)
         return x / norm,
 
-    def backward_cpu(self, inputs, gy):
+    def backward(self, inputs, gy):
         x = inputs[0]
         gy = gy[0]
+        xp = cuda.get_array_module(x)
 
-        norm = numpy.linalg.norm(x, axis=1) + self.eps
-        norm = norm[:, numpy.newaxis]
+        norm = xp.linalg.norm(x, axis=self.axis) + self.eps
+        norm = xp.expand_dims(norm, self.axis)
 
-        gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
+        x_gy_reduced = (x * gy).sum(axis=self.axis)
+        x_gy_reduced = xp.expand_dims(x_gy_reduced, self.axis)
+        gx = gy * norm - x_gy_reduced * x / norm
         gx = gx / norm ** 2
 
         return gx,
 
-    def backward_gpu(self, inputs, gy):
-        x = inputs[0]
-        gy = gy[0]
 
-        l2norm_kernel = cuda.cupy.ReductionKernel(
-            'T x, float32 eps',
-            'T y',
-            'x * x',
-            'a + b',
-            'y = sqrt(a) + eps',
-            '0',
-            'l2norm'
-        )
-        norm = cuda.cupy.broadcast_to(
-            l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
-            x.shape
-        )
-        x_gy = cuda.cupy.broadcast_to(
-            (x * gy).sum(axis=1, keepdims=True),
-            x.shape
-        )
-        gx = cuda.elementwise(
-            'T gy, T x, T x_gy, T norm',
-            'T gx',
-            'gx = (gy * norm - x_gy * x / norm) / (norm * norm)',
-            'l2_bwd')(gy, x, x_gy, norm)
-
-        return gx,
-
-
-def normalize(x, eps=1e-5):
+def normalize(x, eps=1e-5, axis=1):
     """L2 norm squared (a.k.a. Euclidean norm).
 
-    This function implements L2 normalization on a 1D vector. No reduction
-    is done along batch axis.  Let :math:`x` be an input vector of dimension
+    This function implements L2 normalization on a vector along the given axis.
+    No reduction is done along the normalization axis.
+
+    In the case when :obj:`axis=1` and :math:`x` is a vector of dimension
     :math:`(N, K)`, where :math:`N` and :math:`K` denote mini-batch size and
-    the dimension of the input variable. Then, this function computes an output
+    the dimension of the input variable, this function computes an output
     vector :math:`y` by the following equation:
 
     .. math::
-       y_i = {x_i \\over \\| x_i \\|_2}
+       y_i = {x_i \\over \\| x_i \\|_2 + \epsilon}
 
-    :math:`eps` is used to avoid division by zero when :math:`x_i=0`
+    :obj:`eps` is used to avoid division by zero when norm of :math:`x` along
+    the given axis is zero.
+
+    The default value of :obj:`axis` is determined for backward compatibility.
 
     Args:
         x (~chainer.Variable): Two dimensional output variable. The first
             dimension is assumed to be the mini-batch dimension.
         eps (float): Epsilon value for numerical stability.
+        axis (int): Axis along which to normalize.
 
     Returns:
-        ~chainer.Variable: Two dimensional output variable, the same shape
-            as :math:`x`.
+        ~chainer.Variable: The output variable which has the same shape
+        as :math:`x`.
 
     """
-    return NormalizeL2(eps)(x)
+    return NormalizeL2(eps, axis)(x)

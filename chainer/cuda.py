@@ -45,9 +45,12 @@ try:
     from cupy.cuda import Event  # NOQA
     from cupy.cuda import Stream  # NOQA
 
+    from . import cuda_fusion as fusion  # NOQA
+
     available = True
 except Exception as e:
     _resolution_error = e
+    fusion = numpy
 
     class ndarray(object):
         pass  # for type testing
@@ -150,8 +153,45 @@ else:
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
+def get_device_from_id(device_id):
+    """Gets the device from an ID integer.
+
+    Args:
+        device_id (int or None): The ID of the device which this function
+            returns.
+    """
+    if device_id is not None:
+        check_cuda_available()
+        return Device(device_id)
+    else:
+        return DummyDevice
+
+
+def get_device_from_array(*arrays):
+    """Gets the device from a list of CuPy array or a single CuPy array.
+
+    The device on which the given CuPy array reside is returned.
+
+    Args:
+        array (:class:`cupy.ndarray` or list of :class:`cupy.ndarray`):
+            A CuPy array which this function returns the device corresponding
+            to. If a list of :class:`cupy.ndarray`s are given, it returns
+            the first device object of an array in the list.
+    """
+    for array in arrays:
+        if isinstance(array, ndarray) and array.device is not None:
+            return array.device
+    return DummyDevice
+
+
 def get_device(*args):
     """Gets the device from a device object, an ID integer or an array object.
+
+    .. note::
+
+        This API is deprecated. Please use
+        :method:`cupy.cuda.get_device_from_id`
+        or :method:`cupy.cuda.get_device_from_array` instead.
 
     This is a convenient utility to select a correct device if the type of
     ``arg`` is unknown (i.e., one can use this function on arrays that may be
@@ -174,6 +214,9 @@ def get_device(*args):
        See :class:`cupy.cuda.Device` for the device selection not by arrays.
 
     """
+    warnings.warn('get_device is deprecated. Please use get_device_from_id or'
+                  ' get_device_from_array instead.', DeprecationWarning)
+
     for arg in args:
         if type(arg) in _integer_types:
             check_cuda_available()

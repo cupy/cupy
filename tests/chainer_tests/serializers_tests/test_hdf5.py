@@ -184,6 +184,45 @@ class TestHDF5DeserializerNonStrict(unittest.TestCase):
 
 
 @unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestHDF5DeserializerNonStrictGroupHierachy(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+
+        child = link.Chain(linear=links.Linear(2, 3))
+        parent = link.Chain(linear=links.Linear(3, 2), child=child)
+        hdf5.save_hdf5(self.temp_file_path, parent)
+        self.source = parent
+
+        self.hdf5file = h5py.File(path, 'r')
+        self.deserializer = hdf5.HDF5Deserializer(self.hdf5file, strict=False)
+
+    def tearDown(self):
+        if hasattr(self, 'hdf5file'):
+            self.hdf5file.close()
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def test_deserialize_hierarchy(self):
+        child = link.Chain(linear2=links.Linear(2, 3))
+        target = link.Chain(linear=links.Linear(3, 2), child=child)
+        target_child_W = numpy.copy(child.linear2.W.data)
+        target_child_b = numpy.copy(child.linear2.b.data)
+        self.deserializer.load(target)
+
+        numpy.testing.assert_array_equal(
+            self.source.linear.W.data, target.linear.W.data)
+        numpy.testing.assert_array_equal(
+            self.source.linear.b.data, target.linear.b.data)
+        numpy.testing.assert_array_equal(
+            target.child.linear2.W.data, target_child_W)
+        numpy.testing.assert_array_equal(
+            target.child.linear2.b.data, target_child_b)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestSaveHDF5(unittest.TestCase):
 
     def setUp(self):

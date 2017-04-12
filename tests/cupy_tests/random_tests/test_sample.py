@@ -167,6 +167,54 @@ class TestRandomIntegers2(unittest.TestCase):
 
 
 @testing.gpu
+class TestChoice(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    def setUp(self):
+        self.rs_tmp = random.generator._random_states
+        device_id = cuda.Device().id
+        self.m = mock.Mock()
+        self.m.choice.return_value = 0
+        random.generator._random_states = {device_id: self.m}
+
+    def tearDown(self):
+        random.generator._random_states = self.rs_tmp
+
+    def test_size_and_replace_and_p_are_none(self):
+        random.choice(3)
+        self.m.choice.assert_called_with(3, None, True, None)
+
+    def test_size_and_replace_are_none(self):
+        random.choice(3, None, None, [0.1, 0.1, 0.8])
+        self.m.choice.assert_called_with(3, None, None, [0.1, 0.1, 0.8])
+
+    def test_size_and_p_are_none(self):
+        random.choice(3, None, True)
+        self.m.choice.assert_called_with(3, None, True, None)
+
+    def test_replace_and_p_are_none(self):
+        random.choice(3, 1)
+        self.m.choice.assert_called_with(3, 1, True, None)
+
+    def test_size_is_none(self):
+        random.choice(3, None, True, [0.1, 0.1, 0.8])
+        self.m.choice.assert_called_with(3, None, True, [0.1, 0.1, 0.8])
+
+    def test_replace_is_none(self):
+        random.choice(3, 1, None, [0.1, 0.1, 0.8])
+        self.m.choice.assert_called_with(3, 1, None, [0.1, 0.1, 0.8])
+
+    def test_p_is_none(self):
+        random.choice(3, 1, True)
+        self.m.choice.assert_called_with(3, 1, True, None)
+
+    def test_no_none(self):
+        random.choice(3, 1, True, [0.1, 0.1, 0.8])
+        self.m.choice.assert_called_with(3, 1, True, [0.1, 0.1, 0.8])
+
+
+@testing.gpu
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):

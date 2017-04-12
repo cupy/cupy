@@ -143,6 +143,10 @@ hstack
 ~~~~~~
 .. autofunction:: hstack
 
+im2col
+~~~~~~
+.. autofunction:: im2col
+
 pad
 ~~~
 .. autofunction:: pad
@@ -154,6 +158,10 @@ permutate
 reshape
 ~~~~~~~
 .. autofunction:: reshape
+
+resize_images
+~~~~~~~~~~~~~
+.. autofunction:: resize_images
 
 rollaxis
 ~~~~~~~~
@@ -170,6 +178,10 @@ separate
 space2depth
 ~~~~~~~~~~~
 .. autofunction:: space2depth
+
+spatial_transformer_sampler
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: spatial_transformer_sampler
 
 split_axis
 ~~~~~~~~~~
@@ -230,6 +242,10 @@ deconvolution_2d
 deconvolution_nd
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_nd
+
+depthwise_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: depthwise_convolution_2d
 
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -359,6 +375,10 @@ argmax
 argmin
 ~~~~~~
 .. autofunction:: argmin
+
+average
+~~~~~~~
+.. autofunction:: average
 
 batch_inv
 ~~~~~~~~~
@@ -509,6 +529,10 @@ dropout
 gaussian
 ~~~~~~~~
 .. autofunction:: gaussian
+
+simplified_dropconnect
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: simplified_dropconnect
 
 
 Normalization functions
