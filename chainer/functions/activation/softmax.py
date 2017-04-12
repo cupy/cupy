@@ -38,12 +38,12 @@ class Softmax(function.Function):
             one = numpy.array(1, dtype=oz_dtype).ctypes
             zero = numpy.array(0, dtype=oz_dtype).ctypes
             handle = cudnn.get_handle()
-            x_cube = x[0].reshape(self._get_cube_shape(x[0].shape))
-            desc = cudnn.create_tensor_descriptor(x_cube)
+            x_tensor4d = x[0].reshape(self._get_tensor4d_shape(x[0].shape))
+            desc = cudnn.create_tensor_descriptor(x_tensor4d)
             self.y = xp.empty_like(x[0])
             libcudnn.softmaxForward(
                 handle, _algorithm, _mode, one.data, desc.value,
-                x_cube.data.ptr, zero.data, desc.value,
+                x_tensor4d.data.ptr, zero.data, desc.value,
                 self.y.data.ptr)
         else:
             self.y = x[0] - x[0].max(axis=self.axis, keepdims=True)
@@ -61,8 +61,8 @@ class Softmax(function.Function):
             zero = numpy.array(0, dtype=oz_dtype).ctypes
             handle = cudnn.get_handle()
             gx = xp.empty_like(x[0])
-            gx_cube = gx.reshape(self._get_cube_shape(gx.shape))
-            desc = cudnn.create_tensor_descriptor(gx_cube)
+            gx_tensor4d = gx.reshape(self._get_tensor4d_shape(gx.shape))
+            desc = cudnn.create_tensor_descriptor(gx_tensor4d)
             libcudnn.softmaxBackward(
                 handle, _algorithm, _mode, one.data, desc.value,
                 self.y.data.ptr, desc.value, gy[0].data.ptr, zero.data,
@@ -74,12 +74,12 @@ class Softmax(function.Function):
 
         return gx,
 
-    def _get_cube_shape(self, shape):
+    def _get_tensor4d_shape(self, shape):
         left_shape = numpy.prod(shape[slice(0, self.axis)], dtype=numpy.int)
         center_shape = shape[self.axis]
         right_shape = numpy.prod(
             shape[slice(self.axis + 1, len(shape))], dtype=numpy.int)
-        return left_shape, center_shape, right_shape
+        return left_shape, center_shape, right_shape, 1
 
 
 def softmax(x, use_cudnn=True, axis=1):
