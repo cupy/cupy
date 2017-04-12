@@ -12,13 +12,21 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+f = open('out', 'w')
 @testing.parameterize(*testing.product({
-    'shape': [None, (2, 3), (2, 3, 4), (2, 3, 4, 5)],
+    'shape_axis':
+        [{'shape': None, 'axis': 1},] +
+        testing.product({'shape': ((3, 4),), 'axis': (0, 1)}) +
+        testing.product({'shape': ((3, 4, 5),), 'axis': (0, 1, 2)}) +
+        testing.product({'shape': ((3, 4, 5, 6),), 'axis': (0, 1, 2, 3)}),
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestSoftmax(unittest.TestCase):
 
     def setUp(self):
+        self.shape = self.shape_axis['shape']
+        self.axis = self.shape_axis['axis']
+        f.write(str(self.shape) + str(self.axis) + str(self.dtype) + '\n')
         if self.shape is None:
             # For checking numerical stability
             value = -5 if self.dtype == numpy.float16 else -1000
@@ -36,11 +44,11 @@ class TestSoftmax(unittest.TestCase):
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
-        y = functions.softmax(x, use_cudnn)
+        y = functions.softmax(x, use_cudnn=use_cudnn, axis=self.axis)
         self.assertEqual(y.data.dtype, self.dtype)
 
         y_expect = numpy.exp(self.x)
-        y_roll = numpy.rollaxis(y_expect, 1, y_expect.ndim)
+        y_roll = numpy.rollaxis(y_expect, self.axis, y_expect.ndim)
         for i in numpy.ndindex(y_roll.shape[:-1]):
             y_roll[i] /= y_roll[i].sum()
 
@@ -63,7 +71,7 @@ class TestSoftmax(unittest.TestCase):
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
-            functions.Softmax(use_cudnn), x_data, gy_data,
+            functions.Softmax(use_cudnn=use_cudnn, axis=self.axis), x_data, gy_data,
             **self.check_backward_options)
 
     @condition.retry(10)
@@ -82,6 +90,7 @@ class TestSoftmax(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'axis': [0, 1],
     'use_cudnn': [True, False],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
@@ -97,7 +106,7 @@ class TestSoftmaxCudnnCall(unittest.TestCase):
 
     def forward(self):
         x = chainer.Variable(self.x)
-        return functions.softmax(x, use_cudnn=self.use_cudnn)
+        return functions.softmax(x, use_cudnn=self.use_cudnn, axis=self.axis)
 
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
