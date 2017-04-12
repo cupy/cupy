@@ -112,7 +112,7 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         )
 
     def to_gpu(self, device=None):
-        with cuda.get_device_from_id(device.id):
+        with cuda.get_device_from_id(device.id if device else None):
             self.paths = cuda.to_gpu(self.paths)
             self.codes = cuda.to_gpu(self.codes)
             self.begins = cuda.to_gpu(self.begins)
@@ -301,7 +301,7 @@ class BinaryHierarchicalSoftmax(link.Link):
         self.W.data[...] = numpy.random.uniform(-1, 1, self.W.shape)
 
     def to_gpu(self, device=None):
-        with cuda.get_device_from_id(device.id):
+        with cuda.get_device_from_id(device.id if device else None):
             super(BinaryHierarchicalSoftmax, self).to_gpu(device)
             self._func.to_gpu(device)
 

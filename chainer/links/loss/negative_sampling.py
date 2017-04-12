@@ -43,7 +43,7 @@ class NegativeSampling(link.Link):
         self.sampler.to_cpu()
 
     def to_gpu(self, device=None):
-        with cuda.get_device_from_id(device.id):
+        with cuda.get_device_from_id(device.id if device else None):
             super(NegativeSampling, self).to_gpu()
             self.sampler.to_gpu()
 
