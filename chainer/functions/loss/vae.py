@@ -22,8 +22,8 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
     and :math:`I` is an identity matrix.
 
     The output is a varialbe whose value depends on the value of
-    the option `reduce`. If it is `'no'`, it holds the elementwise
-    loss values. If it is `'sum'`, loss values are summed up.
+    the option ``reduce``. If it is ``'no'``, it holds the elementwise
+    loss values. If it is ``'sum'``, loss values are summed up.
 
     Args:
         mean (~chainer.Variable): A variable representing mean of given
@@ -31,14 +31,15 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
         ln_var (~chainer.Variable): A variable representing logarithm of
             variance of given gaussian distribution, :math:`\\log(\\sigma^2)`.
         recude (str): Reduction option. Its value must be either
-            `'sum'` or `'no'`. Otherwise, `ValueError` is raised.
+            ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
-        ~chainer.Variable: A variable representing KL-divergence between
+        ~chainer.Variable:
+            A variable representing KL-divergence between
             given gaussian distribution and the standard gaussian.
-            If `reduce` is `'no'`, the output varialbe holds array
+            If ``reduce`` is ``'no'``, the output varialbe holds array
             whose shape is same as one of (hence both of) input variables.
-            If it is `'sum'`, the output variable holds a scalar value.
+            If it is ``'sum'``, the output variable holds a scalar value.
 
     """
     assert isinstance(mean, variable.Variable)
