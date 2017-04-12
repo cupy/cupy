@@ -223,7 +223,7 @@ Actual: {0}'''.format(type(data))
                 used.
 
         """
-        with cuda.get_device_from_id(device.id):
+        with cuda.get_device_from_id(device.id if device else None):
             self.data = cuda.to_gpu(self.data)
             if self._grad is not None:
                 self._grad = cuda.to_gpu(self._grad)
