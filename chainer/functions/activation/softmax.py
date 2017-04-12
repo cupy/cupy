@@ -82,7 +82,7 @@ class Softmax(function.Function):
 
 
 def softmax(x, use_cudnn=True, axis=1):
-    """Channelwise softmax function.
+    """Softmax function.
 
     This function computes its softmax along an axis. Let
     :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
