@@ -1,8 +1,9 @@
 import unittest
 
+import numpy as np
+
 from cupy import testing
 
-import numpy as np
 
 @testing.parameterize(*testing.product({
     'shape': [
