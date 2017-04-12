@@ -11,6 +11,7 @@ build
 .eggs/
 _readthedocs_build
 chainer.egg-info/
+cupy.egg-info/
 dist/
 htmlcov/
 .idea/
