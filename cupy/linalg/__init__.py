@@ -10,3 +10,4 @@ from cupy.linalg import product  # NOQA
 from cupy.linalg import solve  # NOQA
 
 from cupy.linalg.decomposition import cholesky  # NOQA
+from cupy.linalg.decomposition import qr  # NOQA
