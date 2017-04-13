@@ -107,8 +107,8 @@ It is equivalent to the following code using CuPy:
    :func:`chainer.cuda.to_cpu` and :func:`chainer.cuda.to_gpu` functions automatically switch the current device correctly.
 
 Chainer also provides a convenient function :func:`chainer.cuda.get_device_from_id` and :func:`chainer.cuda.get_device_from_array` to select a device.
-The former function accepts an integer or None.
-When None is given, it returns *a dummy device object*.
+The former function accepts an integer or ``None``.
+When ``None`` is given, it returns *a dummy device object*.
 Otherwise, it returns a corresponding device object.
 The latter function accepts CuPy array or NumPy array.
 When a NumPy array is given, it returns *a dummy device object*.
