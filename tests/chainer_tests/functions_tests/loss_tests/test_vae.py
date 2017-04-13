@@ -85,7 +85,7 @@ class TestBernoulliNLLInvalidReductionOption(unittest.TestCase):
         x = chainer.Variable(xp.asarray(self.x))
         y = chainer.Variable(xp.asarray(self.y))
         with self.assertRaises(ValueError):
-            vae.bernoulli_nll(x, y, 'invalid_option')
+            F.bernoulli_nll(x, y, 'invalid_option')
 
     def test_invalid_option_cpu(self):
         self.check_invalid_option(numpy)
