@@ -153,7 +153,7 @@ else:
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
-def get_device_from_id(device_id=None):
+def get_device_from_id(device_id):
     """Gets the device from an ID integer.
 
     Args:
