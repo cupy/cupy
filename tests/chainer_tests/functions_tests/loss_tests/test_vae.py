@@ -61,7 +61,7 @@ class TestBernoulliNLL(unittest.TestCase):
     def check_bernoulli_nll(self, x_data, y_data):
         x = chainer.Variable(x_data)
         y = chainer.Variable(y_data)
-        actual = cuda.to_cpu(F.bernoulli_nll(x, y).data)
+        actual = cuda.to_cpu(F.bernoulli_nll(x, y, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
