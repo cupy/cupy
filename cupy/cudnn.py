@@ -337,6 +337,16 @@ def create_dropout_states(handle):
     return cupy.empty((state_size,), dtype='b')
 
 
+def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
+    desc = Descriptor(cudnn.createSpatialTransformerDescriptor(),
+                      cudnn.destroySpatialTransformerDescriptor)
+    data_type = get_data_type(dtype)
+
+    cudnn.setSpatialTransformerDescriptor(
+        desc.value, sampler_type, data_type, nb_dims, dim_A)
+    return desc
+
+
 if _cudnn_version >= 3000:
     def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
                    srcDestData):
