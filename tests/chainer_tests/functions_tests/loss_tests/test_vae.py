@@ -123,7 +123,7 @@ class TestGaussianNLLInvalidReductionOption(unittest.TestCase):
         ln_var = chainer.Variable(xp.asarray(self.ln_var))
 
         with self.assertRaises(ValueError):
-            vae.gaussian_nll(x, mean, ln_var, 'invalid_option')
+            F.gaussian_nll(x, mean, ln_var, 'invalid_option')
 
     def test_invalid_option_cpu(self):
         self.check_invalid_option(numpy)
