@@ -46,6 +46,10 @@ DeconvolutionND
 ~~~~~~~~~~~~~~~
 .. autoclass:: DeconvolutionND
 
+DepthwiseConvolution2D
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: DepthwiseConvolution2D
+
 DilatedConvolution2D
 ~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: DilatedConvolution2D
@@ -142,6 +146,11 @@ BlackOut
 CRF1d
 ~~~~~
 .. autoclass:: CRF1d
+   :members:
+
+SimplifiedDropconnect
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: SimplifiedDropconnect
    :members:
 
 PReLU

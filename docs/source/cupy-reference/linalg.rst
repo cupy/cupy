@@ -14,6 +14,7 @@ Decompositions
 --------------------------
 
 .. autofunction:: cupy.linalg.cholesky
+.. autofunction:: cupy.linalg.qr
 
 
 Norms etc.
