@@ -15,7 +15,7 @@ from chainer.testing import condition
         'wrap_m': [True, False],
         'wrap_v': [True, False]
     })
- )
+)
 class TestGaussianKLDivergence(unittest.TestCase):
 
     def setUp(self):
@@ -53,7 +53,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
         'wrap_x': [True, False],
         'wrap_y': [True, False]
     })
- )
+)
 class TestBernoulliNLL(unittest.TestCase):
 
     def setUp(self):
@@ -91,7 +91,7 @@ class TestBernoulliNLL(unittest.TestCase):
         'wrap_m': [True, False],
         'wrap_v': [True, False]
     })
- )
+)
 class TestGaussianNLL(unittest.TestCase):
 
     def setUp(self):
