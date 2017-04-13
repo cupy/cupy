@@ -1104,3 +1104,24 @@ class TestFusionFuse(unittest.TestCase):
             return x
 
         return g(a, axis=0)
+
+
+@testing.gpu
+class TestFusionDecorator(unittest.TestCase):
+    @testing.numpy_cupy_array_equal()
+    def test_without_paren(self, xp):
+        @cupy.fuse
+        def f(x):
+            return x + x
+
+        a = xp.array([1])
+        return f(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_with_paren(self, xp):
+        @cupy.fuse()
+        def f(x):
+            return x + x
+
+        a = xp.array([1])
+        return f(a)
