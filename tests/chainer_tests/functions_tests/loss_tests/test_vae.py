@@ -95,7 +95,7 @@ class TestGaussianNLL(unittest.TestCase):
         x = chainer.Variable(x_data)
         mean = chainer.Variable(mean_data)
         ln_var = chainer.Variable(ln_var_data)
-        actual = cuda.to_cpu(F.gaussian_nll(x, mean, ln_var).data)
+        actual = cuda.to_cpu(F.gaussian_nll(x, mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
