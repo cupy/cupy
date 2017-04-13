@@ -499,7 +499,8 @@ def n_step_lstm(
                 else:
                     h_rest = None
 
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
+                if layer != 0:
+                    x = dropout.dropout(x, ratio=dropout_ratio, train=train)
                 lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
                     linear.linear(h, hws[layer], hbs[layer])
 
