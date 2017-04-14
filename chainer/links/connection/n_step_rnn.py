@@ -25,16 +25,12 @@ def permutate_list(lst, indices, inv):
 
 
 class NStepRNNBase(link.ChainList):
-    """Stacked RNN for sequnces.
+    """Base link class for Stacked RNN/BiRNN links.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is base link class for :func:`chainer.links.NStepRNN` and
+    :func:`chainer.links.NStepBiRNN`.
 
-    Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
-    sort inputs in descending order by length, and transpose the seuqnece.
-    Users just need to call the link with a list of :class:`chainer.Variable`
-    holding sequences.
+    This link's behavior depends on argument, ``use_bi_direction``.
 
     Args:
         n_layers (int): Number of layers.
@@ -43,14 +39,15 @@ class NStepRNNBase(link.ChainList):
         dropout (float): Dropout ratio.
         use_cudnn (bool): Use cuDNN.
         use_bi_direction (bool): if ``True``, use Bi-directional RNN.
+            if ``False``, use Uni-directional RNN.
 
     .. seealso::
-        :func:`chainer.functions.n_step_rnn`
-        :func:`chainer.functions.n_step_birnn`
+        :func:`chainer.links.NStepRNN`
+        :func:`chainer.links.NStepBiRNN`
 
     """
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
-                 use_bi_direction):
+                 use_bi_direction, activation):
         weights = []
         direction = 2 if use_bi_direction else 1
         for i in six.moves.range(n_layers):
@@ -75,6 +72,7 @@ class NStepRNNBase(link.ChainList):
         self.n_layers = n_layers
         self.dropout = dropout
         self.use_cudnn = use_cudnn
+        self.activation = activation
         self.out_size = out_size
         self.direction = direction
         self.rnn = rnn.n_step_birnn if use_bi_direction else rnn.n_step_rnn
@@ -110,7 +108,7 @@ class NStepRNNBase(link.ChainList):
 
         hy, trans_y = self.rnn(
             self.n_layers, self.dropout, hx, ws, bs, trans_x,
-            train=train, use_cudnn=self.use_cudnn)
+            train=train, use_cudnn=self.use_cudnn, activation=self.activation)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
         ys = transpose_sequence.transpose_sequence(trans_y)
@@ -142,9 +140,11 @@ class NStepRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_rnn`
 
     """
-    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
+                 activation='tanh'):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
-                              use_cudnn, use_bi_direction=False)
+                              use_cudnn, use_bi_direction=False,
+                              activation=activation)
 
 
 class NStepBiRNN(NStepRNNBase):
@@ -170,6 +170,8 @@ class NStepBiRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_birnn`
 
     """
-    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
+                 activation='tanh'):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
-                              use_cudnn, use_bi_direction=True)
+                              use_cudnn, use_bi_direction=True,
+                              activation=activation)

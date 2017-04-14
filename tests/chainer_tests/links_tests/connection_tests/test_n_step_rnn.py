@@ -44,7 +44,7 @@ class TestNStepRNN(unittest.TestCase):
             for l in self.lengths]
         self.rnn = links.NStepRNN(
             self.n_layer, self.in_size, self.out_size, self.dropout,
-            use_cudnn=self.use_cudnn)
+            use_cudnn=self.use_cudnn, activation=self.activation)
 
         for layer in self.rnn:
             for p in layer.params():
@@ -166,7 +166,7 @@ class TestNStepBiRNN(unittest.TestCase):
             for l in self.lengths]
         self.rnn = links.NStepBiRNN(
             self.n_layer, self.in_size, self.out_size, self.dropout,
-            use_cudnn=self.use_cudnn)
+            use_cudnn=self.use_cudnn, activation=self.activation)
 
         for layer in self.rnn:
             for p in layer.params():
@@ -276,5 +276,6 @@ class TestNStepBiRNN(unittest.TestCase):
             [cuda.to_gpu(x) for x in self.xs],
             cuda.to_gpu(self.gh),
             [cuda.to_gpu(gy) for gy in self.gys])
+
 
 testing.run_module(__name__, __file__)
