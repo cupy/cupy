@@ -78,6 +78,14 @@ class DummyUpdater(training.Updater):
     {
         'iters_per_epoch': 2.5, 'schedule': ([1, 2], 'epoch'), 'resume': 4,
         'expected': [False, False, True, False, True, False, False]},
+    # single tiny epoch
+    {
+        'iters_per_epoch': 0.5, 'schedule': (1, 'epoch'), 'resume': 4,
+        'expected': [True, False, False, False, False, False, False]},
+    # multiple tiny epoch
+    {
+        'iters_per_epoch': 0.5, 'schedule': ([1, 2], 'epoch'), 'resume': 4,
+        'expected': [True, False, False, False, False, False, False]},
 ]))
 class TestTrigger(unittest.TestCase):
 
