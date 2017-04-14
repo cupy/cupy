@@ -38,7 +38,7 @@ def gaussian_kl_divergence(mean, ln_var):
     return (sum.sum(mean * mean) + sum.sum(var) - sum.sum(ln_var) - J) * 0.5
 
 
-def bernoulli_nll(x, y):
+def bernoulli_nll(x, y, reduce='sum'):
     """Computes the negative log-likelihood of a Bernoulli distribution.
 
     This function calculates the negative log-likelihood of a Bernoulli
@@ -50,6 +50,11 @@ def bernoulli_nll(x, y):
 
     where :math:`p = \\sigma(y)`, :math:`\\sigma(\\cdot)` is a sigmoid
     function, and :math:`B(x; p)` is a Bernoulli distribution.
+
+
+    The output is a varialbe whose value depends on the value of
+    the option ``reduce``. If it is ``'no'``, it holds the elementwise
+    loss values. If it is ``'sum'``, loss values are summed up.
 
     .. note::
 
@@ -63,12 +68,27 @@ def bernoulli_nll(x, y):
         y (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): A variable representing the parameter of
             Bernoulli distribution.
+        recude (str): Reduction option. Its value must be either
+            ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
-        ~chainer.Variable: A variable representing negative log-likelihood.
+        ~chainer.Variable:
+            A variable representing the negative log-likelihood.
+            If ``reduce`` is ``'no'``, the output varialbe holds array
+            whose shape is same as one of (hence both of) input variables.
+            If it is ``'sum'``, the output variable holds a scalar value.
 
     """
-    return sum.sum(softplus.softplus(y)) - sum.sum(x * y)
+    if reduce not in ('sum', 'no'):
+        raise ValueError(
+            "only 'sum' and 'no' are valid for 'reduce', but '%s' is "
+            'given' % reduce)
+
+    loss = softplus.softplus(y) - x * y
+    if reduce == 'sum':
+        return sum.sum(loss)
+    else:
+        return loss
 
 
 def gaussian_nll(x, mean, ln_var):

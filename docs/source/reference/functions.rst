@@ -468,6 +468,10 @@ maximum
 ~~~~~~~
 .. autofunction:: maximum
 
+mean
+~~~~
+.. autofunction:: mean
+
 min
 ~~~
 .. autofunction:: min
