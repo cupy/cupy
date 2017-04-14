@@ -404,3 +404,7 @@ from chainer.links.loss.hierarchical_softmax import BinaryHierarchicalSoftmax  #
 from chainer.links.loss.negative_sampling import NegativeSampling  # NOQA
 
 from chainer.links.normalization.batch_normalization import BatchNormalization  # NOQA
+
+
+# Aliases
+mean = average
