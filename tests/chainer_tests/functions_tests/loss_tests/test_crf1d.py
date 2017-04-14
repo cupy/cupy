@@ -147,5 +147,19 @@ class TestCRF1d(unittest.TestCase):
         self.check_argmax(cuda.to_gpu(self.cost),
                           [cuda.to_gpu(x) for x in self.xs])
 
+    def check_invalid_option(self, cost_data, xs_data, ys_data):
+        with self.assertRaises(ValueError):
+            functions.crf1d(cost_data, xs_data, ys_data, 'invalid_option')
+
+    def test_invalid_option_cpu(self):
+        self.check_invalid_option(self.cost, self.xs, self.ys)
+
+    @attr.gpu
+    def test_invalid_option_gpu(self):
+        self.check_invalid_option(
+            cuda.to_gpu(self.cost),
+            [cuda.to_gpu(x) for x in self.xs],
+            [cuda.to_gpu(y) for y in self.ys])
+
 
 testing.run_module(__name__, __file__)
