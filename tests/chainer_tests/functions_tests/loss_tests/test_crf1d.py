@@ -21,7 +21,7 @@ from chainer.testing import attr
     ],
     [
         {'reduce': 'mean'},
-        {'reduce': 'none'},
+        {'reduce': 'no'},
     ]
 ))
 class TestCRF1d(unittest.TestCase):
@@ -63,7 +63,7 @@ class TestCRF1d(unittest.TestCase):
         if self.reduce == 'mean':
             expect = numpy.sum(loss) / self.batches[0]
             testing.assert_allclose(actual.data, expect)
-        elif self.reduce == 'none':
+        elif self.reduce == 'no':
             expect = loss
             self.assertEqual(len(expect), len(actual))
             for a, e in six.moves.zip(actual, expect):
@@ -93,7 +93,7 @@ class TestCRF1d(unittest.TestCase):
             no_grads = None
         if self.reduce == 'mean':
             grad = None
-        elif self.reduce == 'none':
+        elif self.reduce == 'no':
             grad = g_data
         gradient_check.check_backward(
             f, args, grad, no_grads=no_grads, rtol=1e-3, atol=1e-3)

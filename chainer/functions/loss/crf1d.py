@@ -99,7 +99,7 @@ def crf1d(cost, xs, ys, reduce='mean'):
         <http://repository.upenn.edu/cis_papers/159/>`_.
 
     """
-    if reduce not in ('mean', 'none'):
+    if reduce not in ('mean', 'no'):
         raise ValueError(
             "only 'mean' and 'no' are valid for 'reduce', but '%s' is "
             'given' % reduce)
