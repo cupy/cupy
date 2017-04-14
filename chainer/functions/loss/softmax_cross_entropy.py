@@ -243,10 +243,9 @@ def softmax_cross_entropy(
             value.
         ignore_label (int): Label value you want to ignore. Its default value
             is ``-1``. See description of the argument `t`.
-        reduce (str): Variable holding a ``str`` which
-            determines whether to reduce the shape of the input.
-            If it is ``'mean'``, it computes the sum of cross entropy
-            and normalize it according to ``normalize`` option.
+        reduce (str): A string that determines whether to reduce the loss
+            values. If it is ``'mean'``, it computes the sum of the individual
+            cross entropy and normalize it according to ``normalize`` option.
             If it is ``'no'``, this function computes cross entropy for each
             instance and does not normalize it (``normalize`` option is
             ignored). In this case, the loss value of the ignored instance,
@@ -255,7 +254,7 @@ def softmax_cross_entropy(
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
         If ``reduce`` is ``'mean'``, it is a scalar array.
-        If ``reduce`` is ``'no'``, the shape is same as ``x``.
+        If ``reduce`` is ``'no'``, the shape is same as that of ``x``.
 
     .. note::
 
