@@ -60,8 +60,9 @@ def crf1d(cost, xs, ys, reduce='mean'):
        >>> ys = [np.zeros(x.shape[0:1], dtype='i') for x in xs]
        >>> loss = F.crf1d(cost, xs, ys)
 
-       It calculates mean of the negative log-likelihood of the three sequences.
-       
+       It calculates mean of the negative log-likelihood of the three
+       sequences.
+
        The output is a variable whose value depends on the value of
        the option ``reduce``. If it is ``'no'``, it holds the elementwise
        loss values. If it is ``'mean'``, it holds mean of the loss values.

@@ -36,11 +36,12 @@ class TestCRF1d(unittest.TestCase):
             numpy.random.randint(
                 0, self.n_label, (b,)).astype(numpy.int32)
             for b in self.batches]
-        self.g = numpy.random.uniform(-1, 1, (len(self.lengths))).astype(numpy.float32)
+        self.g = numpy.random.uniform(
+            -1, 1, (len(self.lengths))).astype(numpy.float32)
 
     def _calc_score(self, batch, ys):
         return sum(x[batch, y] for x, y in zip(self.xs, ys)) + \
-               sum(self.cost[y1, y2] for y1, y2 in zip(ys[:-1], ys[1:]))
+            sum(self.cost[y1, y2] for y1, y2 in zip(ys[:-1], ys[1:]))
 
     def check_forward(self, cost_data, xs_data, ys_data):
         cost = chainer.Variable(cost_data)
