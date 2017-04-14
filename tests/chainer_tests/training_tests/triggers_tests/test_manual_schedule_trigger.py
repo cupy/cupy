@@ -45,7 +45,7 @@ class DummyUpdater(training.Updater):
         self.iteration = serializer('iteration', self.iteration)
 
 
-@testing.parameterize(*testing.product_dict([
+@testing.parameterize(
     # single iteration
     {
         'iters_per_epoch': 2, 'schedule': (2, 'iteration'), 'resume': 3,
@@ -86,7 +86,7 @@ class DummyUpdater(training.Updater):
     {
         'iters_per_epoch': 0.5, 'schedule': ([1, 2], 'epoch'), 'resume': 4,
         'expected': [True, False, False, False, False, False, False]},
-]))
+)
 class TestTrigger(unittest.TestCase):
 
     def test_trigger(self):
