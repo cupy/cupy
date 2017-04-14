@@ -83,12 +83,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    # if 'win32' == sys.platform:
-    #     options += ('-Xcompiler', '/wd 4819')
-    #     if sys.maxsize == 9223372036854775807:
-    #         options += '-m64',
-    #     elif sys.maxsize == 2147483647:
-    #         options += '-m32',
+    options += ('-ftz=true')
 
     env = (arch, options, _get_nvrtc_version())
     if '#include' in source:
