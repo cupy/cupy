@@ -49,7 +49,7 @@ class Pooling2D(function.Function):
 
     def forward_gpu(self, x):
         # Implementation using cudnn
-        x = x[0]
+        x = cuda.cupy.ascontiguousarray(x[0])
         n, c, h, w = x.shape
         y_h = conv.get_conv_outsize(
             h, self.kh, self.sy, self.ph, self.cover_all)
@@ -74,11 +74,10 @@ class Pooling2D(function.Function):
 
     def backward_gpu(self, x, gy):
         # Implementation using cudnn
-        x = x[0]
+        x = cuda.cupy.ascontiguousarray(x[0])
         handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()
 
-        # Pooling of cuDNNv2 does not seem to support non-contiguous gradients
         gy = cuda.cupy.ascontiguousarray(gy[0])
 
         x_desc = cudnn.create_tensor_descriptor(x)
