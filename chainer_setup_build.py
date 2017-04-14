@@ -178,6 +178,15 @@ def make_extensions(options, compiler, use_cython):
         if not no_cuda:
             s['libraries'] = module['libraries']
 
+        if module['name'] == 'cusolver':
+            args = s.setdefault('extra_link_args', [])
+            # openmp is required for cusolver
+            if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
+                # In mac environment, openmp is not required.
+                args.append('-fopenmp')
+            elif compiler.compiler_type == 'msvc':
+                args.append('/openmp')
+
         ret.extend([
             setuptools.Extension(f, [path.join(*f.split('.')) + ext], **s)
             for f in module['file']])

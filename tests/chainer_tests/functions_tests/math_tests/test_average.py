@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -17,12 +18,14 @@ from chainer.testing import condition
         'axis': [None, 0, 1, 2, -1],
         'dtype': [numpy.float16, numpy.float32, numpy.float64],
         'use_weights': [True, False],
+        'keepdims': [True, False],
     }) +
     testing.product({
         'shape': [()],
         'axis': [None],
         'dtype': [numpy.float16, numpy.float32, numpy.float64],
         'use_weights': [True, False],
+        'keepdims': [True, False],
     })))
 class TestAverage(unittest.TestCase):
 
@@ -30,16 +33,14 @@ class TestAverage(unittest.TestCase):
         ndim = len(self.shape)
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         if self.axis is None:
-            g_shape = ()
             w_shape = self.shape
         else:
             axis = self.axis
             if axis < 0:
                 axis += ndim
-            g_shape = tuple(
-                [d for i, d in enumerate(self.shape) if i != axis])
             w_shape = self.shape[axis],
 
+        g_shape = self.x.sum(axis=self.axis, keepdims=self.keepdims).shape
         self.gy = numpy.random.uniform(-1, 1, g_shape).astype(self.dtype)
         self.w = numpy.random.uniform(-1, 1, w_shape).astype(self.dtype)
 
@@ -51,15 +52,28 @@ class TestAverage(unittest.TestCase):
         else:
             w = None
             w_data = None
-        y = functions.average(x, axis=axis, weights=w)
+        y = functions.average(x, axis=axis, weights=w, keepdims=self.keepdims)
         self.assertEqual(y.data.dtype, self.dtype)
-        y_expect = numpy.average(self.x, axis=axis, weights=w_data)
+        y_expect = numpy.average(
+            self.x, axis=axis, weights=w_data)
+        if self.keepdims:
+            # numpy.average does not support keepdims
+            if axis is None:
+                axis = list(six.moves.range(x_data.ndim))
+            elif isinstance(axis, int):
+                axis = axis,
+            shape = list(x_data.shape)
+            for i in six.moves.range(len(shape)):
+                if i in axis or i - len(shape) in axis:
+                    shape[i] = 1
+            y_expect = y_expect.reshape(shape)
 
         if self.dtype == numpy.float16:
             options = {'atol': 1e-3, 'rtol': 1e-3}
         else:
             options = {}
 
+        self.assertEqual(y_expect.shape, y.shape)
         testing.assert_allclose(y_expect, y.data, **options)
 
     @condition.retry(3)
@@ -75,11 +89,12 @@ class TestAverage(unittest.TestCase):
     def check_backward(self, x_data, y_grad, axis, w_data):
         if self.use_weights:
             def f(x, w):
-                return functions.average(x, axis=axis, weights=w)
+                return functions.average(
+                    x, axis=axis, weights=w, keepdims=self.keepdims)
             args = (x_data, w_data)
         else:
             def f(x):
-                return functions.average(x, axis=axis)
+                return functions.average(x, axis=axis, keepdims=self.keepdims)
             args = x_data
 
         gradient_check.check_backward(
