@@ -11,8 +11,8 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-def sigmoid(x):
-    return numpy.tanh(x * 0.5) * 0.5 + 0.5
+def relu(x):
+    return x * (x > 0)
 
 
 @testing.parameterize(*testing.product({
@@ -73,9 +73,15 @@ class TestNStepRNN(unittest.TestCase):
                 h_prev = self.h[layer, batch]
                 hs = []
                 for x in seq:
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
+
                     hs.append(h_prev)
 
                 seq = hs
@@ -198,9 +204,14 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_f = []
                 for x in seq:
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
                     hs_f.append(h_prev)
 
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
@@ -212,9 +223,13 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_b = []
                 for x in reversed(seq):
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
                     hs_b.append(h_prev)
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
 
