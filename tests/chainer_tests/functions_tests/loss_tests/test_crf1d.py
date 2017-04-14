@@ -1,4 +1,5 @@
 import itertools
+import six
 import unittest
 
 import numpy
@@ -11,14 +12,19 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(
-    {'lengths': [3, 3], 'batches': [2, 2, 2]},
-    {'lengths': [3, 2, 1], 'batches': [3, 2, 1]},
-    {'lengths': [3, 1, 1], 'batches': [3, 1, 1]},
-    {'lengths': [1, 1], 'batches': [2]},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'lengths': [3, 3], 'batches': [2, 2, 2]},
+        {'lengths': [3, 2, 1], 'batches': [3, 2, 1]},
+        {'lengths': [3, 1, 1], 'batches': [3, 1, 1]},
+        {'lengths': [1, 1], 'batches': [2]},
+    ],
+    [
+        {'reduce': 'mean'},
+        {'reduce': 'none'},
+    ]
+))
 class TestCRF1d(unittest.TestCase):
-
     n_label = 3
 
     def setUp(self):
@@ -30,19 +36,17 @@ class TestCRF1d(unittest.TestCase):
             numpy.random.randint(
                 0, self.n_label, (b,)).astype(numpy.int32)
             for b in self.batches]
-
-        self.gs = [numpy.random.uniform(
-            -1, 1, (b, 3)).astype(numpy.float32) for b in self.batches]
+        self.g = numpy.random.uniform(-1, 1, (len(self.lengths))).astype(numpy.float32)
 
     def _calc_score(self, batch, ys):
         return sum(x[batch, y] for x, y in zip(self.xs, ys)) + \
-            sum(self.cost[y1, y2] for y1, y2 in zip(ys[:-1], ys[1:]))
+               sum(self.cost[y1, y2] for y1, y2 in zip(ys[:-1], ys[1:]))
 
     def check_forward(self, cost_data, xs_data, ys_data):
         cost = chainer.Variable(cost_data)
         xs = [chainer.Variable(x) for x in xs_data]
         ys = [chainer.Variable(y) for y in ys_data]
-        log_p = functions.crf1d(cost, xs, ys)
+        actual = functions.crf1d(cost, xs, ys, reduce=self.reduce)
 
         z = numpy.zeros((self.batches[0],), numpy.float32)
         for b, length in enumerate(self.lengths):
@@ -54,8 +58,15 @@ class TestCRF1d(unittest.TestCase):
             ys = [self.ys[i][b] for i in range(length)]
             score[b] = self._calc_score(b, ys)
 
-        expect = numpy.sum(-(score - numpy.log(z))) / self.batches[0]
-        testing.assert_allclose(log_p.data, expect)
+        loss = -(score - numpy.log(z))
+        if self.reduce == 'mean':
+            expect = numpy.sum(loss) / self.batches[0]
+            testing.assert_allclose(actual.data, expect)
+        elif self.reduce == 'none':
+            expect = loss
+            self.assertEqual(len(expect), len(actual))
+            for a, e in six.moves.zip(actual, expect):
+                testing.assert_allclose(a.data, e)
 
     def test_forward_cpu(self):
         self.check_forward(self.cost, self.xs, self.ys)
@@ -66,11 +77,11 @@ class TestCRF1d(unittest.TestCase):
                            [cuda.to_gpu(x) for x in self.xs],
                            [cuda.to_gpu(y) for y in self.ys])
 
-    def check_backward(self, cost_data, xs_data, ys_data):
+    def check_backward(self, cost_data, xs_data, ys_data, g_data):
         def f(cost, *args):
             xs = args[:len(args) // 2]
             ys = args[len(args) // 2:]
-            return functions.crf1d(cost, xs, ys)
+            return functions.crf1d(cost, xs, ys, reduce=self.reduce)
 
         args = [cost_data] + xs_data + ys_data
         if len(self.batches) == 1:
@@ -79,17 +90,22 @@ class TestCRF1d(unittest.TestCase):
             no_grads = [True] + [False] * len(xs_data) + [True] * len(ys_data)
         else:
             no_grads = None
+        if self.reduce == 'mean':
+            grad = None
+        elif self.reduce == 'none':
+            grad = g_data
         gradient_check.check_backward(
-            f, args, None, no_grads=no_grads, rtol=1e-3, atol=1e-3)
+            f, args, grad, no_grads=no_grads, rtol=1e-3, atol=1e-3)
 
     def test_backward_cpu(self):
-        self.check_backward(self.cost, self.xs, self.ys)
+        self.check_backward(self.cost, self.xs, self.ys, self.g)
 
     @attr.gpu
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.cost),
                             [cuda.to_gpu(x) for x in self.xs],
-                            [cuda.to_gpu(y) for y in self.ys])
+                            [cuda.to_gpu(y) for y in self.ys],
+                            cuda.to_gpu(self.g))
 
     def check_argmax(self, cost_data, xs_data):
         cost = chainer.Variable(cost_data)

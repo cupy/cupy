@@ -9,7 +9,7 @@ from chainer.functions.math import minmax
 from chainer.functions.math import sum as _sum
 
 
-def crf1d(cost, xs, ys):
+def crf1d(cost, xs, ys, reduce='mean'):
     """Calculates negative log-likelihood of linear-chain CRF.
 
     It takes a transition cost matrix, a sequence of costs, and a sequence of
@@ -30,7 +30,7 @@ def crf1d(cost, xs, ys):
        When you want to calculate the negative log-likelihood of sequences
        which have different lengths, sort the sequences in descending order of
        lengths and transpose the sequences.
-       For example, you have three input seuqnces:
+       For example, you have three input sequences:
 
        >>> a1 = a2 = a3 = a4 = np.random.uniform(-1, 1, 3).astype('f')
        >>> b1 = b2 = b3 = np.random.uniform(-1, 1, 3).astype('f')
@@ -60,7 +60,11 @@ def crf1d(cost, xs, ys):
        >>> ys = [np.zeros(x.shape[0:1], dtype='i') for x in xs]
        >>> loss = F.crf1d(cost, xs, ys)
 
-       It calculates sum of the negative log-likelihood of the three sequences.
+       It calculates mean of the negative log-likelihood of the three sequences.
+       
+       The output is a variable whose value depends on the value of
+       the option ``reduce``. If it is ``'no'``, it holds the elementwise
+       loss values. If it is ``'mean'``, it holds mean of the loss values.
 
 
     Args:
@@ -80,6 +84,8 @@ def crf1d(cost, xs, ys):
             When ``x`` in ``xs`` has the different :math:`B`, correspoding
             ``y`` has the same :math:`B`. In other words, ``ys`` must satisfy
             ``ys[i].shape == xs[i].shape[0:1]`` for all ``i``.
+        reduce (str): Reduction option. Its value must be either
+            ``'mean'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
         ~chainer.Variable: A variable holding the average negative
@@ -92,6 +98,11 @@ def crf1d(cost, xs, ys):
         <http://repository.upenn.edu/cis_papers/159/>`_.
 
     """
+    if reduce not in ('mean', 'none'):
+        raise ValueError(
+            "only 'mean' and 'no' are valid for 'reduce', but '%s' is "
+            'given' % reduce)
+
     assert xs[0].shape[1] == cost.shape[0]
 
     n_label = cost.shape[0]
@@ -130,7 +141,11 @@ def crf1d(cost, xs, ys):
         scores.append(score)
         score = concat.concat(scores[::-1], axis=0)
 
-    return _sum.sum(logz - score) / n_batch
+    loss = logz - score
+    if reduce == 'mean':
+        return _sum.sum(loss) / n_batch
+    else:
+        return loss
 
 
 def argmax_crf1d(cost, xs):
