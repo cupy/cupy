@@ -138,7 +138,7 @@ Social
 - [Forum](https://groups.google.com/forum/#!forum/chainer)
 - [Forum(Japanese)](https://groups.google.com/forum/#!forum/chainer-jp)
 - [Twitter](https://twitter.com/ChainerOfficial)
-- [Twitter (Japanese)](https://twitter.com/chainerjp
+- [Twitter(Japanese)](https://twitter.com/chainerjp)
 - [Join Slack](https://bit.ly/chainer-slack)
 - [Join Slack Japanese](https://bit.ly/chainer-jp-slack)
 
