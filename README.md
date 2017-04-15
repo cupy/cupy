@@ -140,7 +140,7 @@ Social
 - [Twitter](https://twitter.com/ChainerOfficial)
 - [Twitter(Japanese)](https://twitter.com/chainerjp)
 - [Join Slack](https://bit.ly/chainer-slack)
-- [Join Slack Japanese](https://bit.ly/chainer-jp-slack)
+- [Join Slack (Japanese)](https://bit.ly/chainer-jp-slack)
 
 Examples
 - [Code examples](example)
