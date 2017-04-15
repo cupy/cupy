@@ -60,6 +60,7 @@ from chainer.functions.connection import n_step_lstm  # NOQA
 from chainer.functions.evaluation import accuracy  # NOQA
 from chainer.functions.evaluation import binary_accuracy  # NOQA
 from chainer.functions.evaluation import classification_summary  # NOQA
+from chainer.functions.loss import absolute_error  # NOQA
 from chainer.functions.loss import black_out  # NOQA
 from chainer.functions.loss import contrastive  # NOQA
 from chainer.functions.loss import crf1d  # NOQA
@@ -237,6 +238,8 @@ from chainer.functions.evaluation.classification_summary import precision  # NOQ
 from chainer.functions.evaluation.classification_summary import recall  # NOQA
 from chainer.functions.evaluation.r2_score import r2_score  # NOQA
 
+from chainer.functions.loss.absolute_error import absolute_error  # NOQA
+from chainer.functions.loss.absolute_error import AbsoluteError  # NOQA
 from chainer.functions.loss.black_out import black_out  # NOQA
 from chainer.functions.loss.contrastive import contrastive  # NOQA
 from chainer.functions.loss.contrastive import Contrastive  # NOQA
