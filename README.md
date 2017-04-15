@@ -131,15 +131,16 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 
 ## More information
 
-- Official site: http://chainer.org/
-- Official document: http://docs.chainer.org/
-- github: https://github.com/pfnet/chainer
-- Forum: https://groups.google.com/forum/#!forum/chainer
-- Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
-- Twitter: https://twitter.com/ChainerOfficial
-- Twitter (Japanese): https://twitter.com/chainerjp
-- External examples: https://github.com/pfnet/chainer/wiki/External-examples
-- Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
+- [Official site](http://chainer.org/)
+- [Official document](http://docs.chainer.org/)
+- [github](https://github.com/pfnet/chainer)
+- [Forum](https://groups.google.com/forum/#!forum/chainer)
+- [Forum(Japanese)](https://groups.google.com/forum/#!forum/chainer-jp)
+- [Twitter](https://twitter.com/ChainerOfficial)
+- [Twitter (Japanese)](https://twitter.com/chainerjp)
+- [Code examples](example)
+- [External examples](https://github.com/pfnet/chainer/wiki/External-examples)
+- [Research projects using Chainer](https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer)
 
 ## License
 
