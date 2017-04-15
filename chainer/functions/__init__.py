@@ -73,6 +73,7 @@ from chainer.functions.loss import mean_squared_error  # NOQA
 from chainer.functions.loss import negative_sampling  # NOQA
 from chainer.functions.loss import sigmoid_cross_entropy  # NOQA
 from chainer.functions.loss import softmax_cross_entropy  # NOQA
+from chainer.functions.loss import squared_error  # NOQA
 from chainer.functions.loss import triplet  # NOQA
 from chainer.functions.loss import vae  # NOQA  # NOQA
 from chainer.functions.math import average  # NOQA
@@ -261,6 +262,8 @@ from chainer.functions.loss.sigmoid_cross_entropy import sigmoid_cross_entropy  
 from chainer.functions.loss.sigmoid_cross_entropy import SigmoidCrossEntropy  # NOQA
 from chainer.functions.loss.softmax_cross_entropy import softmax_cross_entropy  # NOQA
 from chainer.functions.loss.softmax_cross_entropy import SoftmaxCrossEntropy  # NOQA
+from chainer.functions.loss.squared_error import squared_error  # NOQA
+from chainer.functions.loss.squared_error import SquaredError  # NOQA
 from chainer.functions.loss.triplet import triplet  # NOQA
 from chainer.functions.loss.triplet import Triplet  # NOQA
 from chainer.functions.loss.vae import bernoulli_nll  # NOQA
