@@ -143,7 +143,7 @@ Social
 - [Join Slack (Japanese)](https://bit.ly/chainer-jp-slack)
 
 Examples
-- [Code examples](example)
+- [Code examples](https://github.com/pfnet/chainer/tree/master/examples)
 - [External examples](https://github.com/pfnet/chainer/wiki/External-examples)
 - [Research projects using Chainer](https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer)
 
