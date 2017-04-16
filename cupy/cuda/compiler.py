@@ -46,6 +46,8 @@ def nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
 
+    options += ('-arch{}'.format(arch),)
+
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path
@@ -54,8 +56,8 @@ def nvrtc(source, options=(), arch=None):
             cu_file.write(source)
 
         prog = Program(six.b(source), six.b(os.path.basename(cu_path)))
-        ptx = prog.compile([six.b('-arch={}'.format(arch))])
-
+        ptx = prog.compile([six.b(o) for o in options])
+                                        
         return six.b(ptx)
 
 
@@ -83,7 +85,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    options += ('-ftz=true')
+    options += ('-ftz=true',)
 
     env = (arch, options, _get_nvrtc_version())
     if '#include' in source:
