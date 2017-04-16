@@ -57,7 +57,7 @@ def nvrtc(source, options=(), arch=None):
 
         prog = Program(six.b(source), six.b(os.path.basename(cu_path)))
         ptx = prog.compile([six.b(o) for o in options])
-                                        
+ 
         return six.b(ptx)
 
 
