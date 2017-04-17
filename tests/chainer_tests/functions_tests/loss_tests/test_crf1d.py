@@ -62,12 +62,11 @@ class TestCRF1d(unittest.TestCase):
         loss = -(score - numpy.log(z))
         if self.reduce == 'mean':
             expect = numpy.sum(loss) / self.batches[0]
-            testing.assert_allclose(actual.data, expect)
         elif self.reduce == 'no':
             expect = loss
-            self.assertEqual(len(expect), len(actual))
-            for a, e in six.moves.zip(actual, expect):
-                testing.assert_allclose(a.data, e)
+
+        testing.assert_allclose(actual.data, expect)
+
 
     def test_forward_cpu(self):
         self.check_forward(self.cost, self.xs, self.ys)
