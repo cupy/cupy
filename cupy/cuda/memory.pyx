@@ -67,20 +67,13 @@ cdef class ManagedMemory(Memory):
         if size > 0:
             self.device = device_mod.Device()
             self.ptr = runtime.mallocManaged(size)
-            self._support_prefetch_advise = (
-                _cuda_version >= 8000 and
-                int(self.device.compute_capability) >= 60)
 
     cpdef prefetch(self, stream):
-        """ Prefetch.
+        """ Prefetch memory.
 
         Args:
-            stream (cupy.cuda.Stream): Stream
-
+            stream (cupy.cuda.Stream): CUDA stream.
         """
-        if not self._support_prefetch_advise:
-            warnings.warn('This device do not support prefetch method.')
-            return
         runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
                                  stream.ptr)
 
@@ -92,9 +85,6 @@ cdef class ManagedMemory(Memory):
             device (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        if not self._support_prefetch_advise:
-            warnings.warn('This device do not support prefetch method.')
-            return
         runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
@@ -355,7 +345,7 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
 
 
 cpdef MemoryPointer malloc_managed(Py_ssize_t size):
-    """Allocate managed memory
+    """Allocate managed memory.
 
     Args:
         size (int): Size of the memory allocation in bytes.
