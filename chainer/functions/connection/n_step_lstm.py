@@ -150,6 +150,10 @@ class NStepLSTM(function.Function):
                 x_type.dtype == numpy.float32,
                 x_type.ndim == 2,
             )
+
+        # Check batch size
+        type_check.expect(x_types[0].shape[0] == h_type.shape[1])
+
         for x1_type, x2_type in zip(x_types, x_types[1:]):
             type_check.expect(
                 # Check if xs are sorted by descending lengths
@@ -495,8 +499,8 @@ def n_step_lstm(
                 else:
                     h_rest = None
 
-                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
-                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
+                if layer != 0:
+                    x = dropout.dropout(x, ratio=dropout_ratio, train=train)
                 lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
                     linear.linear(h, hws[layer], hbs[layer])
 

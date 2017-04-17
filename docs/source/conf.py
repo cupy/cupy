@@ -124,6 +124,7 @@ todo_include_todos = False
 
 # Napoleon settings
 napoleon_use_ivar = True
+napoleon_include_special_with_doc = True
 
 # -- Options for HTML output ----------------------------------------------
 
