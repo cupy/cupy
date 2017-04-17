@@ -67,7 +67,6 @@ class TestCRF1d(unittest.TestCase):
 
         testing.assert_allclose(actual.data, expect)
 
-
     def test_forward_cpu(self):
         self.check_forward(self.cost, self.xs, self.ys)
 
