@@ -89,14 +89,13 @@ class LogSoftmax(function.Function):
 def log_softmax(x, use_cudnn=True):
     """Channel-wise log-softmax function.
 
-    This function computes its logarithm of softmax along the second axis. Let
-    :math:`x = (x_1, x_2, \\dots, x_D)^{\\top}` be the D dimensional input
-    array.
-    For each input array :math:`x`, it computes the logarithm of the function
-    :math:`f(x)` defined as
+    This function computes its logarithm of softmax along the second axis.
+    Let :math:`c = (c_1, c_2, \\dots, c_D)` be the slice of ``x`` along with
+    the second axis. For each slice :math:`c`, it computes the logarithm of
+    the function :math:`f(c)` defined as
 
     .. math::
-        f(x) = {\\exp(x) \\over \\sum_{x_d} \\exp(x_d)}.
+        f(c) = {\\exp(c) \\over \\sum_{c_d} \\exp(c_d)}.
 
     This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
