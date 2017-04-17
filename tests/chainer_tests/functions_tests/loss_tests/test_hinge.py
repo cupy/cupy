@@ -79,4 +79,37 @@ class TestHinge(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
 
+class TestHingeInvalidOption(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (10, 5)).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 5, (10,)).astype(numpy.int32)
+
+    def check_invalid_norm_option(self, xp):
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+        with self.assertRaises(NotImplementedError):
+            functions.hinge(x, t, 'invalid_norm', 'mean')
+
+    def test_invalid_norm_option_cpu(self):
+        self.check_invalid_norm_option(numpy)
+
+    @attr.gpu
+    def test_invalid_norm_option_gpu(self):
+        self.check_invalid_norm_option(cuda.cupy)
+
+    def check_invalid_reduce_option(self, xp):
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+        with self.assertRaises(ValueError):
+            functions.hinge(x, t, 'L1', 'invalid_option')
+
+    def test_invalid_reduce_option_cpu(self):
+        self.check_invalid_reduce_option(numpy)
+
+    @attr.gpu
+    def test_invalid_reduce_option_gpu(self):
+        self.check_invalid_reduce_option(cuda.cupy)
+
+
 testing.run_module(__name__, __file__)
