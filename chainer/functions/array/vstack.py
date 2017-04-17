@@ -53,6 +53,8 @@ def vstack(xs):
         :class:`cupy.ndarray`):
             Input variables to be concatenated. The variables must have the
             same shape, except in the vertical (row wise) dimension.
+            Otherwise, it throws :class:`chainer.utils.type_check.InvalidType`
+            exception.
 
     Returns:
         ~chainer.Variable: Output variable.
