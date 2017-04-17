@@ -94,14 +94,14 @@ def hinge(x, t, norm='L1'):
 
         .. math::
             L = \\frac{1}{N} \\sum_{n=1}^N \\sum_{k=1}^K \\left[
-            \\max(0, 1 - \\delta\\{l_n = k\\} t_{nk}) \\right]^p
+            \\max(0, 1 - \\delta\\{t_n = k\\} x_{nk}) \\right]^p
 
-        where :math:`N` denotes the batch size, :math:`K` is the number of
+        where :math:`N` denotes the batch size and :math:`K` is the number of
         classes of interest,
 
         .. math::
             \\delta \\{ {\\rm condition} \\} = \\left \\{ \\begin{array}{cc}
-            1 & {\\rm if~condition} \\\\
+            1 & {\\rm if~condition\ is\ true} \\\\
             -1 & {\\rm otherwise,}
             \\end{array} \\right.
 
@@ -109,22 +109,22 @@ def hinge(x, t, norm='L1'):
 
         .. math::
             p = \\left \\{ \\begin{array}{cc}
-            1 & {\\rm if~norm} = {\\rm 'L1'} \\\\
-            2 & {\\rm if~norm} = {\\rm 'L2'.}
+            1 & {\\rm if~norm} = {\\rm L1} \\\\
+            2 & {\\rm if~norm} = {\\rm L2.}
             \\end{array} \\right.
 
     Args:
         x (~chainer.Variable): Input variable. The shape of ``x`` should be
             (:math:`N`, :math:`K`).
         t (~chainer.Variable): The :math:`N`-dimensional label vector
-            :math:`{\\bf l}` with values
-            :math:`l_n \in \{0, 1, 2, \dots, K-1\}`. The shape of ``t`` should
-            be (:math:`N`,).
-        norm (string): Specifies norm type. Only either 'L1' or 'L2' is
+            with values :math:`t_n \in \{0, 1, 2, \dots, K-1\}`.
+            The shape of ``t`` should be (:math:`N`,).
+        norm (string): Specifies norm type. Either ``'L1'`` or ``'L2'`` is
             acceptable.
 
     Returns:
-        ~chainer.Variable: A variable object holding a scalar array of the
+        ~chainer.Variable:
+            A variable object holding a scalar array of the
             hinge loss :math:`L`.
 
     """
