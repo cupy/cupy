@@ -12,6 +12,12 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    *testing.product(
+        {'reduce': ['no', 'mean'],
+         'norm': ['L1', 'L2']}
+    )
+)
 class TestHinge(unittest.TestCase):
 
     def setUp(self):
@@ -19,14 +25,20 @@ class TestHinge(unittest.TestCase):
         # Avoid values around -1.0 for stability
         self.x[numpy.logical_and(-1.01 < self.x, self.x < -0.99)] = 0.5
         self.t = numpy.random.randint(0, 5, (10,)).astype(numpy.int32)
+        if self.reduce == 'no':
+            self.gy = numpy.random.uniform(
+                -1, 1, self.x.shape).astype(numpy.float32)
 
-    def check_forward(self, x_data, t_data, norm):
+    def check_forward(self, x_data, t_data):
         x_val = chainer.Variable(x_data)
         t_val = chainer.Variable(t_data)
-        loss = functions.hinge(x_val, t_val, norm)
-        self.assertEqual(loss.data.shape, ())
+        loss = functions.hinge(x_val, t_val, self.norm, self.reduce)
+        if self.reduce == 'mean':
+            self.assertEqual(loss.data.shape, ())
+        else:
+            self.assertEqual(loss.data.shape, self.x.shape)
         self.assertEqual(loss.data.dtype, numpy.float32)
-        loss_value = float(cuda.to_cpu(loss.data))
+        loss_value = cuda.to_cpu(loss.data)
 
         # Compute expected value
         for i in six.moves.range(self.x.shape[0]):
@@ -34,53 +46,37 @@ class TestHinge(unittest.TestCase):
         for i in six.moves.range(self.x.shape[0]):
             for j in six.moves.range(self.x.shape[1]):
                 self.x[i, j] = max(0, 1.0 + self.x[i, j])
-        loss_expect = 0
-        if norm == 'L1':
-            loss_expect = numpy.sum(self.x) / self.x.shape[0]
-        elif norm == 'L2':
-            loss_expect += numpy.sum(self.x ** 2) / self.x.shape[0]
+        if self.norm == 'L1':
+            loss_expect = self.x
+        elif self.norm == 'L2':
+            loss_expect = self.x ** 2
+        if self.reduce == 'mean':
+            loss_expect = numpy.sum(loss_expect) / self.x.shape[0]
 
-        self.assertAlmostEqual(loss_expect, loss_value, places=5)
-
-    @condition.retry(3)
-    def test_forward_cpu_l1(self):
-        self.check_forward(self.x, self.t, 'L1')
+        testing.assert_allclose(loss_expect, loss_value)
 
     @condition.retry(3)
-    def test_forward_cpu_l2(self):
-        self.check_forward(self.x, self.t, 'L2')
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.t)
 
     @attr.gpu
     @condition.retry(3)
-    def test_forward_gpu_l1(self):
-        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L1')
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
-    @attr.gpu
-    @condition.retry(3)
-    def test_forward_gpu_l2(self):
-        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L2')
-
-    def check_backward(self, x_data, t_data, norm):
+    def check_backward(self, x_data, t_data):
         gradient_check.check_backward(
-            functions.Hinge(norm), (x_data, t_data), None, eps=0.01, atol=1e-4)
+            functions.Hinge(self.norm), (x_data, t_data), None,
+            eps=0.01, atol=1e-4)
 
     @condition.retry(3)
-    def test_backward_cpu_l1(self):
-        self.check_backward(self.x, self.t, 'L1')
-
-    @condition.retry(3)
-    def test_backward_cpu_l2(self):
-        self.check_backward(self.x, self.t, 'L2')
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.t)
 
     @attr.gpu
     @condition.retry(3)
-    def test_backward_gpu_l1(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L1')
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_backward_gpu_l2(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L2')
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
 
 testing.run_module(__name__, __file__)
