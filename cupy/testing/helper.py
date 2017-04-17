@@ -420,7 +420,7 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def _make_all_dtypes(no_float16, no_bool, excludes=False):
+def _make_all_dtypes(no_float16, no_bool, excludes):
     if no_float16:
         if no_bool:
             return _regular_float_dtypes + _int_dtypes
