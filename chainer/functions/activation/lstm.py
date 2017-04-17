@@ -157,21 +157,21 @@ def lstm(c_prev, x):
     """Long Short-Term Memory units as an activation function.
 
     This function implements LSTM units with forget gates. Let the previous
-    cell state :math:`c_{\\text{prev}}` and the incoming signal :math:`x`.
+    cell state ``c_prev`` and the input array ``x``.
 
-    First, the incoming signal :math:`x` is split into four arrays
-    :math:`a, i, f, o` of the same shapes along the second axis.
-    It means that :math:`x` 's second axis must have 4 times the length of
-    :math:`c_{\\text{prev}}`.
+    First, the input array ``x`` is split into four arrays
+    :math:`a, i, f, o` of the same shapes along the second axis. It means that
+    ``x`` 's second axis must have 4 times the length of ``c_prev``.
 
-    The split input signals are corresponding to:
+    The split input arrays are corresponding to:
 
         - :math:`a` : sources of cell input
         - :math:`i` : sources of input gate
         - :math:`f` : sources of forget gate
         - :math:`o` : sources of output gate
 
-    Second, it computes outputs as:
+    Second, it computes the updated cell state ``c`` and the outgoing signal
+    ``h`` as:
 
     .. math::
 
@@ -197,8 +197,9 @@ def lstm(c_prev, x):
             should be a zero array or the output of the previous call of LSTM.
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Variable that holds the incoming signal. It must have the second
-            dimension whose size is four times of that of the cell state.
+            Variable that holds the sources of cell input, input gate, forget
+            gate and output gate. It must have the second dimension whose size
+            is four times of that of the cell state.
 
     Returns:
         tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``.
@@ -210,8 +211,8 @@ def lstm(c_prev, x):
 
     .. admonition:: Example
 
-        Assuming ``y`` is the current input signal, ``c`` is the previous cell
-        state, and ``h`` is the previous output signal from an ``lstm``
+        Assuming ``y`` is the current incoming signal, ``c`` is the previous
+        cell state, and ``h`` is the previous outgoing signal from an ``lstm``
         function. Each of ``y``, ``c`` and ``h`` has ``n_units`` channels.
         Most typical preparation of ``x`` is:
 
@@ -224,9 +225,10 @@ def lstm(c_prev, x):
         >>> x = model.w(y) + model.v(h)
         >>> c, h = F.lstm(c, x)
 
-        It corresponds to calculate the input sources :math:`a, i, f, o` from
-        the current input ``y`` and the previous output ``h``. Different
-        parameters are used for different kind of input sources.
+        It corresponds to calculate the input array ``x``, or the input
+        sources :math:`a, i, f, o` from the current incoming signal ``y`` and
+        the previous outgoing signal ``h``. Different parameters are used for
+        different kind of input sources.
 
     """
     return LSTM()(c_prev, x)

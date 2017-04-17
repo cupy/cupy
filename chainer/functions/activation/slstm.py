@@ -189,33 +189,34 @@ def slstm(c_prev1, c_prev2, x1, x2):
     This function implements S-LSTM unit. It is an extension of LSTM unit
     applied to tree structures.
     The function is applied to binary trees. Each node has two child nodes.
-    It gets four arguments, previous cell states :math:`c_1` and
-    :math:`c_2`, and incoming signals :math:`x_1` and :math:`x_2`.
+    It gets four arguments, previous cell states ``c_prev1`` and ``c_prev2``,
+    and input arrays ``x_1`` and ``x_2``.
 
-    First both input signals :math:`x_1` and :math:`x_2` are split into
-    eight arrays :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`.
-    They have the same shape along the second axis.
-    It means that :math:`x_1` and :math:`x_2` 's second axis must have 4 times
-    the length of :math:`c_{1 \\text{prev}}` and :math:`c_{2 \\text{prev}}`.
+    First both input arrays ``x_1`` and ``x_2`` are split into eight arrays
+    :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`. They have the
+    same shape along the second axis.
+    It means that ``x_1`` and ``x_2`` 's second axis must have 4 times
+    the length of ``c_prev1`` and ``c_prev2``.
 
-    The split input signals are corresponding to:
+    The split input arrays are corresponding to:
 
         - :math:`a_i` : sources of cell input
         - :math:`i_i` : sources of input gate
         - :math:`f_i` : sources of forget gate
         - :math:`o_i` : sources of output gate
 
-    It computes outputs as:
+    It computes the updated cell state ``c`` and the outgoing signal
+    ``h`` as:
 
     .. math::
 
         c &= \\tanh(a_1 + a_2) \\sigma(i_1 + i_2)
-           + c_{1 \\text{prev}} \\sigma(f_1)
-           + c_{2 \\text{prev}} \\sigma(f_2), \\\\
+           + c_{\\text{prev}1} \\sigma(f_1)
+           + c_{\\text{prev}2} \\sigma(f_2), \\\\
         h &= \\tanh(c) \\sigma(o_1 + o_2),
 
     where :math:`\\sigma` is the elementwise sigmoid function.
-    The function returns :math:`c` and :math:`h` as a tuple.
+    The function returns ``c`` and ``h`` as a tuple.
 
     Args:
         c_prev1 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
@@ -229,12 +230,13 @@ def slstm(c_prev1, c_prev2, x1, x2):
             node.
         x1 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Variable that holds the incoming signal from the first child node.
-            It must have the second dimension four times of that of the cell
+            Variable that holds the sources of cell input, input gate, forget
+            gate and output gate from the first child node. It must have the
+            second dimension whose size is four times of that of the cell
             state.
         x2 (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Variable that holds the incoming signal from the second child node.
+            Variable that holds the input sources from the second child node.
 
     Returns:
         tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
@@ -246,17 +248,15 @@ def slstm(c_prev1, c_prev2, x1, x2):
     .. admonition:: Example
 
         Assuming ``c1``, ``c2`` is the previous cell state of children,
-        and ``h1``, ``h2`` is the previous output signal from children.
+        and ``h1``, ``h2`` is the previous outgoing signal from children.
         Each of ``c1``, ``c2``, ``h1`` and ``h2`` has ``n_units`` channels.
         Most typical preparation of ``x1``, ``x2`` is:
 
         >>> n_units = 100
         >>> h1 = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> h2 = chainer.Variable(np.zeros((1, n_units), 'f'))
-        >>> h = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> c1 = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> c2 = chainer.Variable(np.zeros((1, n_units), 'f'))
-        >>> c = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> model1 = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
         ...                        v=L.Linear(n_units, 4 * n_units))
         >>> model2 = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
@@ -265,11 +265,11 @@ def slstm(c_prev1, c_prev2, x1, x2):
         >>> x2 = model2.w(c2) + model2.v(h2)
         >>> c, h = F.slstm(c1, c2, x1, x2)
 
-        It corresponds to calculate the input sources
-        :math:`a_1, i_1, f_1, o_1` from the previous cell state of first
-        child node ``c1``, and the previous output signal from first child node
-        ``h1``. Different parameters are used for different kind of input
-        sources.
+        It corresponds to calculate the input array ``x_1``, or the input
+        sources :math:`a_1, i_1, f_1, o_1` from the previous cell state of
+        first child node ``c1``, and the previous outgoing signal from first
+        child node ``h1``. Different parameters are used for different kind of
+        input sources.
 
     """
     return SLSTM()(c_prev1, c_prev2, x1, x2)
