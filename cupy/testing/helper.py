@@ -437,7 +437,7 @@ def _make_all_dtypes(no_float16, no_bool, excludes):
 
 
 def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
-                   excludes=False):
+                   excludes=[]):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
