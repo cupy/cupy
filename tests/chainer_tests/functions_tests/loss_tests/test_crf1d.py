@@ -1,5 +1,4 @@
 import itertools
-import six
 import unittest
 
 import numpy
