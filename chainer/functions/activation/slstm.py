@@ -190,12 +190,12 @@ def slstm(c_prev1, c_prev2, x1, x2):
     applied to tree structures.
     The function is applied to binary trees. Each node has two child nodes.
     It gets four arguments, previous cell states ``c_prev1`` and ``c_prev2``,
-    and input arrays ``x_1`` and ``x_2``.
+    and input arrays ``x1`` and ``x2``.
 
-    First both input arrays ``x_1`` and ``x_2`` are split into eight arrays
+    First both input arrays ``x1`` and ``x2`` are split into eight arrays
     :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`. They have the
     same shape along the second axis.
-    It means that ``x_1`` and ``x_2`` 's second axis must have 4 times
+    It means that ``x1`` and ``x2`` 's second axis must have 4 times
     the length of ``c_prev1`` and ``c_prev2``.
 
     The split input arrays are corresponding to:
@@ -265,7 +265,7 @@ def slstm(c_prev1, c_prev2, x1, x2):
         >>> x2 = model2.w(c2) + model2.v(h2)
         >>> c, h = F.slstm(c1, c2, x1, x2)
 
-        It corresponds to calculate the input array ``x_1``, or the input
+        It corresponds to calculate the input array ``x1``, or the input
         sources :math:`a_1, i_1, f_1, o_1` from the previous cell state of
         first child node ``c1``, and the previous outgoing signal from first
         child node ``h1``. Different parameters are used for different kind of
