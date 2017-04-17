@@ -226,7 +226,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
     s = cupy.empty(mn, dtype=dtype)
     handle = device.get_cusolver_handle()
-    devInfo = cupy.empty(1, dtype=numpy.int32)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
     if compute_uv:
         if full_matrices:
             jobu, jobvt = ord('A'), ord('A')
@@ -240,16 +240,16 @@ def svd(a, full_matrices=True, compute_uv=True):
         cusolver.sgesvd(
             handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, devInfo.data.ptr)
+            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     else:  # dtype == 'd'
         buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=dtype)
         cusolver.dgesvd(
             handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, devInfo.data.ptr)
+            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
 
-    status = int(devInfo[0])
+    status = int(dev_info[0])
     if status > 0:
         raise linalg.LinAlgError(
             'SVD computation does not converge')
