@@ -761,7 +761,9 @@ class TestFusionMisc(unittest.TestCase):
         ty = numpy.dtype(dtype).type
         return g(a, ty(3), ty(13))
 
+    @testing.with_requires('numpy>=1.11.2')
     def test_sqrt(self):
+        # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
     def test_square(self):
@@ -992,36 +994,34 @@ class TestFusionFuse(unittest.TestCase):
         res = g(a, b, c)
         return c + res
 
+    # NumPy 1.9 accepts itruediv between integers
+    @testing.with_requires('numpy>=1.10')
+    @unittest.skipUnless(six.PY3, 'Only for py3')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_raises()
     def test_fuse_int_itruediv_py3_raises(self, xp, dtype):
-        if six.PY3:
-            a = xp.array(3, dtype=dtype)
-            b = xp.array(2, dtype=dtype)
+        a = xp.array(3, dtype=dtype)
+        b = xp.array(2, dtype=dtype)
 
-            @cupy.fuse()
-            def g(x, y):
-                x /= y
+        @cupy.fuse()
+        def g(x, y):
+            x /= y
 
-            g(a, b)
-        else:
-            raise Exception()
+        g(a, b)
 
+    @unittest.skipUnless(six.PY2, 'Only for py2')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_fuse_int_ifloordiv_py2(self, xp, dtype):
-        if six.PY2:
-            a = xp.array(3, dtype=dtype)
-            b = xp.array(2, dtype=dtype)
+        a = xp.array(3, dtype=dtype)
+        b = xp.array(2, dtype=dtype)
 
-            @cupy.fuse()
-            def g(x, y):
-                x /= y
+        @cupy.fuse()
+        def g(x, y):
+            x /= y
 
-            g(a, b)
-            return a
-        else:
-            return xp.empty(0, dtype=dtype)
+        g(a, b)
+        return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

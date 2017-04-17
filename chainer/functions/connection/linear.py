@@ -33,6 +33,12 @@ class LinearFunction(function.Function):
     def forward(self, inputs):
         x = _as_mat(inputs[0])
         W = inputs[1]
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(x): {1}'
+                             .format(type(W), type(x)))
+
         y = x.dot(W.T).astype(x.dtype, copy=False)
         if len(inputs) == 3:
             b = inputs[2]
@@ -43,6 +49,11 @@ class LinearFunction(function.Function):
         x = _as_mat(inputs[0])
         W = inputs[1]
         gy = grad_outputs[0]
+
+        if not type_check.same_types(*inputs):
+            raise ValueError('numpy and cupy must not be used together\n'
+                             'type(W): {0}, type(x): {1}'
+                             .format(type(W), type(x)))
 
         gx = gy.dot(W).astype(x.dtype, copy=False).reshape(inputs[0].shape)
         gW = gy.T.dot(x).astype(W.dtype, copy=False)

@@ -95,7 +95,8 @@ class NpzDeserializer(serializer.Deserializer):
 
     def __getitem__(self, key):
         key = key.strip('/')
-        return NpzDeserializer(self.npz, self.path + key + '/')
+        return NpzDeserializer(
+            self.npz, self.path + key + '/', strict=self.strict)
 
     def __call__(self, key, value):
         key = self.path + key.lstrip('/')

@@ -17,6 +17,12 @@ class SplitAxis(function.Function):
                 indices_or_sections,
                 six.integer_types + (collections.Iterable,)):
             raise TypeError('indices_or_sections must be integer or 1-D array')
+        if (chainer.is_debug() and
+                isinstance(indices_or_sections, collections.Iterable)):
+            for p, n in six.moves.zip(
+                    indices_or_sections, indices_or_sections[1:]):
+                if p > n:
+                    raise ValueError('indices_or_sections must be sorted')
         self.indices_or_sections = indices_or_sections
         self.axis = axis
 
@@ -39,12 +45,6 @@ class SplitAxis(function.Function):
             cdimx = x[0].shape[self.axis]
             ind = list(self.indices_or_sections)
             ind.append(cdimx)
-            prev_i = 0
-            for i in ind:
-                cdimy = max(0, min(i, cdimx) - prev_i)
-                if cdimy == 0:
-                    raise ValueError('Not support if shape contains 0')
-                prev_i = i
         xp = cuda.get_array_module(*x)
         return tuple(xp.split(x[0], self.indices_or_sections, self.axis))
 

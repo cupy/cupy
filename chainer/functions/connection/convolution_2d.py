@@ -63,6 +63,17 @@ class Convolution2DFunction(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
+
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
@@ -76,6 +87,16 @@ class Convolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
 
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape
@@ -145,6 +166,17 @@ class Convolution2DFunction(function.Function):
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
+
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
@@ -163,6 +195,17 @@ class Convolution2DFunction(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
+
+        if not type_check.same_types(*inputs):
+            if b is not None:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}, type(b): {2}'
+                                 .format(type(W), type(x), type(b)))
+            else:
+                raise ValueError('numpy and cupy must not be used together\n'
+                                 'type(W): {0}, type(x): {1}'
+                                 .format(type(W), type(x)))
+
         gy = grad_outputs[0]
         _, out_c, out_h, out_w = gy.shape
         n, c, h, w = x.shape
@@ -265,57 +308,105 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     - :math:`n` is the batch size.
     - :math:`c_I` and :math:`c_O` are the number of the input and output
       channels, respectively.
-    - :math:`h` and :math:`w` are the height and width of the input image,
+    - :math:`h_I` and :math:`w_I` are the height and width of the input image,
       respectively.
-    - :math:`k_H` and :math:`k_W` are the height and width of the filters,
+    - :math:`h_K` and :math:`w_K` are the height and width of the filters,
       respectively.
+    - :math:`h_P` and :math:`w_P` are the height and width of the spatial
+      padding size, respectively.
+
+    Then the ``Convolution2D`` function computes correlations between filters
+    and patches of size :math:`(h_K, w_K)` in ``x``.
+    Note that correlation here is equivalent to the inner product between
+    expanded vectors.
+    Patches are extracted at positions shifted by multiples of ``stride`` from
+    the first position ``(-h_P, -w_P)`` for each spatial axis.
+    The right-most (or bottom-most) patches do not run over the padded spatial
+    size.
+
+    Let :math:`(s_Y, s_X)` be the stride of filter application. Then, the
+    output size :math:`(h_O, w_O)` is determined by the following equations:
+
+    .. math::
+
+       h_O &= (h_I + 2h_P - h_K) / s_Y + 1,\\\\
+       w_O &= (w_I + 2w_P - w_K) / s_X + 1.
+
+    If ``cover_all`` option is ``True``, the filter will cover the all
+    spatial locations. So, if the last stride of filter does not cover the
+    end of spatial locations, an addtional stride will be applied to the end
+    part of spatial locations. In this case, the output size :math:`(h_O, w_O)`
+    is determined by the following equations:
+
+    .. math::
+
+       h_O &= (h_I + 2h_P - h_K + s_Y - 1) / s_Y + 1,\\\\
+       w_O &= (w_I + 2w_P - w_K + s_X - 1) / s_X + 1.
+
+    If the bias vector is given, then it is added to all spatial locations of
+    the output of convolution.
+
+    The two-dimensional convolution function is defined as follows.
 
     Args:
-        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`.
-        W (~chainer.Variable): Weight variable of shape
-            :math:`(c_O, c_I, k_H, k_W)`.
-        b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
-        stride (int or pair of ints): Stride of filter applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent.
-        pad (int or pair of ints): Spatial padding width for input arrays.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable of shape :math:`(n, c_I, h_I, w_I)`.
+        W (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Weight variable of shape :math:`(c_O, c_I, h_K, w_K)`.
+        b (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Bias variable of length :math:`c_O` (optional).
+        stride (:class:`int` or pair of :class:`int` s):
+            Stride of filter applications. ``stride=s`` and ``stride=(s, s)``
+            are equivalent.
+        pad (:class:`int` or pair of :class:`int` s):
+            Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
         cover_all (bool): If ``True``, all spatial locations are convoluted
-            into some output pixels. It may make the output size larger.
+            into some output pixels.
         deterministic (bool): The output of this function can be
             non-deterministic when it uses cuDNN.
             If this option is ``True``, then it forces cuDNN to use
             a deterministic algorithm. This option is only available for
             cuDNN version >= v3.
 
-
     Returns:
-        ~chainer.Variable: Output variable.
-
-    The two-dimensional convolution function is defined as follows.
-    Then the ``Convolution2D`` function computes correlations between filters
-    and patches of size :math:`(k_H, k_W)` in ``x``.
-    Note that correlation here is equivalent to the inner product between
-    expanded vectors.
-    Patches are extracted at positions shifted by multiples of ``stride`` from
-    the first position ``-pad`` for each spatial axis.
-    The right-most (or bottom-most) patches do not run over the padded spatial
-    size.
-
-    Let :math:`(s_Y, s_X)` be the stride of filter application, and
-    :math:`(p_H, p_W)` the spatial padding size. Then, the output size
-    :math:`(h_O, w_O)` is determined by the following equations:
-
-    .. math::
-
-       h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
-       w_O &= (w + 2p_W - k_W) / s_X + 1.
-
-    If the bias vector is given, then it is added to all spatial locations of
-    the output of convolution.
+        ~chainer.Variable:
+            Output variable of shape :math:`(n, c_O, h_O, w_O)`.
 
     .. seealso:: :class:`~chainer.links.Convolution2D`
+
+    .. admonition:: Example
+
+        >>> n = 10
+        >>> c_i, c_o = 3, 1
+        >>> h_i, w_i = 30, 40
+        >>> h_k, w_k = 10, 10
+        >>> h_p, w_p = 5, 5
+        >>> x = np.random.uniform(0, 1, (n, c_i, h_i, w_i)).astype('f')
+        >>> x.shape
+        (10, 3, 30, 40)
+        >>> W = np.random.uniform(0, 1, (c_o, c_i, h_k, w_k)).astype('f')
+        >>> W.shape
+        (1, 3, 10, 10)
+        >>> b = np.random.uniform(0, 1, (c_o,)).astype('f')
+        >>> b.shape
+        (1,)
+        >>> s_y, s_x = 5, 7
+        >>> y = F.convolution_2d(x, W, b, stride=(s_y, s_x), pad=(h_p, w_p))
+        >>> y.shape
+        (10, 1, 7, 6)
+        >>> h_o = int((h_i + 2 * h_p - h_k) / s_y + 1)
+        >>> w_o = int((w_i + 2 * w_p - w_k) / s_x + 1)
+        >>> y.shape == (n, c_o, h_o, w_o)
+        True
+        >>> y = F.convolution_2d(x, W, b, stride=(s_y, s_x), pad=(h_p, w_p), \
+cover_all=True)
+        >>> y.shape == (n, c_o, h_o, w_o + 1)
+        True
 
     """
     func = Convolution2DFunction(

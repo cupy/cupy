@@ -21,7 +21,7 @@ Requirements for some features:
   - filelock
   - g++ 4.8.4+
 - cuDNN support
-  - cuDNN v2, v3, v4, v5, v5.1
+  - cuDNN v2, v3, v4, v5, v5.1, v6
 - Caffe model support
   - Protocol Buffers (pip install protobuf)
     - protobuf>=3.0.0 is required for Py3
@@ -130,16 +130,22 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 
 
 ## More information
+- [Official site](http://chainer.org/)
+- [Official document](http://docs.chainer.org/)
+- [github](https://github.com/pfnet/chainer)
 
-- Official site: http://chainer.org/
-- Official document: http://docs.chainer.org/
-- github: https://github.com/pfnet/chainer
-- Forum: https://groups.google.com/forum/#!forum/chainer
-- Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
-- Twitter: https://twitter.com/ChainerOfficial
-- Twitter (Japanese): https://twitter.com/chainerjp
-- External examples: https://github.com/pfnet/chainer/wiki/External-examples
-- Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
+Social
+- [Forum](https://groups.google.com/forum/#!forum/chainer)
+- [Forum(Japanese)](https://groups.google.com/forum/#!forum/chainer-jp)
+- [Twitter](https://twitter.com/ChainerOfficial)
+- [Twitter(Japanese)](https://twitter.com/chainerjp)
+- [Join Slack](https://bit.ly/chainer-slack)
+- [Join Slack (Japanese)](https://bit.ly/chainer-jp-slack)
+
+Examples
+- [Code examples](https://github.com/pfnet/chainer/tree/master/examples)
+- [External examples](https://github.com/pfnet/chainer/wiki/External-examples)
+- [Research projects using Chainer](https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer)
 
 ## License
 

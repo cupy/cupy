@@ -15,7 +15,7 @@ try:
 
     _available = True
 
-except ImportError:
+except (ImportError, TypeError):
     _available = False
 
 

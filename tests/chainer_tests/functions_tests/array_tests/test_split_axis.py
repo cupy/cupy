@@ -29,9 +29,9 @@ from chainer.testing import attr
         {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
          'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
                     [slice(None), slice(5, None)]]},
-        {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
-         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
-                    [slice(None), slice(5, None)]]},
+        {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [0],
+         'slices': [[slice(None), slice(None, 0)], [slice(None), slice(0, 7)]]
+         },
     ],
     [
         {'dtype': numpy.float16},
@@ -140,6 +140,21 @@ class TestSplitAxisForceArray(unittest.TestCase):
     @attr.gpu
     def test_forward_single_gpu(self):
         self.check_forward_single(cuda.to_gpu(self.x), axis=self.axis)
+
+
+class TestSplitAxisInvalidSections(unittest.TestCase):
+
+    def setUp(self):
+        self.default_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.default_debug)
+
+    def test_invalid_sections(self):
+        x = numpy.zeros((2, 3, 4), dtype='f')
+        with self.assertRaises(ValueError):
+            functions.split_axis(x, [2, 1], 1)
 
 
 testing.run_module(__name__, __file__)

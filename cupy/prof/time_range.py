@@ -1,13 +1,14 @@
 import contextlib
 import functools
 
-from cupy.cuda import nvtx  # NOQA
+from cupy import cuda
 
 
 @contextlib.contextmanager
 def time_range(message, color_id=None, argb_color=None):
     """A context manager to describe the enclosed block as a nested range
 
+    >>> from cupy import prof
     >>> with cupy.prof.time_range('some range in green', color_id=0):
     ...    # do something you want to measure
     ...    pass
@@ -20,19 +21,22 @@ def time_range(message, color_id=None, argb_color=None):
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
+    if not cuda.nvtx_enabled:
+        raise RuntimeError('nvtx is not installed')
+
     if color_id is not None and argb_color is not None:
         raise ValueError('Only either color_id or argb_color can be specified')
 
     if argb_color is not None:
-        nvtx.RangePushC(message, argb_color)
+        cuda.nvtx.RangePushC(message, argb_color)
     else:
         if color_id is None:
             color_id = -1
-        nvtx.RangePush(message, color_id)
+        cuda.nvtx.RangePush(message, color_id)
     try:
         yield
     finally:
-        nvtx.RangePop()
+        cuda.nvtx.RangePop()
 
 
 class TimeRangeDecorator(object):
@@ -40,6 +44,7 @@ class TimeRangeDecorator(object):
 
     Decorated function calls are marked as ranges in NVIDIA profiler timeline.
 
+    >>> from cupy import prof
     >>> @cupy.prof.TimeRangeDecorator()
     ... def function_to_profile():
     ...     pass
@@ -55,6 +60,9 @@ class TimeRangeDecorator(object):
     """
 
     def __init__(self, message=None, color_id=None, argb_color=None):
+        if not cuda.nvtx_enabled:
+            raise RuntimeError('nvtx is not installed')
+
         if color_id is not None and argb_color is not None:
             raise ValueError(
                 'Only either color_id or argb_color can be specified'
@@ -65,13 +73,13 @@ class TimeRangeDecorator(object):
 
     def __enter__(self):
         if self.argb_color is not None:
-            nvtx.RangePushC(self.message, self.argb_color)
+            cuda.nvtx.RangePushC(self.message, self.argb_color)
         else:
-            nvtx.RangePush(self.message, self.color_id)
+            cuda.nvtx.RangePush(self.message, self.color_id)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        nvtx.RangePop()
+        cuda.nvtx.RangePop()
 
     def _recreate_cm(self, message):
         if self.message is None:
