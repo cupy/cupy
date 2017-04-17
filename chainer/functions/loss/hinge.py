@@ -135,6 +135,10 @@ def hinge(x, t, norm='L1', reduce='mean'):
             2 & {\\rm if~norm} = {\\rm 'L2'.}
             \\end{array} \\right.
 
+        The output is a varialbe whose value depends on the value of
+        the option ``reduce``. If it is ``'no'``, it holds the elementwise
+        loss values. If it is ``'mean'``, it takes the mean of loss values.
+
     Args:
         x (~chainer.Variable): Input variable. The shape of ``x`` should be
             (:math:`N`, :math:`K`).
@@ -142,12 +146,19 @@ def hinge(x, t, norm='L1', reduce='mean'):
             :math:`{\\bf l}` with values
             :math:`l_n \in \{0, 1, 2, \dots, K-1\}`. The shape of ``t`` should
             be (:math:`N`,).
-        norm (string): Specifies norm type. Only either 'L1' or 'L2' is
+        norm (string): Specifies norm type. Only either ``'L1'`` or ``'L2'`` is
             acceptable.
+        recude (str): Reduction option. Its value must be either
+            ``'mean'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
+
 
     Returns:
-        ~chainer.Variable: A variable object holding a scalar array of the
+        ~chainer.Variable:
+            A variable object holding a scalar array of the
             hinge loss :math:`L`.
+            If ``reduce`` is ``'no'``, the output varialbe holds array
+            whose shape is same as one of (hence both of) input variables.
+            If it is ``'mean'``, the output variable holds a scalar value.
 
     """
     return Hinge(norm, reduce)(x, t)
