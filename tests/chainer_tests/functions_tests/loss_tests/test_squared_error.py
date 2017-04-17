@@ -15,6 +15,9 @@ from chainer.testing import condition
     {'shape': (4, 3)},
     {'shape': (4, 3, 2)},
     {'shape': (4,)},
+    {'shape': ()},
+    {'shape': (1,)},
+    {'shape': (1, 1)},
 )
 class TestSquaredError(unittest.TestCase):
 
