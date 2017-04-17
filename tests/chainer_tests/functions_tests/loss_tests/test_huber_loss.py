@@ -69,4 +69,24 @@ class TestHuberLoss(unittest.TestCase):
                             cuda.to_gpu(self.gy))
 
 
+class TestHuberLossInvalidReductionOption(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (4, 10)).astype(numpy.float32)
+        self.t = numpy.random.uniform(-1, 1, (4, 10)).astype(numpy.float32)
+
+    def check_invalid_option(self, xp):
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+        with self.assertRaises(ValueError):
+            functions.huber_loss(x, t, 1, 'invalid_option')
+
+    def test_invalid_option_cpu(self):
+        self.check_invalid_option(numpy)
+
+    @attr.gpu
+    def test_invalid_option_gpu(self):
+        self.check_invalid_option(cuda.cupy)
+
+
 testing.run_module(__name__, __file__)
