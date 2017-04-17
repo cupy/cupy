@@ -4,12 +4,11 @@ import re
 import tempfile
 
 import filelock
+from pynvrtc import compiler
 import six
 
 from cupy.cuda import device
 from cupy.cuda import function
-from pynvrtc.compiler import NVRTCInterface
-from pynvrtc.compiler import Program
 
 _nvrtc_version = None
 
@@ -17,7 +16,7 @@ _nvrtc_version = None
 def _get_nvrtc_version():
     global _nvrtc_version
     if _nvrtc_version is None:
-        interface = NVRTCInterface()
+        interface = compiler.NVRTCInterface()
         _nvrtc_version = interface.nvrtcVersion()
 
     return _nvrtc_version
@@ -55,14 +54,15 @@ def nvrtc(source, options=(), arch=None):
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = Program(six.b(source), six.b(os.path.basename(cu_path)))
+        prog = compiler.Program(
+            six.b(source), six.b(os.path.basename(cu_path)))
         ptx = prog.compile([six.b(o) for o in options])
  
         return six.b(ptx)
 
 
 def preprocess(source, options=()):
-    pp_src = Program(six.b(source), six.b('')).compile()
+    pp_src = compiler.Program(six.b(source), six.b('')).compile()
     if isinstance(pp_src, six.binary_type):
         pp_src = pp_src.decode('utf-8')
     return re.sub('(?m)^#.*$', '', pp_src)
