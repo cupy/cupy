@@ -87,6 +87,7 @@ class TestMaxPooling2D(unittest.TestCase):
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
+    @attr.gpu
     def test_forward_output_size_zero_gpu(self):
         with self.assertRaisesRegexp(
                 AssertionError, 'Height in the output should be positive.'):
@@ -99,6 +100,7 @@ class TestMaxPooling2D(unittest.TestCase):
             x = chainer.Variable(x_data)
             functions.max_pooling_2d(x, 3, stride=2, use_cudnn=False)
 
+    @attr.cudnn
     def test_forward_output_size_zero_cudnn(self):
         with self.assertRaisesRegexp(
                 AssertionError, 'Height in the output should be positive.'):
