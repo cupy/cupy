@@ -15,6 +15,9 @@ from chainer.testing import condition
     {'shape': (4, 3)},
     {'shape': (4, 3, 2)},
     {'shape': (4,)},
+    {'shape': ()},
+    {'shape': (1,)},
+    {'shape': (1, 1)},
 )
 class TestAbsoluteError(unittest.TestCase):
 
@@ -23,7 +26,7 @@ class TestAbsoluteError(unittest.TestCase):
         # Add sufficient margin to prevent computational error
         diff = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
         diff[abs(diff) < 0.01] = 0.5
-        self.x1 = self.x0 + diff
+        self.x1 = numpy.asarray(self.x0 + diff)
         self.gy = numpy.random.random(self.shape).astype(numpy.float32)
 
     def check_forward(self, x0_data, x1_data):
