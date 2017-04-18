@@ -391,7 +391,7 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
 
         This function uses cuDNN implementation for its forward and backward
         computation if ALL of the following conditions are satisfied:
-    
+
         - ``cuda.cudnn_enabled`` is ``True``
         - ``use_cudnn`` is ``True``
         - The number of spatial dimensions is more than one.
@@ -420,7 +420,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
         >>> b.shape
         (1,)
         >>> s1, s2, s3 = 2, 4, 6
-        >>> y = F.convolution_nd(x, W, b, stride=(s1, s2, s3), pad=(p1, p2, p3))
+        >>> y = F.convolution_nd(x, W, b, stride=(s1, s2, s3),\
+ pad=(p1, p2, p3))
         >>> y.shape
         (10, 1, 16, 11, 9)
         >>> l1 = int((d1 + 2 * p1 - k1) / s1 + 1)
@@ -428,8 +429,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
         >>> l3 = int((d3 + 2 * p3 - k3) / s3 + 1)
         >>> y.shape == (n, c_o, l1, l2, l3)
         True
-        >>> y = F.convolution_nd(x, W, b, stride=(s1, s2, s3), \
-pad=(p1, p2, p3), cover_all=True) 
+        >>> y = F.convolution_nd(x, W, b, stride=(s1, s2, s3),\
+ pad=(p1, p2, p3), cover_all=True)
         >>> y.shape == (n, c_o, l1, l2, l3 + 1)
         True
 
