@@ -1,5 +1,5 @@
 Convolutional Network for Visual Recognition Tasks
---------------------------------------------------
+``````````````````````````````````````````````````
 
 .. currentmodule:: chainer
 
@@ -13,7 +13,7 @@ After reading this section, you will be able to:
 * Write your original convolutional network in Chainer
 
 Convolutional Network
-~~~~~~~~~~~~~~~~~~~~~
+'''''''''''''''''''''
 
 A convolutional network (ConvNet) is mainly comprised of convolutional layers.
 This type of network is oftenly used for various visual recognition tasks,
@@ -34,7 +34,7 @@ maps that have the corresponding size to the input image for a pixel labeling
 task, etc.
 
 LeNet5
-******
+......
 
 Here, let's start from defining LeNet5 [LeCun98]_ in Chainer.
 This is a ConvNet model that has 5 layers comprised of 3 convolutional layers
@@ -174,7 +174,7 @@ models.
     IEEE, 86(11), 2278–2324, 1998.
 
 VGG16 and ResNet
-****************
+................
 
 Next, let's write more large models like VGG16 [Simonyan14]_ and ResNet [He16]_
 in Chainer. To write a large network consisted of several building block

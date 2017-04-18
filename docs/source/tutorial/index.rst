@@ -5,8 +5,7 @@ Chainer Tutorial
    :maxdepth: 1
 
    basic
-   recurrentnet
-   convnet
+   writenet
    gpu
    function
    type_check
