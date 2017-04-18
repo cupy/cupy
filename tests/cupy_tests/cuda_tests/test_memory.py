@@ -309,7 +309,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'allocator': [memory._malloc, memory._mallocManaged],
+    'allocator': [memory._malloc, memory.malloc_managed],
 }))
 @testing.gpu
 class TestMemoryPool(unittest.TestCase):
