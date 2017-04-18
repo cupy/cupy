@@ -95,7 +95,7 @@ def log_softmax(x, use_cudnn=True):
     the function :math:`f(c)` defined as
 
     .. math::
-        f(c) = {\\exp(c) \\over \\sum_{c_d} \\exp(c_d)}.
+        f(c) = {\\exp(c) \\over \\sum_{d} \\exp(c_d)}.
 
     This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
