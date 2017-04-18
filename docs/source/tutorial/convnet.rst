@@ -273,8 +273,8 @@ a VGG16 model:
                 h = self.fc6(h)
             return h
 
-That's it. VGG16 is a model which won the 1st place in [classification +
-localization task at ILSVRC 2014](http://www.image-net.org/challenges/LSVRC/2014/results#clsloc),
+That's it. VGG16 is a model which won the 1st place in
+`classification + localization task at ILSVRC 2014<http://www.image-net.org/challenges/LSVRC/2014/results#clsloc>`_,
 and since then, became one of standard models for many different tasks as a
 pre-trained model. This has 16-layers, so it's called "VGG-16", but we can
 write this model without writing all layers independently. Because this model
