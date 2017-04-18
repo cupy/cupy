@@ -43,9 +43,6 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
             If it is ``'sum'``, the output variable holds a scalar value.
 
     """
-    assert isinstance(mean, variable.Variable)
-    assert isinstance(ln_var, variable.Variable)
-
     if reduce not in ('sum', 'no'):
         raise ValueError(
             "only 'sum' and 'no' are valid for 'reduce', but '%s' is "

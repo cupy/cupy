@@ -38,7 +38,8 @@ class TestGaussianKLDivergence(unittest.TestCase):
             mean = chainer.Variable(mean)
         if self.wrap_v:
             ln_var = chainer.Variable(ln_var)
-        actual = cuda.to_cpu(F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
+        actual = cuda.to_cpu(
+            F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
         actual = cuda.to_cpu(F.gaussian_kl_divergence(mean, ln_var).data)
         testing.assert_allclose(self.expect, actual)
 
