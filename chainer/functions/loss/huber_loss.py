@@ -63,7 +63,7 @@ def huber_loss(x, t, delta, reduce='sum_along_second_axis'):
             \\delta (|a| - \\frac{1}{2} \\delta) & {\\rm otherwise,}
             \\end{array} \\right.
 
-        The output is a varialbe whose value depends on the value of
+        The output is a variable whose value depends on the value of
         the option ``reduce``. If it is ``'no'``, it holds the elementwise
         loss values. If it is ``'sum_along_second_axis'``, loss values are
         summed up along the second axis (i.e. ``axis=1``).
@@ -83,7 +83,7 @@ def huber_loss(x, t, delta, reduce='sum_along_second_axis'):
         ~chainer.Variable:
             A variable object holding a scalar array of the
             huber loss :math:`L_{\\delta}`.
-            If ``reduce`` is ``'no'``, the output varialbe holds array
+            If ``reduce`` is ``'no'``, the output variable holds array
             whose shape is same as one of (hence both of) input variables.
             If it is ``'sum_along_second_axis'``, the shape of the array
             is same as the input variables, except the second axis is removed.
