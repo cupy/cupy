@@ -1,4 +1,3 @@
-import inspect
 import six
 from six.moves import builtins
 import string
