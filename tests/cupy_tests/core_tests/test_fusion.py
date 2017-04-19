@@ -546,7 +546,9 @@ class TestFusionUfunc(unittest.TestCase):
         self._check(func, n, gen, *args, omit_nin=True)
         self._check(func, n, gen, *args, omit_nin=False)
 
-    def _check(self, func, n, gen, *args, omit_nin=False):
+    def _check(self, func, n, gen, *args, **kwargs):
+        omit_nin = kwargs.pop('omit_nin', False)
+        assert len(kwargs) == 0
 
         nin = n if not omit_nin else None
 
@@ -578,7 +580,9 @@ class TestFusionUfunc(unittest.TestCase):
         self._check_reduce(func, n, reduce_f, gen, *args, omit_nin=True)
         self._check_reduce(func, n, reduce_f, gen, *args, omit_nin=False)
 
-    def _check_reduce(self, func, n, reduce_f, gen, *args, omit_nin=False):
+    def _check_reduce(self, func, n, reduce_f, gen, *args, **kwargs):
+        omit_nin = kwargs.pop('omit_nin', False)
+        assert len(kwargs) == 0
 
         nin = n if not omit_nin else None
 
