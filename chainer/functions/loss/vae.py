@@ -21,7 +21,7 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
     where :math:`S` is a diagonal matrix such that :math:`S_{ii} = \\sigma_i^2`
     and :math:`I` is an identity matrix.
 
-    The output is a varialbe whose value depends on the value of
+    The output is a variable whose value depends on the value of
     the option ``reduce``. If it is ``'no'``, it holds the elementwise
     loss values. If it is ``'sum'``, loss values are summed up.
 
