@@ -65,6 +65,18 @@ class TestMaxPooling2D(unittest.TestCase):
         x = chainer.Variable(x_data)
         functions.max_pooling_2d(x, 6, stride=6, pad=0)
 
+    def test_forward_output_size_zero_cpu(self):
+        with self.assertRaisesRegexp(
+                AssertionError, 'Height in the output should be positive.'):
+            x_data = numpy.random.rand(4, 4, 1, 4).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2)
+        with self.assertRaisesRegexp(
+                AssertionError, 'Width in the output should be positive.'):
+            x_data = numpy.random.rand(4, 4, 4, 1).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2)
+
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
@@ -74,6 +86,32 @@ class TestMaxPooling2D(unittest.TestCase):
     @condition.retry(3)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
+
+    @attr.gpu
+    def test_forward_output_size_zero_gpu(self):
+        with self.assertRaisesRegexp(
+                AssertionError, 'Height in the output should be positive.'):
+            x_data = cuda.cupy.random.rand(4, 4, 1, 4).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2, use_cudnn=False)
+        with self.assertRaisesRegexp(
+                AssertionError, 'Width in the output should be positive.'):
+            x_data = cuda.cupy.random.rand(4, 4, 4, 1).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2, use_cudnn=False)
+
+    @attr.cudnn
+    def test_forward_output_size_zero_cudnn(self):
+        with self.assertRaisesRegexp(
+                AssertionError, 'Height in the output should be positive.'):
+            x_data = cuda.cupy.random.rand(4, 4, 1, 4).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2, use_cudnn=True)
+        with self.assertRaisesRegexp(
+                AssertionError, 'Width in the output should be positive.'):
+            x_data = cuda.cupy.random.rand(4, 4, 4, 1).astype(self.dtype)
+            x = chainer.Variable(x_data)
+            functions.max_pooling_2d(x, 3, stride=2, use_cudnn=True)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
