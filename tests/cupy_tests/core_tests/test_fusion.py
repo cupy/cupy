@@ -543,13 +543,10 @@ class TestFusionUfunc(unittest.TestCase):
         return numpy.random.rand(10, 10) * (higher - lower) + lower
 
     def check(self, func, n, gen, *args):
-        self._check(func, n, gen, *args, omit_nin=True)
-        self._check(func, n, gen, *args, omit_nin=False)
+        self._check(func, n, gen, args, True)
+        self._check(func, n, gen, args, False)
 
-    def _check(self, func, n, gen, *args, **kwargs):
-        omit_nin = kwargs.pop('omit_nin', False)
-        assert len(kwargs) == 0
-
+    def _check(self, func, n, gen, args, omit_nin):
         nin = n if not omit_nin else None
 
         @cupy.fuse(input_num=nin)
@@ -577,13 +574,10 @@ class TestFusionUfunc(unittest.TestCase):
             numpy.testing.assert_array_almost_equal(n, fc.get())
 
     def check_reduce(self, func, n, reduce_f, gen, *args):
-        self._check_reduce(func, n, reduce_f, gen, *args, omit_nin=True)
-        self._check_reduce(func, n, reduce_f, gen, *args, omit_nin=False)
+        self._check_reduce(func, n, reduce_f, gen, args, True)
+        self._check_reduce(func, n, reduce_f, gen, args, False)
 
-    def _check_reduce(self, func, n, reduce_f, gen, *args, **kwargs):
-        omit_nin = kwargs.pop('omit_nin', False)
-        assert len(kwargs) == 0
-
+    def _check_reduce(self, func, n, reduce_f, gen, args, omit_nin):
         nin = n if not omit_nin else None
 
         @cupy.fuse(input_num=nin, reduce=reduce_f)
