@@ -135,7 +135,7 @@ def hinge(x, t, norm='L1', reduce='mean'):
             2 & {\\rm if~norm} = {\\rm L2.}
             \\end{array} \\right.
 
-        The output is a varialbe whose value depends on the value of
+        The output is a variable whose value depends on the value of
         the option ``reduce``. If it is ``'no'``, it holds the elementwise
         loss values. If it is ``'mean'``, it takes the mean of loss values.
 
@@ -155,7 +155,7 @@ def hinge(x, t, norm='L1', reduce='mean'):
         ~chainer.Variable:
             A variable object holding a scalar array of the
             hinge loss :math:`L`.
-            If ``reduce`` is ``'no'``, the output varialbe holds array
+            If ``reduce`` is ``'no'``, the output variable holds array
             whose shape is same as one of (hence both of) input variables.
             If it is ``'mean'``, the output variable holds a scalar value.
 

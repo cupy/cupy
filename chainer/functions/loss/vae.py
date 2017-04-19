@@ -37,7 +37,7 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
         ~chainer.Variable:
             A variable representing KL-divergence between
             given gaussian distribution and the standard gaussian.
-            If ``reduce`` is ``'no'``, the output varialbe holds array
+            If ``reduce`` is ``'no'``, the output variable holds array
             whose shape is same as one of (hence both of) input variables.
             If it is ``'sum'``, the output variable holds a scalar value.
 
@@ -73,7 +73,7 @@ def bernoulli_nll(x, y, reduce='sum'):
     function, and :math:`B(x; p)` is a Bernoulli distribution.
 
 
-    The output is a varialbe whose value depends on the value of
+    The output is a variable whose value depends on the value of
     the option ``reduce``. If it is ``'no'``, it holds the elementwise
     loss values. If it is ``'sum'``, loss values are summed up.
 
@@ -93,7 +93,7 @@ def bernoulli_nll(x, y, reduce='sum'):
     Returns:
         ~chainer.Variable:
             A variable representing the negative log-likelihood.
-            If ``reduce`` is ``'no'``, the output varialbe holds array
+            If ``reduce`` is ``'no'``, the output variable holds array
             whose shape is same as one of (hence both of) input variables.
             If it is ``'sum'``, the output variable holds a scalar value.
 
