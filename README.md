@@ -6,6 +6,23 @@
 
 # Chainer: a neural network framework
 
+## Informations
+- [Official site](http://chainer.org/)
+- [Official document](http://docs.chainer.org/)
+
+Examples
+- [Code examples](https://github.com/pfnet/chainer/tree/master/examples)
+- [External examples](https://github.com/pfnet/chainer/wiki/External-examples)
+- [Research projects using Chainer](https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer)
+
+Social
+- [Forum](https://groups.google.com/forum/#!forum/chainer)
+- [Twitter](https://twitter.com/ChainerOfficial)
+- [Join Slack](https://bit.ly/chainer-slack)
+- [Forum (Japanese)](https://groups.google.com/forum/#!forum/chainer-jp)
+- [Twitter(Japanese)](https://twitter.com/chainerjp)
+- [Join Slack (Japanese)](https://bit.ly/chainer-jp-slack)
+
 ## Requirements
 
 Chainer is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use Chainer, though it may run on other systems as well.
@@ -119,7 +136,6 @@ You can login to the environment with bash, and run the Python interpreter.
 $ nvidia-docker run -it chainer/chainer /bin/bash
 ```
 
-
 ## Reference
 
 Tokui, S., Oono, K., Hido, S. and Clayton, J.,
@@ -129,23 +145,7 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 [URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
 
 
-## More information
-- [Official site](http://chainer.org/)
-- [Official document](http://docs.chainer.org/)
-- [github](https://github.com/pfnet/chainer)
-
-Social
-- [Forum](https://groups.google.com/forum/#!forum/chainer)
-- [Forum(Japanese)](https://groups.google.com/forum/#!forum/chainer-jp)
-- [Twitter](https://twitter.com/ChainerOfficial)
-- [Twitter(Japanese)](https://twitter.com/chainerjp)
-- [Join Slack](https://bit.ly/chainer-slack)
-- [Join Slack (Japanese)](https://bit.ly/chainer-jp-slack)
-
-Examples
-- [Code examples](https://github.com/pfnet/chainer/tree/master/examples)
-- [External examples](https://github.com/pfnet/chainer/wiki/External-examples)
-- [Research projects using Chainer](https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer)
+[github](https://github.com/pfnet/chainer)
 
 ## License
 
