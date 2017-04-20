@@ -28,8 +28,8 @@ def black_out(x, t, W, samples, reduce='mean'):
        \\sum_{s \\in samples} \\exp(W_s^\\top x)}.
 
     The output is a variable whose value depends on the value of
-    the option ``reduce``. If it is ``'samplewise'``, it holds the
-    samplewise loss values. If it is ``'mean'``, this function takes
+    the option ``reduce``. If it is ``'no'``, it holds the
+    no loss values. If it is ``'mean'``, this function takes
     a mean of loss values.
 
     Args:
@@ -45,13 +45,13 @@ def black_out(x, t, W, samples, reduce='mean'):
             Its shape should be :math:`(N, S)` where :math:`S` is
             the number of negative samples.
         recude (str): Reduction option. Its value must be either
-        ``'samplewise'`` or ``'mean'``. Otherwise,
+        ``'no'`` or ``'mean'``. Otherwise,
         :class:`ValueError` is raised.
 
     Returns:
         ~chainer.Variable:
             A variable object holding loss value(s).
-            If ``reduce`` is ``'samplewise'``, the output variable holds an
+            If ``reduce`` is ``'no'``, the output variable holds an
             array whose shape is :math:`(N,)` .
             If it is ``'mean'``, it holds a scalar.
 

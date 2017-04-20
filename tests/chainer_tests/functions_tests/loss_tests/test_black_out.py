@@ -13,7 +13,7 @@ from chainer.testing import condition
 
 @testing.parameterize(
     {'reduce': 'mean'},
-    {'reduce': 'samplewise'}
+    {'reduce': 'no'}
 )
 class TestBlackOut(unittest.TestCase):
 
@@ -34,7 +34,7 @@ class TestBlackOut(unittest.TestCase):
         self.samples = numpy.random.randint(
             self.n_vocab, size=self.batch_size * self.n_samples) \
             .astype(numpy.int32).reshape((self.batch_size, self.n_samples))
-        if self.reduce == 'samplewise':
+        if self.reduce == 'no':
             self.gy = numpy.random.uniform(
                 -1, 1, (self.batch_size,)).astype(numpy.float32)
         else:
