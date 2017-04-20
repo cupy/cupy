@@ -230,6 +230,9 @@ class BatchNormalizationFunction(function.Function):
             # computing gradients in fixed-mean-variance mode, because there
             # is normally no reason to call backward()
             # while in test/evaluation mode.
+            x = cuda.cupy.ascontiguousarray(x)
+            gamma = cuda.cupy.ascontiguousarray(gamma)
+            gy = cuda.cupy.ascontiguousarray(gy)
             dtype = x.dtype
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(_as4darray(x))
