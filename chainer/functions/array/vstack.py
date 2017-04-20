@@ -52,9 +52,10 @@ def vstack(xs):
         xs (list of :class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
             Input variables to be concatenated. The variables must have the
-            same shape, except in the vertical (row wise) dimension.
-            Otherwise, it throws :class:`chainer.utils.type_check.InvalidType`
-            exception.
+            same ``ndim``. Also, when the variables have vertical dimension
+            (i.e. :math:`ndim \\geq 1`), the variables must have the same
+            shape, except in the vertical (row wise) dimension.
+
 
     Returns:
         ~chainer.Variable: Output variable.
