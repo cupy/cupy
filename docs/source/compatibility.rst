@@ -83,7 +83,7 @@ Any API that is not experimental is called *stable* in this document.
 
 .. note::
     Undocumented behaviors are not considered as APIs. So they are not experimental nor stable.
-    The treatment of undocumented behaviors are descibed in :ref:`undocumented_behavior` section.
+    The treatment of undocumented behaviors are described in :ref:`undocumented_behavior` section.
 
 Chainer can change the interfaces and documents of experimental APIs at **any** version up.
 This change is not considered as a break of backward compatibility.
