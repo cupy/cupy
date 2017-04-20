@@ -3,6 +3,7 @@ from chainer.functions.array import concat
 from chainer.functions.array import expand_dims
 from chainer.functions.array import reshape
 from chainer.functions.connection import embed_id
+from chainer.functions.math import average
 from chainer.functions.math import exponential
 from chainer.functions.math import logsumexp
 from chainer.functions.math import matmul
@@ -79,6 +80,5 @@ def black_out(x, t, W, samples, reduce='mean'):
     py = reshape.reshape(pos_y, (batch_size,))
     loss = -(py - logz + _sum.sum(ny, axis=1))
     if reduce == 'mean':
-        return _sum.sum(loss) / batch_size
-    else:
-        return loss
+        loss = average.average(loss)
+    return loss
