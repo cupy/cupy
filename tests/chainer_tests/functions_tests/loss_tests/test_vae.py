@@ -40,7 +40,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
             ln_var = chainer.Variable(ln_var)
         actual = cuda.to_cpu(
             F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
-        actual = cuda.to_cpu(F.gaussian_kl_divergence(mean, ln_var).data)
+        actual = cuda.to_cpu(F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
@@ -77,7 +77,8 @@ class TestGaussianNLLInvalidReductionOption(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'wrap_x': [True, False],
-        'wrap_y': [True, False]
+        'wrap_y': [True, False],
+        'reduce': ['no', 'sum']
     })
 )
 class TestBernoulliNLL(unittest.TestCase):
@@ -99,7 +100,7 @@ class TestBernoulliNLL(unittest.TestCase):
             x = chainer.Variable(x)
         if self.wrap_y:
             y = chainer.Variable(y)
-        actual = cuda.to_cpu(F.bernoulli_nll(x, y).data)
+        actual = cuda.to_cpu(F.bernoulli_nll(x, y, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
