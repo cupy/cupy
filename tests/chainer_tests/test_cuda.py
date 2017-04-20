@@ -35,9 +35,14 @@ class TestCuda(unittest.TestCase):
     def test_get_dummy_device(self):
         self.assertIs(cuda.get_device_from_id(), cuda.DummyDevice)
 
-    def test_get_device_for_numpy_int(self):
+    @attr.gpu
+    def test_get_device_from_id_for_numpy_int(self):
         self.assertIs(
-            cuda.get_device_from_id(numpy.int64(0)), cuda.DummyDevice)
+            cuda.get_device_from_id(numpy.int64(0)), cuda.Device(0))
+
+    def test_get_device_from_array_for_numpy_int(self):
+        self.assertIs(
+            cuda.get_device_from_array(numpy.int64(0)), cuda.DummyDevice)
 
     @attr.gpu
     def test_get_dummy_device_for_empty_array(self):
