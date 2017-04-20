@@ -24,7 +24,7 @@ class Parameter(link.Link):
         self.add_param('W', array.shape, dtype=array.dtype)
         self.W.data = array
         if isinstance(array, cuda.ndarray):
-            self.to_gpu(array)
+            self.to_gpu(cuda.get_device_from_array(array))
 
     def __call__(self, volatile='off'):
         """Returns the parameter variable.
