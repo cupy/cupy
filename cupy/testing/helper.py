@@ -420,7 +420,7 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def _make_all_dtypes(no_float16, no_bool, excludes):
+def _make_all_dtypes(no_float16, no_bool):
     if no_float16:
         if no_bool:
             return _regular_float_dtypes + _int_dtypes
@@ -430,14 +430,10 @@ def _make_all_dtypes(no_float16, no_bool, excludes):
         if no_bool:
             return _float_dtypes + _int_dtypes
         else:
-            if excludes:
-                return (t for t in _dtypes if t not in excludes)
-            else:
-                return _dtypes
+            return _dtypes
 
 
-def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
-                   excludes=[]):
+def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
@@ -446,8 +442,6 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
              omitted from candidate dtypes.
          no_bool(bool): If, True, ``numpy.bool_`` is
              omitted from candidate dtypes.
-         excludes(list of dtypes): A list of dtypes that will be excluded from
-             the returned dtypes.
 
     dtypes to be tested: ``numpy.float16`` (optional), ``numpy.float32``,
     ``numpy.float64``, ``numpy.dtype('b')``, ``numpy.dtype('h')``,
@@ -490,8 +484,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
-    return for_dtypes(_make_all_dtypes(no_float16, no_bool, excludes),
-                      name=name)
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool), name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
