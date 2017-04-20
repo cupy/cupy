@@ -420,8 +420,8 @@ class TestVariable(unittest.TestCase):
             b.cleargrad()
         b.addgrad(a)
         xp.testing.assert_array_equal(b.grad, expect)
-        self.assertEqual(cuda.get_device_from_device(b.data),
-                         cuda.get_device_from_device(b.grad))
+        self.assertEqual(cuda.get_device_from_array(b.data),
+                         cuda.get_device_from_array(b.grad))
 
     def test_addgrad_cpu_to_cpu(self):
         self.check_addgrad(np.full(3, 10, dtype=np.float32),

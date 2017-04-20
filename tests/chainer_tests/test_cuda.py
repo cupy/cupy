@@ -33,7 +33,7 @@ except ImportError:
 class TestCuda(unittest.TestCase):
 
     def test_get_dummy_device(self):
-        self.assertIs(cuda.get_device_from_id(), cuda.DummyDevice)
+        self.assertIs(cuda.get_device_from_id(None), cuda.DummyDevice)
 
     @attr.gpu
     def test_get_device_from_id_for_numpy_int(self):
