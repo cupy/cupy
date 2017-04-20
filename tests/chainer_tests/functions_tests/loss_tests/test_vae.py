@@ -47,7 +47,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
                                           cuda.to_gpu(self.ln_var))
 
 
-class TestGaussianNLLInvalidReductionOption(unittest.TestCase):
+class TestGaussianKLDivergenceInvalidReductionOption(unittest.TestCase):
 
     def setUp(self):
         self.mean = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
