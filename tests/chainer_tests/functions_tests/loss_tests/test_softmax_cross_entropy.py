@@ -366,4 +366,29 @@ class TestElementwiseSoftmaxCrossEntropy(unittest.TestCase):
             False)
 
 
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'normalize': [True, False],
+    'cache_score': [True, False],
+}))
+class TestSoftmaxCrossEntropyInvalidReduce(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype('f')
+        self.t = numpy.zeros((2,), 'i')
+
+    def check_invalid_reduce(self, x, t):
+        with self.assertRaises(ValueError):
+            functions.softmax_cross_entropy(
+                x, t, self.use_cudnn, self.normalize, self.cache_score,
+                reduce='unknown_reduce_type')
+
+    def test_invalid_reduce_cpu(self):
+        self.check_invalid_reduce(self.x, self.t)
+
+    @attr.gpu
+    def test_invalid_reduce_gpu(self):
+        self.check_invalid_reduce(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+
+
 testing.run_module(__name__, __file__)
