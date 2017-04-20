@@ -262,8 +262,8 @@ class TestProduct(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_tensordot_with_int_axes(self, xp, dtype):
         if dtype in (numpy.uint8, numpy.int8, numpy.uint16, numpy.int16):
-            a = testing.shaped_arange(1, 2, 3), xp, dtype)
-            b = testing.shaped_arange(2, 3, 1), xp, dtype)
+            a = testing.shaped_arange((1, 2, 3), xp, dtype)
+            b = testing.shaped_arange((2, 3, 1), xp, dtype)
             return xp.tensordot(a, b, axes=2)
         else:
             a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
