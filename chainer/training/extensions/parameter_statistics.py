@@ -15,9 +15,10 @@ def _statistics(x, functions):
     """Compute statisticts for the given array.
 
     Args:
-        x (array): Target array for which statistics are computed.
-        functions (iterable): Statistics to collect, mapping directly to NumPy
-            or CuPy functions.
+        x (numpy.ndarray or cupy.ndarray): Target array for which statistics
+            are computed.
+        functions (iterable of str): Statistics to collect, mapping directly
+            to NumPy or CuPy functions.
 
     Returns:
         dict: Mappings from functions keys to statistic values.
@@ -37,12 +38,13 @@ def _percentiles(x, sigmas):
     """Compute percentiles for the given array.
 
     Args:
-        x (array): Target array for which percentiles are computed.
-        sigmas (iterable): Percentile sigma values.
+        x (numpy.ndarray or cupy.ndarray): Target array for which percentiles
+            are computed.
+        sigmas (iterable or float): Percentile sigma values.
 
     Returns:
-        array: List of percentiles. The list has the same length as the given
-            ``sigma``.
+        numpy.ndarray or cupy.ndarray: List of percentiles. The list has the
+            same length as the given ``sigma``.
     """
     def _percentiles_cpu(_x):
         if _x.size == 0:
@@ -60,7 +62,8 @@ def _zeros(x):
     """Count the number of zeros in the given array.
 
     Args:
-        x (array): Target array for which sparsity is computed.
+        x (numpy.ndarray or cupy.ndarray): Target array for which sparsity is
+            computed.
 
     Returns:
         int: Number of zeros.
