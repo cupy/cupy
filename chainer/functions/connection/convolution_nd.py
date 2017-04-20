@@ -346,7 +346,7 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
 
     .. math::
 
-       l_n = (d_n + 2p_n - p_n) / s_n + 1 \ \ (n = 1, ..., N)
+       l_n = (d_n + 2p_n - k_n) / s_n + 1 \ \ (n = 1, ..., N)
 
     If ``cover_all`` option is ``True``, the filter will cover the all
     spatial locations. So, if the last stride of filter does not cover the
