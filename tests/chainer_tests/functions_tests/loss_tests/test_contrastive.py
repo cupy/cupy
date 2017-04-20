@@ -103,4 +103,27 @@ class TestContrastive(unittest.TestCase):
                             cuda.to_gpu(self.t), cuda.to_gpu(self.gy))
 
 
+class TestContrastiveInvalidReductionOption(unittest.TestCase):
+
+    def setUp(self):
+        self.x0 = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 2, (5,)).astype(numpy.int32)
+
+    def check_invalid_option(self, xp):
+        x0 = xp.asarray(self.x0)
+        x1 = xp.asarray(self.x1)
+        t = xp.asarray(self.t)
+
+        with self.assertRaises(ValueError):
+            functions.contrastive(x0, x1, t, 1, 'invalid_option')
+
+    def test_invalid_option_cpu(self):
+        self.check_invalid_option(numpy)
+
+    @attr.gpu
+    def test_invalid_option_gpu(self):
+        self.check_invalid_option(cuda.cupy)
+
+
 testing.run_module(__name__, __file__)
