@@ -100,7 +100,7 @@ class ParameterStatistics(extension.Extension):
                 for attr_name in self._attrs:
                     for function_name, function in \
                             six.iteritems(self._statistics):
-                        # Get parameters as a flattend one dimensional array
+                        # Get parameters as a flattend one-dimensional array
                         # since the statistics function should make no
                         # assumption about the axes
                         params = getattr(param, attr_name).ravel()
@@ -119,9 +119,11 @@ class ParameterStatistics(extension.Extension):
                         else:
                             statistics[key] = value
 
+        # Post-process
         if self._prefix is not None:
             statistics = {'{}/{}'.format(self._prefix, k): v for k, v in
                           six.iteritems(statistics)}
+
         self._summary.add(statistics)
 
         if self._trigger(trainer):
