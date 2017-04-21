@@ -46,15 +46,15 @@ class ParameterStatistics(extension.Extension):
     report_key_template = '{link_name}{param_name}/{attr_name}/{function_name}'
 
     default_statistics = {
-            'mean': numpy.mean,
-            'std': numpy.std,
-            'min': numpy.min,
-            'max': numpy.max,
-            'zeros': lambda x: numpy.count_nonzero(x == 0),
-            'percentile': lambda x: numpy.percentile(x, (0.13, 2.28, 15.87,
-                                                         50, 84.13, 97.72,
-                                                         99.87))
-        }
+        'mean': numpy.mean,
+        'std': numpy.std,
+        'min': numpy.min,
+        'max': numpy.max,
+        'zeros': lambda x: numpy.count_nonzero(x == 0),
+        'percentile': lambda x: numpy.percentile(x, (0.13, 2.28, 15.87,
+                                                     50, 84.13, 97.72,
+                                                     99.87))
+    }
 
     def __init__(self, links, statistics=default_statistics,
                  report_params=True, report_grads=True, prefix=None,
@@ -106,11 +106,11 @@ class ParameterStatistics(extension.Extension):
                         params = getattr(param, attr_name).ravel()
                         value = function(params)
                         key = self.report_key_template.format(
-                                link_name=link_name,
-                                param_name=param_name,
-                                attr_name=attr_name,
-                                function_name=function_name
-                            )
+                            link_name=link_name,
+                            param_name=param_name,
+                            attr_name=attr_name,
+                            function_name=function_name
+                        )
                         if hasattr(value, '__iter__'):
                             # Append integer indices to the keys if the
                             # statistic function return multiple values
