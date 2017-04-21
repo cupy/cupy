@@ -185,7 +185,7 @@ class SoftmaxCrossEntropy(function.Function):
             coeff = gloss * self._coeff
         else:
             coeff = gloss[:, None, ...]
-        print(coeff.shape)
+
         if self.class_weight is None:
             gx = cuda.elementwise(
                 'T y, S t, T coeff, S n_channel, S n_unit',
