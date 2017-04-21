@@ -10,10 +10,10 @@ In this section, you will learn how to write
 
 After reading this section, you will be able to:
 
-* Write your original convolutional network in Chainer
+* Write your own original convolutional network in Chainer
 
 A convolutional network (ConvNet) is mainly comprised of convolutional layers.
-This type of network is oftenly used for various visual recognition tasks,
+This type of network is commonly used for various visual recognition tasks,
 e.g., classifying hand-written digits or natural images into given object
 classes, detectiong objects from an image, and labeling all pixels of an image
 with the object classes (semantic segmenation), and so on.
@@ -26,16 +26,16 @@ In such tasks, a typical ConvNet takes a set of images whose shape is
 - :math:`H` and :math:`W` denote the height and width of those images,
 
 respectively. Then, it typically outputs a fixed-sized vector as membership
-probability over the target object classes. It also can output a set of feature
-maps that have the corresponding size to the input image for a pixel labeling
-task, etc.
+probabilities over the target object classes. It also can output a set of
+feature maps that have the corresponding size to the input image for a pixel
+labeling task, etc.
 
 LeNet5
 ''''''
 
-Here, let's start from defining LeNet5 [LeCun98]_ in Chainer.
+Here, let's start by defining LeNet5 [LeCun98]_ in Chainer.
 This is a ConvNet model that has 5 layers comprised of 3 convolutional layers
-and 2 fully-connected layers. This has been proposed to classify hand-written
+and 2 fully-connected layers. This was proposed to classify hand-written
 digit images in 1998. In Chainer, the model can be written as follows:
 
 .. testcode::
@@ -71,7 +71,7 @@ all the layers which have trainable parameters are registered to the model
 by giving the objects of :class:`~chainer.Link` to the superclass's constructer
 as keyword arguments (see the above :meth:`__init__`).
 
-You can take another way to do the same thing. For example,
+There is also another way to do the same thing. For example,
 :meth:`~chainer.Chain.add_link` of :class:`~chainer.Chain` class enables to
 register the trainable layers (i.e., :class:`~chainer.Link` s) to the model, so
 that the above :meth:`__init__` can also be written as follows:
@@ -89,22 +89,22 @@ that the above :meth:`__init__` can also be written as follows:
 (Argments to :class:`~chainer.links.Convolution2D` are given without keywords
 here for simplicity.)
 
-The model class is instantiated before forward and backward computations.
+The model class is instantiated before the forward and backward computations.
 To give input images and label vectors simply by calling the model object
 like a function, :meth:`__call__` is usually defined in the model class.
-This method performs the forward computation of the model. Chainer has the
-strong autograd system for any computational graphs written with
+This method performs the forward computation of the model. Chainer uses
+the powerful autograd system for any computational graphs written with
 :class:`~chainer.Function`s and :class:`~chainer.Links`s (actually a
 :class:`~chainer.Links` calls a corresponding :class:`~chainer.Function` inside
-of it), so that you don't need to write any codes for backward computations in
-the model. Just prepare the data, then give it to the model. Then the resulting
-:class:`~chainer.Variable` from the forward computation has
-:meth:`~chainer.Variable.backward` method to perform autograd. In the above
-model, :meth:`__call__` has a ``if`` statement at the end to switch its
-behavior by the model's running mode, i.e., training mode or not. When it's in
-training mode, this method returns the output value of the last layer as is to
-compute the loss later on, otherwise it returns a prediction result by
-calculating :meth:`~chainer.functions.softmax`.
+of it), so that you don't need to explicitly write the code for backward
+computations in the model. Just prepare the data, then give it to the model.
+The way this works is the resulting output :class:`~chainer.Variable` from the
+forward computation has a :meth:`~chainer.Variable.backward` method to perform
+autograd. In the above model, :meth:`__call__` has a ``if`` statement at the
+end to switch its behavior by the model's running mode, i.e., training mode or
+not. When it's in training mode, this method returns the output value of the
+last layer as is to compute the loss later on, otherwise it returns a
+prediction result by calculating :meth:`~chainer.functions.softmax`.
 
 If you don't want to write ``conv1`` and the other layers more than once, you
 can also write the model like in this way:
@@ -190,8 +190,9 @@ inherited from :class:`~chainer.Link`, so that :class:`~chainer.Chain` itself
 can also be registedred as a trainable :class:`~chainer.Link` to another
 :class:`~chainer.Chain`. Actually, :class:`~chainer.links.Classifier` class to
 wrap the model and add the loss computation to the model already exists.
-Using this, the loss computation can be implanted to the model itself by this
-way:
+Actually, there is already a :class:`~chainer.links.Classifier` class that can
+be used to wrap the model and include the loss computation as well.
+It can be used like this:
 
 .. doctest::
 
@@ -201,25 +202,25 @@ way:
     loss = model(x, t)
 
 This class takes a model object as an iput argument and registers it to
-``predictor`` property as a trained parameter. Then calling the returned object
-as a function like the above code with feeding ``x`` and ``t`` as the input
-arguments, yield a loss value calculated from those two input variables.
+a ``predictor`` property as a trained parameter. As shown above, the returned
+object can then be called like a function in which we pass ``x`` and ``t`` as
+the input arguments and the resulting loss value (which we recall is a
+:class:`~chainer.Variable`) is returned.
 
 See the detailed implementation of :class:`~chainer.links.Classifier` from
 here: :class:`chainer.links.Classifier` and check the implementation by looking
 at the source.
 
-Chainer is flexible, so we can write our original network in many different
-ways. It would give users an intuitive way to design brand-new and complex
-models.
+From the above examples, we can see that Chainer provides the flexibility to
+write our original network in many different ways. Such flexibility intends to
+make it intuitive for users to design new and complex models.
 
 VGG16
 '''''
 
-Next, let's write more large models like VGG16 [Simonyan14]_ in Chainer.
-When you write a large network consisted of several building block
-networks, :class:`~chainer.ChainList` is useful. First, let's see how to write
-a VGG16 model:
+Next, let's write some larger models in Chainer. When you write a large network
+consisting of several building block networks, :class:`~chainer.ChainList` is
+useful. First, let's see how to write a VGG16 [Simonyan14] model.
 
 .. doctest::
 
@@ -275,24 +276,24 @@ a VGG16 model:
 
 That's it. VGG16 is a model which won the 1st place in
 `classification + localization task at ILSVRC 2014 <http://www.image-net.org/challenges/LSVRC/2014/results#clsloc>`_,
-and since then, became one of standard models for many different tasks as a
-pre-trained model. This has 16-layers, so it's called "VGG-16", but we can
-write this model without writing all layers independently. Because this model
-is consisted of several building blocks that have the same architecture,
-so that we can build the whole network by re-using the building block
-definition. Each part of the network is consisted of 2 or 3 convolutional
-layers and activation function (:meth:`~chainer.functions.relu`) following
-them, and :meth:`~chainer.functions.max_pooling_2d` operations. This block
-is written as :class:`VGGBlock` in the above example code. And the whole
-network just calls this block one by one in sequential manner.
+and since then, has become one of the standard models for many different tasks
+as a pre-trained model. This has 16-layers, so it's called "VGG-16", but we can
+write this model without writing all layers independently. Since this model
+consists of several building blocks that have the same architecture, we can
+build the whole network by re-using the building block definition. Each part
+of the network is consisted of 2 or 3 convolutional layers and activation
+function (:meth:`~chainer.functions.relu`) following them, and
+:meth:`~chainer.functions.max_pooling_2d` operations. This block is written as
+:class:`VGGBlock` in the above example code. And the whole network just calls
+this block one by one in sequential manner.
 
 ResNet152
 '''''''''
 
-How about ResNet? ResNet [He16]_ came in the next year's ILSVRC. It is way deeper
-model than VGG16, so the depth is up to 152 layers. This sounds super laboring
-to build, but it can be implemented in almost same manner as VGG16. In the
-other words, it's easy. One possible way to write ResNet-152 is:
+How about ResNet? ResNet [He16]_ came in the following year's ILSVRC. It is a
+much deeper model than VGG16, having up to 152 layers. This sounds super
+laborious to build, but it can be implemented in almost same manner as VGG16.
+In the other words, it's easy. One possible way to write ResNet-152 is:
 
 .. doctest::
 
@@ -356,33 +357,35 @@ other words, it's easy. One possible way to write ResNet-152 is:
 
         def __call__(self, x, train):
             h = F.relu(self.bn_a(self.conv1x1a(x), test=not train))
-            h = F.relu(self.bn_b(self.conv3x3b(x), test=not train))
-            h = self.bn_c(self.conv1x1c(x), test=not train)
+            h = F.relu(self.bn_b(self.conv3x3b(h), test=not train))
+            h = self.bn_c(self.conv1x1c(h), test=not train)
             if self.proj:
                 x = self.bn_r(self.conv1x1r(x), test=not train)
             return F.relu(h + x)
 
-In :class:`BottleNeck` class, it switches whther ``conv1x1r`` to fit the
-channel dimension of the input ``x`` and the output ``h`` and ``bn_r`` for it
-should be added or not with respect to :attr:`~BottleNeck.proj` attribute.
-Writing the building block in this way gains the re-usability of a class a lot.
+In the :class:`BottleNeck` class, depending on the value of the proj argument
+supplied to the initializer, it will conditionally compute a convolutional
+layer ``conv1x1r`` which will extend the number of channels of the input ``x``
+to be equal to the number of channels of the output of ``conv1x1c``, and
+followed by a batch normalization layer before the final ReLU layer.
+Writing the building block in this way improves the re-usability of a class.
 It switches not only the behavior in :meth:`__class__` by flags but also the
 parameter registration. In this case, when :attr:`proj` is ``False``, the
 :class:`BottleNeck` doesn't have `conv1x1r` and `bn_r` layers, so the memory
 usage would be efficient compared to the case when it registers both anyway and
 just ignore them if :attr:`proj` is ``False``.
 
-Using nesting :class:`~chainer.Chain` s and :class:`~chainer.ChainList` for
+Using nested :class:`~chainer.Chain` s and :class:`~chainer.ChainList` for
 sequential part enables us to write complex and very deep models easily.
 
 Use Pre-trained Models
 ''''''''''''''''''''''
 
-Various ways to write your models is described above. And VGG16 and ResNet are
-very useful as general feature extractor for many different tasks from image
-classification. So Chainer provides you the pre-trained models of VGG16 and
-ResNet-50/101/152 models with a simple API. You can use those models in this
-way:
+Various ways to write your models were described above. It turns out that
+VGG16 and ResNet are very useful as general feature extractors for many kinds
+of tasks, including but not limited to image classification. So, Chainer
+provides you with the pre-trained VGG16 and ResNet-50/101/152 models with a
+simple API. You can use these models as follows:
 
 .. doctest::
 
@@ -391,13 +394,13 @@ way:
     model = VGG16Layers()
 
 When :class:`~chainer.links.VGG16Layers` is instantiated, the pre-trained
-parameters is automatically downloaded from the author's server. So you can
+parameters are automatically downloaded from the author's server. So you can
 immediately start to use VGG16 with pre-trained weight as a good image feature
 extractor. See the details of this model here:
 :class:`chainer.links.VGG16Layers`.
 
-In the case of ResNet models, there are 3 variation in terms of the number of
-layers. We have :class:`chainer.links.ResNet50`,
+In the case of ResNet models, there are three variations differing in the number
+of layers. We have :class:`chainer.links.ResNet50`,
 :class:`chainer.links.ResNet101`, and :class:`chainer.links.ResNet152` models
 with easy parameter loading feature. ResNet's pre-trained parameters are not
 available for direct downloading, so you need to download the weight from the
