@@ -168,7 +168,7 @@ class TestNStepBiRNN(unittest.TestCase):
 
         self.gh = numpy.random.uniform(-1, 1, shape).astype('f')
         self.gys = [
-            numpy.random.uniform(-1, 1, (l, self.out_size*2)).astype('f')
+            numpy.random.uniform(-1, 1, (l, self.out_size * 2)).astype('f')
             for l in self.lengths]
         self.rnn = links.NStepBiRNN(
             self.n_layer, self.in_size, self.out_size, self.dropout,

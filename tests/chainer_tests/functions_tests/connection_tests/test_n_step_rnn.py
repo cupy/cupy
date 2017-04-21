@@ -489,4 +489,5 @@ class TestNStepBiRNNCudnnCall(unittest.TestCase):
             hy.backward()
             self.assertEqual(func.called, self.expect)
 
+
 testing.run_module(__name__, __file__)

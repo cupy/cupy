@@ -46,6 +46,7 @@ class NStepRNNBase(link.ChainList):
         :func:`chainer.links.NStepBiRNN`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
                  use_bi_direction, activation):
         weights = []
@@ -140,6 +141,7 @@ class NStepRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_rnn`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
                  activation='tanh'):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
@@ -170,6 +172,7 @@ class NStepBiRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_birnn`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
                  activation='tanh'):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
