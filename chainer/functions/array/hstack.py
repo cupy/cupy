@@ -56,9 +56,11 @@ def hstack(xs):
         xs (list of :class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
             Input variables to be concatenated. The variables must have the
-            same ``ndim``. Also, when the variables have horizontal dimension
-            (i.e. :math:`ndim \\geq 2`), the variables must have the same
-            shape, except in the horizontal (column wise) dimension.
+            same ``ndim``. When the variables have the second axis (i.e.
+            :math:`ndim \\geq 2`), the variables must have the same shape
+            along all but the second axis. When the variables do not have the
+            second axis(i.e. :math:`ndim < 2`), the variables need not to have
+            the same shape.
 
     Returns:
         ~chainer.Variable: Output variable.
