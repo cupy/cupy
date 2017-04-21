@@ -397,8 +397,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
         - The number of spatial dimensions is more than one.
         - ``cover_all`` is ``False``
         - The input's ``dtype`` is equal to the filter weight's.
-        - The ``dtype`` is FP16 (available when cuDNN version :math:`\\geq`
-          v3), FP32 or FP64
+        - The ``dtype`` is FP16, FP32 or FP64. (FP16 is only available when
+          cuDNN version :math:`\\geq` v3.)
 
     .. seealso:: :class:`~chainer.links.ConvolutionND`, :func:`convolution_2d`
 
