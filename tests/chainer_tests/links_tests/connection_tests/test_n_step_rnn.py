@@ -125,7 +125,7 @@ class TestNStepRNN(unittest.TestCase):
         gradient_check.check_backward(
             fun, tuple(in_data),
             tuple([gh_data, ] + gys_data),
-            tuple(params), eps=1e-2, rtol=1e-3, atol=1e-3)
+            tuple(params), eps=1e-2, rtol=1e-2, atol=5e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
