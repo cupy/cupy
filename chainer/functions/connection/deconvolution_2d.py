@@ -378,6 +378,31 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             a deterministic algorithm. This option is only available for
             cuDNN version >= v3.
 
+    .. admonition:: Example
+
+        >>> n = 10
+        >>> c_i, c_o = 1, 3
+        >>> h_i, w_i = 5, 10
+        >>> h_k, w_k = 10, 10
+        >>> h_p, w_p = 5, 5
+        >>> x = np.random.uniform(0, 1, (n, c_i, h_i, w_i)).astype('f')
+        >>> x.shape
+        (10, 1, 5, 10)
+        >>> W = np.random.uniform(0, 1, (c_i, c_o, h_k, w_k)).astype('f')
+        >>> W.shape
+        (1, 3, 10, 10)
+        >>> b = np.random.uniform(0, 1, c_o).astype('f')
+        >>> b.shape
+        (3,)
+        >>> s_y, s_x = 5, 5
+        >>> y = F.deconvolution_2d(x, W, b, stride=(s_y, s_x), pad=(h_p, w_p))
+        >>> y.shape
+        (10, 3, 20, 45)
+        >>> h_o = s_y * (h_i - 1) + h_k - 2 * h_p
+        >>> w_o = s_x * (w_i - 1) + w_k - 2 * w_p
+        >>> y.shape == (n, c_o, h_o, w_o)
+        True
+
     """
     func = Deconvolution2DFunction(
         stride, pad, outsize, use_cudnn, deterministic)
