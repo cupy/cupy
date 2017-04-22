@@ -305,10 +305,10 @@ laborious to build, but it can be implemented in almost same manner as VGG16.
 In the other words, it's easy. One possible way to write ResNet-152 is:
 
 .. doctest::
-
-    class ResNet152(chainer.ChainList):
-
+    
+    class ResNet152(chainer.Chain):
         def __init__(self, n_blocks=[3, 8, 36, 3]):
+            w = chainer.initializers.HeNormal()
             super(ResNet152, self).__init__(
                 conv1=L.Convolution2D(
                     None, 64, 7, 2, 3, initialW=w, nobias=True),
@@ -316,22 +316,25 @@ In the other words, it's easy. One possible way to write ResNet-152 is:
                 res2=ResBlock(n_blocks[0], 64, 64, 256, 1),
                 res3=ResBlock(n_blocks[1], 256, 128, 512),
                 res4=ResBlock(n_blocks[2], 512, 256, 1024),
-                res5=ResBlock(n_blocks[3], 1024, 512, 2048))
+                res5=ResBlock(n_blocks[3], 1024, 512, 2048),
+                fc6=L.Linear(2048, 1000))
             self.train = True
 
         def __call__(self, x):
             h = self.bn1(self.conv1(x), test=not self.train)
             h = F.max_pooling_2d(F.relu(h), 2, 2)
-            h = self.res2(h)
-            h = self.res3(h)
-            h = self.res4(h)
-            h = self.res5(h)
+            h = self.res2(h, self.train)
+            h = self.res3(h, self.train)
+            h = self.res4(h, self.train)
+            h = self.res5(h, self.train)
+            h = F.average_pooling_2d(h, h.shape[2:], stride=1)
+            h = self.fc6(h)
             if self.train:
                 return h
             return F.softmax(h)
 
-    class ResBlock(chainer.ChainList):
 
+    class ResBlock(chainer.ChainList):
         def __init__(self, n_layers, n_in, n_mid, n_out, stride=2):
             w = chainer.initializers.HeNormal()
             super(ResBlock, self).__init__()
@@ -344,8 +347,8 @@ In the other words, it's easy. One possible way to write ResNet-152 is:
                 x = f(x, train)
             return x
 
-    class BottleNeck(chainer.Chain):
 
+    class BottleNeck(chainer.Chain):
         def __init__(self, n_in, n_mid, n_out, stride=1, proj=False):
             w = chainer.initializers.HeNormal()
             super(BottleNeck, self).__init__(
