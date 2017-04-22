@@ -46,6 +46,14 @@ class TestParameterStatistic(unittest.TestCase):
             extension(self.trainer)
             self.assertEqual(len(self.reporter.observation), self.expect)
 
+    def test_report_key_pattern(self):
+        extension = extensions.ParameterStatistics(self.links)
+        pattern = r'^(.+/){2,}(data|grad)/.+[^/]$'
+        with self.reporter:
+            extension(self.trainer)
+            for name in six.iterkeys(self.reporter.observation):
+                self.assertTrue(re.match(pattern, name))
+
 
 @testing.parameterize(
     {'statistics': {'zero': lambda x: 1.0},
@@ -63,44 +71,39 @@ class TestParameterStatisticsCustomFunction(unittest.TestCase):
     def test_custom_function(self):
         with self.reporter:
             self.extension(self.trainer)
-            for v in six.itervalues(self.reporter.observation):
-                self.assertEqual(v, self.expect)
+            for value in six.itervalues(self.reporter.observation):
+                self.assertEqual(value, self.expect)
 
 
+@testing.parameterize(
+    {'statistics': extensions.ParameterStatistics.default_statistics,
+     'links': chainer.links.Linear(10, 10)}
+)
 class TestParameterStatisticsArguments(unittest.TestCase):
 
     def setUp(self):
         self.trainer = mock.MagicMock()
         self.reporter = chainer.Reporter()
-        self.links = chainer.links.Linear(10, 10)
 
     def test_skip_params(self):
-        extension = extensions.ParameterStatistics(self.links,
-                                                   report_params=False)
+        extension = extensions.ParameterStatistics(
+            self.links, statistics=self.statistics, report_params=False)
         with self.reporter:
             extension(self.trainer)
             for name in six.iterkeys(self.reporter.observation):
                 self.assertIn('grad', name)
 
     def test_skip_grads(self):
-        extension = extensions.ParameterStatistics(self.links,
-                                                   report_grads=False)
+        extension = extensions.ParameterStatistics(
+            self.links, statistics=self.statistics, report_grads=False)
         with self.reporter:
             extension(self.trainer)
             for name in six.iterkeys(self.reporter.observation):
                 self.assertIn('data', name)
 
-    def test_report_key_pattern(self):
-        extension = extensions.ParameterStatistics(self.links)
-        pattern = r'^(.+/){2,}(data|grad)/.+[^/]$'
-        with self.reporter:
-            extension(self.trainer)
-            for name in six.iterkeys(self.reporter.observation):
-                self.assertTrue(re.match(pattern, name))
-
     def test_report_key_prefix(self):
-        extension = extensions.ParameterStatistics(self.links,
-                                                   prefix='prefix')
+        extension = extensions.ParameterStatistics(
+            self.links, statistics=self.statistics, prefix='prefix')
         with self.reporter:
             extension(self.trainer)
             for name in six.iterkeys(self.reporter.observation):
