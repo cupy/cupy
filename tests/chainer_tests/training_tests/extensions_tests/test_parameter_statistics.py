@@ -56,7 +56,7 @@ class TestParameterStatistic(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'statistics': {'zero': lambda x: 1.0},
+    {'statistics': {'one': lambda x: 1.0},
      'links': chainer.links.Linear(10, 10),
      'expect': 1.0}
 )
