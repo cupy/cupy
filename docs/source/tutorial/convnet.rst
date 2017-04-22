@@ -233,8 +233,8 @@ useful. First, let's see how to write a VGG16 [Simonyan14] model.
 
 .. doctest::
 
-    class VGG16(chainer.ChainList):
 
+    class VGG16(chainer.ChainList):
         def __init__(self):
             w = chainer.initializers.HeNormal()
             super(VGG16, self).__init__(
@@ -252,11 +252,11 @@ useful. First, let's see how to write a VGG16 [Simonyan14] model.
                 return x
             return F.softmax(x)
 
-    class VGGBlock(chainer.Chain):
 
+    class VGGBlock(chainer.Chain):
         def __init__(self, n_channels, n_convs=2, fc=False):
             w = chainer.initializers.HeNormal()
-            super(VGG16Block, self).__init__(
+            super(VGGBlock, self).__init__(
                 conv1=L.Convolution2D(None, n_channels, 3, 1, 1, initialW=w),
                 conv2=L.Convolution2D(
                     n_channels, n_channels, 3, 1, 1, initialW=w))
