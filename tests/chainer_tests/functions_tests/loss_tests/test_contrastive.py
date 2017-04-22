@@ -28,7 +28,7 @@ class TestContrastive(unittest.TestCase):
         self.t = numpy.random.randint(
             0, 2, (self.batchsize,)).astype(numpy.int32)
         if self.reduce == 'mean':
-            self.gy = None
+            self.gy = numpy.float32(numpy.random.uniform(-1, 1))
         else:
             self.gy = numpy.random.uniform(
                 -1, 1, (self.batchsize,)).astype(numpy.float32)
