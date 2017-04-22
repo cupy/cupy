@@ -77,6 +77,11 @@ class TestAveragePoolingND(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
+    @attr.cudnn
+    @condition.retry(3)
+    def test_forward_gpu_non_contiguous(self):
+        self.check_forward(cuda.cupy.asfortranarray(cuda.to_gpu(self.x)))
+
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu_no_cudnn(self):
@@ -127,6 +132,13 @@ class TestAveragePoolingND(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_gpu_non_contiguous(self):
+        self.check_backward(
+            cuda.cupy.asfortranarray(cuda.to_gpu(self.x)),
+            cuda.cupy.asfortranarray(cuda.to_gpu(self.gy)))
 
     @attr.gpu
     @condition.retry(3)
