@@ -30,6 +30,11 @@ probabilities over the target object classes. It also can output a set of
 feature maps that have the corresponding size to the input image for a pixel
 labeling task, etc.
 
+.. note::
+
+    The below example code assumes that some packages are already imported.
+    Please see the details here: :doc:`tutorial/basic`.
+
 LeNet5
 ''''''
 
@@ -42,13 +47,13 @@ digit images in 1998. In Chainer, the model can be written as follows:
 
     class LeNet5(Chain):
         def __init__(self):
-            super(ConvNet, self).__init__(
+            super(LeNet5, self).__init__(
                 conv1=L.Convolution2D(
                     in_channels=1, out_channels=6, ksize=5, stride=1),
                 conv2=L.Convolution2D(
                     in_channels=6, out_channels=16, ksize=5, stride=1),
                 conv3=L.Convolution2D(
-                    in_channels=16, out_channels=120, ksize=5, stride=1),
+                    in_channels=16, out_channels=120, ksize=4, stride=1),
                 fc4=L.Linear(None, 84),
                 fc5=L.Linear(84, 10),
             )
@@ -78,10 +83,11 @@ that the above :meth:`__init__` can also be written as follows:
 
 .. code-block:: python
 
-    def __init__(self):
+    def __init__(self
+        super(LeNet5, self).__init__()
         self.add_link('conv1', L.Convolution2D(1, 6, 5, 1))
         self.add_link('conv2', L.Convolution2D(6, 16, 5, 1))
-        self.add_link('conv3', L.Convolution2D(16, 120, 5, 1))
+        self.add_link('conv3', L.Convolution2D(16, 120, 4, 1))
         self.add_link('fc4', L.Linear(None, 84))
         self.add_link('fc5', L.Linear(84, 10))
         self.train = True
@@ -113,29 +119,32 @@ can also write the model like in this way:
 
     class LeNet5(Chain):
         def __init__(self):
-            super(ConvNet, self).__init__()
-            net  = [('conv1',   L.Convolution2D(1, 6, 5, 1))]
+            super(LeNet5, self).__init__()
+            net = [('conv1', L.Convolution2D(1, 6, 5, 1))]
+            net += [('_sigm1', F.Sigmoid())]
             net += [('_mpool1', F.MaxPooling2D(2, 2))]
-            net += [('_sigm1',  F.Sigmoid())]
-            net += [('conv2',   L.Convolution2D(6, 16, 5, 1))]
+            net += [('conv2', L.Convolution2D(6, 16, 5, 1))]
+            net += [('_sigm2', F.Sigmoid())]
             net += [('_mpool2', F.MaxPooling2D(2, 2))]
-            net += [('_sigm2',  F.Sigmoid())]
-            net += [('conv3',   L.Convolution2D(6, 16, 5, 1))]
+            net += [('conv3', L.Convolution2D(16, 120, 4, 1))]
+            net += [('_sigm3', F.Sigmoid())]
             net += [('_mpool3', F.MaxPooling2D(2, 2))]
-            net += [('_sigm3',  F.Sigmoid())]
-            net += [('fc4',     L.Linear(None, 84))]
-            net += [('_sigm4',  F.Sigmoid())]
-            net += [('fc5',     L.Linear(84, 10))]
-            net += [('_sigm5',  F.Sigmoid())]
+            net += [('fc4', L.Linear(None, 84))]
+            net += [('_sigm4', F.Sigmoid())]
+            net += [('fc5', L.Linear(84, 10))]
+            net += [('_sigm5', F.Sigmoid())]
             for n in net:
-                if not n[0].startwith('_'):
-                    self.add_link(n)
+                if not n[0].startswith('_'):
+                    self.add_link(*n)
             self.forward = net
             self.train = True
 
         def __call__(self, x):
-            for f in self.forward:
-                x = getattr(self, f[0])(x)
+            for n, f in self.forward:
+                if not n.startswith('_'):
+                    x = getattr(self, n)(x)
+                else:
+                    x = f(x)
             if self.train:
                 return x
             return F.softmax(x)
@@ -224,8 +233,8 @@ useful. First, let's see how to write a VGG16 [Simonyan14] model.
 
 .. doctest::
 
-    class VGG16(chainer.ChainList):
 
+    class VGG16(chainer.ChainList):
         def __init__(self):
             w = chainer.initializers.HeNormal()
             super(VGG16, self).__init__(
@@ -243,11 +252,11 @@ useful. First, let's see how to write a VGG16 [Simonyan14] model.
                 return x
             return F.softmax(x)
 
-    class VGGBlock(chainer.Chain):
 
+    class VGGBlock(chainer.Chain):
         def __init__(self, n_channels, n_convs=2, fc=False):
             w = chainer.initializers.HeNormal()
-            super(VGG16Block, self).__init__(
+            super(VGGBlock, self).__init__(
                 conv1=L.Convolution2D(None, n_channels, 3, 1, 1, initialW=w),
                 conv2=L.Convolution2D(
                     n_channels, n_channels, 3, 1, 1, initialW=w))
@@ -296,10 +305,10 @@ laborious to build, but it can be implemented in almost same manner as VGG16.
 In the other words, it's easy. One possible way to write ResNet-152 is:
 
 .. doctest::
-
-    class ResNet152(chainer.ChainList):
-
+    
+    class ResNet152(chainer.Chain):
         def __init__(self, n_blocks=[3, 8, 36, 3]):
+            w = chainer.initializers.HeNormal()
             super(ResNet152, self).__init__(
                 conv1=L.Convolution2D(
                     None, 64, 7, 2, 3, initialW=w, nobias=True),
@@ -307,22 +316,25 @@ In the other words, it's easy. One possible way to write ResNet-152 is:
                 res2=ResBlock(n_blocks[0], 64, 64, 256, 1),
                 res3=ResBlock(n_blocks[1], 256, 128, 512),
                 res4=ResBlock(n_blocks[2], 512, 256, 1024),
-                res5=ResBlock(n_blocks[3], 1024, 512, 2048))
+                res5=ResBlock(n_blocks[3], 1024, 512, 2048),
+                fc6=L.Linear(2048, 1000))
             self.train = True
 
         def __call__(self, x):
             h = self.bn1(self.conv1(x), test=not self.train)
             h = F.max_pooling_2d(F.relu(h), 2, 2)
-            h = self.res2(h)
-            h = self.res3(h)
-            h = self.res4(h)
-            h = self.res5(h)
+            h = self.res2(h, self.train)
+            h = self.res3(h, self.train)
+            h = self.res4(h, self.train)
+            h = self.res5(h, self.train)
+            h = F.average_pooling_2d(h, h.shape[2:], stride=1)
+            h = self.fc6(h)
             if self.train:
                 return h
             return F.softmax(h)
 
-    class ResBlock(chainer.ChainList):
 
+    class ResBlock(chainer.ChainList):
         def __init__(self, n_layers, n_in, n_mid, n_out, stride=2):
             w = chainer.initializers.HeNormal()
             super(ResBlock, self).__init__()
@@ -335,8 +347,8 @@ In the other words, it's easy. One possible way to write ResNet-152 is:
                 x = f(x, train)
             return x
 
-    class BottleNeck(chainer.Chain):
 
+    class BottleNeck(chainer.Chain):
         def __init__(self, n_in, n_mid, n_out, stride=1, proj=False):
             w = chainer.initializers.HeNormal()
             super(BottleNeck, self).__init__(
