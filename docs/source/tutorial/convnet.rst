@@ -83,10 +83,11 @@ that the above :meth:`__init__` can also be written as follows:
 
 .. code-block:: python
 
-    def __init__(self):
+    def __init__(self
+        super(LeNet5, self).__init__()
         self.add_link('conv1', L.Convolution2D(1, 6, 5, 1))
         self.add_link('conv2', L.Convolution2D(6, 16, 5, 1))
-        self.add_link('conv3', L.Convolution2D(16, 120, 5, 1))
+        self.add_link('conv3', L.Convolution2D(16, 120, 4, 1))
         self.add_link('fc4', L.Linear(None, 84))
         self.add_link('fc5', L.Linear(84, 10))
         self.train = True
