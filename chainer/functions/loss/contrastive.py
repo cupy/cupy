@@ -45,7 +45,7 @@ class Contrastive(function.Function):
         self.dist = xp.sqrt(self.dist_sq)
         self.mdist = self.margin - self.dist
         dist = xp.maximum(self.mdist, 0)
-        loss = (y * self.dist_sq + (1 - y) * dist * dist) / 2.0
+        loss = (y * self.dist_sq + (1 - y) * dist * dist) * .5
         if self.reduce == 'mean':
             loss = xp.sum(loss) / x0.shape[0]
         return xp.array(loss, dtype=xp.float32),
