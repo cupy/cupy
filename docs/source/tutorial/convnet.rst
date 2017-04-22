@@ -120,28 +120,31 @@ can also write the model like in this way:
     class LeNet5(Chain):
         def __init__(self):
             super(LeNet5, self).__init__()
-            net  = [('conv1',   L.Convolution2D(1, 6, 5, 1))]
+            net = [('conv1', L.Convolution2D(1, 6, 5, 1))]
+            net += [('_sigm1', F.Sigmoid())]
             net += [('_mpool1', F.MaxPooling2D(2, 2))]
-            net += [('_sigm1',  F.Sigmoid())]
-            net += [('conv2',   L.Convolution2D(6, 16, 5, 1))]
+            net += [('conv2', L.Convolution2D(6, 16, 5, 1))]
+            net += [('_sigm2', F.Sigmoid())]
             net += [('_mpool2', F.MaxPooling2D(2, 2))]
-            net += [('_sigm2',  F.Sigmoid())]
-            net += [('conv3',   L.Convolution2D(6, 16, 5, 1))]
+            net += [('conv3', L.Convolution2D(16, 120, 4, 1))]
+            net += [('_sigm3', F.Sigmoid())]
             net += [('_mpool3', F.MaxPooling2D(2, 2))]
-            net += [('_sigm3',  F.Sigmoid())]
-            net += [('fc4',     L.Linear(None, 84))]
-            net += [('_sigm4',  F.Sigmoid())]
-            net += [('fc5',     L.Linear(84, 10))]
-            net += [('_sigm5',  F.Sigmoid())]
+            net += [('fc4', L.Linear(None, 84))]
+            net += [('_sigm4', F.Sigmoid())]
+            net += [('fc5', L.Linear(84, 10))]
+            net += [('_sigm5', F.Sigmoid())]
             for n in net:
-                if not n[0].startwith('_'):
-                    self.add_link(n)
+                if not n[0].startswith('_'):
+                    self.add_link(*n)
             self.forward = net
             self.train = True
 
         def __call__(self, x):
-            for f in self.forward:
-                x = getattr(self, f[0])(x)
+            for n, f in self.forward:
+                if not n.startswith('_'):
+                    x = getattr(self, n)(x)
+                else:
+                    x = f(x)
             if self.train:
                 return x
             return F.softmax(x)
