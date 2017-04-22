@@ -1,123 +1,110 @@
+import re
 import unittest
 
 import mock
 import numpy
+import six
 
-from chainer import cuda
+import chainer
 from chainer import testing
-from chainer.testing import attr
 from chainer.training import extensions
 
 
 @testing.parameterize(
-    {'in_x': [1.0, 2.0, 0.0, -1.0, 0.5],
-     'target_min': -1.0,
-     'target_max': 2.0,
-     'target_mean': 0.5,
-     'target_std': 1.0,
-     'target_zeros': 1,
-     'target_percentiles': [-0.9948, -0.9088, -0.3652, 0.5,
-                            1.3652, 1.9088, 1.9948],
-     'dtype': numpy.float32},
-    {'in_x': [0],
-     'target_min': 0.0,
-     'target_max': 0.0,
-     'target_mean': 0.0,
-     'target_std': 0.0,
-     'target_zeros': 1,
-     'target_percentiles': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-     'dtype': numpy.float32},
-    {'in_x': [],
-     'target_min': numpy.nan,
-     'target_max': numpy.nan,
-     'target_mean': numpy.nan,
-     'target_std': numpy.nan,
-     'target_zeros': 0,
-     'target_percentiles': [numpy.nan, numpy.nan, numpy.nan, numpy.nan,
-                            numpy.nan, numpy.nan],
-     'dtype': numpy.float32},
+    {'statistics': {'min': numpy.min},
+     'links': chainer.links.Linear(10, 10),
+     'expect': 4},
+    {'statistics': {'mean': numpy.min, 'std': numpy.std},
+     'links': chainer.links.Linear(10, 10),
+     'expect': 8},
+    {'statistics': extensions.ParameterStatistics.default_statistics,
+     'links': chainer.links.Linear(10, 10),
+     'expect': 48},
+    {'statistics': None,
+     'links': chainer.links.Linear(10, 10),
+     'expect': 0}
 )
-class TestParameterStatistics(unittest.TestCase):
+class TestParameterStatistic(unittest.TestCase):
 
     def setUp(self):
         self.trainer = mock.MagicMock()
-        self.links = mock.MagicMock()
-        self.extension = extensions.ParameterStatistics(self.links)
-        self.x = numpy.array(self.in_x, dtype=self.dtype)
+        self.reporter = chainer.Reporter()
 
-    def test_statistics_cpu(self):
-        report = self.extension.statistics_report(self.x)
+    def test_report(self):
+        extension = extensions.ParameterStatistics(self.links,
+                                                   statistics=self.statistics)
+        with self.reporter:
+            extension(self.trainer)
+            self.assertEqual(len(self.reporter.observation), self.expect)
 
-        for f, s in report.items():
-            if self.x.size == 0:
-                self.assertTrue(numpy.isnan(s))
-            else:
-                self.assertIsInstance(s, self.dtype)
-                self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
-
-    @attr.gpu
-    def test_statistics_gpu(self):
-        report = self.extension.statistics_report(cuda.to_gpu(self.x))
-
-        for f, s in report.items():
-            if self.x.size == 0:
-                self.assertTrue(cuda.get_array_module(s).isnan(s))
-            else:
-                self.assertIsInstance(s, cuda.ndarray)
-                self.assertEqual(s, getattr(self, 'target_{}'.format(f)))
-
-    def test_percentiles_cpu(self):
-        report = self.extension.percentiles_report(self.x)
-
-        for i, tp in enumerate(self.target_percentiles):
-            p = report['percentile/{}'.format(i)]
-            if self.x.size == 0:
-                self.assertTrue(numpy.isnan(p))
-            else:
-                self.assertIsInstance(p, self.dtype)
-                self.assertAlmostEqual(p, tp)
-
-    @attr.gpu
-    def test_percentiles_gpu(self):
-        report = self.extension.percentiles_report(cuda.to_gpu(self.x))
-
-        for i, tp in enumerate(self.target_percentiles):
-            p = report['percentile/{}'.format(i)]
-            if self.x.size == 0:
-                self.assertTrue(cuda.get_array_module(p).isnan(p))
-            else:
-                self.assertIsInstance(p, cuda.ndarray)
-                self.assertAlmostEqual(cuda.to_cpu(p), tp)
-
-    def test_zeros_cpu(self):
-        report = self.extension.zeros_report(self.x)
-
-        z = report['zeros']
-        self.assertIsInstance(z, int)
-        self.assertEqual(z, self.target_zeros)
-
-    @attr.gpu
-    def test_zeros_gpu(self):
-        report = self.extension.zeros_report(cuda.to_gpu(self.x))
-
-        z = report['zeros']
-        self.assertIsInstance(z, int)
-        self.assertEqual(z, self.target_zeros)
+    def test_report_late_register(self):
+        extension = extensions.ParameterStatistics(self.links, statistics=None)
+        if self.statistics is not None:
+            for name, function in six.iteritems(self.statistics):
+                extension.register_statistics(name, function)
+        with self.reporter:
+            extension(self.trainer)
+            self.assertEqual(len(self.reporter.observation), self.expect)
 
 
 @testing.parameterize(
-    {'stats': {'key_1': 0, 'key_2': 0}, 'prefix': 'prefix'}
+    {'statistics': {'zero': lambda x: 1.0},
+     'links': chainer.links.Linear(10, 10),
+     'expect': 1.0}
 )
-class TestParameterStatisticsPostProcess(unittest.TestCase):
+class TestParameterStatisticsCustomFunction(unittest.TestCase):
 
     def setUp(self):
-        self.links = mock.MagicMock()
-        self.extension = extensions.ParameterStatistics(self.links,
-                                                        prefix=self.prefix)
+        self.trainer = mock.MagicMock()
+        self.reporter = chainer.Reporter()
+        self.extension = extensions.ParameterStatistics(
+            self.links, statistics=self.statistics)
 
-    def test_prefix(self):
-        for key in self.extension.post_process(self.stats).keys():
-            self.assertTrue(key.startswith(self.prefix))
+    def test_custom_function(self):
+        with self.reporter:
+            self.extension(self.trainer)
+            for v in six.itervalues(self.reporter.observation):
+                self.assertEqual(v, self.expect)
+
+
+class TestParameterStatisticsArguments(unittest.TestCase):
+
+    def setUp(self):
+        self.trainer = mock.MagicMock()
+        self.reporter = chainer.Reporter()
+        self.links = chainer.links.Linear(10, 10)
+
+    def test_skip_params(self):
+        extension = extensions.ParameterStatistics(self.links,
+                                                   report_params=False)
+        with self.reporter:
+            extension(self.trainer)
+            for name in six.iterkeys(self.reporter.observation):
+                self.assertIn('grad', name)
+
+    def test_skip_grads(self):
+        extension = extensions.ParameterStatistics(self.links,
+                                                   report_grads=False)
+        with self.reporter:
+            extension(self.trainer)
+            for name in six.iterkeys(self.reporter.observation):
+                self.assertIn('data', name)
+
+    def test_report_key_pattern(self):
+        extension = extensions.ParameterStatistics(self.links)
+        pattern = r'^(.+/){2,}(data|grad)/.+[^/]$'
+        with self.reporter:
+            extension(self.trainer)
+            for name in six.iterkeys(self.reporter.observation):
+                self.assertTrue(re.match(pattern, name))
+
+    def test_report_key_prefix(self):
+        extension = extensions.ParameterStatistics(self.links,
+                                                   prefix='prefix')
+        with self.reporter:
+            extension(self.trainer)
+            for name in six.iterkeys(self.reporter.observation):
+                self.assertTrue(name.startswith('prefix'))
 
 
 testing.run_module(__name__, __file__)
