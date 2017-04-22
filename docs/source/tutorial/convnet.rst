@@ -45,7 +45,7 @@ digit images in 1998. In Chainer, the model can be written as follows:
 
 .. testcode::
 
-    class LeNet5(chainer.Chain):
+    class LeNet5(Chain):
         def __init__(self):
             super(LeNet5, self).__init__(
                 conv1=L.Convolution2D(
@@ -53,7 +53,7 @@ digit images in 1998. In Chainer, the model can be written as follows:
                 conv2=L.Convolution2D(
                     in_channels=6, out_channels=16, ksize=5, stride=1),
                 conv3=L.Convolution2D(
-                    in_channels=16, out_channels=120, ksize=5, stride=1),
+                    in_channels=16, out_channels=120, ksize=4, stride=1),
                 fc4=L.Linear(None, 84),
                 fc5=L.Linear(84, 10),
             )
