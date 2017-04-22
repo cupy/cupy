@@ -209,6 +209,9 @@ def lstm(c_prev, x):
     `Long Short-Term Memory in Recurrent Neural Networks \
     <http://www.felixgers.de/papers/phd.pdf>`_.
 
+    .. seealso::
+        :class:`~chainer.links.LSTM`
+
     .. admonition:: Example
 
         Assuming ``y`` is the current incoming signal, ``c`` is the previous
@@ -229,6 +232,20 @@ def lstm(c_prev, x):
         sources :math:`a, i, f, o` from the current incoming signal ``y`` and
         the previous outgoing signal ``h``. Different parameters are used for
         different kind of input sources.
+
+    .. note::
+
+        We use the naming rule below.
+
+        - incoming signal
+            The formal input of the formulation of LSTM (e.g. in NLP, word
+            vector or output of previous RNN). The input of
+            :class:`chainer.links.LSTM` is the *incoming signal*.
+        - input array
+            The array which is linear transformed from *incoming signal*. The
+            *input array* contsins four sources, the sources of cell input,
+            input gate, forget gate and output gate. The input of
+            :class:`chainer.functions.LSTM` is the *input array*.
 
     """
     return LSTM()(c_prev, x)
