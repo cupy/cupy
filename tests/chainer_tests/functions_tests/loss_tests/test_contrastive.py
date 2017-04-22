@@ -87,7 +87,7 @@ class TestContrastive(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_backward_zero_dist_gpu_no_cudnn(self):
-        self.check_backward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x0),
+        self.check_backward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1),
                             cuda.to_gpu(self.t))
 
 
