@@ -30,6 +30,11 @@ probabilities over the target object classes. It also can output a set of
 feature maps that have the corresponding size to the input image for a pixel
 labeling task, etc.
 
+.. note::
+
+    The blow example codes assume that some packages are alread imported.
+    Please see the details here: :doc:`tutorial/basic`.
+
 LeNet5
 ''''''
 
@@ -40,9 +45,9 @@ digit images in 1998. In Chainer, the model can be written as follows:
 
 .. testcode::
 
-    class LeNet5(Chain):
+    class LeNet5(chainer.Chain):
         def __init__(self):
-            super(ConvNet, self).__init__(
+            super(LeNet5, self).__init__(
                 conv1=L.Convolution2D(
                     in_channels=1, out_channels=6, ksize=5, stride=1),
                 conv2=L.Convolution2D(
@@ -113,7 +118,7 @@ can also write the model like in this way:
 
     class LeNet5(Chain):
         def __init__(self):
-            super(ConvNet, self).__init__()
+            super(LeNet5, self).__init__()
             net  = [('conv1',   L.Convolution2D(1, 6, 5, 1))]
             net += [('_mpool1', F.MaxPooling2D(2, 2))]
             net += [('_sigm1',  F.Sigmoid())]
