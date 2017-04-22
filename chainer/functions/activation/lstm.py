@@ -243,7 +243,7 @@ def lstm(c_prev, x):
             :class:`chainer.links.LSTM` is the *incoming signal*.
         - input array
             The array which is linear transformed from *incoming signal*. The
-            *input array* contsins four sources, the sources of cell input,
+            *input array* contains four sources, the sources of cell input,
             input gate, forget gate and output gate. The input of
             :class:`chainer.functions.LSTM` is the *input array*.
 
