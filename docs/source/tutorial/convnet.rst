@@ -32,7 +32,7 @@ labeling task, etc.
 
 .. note::
 
-    The blow example codes assume that some packages are alread imported.
+    The below example code assumes that some packages are already imported.
     Please see the details here: :doc:`tutorial/basic`.
 
 LeNet5
