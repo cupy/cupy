@@ -171,6 +171,8 @@ def main():
     parser.set_defaults(test=False)
     parser.add_argument('--unit', '-u', type=int, default=650,
                         help='Number of LSTM units in each layer')
+    parser.add_argument('--model', '-m', default='model.npz',
+                        help='Model file name to serialize')
     args = parser.parse_args()
 
     # Load the Penn Tree Bank long word sequence dataset
@@ -234,6 +236,9 @@ def main():
     evaluator = extensions.Evaluator(test_iter, eval_model, device=args.gpu)
     result = evaluator()
     print('test perplexity:', np.exp(float(result['main/loss'])))
+
+    # Serialize the final model
+    chainer.serializers.save_npz(args.model, model)
 
 
 if __name__ == '__main__':
