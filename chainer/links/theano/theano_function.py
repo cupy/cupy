@@ -1,17 +1,12 @@
 import collections
 
-try:
-    import theano
-    _available = True
-except ImportError:
-    _available = False
-
 from chainer.functions.theano import theano_function
 from chainer import link
 from chainer import utils
 
 
 def _to_var_tuple(vs):
+    import theano
     msg = ('inputs and outputs must be a TensorVariable, a list '
            'of TensorVariable or a tuple of TensorVariable')
 
@@ -68,7 +63,12 @@ class TheanoFunction(link.Link):
 
     def __init__(self, inputs, outputs):
         utils.experimental('chainer.links.TheanoFunction')
-        if not _available:
+        try:
+            # When Theano library is imported, it executes a lot of
+            # initialization process. To minimize its side effect,
+            # we need import theano here.
+            import theano
+        except ImportError:
             msg = '''theano is not installed on your environment.
 Please install theano to activate theano function.
 
