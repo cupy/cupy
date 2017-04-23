@@ -14,13 +14,13 @@ from chainer.training import extensions
     {'statistics': {'min': numpy.min},
      'links': chainer.links.Linear(10, 10),
      'expect': 4},
-    {'statistics': {'mean': numpy.min, 'std': numpy.std},
+    {'statistics': {'mean': numpy.mean, 'std': numpy.std},
      'links': chainer.links.Linear(10, 10),
      'expect': 8},
     {'statistics': extensions.ParameterStatistics.default_statistics,
      'links': chainer.links.Linear(10, 10),
      'expect': 48},
-    {'statistics': None,
+    {'statistics': {},
      'links': chainer.links.Linear(10, 10),
      'expect': 0}
 )
@@ -38,10 +38,9 @@ class TestParameterStatistic(unittest.TestCase):
             self.assertEqual(len(self.reporter.observation), self.expect)
 
     def test_report_late_register(self):
-        extension = extensions.ParameterStatistics(self.links, statistics=None)
-        if self.statistics is not None:
-            for name, function in six.iteritems(self.statistics):
-                extension.register_statistics(name, function)
+        extension = extensions.ParameterStatistics(self.links, statistics={})
+        for name, function in six.iteritems(self.statistics):
+            extension.register_statistics(name, function)
         with self.reporter:
             extension(self.trainer)
             self.assertEqual(len(self.reporter.observation), self.expect)
@@ -92,6 +91,7 @@ class TestParameterStatisticsArguments(unittest.TestCase):
             extension(self.trainer)
             for name in six.iterkeys(self.reporter.observation):
                 self.assertIn('grad', name)
+                self.assertNotIn('data', name)
 
     def test_skip_grads(self):
         extension = extensions.ParameterStatistics(
@@ -100,6 +100,7 @@ class TestParameterStatisticsArguments(unittest.TestCase):
             extension(self.trainer)
             for name in six.iterkeys(self.reporter.observation):
                 self.assertIn('data', name)
+                self.assertNotIn('grad', name)
 
     def test_report_key_prefix(self):
         extension = extensions.ParameterStatistics(
