@@ -42,8 +42,9 @@ class ParameterStatistics(extension.Extension):
     default_name = 'parameter_statistics'
     priority = extension.PRIORITY_WRITER
 
-    # Exclude the first '/' since param_name starts with one
-    report_key_template = '{link_name}{param_name}/{attr_name}/{function_name}'
+    # prefix ends with a '/' and param_name is preceded by a '/'
+    report_key_template = '{prefix}{link_name}{param_name}/{attr_name}/ \
+            {function_name}'
 
     default_statistics = {
         'mean': numpy.mean,
@@ -64,8 +65,6 @@ class ParameterStatistics(extension.Extension):
             links = links,
         self._links = links
 
-        if statistics is None:
-            statistics = {}
         self._statistics = statistics
 
         attrs = []
@@ -106,6 +105,7 @@ class ParameterStatistics(extension.Extension):
                         params = getattr(param, attr_name).ravel()
                         value = function(params)
                         key = self.report_key_template.format(
+                            prefix=self._prefix + '/' if self._prefix else '',
                             link_name=link_name,
                             param_name=param_name,
                             attr_name=attr_name,
@@ -118,11 +118,6 @@ class ParameterStatistics(extension.Extension):
                                                i, v in enumerate(value)})
                         else:
                             statistics[key] = value
-
-        # Post-process
-        if self._prefix is not None:
-            statistics = {'{}/{}'.format(self._prefix, k): v for k, v in
-                          six.iteritems(statistics)}
 
         self._summary.add(statistics)
 
