@@ -37,7 +37,7 @@ class TestCuda(unittest.TestCase):
 
     @attr.gpu
     def test_get_device_from_id_for_numpy_int(self):
-        self.assertIs(
+        self.assertEqual(
             cuda.get_device_from_id(numpy.int64(0)), cuda.Device(0))
 
     def test_get_device_from_array_for_numpy_int(self):
