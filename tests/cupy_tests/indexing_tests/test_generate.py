@@ -1,6 +1,6 @@
 import unittest
 
-from chainer import cuda
+import cupy
 from cupy.indexing import generate
 from cupy import testing
 
@@ -55,39 +55,33 @@ class TestR_(unittest.TestCase):
         return xp.r_[a, 0, 0, a]
 
     def test_r_3(self):
-        cp = cuda.cupy
         with self.assertRaises(NotImplementedError):
-            cp.r_[-1:1:6j, [0] * 3, 5, 6]
+            cupy.r_[-1:1:6j, [0] * 3, 5, 6]
 
     @testing.for_all_dtypes()
     def test_r_4(self, dtype):
-        cp = cuda.cupy
-        a = testing.shaped_arange((1, 3), cp, dtype)
+        a = testing.shaped_arange((1, 3), cupy, dtype)
         with self.assertRaises(NotImplementedError):
-            cp.r_['-1', a, a]
+            cupy.r_['-1', a, a]
 
     def test_r_5(self):
-        cp = cuda.cupy
         with self.assertRaises(NotImplementedError):
-            cp.r_['0,2', [1, 2, 3], [4, 5, 6]]
+            cupy.r_['0,2', [1, 2, 3], [4, 5, 6]]
 
     def test_r_6(self):
-        cp = cuda.cupy
         with self.assertRaises(NotImplementedError):
-            cp.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
+            cupy.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
 
     def test_r_7(self):
-        cp = cuda.cupy
         with self.assertRaises(NotImplementedError):
-            cp.r_['r', [1, 2, 3], [4, 5, 6]]
+            cupy.r_['r', [1, 2, 3], [4, 5, 6]]
 
     @testing.for_all_dtypes()
     def test_r_9(self, dtype):
-        cp = cuda.cupy
-        a = testing.shaped_arange((3, 4), cp, dtype)
-        b = testing.shaped_reverse_arange((2, 5), cp, dtype)
+        a = testing.shaped_arange((3, 4), cupy, dtype)
+        b = testing.shaped_reverse_arange((2, 5), cupy, dtype)
         with self.assertRaises(ValueError):
-            cp.r_[a, b]
+            cupy.r_[a, b]
 
 
 @testing.gpu
@@ -112,22 +106,20 @@ class TestC_(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_c_3(self, dtype):
-        cp = cuda.cupy
-        a = testing.shaped_arange((3, 4), cp, dtype)
-        b = testing.shaped_reverse_arange((2, 5), cp, dtype)
+        a = testing.shaped_arange((3, 4), cupy, dtype)
+        b = testing.shaped_reverse_arange((2, 5), cupy, dtype)
         with self.assertRaises(ValueError):
-            cp.c_[a, b]
+            cupy.c_[a, b]
 
 
 @testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
+    _multiprocesGs_can_split_ = True
 
     def test_AxisConcatenator_init1(self):
-        cp = cuda.cupy
         with self.assertRaises(TypeError):
-            cp.indexing.generate.AxisConcatenator.__init__()
+            cupy.indexing.generate.AxisConcatenator.__init__()
 
     def test_len(self):
         a = generate.AxisConcatenator()
