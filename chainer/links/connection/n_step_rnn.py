@@ -25,16 +25,12 @@ def permutate_list(lst, indices, inv):
 
 
 class NStepRNNBase(link.ChainList):
-    """Stacked RNN for sequnces.
+    """Base link class for Stacked RNN/BiRNN links.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is base link class for :func:`chainer.links.NStepRNN` and
+    :func:`chainer.links.NStepBiRNN`.
 
-    Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
-    sort inputs in descending order by length, and transpose the seuqnece.
-    Users just need to call the link with a list of :class:`chainer.Variable`
-    holding sequences.
+    This link's behavior depends on argument, ``use_bi_direction``.
 
     Args:
         n_layers (int): Number of layers.
@@ -43,14 +39,20 @@ class NStepRNNBase(link.ChainList):
         dropout (float): Dropout ratio.
         use_cudnn (bool): Use cuDNN.
         use_bi_direction (bool): if ``True``, use Bi-directional RNN.
+            if ``False``, use Uni-directional RNN.
+        activation (str): Activation function name.
+            Please select ``tanh`` or ``relu``.
 
     .. seealso::
-        :func:`chainer.functions.n_step_rnn`
-        :func:`chainer.functions.n_step_birnn`
+        :func:`chainer.links.NStepRNNReLU`
+        :func:`chainer.links.NStepRNNTanh`
+        :func:`chainer.links.NStepBiRNNReLU`
+        :func:`chainer.links.NStepBiRNNTanh`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
-                 use_bi_direction):
+                 use_bi_direction, activation):
         weights = []
         direction = 2 if use_bi_direction else 1
         for i in six.moves.range(n_layers):
@@ -75,9 +77,19 @@ class NStepRNNBase(link.ChainList):
         self.n_layers = n_layers
         self.dropout = dropout
         self.use_cudnn = use_cudnn
+        self.activation = activation
         self.out_size = out_size
         self.direction = direction
         self.rnn = rnn.n_step_birnn if use_bi_direction else rnn.n_step_rnn
+
+    def init_hx(self, xs):
+        with cuda.get_device(self._device_id):
+            hx = chainer.Variable(
+                self.xp.zeros((self.n_layers * self.direction,
+                               len(xs), self.out_size),
+                              dtype=xs[0].dtype),
+                volatile='auto')
+        return hx
 
     def __call__(self, hx, xs, train=True):
         """Calculate all hidden states and cell states.
@@ -94,12 +106,7 @@ class NStepRNNBase(link.ChainList):
 
         xs = permutate_list(xs, indices, inv=False)
         if hx is None:
-            with cuda.get_device(self._device_id):
-                hx = chainer.Variable(
-                    self.xp.zeros((self.n_layers * self.direction,
-                                   len(xs), self.out_size),
-                                  dtype=xs[0].dtype),
-                    volatile='auto')
+            hx = self.init_hx(xs)
         else:
             hx = permutate.permutate(hx, indices, axis=1, inv=False)
 
@@ -110,7 +117,7 @@ class NStepRNNBase(link.ChainList):
 
         hy, trans_y = self.rnn(
             self.n_layers, self.dropout, hx, ws, bs, trans_x,
-            train=train, use_cudnn=self.use_cudnn)
+            train=train, use_cudnn=self.use_cudnn, activation=self.activation)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
         ys = transpose_sequence.transpose_sequence(trans_y)
@@ -119,12 +126,13 @@ class NStepRNNBase(link.ChainList):
         return hy, ys
 
 
-class NStepRNN(NStepRNNBase):
+class NStepRNNTanh(NStepRNNBase):
     """Stacked RNN for sequnces.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``tanh``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.
@@ -142,17 +150,51 @@ class NStepRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_rnn`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
-                              use_cudnn, use_bi_direction=False)
+                              use_cudnn, use_bi_direction=False,
+                              activation='tanh')
 
 
-class NStepBiRNN(NStepRNNBase):
+class NStepRNNReLU(NStepRNNBase):
+    """Stacked RNN for sequnces.
+
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``relu``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
+
+    Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
+    sort inputs in descending order by length, and transpose the seuqnece.
+    Users just need to call the link with a list of :class:`chainer.Variable`
+    holding sequences.
+
+    Args:
+        n_layers (int): Number of layers.
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of hidden states and output vectors.
+        dropout (float): Dropout ratio.
+        use_cudnn (bool): Use cuDNN.
+
+    .. seealso::
+        :func:`chainer.functions.n_step_rnn`
+
+    """
+
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
+                              use_cudnn, use_bi_direction=False,
+                              activation='relu')
+
+
+class NStepBiRNNTanh(NStepRNNBase):
     """Stacked Bi-direction RNN for sequnces.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``tanh``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_birnn`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.
@@ -170,6 +212,39 @@ class NStepBiRNN(NStepRNNBase):
         :func:`chainer.functions.n_step_birnn`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
-                              use_cudnn, use_bi_direction=True)
+                              use_cudnn, use_bi_direction=True,
+                              activation='tanh')
+
+
+class NStepBiRNNReLU(NStepRNNBase):
+    """Stacked Bi-direction RNN for sequnces.
+
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``relu``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
+
+    Unlike :func:`chainer.functions.n_step_birnn`, this function automatically
+    sort inputs in descending order by length, and transpose the seuqnece.
+    Users just need to call the link with a list of :class:`chainer.Variable`
+    holding sequences.
+
+    Args:
+        n_layers (int): Number of layers.
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of hidden states and output vectors.
+        dropout (float): Dropout ratio.
+        use_cudnn (bool): Use cuDNN.
+
+    .. seealso::
+        :func:`chainer.functions.n_step_birnn`
+
+    """
+
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
+                              use_cudnn, use_bi_direction=True,
+                              activation='relu')

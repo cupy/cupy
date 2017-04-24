@@ -61,8 +61,10 @@ from chainer.links.connection.mlp_convolution_2d import MLPConvolution2D  # NOQA
 from chainer.links.connection.n_step_gru import NStepBiGRU  # NOQA
 from chainer.links.connection.n_step_gru import NStepGRU  # NOQA
 from chainer.links.connection.n_step_lstm import NStepLSTM  # NOQA
-from chainer.links.connection.n_step_rnn import NStepBiRNN  # NOQA
-from chainer.links.connection.n_step_rnn import NStepRNN  # NOQA
+from chainer.links.connection.n_step_rnn import NStepBiRNNReLU  # NOQA
+from chainer.links.connection.n_step_rnn import NStepBiRNNTanh  # NOQA
+from chainer.links.connection.n_step_rnn import NStepRNNReLU  # NOQA
+from chainer.links.connection.n_step_rnn import NStepRNNTanh  # NOQA
 from chainer.links.connection.parameter import Parameter  # NOQA
 from chainer.links.connection.peephole import StatefulPeepholeLSTM  # NOQA
 from chainer.links.connection.scale import Scale  # NOQA

@@ -11,8 +11,8 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-def sigmoid(x):
-    return numpy.tanh(x * 0.5) * 0.5 + 0.5
+def relu(x):
+    return x * (x > 0)
 
 
 @testing.parameterize(*testing.product({
@@ -42,7 +42,11 @@ class TestNStepRNN(unittest.TestCase):
         self.gys = [
             numpy.random.uniform(-1, 1, (l, self.out_size)).astype('f')
             for l in self.lengths]
-        self.rnn = links.NStepRNN(
+        if self.activation == 'tanh':
+            rnn_link_class = links.NStepRNNTanh
+        elif self.activation == 'relu':
+            rnn_link_class = links.NStepRNNReLU
+        self.rnn = rnn_link_class(
             self.n_layer, self.in_size, self.out_size, self.dropout,
             use_cudnn=self.use_cudnn)
 
@@ -73,9 +77,15 @@ class TestNStepRNN(unittest.TestCase):
                 h_prev = self.h[layer, batch]
                 hs = []
                 for x in seq:
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
+
                     hs.append(h_prev)
 
                 seq = hs
@@ -119,7 +129,7 @@ class TestNStepRNN(unittest.TestCase):
         gradient_check.check_backward(
             fun, tuple(in_data),
             tuple([gh_data, ] + gys_data),
-            tuple(params), eps=1e-2, rtol=1e-3, atol=1e-3)
+            tuple(params), eps=1e-2, rtol=1e-2, atol=5e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -162,9 +172,13 @@ class TestNStepBiRNN(unittest.TestCase):
 
         self.gh = numpy.random.uniform(-1, 1, shape).astype('f')
         self.gys = [
-            numpy.random.uniform(-1, 1, (l, self.out_size*2)).astype('f')
+            numpy.random.uniform(-1, 1, (l, self.out_size * 2)).astype('f')
             for l in self.lengths]
-        self.rnn = links.NStepBiRNN(
+        if self.activation == 'tanh':
+            rnn_link_class = links.NStepBiRNNTanh
+        elif self.activation == 'relu':
+            rnn_link_class = links.NStepBiRNNReLU
+        self.rnn = rnn_link_class(
             self.n_layer, self.in_size, self.out_size, self.dropout,
             use_cudnn=self.use_cudnn)
 
@@ -198,9 +212,14 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_f = []
                 for x in seq:
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
                     hs_f.append(h_prev)
 
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
@@ -212,9 +231,13 @@ class TestNStepBiRNN(unittest.TestCase):
                 h_prev = self.h[layer_idx, batch]
                 hs_b = []
                 for x in reversed(seq):
-                    h_prev = numpy.tanh(x.dot(p.w0.data.T) +
-                                        h_prev.dot(p.w1.data.T) +
-                                        p.b0.data + p.b1.data)
+                    if self.activation == 'tanh':
+                        activation_func = numpy.tanh
+                    elif self.activation == 'relu':
+                        activation_func = relu
+                    h_prev = activation_func(x.dot(p.w0.data.T) +
+                                             h_prev.dot(p.w1.data.T) +
+                                             p.b0.data + p.b1.data)
                     hs_b.append(h_prev)
                 testing.assert_allclose(hy.data[layer_idx, batch], h_prev)
 
@@ -260,7 +283,7 @@ class TestNStepBiRNN(unittest.TestCase):
         gradient_check.check_backward(
             fun, tuple(in_data),
             tuple([gh_data, ] + gys_data),
-            tuple(params), eps=1e-2, rtol=1e-3, atol=1e-3)
+            tuple(params), eps=1e-2, rtol=5e-2, atol=5e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -276,5 +299,6 @@ class TestNStepBiRNN(unittest.TestCase):
             [cuda.to_gpu(x) for x in self.xs],
             cuda.to_gpu(self.gh),
             [cuda.to_gpu(gy) for gy in self.gys])
+
 
 testing.run_module(__name__, __file__)
