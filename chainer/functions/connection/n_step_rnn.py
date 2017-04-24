@@ -160,6 +160,7 @@ if cuda.cudnn_enabled and _cudnn_version >= 5000:
 
 
 class BaseNStepRNN(function.Function):
+
     def __init__(self, n_layers, states, rnn_dir, rnn_mode, train=True):
         if rnn_dir not in _rnn_dirs:
             candidate_list = ','.join(_rnn_dirs.keys())
@@ -531,10 +532,10 @@ def n_step_rnn(n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
                use_cudnn=True, activation='tanh'):
     """Stacked Uni-directional RNN function for sequence inputs.
 
-    This function calculates stacked RNN with sequences. This function gets
-    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
-    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
-    :math:`b`.
+    This function calculates stacked Uni-directional RNN with sequences.
+    This function gets an initial hidden state :math:`h_0`,
+    an initial cell state :math:`c_0`, an input sequence :math:`x`,
+    weight matrices :math:`W`, and bias vectors :math:`b`.
     This function calculates hidden states :math:`h_t` and :math:`c_t` for each
     time :math:`t` from input :math:`x_t`.
 
@@ -617,16 +618,16 @@ def n_step_birnn(n_layers, dropout_ratio, hx, ws, bs, xs, train=True,
                  use_cudnn=True, activation='tanh'):
     """Stacked Bi-directional RNN function for sequence inputs.
 
-    This function calculates stacked RNN with sequences. This function gets
-    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
-    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
-    :math:`b`.
+    This function calculates stacked Bi-directional RNN with sequences.
+    This function gets an initial hidden state :math:`h_0`, an initial
+    cell state :math:`c_0`, an input sequence :math:`x`,
+    weight matrices :math:`W`, and bias vectors :math:`b`.
     This function calculates hidden states :math:`h_t` and :math:`c_t` for each
     time :math:`t` from input :math:`x_t`.
 
     .. math::
-        h^{f}_t &=& f(W^{f}_0 x_t + W^{f}_1 hf_{t-1} + b^{f}_0 + b^{f}_1), \\\\
-        h^{b}_t &=& f(W^{b}_0 x_t + W^{b}_1 hb_{t-1} + b^{b}_0 + b^{b}_1), \\\\
+        h^{f}_t &=& f(W^{f}_0 x_t + W^{f}_1 h_{t-1} + b^{f}_0 + b^{f}_1), \\\\
+        h^{b}_t &=& f(W^{b}_0 x_t + W^{b}_1 h_{t-1} + b^{b}_0 + b^{b}_1), \\\\
         h_t  &=& [h^{f}_t; h^{f}_t], \\\\
 
     where :math:`f` is an activation function.
