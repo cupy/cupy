@@ -10,6 +10,7 @@ from chainer import link
 from chainer.links.connection.n_step_rnn import argsort_list_descent
 from chainer.links.connection.n_step_rnn import permutate_list
 
+
 class NStepLSTMBase(link.ChainList):
     """Base link class for Stacked LSTM/BiLSTM links.
 
