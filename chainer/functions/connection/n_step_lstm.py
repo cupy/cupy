@@ -22,6 +22,7 @@ if cuda.cudnn_enabled:
 
 
 class NStepLSTM(n_step_rnn.BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
                                          rnn_dir='uni', rnn_mode='lstm',
@@ -29,6 +30,7 @@ class NStepLSTM(n_step_rnn.BaseNStepRNN):
 
 
 class NStepBiLSTM(n_step_rnn.BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
                                          rnn_dir='bi', rnn_mode='lstm',

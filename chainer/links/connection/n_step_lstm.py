@@ -32,6 +32,7 @@ class NStepLSTMBase(link.ChainList):
         :func:`chainer.functions.n_step_bilstm`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
                  use_bi_direction):
         weights = []
@@ -138,6 +139,7 @@ class NStepLSTM(NStepLSTMBase):
         :func:`chainer.functions.n_step_lstm`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
                                use_cudnn, use_bi_direction=False)
@@ -166,6 +168,7 @@ class NStepBiLSTM(NStepLSTMBase):
         :func:`chainer.functions.n_step_bilstm`
 
     """
+
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepLSTMBase.__init__(self, n_layers, in_size, out_size, dropout,
                                use_cudnn, use_bi_direction=True)
