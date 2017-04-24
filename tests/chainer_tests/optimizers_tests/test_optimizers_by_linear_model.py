@@ -70,12 +70,12 @@ class LinearModel(object):
         self.optimizer.setup(self.model)
         return self._train_linear_classifier(self.model, self.optimizer, False)
 
-    def accuracy_gpu(self, device=None):
+    def accuracy_gpu(self, device_id=None):
         model = self.model
         optimizer = self.optimizer
-        model.to_gpu(device=device)
+        model.to_gpu(device_id=device_id)
         optimizer.setup(model)
-        with cuda.get_device_from_id(device.id if device else None):
+        with cuda.get_device_from_id(device_id):
             return self._train_linear_classifier(model, optimizer, True)
 
 
