@@ -78,7 +78,7 @@ def accuracy(y, t, ignore_label=None):
 
     .. admonition:: Example
 
-        We show the most common case, when ``y`` is two dimensinal array.
+        We show the most common case, when ``y`` is the two dimensional array.
 
         >>> y = np.array([[0.1, 0.7, 0.2], # prediction label is 1
         ...               [8.0, 1.0, 2.0], # prediction label is 0
