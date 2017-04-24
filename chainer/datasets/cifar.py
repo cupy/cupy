@@ -119,8 +119,7 @@ def _get_cifar(name, withlabel, ndim, scale):
                 y = numpy.array(d['fine_labels'], dtype=numpy.uint8)
                 return x, y
 
-            with tarfile.open(download.cached_download(url), 'r:gz') as \
-                    archive:
+            with tarfile.open(archive_path, 'r:gz') as archive:
                 train_x, train_y = load(archive, 'cifar-100-python/train')
                 test_x, test_y = load(archive, 'cifar-100-python/test')
 
