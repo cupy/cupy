@@ -215,15 +215,15 @@ Actual: {0}'''.format(type(data))
         if self._grad is not None:
             self._grad = cuda.to_cpu(self._grad)
 
-    def to_gpu(self, device=None):
+    def to_gpu(self, device_id=None):
         """Copies the data and gradient arrays to specified GPU.
 
         Args:
-            device: Target device specifier. If omitted, the current device is
-                used.
+            device_id (int): The target device ID. If omitted, the current
+                device is used.
 
         """
-        with cuda.get_device_from_id(device.id if device else None):
+        with cuda.get_device_from_id(device_id):
             self.data = cuda.to_gpu(self.data)
             if self._grad is not None:
                 self._grad = cuda.to_gpu(self._grad)
