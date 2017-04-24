@@ -630,4 +630,5 @@ class TestNStepLSTMDropout(unittest.TestCase):
             self.assert_count(
                 c_counts[i], total * (1 - self.dropout) ** (self.length * i))
 
+
 testing.run_module(__name__, __file__)
