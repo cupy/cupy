@@ -127,9 +127,9 @@ class NStepRNNBase(link.ChainList):
 
 
 class NStepRNNTanh(NStepRNNBase):
-    """Stacked RNN for sequnces.
+    """Stacked Uni-directional RNN for sequnces.
 
-    This link is stacked version of RNN for sequences.
+    This link is stacked version of Uni-directional RNN for sequences.
     Note that the activation function is ``tanh``.
     It calculates hidden and cell states of all layer at end-of-string,
     and all hidden states of the last layer for each time.
@@ -158,9 +158,9 @@ class NStepRNNTanh(NStepRNNBase):
 
 
 class NStepRNNReLU(NStepRNNBase):
-    """Stacked RNN for sequnces.
+    """Stacked Uni-directional RNN for sequnces.
 
-    This link is stacked version of RNN for sequences.
+    This link is stacked version of Uni-directional RNN for sequences.
     Note that the activation function is ``relu``.
     It calculates hidden and cell states of all layer at end-of-string,
     and all hidden states of the last layer for each time.
@@ -189,9 +189,9 @@ class NStepRNNReLU(NStepRNNBase):
 
 
 class NStepBiRNNTanh(NStepRNNBase):
-    """Stacked Bi-direction RNN for sequnces.
+    """Stacked Bi-directional RNN for sequnces.
 
-    This link is stacked version of RNN for sequences.
+    This link is stacked version of Bi-directional RNN for sequences.
     Note that the activation function is ``tanh``.
     It calculates hidden and cell states of all layer at end-of-string,
     and all hidden states of the last layer for each time.
@@ -220,9 +220,9 @@ class NStepBiRNNTanh(NStepRNNBase):
 
 
 class NStepBiRNNReLU(NStepRNNBase):
-    """Stacked Bi-direction RNN for sequnces.
+    """Stacked Bi-directional RNN for sequnces.
 
-    This link is stacked version of RNN for sequences.
+    This link is stacked version of Bi-directional RNN for sequences.
     Note that the activation function is ``relu``.
     It calculates hidden and cell states of all layer at end-of-string,
     and all hidden states of the last layer for each time.
