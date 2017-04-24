@@ -6,7 +6,6 @@ import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer import links
-from chainer.links.theano import theano_function
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
