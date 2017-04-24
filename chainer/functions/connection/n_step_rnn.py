@@ -500,24 +500,28 @@ class BaseNStepRNN(function.Function):
 
 
 class NStepRNNTanh(BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='uni',
                               rnn_mode='rnn_tanh', train=train)
 
 
 class NStepRNNReLU(BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='uni',
                               rnn_mode='rnn_relu', train=train)
 
 
 class NStepBiRNNTanh(BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='bi',
                               rnn_mode='rnn_tanh', train=train)
 
 
 class NStepBiRNNReLU(BaseNStepRNN):
+
     def __init__(self, n_layers, states, train=True):
         BaseNStepRNN.__init__(self, n_layers, states, rnn_dir='bi',
                               rnn_mode='rnn_relu', train=train)
