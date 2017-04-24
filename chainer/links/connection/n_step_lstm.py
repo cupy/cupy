@@ -89,12 +89,12 @@ class NStepLSTMBase(link.ChainList):
 
         xs = permutate_list(xs, indices, inv=False)
         if hx is None:
-            hx = self.init_hx(hx)
+            hx = self.init_hx(xs)
         else:
             hx = permutate.permutate(hx, indices, axis=1, inv=False)
 
         if cx is None:
-            cx = self.init_hx(hx)
+            cx = self.init_hx(xs)
         else:
             cx = permutate.permutate(cx, indices, axis=1, inv=False)
 
