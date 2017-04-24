@@ -12,16 +12,12 @@ from chainer import link
 
 
 class NStepLSTMBase(link.ChainList):
-    """Stacked LSTM Base Link
+    """Base link class for Stacked LSTM/BiLSTM links.
 
-    This link is stacked version of LSTM for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is base link class for :func:`chainer.links.NStepLSTM` and
+    :func:`chainer.links.NStepBiLSTM`.
 
-    Unlike :func:`chainer.functions.n_step_lstm`, this function automatically
-    sort inputs in descending order by length, and transpose the seuqnece.
-    Users just need to call the link with a list of :class:`chainer.Variable`
-    holding sequences.
+    This link's behavior depends on argument, ``use_bi_direction``.
 
     Args:
         n_layers (int): Number of layers.
@@ -66,6 +62,16 @@ class NStepLSTMBase(link.ChainList):
         self.direction = direction
         self.rnn = rnn.n_step_bilstm if use_bi_direction else rnn.n_step_lstm
 
+    def init_hx(self, xs):
+        hx_shape = self.n_layers * self.direction
+        with cuda.get_device(self._device_id):
+            hx = chainer.Variable(
+                self.xp.zeros(
+                    (hx_shape, len(xs), self.out_size),
+                    dtype=xs[0].dtype),
+                volatile='auto')
+        return hx
+
     def __call__(self, hx, cx, xs, train=True):
         """Calculate all hidden states and cell states.
 
@@ -82,24 +88,13 @@ class NStepLSTMBase(link.ChainList):
         indices = argsort_list_descent(xs)
 
         xs = permutate_list(xs, indices, inv=False)
-        hx_shape = self.n_layers * self.direction
         if hx is None:
-            with cuda.get_device(self._device_id):
-                hx = chainer.Variable(
-                    self.xp.zeros(
-                        (hx_shape, len(xs), self.out_size),
-                        dtype=xs[0].dtype),
-                    volatile='auto')
+            hx = self.init_hx(hx)
         else:
             hx = permutate.permutate(hx, indices, axis=1, inv=False)
 
         if cx is None:
-            with cuda.get_device(self._device_id):
-                cx = chainer.Variable(
-                    self.xp.zeros(
-                        (hx_shape, len(xs), self.out_size),
-                        dtype=xs[0].dtype),
-                    volatile='auto')
+            cx = self.init_hx(hx)
         else:
             cx = permutate.permutate(cx, indices, axis=1, inv=False)
 
@@ -121,11 +116,11 @@ class NStepLSTMBase(link.ChainList):
 
 
 class NStepLSTM(NStepLSTMBase):
-    """Stacked LSTM for sequnces.
+    """Stacked Uni-directional LSTM for sequnces.
 
-    This link is stacked version of LSTM for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of Uni-directional LSTM for sequences.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_lstm`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.
@@ -149,11 +144,11 @@ class NStepLSTM(NStepLSTMBase):
 
 
 class NStepBiLSTM(NStepLSTMBase):
-    """Stacked Bi-direction LSTM for sequnces.
+    """Stacked Bi-directional LSTM for sequnces.
 
-    This link is stacked version of Bi-LSTM for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of Bi-directional LSTM for sequences.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_bilstm`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.

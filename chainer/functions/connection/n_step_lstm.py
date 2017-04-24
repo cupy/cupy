@@ -38,12 +38,12 @@ class NStepBiLSTM(n_step_rnn.BaseNStepRNN):
 def n_step_lstm(
         n_layers, dropout_ratio, hx, cx, ws, bs, xs, train=True,
         use_cudnn=True):
-    """Stacked Long Short-Term Memory function for sequence inputs.
+    """Stacked Uni-directional Long Short-Term Memory function.
 
-    This function calculates stacked LSTM with sequences. This function gets
-    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
-    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
-    :math:`b`.
+    This function calculates stacked Uni-directional LSTM with sequences.
+    This function gets an initial hidden state :math:`h_0`, an initial cell
+    state :math:`c_0`, an input sequence :math:`x`, weight matrices :math:`W`,
+    and bias vectors :math:`b`.
     This function calculates hidden states :math:`h_t` and :math:`c_t` for each
     time :math:`t` from input :math:`x_t`.
 
@@ -125,9 +125,9 @@ def n_step_lstm(
 def n_step_bilstm(
         n_layers, dropout_ratio, hx, cx, ws, bs, xs, train=True,
         use_cudnn=True):
-    """Stacked Bi-direction Long Short-Term Memory function for sequence inputs.
+    """Stacked Bi-directional Long Short-Term Memory function.
 
-    This function calculates stacked Bi-direction LSTM with sequences.
+    This function calculates stacked Bi-directional LSTM with sequences.
     This function gets an initial hidden state :math:`h_0`, an initial cell
     state :math:`c_0`, an input sequence :math:`x`, weight matrices :math:`W`,
     and bias vectors :math:`b`.
