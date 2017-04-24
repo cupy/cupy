@@ -263,6 +263,10 @@ n_step_rnn
 ~~~~~~~~~~
 .. autofunction:: n_step_rnn
 
+n_step_bilstm
+~~~~~~~~~~~~~
+.. autofunction:: n_step_bilstm
+
 n_step_lstm
 ~~~~~~~~~~~
 .. autofunction:: n_step_lstm
