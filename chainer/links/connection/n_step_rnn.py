@@ -40,10 +40,14 @@ class NStepRNNBase(link.ChainList):
         use_cudnn (bool): Use cuDNN.
         use_bi_direction (bool): if ``True``, use Bi-directional RNN.
             if ``False``, use Uni-directional RNN.
+        activation (str): Activation function name.
+            Please select ``tanh`` or ``relu``.
 
     .. seealso::
-        :func:`chainer.links.NStepRNN`
-        :func:`chainer.links.NStepBiRNN`
+        :func:`chainer.links.NStepRNNReLU`
+        :func:`chainer.links.NStepRNNTanh`
+        :func:`chainer.links.NStepBiRNNReLU`
+        :func:`chainer.links.NStepBiRNNTanh`
 
     """
 
@@ -118,12 +122,13 @@ class NStepRNNBase(link.ChainList):
         return hy, ys
 
 
-class NStepRNN(NStepRNNBase):
+class NStepRNNTanh(NStepRNNBase):
     """Stacked RNN for sequnces.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``tanh``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.
@@ -142,19 +147,50 @@ class NStepRNN(NStepRNNBase):
 
     """
 
-    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
-                 activation='tanh'):
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
                               use_cudnn, use_bi_direction=False,
-                              activation=activation)
+                              activation='tanh')
 
 
-class NStepBiRNN(NStepRNNBase):
+class NStepRNNReLU(NStepRNNBase):
+    """Stacked RNN for sequnces.
+
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``relu``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
+
+    Unlike :func:`chainer.functions.n_step_rnn`, this function automatically
+    sort inputs in descending order by length, and transpose the seuqnece.
+    Users just need to call the link with a list of :class:`chainer.Variable`
+    holding sequences.
+
+    Args:
+        n_layers (int): Number of layers.
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of hidden states and output vectors.
+        dropout (float): Dropout ratio.
+        use_cudnn (bool): Use cuDNN.
+
+    .. seealso::
+        :func:`chainer.functions.n_step_rnn`
+
+    """
+
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
+                              use_cudnn, use_bi_direction=False,
+                              activation='relu')
+
+
+class NStepBiRNNTanh(NStepRNNBase):
     """Stacked Bi-direction RNN for sequnces.
 
-    This link is stacked version of RNN for sequences. It calculates hidden
-    and cell states of all layer at end-of-string, and all hidden states of
-    the last layer for each time.
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``tanh``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
 
     Unlike :func:`chainer.functions.n_step_birnn`, this function automatically
     sort inputs in descending order by length, and transpose the seuqnece.
@@ -173,8 +209,38 @@ class NStepBiRNN(NStepRNNBase):
 
     """
 
-    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True,
-                 activation='tanh'):
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
                               use_cudnn, use_bi_direction=True,
-                              activation=activation)
+                              activation='tanh')
+
+
+class NStepBiRNNReLU(NStepRNNBase):
+    """Stacked Bi-direction RNN for sequnces.
+
+    This link is stacked version of RNN for sequences.
+    Note that the activation function is ``relu``.
+    It calculates hidden and cell states of all layer at end-of-string,
+    and all hidden states of the last layer for each time.
+
+    Unlike :func:`chainer.functions.n_step_birnn`, this function automatically
+    sort inputs in descending order by length, and transpose the seuqnece.
+    Users just need to call the link with a list of :class:`chainer.Variable`
+    holding sequences.
+
+    Args:
+        n_layers (int): Number of layers.
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of hidden states and output vectors.
+        dropout (float): Dropout ratio.
+        use_cudnn (bool): Use cuDNN.
+
+    .. seealso::
+        :func:`chainer.functions.n_step_birnn`
+
+    """
+
+    def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn=True):
+        NStepRNNBase.__init__(self, n_layers, in_size, out_size, dropout,
+                              use_cudnn, use_bi_direction=True,
+                              activation='relu')

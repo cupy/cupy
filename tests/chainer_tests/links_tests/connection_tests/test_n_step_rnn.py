@@ -42,9 +42,13 @@ class TestNStepRNN(unittest.TestCase):
         self.gys = [
             numpy.random.uniform(-1, 1, (l, self.out_size)).astype('f')
             for l in self.lengths]
-        self.rnn = links.NStepRNN(
+        if self.activation == 'tanh':
+            rnn_link_class = links.NStepRNNTanh
+        elif self.activation == 'relu':
+            rnn_link_class = links.NStepRNNReLU
+        self.rnn = rnn_link_class(
             self.n_layer, self.in_size, self.out_size, self.dropout,
-            use_cudnn=self.use_cudnn, activation=self.activation)
+            use_cudnn=self.use_cudnn)
 
         for layer in self.rnn:
             for p in layer.params():
@@ -170,9 +174,13 @@ class TestNStepBiRNN(unittest.TestCase):
         self.gys = [
             numpy.random.uniform(-1, 1, (l, self.out_size * 2)).astype('f')
             for l in self.lengths]
-        self.rnn = links.NStepBiRNN(
+        if self.activation == 'tanh':
+            rnn_link_class = links.NStepBiRNNTanh
+        elif self.activation == 'relu':
+            rnn_link_class = links.NStepBiRNNReLU
+        self.rnn = rnn_link_class(
             self.n_layer, self.in_size, self.out_size, self.dropout,
-            use_cudnn=self.use_cudnn, activation=self.activation)
+            use_cudnn=self.use_cudnn)
 
         for layer in self.rnn:
             for p in layer.params():
