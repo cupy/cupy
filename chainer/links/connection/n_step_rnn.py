@@ -82,6 +82,15 @@ class NStepRNNBase(link.ChainList):
         self.direction = direction
         self.rnn = rnn.n_step_birnn if use_bi_direction else rnn.n_step_rnn
 
+    def init_hx(self, xs):
+        with cuda.get_device(self._device_id):
+            hx = chainer.Variable(
+                self.xp.zeros((self.n_layers * self.direction,
+                               len(xs), self.out_size),
+                              dtype=xs[0].dtype),
+                volatile='auto')
+        return hx
+
     def __call__(self, hx, xs, train=True):
         """Calculate all hidden states and cell states.
 
@@ -97,12 +106,7 @@ class NStepRNNBase(link.ChainList):
 
         xs = permutate_list(xs, indices, inv=False)
         if hx is None:
-            with cuda.get_device(self._device_id):
-                hx = chainer.Variable(
-                    self.xp.zeros((self.n_layers * self.direction,
-                                   len(xs), self.out_size),
-                                  dtype=xs[0].dtype),
-                    volatile='auto')
+            hx = self.init_hx(xs)
         else:
             hx = permutate.permutate(hx, indices, axis=1, inv=False)
 
