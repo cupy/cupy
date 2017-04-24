@@ -161,7 +161,7 @@ def lstm(c_prev, x):
 
     First, the input array ``x`` is split into four arrays
     :math:`a, i, f, o` of the same shapes along the second axis. It means that
-    ``x`` 's second axis must have 4 times the length of ``c_prev``.
+    ``x`` 's second axis must have 4 times the ``c_prev`` 's second axis.
 
     The split input arrays are corresponding to:
 
@@ -229,7 +229,7 @@ def lstm(c_prev, x):
         >>> c, h = F.lstm(c, x)
 
         It corresponds to calculate the input array ``x``, or the input
-        sources :math:`a, i, f, o` from the current incoming signal ``y`` and
+        sources :math:`a, i, f, o`, from the current incoming signal ``y`` and
         the previous outgoing signal ``h``. Different parameters are used for
         different kind of input sources.
 
@@ -239,13 +239,14 @@ def lstm(c_prev, x):
 
         - incoming signal
             The formal input of the formulation of LSTM (e.g. in NLP, word
-            vector or output of previous RNN). The input of
+            vector or output of lower RNN layer). The input of
             :class:`chainer.links.LSTM` is the *incoming signal*.
         - input array
-            The array which is linear transformed from *incoming signal*. The
-            *input array* contains four sources, the sources of cell input,
-            input gate, forget gate and output gate. The input of
-            :class:`chainer.functions.LSTM` is the *input array*.
+            The array which is linear transformed from *incoming signal* and
+            the previous outgoing signal. The *input array* contains four
+            sources, the sources of cell input, input gate, forget gate and
+            output gate. The input of :class:`chainer.functions.LSTM` is the
+            *input array*.
 
     """
     return LSTM()(c_prev, x)
