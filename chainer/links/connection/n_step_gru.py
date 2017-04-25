@@ -30,7 +30,7 @@ class NStepGRUBase(link.ChainList):
     .. seealso::
         :func:`chainer.links.NStepGRU`
         :func:`chainer.links.NStepBiGRU`
-        
+
     """
 
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
@@ -108,7 +108,7 @@ class NStepGRUBase(link.ChainList):
         return hy, ys
 
 
-class NStepGRU(link.ChainList):
+class NStepGRU(NStepGRUBase):
 
     """Stacked Uni-directional GRU for sequnces.
 
@@ -138,7 +138,7 @@ class NStepGRU(link.ChainList):
                               use_cudnn, use_bi_direction=False)
 
 
-class NStepBiGRU(link.ChainList):
+class NStepBiGRU(NStepGRUBase):
 
     """Stacked Bi-directional GRU for sequnces.
 
