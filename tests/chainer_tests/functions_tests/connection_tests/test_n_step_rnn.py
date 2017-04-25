@@ -146,7 +146,7 @@ class TestNStepRNN(unittest.TestCase):
             return (hy, ) + ys
 
         gradient_check.check_backward(
-            f, args, grads, eps=1e-2, rtol=1e-2, atol=5e-2)
+            f, args, grads, rtol=1e-2, atol=5e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -317,7 +317,7 @@ class TestNStepBiRNN(unittest.TestCase):
             return (hy, ) + ys
 
         gradient_check.check_backward(
-            f, args, grads, eps=1e-2, rtol=1e-2, atol=5e-2)
+            f, args, grads, rtol=1e-2, atol=5e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
