@@ -18,6 +18,7 @@ class NStepGRUBase(link.ChainList):
     This link is base link class for :func:`chainer.links.NStepRNN` and
     :func:`chainer.links.NStepBiRNN`.
     This link's behavior depends on argument, ``use_bi_direction``.
+
     Args:
         n_layers (int): Number of layers.
         in_size (int): Dimensionality of input vectors.
@@ -29,6 +30,7 @@ class NStepGRUBase(link.ChainList):
     .. seealso::
         :func:`chainer.links.NStepGRU`
         :func:`chainer.links.NStepBiGRU`
+        
     """
 
     def __init__(self, n_layers, in_size, out_size, dropout, use_cudnn,
@@ -72,12 +74,14 @@ class NStepGRUBase(link.ChainList):
 
     def __call__(self, hx, xs, train=True):
         """Calculate all hidden states and cell states.
+
         Args:
             hx (~chainer.Variable or None): Initial hidden states. If ``None``
                 is specified zero-vector is used.
             xs (list of ~chianer.Variable): List of input sequences.
                 Each element ``xs[i]`` is a :class:`chainer.Variable` holding
                 a sequence.
+
         """
         assert isinstance(xs, (list, tuple))
         indices = argsort_list_descent(xs)

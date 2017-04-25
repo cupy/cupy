@@ -21,20 +21,20 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-class NStepGRU(n_step_rnn.BaseNStepRNNNoCell):
+class NStepGRU(n_step_rnn.BaseNStepRNN):
 
     def __init__(self, n_layers, states, train=True):
-        n_step_rnn.BaseNStepRNNNoCell.__init__(self, n_layers, states,
-                                               rnn_dir='uni', rnn_mode='gru',
-                                               train=train)
+        n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
+                                         rnn_dir='uni', rnn_mode='gru',
+                                         train=train)
 
 
-class NStepBiGRU(n_step_rnn.BaseNStepRNNNoCell):
+class NStepBiGRU(n_step_rnn.BaseNStepRNN):
 
     def __init__(self, n_layers, states, train=True):
-        n_step_rnn.BaseNStepRNNNoCell.__init__(self, n_layers, states,
-                                               rnn_dir='bi', rnn_mode='gru',
-                                               train=train)
+        n_step_rnn.BaseNStepRNN.__init__(self, n_layers, states,
+                                         rnn_dir='bi', rnn_mode='gru',
+                                         train=train)
 
 
 def n_step_gru(
