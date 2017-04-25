@@ -328,7 +328,7 @@ class Link(object):
         if not self._cpu:
             return self
         d = self.__dict__
-        if not device_id:
+        if device_id is None:
             device_id = cuda.cupy.cuda.get_device_id()
         with cuda.get_device_from_id(device_id):
             for name in self._params:

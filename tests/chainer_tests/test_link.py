@@ -98,6 +98,18 @@ class TestLink(unittest.TestCase):
         self.assertIsInstance(self.link.y.grad, cupy.ndarray)
         self.assertIsInstance(self.link.p, cupy.ndarray)
 
+    @attr.gpu
+    def test_to_gpu_different_device(self):
+        cuda.Device(1).use()
+        self.link.to_gpu(0)
+        self.assertEqual(self.link._device_id, 0)
+
+    @attr.gpu
+    def test_to_gpu_current_device(self):
+        cuda.Device(1).use()
+        self.link.to_gpu()
+        self.assertEqual(self.link._device_id, 1)
+
     def test_params(self):
         params = list(self.link.params())
         self.assertEqual({id(p) for p in params},
