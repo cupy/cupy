@@ -802,7 +802,7 @@ class TestReshape(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'in_shape': [(4, 3, 2)],
-    'axes': [(-1, 0, 1), None, [-1, 0, 1]],
+    'axes': [[], [(-1, 0, 1)], [[-1, 0, 1]], [None], [-1, 0, 1]],
     'dtype': [np.float16, np.float32, np.float32],
 }))
 class TestTranspose(unittest.TestCase):
@@ -813,9 +813,9 @@ class TestTranspose(unittest.TestCase):
     def check_forward(self, x_data):
         axes = self.axes
         x = chainer.Variable(x_data)
-        y = x.transpose(axes)
+        y = x.transpose(*axes)
         self.assertEqual(y.data.dtype, self.dtype)
-        self.assertTrue((self.x.transpose(axes) == cuda.to_cpu(y.data)).all())
+        self.assertTrue((self.x.transpose(*axes) == cuda.to_cpu(y.data)).all())
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -826,7 +826,7 @@ class TestTranspose(unittest.TestCase):
 
     def check_backward(self, x_data):
         x = chainer.Variable(x_data)
-        y = x.transpose(self.axes)
+        y = x.transpose(*self.axes)
         y.grad = y.data
         y.backward()
         testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
