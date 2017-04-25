@@ -223,10 +223,9 @@ Actual: {0}'''.format(type(data))
                 device is used.
 
         """
-        with cuda.get_device_from_id(device_id):
-            self.data = cuda.to_gpu(self.data)
-            if self._grad is not None:
-                self._grad = cuda.to_gpu(self._grad)
+        self.data = cuda.to_gpu(self.data, device_id)
+        if self._grad is not None:
+            self._grad = cuda.to_gpu(self._grad, device_id)
 
     def cleargrad(self):
         """Clears the gradient array."""
