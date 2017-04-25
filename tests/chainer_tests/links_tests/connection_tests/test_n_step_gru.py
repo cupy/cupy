@@ -165,7 +165,7 @@ class TestNStepBiGRU(unittest.TestCase):
 
         self.gh = numpy.random.uniform(-1, 1, shape).astype('f')
         self.gys = [
-            numpy.random.uniform(-1, 1, (l, self.out_size*2)).astype('f')
+            numpy.random.uniform(-1, 1, (l, self.out_size * 2)).astype('f')
             for l in self.lengths]
         self.rnn = links.NStepBiGRU(
             self.n_layer, self.in_size, self.out_size, self.dropout,
@@ -292,5 +292,6 @@ class TestNStepBiGRU(unittest.TestCase):
             [cuda.to_gpu(x) for x in self.xs],
             cuda.to_gpu(self.gh),
             [cuda.to_gpu(gy) for gy in self.gys])
+
 
 testing.run_module(__name__, __file__)
