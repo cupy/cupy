@@ -314,6 +314,7 @@ def n_step_lstm_base(
        :func:`chainer.functions.lstm`
 
     """
+
     xp = cuda.get_array_module(hx, hx.data)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
