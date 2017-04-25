@@ -31,15 +31,15 @@ def run(gpuid, n_clusters, max_iter, output):
     with timer(' CPU '):
         for i in range(repeat):
             run_kmeans(X_train, estimator_cpu)
-    if output is not None:
-        estimator_cpu.draw(X_train, output)
 
-    cupy.cuda.Device(gpuid)
+    cupy.cuda.Device(gpuid).use()
     X_train = cupy.asarray(X_train)
     estimator_gpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter)
     with timer(' GPU '):
         for i in range(repeat):
             run_kmeans(X_train, estimator_gpu)
+    if output is not None:
+        estimator_gpu.draw(X_train, output)
 
 
 if __name__ == '__main__':

@@ -36,10 +36,28 @@ class KMeans(object):
             self.pred = new_pred
 
             # calculate centers
-            centers = self.xp.empty((0, data_dim))
-            for i in range(self.n_clusters):
-                centers = self.xp.vstack((centers,
-                                          X[self.pred == i].mean(axis=0)))
+            if self.xp == np:
+                centers = self.xp.empty((0, data_dim))
+                for i in range(self.n_clusters):
+                    centers = self.xp.vstack((centers,
+                                              X[self.pred == i].mean(axis=0)))
+            else:
+                centers = self.xp.zeros((self.n_clusters, data_dim),
+                                        dtype=self.xp.float64)
+                group = self.xp.zeros(self.n_clusters, dtype=self.xp.float64)
+                label = self.xp.expand_dims(self.pred, axis=1)
+                cupy.ElementwiseKernel(
+                    'S data, T label', 'raw U centers, raw U group',
+                    '''
+                    int cent_ind[] = {label, i % 30000};
+                    atomicAdd(&centers[cent_ind], data);
+                    atomicAdd(&group[label], 1);
+                    ''',
+                    'calc_center'
+                )(X, label, centers, group)
+                group /= data_dim
+                centers /= self.xp.expand_dims(group, axis=1)
+
             self.centers = centers
 
     def draw(self, X, output):
@@ -51,7 +69,10 @@ class KMeans(object):
         color = ['r', 'b', 'g', 'c', 'm', 'k', 'w', 'y']
         for i in range(self.n_clusters):
             labels = X[self.pred == i]
+            if self.xp == cupy:
+                labels = self.xp.asnumpy(labels)
+                self.centers = self.xp.asnumpy(self.centers)
             plt.scatter(labels[:, 0], labels[:, 1], color=color[i])
         plt.scatter(self.centers[:, 0], self.centers[:, 1], s=120, marker='s',
-                    facecolors='yellow', edgecolors='black')
+                    facecolors='y', edgecolors='k')
         plt.savefig(output + '.png')
