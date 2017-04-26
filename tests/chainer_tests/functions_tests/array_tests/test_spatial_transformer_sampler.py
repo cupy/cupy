@@ -123,4 +123,54 @@ class TestSpatialTransformerSamplerForwardToyCases(unittest.TestCase):
                            self.use_cudnn)
 
 
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+}))
+class TestSpatialTransformerSamplerForwardPaddedImage(unittest.TestCase):
+
+    in_shape = (1, 2, 4, 4)
+
+    def setUp(self):
+        self.x = numpy.random.uniform(
+            size=self.in_shape).astype(numpy.float32)
+        p1 = [[-0.5], [-0.5]]
+        p2 = [[3.5], [3.5]]
+        p3 = [[2], [3.5]]
+        p4 = [[-0.5], [2]]
+        self.grid = numpy.concatenate((p1, p2, p3, p4), axis=1)  # (2, 4)
+        self.grid = self.grid.reshape(1, 2, 4, 1).astype(numpy.float32)
+        self.grid[:, 0] =\
+            ((self.grid[:, 0] / (self.in_shape[3] - 1)) - 0.5) * 2
+        self.grid[:, 1] =\
+            ((self.grid[:, 1] / (self.in_shape[2] - 1)) - 0.5) * 2
+
+        exp_p1 = self.x[0, :, 0, 0] / 4
+        exp_p2 = self.x[0, :, 3, 3] / 4
+        exp_p3 = self.x[0, :, 3, 2] / 2
+        exp_p4 = self.x[0, :, 2, 0] / 2
+
+        self.expected = numpy.concatenate(
+            (exp_p1[:, None],
+             exp_p2[:, None],
+             exp_p3[:, None],
+             exp_p4[:, None]), axis=1)
+        self.expected = self.expected.reshape(1, 2, 4, 1).astype(numpy.float32)
+
+    def check_forward(self, x, grid, expected, use_cudnn=True):
+        y = functions.spatial_transformer_sampler(x, grid, use_cudnn)
+
+        testing.assert_allclose(y.data, expected)
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.grid, self.expected)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.grid),
+                           cuda.to_gpu(self.expected),
+                           self.use_cudnn)
+
+
 testing.run_module(__name__, __file__)
