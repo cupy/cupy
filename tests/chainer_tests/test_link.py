@@ -19,6 +19,13 @@ class TestLink(unittest.TestCase):
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
+        if attr.gpu:
+            self.current_device_id = cuda.cupy.cuda.get_device_id()
+
+    @attr.gpu
+    def tearDown(self):
+        if cuda.cupy.cuda.get_device_id() != self.current_device_id:
+            cuda.Device(self.current_device_id).use()
 
     def check_param_init(self, name, shape, dtype):
         self.assertTrue(hasattr(self.link, name))

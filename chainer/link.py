@@ -331,6 +331,8 @@ class Link(object):
         if device is None:
             device_id = cuda.cupy.cuda.get_device_id()
             device = cuda.get_device_from_id(device_id)
+        elif type(device) in cuda._integer_types:
+            device = cuda.get_device_from_id(device)
         with device:
             for name in self._params:
                 d[name].to_gpu()
