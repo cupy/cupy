@@ -105,6 +105,11 @@ NStepBiRNNTanh
 .. autoclass:: NStepBiRNNTanh
   :members:
 
+NStepLSTM
+~~~~~~~~~
+.. autoclass:: NStepLSTM
+   :members:
+
 NStepRNNReLU
 ~~~~~~~~~~~~
 .. autoclass:: NStepRNNReLU
@@ -114,11 +119,6 @@ NStepRNNTanh
 ~~~~~~~~~~~~
 .. autoclass:: NStepRNNTanh
   :members:
-
-NStepLSTM
-~~~~~~~~~
-.. autoclass:: NStepLSTM
-   :members:
 
 Scale
 ~~~~~
