@@ -51,8 +51,8 @@ def n_step_gru(
     .. math::
        r_t &= \\sigma(W_0 x_t + W_3 h_{t-1} + b_0 + b_3) \\\\
        z_t &= \\sigma(W_1 x_t + W_4 h_{t-1} + b_1 + b_4) \\\\
-       h'_t &= \\tanh(W_2 x_t + b_2 + r_t \\dot (W_5 h_{t-1} + b_5)) \\\\
-       h_t &= (1 - z_t) \\dot h'_t + z \\dot h_{t-1}
+       h'_t &= \\tanh(W_2 x_t + b_2 + r_t \\cdot (W_5 h_{t-1} + b_5)) \\\\
+       h_t &= (1 - z_t) \\cdot h'_t + z \\cdot h_{t-1}
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are
@@ -129,16 +129,16 @@ def n_step_bigru(
         \\\\
         z^{f}_t &= \\sigma(W^{f}_1 x_t + W^{f}_4 h_{t-1} + b^{f}_1 + b^{f}_4)
         \\\\
-        h^{f}'_t &= \\tanh(W^{f}_2 x_t + b^{f}_2 + r^{f}_t \\dot
+        h^{f}'_t &= \\tanh(W^{f}_2 x_t + b^{f}_2 + r^{f}_t \\cdot
         (W^{f}_5 h_{t-1} + b^{f}_5)) \\\\
-        h^{f}_t &= (1 - z^{f}_t) \\dot h^{f}'_t + z^{f}_t \\dot h_{t-1} \\\\
+        h^{f}_t &= (1 - z^{f}_t) \\cdot h^{f}'_t + z^{f}_t \\cdot h_{t-1} \\\\
         r^{b}_t &= \\sigma(W^{b}_0 x_t + W^{b}_3 h_{t-1} + b^{b}_0 + b^{b}_3)
         \\\\
         z^{b}_t &= \\sigma(W^{b}_1 x_t + W^{b}_4 h_{t-1} + b^{b}_1 + b^{b}_4)
         \\\\
-        h^{b}'_t &= \\tanh(W^{b}_2 x_t + b^{b}_2 + r^{b}_t \\dot
+        h^{b}'_t &= \\tanh(W^{b}_2 x_t + b^{b}_2 + r^{b}_t \\cdot
         (W^{b}_5 h_{t-1} + b^{b}_5)) \\\\
-        h^{b}_t &= (1 - z^{b}_t) \\dot h^{b}'_t + z^{b}_t \\dot h_{t-1} \\\\
+        h^{b}_t &= (1 - z^{b}_t) \\cdot h^{b}'_t + z^{b}_t \\cdot h_{t-1} \\\\
         h_t &= [h^{f}_t; h^{b}_t]
 
     where :math:`W^{f}` is weight matrices for forward-GRU, :math:`W^{b}` is
