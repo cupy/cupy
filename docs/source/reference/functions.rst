@@ -255,21 +255,21 @@ linear
 ~~~~~~
 .. autofunction:: linear
 
-n_step_birnn
-~~~~~~~~~~~~
-.. autofunction:: n_step_birnn
-
-n_step_rnn
-~~~~~~~~~~
-.. autofunction:: n_step_rnn
-
 n_step_bilstm
 ~~~~~~~~~~~~~
 .. autofunction:: n_step_bilstm
 
+n_step_birnn
+~~~~~~~~~~~~
+.. autofunction:: n_step_birnn
+
 n_step_lstm
 ~~~~~~~~~~~
 .. autofunction:: n_step_lstm
+
+n_step_rnn
+~~~~~~~~~~
+.. autofunction:: n_step_rnn
 
 
 Evaluation functions

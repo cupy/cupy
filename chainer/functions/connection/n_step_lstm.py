@@ -221,10 +221,6 @@ def n_step_bilstm(
               mini-batch size for time ``t``, and ``N`` is size of hidden
               units. Note that ``B_t`` is the same value as ``xs[t]``.
 
-    .. seealso::
-
-       :func:`chainer.functions.lstm`
-
     """
     return n_step_lstm_base(n_layers, dropout_ratio, hx, cx, ws, bs, xs, train,
                             use_cudnn, use_bi_direction=True)
@@ -233,32 +229,12 @@ def n_step_bilstm(
 def n_step_lstm_base(
         n_layers, dropout_ratio, hx, cx, ws, bs, xs, train, use_cudnn,
         use_bi_direction):
-    """Stacked Long Short-Term Memory Base function for sequence inputs.
+    """Base function for Stack LSTM/BiLSTM functions.
 
-    This function calculates stacked LSTM with sequences. This function gets
-    an initial hidden state :math:`h_0`, an initial cell state :math:`c_0`,
-    an input sequence :math:`x`, weight matrices :math:`W`, and bias vectors
-    :math:`b`.
-    This function calculates hidden states :math:`h_t` and :math:`c_t` for each
-    time :math:`t` from input :math:`x_t`.
-
-    .. math::
-       i_t &= \\sigma(W_0 x_t + W_4 h_{t-1} + b_0 + b_4) \\\\
-       f_t &= \\sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5) \\\\
-       o_t &= \\sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6) \\\\
-       a_t &= \\tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7) \\\\
-       c_t &= f_t \\cdot c_{t-1} + i_t \\cdot a_t \\\\
-       h_t &= o_t \\cdot \\tanh(c_t)
-
-    As the function accepts a sequence, it calculates :math:`h_t` for all
-    :math:`t` with one call. Eight weight matrices and eight bias vectors are
-    required for each layers. So, when :math:`S` layers exists, you need to
-    prepare :math:`8S` weigth matrices and :math:`8S` bias vectors.
-
-    If the number of layers ``n_layers`` is greather than :math:`1`, input
-    of ``k``-th layer is hidden state ``h_t`` of ``k-1``-th layer.
-    Note that all input variables except first layer may have different shape
-    from the first layer.
+    This function is used at :func:`chainer.functions.n_step_lstm` and
+    :func:`chainer.functions.n_step_bilstm`.
+    This function's behavior depends on following arguments,
+    ``activation`` and ``use_bi_direction``.
 
     Args:
         n_layers(int): Number of layers.
@@ -295,8 +271,8 @@ def n_step_lstm_base(
             ``xs[t].shape[0] >= xs[t + 1].shape[0]``.
         train (bool): If ``True``, this function executes dropout.
         use_cudnn (bool): If ``True``, this function uses cuDNN if available.
-        use_bi_direction (bool): If ``True``, this function uses Bi-direction
-            LSTM..
+        use_bi_direction (bool): If ``True``, this function uses Bi-directional
+            LSTM.
 
     Returns:
         tuple: This functions returns a tuple concaining three elements,
@@ -311,7 +287,8 @@ def n_step_lstm_base(
 
     .. seealso::
 
-       :func:`chainer.functions.lstm`
+       :func:`chainer.functions.n_step_lstm`
+       :func:`chainer.functions.n_step_bilstm`
 
     """
 
