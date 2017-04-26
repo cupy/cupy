@@ -255,6 +255,8 @@ def to_gpu(array, device=None, stream=None):
     check_cuda_available()
     if type(device) in _integer_types:
         device = get_device_from_id(device)
+    elif device is None:
+        device = DummyDevice
     with device:
         array_dev = get_device_from_array(array)
         if array_dev.id == cupy.cuda.device.get_device_id():
