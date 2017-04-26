@@ -52,7 +52,7 @@ class TestSpatialTransformerSampler(unittest.TestCase):
         self.x = numpy.random.uniform(
             size=self.in_shape).astype(numpy.float32)
         self.grid = numpy.random.uniform(
-            low=-1., high=1., size=self.grid_shape).astype(numpy.float32)
+            low=-1.2, high=1.2, size=self.grid_shape).astype(numpy.float32)
         self.grads = numpy.random.uniform(
             size=self.out_shape).astype(numpy.float32)
 
