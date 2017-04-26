@@ -255,8 +255,8 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
     This function currently only supports bilinear interpolation as a sampling
     kernel.
 
-    It is important to note that this function assumes values in ``grid`` to
-    be in range :math:`[-1, 1]`.
+    When coordinates in ``grid`` is outside range :math:`[-1, 1]`, values are
+    sampled from zero padded image.
 
     Notatition: here is a notation for dimensionalities.
 
@@ -284,7 +284,6 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
             location along the horizontal axis, and the second coordinate
             corresponds to the location along the vertical axis.
 
-            The values of this variable is clipped in range :math:`[-1, 1]`.
             The coordinate :math:`(-1, -1)` corresponds to the upper-left
             corner of the input image.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
