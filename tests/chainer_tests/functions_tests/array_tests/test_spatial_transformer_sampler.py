@@ -8,6 +8,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer import Variable
 
 
 def _identiy_grid(in_shape):
@@ -86,6 +87,59 @@ class TestSpatialTransformerSampler(unittest.TestCase):
                             cuda.to_gpu(self.grid),
                             cuda.to_gpu(self.grads),
                             self.use_cudnn)
+
+
+class TestSpatialTransformerSamplerConsistencyWithCuDNN(unittest.TestCase):
+
+    in_shape = (2, 2, 4, 4)
+    out_shape = (2, 2, 3, 3)
+    grid_shape = (2, 2, 3, 3)
+
+    def setUp(self):
+        self.x = numpy.random.uniform(
+            size=self.in_shape).astype(numpy.float32)
+        self.grid = numpy.random.uniform(
+            low=-2, high=2, size=self.grid_shape).astype(numpy.float32)
+        self.grads = numpy.random.uniform(
+            size=self.out_shape).astype(numpy.float32)
+
+    def _apply_backward(self, x, grid, grads, use_cudnn):
+        x = Variable(x)
+        grid = Variable(grid)
+        y = functions.spatial_transformer_sampler(
+            x, grid, use_cudnn=use_cudnn)
+        x.zerograd()
+        grid.zerograd()
+        y.grad = grads
+        y.backward()
+        return x, grid, y
+
+    @attr.gpu
+    @attr.cudnn
+    def test_consistency_with_cudnn_cpu(self):
+        x_cpu, grid_cpu, y_cpu = self._apply_backward(
+            self.x, self.grid, self.grads, use_cudnn=False)
+        x_cudnn, grid_cudnn, y_cudnn = self._apply_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.grid),
+            cuda.to_gpu(self.grads), use_cudnn=True)
+
+        testing.assert_allclose(y_cpu.data, y_cudnn.data)
+        testing.assert_allclose(x_cpu.grad, x_cudnn.grad)
+        testing.assert_allclose(grid_cpu.grad, grid_cudnn.grad)
+
+    @attr.gpu
+    @attr.cudnn
+    def test_consistency_with_cudnn_gpu(self):
+        x_gpu, grid_gpu, y_gpu = self._apply_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.grid),
+            cuda.to_gpu(self.grads), use_cudnn=False)
+        x_cudnn, grid_cudnn, y_cudnn = self._apply_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.grid),
+            cuda.to_gpu(self.grads), use_cudnn=True)
+
+        testing.assert_allclose(y_gpu.data, y_cudnn.data)
+        testing.assert_allclose(x_gpu.grad, x_cudnn.grad)
+        testing.assert_allclose(grid_gpu.grad, grid_cudnn.grad)
 
 
 @testing.parameterize(
