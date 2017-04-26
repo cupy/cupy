@@ -733,14 +733,14 @@ def n_step_rnn_base(n_layers, dropout_ratio, hx, ws, bs, xs, train,
             dimention of hidden units.
         ws (list of list of chainer.Variable): Weight matrices. ``ws[i]``
             represents weights for i-th layer.
-            Each ``ws[i]`` is a list containing eight matrices.
+            Each ``ws[i]`` is a list containing two matrices.
             ``ws[i][j]`` is corresponding with ``W_j`` in the equation.
             Only ``ws[0][j]`` where ``0 <= j < 1`` is ``(I, N)`` shape as they
             are multiplied with input variables. All other matrices has
             ``(N, N)`` shape.
         bs (list of list of chainer.Variable): Bias vectors. ``bs[i]``
             represnents biases for i-th layer.
-            Each ``bs[i]`` is a list containing eight vectors.
+            Each ``bs[i]`` is a list containing two vectors.
             ``bs[i][j]`` is corresponding with ``b_j`` in the equation.
             Shape of each matrix is ``(N,)`` where ``N`` is dimention of
             hidden units.
@@ -760,7 +760,18 @@ def n_step_rnn_base(n_layers, dropout_ratio, hx, ws, bs, xs, train,
         activation (str): Activation function name.
             Please select ``tanh`` or ``relu``.
         use_bi_direction (bool): If ``True``, this function uses
-            Bi-direction RNN.
+            Bi-directional RNN.
+
+    Returns:
+        tuple: This functions returns a tuple concaining three elements,
+            ``hy`` and ``ys``.
+
+            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
+            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
+              ``ys[t]`` holds hidden states of the last layer corresponding
+              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t``
+              is mini-batch size for time ``t``, and ``N`` is size of hidden
+              units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     .. seealso::
        :func:`chainer.functions.n_step_rnn`
