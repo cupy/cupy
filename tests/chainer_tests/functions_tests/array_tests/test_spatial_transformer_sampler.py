@@ -137,8 +137,10 @@ class TestSpatialTransformerSamplerForwardPaddedImage(unittest.TestCase):
         p2 = [[3.5], [3.5]]
         p3 = [[2], [3.5]]
         p4 = [[-0.5], [2]]
-        self.grid = numpy.concatenate((p1, p2, p3, p4), axis=1)  # (2, 4)
+        self.grid = numpy.concatenate((p1, p2, p3, p4), axis=1)
         self.grid = self.grid.reshape(1, 2, 4, 1).astype(numpy.float32)
+        # Scale the coordinates so that the pixels inside the input image
+        # lies in range [-1, 1].
         self.grid[:, 0] =\
             ((self.grid[:, 0] / (self.in_shape[3] - 1)) - 0.5) * 2
         self.grid[:, 1] =\
@@ -158,7 +160,6 @@ class TestSpatialTransformerSamplerForwardPaddedImage(unittest.TestCase):
 
     def check_forward(self, x, grid, expected, use_cudnn=True):
         y = functions.spatial_transformer_sampler(x, grid, use_cudnn)
-
         testing.assert_allclose(y.data, expected)
 
     @condition.retry(3)
