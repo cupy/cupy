@@ -310,7 +310,7 @@ class Link(object):
         self._device_id = None
         return self
 
-    def to_gpu(self, device_id=None):
+    def to_gpu(self, device=None):
         """Copies parameter variables and persistent values to GPU.
 
         This method does not handle non-registered attributes. If some of such
@@ -318,8 +318,8 @@ class Link(object):
         override this method to do so.
 
         Args:
-            device_id (int): The target device ID. If omitted, the current
-                device is used.
+            device: Target device specifier. If omitted, the current device is
+                used.
 
         Returns: self
 
@@ -328,9 +328,10 @@ class Link(object):
         if not self._cpu:
             return self
         d = self.__dict__
-        if device_id is None:
+        if device is None:
             device_id = cuda.cupy.cuda.get_device_id()
-        with cuda.get_device_from_id(device_id):
+            device = cuda.get_device_from_id(device_id)
+        with device:
             for name in self._params:
                 d[name].to_gpu()
             for name in self._persistent:

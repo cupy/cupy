@@ -235,12 +235,12 @@ def get_device(*args):
 # cupy.ndarray allocation and copy
 # ------------------------------------------------------------------------------
 
-def to_gpu(array, device_id=None, stream=None):
+def to_gpu(array, device=None, stream=None):
     """Copies the given CPU array to specified device.
 
     Args:
         array: Array to be sent to GPU.
-        device_id (int): A target device ID.
+        device: Device specifier.
         stream (cupy.cuda.Stream): CUDA stream. If not ``None``, the copy runs
             asynchronously.
 
@@ -253,7 +253,9 @@ def to_gpu(array, device_id=None, stream=None):
 
     """
     check_cuda_available()
-    with get_device_from_id(device_id):
+    if type(device) in _integer_types:
+        device = get_device_from_id(device)
+    with device:
         array_dev = get_device_from_array(array)
         if array_dev.id == cupy.cuda.device.get_device_id():
             return array
