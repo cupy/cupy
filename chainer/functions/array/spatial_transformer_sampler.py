@@ -80,8 +80,8 @@ class SpatialTransformerSampler(function.Function):
 
         # Rescale coordinates from [-1, 1] to [0, width or height - 1],
         # and adjust them to the padded image.
-        u = (u + 1) / 2 * (W - 1) + 1
-        v = (v + 1) / 2 * (H - 1) + 1
+        u = (u + 1) * (W - 1) / 2 + 1
+        v = (v + 1) * (H - 1) / 2 + 1
 
         u = u.clip(0, W + 1)
         v = v.clip(0, H + 1)
@@ -170,8 +170,8 @@ class SpatialTransformerSampler(function.Function):
 
         # Rescale coordinates from [-1, 1] to [0, width or height - 1],
         # and adjust them to the padded image.
-        u = (u + 1) / 2. * (W - 1) + 1
-        v = (v + 1) / 2. * (H - 1) + 1
+        u = (u + 1) * (W - 1) / 2 + 1
+        v = (v + 1) * (H - 1) / 2 + 1
 
         u = u.clip(0, W + 1)
         v = v.clip(0, H + 1)
