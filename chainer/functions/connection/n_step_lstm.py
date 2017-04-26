@@ -54,8 +54,8 @@ def n_step_lstm(
        f_t &= \\sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5) \\\\
        o_t &= \\sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6) \\\\
        a_t &= \\tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7) \\\\
-       c_t &= f_t \\dot c_{t-1} + i_t \\dot a_t \\\\
-       h_t &= o_t \\dot \\tanh(c_t)
+       c_t &= f_t \\cdot c_{t-1} + i_t \\cdot a_t \\\\
+       h_t &= o_t \\cdot \\tanh(c_t)
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are
@@ -145,9 +145,9 @@ def n_step_bilstm(
         \\\\
         a^{f}_t &=& \\tanh(W^{f}_3 x_t + W^{f}_7 h_{t-1} + b^{f}_3 + b^{f}_7),
         \\\\
-        c^{f}_t &=& f^{f}_t \\dot c^{f}_{t-1} + i^{f}_t \\dot a^{f}_t,
+        c^{f}_t &=& f^{f}_t \\cdot c^{f}_{t-1} + i^{f}_t \\cdot a^{f}_t,
         \\\\
-        h^{f}_t &=& o^{f}_t \\dot \\tanh(c^{f}_t),
+        h^{f}_t &=& o^{f}_t \\cdot \\tanh(c^{f}_t),
         \\\\
         i^{b}_t &=& \\sigma(W^{b}_0 x_t + W^{b}_4 h_{t-1} + b^{b}_0 + b^{b}_4),
         \\\\
@@ -157,8 +157,8 @@ def n_step_bilstm(
         \\\\
         a^{b}_t &=& \\tanh(W^{b}_3 x_t + W^{b}_7 h_{t-1} + b^{b}_3 + b^{b}_7),
         \\\\
-        c^{b}_t &=& f^{b}_t \\dot c^{b}_{t-1} + i^{b}_t \\dot a^{b}_t, \\\\
-        h^{b}_t &=& o^{b}_t \\dot \\tanh(c^{b}_t), \\\\
+        c^{b}_t &=& f^{b}_t \\cdot c^{b}_{t-1} + i^{b}_t \\cdot a^{b}_t, \\\\
+        h^{b}_t &=& o^{b}_t \\cdot \\tanh(c^{b}_t), \\\\
         h_t &=& [h^{f}; h^{b}]
 
     where :math:`W^{f}` is weight matrices for forward-LSTM, :math:`W^{b}` is
@@ -247,8 +247,8 @@ def n_step_lstm_base(
        f_t &= \\sigma(W_1 x_t + W_5 h_{t-1} + b_1 + b_5) \\\\
        o_t &= \\sigma(W_2 x_t + W_6 h_{t-1} + b_2 + b_6) \\\\
        a_t &= \\tanh(W_3 x_t + W_7 h_{t-1} + b_3 + b_7) \\\\
-       c_t &= f_t \\dot c_{t-1} + i_t \\dot a_t \\\\
-       h_t &= o_t \\dot \\tanh(c_t)
+       c_t &= f_t \\cdot c_{t-1} + i_t \\cdot a_t \\\\
+       h_t &= o_t \\cdot \\tanh(c_t)
 
     As the function accepts a sequence, it calculates :math:`h_t` for all
     :math:`t` with one call. Eight weight matrices and eight bias vectors are
