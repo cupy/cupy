@@ -19,8 +19,17 @@ class TestLink(unittest.TestCase):
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
-        if attr.gpu:
-            self.current_device_id = cuda.cupy.cuda.get_device_id()
+        print('normal setup')
+
+    @attr.gpu
+    def setUp(self):
+        x_shape_0 = 2
+        x_shape_1 = numpy.int64(3)
+        self.link = chainer.Link(x=((x_shape_0, x_shape_1), 'd'), y=2)
+        self.p = numpy.array([1, 2, 3], dtype='f')
+        self.link.add_persistent('p', self.p)
+        self.link.name = 'a'
+        self.current_device_id = cuda.cupy.cuda.get_device_id()
 
     @attr.gpu
     def tearDown(self):
