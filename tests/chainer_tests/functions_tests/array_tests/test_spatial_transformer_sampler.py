@@ -73,7 +73,7 @@ class TestSpatialTransformerSampler(unittest.TestCase):
     def check_backward(self, x, grid, grads, use_cudnn=True):
         gradient_check.check_backward(
             functions.SpatialTransformerSampler(use_cudnn),
-            (x, grid), (grads,), atol=1e-2, rtol=1e-3, eps=1e-5)
+            (x, grid), (grads,), atol=1e-2, rtol=1e-2, eps=1e-5)
 
     @condition.retry(3)
     def test_backward_cpu(self):
