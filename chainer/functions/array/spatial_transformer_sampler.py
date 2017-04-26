@@ -88,10 +88,8 @@ class SpatialTransformerSampler(function.Function):
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
         u0 = xp.floor(u).astype(numpy.int32)
-        u0 = u0.clip(0, W)
         u1 = u0 + 1
         v0 = xp.floor(v).astype(numpy.int32)
-        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
@@ -180,10 +178,8 @@ class SpatialTransformerSampler(function.Function):
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
         u0 = xp.floor(u).astype(numpy.int32)
-        u0 = u0.clip(0, W)
         u1 = u0 + 1
         v0 = xp.floor(v).astype(numpy.int32)
-        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
