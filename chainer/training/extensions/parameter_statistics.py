@@ -43,8 +43,8 @@ class ParameterStatistics(extension.Extension):
     priority = extension.PRIORITY_WRITER
 
     # prefix ends with a '/' and param_name is preceded by a '/'
-    report_key_template = '{prefix}{link_name}{param_name}/{attr_name}/ \
-            {function_name}'
+    report_key_template = ('{prefix}{link_name}{param_name}/{attr_name}/'
+                           '{function_name}')
 
     default_statistics = {
         'mean': numpy.mean,
