@@ -23,14 +23,29 @@ class KMeans(object):
 
         for _ in range(self.max_iter):
             # calculate distances and label
-            X2 = X.repeat(self.n_clusters, axis=0)
-            X2 = X2.reshape(data_num, self.n_clusters, data_dim)
-            centers = self.xp.broadcast_to(self.centers,
-                                           (data_num, self.n_clusters,
-                                            data_dim))
-            new_pred = self.xp.argmin(self.xp.sum((X2 - centers) ** 2,
-                                                  axis=2), axis=1)
+            distances = self.xp.zeros((data_num, self.n_clusters),
+                                      dtype=self.xp.float64)
+            if self.xp == np:
+                for i in range(self.n_clusters):
+                    distances[:, i] = self.xp.sum((X - self.centers[i]) ** 2,
+                                                  axis=1)
+            else:
+                cupy.ElementwiseKernel(
+                    'S data, raw T centers', 'raw U dist',
+                    '''
+                    int cent_ind1[] = {0, i % 1000};
+                    int cent_ind2[] = {1, i % 1000};
+                    int dist_ind1[] = {i / 1000, 0};
+                    int dist_ind2[] = {i / 1000, 1};
+                    double diff1 = centers[cent_ind1] - data;
+                    double diff2 = centers[cent_ind2] - data;
+                    atomicAdd(&dist[dist_ind1], diff1 * diff1);
+                    atomicAdd(&dist[dist_ind2], diff2 * diff2);
+                    ''',
+                    'calc_distances'
+                )(X, self.centers, distances)
 
+            new_pred = self.xp.argmin(distances, axis=1)
             if self.xp.all(new_pred == self.pred):
                 break
             self.pred = new_pred

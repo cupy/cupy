@@ -23,7 +23,7 @@ def run_kmeans(X_train, estimator):
 
 
 def run(gpuid, n_clusters, max_iter, output):
-    samples = np.random.randn(500, 30000)
+    samples = np.random.randn(50000, 1000)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
@@ -32,14 +32,14 @@ def run(gpuid, n_clusters, max_iter, output):
         for i in range(repeat):
             run_kmeans(X_train, estimator_cpu)
 
-    cupy.cuda.Device(gpuid).use()
-    X_train = cupy.asarray(X_train)
-    estimator_gpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter)
-    with timer(' GPU '):
-        for i in range(repeat):
-            run_kmeans(X_train, estimator_gpu)
-    if output is not None:
-        estimator_gpu.draw(X_train, output)
+    with cupy.cuda.Device(gpuid):
+        X_train = cupy.asarray(X_train)
+        estimator_gpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter)
+        with timer(' GPU '):
+            for i in range(repeat):
+                run_kmeans(X_train, estimator_gpu)
+        if output is not None:
+            estimator_gpu.draw(X_train, output)
 
 
 if __name__ == '__main__':
