@@ -228,24 +228,21 @@ def svd(a, full_matrices=True, compute_uv=True):
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
     if compute_uv:
-        if full_matrices:
-            jobu, jobvt = ord('A'), ord('A')
-        else:
-            jobu, jobvt = ord('S'), ord('S')
+        job = ord('A') if full_matrices else ord('S')
     else:
-        jobu, jobvt = ord('N'), ord('N')
+        job = ord('N')
     if dtype == 'f':
         buffersize = cusolver.sgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=dtype)
         cusolver.sgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
+            handle, job, job, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     else:  # dtype == 'd'
         buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=dtype)
         cusolver.dgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
+            handle, job, job, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
 
