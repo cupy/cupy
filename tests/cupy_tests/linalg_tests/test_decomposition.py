@@ -92,6 +92,10 @@ class TestSVD(unittest.TestCase):
             a, full_matrices=self.full_matrices, compute_uv=False)
         return result
 
+    def check_rank2(self, array):
+        with self.assertRaises(numpy.linalg.LinAlgError):
+            cupy.linalg.svd(array, full_matrices=self.full_matrices)
+
     def test_svd(self):
         self.check_usv(numpy.random.randn(2, 3))
         self.check_usv(numpy.random.randn(2, 2))
@@ -101,3 +105,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular(numpy.random.randn(2, 3))
         self.check_singular(numpy.random.randn(2, 2))
         self.check_singular(numpy.random.randn(3, 2))
+
+    def test_rank2(self):
+        self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
+        self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
