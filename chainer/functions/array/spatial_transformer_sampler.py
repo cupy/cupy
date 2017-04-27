@@ -83,20 +83,22 @@ class SpatialTransformerSampler(function.Function):
         u = (u + 1) * (W - 1) / 2 + 1
         v = (v + 1) * (H - 1) / 2 + 1
 
-        u = u.clip(0, W + 1)
-        v = v.clip(0, H + 1)
+        u_clipped = u.clip(0, W + 1)
+        v_clipped = v.clip(0, H + 1)
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
-        u0 = xp.floor(u).astype(numpy.int32)
+        u0 = xp.floor(u_clipped).astype(numpy.int32)
+        u0 = u0.clip(0, W)
         u1 = u0 + 1
-        v0 = xp.floor(v).astype(numpy.int32)
+        v0 = xp.floor(v_clipped).astype(numpy.int32)
+        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
-        w1 = (u1 - u) * (v1 - v)
-        w2 = (u - u0) * (v1 - v)
-        w3 = (u1 - u) * (v - v0)
-        w4 = (u - u0) * (v - v0)
+        w1 = (u1 - u_clipped) * (v1 - v_clipped)
+        w2 = (u_clipped - u0) * (v1 - v_clipped)
+        w3 = (u1 - u_clipped) * (v_clipped - v0)
+        w4 = (u_clipped - u0) * (v_clipped - v0)
         w1 = w1.astype(x_pad.dtype)
         w2 = w2.astype(x_pad.dtype)
         w3 = w3.astype(x_pad.dtype)
@@ -173,20 +175,22 @@ class SpatialTransformerSampler(function.Function):
         u = (u + 1) * (W - 1) / 2 + 1
         v = (v + 1) * (H - 1) / 2 + 1
 
-        u = u.clip(0, W + 1)
-        v = v.clip(0, H + 1)
+        u_clipped = u.clip(0, W + 1)
+        v_clipped = v.clip(0, H + 1)
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
-        u0 = xp.floor(u).astype(numpy.int32)
+        u0 = xp.floor(u_clipped).astype(numpy.int32)
+        u0 = u0.clip(0, W)
         u1 = u0 + 1
-        v0 = xp.floor(v).astype(numpy.int32)
+        v0 = xp.floor(v_clipped).astype(numpy.int32)
+        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
-        wu0 = u - u0
-        wu1 = u1 - u
-        wv0 = v - v0
-        wv1 = v1 - v
+        wu0 = u_clipped - u0
+        wu1 = u1 - u_clipped
+        wv0 = v_clipped - v0
+        wv1 = v1 - v_clipped
         wu0 = wu0.astype(gy.dtype)
         wu1 = wu1.astype(gy.dtype)
         wv0 = wv0.astype(gy.dtype)
@@ -219,9 +223,11 @@ class SpatialTransformerSampler(function.Function):
         gv *= gy
         gu = xp.sum(gu, axis=1)
         gv = xp.sum(gv, axis=1)
-        # this offsets scaling of the coordinates
-        gu = gu / 2. * (W - 1)
-        gv = gv / 2. * (H - 1)
+        # Offsets scaling of the coordinates and clip gradients.
+        u_reshaped = u.reshape(gu.shape)
+        v_reshaped = v.reshape(gv.shape)
+        gu = gu / 2. * (W - 1) * (u_reshaped > 0) * (u_reshaped < (W + 1))
+        gv = gv / 2. * (H - 1) * (v_reshaped > 0) * (v_reshaped < (H + 1))
 
         ggrid = xp.concatenate((gu[:, None], gv[:, None]), axis=1)
 
