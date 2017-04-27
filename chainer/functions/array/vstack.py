@@ -59,7 +59,14 @@ def vstack(xs):
             same shape.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable:
+            Output variable. When the input variables have the second axis
+            (i.e. :math:`ndim \\geq 2`), the shapes of inputs and output are
+            the same along all but the first axis. The length of first axis
+            is the sum of the lengths of inputs' first axis.
+            When the variables do not have the second axis (i.e.
+            :math:`ndim < 2`), the shape of output is ``(2, N)`` (``N`` is the
+            size of the input variable).
 
     .. admonition:: Example
 

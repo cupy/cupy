@@ -17,7 +17,13 @@ def stack(xs, axis=0):
             is the same with :math:`ndim + 1 - |axis|`.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable:
+            Output variable. Let ``x_1, x_2, ..., x_n`` and ``y`` be the input
+            variables and the output variable,
+            ``y[:, ..., 0, ..., :]`` is ``x_1``,
+            ``y[:, ..., 1, ..., :]`` is ``x_2``
+            and ``y[:, ..., n, ..., :]`` is ``x_n`` (The indexed axis indicates
+            the ``axis``).
 
     .. admonition:: Example
 

@@ -63,7 +63,14 @@ def hstack(xs):
             the same shape.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable:
+            Output variable. When the input variables have the second axis
+            (i.e. :math:`ndim \\geq 2`), the shapes of inputs and output are
+            the same along all but the second axis. The length of second axis
+            is the sum of the lengths of inputs' second axis.
+            When the variables do not have the second axis (i.e.
+            :math:`ndim < 2`), the shape of output is ``(N, )`` (``N`` is the
+            sum of the input variables' size).
 
     .. admonition:: Example
 
