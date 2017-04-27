@@ -262,7 +262,7 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
     kernel.
 
     When coordinates in ``grid`` is outside range :math:`[-1, 1]`, values are
-    sampled from zero padded image.
+    sampled from a zero padded input image.
 
     Notatition: here is a notation for dimensionalities.
 
