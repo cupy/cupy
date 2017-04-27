@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -48,7 +49,7 @@ class TestQRDecomposition(unittest.TestCase):
         result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
-            for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+            for b_cpu, b_gpu in six.moves.zip(result_cpu, result_gpu):
                 self.assertEqual(b_cpu.dtype, b_gpu.dtype)
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
@@ -77,6 +78,7 @@ class TestSVD(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
         result_gpu = cupy.linalg.svd(a_gpu, full_matrices=self.full_matrices)
+        self.assertEqual(len(result_cpu), len(result_gpu))
         for b_cpu, b_gpu in zip(result_cpu, result_gpu):
             # Use abs to support an inverse vector
             cupy.testing.assert_allclose(
