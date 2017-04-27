@@ -21,9 +21,9 @@ class Linear(link.Link):
     does not hold a bias vector.
 
     Args:
-        in_size (int): Dimension of input vectors. If ``None``, parameter
-            initialization will be deferred until the first forward data pass
-            at which time the size will be determined.
+        in_size (int or None): Dimension of input vectors. If ``None``,
+            parameter initialization will be deferred until the first forward
+            data pass at which time the size will be determined.
         out_size (int): Dimension of output vectors.
         wscale (float): Scaling factor of the weight matrix.
         bias (float): Initial bias value.
