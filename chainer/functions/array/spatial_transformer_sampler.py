@@ -74,7 +74,7 @@ class SpatialTransformerSampler(function.Function):
         u = grid[:, 0]
         v = grid[:, 1]
 
-        # Pad the image so that points locating outside of the original
+        # Pad the image so that pixels locating outside of the original
         # image's size can be sampled.
         x_pad = xp.pad(x, ((0, 0), (0, 0), (1, 1), (1, 1)), mode='constant')
 
