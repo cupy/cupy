@@ -58,9 +58,15 @@ class ConnectionistTemporalClassification(function.Function):
     backward values before the activation function is applied.
     """
 
-    def __init__(self, blank_symbol):
+    def __init__(self, blank_symbol, reduce='mean'):
         self.blank_symbol = blank_symbol
         self.zero_padding = -10000000000.0
+
+        if reduce not in ('mean', 'no'):
+            raise ValueError(
+                "only 'mean' and 'no' are valid "
+                "for 'reduce', but '%s' is given" % reduce)
+        self.reduce = reduce
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() > 3)  # TODO(okuta): > 3?
@@ -226,9 +232,10 @@ class ConnectionistTemporalClassification(function.Function):
             log_yseq, self.input_length, t,
             label_length, self.path, self.path_length, xp)
 
-        loss = utils.force_array(xp.sum(
-            _logsumexp(self.prob_trans[0], xp, axis=1)))
-        loss /= -batch_size
+        loss = -_logsumexp(self.prob_trans[0], xp, axis=1)
+        if self.reduce == 'mean':
+            loss = utils.force_array(xp.sum(loss))
+            loss /= batch_size
         return loss,
 
     def backward(self, inputs, grad_output):
@@ -240,7 +247,10 @@ class ConnectionistTemporalClassification(function.Function):
             self.yseq.shape[2], self.path, self.path_length,
             self.prob_trans, xp)
         self.yseq -= xp.exp(label_prob - total_probability[:, None])
-        self.yseq *= grad_output[0] / batch_size
+        if self.reduce == 'mean':
+            self.yseq *= grad_output[0] / batch_size
+        else:
+            self.yseq *= grad_output[0][..., None]
         # mask
         self.yseq *= (
             xp.arange(len(self.yseq))[:, None] < self.input_length)[..., None]
@@ -248,12 +258,18 @@ class ConnectionistTemporalClassification(function.Function):
 
 
 def connectionist_temporal_classification(
-        x, t, blank_symbol, input_length=None, label_length=None):
+        x, t, blank_symbol, input_length=None, label_length=None,
+        reduce='mean'):
     """Connectionist Temporal Classification loss function.
 
     Connectionist Temporal Classification(CTC) [Graves2006]_ is a loss function
     of sequence labeling where the alignment between the inputs and target is
     unknown. See also [Graves2012]_
+
+    The output is a varialbe whose value depends on the value of
+    the option ``reduce``. If it is ``'no'``, it holds the samplewise
+    loss values. If it is ``'mean'``, it takes the mean of loss values.
+
 
     Args:
         x (sequence of Variable): RNN output at each time. ``x`` must be a list
@@ -269,9 +285,16 @@ def connectionist_temporal_classification(
         label_length (Variable): Length of valid sequence for each of mini
             batch ``t`` (optional). If label_length is skipped, It regards that
             all of ``t`` is valid input.
+        recude (str): Reduction option. Its value must be either
+            ``'mean'`` or ``'no'``. Otherwise,
+            :class:`ValueError` is raised.
 
     Returns:
-        Variable: A variable holding a scalar value of the CTC loss.
+       ~chainer.Variable:
+           A variable holding a scalar value of the CTC loss.
+           If ``reduce`` is ``'no'``, the output varialbe holds array
+           whose shape is `(B,)` where `B` is the number of samples.
+           If it is ``'mean'``, it holds a scalar.
 
     .. note::
        You need to input ``x`` without applying to activation functions(e.g.
@@ -316,5 +339,5 @@ def connectionist_temporal_classification(
             xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32),
             volatile='auto')
 
-    return ConnectionistTemporalClassification(blank_symbol)(
+    return ConnectionistTemporalClassification(blank_symbol, reduce)(
         input_length, label_length, t, *x)
