@@ -4,6 +4,7 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer import testing
 from chainer.testing import attr
 import chainer.training.updaters.multiprocess_parallel_updater as mpu
 
@@ -113,3 +114,6 @@ class TestGatherScatter(unittest.TestCase):
         model = SimpleNet()
         with self.assertRaises(RuntimeError):
             mpu.gather_params(model)
+
+
+testing.run_module(__name__, __file__)
