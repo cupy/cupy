@@ -22,8 +22,7 @@ class TestParameterStatisticsBase(object):
         links = []
         for optimizer in six.itervalues(
                 self.trainer.updater.get_all_optimizers()):
-            for namedlink in optimizer.target.namedlinks():
-                _, link = namedlink
+            for _, link in optimizer.target.namedlinks():
                 links.append(link)
         return links
 
