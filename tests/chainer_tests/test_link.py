@@ -19,7 +19,8 @@ class TestLink(unittest.TestCase):
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
-        self.current_device_id = cuda.cupy.cuda.get_device_id()
+        if cuda.available:
+            self.current_device_id = cuda.cupy.cuda.get_device_id()
 
     @attr.gpu
     def tearDown(self):
