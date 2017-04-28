@@ -214,4 +214,14 @@ class TestCTCError(unittest.TestCase):
             functions.connectionist_temporal_classification(x, t, 0)
 
 
+class TestCTCInvalidReductionOption(unittest.TestCase):
+
+    def test_not_iterable(self):
+        x = chainer.Variable(numpy.zeros((4, 2, 3), numpy.float32))
+        t = chainer.Variable(numpy.zeros((2, 2), numpy.int32))
+        with self.assertRaises(ValueError):
+            functions.connectionist_temporal_classification(
+                tuple(x), t, 0, reduce='invalid_option')
+
+
 testing.run_module(__name__, __file__)
