@@ -22,8 +22,8 @@ class TestBasic(unittest.TestCase):
     @testing.slow
     def test_empty_huge(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
-        a.fill(0)
-        self.assertFalse(a.any())
+        a.fill(123)
+        self.assertTrue((a == 123).all())
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -44,8 +44,8 @@ class TestBasic(unittest.TestCase):
     @testing.slow
     def test_empty_huge_int(self):
         a = cupy.empty(2 ** 31, dtype='b')
-        a.fill(0)
-        self.assertFalse(a.any())
+        a.fill(123)
+        self.assertTrue((a == 123).all())
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
