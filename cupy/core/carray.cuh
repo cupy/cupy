@@ -259,30 +259,27 @@ public:
   }
 
   __device__ void set(ptrdiff_t i) {
-    if (ndim == 0) {
+    if (ndim == 1) {
       index_[0] = i;
       return;
     }
     if (size_ > 1LL << 31) {
-      size_t a = i;
+      // 64-bit division is very slow on GPU
+      size_t a = static_cast<size_t>(i);
       for (int dim = ndim; --dim > 0; ) {
-        size_t s = shape_[dim];
-        index_[dim] = (a % s);
+        size_t s = static_cast<size_t>(shape_[dim]);
+        index_[dim] = a % s;
         a /= s;
       }
-      if (ndim > 0) {
-        index_[0] = a;
-      }
+      index_[0] = a;
     } else {
-      unsigned int a = i;
+      unsigned int a = static_cast<unsigned int>(i);
       for (int dim = ndim; --dim > 0; ) {
-        unsigned s = shape_[dim];
-        index_[dim] = (a % s);
+        unsigned int s = static_cast<unsigned int>(shape_[dim]);
+        index_[dim] = a % s;
         a /= s;
       }
-      if (ndim > 0) {
-        index_[0] = a;
-      }
+      index_[0] = a;
     }
   }
 
