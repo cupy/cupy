@@ -290,7 +290,7 @@ def gather_grads(link):
     Return:
         cupy.ndarray
     """
-    if link._cpu:
+    if link.xp is numpy:
         raise RuntimeError('gather_grads works only on GPU.')
 
     size, num = size_num_grads(link)
@@ -303,8 +303,8 @@ def gather_grads(link):
         if param.size == 0:
             continue
         ptrs[i] = 0  # NULL pointer
-        if param._grad is not None:
-            ptrs[i] = param._grad.data.ptr
+        if param.grad is not None:
+            ptrs[i] = param.grad.data.ptr
         info[i + 1] = info[i] + param.size
         i += 1
     info[0] = num
@@ -323,7 +323,7 @@ def gather_params(link):
     Return:
         cupy.ndarray
     """
-    if link._cpu:
+    if link.xp is numpy:
         raise RuntimeError('Link.gather_params works only on GPU.')
 
     size, num = size_num_grads(link)
@@ -358,7 +358,7 @@ def scatter_grads(link, array):
     offset = 0
     for param in link.params():
         next_offset = offset + param.size
-        param._grad = array[offset:next_offset].reshape(param.data.shape)
+        param.grad = array[offset:next_offset].reshape(param.data.shape)
         offset = next_offset
 
 
