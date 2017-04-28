@@ -87,6 +87,49 @@ class TestSplitDataset(unittest.TestCase):
         reconst = sorted(set(subset1a).union(subset2a))
         self.assertEqual(reconst, original)
 
+    def test_split_dataset_n(self):
+        original = list(range(7))
+        subsets = datasets.split_dataset_n(original, 3)
+        self.assertEqual(len(subsets), 3)
+        self.assertEqual(list(subsets[0]), original[:2])
+        self.assertEqual(list(subsets[1]), original[2:4])
+        self.assertEqual(list(subsets[2]), original[4:6])
+
+        order = list(range(6, -1, -1))
+        subsets = datasets.split_dataset_n(original, 2, order)
+        self.assertEqual(len(subsets), 2)
+        self.assertEqual(list(subsets[0]), [6, 5, 4])
+        self.assertEqual(list(subsets[1]), [3, 2, 1])
+
+        original = list(range(6))
+        subsets = datasets.split_dataset_n(original, 3)
+        self.assertEqual(len(subsets), 3)
+        self.assertEqual(list(subsets[0]), original[:2])
+        self.assertEqual(list(subsets[1]), original[2:4])
+        self.assertEqual(list(subsets[2]), original[4:6])
+
+    def test_split_dataset_n_random(self):
+        original = list(range(6))
+        subsets = datasets.split_dataset_n_random(original, 2)
+        reconst = sorted(set(subsets[0]).union(subsets[1]))
+        self.assertEqual(reconst, original)
+
+        subsets1 = datasets.split_dataset_n_random(original, 2, seed=3)
+        reconst = sorted(set(subsets1[0]).union(subsets1[1]))
+        self.assertEqual(reconst, original)
+
+        subsets2 = datasets.split_dataset_n_random(original, 2, seed=3)
+        self.assertEqual(set(subsets1[0]), set(subsets2[0]))
+        self.assertEqual(set(subsets1[1]), set(subsets2[1]))
+
+        original = list(range(7))
+        subsets = datasets.split_dataset_n_random(original, 3)
+        self.assertEqual(len(subsets), 3)
+        for subset in subsets:
+            self.assertEqual(len(subset), 2)
+        reconst = set(subsets[0]).union(subsets[1]).union(subsets[2])
+        self.assertEqual(len(reconst), 6)
+
 
 class TestGetCrossValidationDatasets(unittest.TestCase):
 
