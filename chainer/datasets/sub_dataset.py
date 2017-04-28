@@ -116,7 +116,7 @@ def split_dataset_random(dataset, first_size, seed=None):
         dataset: Dataset to split.
         first_size (int): Size of the first subset.
         seed (int): Seed the generator used for the permutation of indexes.
-            If an integer beging convertible to 32 bit unsigned integers is
+            If an integer being convertible to 32 bit unsigned integers is
             specified, it is guaranteed that each sample
             in the given dataset always belongs to a specific subset.
             If ``None``, the permutation is changed randomly.
@@ -142,9 +142,10 @@ def split_dataset_n(dataset, n, order=None):
             See the document of :class:`SubDataset` for details.
 
     Returns:
-        tuple: Two :class:`SubDataset` objects. The first subset represents the
-            examples of indexes ``order[:split_at]`` while the second subset
-            represents the examples of indexes ``order[split_at:]``.
+        list: List of ``n`` :class:`SubDataset` objects.
+            Each subset contains the examples of indexes
+            ``order[i * (len(dataset) // n):(i + 1) * (len(dataset) // n)]``
+            .
 
     """
     n_examples = len(dataset)
@@ -154,18 +155,21 @@ def split_dataset_n(dataset, n, order=None):
 
 
 def split_dataset_n_random(dataset, n, seed=None):
-    """Splits a dataset into ``n`` subsets.
+    """Splits a dataset into ``n`` subsets randomly.
 
     Args:
         dataset: Dataset to split.
         n(int): The number of subsets.
-        order (sequence of ints): Permutation of indexes in the base dataset.
-            See the document of :class:`SubDataset` for details.
+        seed (int): Seed the generator used for the permutation of indexes.
+            If an integer being convertible to 32 bit unsigned integers is
+            specified, it is guaranteed that each sample
+            in the given dataset always belongs to a specific subset.
+            If ``None``, the permutation is changed randomly.
 
     Returns:
-        tuple: Two :class:`SubDataset` objects. The first subset represents the
-            examples of indexes ``order[:split_at]`` while the second subset
-            represents the examples of indexes ``order[split_at:]``.
+        list: List of ``n`` :class:`SubDataset` objects.
+            Each subset contains ``len(dataset) // n`` examples randomly chosen
+            from the dataset without replacement.
 
     """
     n_examples = len(dataset)
