@@ -90,7 +90,8 @@ def dstack(xs):
                 [2, 3],
                 [3, 4]]])
 
-        >>> x1 = np.arange(0, 6).reshape(3, 2) >>> x1.shape
+        >>> x1 = np.arange(0, 6).reshape(3, 2)
+        >>> x1.shape
         (3, 2)
         >>> x1
         array([[0, 1],
