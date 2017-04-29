@@ -325,8 +325,15 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
                      outsize=None, use_cudnn=True, deterministic=False):
     """Two dimensional deconvolution function.
 
-    This is an implementation of two-dimensional deconvolution (alse known as
-    transposed convolution).
+    This is an implementation of two-dimensional deconvolution. In most of deep
+    learning frameworks and papers, this function is called
+    **transposed convolution**. But because of historical reasons (e.g. paper
+    by Ziller `Deconvolutional Networks`_) and backward compatibility, this
+    function is called **deconvolution** in Chainer.
+
+    .. _Deconvolutional Networks: \
+http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
+
     It takes three variables: input image ``x``,
     the filter weight ``W``, and the bias vector ``b``.
 
