@@ -1,4 +1,3 @@
-import inspect
 import six
 from six.moves import builtins
 import string
@@ -489,8 +488,6 @@ def _get_fix_code(data_type, fixed_type, operation):
 
 
 def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
-    if nin is None:
-        nin = len(inspect.getargspec(func).args)
     in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
     mem = _FusionMem(in_vars)
     in_refs = [_FusionRef(_, mem) for _ in in_vars]
@@ -611,7 +608,11 @@ class Fusion(object):
             types = [_.dtype for _ in args]
             key = tuple(types)
             if key not in self._memo:
-                f = _get_fusion(self.func, self.input_num, self.reduce,
+                if self.input_num is not None:
+                    nin = self.input_num
+                else:
+                    nin = len(args)
+                f = _get_fusion(self.func, nin, self.reduce,
                                 self.post_map, self.identity, types)
                 self._memo[key] = f
             f = self._memo[key]

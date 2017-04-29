@@ -24,7 +24,7 @@ def with_requires(*requirements):
     try:
         ws.require(*requirements)
         skip = False
-    except pkg_resources.VersionConflict:
+    except pkg_resources.ResolutionError:
         skip = True
 
     msg = 'requires: {}'.format(','.join(requirements))
