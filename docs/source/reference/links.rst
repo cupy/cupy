@@ -231,6 +231,13 @@ VGG16Layers
 
 .. autofunction:: chainer.links.model.vision.vgg.prepare
 
+GoogLeNet
+~~~~~~~~~
+.. autoclass:: GoogLeNet
+   :members:
+
+.. autofunction:: chainer.links.model.vision.googlenet.prepare
+
 Residual Networks
 ~~~~~~~~~~~~~~~~~
 .. autoclass:: chainer.links.model.vision.resnet.ResNetLayers

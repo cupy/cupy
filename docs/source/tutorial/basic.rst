@@ -229,7 +229,7 @@ More Pythonic way is combining the links and procedures into a class:
    ...     def __init__(self):
    ...         self.l1 = L.Linear(4, 3)
    ...         self.l2 = L.Linear(3, 2)
-   ...         
+   ...
    ...     def forward(self, x):
    ...         h = self.l1(x)
    ...         return self.l2(h)
@@ -246,7 +246,7 @@ Then, what we have to do here is just define the above class as a subclass of Ch
    ...             l1=L.Linear(4, 3),
    ...             l2=L.Linear(3, 2),
    ...         )
-   ...        
+   ...
    ...     def __call__(self, x):
    ...         h = self.l1(x)
    ...         return self.l2(h)
@@ -270,7 +270,7 @@ Another way to define a chain is using the :class:`ChainList` class, which behav
    ...             L.Linear(4, 3),
    ...             L.Linear(3, 2),
    ...         )
-   ...         
+   ...
    ...     def __call__(self, x):
    ...         h = self[0](x)
    ...         return self[1](h)
@@ -476,7 +476,7 @@ We use a simple three-layer rectifier network with 100 units per layer as an exa
    ...             l2=L.Linear(None, n_units),  # n_units -> n_units
    ...             l3=L.Linear(None, n_out),    # n_units -> n_out
    ...         )
-   ...         
+   ...
    ...     def __call__(self, x):
    ...         h1 = F.relu(self.l1(x))
    ...         h2 = F.relu(self.l2(h1))
@@ -493,7 +493,7 @@ In order to compute loss values or evaluate the accuracy of the predictions, we 
    >>> class Classifier(Chain):
    ...     def __init__(self, predictor):
    ...         super(Classifier, self).__init__(predictor=predictor)
-   ...         
+   ...
    ...     def __call__(self, x, t):
    ...         y = self.predictor(x)
    ...         loss = F.softmax_cross_entropy(y, t)

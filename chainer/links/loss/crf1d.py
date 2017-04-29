@@ -22,8 +22,8 @@ class CRF1d(link.Link):
         super(CRF1d, self).__init__(cost=(n_label, n_label))
         self.cost.data[...] = 0
 
-    def __call__(self, xs, ys):
-        return crf1d.crf1d(self.cost, xs, ys)
+    def __call__(self, xs, ys, reduce='mean'):
+        return crf1d.crf1d(self.cost, xs, ys, reduce)
 
     def argmax(self, xs):
         """Computes a state that maximizes a joint probability.

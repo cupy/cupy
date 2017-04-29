@@ -179,6 +179,10 @@ space2depth
 ~~~~~~~~~~~
 .. autofunction:: space2depth
 
+spatial_transformer_sampler
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: spatial_transformer_sampler
+
 split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
@@ -475,6 +479,10 @@ max
 maximum
 ~~~~~~~
 .. autofunction:: maximum
+
+mean
+~~~~
+.. autofunction:: mean
 
 min
 ~~~
