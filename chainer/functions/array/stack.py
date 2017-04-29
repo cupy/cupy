@@ -22,8 +22,8 @@ def stack(xs, axis=0):
             variables and the output variable,
             ``y[:, ..., 0, ..., :]`` is ``x_1``,
             ``y[:, ..., 1, ..., :]`` is ``x_2``
-            and ``y[:, ..., n, ..., :]`` is ``x_n`` (The indexed axis indicates
-            the ``axis``).
+            and ``y[:, ..., n-1, ..., :]`` is ``x_n`` (The indexed axis
+            indicates the ``axis``).
 
     .. admonition:: Example
 
