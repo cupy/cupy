@@ -248,6 +248,8 @@ class Deconvolution2DFunction(function.Function):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
 
             handle = cudnn.get_handle()
             gy_desc = cudnn.create_tensor_descriptor(gy)
