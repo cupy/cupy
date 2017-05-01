@@ -49,21 +49,23 @@ def depth2space(X, r):
     """Computes the depth2space transformation for subpixel calculations.
 
     Args:
-        xs (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        X (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
             Variable holding a 4d array of shape
-            ``(batch, channel * r * r, dim1, dim2)``
+            ``(batch, channel * r * r, dim1, dim2)``.
         r (int): the upscaling factor.
 
     Returns:
         ~chainer.Variable:
             A variable holding the upscaled array from
             interspersed depth layers. The shape is
-            ``(batch, channel, dim1 * r, dim2 * r)``
+            ``(batch, channel, dim1 * r, dim2 * r)``.
 
     .. note::
        This can be used to compute super-resolution transformations.
        See https://arxiv.org/abs/1609.05158 for details.
+
+    .. seealso:: :func:`space2depth`
 
     .. admonition:: Example
 
