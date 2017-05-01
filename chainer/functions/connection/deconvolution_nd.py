@@ -228,6 +228,8 @@ class DeconvolutionND(function.Function):
         x = cuda.cupy.ascontiguousarray(x)
         W = cuda.cupy.ascontiguousarray(W)
         gy = cuda.cupy.ascontiguousarray(gy)
+        if b is not None:
+            b = cuda.cupy.ascontiguousarray(b)
 
         # Make empty arrays for results.
         gx = cuda.cupy.empty_like(x)
