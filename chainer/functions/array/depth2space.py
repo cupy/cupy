@@ -49,16 +49,47 @@ def depth2space(X, r):
     """Computes the depth2space transformation for subpixel calculations.
 
     Args:
-        X (Variable): Variable holding a 4d array of
-        shape (batch, channel * r, dim1, dim2)
-        r (int): int specifying the upscaling factor.
+        xs (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Variable holding a 4d array of shape
+            ``(batch, channel * r * r, dim1, dim2)``
+        r (int): the upscaling factor.
 
     Returns:
-        Variable: A variable holding the upscaled array from
-        interspersed depth layers.
+        ~chainer.Variable:
+            A variable holding the upscaled array from
+            interspersed depth layers. The shape is
+            ``(batch, channel, dim1 * r, dim2 * r)``
 
     .. note::
        This can be used to compute super-resolution transformations.
        See https://arxiv.org/abs/1609.05158 for details.
+
+    .. admonition:: Example
+
+        >>> X = np.arange(24).reshape(1, 4, 2, 3).astype('f')
+        >>> X.shape
+        (1, 4, 2, 3)
+        >>> X
+        array([[[[  0.,   1.,   2.],
+                 [  3.,   4.,   5.]],
+        <BLANKLINE>
+                [[  6.,   7.,   8.],
+                 [  9.,  10.,  11.]],
+        <BLANKLINE>
+                [[ 12.,  13.,  14.],
+                 [ 15.,  16.,  17.]],
+        <BLANKLINE>
+                [[ 18.,  19.,  20.],
+                 [ 21.,  22.,  23.]]]], dtype=float32)
+        >>> y = F.depth2space(X, 2)
+        >>> y.shape
+        (1, 1, 4, 6)
+        >>> y.data
+        array([[[[  0.,   6.,   1.,   7.,   2.,   8.],
+                 [ 12.,  18.,  13.,  19.,  14.,  20.],
+                 [  3.,   9.,   4.,  10.,   5.,  11.],
+                 [ 15.,  21.,  16.,  22.,  17.,  23.]]]], dtype=float32)
+
     """
     return Depth2Space(r)(X)
