@@ -206,11 +206,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
     if m >= n:
-        x = a.astype(dtype, copy=True)
+        x = cupy.ascontiguousarray(a.astype(dtype, copy=False))
         trans_flag = False
     else:
         m, n = a.shape
-        x = a.transpose().astype(dtype, copy=True)
+        x = cupy.ascontiguousarray(a.transpose().astype(dtype, copy=False))
         trans_flag = True
     mn = min(m, n)
 
