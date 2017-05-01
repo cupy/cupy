@@ -395,6 +395,7 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
     .. admonition:: Example
 
         >>> n = 10
+        >>> c_i, c_o = 3, 1
         >>> d1, d2, d3 = 5, 10, 15
         >>> k1, k2, k3 = 10, 10, 10
         >>> p1, p2, p3 = 5, 5, 5
