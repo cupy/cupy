@@ -70,6 +70,18 @@ class TestExponentialShift(unittest.TestCase):
             serializers.load_npz(f.name, extension)
             self._run_trainer(extension, self.expect[len(self.expect) // 2:])
 
+    def test_serialize_before_first_interval(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            extension = extensions.ExponentialShift(
+                'x', self.rate, target=self.target)
+            self._run_trainer(extension, self.expect[:self.interval - 1])
+            serializers.save_npz(f.name, extension)
+
+            extension = extensions.ExponentialShift(
+                'x', self.rate, target=self.target)
+            serializers.load_npz(f.name, extension)
+            self._run_trainer(extension, self.expect[self.interval - 1:])
+
     def test_with_init(self):
         self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
