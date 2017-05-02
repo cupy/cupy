@@ -42,7 +42,7 @@ class DummyDeserializer(serializer.Deserializer):
         return value
 
 
-def _get_mocked_trainer(init):
+def _get_mocked_trainer():
     trainer = mock.Mock()
 
     def update():
@@ -50,7 +50,6 @@ def _get_mocked_trainer(init):
     trainer.updater.iteration = 0
     trainer.updater.update = update
 
-    trainer.updater.optimizer.x = init
     trainer.updater.get_optimizer = lambda _: trainer.updater.optimizer
 
     return trainer
@@ -67,7 +66,7 @@ def _get_mocked_trainer(init):
 class TestExponentialShift(unittest.TestCase):
 
     def setUp(self):
-        self.trainer = _get_mocked_trainer(self.init)
+        self.trainer = _get_mocked_trainer()
 
         self.interval = 4
         self.expect = [e for e in self.expect for _ in range(self.interval)]
@@ -87,61 +86,52 @@ class TestExponentialShift(unittest.TestCase):
                 extension(self.trainer)
 
     def test_basic(self):
-        extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
-        self._run_trainer(extension, self.expect)
-
-    def test_with_init(self):
         self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
             'x', self.rate, init=self.init, target=self.target)
         self._run_trainer(extension, self.expect)
 
+    def test_without_init(self):
+        self.trainer.updater.optimizer.x = self.init
+        extension = extensions.ExponentialShift(
+            'x', self.rate, target=self.target)
+        self._run_trainer(extension, self.expect)
+
     def test_with_optimizer(self):
         optimizer = mock.Mock()
-        optimizer.x = self.init
+        optimizer.x = 0
         extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target, optimizer=optimizer)
+            'x', self.rate, init=self.init, target=self.target,
+            optimizer=optimizer)
         self._run_trainer(extension, self.expect, optimizer)
 
     def test_serialize(self):
+        self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
+            'x', self.rate, init=self.init, target=self.target)
         self._run_trainer(extension, self.expect[:len(self.expect) // 2])
         target = dict()
         extension.serialize(DummySerializer(target))
 
+        self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
+            'x', self.rate, init=self.init, target=self.target)
         extension.serialize(DummyDeserializer(target))
         self._run_trainer(extension, self.expect[len(self.expect) // 2:])
 
     def test_serialize_before_first_interval(self):
+        self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
+            'x', self.rate, init=self.init, target=self.target)
         self._run_trainer(extension, self.expect[:self.interval - 1])
         target = dict()
         extension.serialize(DummySerializer(target))
 
+        self.trainer.updater.optimizer.x = 0
         extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
+            'x', self.rate, init=self.init, target=self.target)
         extension.serialize(DummyDeserializer(target))
         self._run_trainer(extension, self.expect[self.interval - 1:])
-
-    def test_serialize_backward_compat(self):
-        extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
-        self._run_trainer(extension, self.expect[:len(self.expect) // 2])
-        target = dict()
-        extension.serialize(DummySerializer(target))
-
-        # older version does not have '_init'
-        del target['_init']
-
-        extension = extensions.ExponentialShift(
-            'x', self.rate, target=self.target)
-        extension.serialize(DummyDeserializer(target))
-        self._run_trainer(extension, self.expect[len(self.expect) // 2:])
 
 
 class TestExponentialShiftInvalidArgument(unittest.TestCase):

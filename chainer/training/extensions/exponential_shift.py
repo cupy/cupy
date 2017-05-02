@@ -65,8 +65,4 @@ class ExponentialShift(extension.Extension):
         setattr(optimizer, self._attr, value)
 
     def serialize(self, serializer):
-        try:
-            self._init = serializer('_init', self._init)
-            self._t = serializer('_t', self._t)
-        except KeyError:
-            pass
+        self._t = serializer('_t', self._t)
