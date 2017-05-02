@@ -47,7 +47,7 @@ class TestExponentialShift(unittest.TestCase):
         if extension.invoke_before_training:
             extension(self.trainer)
 
-        for e in self.expect:
+        for e in expect:
             self.trainer.updater.update()
             self.assertEqual(optimizer.x, e)
             if self.trigger(self.trainer):
