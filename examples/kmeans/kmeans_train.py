@@ -22,19 +22,21 @@ def run_kmeans(X_train, estimator):
     estimator.fit(X_train)
 
 
-def run(gpuid, n_clusters, max_iter, output):
-    samples = np.random.randn(50000, 1000)
+def run(gpuid, n_clusters, max_iter, elem, output):
+    samples = np.random.randn(50000, 1000).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
-    estimator_cpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter)
+    estimator_cpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter,
+                                  elem=elem)
     with timer(' CPU '):
         for i in range(repeat):
             run_kmeans(X_train, estimator_cpu)
 
     with cupy.cuda.Device(gpuid):
         X_train = cupy.asarray(X_train)
-        estimator_gpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter)
+        estimator_gpu = kmeans.KMeans(n_clusters=n_clusters,
+                                      max_iter=max_iter, elem=elem)
         with timer(' GPU '):
             for i in range(repeat):
                 run_kmeans(X_train, estimator_gpu)
@@ -50,7 +52,9 @@ if __name__ == '__main__':
                         dest='n_clusters', help='number of clusters')
     parser.add_argument('--max_iter', '-m', default=10, type=int,
                         dest='max_iter', help='number of iterations')
+    parser.add_argument('--elem', '-e', default=False, type=bool,
+                        dest='elem', help='use Elementwise kernel')
     parser.add_argument('--output', '-o', default=None, type=str,
                         dest='output', help='output image name')
     args = parser.parse_args()
-    run(args.gpuid, args.n_clusters, args.max_iter, args.output)
+    run(args.gpuid, args.n_clusters, args.max_iter, args.elem, args.output)
