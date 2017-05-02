@@ -37,13 +37,21 @@ class ExponentialShift(extension.Extension):
         self._init = init
         self._target = target
         self._optimizer = optimizer
-        self._t = 0
+        self._t = 1
+        self._before_training = True
 
     def __call__(self, trainer):
         optimizer = self._optimizer or trainer.updater.get_optimizer('main')
-        if self._init is None:
-            self._init = getattr(optimizer, self._attr)
-        value = self._init * (self._rate ** self._t)
+
+        if self._before_training:
+            if self._init is None:
+                self._init = getattr(optimizer, self._attr)
+            value = self._init * (self._rate ** (self._t - 1))
+            self._before_training = False
+        else:
+            value = self._init * (self._rate ** self._t)
+            self._t += 1
+
         if self._target is not None:
             if self._rate > 1:
                 # almost same as value = min(value, self._target), but this
@@ -55,7 +63,10 @@ class ExponentialShift(extension.Extension):
                 if value / self._target < 1:
                     value = self._target
         setattr(optimizer, self._attr, value)
-        self._t += 1
 
     def serialize(self, serializer):
-        self._t = serializer('_t', self._t)
+        try:
+            self._init = serializer('_init', self._init)
+            self._t = serializer('_t', self._t)
+        except KeyError:
+            pass
