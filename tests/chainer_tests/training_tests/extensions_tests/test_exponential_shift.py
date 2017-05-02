@@ -1,9 +1,26 @@
+import tempfile
 import unittest
 
 import mock
 
+from chainer import serializers
 from chainer import testing
 from chainer.training import extensions
+from chainer.training.util import get_trigger
+
+
+def _get_mocked_trainer(init):
+    trainer = mock.Mock()
+
+    def update():
+        trainer.updater.iteration += 1
+    trainer.updater.iteration = 0
+    trainer.updater.update = update
+
+    trainer.updater.optimizer.x = init
+    trainer.updater.get_optimizer = lambda _: trainer.updater.optimizer
+
+    return trainer
 
 
 @testing.parameterize(
@@ -17,15 +34,54 @@ from chainer.training import extensions
 class TestExponentialShift(unittest.TestCase):
 
     def setUp(self):
-        self.optimizer = mock.MagicMock()
-        self.trainer = mock.MagicMock()
-        self.extension = extensions.ExponentialShift(
-            'x', self.rate, self.init, self.target, self.optimizer)
+        self.trainer = _get_mocked_trainer(self.init)
 
-    def test_call(self):
+        self.interval = 4
+        self.expect = [e for e in self.expect for _ in range(self.interval)]
+        self.trigger = get_trigger((self.interval, 'iteration'))
+
+    def _run_trainer(self, extension, expect, optimizer=None):
+        if optimizer is None:
+            optimizer = self.trainer.updater.optimizer
+
+        if extension.invoke_before_training:
+            extension(self.trainer)
+
         for e in self.expect:
-            self.extension(self.trainer)
-            self.assertEqual(self.optimizer.x, e)
+            self.trainer.updater.update()
+            self.assertEqual(optimizer.x, e)
+            if self.trigger(self.trainer):
+                extension(self.trainer)
+
+    def test_basic(self):
+        extension = extensions.ExponentialShift(
+            'x', self.rate, target=self.target)
+        self._run_trainer(extension, self.expect)
+
+    def test_serialize(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            extension = extensions.ExponentialShift(
+                'x', self.rate, target=self.target)
+            self._run_trainer(extension, self.expect[:len(self.expect) // 2])
+            serializers.save_npz(f.name, extension)
+
+            extension = extensions.ExponentialShift(
+                'x', self.rate, target=self.target)
+            serializers.load_npz(f.name, extension)
+            self._run_trainer(extension, self.expect[len(self.expect) // 2:])
+
+    def test_with_init(self):
+        self.trainer.updater.optimizer.x = 0
+        extension = extensions.ExponentialShift(
+            'x', self.rate, init=self.init, target=self.target)
+        self._run_trainer(extension, self.expect)
+
+    def test_with_optimizer(self):
+        optimizer = mock.Mock()
+        optimizer.x = self.init
+        extension = extensions.ExponentialShift(
+            'x', self.rate, target=self.target, optimizer=optimizer)
+        self._run_trainer(extension, self.expect, optimizer)
 
 
 class TestExponentialShiftInvalidArgument(unittest.TestCase):
