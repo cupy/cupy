@@ -157,7 +157,7 @@ def spatial_transformer_grid(theta, output_shape, use_cudnn=True):
         In the 2nd dimension, the first element is the coordinate along the
         x axis, and the second element is the coordinate along the y axis.
         All the coordinates are scaled to fit range :math:`[-1, 1]`.
-        This means that the coordinate :math:`(-1, 1)` corresponds to
+        This means that the coordinate :math:`(-1, -1)` corresponds to
         the upper-left corner of the input image.
 
     """
