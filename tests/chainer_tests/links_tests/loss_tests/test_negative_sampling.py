@@ -28,6 +28,41 @@ class TestNegativeSampling(unittest.TestCase):
             g_shape = ()
         self.gy = numpy.random.uniform(-1, 1, g_shape).astype(numpy.float32)
 
+    def check_forward(self, x_data, t_data):
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+        y = self.link(x, t)
+        self.assertEqual(y.shape, self.gy.shape)
+
+        W = cuda.to_cpu(self.link.W.data)
+        samples = cuda.to_cpu(y.creator.samples)
+
+        loss = numpy.empty((len(self.x),), numpy.float32)
+        for i in range(len(self.x)):
+            ix = self.x[i]
+            it = self.t[i]
+            if it == -1:
+                loss[i] = 0
+            else:
+                w = W[samples[i]]
+                f = w.dot(ix)
+                # first one is positive example
+                f[0] *= -1
+                loss[i] = numpy.logaddexp(f, 0).sum()
+
+        if self.reduce == 'sum':
+            loss = loss.sum()
+
+        testing.assert_allclose(y.data, loss)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.t)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.link.to_gpu()
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+
     def check_backward(self, x_data, t_data, y_grad):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
@@ -51,29 +86,6 @@ class TestNegativeSampling(unittest.TestCase):
         testing.assert_allclose(
             cuda.to_cpu(gW), cuda.to_cpu(W.grad), atol=1.e-4)
         return x.grad, W.grad
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_forward_gpu(self):
-        x = chainer.Variable(self.x)
-        t = chainer.Variable(self.t)
-        y = self.link(x, t)
-
-        self.assertEqual(y.data.dtype, numpy.float32)
-        self.assertEqual(y.data.shape, self.gy.shape)
-
-        # fix samples
-        negative_sampling.NegativeSamplingFunction.samples = cuda.to_gpu(
-            y.creator.samples)
-        self.link.to_gpu()
-        y_g = self.link(chainer.Variable(cuda.to_gpu(self.x)),
-                        chainer.Variable(cuda.to_gpu(self.t)))
-        del negative_sampling.NegativeSamplingFunction.samples
-
-        self.assertEqual(y_g.data.dtype, numpy.float32)
-        self.assertEqual(y_g.data.shape, self.gy.shape)
-
-        testing.assert_allclose(y.data, y_g.data, atol=1.e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -139,27 +151,6 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
             self.gy0 = self.gy.copy()[self.idx]
         else:
             self.gy0 = self.gy.copy()
-
-    def check_ignore_forward(self, x_data, t_data, x0_data, t0_data):
-        # Ensure that the loss when an ignore target is included is the same
-        # as when it is excluded explicitly.
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        y = self.link(x, t)
-        x0 = chainer.Variable(x0_data)
-        t0 = chainer.Variable(t0_data)
-        y0 = self.link(x0, t0)
-        testing.assert_allclose(y.data.sum(), y0.data.sum(), atol=1.e-4)
-
-    def test_ignore_forward_cpu(self):
-        self.check_ignore_forward(self.x, self.t, self.x0, self.t0)
-
-    @attr.gpu
-    def test_ignore_forward_gpu(self):
-        self.link.to_gpu()
-        self.check_ignore_forward(
-            cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            cuda.to_gpu(self.x0), cuda.to_gpu(self.t0))
 
     def check_ignore_backward(
             self, x_data, t_data, gy_data, x0_data, t0_data, gy0_data):
