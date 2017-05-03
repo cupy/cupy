@@ -12,15 +12,24 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'t': [0, 2]},
+    {'t': [-1, 1, 2]},
+)
 class TestNegativeSampling(unittest.TestCase):
 
+    in_size = 3
+    sample_size = 2
     reduce = 'sum'
 
     def setUp(self):
-        self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
+        batch = len(self.t)
+        x_shape = (batch, self.in_size)
+        self.link = links.NegativeSampling(
+            self.in_size, [10, 5, 2, 5, 2], self.sample_size)
         self.link.cleargrads()
-        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.array([0, 2]).astype(numpy.int32)
+        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        self.t = numpy.array(self.t).astype(numpy.int32)
 
         if self.reduce == 'none':
             g_shape = self.t.shape
@@ -91,31 +100,6 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertTrue(self.link.sampler.use_gpu)
         self.link.to_cpu()
         self.assertFalse(self.link.sampler.use_gpu)
-
-
-class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
-
-    def setUp(self):
-        # Create two identical datasets except that 2nd dataset has the
-        # negative targets explicitly removed. Both cases should have identical
-        # outcomes.
-        self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
-        self.link.cleargrads()
-        self.x = numpy.random.uniform(-1, 1, (3, 3)).astype(numpy.float32)
-        self.t = numpy.array([-1, 1, 2]).astype(numpy.int32)
-
-        if self.reduce == 'none':
-            g_shape = self.t.shape
-        elif self.reduce == 'sum':
-            g_shape = ()
-        self.gy = numpy.random.uniform(-1, 1, g_shape).astype(numpy.float32)
-        self.idx = self.t > -1
-        self.x0 = self.x.copy()[self.idx]
-        self.t0 = self.t.copy()[self.idx]
-        if self.reduce == 'none':
-            self.gy0 = self.gy.copy()[self.idx]
-        else:
-            self.gy0 = self.gy.copy()
 
 
 testing.run_module(__name__, __file__)
