@@ -73,6 +73,9 @@ class TestNegativeSampling(unittest.TestCase):
 
     def check_backward(self, x_data, t_data, w_data, sample, y_grad):
         t = chainer.Variable(t_data)
+        # `__call__` method of `NegativeSampling` link cannot be tested with
+        # `check_backward` because the link makes different samples on each
+        # call.
         ns = negative_sampling.NegativeSamplingFunction(
             sample, self.link.sample_size, self.reduce)
 
