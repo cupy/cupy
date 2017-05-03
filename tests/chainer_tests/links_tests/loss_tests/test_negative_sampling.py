@@ -12,10 +12,9 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(
-    {'t': [0, 2]},
-    {'t': [-1, 1, 2]},
-)
+@testing.parameterize(*testing.product({
+    't': [[0, 2], [-1, 1, 2]],
+}))
 class TestNegativeSampling(unittest.TestCase):
 
     in_size = 3
