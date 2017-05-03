@@ -14,12 +14,19 @@ from chainer.testing import condition
 
 class TestNegativeSampling(unittest.TestCase):
 
+    reduce = 'sum'
+
     def setUp(self):
         self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
         self.link.cleargrads()
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.t = numpy.array([0, 2]).astype(numpy.int32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+
+        if self.reduce == 'none':
+            g_shape = self.t.shape
+        elif self.reduce == 'sum':
+            g_shape = ()
+        self.gy = numpy.random.uniform(-1, 1, g_shape).astype(numpy.float32)
 
     def check_backward(self, x_data, t_data, y_grad):
         x = chainer.Variable(x_data)
@@ -53,7 +60,7 @@ class TestNegativeSampling(unittest.TestCase):
         y = self.link(x, t)
 
         self.assertEqual(y.data.dtype, numpy.float32)
-        self.assertEqual(y.data.shape, ())
+        self.assertEqual(y.data.shape, self.gy.shape)
 
         # fix samples
         negative_sampling.NegativeSamplingFunction.samples = cuda.to_gpu(
@@ -64,10 +71,9 @@ class TestNegativeSampling(unittest.TestCase):
         del negative_sampling.NegativeSamplingFunction.samples
 
         self.assertEqual(y_g.data.dtype, numpy.float32)
-        self.assertEqual(y_g.data.shape, ())
+        self.assertEqual(y_g.data.shape, self.gy.shape)
 
         testing.assert_allclose(y.data, y_g.data, atol=1.e-4)
-        return y.data, y_g.data
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -93,6 +99,7 @@ class TestNegativeSampling(unittest.TestCase):
         x = chainer.Variable(self.x)
         t = chainer.Variable(self.t)
         y = self.link(x, t)
+        y.grad = self.gy
         y.backward()
 
         # fix samples
@@ -103,6 +110,7 @@ class TestNegativeSampling(unittest.TestCase):
         xg = chainer.Variable(cuda.to_gpu(self.x))
         tg = chainer.Variable(cuda.to_gpu(self.t))
         y_g = self.link(xg, tg)
+        y_g.grad = cuda.to_gpu(self.gy)
         y_g.backward()
 
         testing.assert_allclose(x.grad, xg.grad, atol=1.e-4)
@@ -118,11 +126,19 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         self.link.cleargrads()
         self.x = numpy.random.uniform(-1, 1, (3, 3)).astype(numpy.float32)
         self.t = numpy.array([-1, 1, 2]).astype(numpy.int32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+
+        if self.reduce == 'none':
+            g_shape = self.t.shape
+        elif self.reduce == 'sum':
+            g_shape = ()
+        self.gy = numpy.random.uniform(-1, 1, g_shape).astype(numpy.float32)
         self.idx = self.t > -1
         self.x0 = self.x.copy()[self.idx]
         self.t0 = self.t.copy()[self.idx]
-        self.gy0 = self.gy.copy()
+        if self.reduce == 'none':
+            self.gy0 = self.gy.copy()[self.idx]
+        else:
+            self.gy0 = self.gy.copy()
 
     def check_ignore_forward(self, x_data, t_data, x0_data, t0_data):
         # Ensure that the loss when an ignore target is included is the same
@@ -133,7 +149,7 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         x0 = chainer.Variable(x0_data)
         t0 = chainer.Variable(t0_data)
         y0 = self.link(x0, t0)
-        testing.assert_allclose(y.data, y0.data, atol=1.e-4)
+        testing.assert_allclose(y.data.sum(), y0.data.sum(), atol=1.e-4)
 
     def test_ignore_forward_cpu(self):
         self.check_ignore_forward(self.x, self.t, self.x0, self.t0)
