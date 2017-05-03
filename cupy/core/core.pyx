@@ -1219,7 +1219,7 @@ cdef class ndarray:
                 shape.push_back(dim)
                 strides.push_back(self._strides[j] * s_step)
 
-                offset += s_start * self._strides[j]
+                offset += max(0, s_start) * self._strides[j]
                 j += 1
             elif numpy.isscalar(s):
                 ind = int(s)
