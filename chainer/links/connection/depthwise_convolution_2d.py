@@ -1,4 +1,4 @@
-import math
+import numpy
 
 from chainer import cuda
 from chainer.functions.connection import depthwise_convolution_2d
@@ -25,15 +25,13 @@ class DepthwiseConvolution2D(link.Link):
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        wscale (float): Scaling factor of the initial weight.
-        bias (float): Initial bias value.
         nobias (bool): If ``True``, then this link does not use the bias term.
-        initialW (4-D array): Initial weight value. If ``None``, then this
-            function uses scaled Gaussian distribution to initialize weight.
+        initialW (4-D array): Initial weight value. If ``None``, the default
+            initializer is used.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
-        initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses ``bias`` to initialize bias.
+        initial_bias (1-D array): Initial bias value. If ``None``, the bias
+            is set to 0.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
 
@@ -47,8 +45,7 @@ class DepthwiseConvolution2D(link.Link):
     """
 
     def __init__(self, in_channels, channel_multiplier, ksize, stride=1, pad=0,
-                 wscale=1, bias=0, nobias=False, initialW=None,
-                 initial_bias=None):
+                 nobias=False, initialW=None, initial_bias=None):
         super(DepthwiseConvolution2D, self).__init__()
         self.ksize = ksize
         self.stride = _pair(stride)
@@ -56,20 +53,15 @@ class DepthwiseConvolution2D(link.Link):
         self.channel_multiplier = channel_multiplier
         self.nobias = nobias
 
-        # For compatibility with Convolution2D
-        self.initialW = initialW
-        self.wscale = wscale
-
-        # For compatibility with Convolution2D, the scale of weights is
-        # proportional to the square root of wscale.
-        self._W_initializer = initializers._get_initializer(
-            initialW, scale=math.sqrt(wscale))
+        if initialW is None:
+            initialW = initializers.HeNormal(1. / numpy.sqrt(2))
+        self._W_initializer = initializers._get_initializer(initialW)
 
         if nobias:
             self.b = None
         else:
             if initial_bias is None:
-                initial_bias = bias
+                initial_bias = initializers.Constant(0)
             self.bias_initilizer = initializers._get_initializer(initial_bias)
             if in_channels is None:
                 self.add_uninitialized_param('b')
