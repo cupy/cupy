@@ -53,6 +53,9 @@ class NegativeSampling(link.Link):
         Args:
             x (~chainer.Variable): Input of the weight matrix multiplication.
             t (~chainer.Variable): Batch of ground truth labels.
+            recude (str): Reduction option. Its value must be either
+                ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is
+                raised.
 
         Returns:
             ~chainer.Variable: Loss value.

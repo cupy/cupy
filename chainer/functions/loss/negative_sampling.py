@@ -240,6 +240,16 @@ def negative_sampling(x, t, W, sampler, sample_size, reduce='sum'):
             A :class:`~chainer.utils.WalkerAlias` object built with the power
             distribution of word frequency is recommended.
         sample_size (int): Number of samples.
+        recude (str): Reduction option. Its value must be either
+            ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
+
+    Returns:
+        ~chainer.Variable:
+            A variable holding the loss value(s) calculated by the
+            above equation.
+            If ``reduce`` is ``'no'``, the output variable holds array
+            whose shape is same as one of (hence both of) input variables.
+            If it is ``'sum'``, the output variable holds a scalar value.
 
     See: `Distributed Representations of Words and Phrases and their\
          Compositionality <https://arxiv.org/abs/1310.4546>`_
