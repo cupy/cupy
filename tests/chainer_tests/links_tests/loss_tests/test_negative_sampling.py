@@ -104,4 +104,27 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertFalse(self.link.sampler.use_gpu)
 
 
+class TestNegativeSamplingInvalidReductionOption(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 3)
+        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 2, (2,)).astype(numpy.int32)
+
+    def check_invalid_option(self, xp):
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+
+        with self.assertRaises(ValueError):
+            self.link(x, t, 'invalid_option')
+
+    def test_invalid_option_cpu(self):
+        self.check_invalid_option(numpy)
+
+    @attr.gpu
+    def test_invalid_option_gpu(self):
+        self.link.to_gpu()
+        self.check_invalid_option(cuda.cupy)
+
+
 testing.run_module(__name__, __file__)
