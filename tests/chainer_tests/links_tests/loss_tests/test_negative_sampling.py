@@ -14,7 +14,7 @@ from chainer.testing import condition
 
 @testing.parameterize(*testing.product({
     't': [[0, 2], [-1, 1, 2]],
-    'reduce': ['sum', 'none'],
+    'reduce': ['sum', 'no'],
 }))
 class TestNegativeSampling(unittest.TestCase):
 
@@ -30,7 +30,7 @@ class TestNegativeSampling(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         self.t = numpy.array(self.t).astype(numpy.int32)
 
-        if self.reduce == 'none':
+        if self.reduce == 'no':
             g_shape = self.t.shape
         elif self.reduce == 'sum':
             g_shape = ()

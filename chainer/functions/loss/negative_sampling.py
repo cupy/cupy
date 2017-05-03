@@ -11,6 +11,11 @@ class NegativeSamplingFunction(function.Function):
     ignore_label = -1
 
     def __init__(self, sampler, sample_size, reduce='sum'):
+        if reduce not in ('sum', 'no'):
+            raise ValueError(
+                "only 'sum' and 'no' are valid for 'reduce', but '%s' is "
+                'given' % reduce)
+
         self.sampler = sampler
         self.sample_size = sample_size
         self.reduce = reduce
@@ -103,7 +108,7 @@ class NegativeSamplingFunction(function.Function):
         loss = y * self.ignore_mask[:, None].astype('float32')
         if self.reduce == 'sum':
             loss = loss.sum()
-        else:  # 'none':
+        else:  # 'no':
             loss = loss.sum(axis=1)
         return loss,
 
@@ -142,7 +147,7 @@ class NegativeSamplingFunction(function.Function):
         gy, = grads
 
         n_in = x.shape[1]
-        if self.reduce == 'none':
+        if self.reduce == 'no':
             gy = gy[:, None]
         g = cuda.elementwise(
             'T wx, T gy, int32 m', 'T g',
