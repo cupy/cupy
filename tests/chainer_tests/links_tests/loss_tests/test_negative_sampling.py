@@ -14,12 +14,12 @@ from chainer.testing import condition
 
 @testing.parameterize(*testing.product({
     't': [[0, 2], [-1, 1, 2]],
+    'reduce': ['sum', 'none'],
 }))
 class TestNegativeSampling(unittest.TestCase):
 
     in_size = 3
     sample_size = 2
-    reduce = 'sum'
 
     def setUp(self):
         batch = len(self.t)
@@ -39,7 +39,7 @@ class TestNegativeSampling(unittest.TestCase):
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = self.link(x, t)
+        y = self.link(x, t, reduce=self.reduce)
         self.assertEqual(y.shape, self.gy.shape)
 
         W = cuda.to_cpu(self.link.W.data)
