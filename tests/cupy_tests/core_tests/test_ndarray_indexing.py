@@ -54,12 +54,18 @@ from cupy import testing
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -12, -1),)},
     # reversing indexing on empty dimension
     {'shape': (0,), 'transpose': None, 'indexes': (slice(None, None, -1),)},
-    {'shape': (0, 0), 'transpose': None, 'indexes': (slice(None, None, -1), slice(None, None, -1))},
-    {'shape': (0, 0), 'transpose': None, 'indexes': (None, slice(None, None, -1))},
-    {'shape': (0, 0), 'transpose': None, 'indexes': (slice(None, None, -1), None)},
-    {'shape': (0, 1), 'transpose': None, 'indexes': (None, slice(None, None, -1))},
-    {'shape': (1, 0), 'transpose': None, 'indexes': (slice(None, None, -1), None)},
-    {'shape': (1, 0, 1), 'transpose': None, 'indexes': (None, slice(None, None, -1), None)},
+    {'shape': (0, 0), 'transpose': None,
+     'indexes': (slice(None, None, -1), slice(None, None, -1))},
+    {'shape': (0, 0), 'transpose': None,
+     'indexes': (None, slice(None, None, -1))},
+    {'shape': (0, 0), 'transpose': None,
+     'indexes': (slice(None, None, -1), None)},
+    {'shape': (0, 1), 'transpose': None,
+     'indexes': (None, slice(None, None, -1))},
+    {'shape': (1, 0), 'transpose': None,
+     'indexes': (slice(None, None, -1), None)},
+    {'shape': (1, 0, 1), 'transpose': None,
+     'indexes': (None, slice(None, None, -1), None)},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
