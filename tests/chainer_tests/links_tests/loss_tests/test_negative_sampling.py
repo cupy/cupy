@@ -9,7 +9,6 @@ from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
-from chainer.testing import condition
 
 
 @testing.parameterize(*testing.product({
@@ -87,7 +86,8 @@ class TestNegativeSampling(unittest.TestCase):
 
     def test_backward_cpu(self):
         self.check_backward(
-            self.x, self.t, self.link.W.data, self.link.sampler.sample, self.gy)
+            self.x, self.t, self.link.W.data, self.link.sampler.sample,
+            self.gy)
 
     @attr.gpu
     def test_backward_gpu(self):
