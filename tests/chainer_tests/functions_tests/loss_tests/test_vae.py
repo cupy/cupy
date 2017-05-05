@@ -40,7 +40,8 @@ class TestGaussianKLDivergence(unittest.TestCase):
             ln_var = chainer.Variable(ln_var)
         actual = cuda.to_cpu(
             F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
-        actual = cuda.to_cpu(F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
+        actual = cuda.to_cpu(
+            F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
@@ -54,7 +55,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
                                           cuda.to_gpu(self.ln_var))
 
 
-class TestGaussianNLLInvalidReductionOption(unittest.TestCase):
+class TestGaussianKLDivergenceInvalidReductionOption(unittest.TestCase):
 
     def setUp(self):
         self.mean = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
