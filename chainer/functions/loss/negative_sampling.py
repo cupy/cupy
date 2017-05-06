@@ -118,9 +118,7 @@ class NegativeSamplingFunction(function.Function):
 
         gx = numpy.zeros_like(x)
         gW = numpy.zeros_like(W)
-        for i, active in enumerate(self.ignore_mask):
-            if not active:
-                continue
+        for i in numpy.arange(len(self.ignore_mask))[self.ignore_mask]:
             ix = x[i]
             k = self.samples[i]
             if self.reduce == 'sum':
