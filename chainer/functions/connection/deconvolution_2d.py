@@ -389,7 +389,7 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
 
     Returns:
         ~chainer.Variable:
-            Output variable of shape :math:`(n, c_O, h_o, w_o)`.
+            Output variable of shape :math:`(n, c_O, h_O, w_O)`.
 
     .. admonition:: Example
 

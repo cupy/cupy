@@ -351,14 +351,24 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
       spatial dimensions, respectively.
     - :math:`p_1, p_2, ..., p_N` are the size of each axis of the spatial
       padding size, respectively.
+    - :math:`s_1, s_2, ..., s_N` are the stride of each axis of filter
+      application, respectively.
 
-    Let :math:`(s_1, s_2, ..., s_N)` be the stride of filter application.
-    Then, the output size :math:`(l_1, l_2, ..., l_N)` is determined by the
-    following equations:
+    If ``outsize`` option is ``None``, the output size
+    :math:`(l_1, l_2, ..., l_N)` is determined by the following equations with
+    the items in the above list:
 
     .. math::
 
        l_n = s_n (d_n - 1)  + k_n - 2 p_n \ \ (n = 1, ..., N)
+
+    If ``outsize`` option is given, the output size is determined by
+    ``outsize``. In this case, the ``outsize`` :math:`(l_1, l_2, ..., l_N)`
+    must satisfy the following equations:
+
+    .. math::
+
+       d_n = \\lfloor (l_n + 2p_n - k_n) / s_n \\rfloor + 1 \ \ (n = 1, ..., N)
 
     Args:
         x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
@@ -394,6 +404,8 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
 
     .. admonition:: Example
 
+        **Example1**: the case when ``outsize`` is not given.
+
         >>> n = 10
         >>> c_i, c_o = 3, 1
         >>> d1, d2, d3 = 5, 10, 15
@@ -413,9 +425,40 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
 pad=(p1, p2, p3))
         >>> y.shape
         (10, 1, 8, 36, 84)
-        >>> l1 = int(s1 * (d1 - 1) + k1 - 2 * p1)
-        >>> l2 = int(s2 * (d2 - 1) + k2 - 2 * p2)
-        >>> l3 = int(s3 * (d3 - 1) + k3 - 2 * p3)
+        >>> l1 = s1 * (d1 - 1) + k1 - 2 * p1
+        >>> l2 = s2 * (d2 - 1) + k2 - 2 * p2
+        >>> l3 = s3 * (d3 - 1) + k3 - 2 * p3
+        >>> y.shape == (n, c_o, l1, l2, l3)
+        True
+
+        **Example2**: the case when ``outsize`` is given.
+
+        >>> n = 10
+        >>> c_i, c_o = 3, 1
+        >>> d1, d2, d3 = 5, 10, 15
+        >>> k1, k2, k3 = 10, 10, 10
+        >>> p1, p2, p3 = 5, 5, 5
+        >>> x = np.random.uniform(0, 1, (n, c_i, d1, d2, d3)).astype('f')
+        >>> x.shape
+        (10, 3, 5, 10, 15)
+        >>> W = np.random.uniform(0, 1, (c_i, c_o, k1, k2, k3)).astype('f')
+        >>> W.shape
+        (3, 1, 10, 10, 10)
+        >>> b = np.random.uniform(0, 1, (c_o)).astype('f')
+        >>> b.shape
+        (1,)
+        >>> s1, s2, s3 = 2, 4, 6
+        >>> l1, l2, l3 = 9, 38, 87
+        >>> d1 == int((l1 + 2 * p1 - k1) / s1) + 1
+        True
+        >>> d2 == int((l2 + 2 * p2 - k2) / s2) + 1
+        True
+        >>> d3 == int((l3 + 2 * p3 - k3) / s3) + 1
+        True
+        >>> y = F.deconvolution_nd(x, W, b, stride=(s1, s2, s3), \
+pad=(p1, p2, p3), outsize=(l1, l2, l3))
+        >>> y.shape
+        (10, 1, 9, 38, 87)
         >>> y.shape == (n, c_o, l1, l2, l3)
         True
 
