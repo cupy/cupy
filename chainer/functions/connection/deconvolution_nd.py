@@ -347,8 +347,6 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
       spatial dimensions, respectively.
     - :math:`k_1, k_2, ..., k_N` are the size of each axis of the filters,
       respectively.
-    - :math:`l_1, l_2, ..., l_N` are the size of each axis of the output's
-      spatial dimensions, respectively.
     - :math:`p_1, p_2, ..., p_N` are the size of each axis of the spatial
       padding size, respectively.
     - :math:`s_1, s_2, ..., s_N` are the stride of each axis of filter
