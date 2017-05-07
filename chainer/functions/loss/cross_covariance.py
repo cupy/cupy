@@ -82,7 +82,7 @@ def cross_covariance(y, z, reduce='half_frobenius_norm'):
             corresponds to the batches.
         z (Variable): Variable holding a matrix where the first dimension
             corresponds to the batches.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'half_frobenius_norm'`` or ``'no'``.
             Otherwise, :class:`ValueError` is raised.
 
