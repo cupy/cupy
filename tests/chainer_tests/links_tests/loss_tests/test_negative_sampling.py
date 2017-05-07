@@ -70,61 +70,12 @@ class TestNegativeSampling(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
-    def check_backward(self, x_data, t_data, w_data, sample, y_grad):
-        t = chainer.Variable(t_data)
-        # `__call__` method of `NegativeSampling` link cannot be tested with
-        # `check_backward` because the link makes different samples on each
-        # call.
-        ns = negative_sampling.NegativeSamplingFunction(
-            sample, self.link.sample_size, self.reduce)
-
-        def f(x, w):
-            return ns(x, t, w)
-
-        gradient_check.check_backward(
-            f, (x_data, w_data), y_grad, eps=1e-2, atol=1e-4, rtol=1e-4)
-
-    def test_backward_cpu(self):
-        self.check_backward(
-            self.x, self.t, self.link.W.data, self.link.sampler.sample,
-            self.gy)
-
-    @attr.gpu
-    def test_backward_gpu(self):
-        self.link.to_gpu()
-        self.check_backward(
-            cuda.to_gpu(self.x), cuda.to_gpu(self.t),
-            self.link.W.data, self.link.sampler.sample, cuda.to_gpu(self.gy))
-
     @attr.gpu
     def test_to_cpu(self):
         self.link.to_gpu()
         self.assertTrue(self.link.sampler.use_gpu)
         self.link.to_cpu()
         self.assertFalse(self.link.sampler.use_gpu)
-
-
-class TestNegativeSamplingInvalidReductionOption(unittest.TestCase):
-
-    def setUp(self):
-        self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 3)
-        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 2, (2,)).astype(numpy.int32)
-
-    def check_invalid_option(self, xp):
-        x = xp.asarray(self.x)
-        t = xp.asarray(self.t)
-
-        with self.assertRaises(ValueError):
-            self.link(x, t, 'invalid_option')
-
-    def test_invalid_option_cpu(self):
-        self.check_invalid_option(numpy)
-
-    @attr.gpu
-    def test_invalid_option_gpu(self):
-        self.link.to_gpu()
-        self.check_invalid_option(cuda.cupy)
 
 
 testing.run_module(__name__, __file__)
