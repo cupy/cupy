@@ -391,18 +391,38 @@ class TestSoftmaxCrossEntropyInvalidReduce(unittest.TestCase):
         self.check_invalid_reduce(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
 
+@testing.parameterize(*testing.product({
+    'reduce': ['mean', 'no'],
+    'class_weight': [None, numpy.ones((3,), dtype=numpy.float32)]})
+)
 class TestNonDefaultIgnoreLabel(unittest.TestCase):
 
     def setUp(self):
         self.ignore_label = -2
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.t = numpy.full((2,), self.ignore_label, dtype=numpy.int32)
+        if self.reduce == 'mean':
+            gy_shape = ()
+        else:
+            gy_shape = (2,)
+        self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(numpy.float32)
 
     def check_forward(self, xp):
         x = xp.asarray(self.x)
         t = xp.asarray(self.t)
-        loss = functions.softmax_cross_entropy(x, t)
-        self.assertEqual(loss, 0.)
+        if self.class_weight is not None:
+            class_weight = xp.asarray(self.class_weight)
+        else:
+            class_weight = None
+        loss = functions.softmax_cross_entropy(
+            x, t, reduce=self.reduce,
+            class_weight=class_weight,
+            ignore_label=self.ignore_label)
+        if self.reduce == 'mean':
+            expect = 0.
+        else:
+            expect = numpy.zeros((2,), dtype=numpy.float32)
+        testing.assert_allclose(expect)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -414,7 +434,17 @@ class TestNonDefaultIgnoreLabel(unittest.TestCase):
         self.check_forward(cuda.cupy)
 
     def check_backward(self, xp):
-        pass
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+        gy = xp.asarray(self.gy)
+        if self.class_weight is not None:
+            class_weight = xp.asarray(self.class_weight)
+        else:
+            class_weight = None
+        f = functions.SoftmaxCrossEntropy(
+            reduce=self.reduce, class_weight=class_weight,
+            ignore_label=self.ignore_label)
+        gradient_check.check_backward(f, (x, t), gy)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -424,7 +454,6 @@ class TestNonDefaultIgnoreLabel(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.cupy)
-
 
 
 testing.run_module(__name__, __file__)
