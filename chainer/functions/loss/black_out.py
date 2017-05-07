@@ -45,7 +45,7 @@ def black_out(x, t, W, samples, reduce='mean'):
         samples (~chainer.Variable): Negative samples.
             Its shape should be :math:`(N, S)` where :math:`S` is
             the number of negative samples.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
         ``'no'`` or ``'mean'``. Otherwise,
         :class:`ValueError` is raised.
 

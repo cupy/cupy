@@ -102,7 +102,7 @@ def triplet(anchor, positive, negative, margin=0.2, reduce='mean'):
             should be the same as anchor.
         margin (float): A parameter for triplet loss. It should be a positive
             value.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'mean'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
