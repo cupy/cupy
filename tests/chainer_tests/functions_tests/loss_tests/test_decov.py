@@ -27,14 +27,14 @@ def _deconv(h):
 
 
 @testing.parameterize(
-    {'reduce': 'half_frobenius_norm'},
+    {'reduce': 'half_squared_frobenius_norm'},
     {'reduce': 'no'}
 )
 class TestDeCov(unittest.TestCase):
 
     def setUp(self):
         self.h = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_frobenius_norm':
             gloss_shape = ()
         else:
             gloss_shape = (3, 3)
@@ -44,11 +44,7 @@ class TestDeCov(unittest.TestCase):
     def check_forward(self, h_data):
         h = chainer.Variable(h_data)
         loss = functions.decov(h, self.reduce)
-        if self.reduce == 'half_frobenius_norm':
-            loss_shape = ()
-        else:
-            loss_shape = (3, 3)
-        self.assertEqual(loss.data.shape, loss_shape)
+        self.assertEqual(loss.shape, self.gloss.shape)
         self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = cuda.to_cpu(loss.data)
 
@@ -56,7 +52,7 @@ class TestDeCov(unittest.TestCase):
         h_data = cuda.to_cpu(h_data)
 
         loss_expect = _deconv(h_data)
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_frobenius_norm':
             loss_expect = (loss_expect ** 2).sum() * 0.5
 
         numpy.testing.assert_allclose(

@@ -10,12 +10,12 @@ class DeCov(function.Function):
 
     """DeCov loss (https://arxiv.org/abs/1511.06068)"""
 
-    def __init__(self, reduce='half_frobenius_norm'):
+    def __init__(self, reduce='half_squared_frobenius_norm'):
         self.h_centered = None
         self.covariance = None
-        if reduce not in ('half_frobenius_norm', 'no'):
+        if reduce not in ('half_squared_frobenius_norm', 'no'):
             raise ValueError(
-                "only 'half_frobenius_norm' and 'no' are valid "
+                "only 'half_squared_frobenius_norm' and 'no' are valid "
                 "for 'reduce', but '%s' is given" % reduce)
         self.reduce = reduce
 
@@ -36,7 +36,7 @@ class DeCov(function.Function):
         self.covariance = self.h_centered.T.dot(self.h_centered)
         xp.fill_diagonal(self.covariance, 0.0)
         self.covariance /= len(h)
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_frobenius_norm':
             cost = xp.vdot(self.covariance, self.covariance)
             cost *= h.dtype.type(0.5)
             return utils.force_array(cost),
@@ -48,7 +48,7 @@ class DeCov(function.Function):
         h, = inputs
         gcost, = grad_outputs
         gcost_div_n = gcost / gcost.dtype.type(len(h))
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_frobenius_norm':
             gh = 2.0 * self.h_centered.dot(self.covariance)
             gh *= gcost_div_n
         else:
@@ -57,21 +57,21 @@ class DeCov(function.Function):
         return gh,
 
 
-def decov(h, reduce='half_frobenius_norm'):
+def decov(h, reduce='half_squared_frobenius_norm'):
     """Computes the DeCov loss of ``h``
 
     The output is a variable whose value depends on the value of
     the option ``reduce``. If it is ``'no'``, it holds a matrix
     whose size is same as the number of columns of ``y``.
-    If it is ``'half_frobenius_norm'``, it holds the half of the
-    Frobenius norm (i.e. L2 norm of a matrix flattened to a vector)
-    of the matrix.
+    If it is ``'half_squared_frobenius_norm'``, it holds the half of the
+    squared Frobenius norm (i.e. squared of the L2 norm of a matrix flattened
+    to a vector) of the matrix.
 
     Args:
         h (Variable): Variable holding a matrix where the first dimension
             corresponds to the batches.
         recude (str): Reduction option. Its value must be either
-            ``'half_frobenius_norm'`` or ``'no'``.
+            ``'half_squared_frobenius_norm'`` or ``'no'``.
             Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -80,7 +80,7 @@ def decov(h, reduce='half_frobenius_norm'):
             If ``reduce`` is ``'no'``, the output variable holds
             2-dimensional array matrix of shape ``(N, N)`` where
             ``N`` is the number of columns of ``y``.
-            If it is ``'half_frobenius_norm'``, the output variable
+            If it is ``'half_squared_frobenius_norm'``, the output variable
             holds a scalar value.
 
     .. note::
