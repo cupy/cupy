@@ -4,8 +4,6 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer.functions.loss import negative_sampling
-from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
