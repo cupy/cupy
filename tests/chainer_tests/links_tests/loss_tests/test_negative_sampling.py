@@ -85,7 +85,7 @@ class TestNegativeSampling(unittest.TestCase):
 
         # fix samples
         negative_sampling.NegativeSamplingFunction.samples = cuda.to_gpu(
-           y.creator.samples)
+            y.creator.samples)
         self.link.to_gpu()
         del negative_sampling.NegativeSamplingFunction.samples
         xg = chainer.Variable(cuda.to_gpu(self.x))
