@@ -4,6 +4,7 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer.functions.loss import negative_sampling
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
@@ -74,6 +75,25 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertTrue(self.link.sampler.use_gpu)
         self.link.to_cpu()
         self.assertFalse(self.link.sampler.use_gpu)
+
+    @attr.gpu
+    def test_backward_cpu_gpu(self):
+        x = chainer.Variable(self.x)
+        t = chainer.Variable(self.t)
+        y = self.link(x, t)
+        y.backward()
+
+        # fix samples
+        negative_sampling.NegativeSamplingFunction.samples = cuda.to_gpu(
+           y.creator.samples)
+        self.link.to_gpu()
+        del negative_sampling.NegativeSamplingFunction.samples
+        xg = chainer.Variable(cuda.to_gpu(self.x))
+        tg = chainer.Variable(cuda.to_gpu(self.t))
+        y_g = self.link(xg, tg)
+        y_g.backward()
+
+        testing.assert_allclose(x.grad, xg.grad, atol=1.e-4)
 
 
 testing.run_module(__name__, __file__)
