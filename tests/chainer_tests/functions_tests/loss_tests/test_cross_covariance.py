@@ -52,11 +52,7 @@ class TestCrossCovariance(unittest.TestCase):
 
         row = y_data.shape[1]
         col = z_data.shape[1]
-        if self.reduce == 'half_frobenius_norm':
-            self.assertEqual(loss.data.shape, ())
-        else:
-            self.assertEqual(loss.data.shape, (row, col))
-
+        self.assertEqual(loss.shape, self.gloss.shape)
         self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = cuda.to_cpu(loss.data)
 
