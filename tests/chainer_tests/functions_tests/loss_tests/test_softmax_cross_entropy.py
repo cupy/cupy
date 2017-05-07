@@ -391,4 +391,40 @@ class TestSoftmaxCrossEntropyInvalidReduce(unittest.TestCase):
         self.check_invalid_reduce(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
 
+class TestNonDefaultIgnoreLabel(unittest.TestCase):
+
+    def setUp(self):
+        self.ignore_label = -2
+        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.t = numpy.full((2,), self.ignore_label, dtype=numpy.int32)
+
+    def check_forward(self, xp):
+        x = xp.asarray(self.x)
+        t = xp.asarray(self.t)
+        loss = functions.softmax_cross_entropy(x, t)
+        self.assertEqual(loss, 0.)
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward(numpy)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward(cuda.cupy)
+
+    def check_backward(self, xp):
+        pass
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward(numpy)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.cupy)
+
+
+
 testing.run_module(__name__, __file__)
