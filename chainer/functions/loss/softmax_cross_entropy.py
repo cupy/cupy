@@ -110,7 +110,8 @@ class SoftmaxCrossEntropy(function.Function):
         if self.reduce == 'mean':
             ret = cuda.reduce(
                 'S t, raw T log_y, int32 n_channel, raw T coeff', 'T out',
-                't == {} ? T(0) : log_y[_j * n_channel + t]'.format(self.ignore_label),
+                't == {} ? T(0) : log_y[_j * n_channel + t]'.format(
+                    self.ignore_label),
                 'a + b', 'out = a * -coeff[0]', '0', 'crossent_fwd'
             )(t, log_y.reduced_view(), log_y.shape[-1], self._coeff)
         else:
