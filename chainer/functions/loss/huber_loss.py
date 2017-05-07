@@ -75,7 +75,7 @@ def huber_loss(x, t, delta, reduce='sum_along_second_axis'):
             The shape of ``t`` should be (:math:`N`, :math:`K`).
         delta (float): Constant variable for huber loss function
             as used in definition.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum_along_second_axis'`` or ``'no'``. Otherwise,
             :class:`ValueError` is raised.
 

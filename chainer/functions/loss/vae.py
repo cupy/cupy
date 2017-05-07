@@ -31,7 +31,7 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
         ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): A variable representing logarithm of
             variance of given gaussian distribution, :math:`\\log(\\sigma^2)`.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -87,7 +87,7 @@ def bernoulli_nll(x, y, reduce='sum'):
         y (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): A variable representing the parameter of
             Bernoulli distribution.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -140,7 +140,7 @@ def gaussian_nll(x, mean, ln_var, reduce='sum'):
         ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`): A variable representing logarithm of
             variance of a Gaussian distribution, :math:`\\log(\\sigma^2)`.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:

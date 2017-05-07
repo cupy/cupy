@@ -147,7 +147,7 @@ def hinge(x, t, norm='L1', reduce='mean'):
             The shape of ``t`` should be (:math:`N`,).
         norm (string): Specifies norm type. Either ``'L1'`` or ``'L2'`` is
             acceptable.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'mean'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
 
