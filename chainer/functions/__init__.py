@@ -37,6 +37,7 @@ from chainer.functions.array import rollaxis  # NOQA
 from chainer.functions.array import select_item  # NOQA
 from chainer.functions.array import separate  # NOQA
 from chainer.functions.array import space2depth  # NOQA
+from chainer.functions.array import spatial_transformer_grid  # NOQA
 from chainer.functions.array import spatial_transformer_sampler  # NOQA
 from chainer.functions.array import split_axis  # NOQA
 from chainer.functions.array import squeeze  # NOQA
@@ -198,6 +199,8 @@ from chainer.functions.array.select_item import SelectItem  # NOQA
 from chainer.functions.array.separate import separate  # NOQA
 from chainer.functions.array.space2depth import space2depth  # NOQA
 from chainer.functions.array.space2depth import Space2Depth  # NOQA
+from chainer.functions.array.spatial_transformer_grid import spatial_transformer_grid  # NOQA
+from chainer.functions.array.spatial_transformer_grid import SpatialTransformerGrid  # NOQA
 from chainer.functions.array.spatial_transformer_sampler import spatial_transformer_sampler  # NOQA
 from chainer.functions.array.spatial_transformer_sampler import SpatialTransformerSampler  # NOQA
 from chainer.functions.array.split_axis import split_axis  # NOQA
