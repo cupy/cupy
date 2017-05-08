@@ -11,8 +11,11 @@ from chainer.testing import condition
 
 
 @testing.parameterize(
-    {'reduce': 'no'},
-    {'reduce': 'sum'}
+    *testing.product({
+        'wrap_m': [True, False],
+        'wrap_v': [True, False],
+        'reduce': ['no', 'sum']
+    })
 )
 class TestGaussianKLDivergence(unittest.TestCase):
 
@@ -31,9 +34,14 @@ class TestGaussianKLDivergence(unittest.TestCase):
             self.expect = loss
 
     def check_gaussian_kl_divergence(self, mean, ln_var):
-        m = chainer.Variable(mean)
-        v = chainer.Variable(ln_var)
-        actual = cuda.to_cpu(F.gaussian_kl_divergence(m, v, self.reduce).data)
+        if self.wrap_m:
+            mean = chainer.Variable(mean)
+        if self.wrap_v:
+            ln_var = chainer.Variable(ln_var)
+        actual = cuda.to_cpu(
+            F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
+        actual = cuda.to_cpu(
+            F.gaussian_kl_divergence(mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
@@ -68,8 +76,11 @@ class TestGaussianKLDivergenceInvalidReductionOption(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'reduce': 'no'},
-    {'reduce': 'sum'}
+    *testing.product({
+        'wrap_x': [True, False],
+        'wrap_y': [True, False],
+        'reduce': ['no', 'sum']
+    })
 )
 class TestBernoulliNLL(unittest.TestCase):
 
@@ -85,9 +96,11 @@ class TestBernoulliNLL(unittest.TestCase):
         if self.reduce == 'sum':
             self.expect = numpy.sum(self.expect)
 
-    def check_bernoulli_nll(self, x_data, y_data):
-        x = chainer.Variable(x_data)
-        y = chainer.Variable(y_data)
+    def check_bernoulli_nll(self, x, y):
+        if self.wrap_x:
+            x = chainer.Variable(x)
+        if self.wrap_y:
+            y = chainer.Variable(y)
         actual = cuda.to_cpu(F.bernoulli_nll(x, y, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 
@@ -123,8 +136,12 @@ class TestBernoulliNLLInvalidReductionOption(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'reduce': 'no'},
-    {'reduce': 'sum'}
+    *testing.product({
+        'wrap_x': [True, False],
+        'wrap_m': [True, False],
+        'wrap_v': [True, False],
+        'reduce': ['no', 'sum']
+    })
 )
 class TestGaussianNLL(unittest.TestCase):
 
@@ -144,10 +161,13 @@ class TestGaussianNLL(unittest.TestCase):
         if self.reduce == 'sum':
             self.expect = numpy.sum(self.expect)
 
-    def check_gaussian_nll(self, x_data, mean_data, ln_var_data):
-        x = chainer.Variable(x_data)
-        mean = chainer.Variable(mean_data)
-        ln_var = chainer.Variable(ln_var_data)
+    def check_gaussian_nll(self, x, mean, ln_var):
+        if self.wrap_x:
+            x = chainer.Variable(x)
+        if self.wrap_m:
+            mean = chainer.Variable(mean)
+        if self.wrap_v:
+            ln_var = chainer.Variable(ln_var)
         actual = cuda.to_cpu(F.gaussian_nll(x, mean, ln_var, self.reduce).data)
         testing.assert_allclose(self.expect, actual)
 

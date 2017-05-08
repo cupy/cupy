@@ -179,6 +179,10 @@ space2depth
 ~~~~~~~~~~~
 .. autofunction:: space2depth
 
+spatial_transformer_grid
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: spatial_transformer_grid
+
 spatial_transformer_sampler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: spatial_transformer_sampler
@@ -262,6 +266,10 @@ linear
 n_step_bigru
 ~~~~~~~~~~~~
 .. autofunction:: n_step_bigru
+
+n_step_bilstm
+~~~~~~~~~~~~~
+.. autofunction:: n_step_bilstm
 
 n_step_birnn
 ~~~~~~~~~~~~
