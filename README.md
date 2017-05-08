@@ -21,7 +21,6 @@ Minimum requirements:
 Requirements for some features:
 - CUDA support
   - CUDA 7.0, 7.5, 8.0
-  - filelock
   - g++ 4.8.4+
 - cuDNN support
   - cuDNN v4, v5, v5.1, v6
