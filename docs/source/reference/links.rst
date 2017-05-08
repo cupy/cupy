@@ -95,6 +95,11 @@ MLPConvolution2D
 .. autoclass:: MLPConvolution2D
    :members:
 
+NStepBiLSTM
+~~~~~~~~~~~
+.. autoclass:: NStepBiLSTM
+  :members:
+
 NStepBiRNNReLU
 ~~~~~~~~~~~~~~
 .. autoclass:: NStepBiRNNReLU

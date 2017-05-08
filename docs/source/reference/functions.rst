@@ -263,6 +263,10 @@ linear
 ~~~~~~
 .. autofunction:: linear
 
+n_step_bilstm
+~~~~~~~~~~~~~
+.. autofunction:: n_step_bilstm
+
 n_step_birnn
 ~~~~~~~~~~~~
 .. autofunction:: n_step_birnn
