@@ -34,8 +34,10 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         n, c, h, w = x[0].shape
         y_h = conv.get_conv_outsize(
             h, self.kh, self.sy, self.ph, self.cover_all)
+        assert y_h > 0, 'Height in the output should be positive.'
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
+        assert y_w > 0, 'Width in the output should be positive.'
         y = cuda.cupy.empty((n, c, y_h, y_w), dtype=x[0].dtype)
         self.indexes = cuda.cupy.empty((n, c, y_h, y_w), dtype=numpy.int32)
 

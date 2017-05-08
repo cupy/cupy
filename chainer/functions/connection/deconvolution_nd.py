@@ -228,6 +228,8 @@ class DeconvolutionND(function.Function):
         x = cuda.cupy.ascontiguousarray(x)
         W = cuda.cupy.ascontiguousarray(W)
         gy = cuda.cupy.ascontiguousarray(gy)
+        if b is not None:
+            b = cuda.cupy.ascontiguousarray(b)
 
         # Make empty arrays for results.
         gx = cuda.cupy.empty_like(x)
@@ -324,54 +326,140 @@ def deconvolution_nd(x, W, b=None, stride=1, pad=0, outsize=None,
     """N-dimensional deconvolution function.
 
     This is an implementation of N-dimensional deconvolution which generalizes
-    two-dimensional one. It takes three variables: input ``x``, the filter
-    weight ``W``, and the bias vector ``b``.
+    two-dimensional one. In most of deep learning frameworks and papers, this
+    function is called **transposed convolution**. But because of historical
+    reasons (e.g. paper by Ziller `Deconvolutional Networks`_) and backward
+    compatibility, this function is called **deconvolution** in Chainer.
+
+    .. _Deconvolutional Networks: \
+http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
+
+    It takes three variables: the input ``x``, the filter weight ``W``, and the
+    bias vector ``b``.
+
+    Notation: here is a notation for dimensionalities.
+
+    - :math:`N` is the number of spatial dimensions.
+    - :math:`n` is the batch size.
+    - :math:`c_I` and :math:`c_O` are the number of the input and output
+      channels, respectively.
+    - :math:`d_1, d_2, ..., d_N` are the size of each axis of the input's
+      spatial dimensions, respectively.
+    - :math:`k_1, k_2, ..., k_N` are the size of each axis of the filters,
+      respectively.
+    - :math:`p_1, p_2, ..., p_N` are the size of each axis of the spatial
+      padding size, respectively.
+    - :math:`s_1, s_2, ..., s_N` are the stride of each axis of filter
+      application, respectively.
+
+    If ``outsize`` option is ``None``, the output size
+    :math:`(l_1, l_2, ..., l_N)` is determined by the following equations with
+    the items in the above list:
+
+    .. math::
+
+       l_n = s_n (d_n - 1)  + k_n - 2 p_n \ \ (n = 1, ..., N)
+
+    If ``outsize`` option is given, the output size is determined by
+    ``outsize``. In this case, the ``outsize`` :math:`(l_1, l_2, ..., l_N)`
+    must satisfy the following equations:
+
+    .. math::
+
+       d_n = \\lfloor (l_n + 2p_n - k_n) / s_n \\rfloor + 1 \ \ (n = 1, ..., N)
 
     Args:
-        x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Input data of shape :math:`(n, c_I, d_1, d_2, ..., d_N)`.
-        W (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Weight data of shape :math:`(c_I, c_O, k_1, k_2, ..., k_N)`.
-        b (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Bias vector of length :math:`c_O` (optional).
-        stride (int or tuple of ints): Stride of filter applications
-            :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
-            ``(s, s, ..., s)``.
-        pad (int or tuple of ints): Spatial padding size for input arrays
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variable of shape :math:`(n, c_I, d_1, d_2, ..., d_N)`.
+        W (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Weight variable of shape :math:`(c_I, c_O, k_1, k_2, ..., k_N)`.
+        b (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            One-dimensional bias variable with length :math:`c_O` (optional).
+        stride (:class:`int` or :class:`tuple` of :class:`int` s):
+            Stride of filter applications :math:`(s_1, s_2, ..., s_N)`.
+            ``stride=s`` is equivalent to ``(s, s, ..., s)``.
+        pad (:class:`int` or :class:`tuple` of :class:`int` s):
+            Spatial padding width for input arrays
             :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
             ``(p, p, ..., p)``.
-        outsize (tuple of ints): Expected output size of deconvolutional
-            operation. It should be a tuple of ints
-            :math:`(out_1, out_2, ..., out_N)`. Default value is ``None`` and
-            the outsize is estimated by input size, stride and pad.
+        outsize (:class:`tuple` of :class:`int` s):
+            Expected output size of deconvolutional operation. It should be a
+            tuple of ints :math:`(l_1, l_2, ..., l_N)`. Default value is
+            ``None`` and the outsize is estimated by input size, stride and
+            pad.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available. Note that cuDNN supports more than one-dimensional
             deconvolution operations only.
 
     Returns:
-        ~chainer.Variable: Output variable.
-
-    The filter weight has the following dimensions
-    :math:`(c_I, c_O, k_1, k_2, ..., k_N)` which indicate the number of input
-    channels, that of output channels and the filter's spatial sizes,
-    respectively.
-
-    The one-dimensional bias vector is of size :math:`c_O`.
-
-    Let :math:`X` be the input tensor of dimensions
-    :math:`(n, c_I, d_1, d_2, ..., d_N)`, :math:`(s_1, s_2, ..., s_N)` the
-    stride of filter applications, and :math:`(p_1, p_2, ..., p_N)` the spacial
-    padding size. Then the output size :math:`(out_1, out_2, ..., out_N)` is
-    determined by the following equations:
-
-    .. math::
-
-        out_1 &= s_1 (d_1 - 1) + k_1 - 2 p_1,\\\\
-        out_2 &= s_2 (d_2 - 1) + k_2 - 2 p_2,\\\\
-        ...,\\\\
-        out_N &= s_N (d_N - 1) + k_N - 2 p_N.
+        ~chainer.Variable:
+            Output variable of shape :math:`(n, c_O, l_1, l_2, ..., l_N)`.
 
     .. seealso:: :class:`links.DeconvolutionND`, :func:`deconvolution_2d`
+
+    .. admonition:: Example
+
+        **Example1**: the case when ``outsize`` is not given.
+
+        >>> n = 10
+        >>> c_i, c_o = 3, 1
+        >>> d1, d2, d3 = 5, 10, 15
+        >>> k1, k2, k3 = 10, 10, 10
+        >>> p1, p2, p3 = 5, 5, 5
+        >>> x = np.random.uniform(0, 1, (n, c_i, d1, d2, d3)).astype('f')
+        >>> x.shape
+        (10, 3, 5, 10, 15)
+        >>> W = np.random.uniform(0, 1, (c_i, c_o, k1, k2, k3)).astype('f')
+        >>> W.shape
+        (3, 1, 10, 10, 10)
+        >>> b = np.random.uniform(0, 1, (c_o)).astype('f')
+        >>> b.shape
+        (1,)
+        >>> s1, s2, s3 = 2, 4, 6
+        >>> y = F.deconvolution_nd(x, W, b, stride=(s1, s2, s3), \
+pad=(p1, p2, p3))
+        >>> y.shape
+        (10, 1, 8, 36, 84)
+        >>> l1 = s1 * (d1 - 1) + k1 - 2 * p1
+        >>> l2 = s2 * (d2 - 1) + k2 - 2 * p2
+        >>> l3 = s3 * (d3 - 1) + k3 - 2 * p3
+        >>> y.shape == (n, c_o, l1, l2, l3)
+        True
+
+        **Example2**: the case when ``outsize`` is given.
+
+        >>> n = 10
+        >>> c_i, c_o = 3, 1
+        >>> d1, d2, d3 = 5, 10, 15
+        >>> k1, k2, k3 = 10, 10, 10
+        >>> p1, p2, p3 = 5, 5, 5
+        >>> x = np.random.uniform(0, 1, (n, c_i, d1, d2, d3)).astype('f')
+        >>> x.shape
+        (10, 3, 5, 10, 15)
+        >>> W = np.random.uniform(0, 1, (c_i, c_o, k1, k2, k3)).astype('f')
+        >>> W.shape
+        (3, 1, 10, 10, 10)
+        >>> b = np.random.uniform(0, 1, (c_o)).astype('f')
+        >>> b.shape
+        (1,)
+        >>> s1, s2, s3 = 2, 4, 6
+        >>> l1, l2, l3 = 9, 38, 87
+        >>> d1 == int((l1 + 2 * p1 - k1) / s1) + 1
+        True
+        >>> d2 == int((l2 + 2 * p2 - k2) / s2) + 1
+        True
+        >>> d3 == int((l3 + 2 * p3 - k3) / s3) + 1
+        True
+        >>> y = F.deconvolution_nd(x, W, b, stride=(s1, s2, s3), \
+pad=(p1, p2, p3), outsize=(l1, l2, l3))
+        >>> y.shape
+        (10, 1, 9, 38, 87)
+        >>> y.shape == (n, c_o, l1, l2, l3)
+        True
+
     """
     ndim = len(x.shape[2:])
     func = DeconvolutionND(ndim, stride, pad, outsize, use_cudnn)

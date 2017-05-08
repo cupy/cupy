@@ -14,9 +14,9 @@ class Convolution2D(link.Link):
     holds the filter weight and bias vector as parameters.
 
     Args:
-        in_channels (int): Number of channels of input arrays. If ``None``,
-            parameter initialization will be deferred until the first forward
-            data pass at which time the size will be determined.
+        in_channels (int or None): Number of channels of input arrays.
+            If ``None``, parameter initialization will be deferred until the
+            first forward data pass at which time the size will be determined.
         out_channels (int): Number of channels of output arrays.
         ksize (int or pair of ints): Size of filters (a.k.a. kernels).
             ``ksize=k`` and ``ksize=(k, k)`` are equivalent.

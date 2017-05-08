@@ -9,6 +9,7 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 def sigmoid(x):
@@ -335,6 +336,7 @@ class TestNStepLSTMDropout(unittest.TestCase):
     def assert_count(self, actual, expect):
         self.assertTrue(expect * 0.8 < actual < expect * 1.2)
 
+    @condition.retry(5)
     def test_forward_dropout_count(self):
         y_counts = [0] * self.length
         h_counts = [0] * self.n_layers

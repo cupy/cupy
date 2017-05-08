@@ -74,40 +74,44 @@ class SpatialTransformerSampler(function.Function):
         u = grid[:, 0]
         v = grid[:, 1]
 
-        # clip coordinates to [-1, 1]
-        u = u.clip(-1, 1)
-        v = v.clip(-1, 1)
+        # Pad the image so that pixels locating outside of the original
+        # image's size can be sampled.
+        x_pad = xp.pad(x, ((0, 0), (0, 0), (1, 1), (1, 1)), mode='constant')
 
-        # rescale coordinates from [-1, 1] to [0, width or height - 1]
-        u = (u + 1) / 2 * (W - 1)
-        v = (v + 1) / 2 * (H - 1)
+        # Rescale coordinates from [-1, 1] to [0, width or height - 1],
+        # and adjust them to the padded image.
+        u = (u + 1) * (W - 1) / 2 + 1
+        v = (v + 1) * (H - 1) / 2 + 1
+
+        u_clipped = u.clip(0, W + 1)
+        v_clipped = v.clip(0, H + 1)
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
-        u0 = xp.floor(u).astype(numpy.int32)
-        u0 = u0.clip(0, W - 2)
+        u0 = xp.floor(u_clipped).astype(numpy.int32)
+        u0 = u0.clip(0, W)
         u1 = u0 + 1
-        v0 = xp.floor(v).astype(numpy.int32)
-        v0 = v0.clip(0, H - 2)
+        v0 = xp.floor(v_clipped).astype(numpy.int32)
+        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
-        w1 = (u1 - u) * (v1 - v)
-        w2 = (u - u0) * (v1 - v)
-        w3 = (u1 - u) * (v - v0)
-        w4 = (u - u0) * (v - v0)
-        w1 = w1.astype(x.dtype)
-        w2 = w2.astype(x.dtype)
-        w3 = w3.astype(x.dtype)
-        w4 = w4.astype(x.dtype)
+        w1 = (u1 - u_clipped) * (v1 - v_clipped)
+        w2 = (u_clipped - u0) * (v1 - v_clipped)
+        w3 = (u1 - u_clipped) * (v_clipped - v0)
+        w4 = (u_clipped - u0) * (v_clipped - v0)
+        w1 = w1.astype(x_pad.dtype)
+        w2 = w2.astype(x_pad.dtype)
+        w3 = w3.astype(x_pad.dtype)
+        w4 = w4.astype(x_pad.dtype)
 
         x_indexed_1 = xp.concatenate([xp.expand_dims(
-            x[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_2 = xp.concatenate([xp.expand_dims(
-            x[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_3 = xp.concatenate([xp.expand_dims(
-            x[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_4 = xp.concatenate([xp.expand_dims(
-            x[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
         y = w1[:, :, None] * x_indexed_1
         y += w2[:, :, None] * x_indexed_2
         y += w3[:, :, None] * x_indexed_3
@@ -127,9 +131,11 @@ class SpatialTransformerSampler(function.Function):
         gy, = grad_outputs
 
         grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
+        grid_t = cuda.cupy.ascontiguousarray(grid_t)
+        x = cuda.cupy.ascontiguousarray(x)
+        gy = cuda.cupy.ascontiguousarray(gy)
         gx = cuda.cupy.empty_like(x)
         ggrid_t = cuda.cupy.empty_like(grid_t)
-        grid_t = cuda.cupy.ascontiguousarray(grid_t)
 
         handle = cudnn.get_handle()
         x_desc = cudnn.create_tensor_descriptor(x)
@@ -162,27 +168,31 @@ class SpatialTransformerSampler(function.Function):
         u = grid[:, 0]
         v = grid[:, 1]
 
-        # clip coordinates to [-1, 1]
-        u = u.clip(-1, 1)
-        v = v.clip(-1, 1)
+        # Pad the image so that points locating outside of the original
+        # image's size can be sampled.
+        x_pad = xp.pad(x, ((0, 0), (0, 0), (1, 1), (1, 1)), mode='constant')
 
-        # rescale coordinates from [-1, 1] to [0, width or height - 1]
-        u = (u + 1) / 2. * (W - 1)
-        v = (v + 1) / 2. * (H - 1)
+        # Rescale coordinates from [-1, 1] to [0, width or height - 1],
+        # and adjust them to the padded image.
+        u = (u + 1) * (W - 1) / 2 + 1
+        v = (v + 1) * (H - 1) / 2 + 1
+
+        u_clipped = u.clip(0, W + 1)
+        v_clipped = v.clip(0, H + 1)
 
         # indices of the 2x2 pixel neighborhood surrounding the coordinates
-        u0 = xp.floor(u).astype(numpy.int32)
-        u0 = u0.clip(0, W - 2)
+        u0 = xp.floor(u_clipped).astype(numpy.int32)
+        u0 = u0.clip(0, W)
         u1 = u0 + 1
-        v0 = xp.floor(v).astype(numpy.int32)
-        v0 = v0.clip(0, H - 2)
+        v0 = xp.floor(v_clipped).astype(numpy.int32)
+        v0 = v0.clip(0, H)
         v1 = v0 + 1
 
         # weights
-        wu0 = u - u0
-        wu1 = u1 - u
-        wv0 = v - v0
-        wv1 = v1 - v
+        wu0 = u_clipped - u0
+        wu1 = u1 - u_clipped
+        wv0 = v_clipped - v0
+        wv1 = v1 - v_clipped
         wu0 = wu0.astype(gy.dtype)
         wu1 = wu1.astype(gy.dtype)
         wv0 = wv0.astype(gy.dtype)
@@ -190,13 +200,13 @@ class SpatialTransformerSampler(function.Function):
 
         # --- gu, gv
         x_indexed_1 = xp.concatenate([xp.expand_dims(
-            x[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v0[b], u0[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_2 = xp.concatenate([xp.expand_dims(
-            x[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v0[b], u1[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_3 = xp.concatenate([xp.expand_dims(
-            x[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v1[b], u0[b]], axis=0) for b in range(B)], axis=0)
         x_indexed_4 = xp.concatenate([xp.expand_dims(
-            x[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
+            x_pad[b, :, v1[b], u1[b]], axis=0) for b in range(B)], axis=0)
 
         gu = -wv1[:, :, None] * x_indexed_1
         gu += wv1[:, :, None] * x_indexed_2
@@ -215,9 +225,11 @@ class SpatialTransformerSampler(function.Function):
         gv *= gy
         gu = xp.sum(gu, axis=1)
         gv = xp.sum(gv, axis=1)
-        # this offsets scaling of the coordinates
-        gu = gu / 2. * (W - 1)
-        gv = gv / 2. * (H - 1)
+        # Offsets scaling of the coordinates and clip gradients.
+        u_reshaped = u.reshape(gu.shape)
+        v_reshaped = v.reshape(gv.shape)
+        gu = gu / 2. * (W - 1) * (u_reshaped > 0) * (u_reshaped < (W + 1))
+        gv = gv / 2. * (H - 1) * (v_reshaped > 0) * (v_reshaped < (H + 1))
 
         ggrid = xp.concatenate((gu[:, None], gv[:, None]), axis=1)
 
@@ -226,20 +238,18 @@ class SpatialTransformerSampler(function.Function):
             scatter_add = numpy.add.at
         else:
             scatter_add = xp.scatter_add
-        gxs = []
+        gx = xp.zeros_like(x_pad)
         gy = gy.reshape(B, C, -1)
         for b in range(B):
-            gx = xp.zeros_like(x[b])
-            scatter_add(gx, (slice(None), v0[b], u0[b]),
+            scatter_add(gx[b], (slice(None), v0[b], u0[b]),
                         gy[b] * wu1[b] * wv1[b])
-            scatter_add(gx, (slice(None), v0[b], u1[b]),
+            scatter_add(gx[b], (slice(None), v0[b], u1[b]),
                         gy[b] * wu0[b] * wv1[b])
-            scatter_add(gx, (slice(None), v1[b], u0[b]),
+            scatter_add(gx[b], (slice(None), v1[b], u0[b]),
                         gy[b] * wu1[b] * wv0[b])
-            scatter_add(gx, (slice(None), v1[b], u1[b]),
+            scatter_add(gx[b], (slice(None), v1[b], u1[b]),
                         gy[b] * wu0[b] * wv0[b])
-            gxs.append(gx)
-        gx = xp.concatenate([xp.expand_dims(g, axis=0) for g in gxs], axis=0)
+        gx = gx[:, :, 1:-1, 1:-1]
         return gx, ggrid
 
 
@@ -253,8 +263,8 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
     This function currently only supports bilinear interpolation as a sampling
     kernel.
 
-    It is important to note that this function assumes values in ``grid`` to
-    be in range :math:`[-1, 1]`.
+    When coordinates in ``grid`` is outside range :math:`[-1, 1]`, values are
+    sampled from a zero padded input image.
 
     Notatition: here is a notation for dimensionalities.
 
@@ -282,7 +292,6 @@ def spatial_transformer_sampler(x, grid, use_cudnn=True):
             location along the horizontal axis, and the second coordinate
             corresponds to the location along the vertical axis.
 
-            The values of this variable is clipped in range :math:`[-1, 1]`.
             The coordinate :math:`(-1, -1)` corresponds to the upper-left
             corner of the input image.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if

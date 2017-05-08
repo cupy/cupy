@@ -24,6 +24,8 @@ class TestInitDocstring(unittest.TestCase):
         for name, value in inspect.getmembers(mod):
             if not inspect.isclass(value):
                 continue
+            if 'chainer' not in value.__module__:
+                continue
             init_doc = get_init_doc(value)
             if init_doc == object.__init__.__doc__:
                 # Ignore doc string inherited from `object`

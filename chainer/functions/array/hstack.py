@@ -53,10 +53,59 @@ def hstack(xs):
     """Concatenate variables horizontally (column wise).
 
     Args:
-        xs (list of chainer.Variable): Variables to be concatenated.
+        xs (list of :class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variables to be concatenated. The variables must have the
+            same ``ndim``. When the variables have the second axis (i.e.
+            :math:`ndim \\geq 2`), the variables must have the same shape
+            along all but the second axis. When the variables do not have the
+            second axis(i.e. :math:`ndim < 2`), the variables need not to have
+            the same shape.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable:
+            Output variable. When the input variables have the second axis
+            (i.e. :math:`ndim \\geq 2`), the shapes of inputs and output are
+            the same along all but the second axis. The length of second axis
+            is the sum of the lengths of inputs' second axis.
+            When the variables do not have the second axis (i.e.
+            :math:`ndim < 2`), the shape of output is ``(N, )`` (``N`` is the
+            sum of the input variables' size).
+
+    .. admonition:: Example
+
+        >>> x1 = np.array((1, 2, 3))
+        >>> x1.shape
+        (3,)
+        >>> x2 = np.array((2, 3, 4))
+        >>> x2.shape
+        (3,)
+        >>> y = F.hstack((x1, x2))
+        >>> y.shape
+        (6,)
+        >>> y.data
+        array([1, 2, 3, 2, 3, 4])
+        >>> x1 = np.arange(0, 12).reshape(3, 4)
+        >>> x1.shape
+        (3, 4)
+        >>> x1
+        array([[ 0,  1,  2,  3],
+               [ 4,  5,  6,  7],
+               [ 8,  9, 10, 11]])
+        >>> x2 = np.arange(12, 18).reshape(3, 2)
+        >>> x2.shape
+        (3, 2)
+        >>> x2
+        array([[12, 13],
+               [14, 15],
+               [16, 17]])
+        >>> y = F.hstack([x1, x2])
+        >>> y.shape
+        (3, 6)
+        >>> y.data
+        array([[ 0,  1,  2,  3, 12, 13],
+               [ 4,  5,  6,  7, 14, 15],
+               [ 8,  9, 10, 11, 16, 17]])
 
     """
 

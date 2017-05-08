@@ -57,9 +57,11 @@ from chainer.functions.connection import dilated_convolution_2d  # NOQA
 from chainer.functions.connection import embed_id  # NOQA
 from chainer.functions.connection import linear  # NOQA
 from chainer.functions.connection import n_step_lstm  # NOQA
+from chainer.functions.connection import n_step_rnn  # NOQA
 from chainer.functions.evaluation import accuracy  # NOQA
 from chainer.functions.evaluation import binary_accuracy  # NOQA
 from chainer.functions.evaluation import classification_summary  # NOQA
+from chainer.functions.loss import absolute_error  # NOQA
 from chainer.functions.loss import black_out  # NOQA
 from chainer.functions.loss import contrastive  # NOQA
 from chainer.functions.loss import crf1d  # NOQA
@@ -73,6 +75,7 @@ from chainer.functions.loss import mean_squared_error  # NOQA
 from chainer.functions.loss import negative_sampling  # NOQA
 from chainer.functions.loss import sigmoid_cross_entropy  # NOQA
 from chainer.functions.loss import softmax_cross_entropy  # NOQA
+from chainer.functions.loss import squared_error  # NOQA
 from chainer.functions.loss import triplet  # NOQA
 from chainer.functions.loss import vae  # NOQA  # NOQA
 from chainer.functions.math import average  # NOQA
@@ -225,6 +228,12 @@ from chainer.functions.connection.embed_id import embed_id  # NOQA
 from chainer.functions.connection.linear import linear  # NOQA
 from chainer.functions.connection.n_step_lstm import n_step_lstm  # NOQA
 from chainer.functions.connection.n_step_lstm import NStepLSTM  # NOQA
+from chainer.functions.connection.n_step_rnn import n_step_birnn  # NOQA
+from chainer.functions.connection.n_step_rnn import n_step_rnn  # NOQA
+from chainer.functions.connection.n_step_rnn import NStepBiRNNReLU  # NOQA
+from chainer.functions.connection.n_step_rnn import NStepBiRNNTanh  # NOQA
+from chainer.functions.connection.n_step_rnn import NStepRNNReLU  # NOQA
+from chainer.functions.connection.n_step_rnn import NStepRNNTanh  # NOQA
 
 from chainer.functions.evaluation.accuracy import accuracy  # NOQA
 from chainer.functions.evaluation.accuracy import Accuracy  # NOQA
@@ -237,6 +246,8 @@ from chainer.functions.evaluation.classification_summary import precision  # NOQ
 from chainer.functions.evaluation.classification_summary import recall  # NOQA
 from chainer.functions.evaluation.r2_score import r2_score  # NOQA
 
+from chainer.functions.loss.absolute_error import absolute_error  # NOQA
+from chainer.functions.loss.absolute_error import AbsoluteError  # NOQA
 from chainer.functions.loss.black_out import black_out  # NOQA
 from chainer.functions.loss.contrastive import contrastive  # NOQA
 from chainer.functions.loss.contrastive import Contrastive  # NOQA
@@ -261,6 +272,8 @@ from chainer.functions.loss.sigmoid_cross_entropy import sigmoid_cross_entropy  
 from chainer.functions.loss.sigmoid_cross_entropy import SigmoidCrossEntropy  # NOQA
 from chainer.functions.loss.softmax_cross_entropy import softmax_cross_entropy  # NOQA
 from chainer.functions.loss.softmax_cross_entropy import SoftmaxCrossEntropy  # NOQA
+from chainer.functions.loss.squared_error import squared_error  # NOQA
+from chainer.functions.loss.squared_error import SquaredError  # NOQA
 from chainer.functions.loss.triplet import triplet  # NOQA
 from chainer.functions.loss.triplet import Triplet  # NOQA
 from chainer.functions.loss.vae import bernoulli_nll  # NOQA
@@ -404,3 +417,7 @@ from chainer.links.loss.hierarchical_softmax import BinaryHierarchicalSoftmax  #
 from chainer.links.loss.negative_sampling import NegativeSampling  # NOQA
 
 from chainer.links.normalization.batch_normalization import BatchNormalization  # NOQA
+
+
+# Aliases
+mean = average
