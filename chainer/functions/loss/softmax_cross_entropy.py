@@ -109,10 +109,13 @@ class SoftmaxCrossEntropy(function.Function):
         log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         if self.reduce == 'mean':
             ret = cuda.reduce(
-                'S t, raw T log_y, int32 n_channel, raw T coeff, S ignore_label', 'T out',
+                'S t, raw T log_y, int32 n_channel, raw T coeff, '
+                'S ignore_label',
+                'T out',
                 't == ignore_label ? T(0) : log_y[_j * n_channel + t]',
                 'a + b', 'out = a * -coeff[0]', '0', 'crossent_fwd'
-            )(t, log_y.reduced_view(), log_y.shape[-1], self._coeff, self.ignore_label)
+            )(t, log_y.reduced_view(), log_y.shape[-1],
+              self._coeff, self.ignore_label)
         else:
             ret = cuda.elementwise(
                 'S t, raw T log_y, int32 n_channel, T ignore', 'T out',
@@ -195,10 +198,12 @@ class SoftmaxCrossEntropy(function.Function):
                     gx = t == ignore_label ? 0 : coeff * (y - (c == t));
                 ''',
                 'softmax_crossent_bwd')(
-                    y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit, self.ignore_label)
+                    y, cupy.expand_dims(t, 1), coeff, x.shape[1],
+                    n_unit, self.ignore_label)
         else:
             gx = cuda.elementwise(
-                'T y, raw T w, S t, T coeff, S n_channel, S n_unit, S ignore_label',
+                'T y, raw T w, S t, T coeff, S n_channel, S n_unit, '
+                'S ignore_label',
                 'T gx',
                 '''
                     const int c = (i / n_unit % n_channel);

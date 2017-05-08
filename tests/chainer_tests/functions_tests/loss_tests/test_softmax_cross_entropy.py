@@ -422,7 +422,7 @@ class TestNonDefaultIgnoreLabel(unittest.TestCase):
             expect = 0.
         else:
             expect = numpy.zeros((2,), dtype=numpy.float32)
-        testing.assert_allclose(loss, expect)
+        testing.assert_allclose(loss.data, expect)
 
     @condition.retry(3)
     def test_forward_cpu(self):
