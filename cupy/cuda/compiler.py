@@ -45,7 +45,7 @@ def nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch{}'.format(arch),)
+    options += ('-arch={}'.format(arch),)
 
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
