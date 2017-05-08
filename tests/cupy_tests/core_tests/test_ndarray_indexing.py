@@ -61,9 +61,9 @@ from cupy import testing
     {'shape': (0, 0), 'transpose': None,
      'indexes': (slice(None, None, -1), None)},
     {'shape': (0, 1), 'transpose': None,
-     'indexes': (None, slice(None, None, -1))},
-    {'shape': (1, 0), 'transpose': None,
      'indexes': (slice(None, None, -1), None)},
+    {'shape': (1, 0), 'transpose': None,
+     'indexes': (None, slice(None, None, -1))},
     {'shape': (1, 0, 1), 'transpose': None,
      'indexes': (None, slice(None, None, -1), None)},
 )
