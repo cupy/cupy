@@ -259,6 +259,7 @@ public:
   }
 
   __device__ void set(ptrdiff_t i) {
+    // ndim == 0 case uses partial template specialization
     if (ndim == 1) {
       index_[0] = i;
       return;
