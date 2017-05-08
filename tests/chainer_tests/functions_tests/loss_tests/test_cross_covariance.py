@@ -50,8 +50,6 @@ class TestCrossCovariance(unittest.TestCase):
         z = chainer.Variable(z_data)
         loss = functions.cross_covariance(y, z, self.reduce)
 
-        row = y_data.shape[1]
-        col = z_data.shape[1]
         self.assertEqual(loss.shape, self.gloss.shape)
         self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = cuda.to_cpu(loss.data)
