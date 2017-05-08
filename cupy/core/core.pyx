@@ -1234,6 +1234,8 @@ cdef class ndarray:
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
 
+        # TODO(niboshi): offset can be non-zero even if self.data is an empty
+        # pointer.
         v = self.view()
         v.data = self.data + offset
         v._set_shape_and_strides(shape, strides)
