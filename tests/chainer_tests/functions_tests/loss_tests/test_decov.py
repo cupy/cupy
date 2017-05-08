@@ -27,14 +27,14 @@ def _deconv(h):
 
 
 @testing.parameterize(
-    {'reduce': 'half_squared_frobenius_norm'},
+    {'reduce': 'half_squared_sum'},
     {'reduce': 'no'}
 )
 class TestDeCov(unittest.TestCase):
 
     def setUp(self):
         self.h = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        if self.reduce == 'half_squared_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             gloss_shape = ()
         else:
             gloss_shape = (3, 3)
@@ -52,7 +52,7 @@ class TestDeCov(unittest.TestCase):
         h_data = cuda.to_cpu(h_data)
 
         loss_expect = _deconv(h_data)
-        if self.reduce == 'half_squared_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             loss_expect = (loss_expect ** 2).sum() * 0.5
 
         numpy.testing.assert_allclose(
