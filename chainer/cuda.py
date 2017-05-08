@@ -153,14 +153,14 @@ else:
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
-def get_device_from_id(device_id=None):
+def get_device_from_id(device_id):
     """Gets the device from an ID integer.
 
     Args:
         device_id (int or None): The ID of the device which this function
             returns.
     """
-    if type(device_id) in _integer_types:
+    if device_id is not None:
         check_cuda_available()
         return Device(device_id)
     else:
@@ -253,8 +253,12 @@ def to_gpu(array, device=None, stream=None):
 
     """
     check_cuda_available()
-    with get_device(device):
-        array_dev = get_device(array)
+    if type(device) in _integer_types:
+        device = get_device_from_id(device)
+    elif device is None:
+        device = DummyDevice
+    with device:
+        array_dev = get_device_from_array(array)
         if array_dev.id == cupy.cuda.device.get_device_id():
             return array
 

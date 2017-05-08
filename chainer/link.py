@@ -326,7 +326,12 @@ class Link(object):
         if not self._cpu:
             return self
         d = self.__dict__
-        with cuda.get_device_from_id(device.id if device else None):
+        if device is None:
+            device_id = cuda.cupy.cuda.get_device_id()
+            device = cuda.get_device_from_id(device_id)
+        elif type(device) in cuda._integer_types:
+            device = cuda.get_device_from_id(device)
+        with device:
             for name in self._params:
                 d[name].to_gpu()
             for name in self._persistent:
@@ -619,8 +624,8 @@ class Chain(Link):
             d[name].to_cpu()
         return self
 
-    def to_gpu(self, device=None):
-        with cuda.get_device_from_id(device.id if device else None):
+    def to_gpu(self, device_id=None):
+        with cuda.get_device_from_id(device_id):
             super(Chain, self).to_gpu()
             d = self.__dict__
             for name in self._children:
@@ -773,8 +778,8 @@ class ChainList(Link):
             link.to_cpu()
         return self
 
-    def to_gpu(self, device=None):
-        with cuda.get_device_from_id(device.id if device else None):
+    def to_gpu(self, device_id=None):
+        with cuda.get_device_from_id(device_id):
             super(ChainList, self).to_gpu()
             for link in self._children:
                 link.to_gpu()

@@ -219,14 +219,13 @@ Actual: {0}'''.format(type(data))
         """Copies the data and gradient arrays to specified GPU.
 
         Args:
-            device: Target device specifier. If omitted, the current device is
+            device: arget device specifier. If omitted, the current device is
                 used.
 
         """
-        with cuda.get_device_from_id(device.id if device else None):
-            self.data = cuda.to_gpu(self.data)
-            if self._grad is not None:
-                self._grad = cuda.to_gpu(self._grad)
+        self.data = cuda.to_gpu(self.data, device)
+        if self._grad is not None:
+            self._grad = cuda.to_gpu(self._grad, device)
 
     def cleargrad(self):
         """Clears the gradient array."""
