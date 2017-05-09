@@ -22,9 +22,9 @@ class TestLink(unittest.TestCase):
         if cuda.available:
             self.current_device_id = cuda.cupy.cuda.get_device_id()
 
-    @attr.gpu
     def tearDown(self):
-        if cuda.cupy.cuda.get_device_id() != self.current_device_id:
+        if cuda.available \
+                and cuda.cupy.cuda.get_device_id() != self.current_device_id:
             cuda.Device(self.current_device_id).use()
 
     def check_param_init(self, name, shape, dtype):
