@@ -131,9 +131,11 @@ class SpatialTransformerSampler(function.Function):
         gy, = grad_outputs
 
         grid_t = cuda.cupy.transpose(grid, (0, 2, 3, 1))
+        grid_t = cuda.cupy.ascontiguousarray(grid_t)
+        x = cuda.cupy.ascontiguousarray(x)
+        gy = cuda.cupy.ascontiguousarray(gy)
         gx = cuda.cupy.empty_like(x)
         ggrid_t = cuda.cupy.empty_like(grid_t)
-        grid_t = cuda.cupy.ascontiguousarray(grid_t)
 
         handle = cudnn.get_handle()
         x_desc = cudnn.create_tensor_descriptor(x)

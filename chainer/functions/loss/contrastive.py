@@ -109,7 +109,7 @@ def contrastive(x0, x1, y, margin=1, reduce='mean'):
             should be ``(N,)``, where N denotes the mini-batch size.
         margin (float): A parameter for contrastive loss. It should be positive
             value.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'mean'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:

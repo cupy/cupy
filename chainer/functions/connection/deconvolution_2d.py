@@ -387,6 +387,10 @@ http://www.matthewzeiler.com/pubs/cvpr2010/cvpr2010.pdf
             a deterministic algorithm. This option is only available for
             cuDNN version >= v3.
 
+    Returns:
+        ~chainer.Variable:
+            Output variable of shape :math:`(n, c_O, h_O, w_O)`.
+
     .. admonition:: Example
 
         >>> n = 10

@@ -3,7 +3,6 @@ import math
 from chainer.functions.activation import softplus
 from chainer.functions.math import exponential
 from chainer.functions.math import sum
-from chainer import variable
 
 
 def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
@@ -26,11 +25,13 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
     loss values. If it is ``'sum'``, loss values are summed up.
 
     Args:
-        mean (~chainer.Variable): A variable representing mean of given
+        mean (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing mean of given
             gaussian distribution, :math:`\\mu`.
-        ln_var (~chainer.Variable): A variable representing logarithm of
+        ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing logarithm of
             variance of given gaussian distribution, :math:`\\log(\\sigma^2)`.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -42,9 +43,6 @@ def gaussian_kl_divergence(mean, ln_var, reduce='sum'):
             If it is ``'sum'``, the output variable holds a scalar value.
 
     """
-    assert isinstance(mean, variable.Variable)
-    assert isinstance(ln_var, variable.Variable)
-
     if reduce not in ('sum', 'no'):
         raise ValueError(
             "only 'sum' and 'no' are valid for 'reduce', but '%s' is "
@@ -84,10 +82,12 @@ def bernoulli_nll(x, y, reduce='sum'):
        directly.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        y (~chainer.Variable): A variable representing the parameter of
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable.
+        y (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing the parameter of
             Bernoulli distribution.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -98,9 +98,6 @@ def bernoulli_nll(x, y, reduce='sum'):
             If it is ``'sum'``, the output variable holds a scalar value.
 
     """
-    assert isinstance(x, variable.Variable)
-    assert isinstance(y, variable.Variable)
-
     if reduce not in ('sum', 'no'):
         raise ValueError(
             "only 'sum' and 'no' are valid for 'reduce', but '%s' is "
@@ -135,12 +132,15 @@ def gaussian_nll(x, mean, ln_var, reduce='sum'):
     loss values. If it is ``'sum'``, loss values are summed up.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        mean (~chainer.Variable): A variable representing mean of a Gaussian
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable.
+        mean (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing mean of a Gaussian
             distribution, :math:`\\mu`.
-        ln_var (~chainer.Variable): A variable representing logarithm of
+        ln_var (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): A variable representing logarithm of
             variance of a Gaussian distribution, :math:`\\log(\\sigma^2)`.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -151,10 +151,6 @@ def gaussian_nll(x, mean, ln_var, reduce='sum'):
             If it is ``'sum'``, the output variable holds a scalar value.
 
     """
-    assert isinstance(x, variable.Variable)
-    assert isinstance(mean, variable.Variable)
-    assert isinstance(ln_var, variable.Variable)
-
     if reduce not in ('sum', 'no'):
         raise ValueError(
             "only 'sum' and 'no' are valid for 'reduce', but '%s' is "
