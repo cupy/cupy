@@ -1,4 +1,5 @@
 import multiprocessing
+import warnings
 
 import six
 
@@ -30,7 +31,6 @@ class _Worker(multiprocessing.Process):
         self.n_devices = len(master._devices)
 
     def setup(self):
-        print("setup %d" % self.device)
         _, comm_id = self.pipe.recv()
         self.comm = nccl.NcclCommunicator(self.n_devices, comm_id,
                                           self.proc_id)
@@ -38,7 +38,6 @@ class _Worker(multiprocessing.Process):
         self.model.to_gpu(self.device)
         self.reporter = chainer.reporter.Reporter()
         self.reporter.add_observer('main', self.model)
-        print("%d setup done" % self.device)
 
     def run(self):
         dev = cuda.Device(self.device)
@@ -128,10 +127,19 @@ class MultiprocessParallelUpdater(StandardUpdater):
         optim = optimizer.__class__.__name__
         if optim in ('Adam', 'AdaGrad', 'RMSprop'):
             optimizer.eps *= len(devices)
+            warnings.warn('optimizer.eps is changed to {} '
+                          'by MultiprocessParallelUpdater for new batch size.'.
+                          format(optimizer.eps))
         elif optim in ('RMSpropGraves', 'AdaDelta'):
             optimizer.eps *= len(devices) ** 2  # not quite right for AdaDelta
+            warnings.warn('optimizer.eps is changed to {} '
+                          'by MultiprocessParallelUpdater for new batch size.'.
+                          format(optimizer.eps))
         elif hasattr(optimizer, 'lr'):
             optimizer.lr /= len(devices)
+            warnings.warn('optimizer.lr is changed to {} '
+                          'by MultiprocessParallelUpdater for new batch size.'.
+                          format(optimizer.lr))
 
         super(MultiprocessParallelUpdater, self).__init__(
             iterator=iterators[0],
@@ -180,7 +188,7 @@ class MultiprocessParallelUpdater(StandardUpdater):
             self._master.to_gpu(self._devices[0])
             if len(self._devices) > 1:
                 comm_id = nccl.get_unique_id()
-                self._send_message(("set comm_di", comm_id))
+                self._send_message(("set comm_id", comm_id))
                 self.comm = nccl.NcclCommunicator(len(self._devices),
                                                   comm_id, 0)
 
@@ -220,7 +228,6 @@ class MultiprocessParallelUpdater(StandardUpdater):
         self._send_message(('finalize', None))
 
         for worker in self._workers:
-            print("join", worker)
             worker.join()
 
 
@@ -253,33 +260,34 @@ def size_num_grads(link):
     return size, num
 
 
-_batch_memcpy = cuda.cupy.ElementwiseKernel(
-    'raw T ptrs, raw X info',
-    'raw float32 dst',
-    '''
-        int id_min = id_pre;
-        int id_max = num_src;
-        while (id_max - id_min > 1) {
-            int id = (id_max + id_min) / 2;
-            if (i < info[id]) id_max = id;
-            else              id_min = id;
-        }
-        int id = id_min;
-        float *src = (float *)(ptrs[id]);
-        int i_dst = i;
-        int i_src = i;
-        if (id > 0) i_src -= info[id];
-        dst[i_dst] = 0;
-        if (src != NULL) {
-            dst[i_dst] = src[i_src];
-        }
-        id_pre = id;
-    ''',
-    'batch_memcpy',
-    loop_prep='''
-            int num_src = info[0];
-            int id_pre = 0;
-        ''')
+def _batch_memcpy():
+    return cuda.cupy.ElementwiseKernel(
+        'raw T ptrs, raw X info',
+        'raw float32 dst',
+        '''
+            int id_min = id_pre;
+            int id_max = num_src;
+            while (id_max - id_min > 1) {
+                int id = (id_max + id_min) / 2;
+                if (i < info[id]) id_max = id;
+                else              id_min = id;
+            }
+            int id = id_min;
+            float *src = (float *)(ptrs[id]);
+            int i_dst = i;
+            int i_src = i;
+            if (id > 0) i_src -= info[id];
+            dst[i_dst] = 0;
+            if (src != NULL) {
+                dst[i_dst] = src[i_src];
+            }
+            id_pre = id;
+        ''',
+        'batch_memcpy',
+        loop_prep='''
+                int num_src = info[0];
+                int id_pre = 0;
+            ''')
 
 
 def gather_grads(link):
@@ -312,7 +320,7 @@ def gather_grads(link):
     ptrs = cuda.to_gpu(ptrs, stream=cuda.Stream.null)
     info = cuda.to_gpu(info, stream=cuda.Stream.null)
 
-    return _batch_memcpy(ptrs, info, size=size)
+    return _batch_memcpy()(ptrs, info, size=size)
 
 
 def gather_params(link):
@@ -345,7 +353,7 @@ def gather_params(link):
     ptrs = cuda.to_gpu(ptrs, stream=cuda.Stream.null)
     info = cuda.to_gpu(info, stream=cuda.Stream.null)
 
-    return _batch_memcpy(ptrs, info, size=size)
+    return _batch_memcpy()(ptrs, info, size=size)
 
 
 def scatter_grads(link, array):
