@@ -367,6 +367,12 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
+        if isinstance(value, numpy.ndarray):
+            if value.size != 1:
+                raise ValueError(
+                    'non-scalar numpy.ndarray cannot be used for fill')
+            value = value.item()
+
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes, stream.Stream(True))
         else:
