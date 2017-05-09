@@ -30,7 +30,7 @@ def _cross_covariance(y, z):
 
 
 @testing.parameterize(
-    {'reduce': 'half_frobenius_norm'},
+    {'reduce': 'half_squared_sum'},
     {'reduce': 'no'}
 )
 class TestCrossCovariance(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestCrossCovariance(unittest.TestCase):
     def setUp(self):
         self.y = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.z = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             gloss_shape = ()
         else:
             gloss_shape = (3, 2)
@@ -56,7 +56,7 @@ class TestCrossCovariance(unittest.TestCase):
 
         # Compute expected value
         loss_expect = _cross_covariance(y_data, z_data)
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             loss_expect = numpy.sum(loss_expect ** 2) * 0.5
         numpy.testing.assert_allclose(
             loss_expect, loss_value, rtol=1e-4, atol=1e-4)

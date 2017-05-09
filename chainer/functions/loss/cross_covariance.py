@@ -10,14 +10,14 @@ class CrossCovariance(function.Function):
 
     """Cross-covariance loss."""
 
-    def __init__(self, reduce='half_frobenius_norm'):
+    def __init__(self, reduce='half_squared_sum'):
         self.y_centered = None
         self.z_centered = None
         self.covariance = None
 
-        if reduce not in ('half_frobenius_norm', 'no'):
+        if reduce not in ('half_squared_sum', 'no'):
             raise ValueError(
-                "only 'half_frobenius_norm' and 'no' are valid "
+                "only 'half_squared_sum' and 'no' are valid "
                 "for 'reduce', but '%s' is given" % reduce)
         self.reduce = reduce
 
@@ -43,7 +43,7 @@ class CrossCovariance(function.Function):
         self.covariance = self.y_centered.T.dot(self.z_centered)
         self.covariance /= len(y)
 
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             cost = xp.vdot(self.covariance, self.covariance)
             cost *= y.dtype.type(0.5)
             return utils.force_array(cost),
@@ -55,7 +55,7 @@ class CrossCovariance(function.Function):
         gcost, = grad_outputs
         gcost_div_n = gcost / gcost.dtype.type(len(y))
 
-        if self.reduce == 'half_frobenius_norm':
+        if self.reduce == 'half_squared_sum':
             gy = self.z_centered.dot(self.covariance.T)
             gz = self.y_centered.dot(self.covariance)
             gy *= gcost_div_n
@@ -66,14 +66,14 @@ class CrossCovariance(function.Function):
         return gy, gz
 
 
-def cross_covariance(y, z, reduce='half_frobenius_norm'):
+def cross_covariance(y, z, reduce='half_squared_sum'):
     """Computes the sum-squared cross-covariance penalty between ``y`` and ``z``
 
     The output is a variable whose value depends on the value of
     the option ``reduce``. If it is ``'no'``, it holds the covariant
     matrix that has as many rows (resp. columns) as the dimension of
     ``y`` (resp.z).
-    If it is ``'half_frobenius_norm'``, it holds the half of the
+    If it is ``'half_squared_sum'``, it holds the half of the
     Frobenius norm (i.e. L2 norm of a matrix flattened to a vector)
     of the covarianct matrix.
 
@@ -83,7 +83,7 @@ def cross_covariance(y, z, reduce='half_frobenius_norm'):
         z (Variable): Variable holding a matrix where the first dimension
             corresponds to the batches.
         reduce (str): Reduction option. Its value must be either
-            ``'half_frobenius_norm'`` or ``'no'``.
+            ``'half_squared_sum'`` or ``'no'``.
             Otherwise, :class:`ValueError` is raised.
 
     Returns:
@@ -93,7 +93,7 @@ def cross_covariance(y, z, reduce='half_frobenius_norm'):
             2-dimensional array matrix of shape ``(M, N)`` where
             ``M`` (resp. ``N``) is the number of columns of ``y``
             (resp. ``z``).
-            If it is ``'half_frobenius_norm'``, the output variable
+            If it is ``'half_squared_sum'``, the output variable
             holds a scalar value.
 
     .. note::
