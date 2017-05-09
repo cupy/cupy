@@ -130,7 +130,7 @@ class DilatedConvolution2DFunction(function.Function):
 
                     if i == 0 and j == 0:
                         handle = cudnn.get_handle()
-                        x_desc = cudnn.create_tensor_descriptor(xji)
+                        xji_desc = cudnn.create_tensor_descriptor(xji)
                         y_desc = cudnn.create_tensor_descriptor(y)
                         self.filter_desc = cudnn.create_filter_descriptor(Wji)
                         self.conv_desc = cudnn.create_convolution_descriptor(
@@ -140,7 +140,7 @@ class DilatedConvolution2DFunction(function.Function):
                         workspace = cuda.cupy.empty(
                             (workspace_size,), dtype='b')
                         algo = libcudnn.getConvolutionForwardAlgorithm(
-                            handle, x_desc.value, self.filter_desc.value,
+                            handle, xji_desc.value, self.filter_desc.value,
                             self.conv_desc.value, y_desc.value, _fwd_pref,
                             workspace_size)
 
@@ -148,7 +148,7 @@ class DilatedConvolution2DFunction(function.Function):
                         one = numpy.array(1, dtype=oz_dtype).ctypes
 
                     libcudnn.convolutionForward(
-                        handle, one.data, x_desc.value, xji.data.ptr,
+                        handle, one.data, xji_desc.value, xji.data.ptr,
                         self.filter_desc.value, Wji.data.ptr,
                         self.conv_desc.value, algo, workspace.data.ptr,
                         workspace_size, one.data, y_desc.value, y.data.ptr)

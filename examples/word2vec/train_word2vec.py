@@ -2,7 +2,6 @@
 """Sample script of word embedding model.
 
 This code implements skip-gram model and continuous-bow model.
-Use ../ptb/download.py to download 'ptb.train.txt'.
 """
 import argparse
 import collections

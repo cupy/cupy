@@ -36,23 +36,34 @@ class LinearShift(extension.Extension):
         self._value_range = value_range
         self._time_range = time_range
         self._optimizer = optimizer
-        self._t = 0
+        self._t = 1
+        self._before_training = True
 
     def __call__(self, trainer):
         optimizer = self._optimizer or trainer.updater.get_optimizer('main')
-        t1, t2 = self._time_range
-        v1, v2 = self._value_range
 
-        if self._t <= t1:
-            value = v1
-        elif self._t >= t2:
-            value = v2
+        if self._before_training:
+            self._before_training = False
+            value = self._compute_value(self._t - 1)
         else:
-            rate = (self._t - t1) / (t2 - t1)
-            value = v1 + rate * (v2 - v1)
-        setattr(optimizer, self._attr, value)
+            value = self._compute_value(self._t)
+            self._t += 1
 
-        self._t += 1
+        setattr(optimizer, self._attr, value)
 
     def serialize(self, serializer):
         self._t = serializer('_t', self._t)
+
+    def _compute_value(self, t):
+        t1, t2 = self._time_range
+        v1, v2 = self._value_range
+
+        if t <= t1:
+            value = v1
+        elif t >= t2:
+            value = v2
+        else:
+            rate = (t - t1) / (t2 - t1)
+            value = v1 + rate * (v2 - v1)
+
+        return value

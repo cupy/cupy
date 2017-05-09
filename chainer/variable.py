@@ -468,8 +468,10 @@ Actual: {0}'''.format(type(data))
            :func:`chainer.functions.transpose` for full documentation.
 
         """
-        if len(axes) == 1 and (isinstance(axes[0], (tuple, list)) or
-                               axes[0] is None):
+        if len(axes) == 0:
+            axes = None
+        elif len(axes) == 1 and (isinstance(axes[0], (tuple, list)) or
+                                 axes[0] is None):
             axes = axes[0]
         return chainer.functions.transpose(self, axes)
 

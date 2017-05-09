@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -48,7 +49,7 @@ class TestQRDecomposition(unittest.TestCase):
         result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
-            for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+            for b_cpu, b_gpu in six.moves.zip(result_cpu, result_gpu):
                 self.assertEqual(b_cpu.dtype, b_gpu.dtype)
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
@@ -59,3 +60,52 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
+
+
+@testing.parameterize(*testing.product({
+    'full_matrices': [True, False],
+}))
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestSVD(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_float_dtypes(no_float16=True)
+    def check_usv(self, array, dtype):
+        a_cpu = numpy.asarray(array, dtype=dtype)
+        a_gpu = cupy.asarray(array, dtype=dtype)
+        result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
+        result_gpu = cupy.linalg.svd(a_gpu, full_matrices=self.full_matrices)
+        self.assertEqual(len(result_cpu), len(result_gpu))
+        for b_cpu, b_gpu in zip(result_cpu, result_gpu):
+            # Use abs to support an inverse vector
+            cupy.testing.assert_allclose(
+                numpy.abs(b_cpu), cupy.abs(b_gpu), atol=1e-4)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4)
+    def check_singular(self, array, xp, dtype):
+        a = xp.asarray(array, dtype=dtype)
+        result = xp.linalg.svd(
+            a, full_matrices=self.full_matrices, compute_uv=False)
+        return result
+
+    def check_rank2(self, array):
+        with self.assertRaises(numpy.linalg.LinAlgError):
+            cupy.linalg.svd(array, full_matrices=self.full_matrices)
+
+    def test_svd(self):
+        self.check_usv(numpy.random.randn(2, 3))
+        self.check_usv(numpy.random.randn(2, 2))
+        self.check_usv(numpy.random.randn(3, 2))
+
+    def test_svd_no_uv(self):
+        self.check_singular(numpy.random.randn(2, 3))
+        self.check_singular(numpy.random.randn(2, 2))
+        self.check_singular(numpy.random.randn(3, 2))
+
+    def test_rank2(self):
+        self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
+        self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))

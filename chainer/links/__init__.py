@@ -19,7 +19,9 @@ from chainer.links.connection import inceptionbn  # NOQA
 from chainer.links.connection import linear  # NOQA
 from chainer.links.connection import lstm  # NOQA
 from chainer.links.connection import mlp_convolution_2d  # NOQA
+from chainer.links.connection import n_step_gru  # NOQA
 from chainer.links.connection import n_step_lstm  # NOQA
+from chainer.links.connection import n_step_rnn  # NOQA
 from chainer.links.connection import parameter  # NOQA
 from chainer.links.connection import peephole  # NOQA
 from chainer.links.connection import scale  # NOQA
@@ -56,7 +58,14 @@ from chainer.links.connection.linear import Linear  # NOQA
 from chainer.links.connection.lstm import LSTM  # NOQA
 from chainer.links.connection.lstm import StatelessLSTM  # NOQA
 from chainer.links.connection.mlp_convolution_2d import MLPConvolution2D  # NOQA
+from chainer.links.connection.n_step_gru import NStepBiGRU  # NOQA
+from chainer.links.connection.n_step_gru import NStepGRU  # NOQA
+from chainer.links.connection.n_step_lstm import NStepBiLSTM  # NOQA
 from chainer.links.connection.n_step_lstm import NStepLSTM  # NOQA
+from chainer.links.connection.n_step_rnn import NStepBiRNNReLU  # NOQA
+from chainer.links.connection.n_step_rnn import NStepBiRNNTanh  # NOQA
+from chainer.links.connection.n_step_rnn import NStepRNNReLU  # NOQA
+from chainer.links.connection.n_step_rnn import NStepRNNTanh  # NOQA
 from chainer.links.connection.parameter import Parameter  # NOQA
 from chainer.links.connection.peephole import StatefulPeepholeLSTM  # NOQA
 from chainer.links.connection.scale import Scale  # NOQA
@@ -66,6 +75,7 @@ from chainer.links.loss.crf1d import CRF1d  # NOQA
 from chainer.links.loss.hierarchical_softmax import BinaryHierarchicalSoftmax  # NOQA
 from chainer.links.loss.negative_sampling import NegativeSampling  # NOQA
 from chainer.links.model.classifier import Classifier  # NOQA
+from chainer.links.model.vision.googlenet import GoogLeNet  # NOQA
 from chainer.links.model.vision.resnet import ResNet101Layers  # NOQA
 from chainer.links.model.vision.resnet import ResNet152Layers  # NOQA
 from chainer.links.model.vision.resnet import ResNet50Layers  # NOQA

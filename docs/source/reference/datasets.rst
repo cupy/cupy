@@ -27,6 +27,9 @@ The first one is :class:`DictDataset` and :class:`TupleDataset`, both of which c
 
 The second one is :class:`SubDataset`, which represents a subset of an existing dataset. It can be used to separate a dataset for hold-out validation or cross validation. Convenient functions to make random splits are also provided.
 
+The third one is :class:`TransformDataset`, which wraps around a dataset by applying a function to data indexed from the underlying dataset.
+It can be used to modify behavior of a dataset that is already prepared.
+
 The last one is a group of domain-specific datasets. Currently, :class:`ImageDataset` and :class:`LabeledImageDataset` are provided for datasets of images.
 
 
@@ -49,6 +52,11 @@ SubDataset
 .. autofunction:: split_dataset_random
 .. autofunction:: get_cross_validation_datasets
 .. autofunction:: get_cross_validation_datasets_random
+
+TransformDataset
+~~~~~~~~~~~~~~~~
+.. autoclass:: TransformDataset
+   :members:
 
 ImageDataset
 ~~~~~~~~~~~~

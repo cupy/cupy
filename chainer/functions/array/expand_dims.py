@@ -30,10 +30,41 @@ def expand_dims(x, axis):
     """Expands dimensions of an input variable without copy.
 
     Args:
-        x (~chainer.Variable): Input variable.
-        axis (int): Position where new axis is to be inserted.
+        x (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`): Input variable.
+        axis (int):
+            Position where new axis is to be inserted. The ``axis`` parameter
+            is acceptable when :math:`-ndim - 1 \\leq axis \\leq ndim`.
+            (``ndim`` is the dimension of input variables). When
+            :math:`axis < 0`, the result is the same with
+            :math:`ndim + 1 - |axis|`.
 
     Returns:
-        ~chainer.Variable: Variable that holds a expanded input.
+        ~chainer.Variable: Variable that holds a expanded input. The ``ndim``
+        of output is one grater than that of ``x``.
+
+    .. admonition:: Example
+
+        >>> x = np.array([1, 2, 3])
+        >>> x.shape
+        (3,)
+        >>> y = F.expand_dims(x, axis=0)
+        >>> y.shape
+        (1, 3)
+        >>> y.data
+        array([[1, 2, 3]])
+        >>> y = F.expand_dims(x, axis=1)
+        >>> y.shape
+        (3, 1)
+        >>> y.data
+        array([[1],
+               [2],
+               [3]])
+        >>> y = F.expand_dims(x, axis=-2)
+        >>> y.shape
+        (1, 3)
+        >>> y.data
+        array([[1, 2, 3]])
+
     """
     return ExpandDims(axis)(x)

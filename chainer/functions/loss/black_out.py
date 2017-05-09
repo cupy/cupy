@@ -3,13 +3,14 @@ from chainer.functions.array import concat
 from chainer.functions.array import expand_dims
 from chainer.functions.array import reshape
 from chainer.functions.connection import embed_id
+from chainer.functions.math import average
 from chainer.functions.math import exponential
 from chainer.functions.math import logsumexp
 from chainer.functions.math import matmul
 from chainer.functions.math import sum as _sum
 
 
-def black_out(x, t, W, samples):
+def black_out(x, t, W, samples, reduce='mean'):
     """BlackOut loss function.
 
     BlackOut loss function is defined as
@@ -27,14 +28,33 @@ def black_out(x, t, W, samples):
        p(y) = \\frac{\\exp(W_y^\\top x)}{
        \\sum_{s \\in samples} \\exp(W_s^\\top x)}.
 
+    The output is a variable whose value depends on the value of
+    the option ``reduce``. If it is ``'no'``, it holds the
+    no loss values. If it is ``'mean'``, this function takes
+    a mean of loss values.
+
     Args:
         x (~chainer.Variable): Batch of input vectors.
+            Its shape should be :math:`(N, D)`.
         t (~chainer.Variable): Vector of ground truth labels.
+            Its shape should be :math:`(N,)`. Each elements :math:`v`
+            should satisfy :math:`0 \geq v \geq V` or :math:`-1`
+            where :math:`V` is the number of label types.
         W (~chainer.Variable): Weight matrix.
+            Its shape should be :math:`(V, D)`
         samples (~chainer.Variable): Negative samples.
+            Its shape should be :math:`(N, S)` where :math:`S` is
+            the number of negative samples.
+        reduce (str): Reduction option. Its value must be either
+        ``'no'`` or ``'mean'``. Otherwise,
+        :class:`ValueError` is raised.
 
     Returns:
-        ~chainer.Variable: Loss value.
+        ~chainer.Variable:
+            A variable object holding loss value(s).
+            If ``reduce`` is ``'no'``, the output variable holds an
+            array whose shape is :math:`(N,)` .
+            If it is ``'mean'``, it holds a scalar.
 
     See: `BlackOut: Speeding up Recurrent Neural Network Language Models With \
          Very Large Vocabularies <https://arxiv.org/abs/1511.06909>`_
@@ -58,5 +78,7 @@ def black_out(x, t, W, samples):
         reshape.reshape(logz, (batch_size, 1)), neg_y)
     ny = exponential.log(1 - exponential.exp(bneg_y - blogz))
     py = reshape.reshape(pos_y, (batch_size,))
-    loss = py - logz + _sum.sum(ny, axis=1)
-    return -_sum.sum(loss) / batch_size
+    loss = -(py - logz + _sum.sum(ny, axis=1))
+    if reduce == 'mean':
+        loss = average.average(loss)
+    return loss

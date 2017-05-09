@@ -51,10 +51,86 @@ def dstack(xs):
     """Concatenate variables along third axis (depth wise).
 
     Args:
-        xs (list of chainer.Variable): Variables to be concatenated.
+        xs (list of :class:`~chainer.Variable` or :class:`numpy.ndarray` or \
+        :class:`cupy.ndarray`):
+            Input variables to be concatenated. The variables must have the
+            same ``ndim``. When the variables have the third axis (i.e.
+            :math:`ndim \\geq 3`), the variables must have the same shape
+            along all but the third axis. When the variables do not have the
+            third axis(i.e. :math:`ndim < 3`), the variables must have the
+            same shape.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ~chainer.Variable:
+            Output variable. When the input variables have the third axis
+            (i.e. :math:`ndim \\geq 3`), the shapes of inputs and output are
+            the same along all but the third axis. The length of third axis
+            is the sum of the lengths of inputs' third axis.
+            When the shape of variables are ``(N1, N2)`` (i.e.
+            :math:`ndim = 2`), the shape of output is ``(N1, N2, 2)``. When
+            the shape of variables are ``(N1,)`` (i.e. :math:`ndim = 1`), the
+            shape of output is ``(1, N1, 2)``. When the shape of variables are
+            ``()`` (i.e. :math:`ndim = 0`), the shape of output is
+            ``(1, 1, 2)``.
+
+
+    .. admonition:: Example
+
+        >>> x1 = np.array((1, 2, 3))
+        >>> x1.shape
+        (3,)
+        >>> x2 = np.array((2, 3, 4))
+        >>> x2.shape
+        (3,)
+        >>> y = F.dstack((x1, x2))
+        >>> y.shape
+        (1, 3, 2)
+        >>> y.data
+        array([[[1, 2],
+                [2, 3],
+                [3, 4]]])
+
+        >>> x1 = np.arange(0, 6).reshape(3, 2)
+        >>> x1.shape
+        (3, 2)
+        >>> x1
+        array([[0, 1],
+               [2, 3],
+               [4, 5]])
+        >>> x2 = np.arange(6, 12).reshape(3, 2)
+        >>> x2.shape
+        (3, 2)
+        >>> x2
+        array([[ 6,  7],
+               [ 8,  9],
+               [10, 11]])
+        >>> y = F.dstack([x1, x2])
+        >>> y.shape
+        (3, 2, 2)
+        >>> y.data
+        array([[[ 0,  6],
+                [ 1,  7]],
+        <BLANKLINE>
+               [[ 2,  8],
+                [ 3,  9]],
+        <BLANKLINE>
+               [[ 4, 10],
+                [ 5, 11]]])
+
+        >>> x1 = np.arange(0, 12).reshape(3, 2, 2)
+        >>> x2 = np.arange(12, 18).reshape(3, 2, 1)
+        >>> y = F.dstack([x1, x2])
+        >>> y.shape
+        (3, 2, 3)
+        >>> y.data
+        array([[[ 0,  1, 12],
+                [ 2,  3, 13]],
+        <BLANKLINE>
+               [[ 4,  5, 14],
+                [ 6,  7, 15]],
+        <BLANKLINE>
+               [[ 8,  9, 16],
+                [10, 11, 17]]])
 
     """
 

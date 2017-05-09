@@ -4,11 +4,11 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer import functions
 from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
-from chainer.testing import condition
 
 
 class TestHighway(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestHighway(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (5, self.in_out_size)).astype(numpy.float32)
         self.link = links.Highway(
-            self.in_out_size)
+            self.in_out_size, activate=functions.tanh)
 
         Wh = self.link.plain.W.data
         Wh[...] = numpy.random.uniform(-1, 1, Wh.shape)
@@ -39,13 +39,10 @@ class TestHighway(unittest.TestCase):
         self.Wt = Wt.copy()  # fixed on CPU
         self.bt = bt.copy()  # fixed on CPU
 
-        a = self.relu(self.x.dot(Wh.T) + bh)
+        a = numpy.tanh(self.x.dot(Wh.T) + bh)
         b = self.sigmoid(self.x.dot(Wt.T) + bt)
         self.y = (a * b +
                   self.x * (numpy.ones_like(self.x) - b))
-
-    def relu(self, x):
-        return numpy.maximum(x, 0, dtype=x.dtype)
 
     def sigmoid(self, x):
         half = x.dtype.type(0.5)
@@ -57,12 +54,10 @@ class TestHighway(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         testing.assert_allclose(self.y, y.data)
 
-    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
-    @condition.retry(3)
     def test_forward_gpu(self):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
@@ -74,12 +69,10 @@ class TestHighway(unittest.TestCase):
              self.link.transform.W, self.link.transform.b),
             eps=1e-2, atol=3.2e-3, rtol=1e-2)
 
-    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
-    @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
