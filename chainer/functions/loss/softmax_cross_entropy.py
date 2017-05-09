@@ -8,6 +8,13 @@ from chainer.functions.activation import log_softmax
 from chainer.utils import type_check
 
 
+def _broadcast_to(array, shape):
+    if hasattr(numpy, "broadcast_to"):
+        return numpy.broadcast_to(array, shape)
+    dummy = numpy.empty(shape, array.dtype)
+    return numpy.broadcast_arrays(array, dummy)[0]
+
+
 class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
@@ -66,8 +73,7 @@ class SoftmaxCrossEntropy(function.Function):
             self.y = numpy.exp(log_y)
         if self.class_weight is not None:
             shape = [1 if d != 1 else -1 for d in six.moves.range(x.ndim)]
-            log_y *= numpy.broadcast_to(
-                self.class_weight.reshape(shape), x.shape)
+            log_y *= _broadcast_to(self.class_weight.reshape(shape), x.shape)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
         log_p = log_yd[numpy.maximum(t.ravel(), 0), numpy.arange(t.size)]
@@ -144,10 +150,9 @@ class SoftmaxCrossEntropy(function.Function):
             gx[numpy.arange(len(t)), numpy.maximum(t, 0)] -= 1
             if self.class_weight is not None:
                 shape = [1 if d != 1 else -1 for d in six.moves.range(x.ndim)]
-                c = numpy.broadcast_to(
-                    self.class_weight.reshape(shape), x.shape)
+                c = _broadcast_to(self.class_weight.reshape(shape), x.shape)
                 c = c[numpy.arange(len(t)), numpy.maximum(t, 0)]
-                gx *= numpy.broadcast_to(numpy.expand_dims(c, 1), gx.shape)
+                gx *= _broadcast_to(numpy.expand_dims(c, 1), gx.shape)
             gx *= (t != self.ignore_label).reshape((len(t), 1))
         else:
             # in the case where y.ndim is higher than 2,
@@ -160,12 +165,11 @@ class SoftmaxCrossEntropy(function.Function):
             gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
             if self.class_weight is not None:
                 shape = [1 if d != 1 else -1 for d in six.moves.range(x.ndim)]
-                c = numpy.broadcast_to(
-                    self.class_weight.reshape(shape), x.shape)
+                c = _broadcast_to(self.class_weight.reshape(shape), x.shape)
                 c = c.reshape(gx.shape)
                 c = c[fst_index, numpy.maximum(t.ravel(), 0), trd_index]
                 c = c.reshape(y.shape[0], 1, -1)
-                gx *= numpy.broadcast_to(c, gx.shape)
+                gx *= _broadcast_to(c, gx.shape)
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
             gx = gx.reshape(y.shape)
         if self.reduce == 'mean':
