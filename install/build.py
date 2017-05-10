@@ -124,6 +124,24 @@ def check_cudnn_version(compiler, settings):
     return True
 
 
+def check_nccl_version(compiler, settings):
+    # NCCL does not provide version information.
+    # It only check whether there is nccl.h.
+    try:
+        build_and_run(compiler, '''
+        #include <nccl.h>
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot include NCCL\n{0}'.format(e))
+        return False
+
+    return True
+
+
 def check_cusolver_version(compiler, settings):
     # As an initial cusolver does not have cusolverGetProperty,
     # we use CUDA_VERSION instead.

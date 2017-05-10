@@ -126,6 +126,12 @@ pip install h5py
 ```
 
 
+### Multi-GPU Support
+
+Multi-GPU training is supported by MultiprocessParallelUpdater.
+If you want to use MultiprocessParallelUpdater, please install [NCCL](https://github.com/NVIDIA/nccl) by following the installation guide.
+
+
 ## Run with Docker
 
 We provide the official Docker image.
