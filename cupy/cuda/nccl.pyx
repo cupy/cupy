@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """
 Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
@@ -5,7 +7,7 @@ cimport cython
 
 from cupy.cuda cimport driver
 
-cdef extern from "nccl.h":
+cdef extern from "cupy_nccl.h":
     ctypedef struct ncclComm:
         pass
     ctypedef ncclComm* ncclComm_t
