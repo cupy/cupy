@@ -74,7 +74,7 @@ class CTCTestBase(object):
                 self.alpha(xtb, lb, int(xlb - 1), int(plb - 1)) +
                 self.alpha(xtb, lb, int(xlb - 1), int(plb - 2)))
         if self.reduce == 'mean':
-            loss_expect = xp.sum(loss_expect) / batch_size
+            loss_expect = xp.mean(loss_expect)
         testing.assert_allclose(loss_expect, loss)
 
     def test_forward_cpu(self):

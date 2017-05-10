@@ -234,8 +234,7 @@ class ConnectionistTemporalClassification(function.Function):
 
         loss = -_logsumexp(self.prob_trans[0], xp, axis=1)
         if self.reduce == 'mean':
-            loss = utils.force_array(xp.sum(loss))
-            loss /= batch_size
+            loss = utils.force_array(xp.mean(loss))
         return loss,
 
     def backward(self, inputs, grad_output):
@@ -285,7 +284,7 @@ def connectionist_temporal_classification(
         label_length (Variable): Length of valid sequence for each of mini
             batch ``t`` (optional). If label_length is skipped, It regards that
             all of ``t`` is valid input.
-        recude (str): Reduction option. Its value must be either
+        reduce (str): Reduction option. Its value must be either
             ``'mean'`` or ``'no'``. Otherwise,
             :class:`ValueError` is raised.
 
