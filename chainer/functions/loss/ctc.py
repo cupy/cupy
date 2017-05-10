@@ -223,7 +223,6 @@ class ConnectionistTemporalClassification(function.Function):
 
         self.path_length = 2 * label_length + 1
 
-        batch_size = len(t)
         yseq_shape = (len(xs),) + xs[0].shape
         self.yseq = _softmax(xp.vstack(xs).reshape(yseq_shape), xp)
         log_yseq = self.log_matrix(self.yseq, xp)
