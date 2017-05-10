@@ -368,7 +368,7 @@ cdef class ndarray:
 
         """
         if isinstance(value, numpy.ndarray):
-            if value.size != 1:
+            if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
             value = value.item()
