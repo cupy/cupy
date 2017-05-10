@@ -47,16 +47,20 @@ class NegativeSampling(link.Link):
             super(NegativeSampling, self).to_gpu()
             self.sampler.to_gpu()
 
-    def __call__(self, x, t):
+    def __call__(self, x, t, reduce='sum'):
         """Computes the loss value for given input and ground truth labels.
 
         Args:
             x (~chainer.Variable): Input of the weight matrix multiplication.
             t (~chainer.Variable): Batch of ground truth labels.
+            reduce (str): Reduction option. Its value must be either
+                ``'sum'`` or ``'no'``. Otherwise, :class:`ValueError` is
+                raised.
 
         Returns:
             ~chainer.Variable: Loss value.
 
         """
         return negative_sampling.negative_sampling(
-            x, t, self.W, self.sampler.sample, self.sample_size)
+            x, t, self.W, self.sampler.sample, self.sample_size,
+            reduce=reduce)

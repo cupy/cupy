@@ -64,6 +64,19 @@ MODULES = [
         'check_method': build.check_cudnn_version,
     },
     {
+        'name': 'nccl',
+        'file': [
+            'cupy.cuda.nccl',
+        ],
+        'include': [
+            'nccl.h',
+        ],
+        'libraries': [
+            'nccl',
+        ],
+        'check_method': build.check_nccl_version,
+    },
+    {
         'name': 'cusolver',
         'file': [
             'cupy.cuda.cusolver',
