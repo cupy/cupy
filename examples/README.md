@@ -3,10 +3,6 @@ Chainer Examples
 
 This page contains a list of example codes written with Chainer.
 
-- [Natural Language Processing](#natual-language-processing)
-- [Image Classification](#image-classification)
-- [Generative Models](#generative-models)
-
 ### <a name="natual-language-processing"></a> Natural Language Processing
 
 * [Recurrent Net Language Model](https://github.com/pfnet/chainer/tree/master/examples/ptb)
