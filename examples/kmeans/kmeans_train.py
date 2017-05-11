@@ -18,30 +18,22 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
-def run_kmeans(X_train, estimator):
-    estimator.fit(X_train)
-
-
 def run(gpuid, n_clusters, max_iter, elem, output):
     samples = np.random.randn(50000, 1000).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
-    estimator_cpu = kmeans.KMeans(n_clusters=n_clusters, max_iter=max_iter,
-                                  elem=elem)
     with timer(' CPU '):
         for i in range(repeat):
-            run_kmeans(X_train, estimator_cpu)
+            centers, pred = kmeans.fit(X_train, n_clusters, max_iter, elem)
 
     with cupy.cuda.Device(gpuid):
         X_train = cupy.asarray(X_train)
-        estimator_gpu = kmeans.KMeans(n_clusters=n_clusters,
-                                      max_iter=max_iter, elem=elem)
         with timer(' GPU '):
             for i in range(repeat):
-                run_kmeans(X_train, estimator_gpu)
+                centers, pred = kmeans.fit(X_train, n_clusters, max_iter, elem)
         if output is not None:
-            estimator_gpu.draw(X_train, output)
+            kmeans.draw(X_train, n_clusters, centers, pred, output)
 
 
 if __name__ == '__main__':
