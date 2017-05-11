@@ -28,12 +28,13 @@ def run(gpuid, n_clusters, max_iter, elem, output):
             centers, pred = kmeans.fit(X_train, n_clusters, max_iter, elem)
 
     with cupy.cuda.Device(gpuid):
-        X_train = cupy.asarray(X_train)
+        X_train_gpu = cupy.asarray(X_train)
         with timer(' GPU '):
             for i in range(repeat):
-                centers, pred = kmeans.fit(X_train, n_clusters, max_iter, elem)
+                centers, pred = kmeans.fit(X_train_gpu, n_clusters,
+                                           max_iter, elem)
         if output is not None:
-            kmeans.draw(X_train, n_clusters, centers, pred, output)
+            kmeans.draw(X_train_gpu, n_clusters, centers, pred, output)
 
 
 if __name__ == '__main__':
