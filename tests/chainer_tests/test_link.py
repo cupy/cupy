@@ -111,7 +111,7 @@ class TestLink(unittest.TestCase):
         self.link.to_gpu(0)
         self.assertEqual(self.link._device_id, 0)
 
-    @attr.gpu
+    @attr.multi_gpu(2)
     def test_to_gpu_current_device(self):
         cuda.Device(1).use()
         self.link.to_gpu()
