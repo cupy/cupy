@@ -6,4 +6,4 @@ RUN apt-get update -y && \
     python3-pip && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install chainer==1.23.0
+RUN pip3 install chainer==1.24.0
