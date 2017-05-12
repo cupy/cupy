@@ -219,7 +219,7 @@ Actual: {0}'''.format(type(data))
         """Copies the data and gradient arrays to specified GPU.
 
         Args:
-            device: arget device specifier. If omitted, the current device is
+            device: Target device specifier. If omitted, the current device is
                 used.
 
         """
