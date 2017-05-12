@@ -195,7 +195,7 @@ class Function(object):
         for hook in six.itervalues(hooks):
             hook.forward_preprocess(self, in_data)
         # Forward prop
-        with cuda.get_device(*in_data):
+        with cuda.get_device_from_array(*in_data):
             outputs = self.forward(in_data)
             assert type(outputs) == tuple
         for hook in six.itervalues(hooks):

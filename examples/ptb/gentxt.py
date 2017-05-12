@@ -58,7 +58,7 @@ def main():
     serializers.load_npz(args.model, model)
 
     if args.gpu >= 0:
-        cuda.get_device(args.gpu).use()
+        cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
 
     model.predictor.reset_state()

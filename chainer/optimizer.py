@@ -10,7 +10,7 @@ import chainer.link as link_module
 def _sum_sqnorm(arr):
     sq_sum = collections.defaultdict(float)
     for x in arr:
-        with cuda.get_device(x) as dev:
+        with cuda.get_device_from_array(x) as dev:
             x = x.ravel()
             s = x.dot(x)
             sq_sum[int(dev)] += s
@@ -98,7 +98,7 @@ class Optimizer(object):
                 states[name] = state
             else:
                 state = states[name]
-                with cuda.get_device(param.data) as dev:
+                with cuda.get_device_from_array(param.data) as dev:
                     if int(dev) == -1:  # cpu
                         for key, value in six.iteritems(state):
                             if isinstance(value, cuda.ndarray):
@@ -127,7 +127,7 @@ class Optimizer(object):
         .. seealso:: :meth:`init_state_cpu`, :meth:`init_state_gpu`
 
         """
-        with cuda.get_device(param.data) as dev:
+        with cuda.get_device_from_array(param.data) as dev:
             if int(dev) == -1:
                 self.init_state_cpu(param, state)
             else:
@@ -341,7 +341,7 @@ class Optimizer(object):
                 g_dst += cuda.to_cpu(g_src)
                 continue
 
-            with cuda.get_device(g_dst):
+            with cuda.get_device_from_array(g_dst):
                 if (isinstance(g_src, cuda.ndarray) and
                         g_dst.device != g_src.device):
                     g_dst += cuda.copy(g_src, out_device=g_dst.device)
@@ -380,7 +380,7 @@ class GradientMethod(Optimizer):
         """
         for name, param in self.target.namedparams():
             if param.grad is None:
-                with cuda.get_device(param.data):
+                with cuda.get_device_from_array(param.data):
                     xp = cuda.get_array_module(param.data)
                     param.grad = xp.zeros_like(param.data)
 
@@ -424,7 +424,7 @@ class GradientMethod(Optimizer):
         self.t += 1
         states = self._states
         for name, param in self.target.namedparams():
-            with cuda.get_device(param.data):
+            with cuda.get_device_from_array(param.data):
                 self.update_one(param, states[name])
 
     def update_one(self, param, state):
@@ -507,7 +507,7 @@ class WeightDecay(object):
         rate = self.rate
         for param in opt.target.params():
             p, g = param.data, param.grad
-            with cuda.get_device(p) as dev:
+            with cuda.get_device_from_array(p) as dev:
                 if int(dev) == -1:
                     g += rate * p
                 else:
@@ -542,7 +542,7 @@ class Lasso(object):
             p, g = param.data, param.grad
             xp = cuda.get_array_module(p)
             sign = xp.sign(p)
-            with cuda.get_device(p) as dev:
+            with cuda.get_device_from_array(p) as dev:
                 if int(dev) == -1:
                     g += rate * sign
                 else:
@@ -573,7 +573,7 @@ class GradientClipping(object):
         if rate < 1:
             for param in opt.target.params():
                 grad = param.grad
-                with cuda.get_device(grad):
+                with cuda.get_device_from_array(grad):
                     grad *= rate
 
 
@@ -619,7 +619,7 @@ class GradientNoise(object):
         for param in opt.target.params():
             g = param.grad
             xp = cuda.get_array_module(g)
-            with cuda.get_device(g) as dev:
+            with cuda.get_device_from_array(g) as dev:
                 noise = self.noise_func(xp, g.shape, g.dtype, self, opt)
                 if int(dev) == -1:
                     g += noise
@@ -652,5 +652,5 @@ class GradientHardClipping(object):
         xp = opt.target.xp
         for param in opt.target.params():
             grad = param.grad
-            with cuda.get_device(grad):
+            with cuda.get_device_from_array(grad):
                 xp.clip(grad, self.lower_bound, self.upper_bound, out=grad)

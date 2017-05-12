@@ -135,7 +135,7 @@ Actual: {0}'''.format(type(data))
         except AttributeError:
             device = 'CPU'
 
-        with cuda.get_device(self.data) as dev:
+        with cuda.get_device_from_array(self.data) as dev:
             xp = numpy if int(dev) == -1 else cuda.cupy
 
             if self.grad is None:
@@ -223,10 +223,9 @@ Actual: {0}'''.format(type(data))
                 used.
 
         """
-        with cuda.get_device(device):
-            self.data = cuda.to_gpu(self.data)
-            if self._grad is not None:
-                self._grad = cuda.to_gpu(self._grad)
+        self.data = cuda.to_gpu(self.data, device)
+        if self._grad is not None:
+            self._grad = cuda.to_gpu(self._grad, device)
 
     def cleargrad(self):
         """Clears the gradient array."""
@@ -242,7 +241,7 @@ Actual: {0}'''.format(type(data))
         warnings.warn(
             'Variable.zerograd is deprecated. Use Variable.cleargard instead.',
             DeprecationWarning)
-        with cuda.get_device(self.data) as dev:
+        with cuda.get_device_from_array(self.data) as dev:
             if self._grad is None:
                 xp = numpy if int(dev) == -1 else cuda.cupy
                 self._grad = xp.zeros_like(self.data)
@@ -286,8 +285,8 @@ Actual: {0}'''.format(type(data))
         if src is None:
             return
 
-        src_dev = cuda.get_device(src)
-        dst_dev = cuda.get_device(self.data)
+        src_dev = cuda.get_device_from_array(src)
+        dst_dev = cuda.get_device_from_array(self.data)
 
         if src_dev.id == dst_dev.id:
             with dst_dev:
@@ -368,7 +367,7 @@ Actual: {0}'''.format(type(data))
 
         # Initialize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
-            with cuda.get_device(self.data) as device:
+            with cuda.get_device_from_array(self.data) as device:
                 if device is cuda.DummyDevice:
                     self.grad = numpy.ones_like(self.data)
                 else:
@@ -393,7 +392,7 @@ Actual: {0}'''.format(type(data))
                 hooks = collections.OrderedDict(hooks)
                 hooks.update(func.local_function_hooks)
 
-            cuda.get_device(*(in_data + out_grad)).use()
+            cuda.get_device_from_array(*(in_data + out_grad)).use()
             for hook in six.itervalues(hooks):
                 hook.backward_preprocess(func, in_data, out_grad)
             gxs = func.backward(in_data, out_grad)
@@ -405,7 +404,7 @@ Actual: {0}'''.format(type(data))
                 for gx in gxs:
                     if gx is None:
                         continue
-                    cuda.get_device(gx).use()
+                    cuda.get_device_from_array(gx).use()
                     if cuda.get_array_module(gx).isnan(gx).any():
                         msg = 'NaN is detected on backward computation'
                         raise RuntimeError(msg)
@@ -428,7 +427,7 @@ Actual: {0}'''.format(type(data))
                         x.grad = gx
                         need_copy.add(id_x)
                     else:
-                        cuda.get_device(gx).use()
+                        cuda.get_device_from_array(gx).use()
                         if id_x in need_copy:
                             x.grad = utils.force_array(x.grad + gx)  # copy
                             need_copy.remove(id_x)
@@ -441,7 +440,7 @@ Actual: {0}'''.format(type(data))
                         seen_vars.add(id_x)
                         need_copy.add(id_x)
                     else:
-                        cuda.get_device(gx).use()
+                        cuda.get_device_from_array(gx).use()
                         if id_x in need_copy:  # 2nd visit
                             x._grad = utils.force_array(gx + x._grad)  # copied
                             need_copy.remove(id_x)

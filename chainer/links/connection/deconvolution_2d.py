@@ -109,7 +109,7 @@ class Deconvolution2D(link.Link):
 
     def __call__(self, x):
         if self.has_uninitialized_params:
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 self._initialize_params(x.shape[1])
         return deconvolution_2d.deconvolution_2d(
             x, self.W, self.b, self.stride, self.pad,

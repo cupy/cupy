@@ -91,7 +91,7 @@ class DepthwiseConvolution2D(link.Link):
 
         """
         if self.has_uninitialized_params:
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 self._initialize_params(x.shape[1])
         return depthwise_convolution_2d.depthwise_convolution_2d(
             x, self.W, self.b, self.stride, self.pad)

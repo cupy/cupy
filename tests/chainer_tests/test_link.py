@@ -19,6 +19,13 @@ class TestLink(unittest.TestCase):
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
+        if cuda.available:
+            self.current_device_id = cuda.cupy.cuda.get_device_id()
+
+    def tearDown(self):
+        if cuda.available \
+                and cuda.cupy.cuda.get_device_id() != self.current_device_id:
+            cuda.Device(self.current_device_id).use()
 
     def check_param_init(self, name, shape, dtype):
         self.assertTrue(hasattr(self.link, name))
@@ -97,6 +104,18 @@ class TestLink(unittest.TestCase):
         self.assertIsInstance(self.link.y.data, cupy.ndarray)
         self.assertIsInstance(self.link.y.grad, cupy.ndarray)
         self.assertIsInstance(self.link.p, cupy.ndarray)
+
+    @attr.multi_gpu(2)
+    def test_to_gpu_different_device(self):
+        cuda.Device(1).use()
+        self.link.to_gpu(0)
+        self.assertEqual(self.link._device_id, 0)
+
+    @attr.multi_gpu(2)
+    def test_to_gpu_current_device(self):
+        cuda.Device(1).use()
+        self.link.to_gpu()
+        self.assertEqual(self.link._device_id, 1)
 
     def test_params(self):
         params = list(self.link.params())

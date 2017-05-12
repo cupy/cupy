@@ -18,7 +18,7 @@ def _sigmoid(x):
 
 def _peephole(func, c, h, x):
     xp = cuda.get_array_module(x)
-    with cuda.get_device(x):
+    with cuda.get_device_from_array(x):
         lstm_in = x.dot(func.upward.W.data.T)
         lstm_in += h.dot(func.lateral.W.data.T)
         lstm_in = xp.reshape(lstm_in, (len(lstm_in),
@@ -100,12 +100,12 @@ class TestPeephole(unittest.TestCase):
 
     @attr.multi_gpu(2)
     def test_forward_gpu_multi(self):
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             self.link.to_gpu()
             c = cuda.to_gpu(self.c)
             h = cuda.to_gpu(self.h)
             x = cuda.to_gpu(self.x)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             self.check_forward(c, h, x)
 
     def check_backward(self, c_data, h_data, x_data, y_grad):

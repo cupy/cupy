@@ -83,7 +83,7 @@ class NStepRNNBase(link.ChainList):
         self.rnn = rnn.n_step_birnn if use_bi_direction else rnn.n_step_rnn
 
     def init_hx(self, xs):
-        with cuda.get_device(self._device_id):
+        with cuda.get_device_from_id(self._device_id):
             hx = chainer.Variable(
                 self.xp.zeros((self.n_layers * self.direction,
                                len(xs), self.out_size),

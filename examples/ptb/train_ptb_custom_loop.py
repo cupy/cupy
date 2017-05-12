@@ -82,7 +82,8 @@ def main():
     model = L.Classifier(rnn)
     model.compute_accuracy = False  # we only want the perplexity
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # make the GPU current
+        # Make the specified GPU current
+        chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
 
     # Set up an optimizer

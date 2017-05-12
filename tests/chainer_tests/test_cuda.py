@@ -33,15 +33,21 @@ except ImportError:
 class TestCuda(unittest.TestCase):
 
     def test_get_dummy_device(self):
-        self.assertIs(cuda.get_device(), cuda.DummyDevice)
+        self.assertIs(cuda.get_device_from_id(None), cuda.DummyDevice)
 
-    def test_get_device_for_numpy_int(self):
-        self.assertIs(cuda.get_device(numpy.int64(0)), cuda.DummyDevice)
+    @attr.gpu
+    def test_get_device_from_id_for_numpy_int(self):
+        self.assertEqual(
+            cuda.get_device_from_id(numpy.int64(0)), cuda.Device(0))
+
+    def test_get_device_from_array_for_numpy_int(self):
+        self.assertIs(
+            cuda.get_device_from_array(numpy.int64(0)), cuda.DummyDevice)
 
     @attr.gpu
     def test_get_dummy_device_for_empty_array(self):
         x = cuda.cupy.array([]).reshape((0, 10))
-        self.assertIs(cuda.get_device(x), cuda.DummyDevice)
+        self.assertIs(cuda.get_device_from_array(x), cuda.DummyDevice)
 
     @attr.gpu
     @unittest.skipUnless(
@@ -70,6 +76,15 @@ class TestCuda(unittest.TestCase):
     @attr.gpu
     def test_get_device_for_int(self):
         self.assertEqual(cuda.get_device(0), cuda.Device(0))
+
+    @attr.gpu
+    @unittest.skipUnless(_builtins_available,
+                         'builtins module is not available')
+    def test_get_device_from_id_for_builtin_int(self):
+        # builtins.int is from future package and it is different
+        # from builtin int/long on Python 2.
+        self.assertEqual(
+            cuda.get_device_from_id(builtins.int(0)), cuda.Device(0))
 
     @attr.gpu
     @unittest.skipUnless(_builtins_available,

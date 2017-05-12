@@ -216,7 +216,10 @@ def get_device(*args):
     """
     warnings.warn('get_device is deprecated. Please use get_device_from_id or'
                   ' get_device_from_array instead.', DeprecationWarning)
+    return _get_device(*args)
 
+
+def _get_device(*args):
     for arg in args:
         if type(arg) in _integer_types:
             check_cuda_available()
@@ -253,8 +256,8 @@ def to_gpu(array, device=None, stream=None):
 
     """
     check_cuda_available()
-    with get_device(device):
-        array_dev = get_device(array)
+    with _get_device(device):
+        array_dev = get_device_from_array(array)
         if array_dev.id == cupy.cuda.device.get_device_id():
             return array
 

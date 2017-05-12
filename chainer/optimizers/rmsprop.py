@@ -15,7 +15,7 @@ class RMSprop(optimizer.GradientMethod):
 
     def init_state(self, param, state):
         xp = cuda.get_array_module(param.data)
-        with cuda.get_device(param.data):
+        with cuda.get_device_from_array(param.data):
             state['ms'] = xp.zeros_like(param.data)
 
     def update_one_cpu(self, param, state):

@@ -35,7 +35,7 @@ class TheanoFunction(function.Function):
         if gpu:
             # TODO(unno): We can remove redundant gpu-cpu copy using
             # theano.sandbox.cuda.CudaNdarray.gpudata
-            device = cuda.get_device(inputs)
+            device = cuda.get_device_from_array(inputs)
             outputs = [cuda.to_gpu(x, device) for x in outputs]
 
         return tuple(outputs)
@@ -53,7 +53,7 @@ class TheanoFunction(function.Function):
         if gpu:
             # TODO(unno): We can remove redundant gpu-cpu copy using
             # theano.sandbox.cuda.CudaNdarray.gpudata
-            device = cuda.get_device(inputs)
+            device = cuda.get_device_from_array(inputs)
             outputs = [cuda.to_gpu(x, device) for x in outputs]
 
         results = []

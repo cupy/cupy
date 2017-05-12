@@ -226,7 +226,7 @@ def _get_device(x):
     if numpy.isscalar(x):
         return cuda.DummyDevice
     else:
-        return cuda.get_device(x)
+        return cuda.get_device_from_array(x)
 
 
 class Summary(object):

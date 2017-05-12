@@ -287,8 +287,8 @@ class TestVariable(unittest.TestCase):
         gb = a.grad.copy()
         a.to_gpu(1)
 
-        self.assertEqual(int(cuda.get_device(a.data)), 1)
-        self.assertEqual(int(cuda.get_device(a.grad)), 1)
+        self.assertEqual(int(cuda.get_device_from_array(a.data)), 1)
+        self.assertEqual(int(cuda.get_device_from_array(a.grad)), 1)
         cp.testing.assert_array_equal(a.data, b)
         cp.testing.assert_array_equal(a.grad, gb)
 
@@ -335,24 +335,24 @@ class TestVariable(unittest.TestCase):
     @attr.multi_gpu(2)
     def test_zerograds_multi_gpu(self):
         cupy = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = chainer.Variable(cupy.empty(3, dtype=np.float32))
         a.zerograd()
         self.assertIsNot(a.grad, None)
         self.assertEqual(int(a.grad.device), 1)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             g_expect = cupy.zeros_like(a.data)
             cupy.testing.assert_array_equal(a.grad, g_expect)
 
     @attr.multi_gpu(2)
     def test_zerograds_fill_multi_gpu(self):
         cupy = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = chainer.Variable(cupy.empty(3, dtype=np.float32))
             a.grad = cupy.empty_like(a.data)
         a.zerograd()
         self.assertEqual(int(a.grad.device), 1)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             g_expect = cupy.zeros_like(a.data)
             cupy.testing.assert_array_equal(a.grad, g_expect)
 
@@ -400,10 +400,10 @@ class TestVariable(unittest.TestCase):
     @attr.multi_gpu(2)
     def test_copydata_gpu_to_another_gpu(self):
         cp = cuda.cupy
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             data1 = cp.zeros(3, dtype=np.float32)
             expect = cp.ones(3, dtype=np.float32)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             data2 = cp.ones(3, dtype=np.float32)
         self.check_copydata(data1, data2, expect)
 
@@ -420,7 +420,8 @@ class TestVariable(unittest.TestCase):
             b.cleargrad()
         b.addgrad(a)
         xp.testing.assert_array_equal(b.grad, expect)
-        self.assertEqual(cuda.get_device(b.data), cuda.get_device(b.grad))
+        self.assertEqual(cuda.get_device_from_array(b.data),
+                         cuda.get_device_from_array(b.grad))
 
     def test_addgrad_cpu_to_cpu(self):
         self.check_addgrad(np.full(3, 10, dtype=np.float32),
@@ -451,19 +452,19 @@ class TestVariable(unittest.TestCase):
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_gpu_multi(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 10, dtype=np.float32)
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 30, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             self.check_addgrad(a, b, c)
 
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 10, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 30, dtype=np.float32)
         self.check_addgrad(a, b, c)
@@ -485,23 +486,23 @@ class TestVariable(unittest.TestCase):
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu_none_src_dev0(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 10, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             self.check_addgrad(a, b, c, clear_src_grad=True)
 
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu_none_src_dev1(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 10, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             self.check_addgrad(a, b, c, clear_src_grad=True)
 
     def test_addgrad_cpu_to_cpu_none_dst(self):
@@ -521,23 +522,23 @@ class TestVariable(unittest.TestCase):
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu_none_dst_dev0(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             b = cp.full(3, 10, dtype=np.float32)
             c = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             self.check_addgrad(a, b, c, clear_dst_grad=True)
 
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu_none_dst_dev1(self):
         cp = cuda.cupy
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             a = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(0):
+        with cuda.get_device_from_id(0):
             b = cp.full(3, 10, dtype=np.float32)
             c = cp.full(3, 20, dtype=np.float32)
-        with cuda.get_device(1):
+        with cuda.get_device_from_id(1):
             self.check_addgrad(a, b, c, clear_dst_grad=True)
 
     def test_addgrad_none_src_dst(self):

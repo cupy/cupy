@@ -87,14 +87,14 @@ class StatefulZoneoutLSTM(link.Chain):
             lstm_in += self.lateral(self.h)
         else:
             xp = self.xp
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 self.h = variable.Variable(
                     xp.zeros((len(x.data), self.state_size),
                              dtype=x.data.dtype),
                     volatile='auto')
         if self.c is None:
             xp = self.xp
-            with cuda.get_device(self._device_id):
+            with cuda.get_device_from_id(self._device_id):
                 self.c = variable.Variable(
                     xp.zeros((len(x.data), self.state_size),
                              dtype=x.data.dtype),
