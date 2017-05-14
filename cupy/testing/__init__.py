@@ -19,6 +19,7 @@ numpy_cupy_array_max_ulp = helper.numpy_cupy_array_max_ulp
 numpy_cupy_array_equal = helper.numpy_cupy_array_equal
 numpy_cupy_array_list_equal = helper.numpy_cupy_array_list_equal
 numpy_cupy_array_less = helper.numpy_cupy_array_less
+numpy_cupy_equal = helper.numpy_cupy_equal
 numpy_cupy_raises = helper.numpy_cupy_raises
 for_dtypes = helper.for_dtypes
 for_all_dtypes = helper.for_all_dtypes
