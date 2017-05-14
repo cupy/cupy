@@ -27,6 +27,7 @@ MODULES = [
             'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
+            'cupy.cuda.cusolver',
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
@@ -43,6 +44,7 @@ MODULES = [
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
+            'cusparse.h',
             'nvToolsExt.h',
         ],
         'libraries': [
@@ -50,6 +52,7 @@ MODULES = [
             'cuda',
             'cudart',
             'curand',
+            'cusparse',
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
