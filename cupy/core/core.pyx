@@ -367,6 +367,12 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
+        if isinstance(value, numpy.ndarray):
+            if value.shape != ():
+                raise ValueError(
+                    'non-scalar numpy.ndarray cannot be used for fill')
+            value = value.item()
+
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes, stream.Stream(True))
         else:
@@ -1219,7 +1225,7 @@ cdef class ndarray:
                 shape.push_back(dim)
                 strides.push_back(self._strides[j] * s_step)
 
-                offset += s_start * self._strides[j]
+                offset += max(0, s_start) * self._strides[j]
                 j += 1
             elif numpy.isscalar(s):
                 ind = int(s)
@@ -1234,6 +1240,8 @@ cdef class ndarray:
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
 
+        # TODO(niboshi): offset can be non-zero even if self.data is an empty
+        # pointer.
         v = self.view()
         v.data = self.data + offset
         v._set_shape_and_strides(shape, strides)
