@@ -1,4 +1,6 @@
-from cupy.sparse import base
+from cupy.sparse.base import issparse  # NOQA
+from cupy.sparse.base import isspmatrix  # NOQA
+from cupy.sparse.base import spmatrix  # NOQA
 
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement coo_matrix
@@ -7,7 +9,6 @@ from cupy.sparse import base
 # TODO(unno): implement dia_matrix
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
-spmatrix = base.spmatrix
 
 # TODO(unno): implement eye
 # TODO(unno): implement identity
@@ -29,8 +30,6 @@ spmatrix = base.spmatrix
 
 # TODO(unno): implement find
 
-# TODO(unno): implement issparse(x)
-# TODO(unno): implement isspmatrix(x)
 # TODO(unno): implement isspmatrix_csc(x)
 # TODO(unno): implement isspmatrix_csr(x)
 # TODO(unno): implement isspmatrix_bsr(x)

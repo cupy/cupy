@@ -302,3 +302,13 @@ class spmatrix(object):
     def transpose(self, axes=None, copy=False):
         """Reverses the dimensions of the sparse matrix."""
         self.tocsr(copy=copy).transpopse(axes=None, copy=False)
+
+
+def issparse(x):
+    return isinstance(x, spmatrix)
+
+isspmatrix = issparse
+
+
+def isdense(x):
+    return isinstance(x, core.ndarray)
