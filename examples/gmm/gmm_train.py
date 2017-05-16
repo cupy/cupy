@@ -29,8 +29,8 @@ def run_gmm(X_train, y_train, X_test, y_test, estimator, n_classes):
 
 
 def run(gpuid, n_classes, max_iter):
-    trains = np.random.rand(100, 2).astype(np.float32)
-    X_train = np.r_[trains + 0.3, trains -0.3]
+    trains = np.random.rand(100, 2).astype(np.float32)  # change
+    X_train = np.r_[trains + 0.3, trains - 0.3]
     tests = np.random.rand(10, 2).astype(np.float32)
     X_test = np.r_[tests + 0.3, tests - 0.3]
     y_train = np.r_[np.ones(100), np.zeros(100)].astype(np.int32)
@@ -56,7 +56,8 @@ def run(gpuid, n_classes, max_iter):
                                             max_iter=max_iter)
         with timer(' GPU '):
             for i in range(repeat):
-                train_acc, test_acc = run_gmm(X_train_gpu, y_train_gpu, X_test_gpu, y_test_gpu,
+                train_acc, test_acc = run_gmm(X_train_gpu, y_train_gpu,
+                                              X_test_gpu, y_test_gpu,
                                               estimator_gpu, n_classes)
         print('train_accuracy : %f' % train_acc)
         print('test_accuracy : %f' % test_acc)
