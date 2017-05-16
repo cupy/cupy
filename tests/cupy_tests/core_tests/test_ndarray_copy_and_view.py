@@ -44,6 +44,19 @@ class TestArrayCopyAndView(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_fill_with_numpy_scalar_ndarray(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a.fill(numpy.ones((), dtype=dtype))
+        return a
+
+    @testing.for_all_dtypes()
+    def test_fill_with_numpy_nonscalar_ndarray(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        with self.assertRaises(ValueError):
+            a.fill(numpy.ones((1,), dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_transposed_fill(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = a.transpose(2, 0, 1)

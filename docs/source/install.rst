@@ -11,7 +11,7 @@ We recommend these platforms.
 * `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
-CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
+CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+.
 CuPy uses C++ compiler such as g++.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
@@ -32,7 +32,7 @@ Install CuPy
 
 CuPy depends on these Python packages:
 
-* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
