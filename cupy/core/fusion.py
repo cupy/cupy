@@ -1,3 +1,4 @@
+import functools
 import six
 from six.moves import builtins
 import string
@@ -654,9 +655,10 @@ def fuse(*args, **kwargs):
         return Fusion(f, input_num, reduce, post_map)
 
     if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-        return wrapper(args[0])
+        return functools.update_wrapper(wrapper(args[0]), args[0])
     else:
-        return lambda f: wrapper(f, *args, **kwargs)
+        return lambda f: functools.update_wrapper(
+            wrapper(f, *args, **kwargs), f)
 
 
 def build_kernel_name(entity):

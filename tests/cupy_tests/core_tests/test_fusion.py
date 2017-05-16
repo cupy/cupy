@@ -1111,17 +1111,25 @@ class TestFusionDecorator(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_without_paren(self, xp):
         @cupy.fuse
-        def f(x):
+        def func_wo_paren(x):
+            """Fuse without parentheses"""
             return x + x
 
+        self.assertEqual(func_wo_paren.__name__, 'func_wo_paren')
+        self.assertEqual(func_wo_paren.__doc__, 'Fuse without parentheses')
+
         a = xp.array([1])
-        return f(a)
+        return func_wo_paren(a)
 
     @testing.numpy_cupy_array_equal()
     def test_with_paren(self, xp):
         @cupy.fuse()
-        def f(x):
+        def func_w_paren(x):
+            """Fuse with parentheses"""
             return x + x
 
+        self.assertEqual(func_w_paren.__name__, 'func_w_paren')
+        self.assertEqual(func_w_paren.__doc__, 'Fuse with parentheses')
+
         a = xp.array([1])
-        return f(a)
+        return func_w_paren(a)
