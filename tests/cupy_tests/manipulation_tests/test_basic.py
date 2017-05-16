@@ -59,7 +59,7 @@ class TestBasic(unittest.TestCase):
 @testing.parameterize(
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False],
-         'dst_shape': [(), (0,), (1,), (1,1), (2,2), ],
+         'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)],
          'dst_dtype': testing.helper._make_all_dtypes(False, False)}))
 @testing.gpu
 class TestCopytoFromScalar(unittest.TestCase):
