@@ -11,7 +11,7 @@ import numpy as np
 import cupy
 
 
-def fit(X, n_clusters, max_iter, elem):
+def use_custom_kernel(X, n_clusters, max_iter, elem):
     assert X.ndim == 2
     xp = cupy.get_array_module(X)
     pred = xp.zeros(len(X), dtype=np.int32)
@@ -24,7 +24,7 @@ def fit(X, n_clusters, max_iter, elem):
     for _ in six.moves.range(max_iter):
         # calculate distances and label
         distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
-        if elem is False or xp == np:
+        if not elem or xp == np:
             distances = xp.linalg.norm(X[:, None, :] - centers[None, :, :],
                                        axis=2)
         else:
@@ -49,11 +49,9 @@ def fit(X, n_clusters, max_iter, elem):
         pred = new_pred
 
         # calculate centers
-        if elem is False or xp == np:
-            centers = xp.empty((0, data_dim), dtype=np.float32)
-            for i in range(n_clusters):
-                centers = xp.vstack((centers,
-                                     X[pred == i].mean(axis=0)))
+        if not elem or xp == np:
+            centers = xp.stack([X[pred == i].mean(axis=0)
+                               for i in six.moves.range(n_clusters)])
         else:
             centers = xp.zeros((n_clusters, data_dim),
                                dtype=np.float32)
@@ -76,7 +74,7 @@ def fit(X, n_clusters, max_iter, elem):
 
 def draw(X, n_clusters, centers, pred, output):
     xp = cupy.get_array_module(X)
-    for i in range(n_clusters):
+    for i in six.moves.range(n_clusters):
         labels = X[pred == i]
         if xp == cupy:
             labels = labels.get()

@@ -25,29 +25,30 @@ def run(gpuid, n_clusters, max_iter, elem, output):
 
     with timer(' CPU '):
         for i in range(repeat):
-            centers, pred = kmeans.fit(X_train, n_clusters, max_iter, elem)
+            centers, pred = kmeans.use_custom_kernel(X_train, n_clusters,
+                                                     max_iter, elem)
 
     with cupy.cuda.Device(gpuid):
-        X_train_gpu = cupy.asarray(X_train)
+        X_train = cupy.asarray(X_train)
         with timer(' GPU '):
             for i in range(repeat):
-                centers, pred = kmeans.fit(X_train_gpu, n_clusters,
-                                           max_iter, elem)
+                centers, pred = kmeans.use_custom_kernel(X_train, n_clusters,
+                                                         max_iter, elem)
         if output is not None:
-            kmeans.draw(X_train_gpu, n_clusters, centers, pred, output)
+            kmeans.draw(X_train, n_clusters, centers, pred, output)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu-id', '-g', default=0, type=int, dest='gpuid',
                         help='ID of GPU.')
-    parser.add_argument('--n_clusters', '-n', default=2, type=int,
+    parser.add_argument('--n-clusters', '-n', default=2, type=int,
                         dest='n_clusters', help='number of clusters')
-    parser.add_argument('--max_iter', '-m', default=10, type=int,
+    parser.add_argument('--maxiter', '-m', default=10, type=int,
                         dest='max_iter', help='number of iterations')
-    parser.add_argument('--elem', '-e', default=False, type=bool,
-                        dest='elem', help='use Elementwise kernel')
+    parser.add_argument('--elem', action='store_true', default=False,
+                        help='use Elementwise kernel')
     parser.add_argument('--output', '-o', default=None, type=str,
-                        dest='output', help='output image name')
+                        dest='output', help='output image file name')
     args = parser.parse_args()
     run(args.gpuid, args.n_clusters, args.max_iter, args.elem, args.output)
