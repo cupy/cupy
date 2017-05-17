@@ -345,7 +345,7 @@ def get_random_state():
     dev = cuda.Device()
     rs = _random_states.get(dev.id, None)
     if rs is None:
-        rs = RandomState(os.getenv('CHAINER_SEED'))
+        rs = RandomState(os.getenv('CUPY_SEED'))
         _random_states[dev.id] = rs
     return rs
 

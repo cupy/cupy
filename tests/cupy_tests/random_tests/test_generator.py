@@ -391,23 +391,23 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState = mock.Mock()
         self.rs_dict = generator._random_states
         generator._random_states = {}
-        self.chainer_seed = os.getenv('CHAINER_SEED')
+        self.cupy_seed = os.getenv('CUPY_SEED')
 
     def tearDown(self, *args):
         generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
-        if self.chainer_seed is None:
-            os.environ.pop('CHAINER_SEED', None)
+        if self.cupy_seed is None:
+            os.environ.pop('CUPY_SEED', None)
         else:
-            os.environ['CHAINER_SEED'] = self.chainer_seed
+            os.environ['CUPY_SEED'] = self.cupy_seed
 
-    def test_get_random_state_no_chainer_seed(self):
-        os.environ.pop('CHAINER_SEED', None)
+    def test_get_random_state_no_cupy_seed(self):
+        os.environ.pop('CUPY_SEED', None)
         generator.get_random_state()
         generator.RandomState.assert_called_with(None)
 
-    def test_get_random_state_with_chainer_seed(self):
-        os.environ['CHAINER_SEED'] = '1'
+    def test_get_random_state_with_cupy_seed(self):
+        os.environ['CUPY_SEED'] = '1'
         generator.get_random_state()
         generator.RandomState.assert_called_with('1')
 
