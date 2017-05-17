@@ -1,20 +1,17 @@
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import mlab
+import matplotlib.pyplot as plt
 import six
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-except ImportError:
-    pass
 
 import numpy as np
 
 import cupy
 
 
-class GaussianMixture(object):  # change
+class GaussianMixture(object):
 
-    def __init__(self, n_components=1, tol=1e-3, reg_covar=1e-6, max_iter=100):
-        self.n_components = n_components
+    def __init__(self, tol=1e-3, reg_covar=1e-6, max_iter=100):
         self.tol = tol
         self.reg_covar = reg_covar
         self.max_iter = max_iter
@@ -24,20 +21,18 @@ class GaussianMixture(object):  # change
         nk = self.xp.sum(resp, axis=0)
         means = self.xp.dot(resp.T, X) / nk[:, None]
         avg_X2 = self.xp.dot(resp.T, X * X) / nk[:, None]
-        avg_means2 = means ** 2
         avg_X_means = means * self.xp.dot(resp.T, X) / nk[:, None]
-        covariances = avg_X2 - 2 * avg_X_means + avg_means2 + reg_covar
+        covariances = avg_X2 - 2 * avg_X_means + means ** 2 + reg_covar
         return nk / len(X), means, covariances
 
     def estimate_log_prob(self, X, inv_cov):
         n_features = X.shape[1]
-        log_det = self.xp.sum(self.xp.log(inv_cov), axis=1)
+        det = self.xp.sum(self.xp.log(inv_cov), axis=1)
         precisions = inv_cov ** 2
         log_prob = self.xp.sum((self.means ** 2 * precisions), 1) - \
             2 * self.xp.dot(X, (self.means * precisions).T) + \
             self.xp.dot(X ** 2, precisions.T)
-        return -0.5 * (n_features * self.xp.log(2 * np.pi) + log_prob) + \
-            log_det
+        return -0.5 * (n_features * self.xp.log(2 * np.pi) + log_prob) + det
 
     def e_step(self, X):
         weighted_log_prob = self.estimate_log_prob(X, self.inv_cov) \
@@ -53,13 +48,15 @@ class GaussianMixture(object):  # change
                                               self.reg_covar)
         self.inv_cov = 1 / self.xp.sqrt(self.covariances)
 
-    def fit(self, X, y=None):
+    def train_gmm(self, X):
         self.xp = cupy.get_array_module(X)
         lower_bound = -np.infty
         converged = False
-        self.weights = self.xp.array([0.5, 0.5], dtype=np.float32)  # change
-        self.means = self.xp.random.rand(self.n_components, 2)
-        self.covariances = self.xp.random.rand(self.n_components, 2)
+        self.weights = self.xp.array([0.5, 0.5], dtype=np.float32)
+        mean1 = self.xp.random.normal(3, self.xp.array([1, 2]), size=2)
+        mean2 = self.xp.random.normal(-3, self.xp.array([2, 1]), size=2)
+        self.means = self.xp.stack((mean1, mean2))
+        self.covariances = self.xp.random.rand(2, 2)
         self.inv_cov = 1 / self.xp.sqrt(self.covariances)
 
         for n_iter in six.moves.range(self.max_iter):
@@ -81,8 +78,25 @@ class GaussianMixture(object):  # change
         log_prob = self.estimate_log_prob(X, self.inv_cov)
         return (log_prob + self.xp.log(self.weights)).argmax(axis=1)
 
-    def draw(self, X):
-        plt.scatter(X[:, 0], X[:, 1])
+    def draw(self, X, pred, output):
+        xp = cupy.get_array_module(X)
+        for i in six.moves.range(2):
+            labels = X[pred == i]
+            if xp == cupy:
+                labels = labels.get()
+            plt.scatter(labels[:, 0], labels[:, 1], color=np.random.rand(3, 1))
+        if xp == cupy:
+            self.means = self.means.get()
+            self.covariances = self.covariances.get()
         plt.scatter(self.means[:, 0], self.means[:, 1], s=120, marker='s',
                     facecolors='y', edgecolors='k')
-        plt.savefig('test.png')
+        x = np.linspace(-10, 10, 1000)
+        y = np.linspace(-10, 10, 1000)
+        X, Y = np.meshgrid(x, y)
+        for i in six.moves.range(2):
+            Z = mlab.bivariate_normal(X, Y,
+                                      np.sqrt(self.covariances[i][0]),
+                                      np.sqrt(self.covariances[i][1]),
+                                      self.means[i][0], self.means[i][1])
+            plt.contour(X, Y, Z)
+        plt.savefig(output + '.png')
