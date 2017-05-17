@@ -48,7 +48,7 @@ def use_custom_kernel(X, n_clusters, max_iter, elem):
         # calculate centers
         if not elem or xp == np:
             centers = xp.stack([X[pred == i].mean(axis=0)
-                               for i in six.moves.range(n_clusters)])
+                                for i in six.moves.range(n_clusters)])
         else:
             centers = xp.zeros((n_clusters, data_dim),
                                dtype=np.float32)
