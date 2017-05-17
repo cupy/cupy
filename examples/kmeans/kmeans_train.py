@@ -19,7 +19,7 @@ def timer(message):
 
 
 def run(gpuid, n_clusters, max_iter, elem, output):
-    samples = np.random.randn(50000, 1000).astype(np.float32)
+    samples = np.random.randn(5000000, 2).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
@@ -35,7 +35,9 @@ def run(gpuid, n_clusters, max_iter, elem, output):
                 centers, pred = kmeans.use_custom_kernel(X_train, n_clusters,
                                                          max_iter, elem)
         if output is not None:
-            kmeans.draw(X_train, n_clusters, centers, pred, output)
+            index = np.random.choice(10000000, 300, replace=False)
+            kmeans.draw(X_train[index], n_clusters, centers, pred[index],
+                        output)
 
 
 if __name__ == '__main__':
@@ -48,7 +50,10 @@ if __name__ == '__main__':
                         dest='max_iter', help='number of iterations')
     parser.add_argument('--elem', action='store_true', default=False,
                         help='use Elementwise kernel')
-    parser.add_argument('--output', '-o', default=None, type=str,
+    parser.add_argument('--output-image', '-o', default=None, type=str,
                         dest='output', help='output image file name')
     args = parser.parse_args()
+    if args.n_clusters != 2 and args.elem:
+        msg = 'Can use Elementwise Kernel only when n-clusters is 2'
+        raise ValueError(msg)
     run(args.gpuid, args.n_clusters, args.max_iter, args.elem, args.output)

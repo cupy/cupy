@@ -1,10 +1,7 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import six
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-except ImportError:
-    pass
 
 import numpy as np
 
@@ -23,11 +20,11 @@ def use_custom_kernel(X, n_clusters, max_iter, elem):
 
     for _ in six.moves.range(max_iter):
         # calculate distances and label
-        distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
         if not elem or xp == np:
             distances = xp.linalg.norm(X[:, None, :] - centers[None, :, :],
                                        axis=2)
         else:
+            distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
             cupy.ElementwiseKernel(
                 'S data, raw S centers, int32 dim', 'raw S dist',
                 '''
@@ -80,7 +77,7 @@ def draw(X, n_clusters, centers, pred, output):
             labels = labels.get()
         plt.scatter(labels[:, 0], labels[:, 1], color=np.random.rand(3, 1))
     if xp == cupy:
-        centers_data = centers.get()
-    plt.scatter(centers_data[:, 0], centers_data[:, 1], s=120, marker='s',
+        centers = centers.get()
+    plt.scatter(centers[:, 0], centers[:, 1], s=120, marker='s',
                 facecolors='y', edgecolors='k')
     plt.savefig(output + '.png')
