@@ -3,6 +3,8 @@ Install Guide
 
 .. _before_install:
 
+.. contents:: :local:
+
 Before installing CuPy
 ----------------------
 
@@ -27,25 +29,28 @@ If you use old ``setuptools``, upgrade it::
   $ pip install -U setuptools
 
 
-Install CuPy
----------------
+Dependency
+~~~~~~~~~~
 
 CuPy depends on these Python packages:
 
 * `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12
 * `Six <https://pythonhosted.org/six/>`_ 1.9
-
-CUDA support
-
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
 * `filelock <https://filelock.readthedocs.org>`_
-
-cuDNN support
-
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
 
+You also need:
+
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
+
+For cuDNN support, you need:
+
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
+
+
+Install CuPy
+------------
 
 Install CuPy via pip
 ~~~~~~~~~~~~~~~~~~~~

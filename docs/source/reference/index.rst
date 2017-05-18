@@ -4,14 +4,23 @@
 CuPy Reference Manual
 *********************
 
-This is the official documentation of CuPy, a multi-dimensional array on CUDA with a subset of NumPy interface.
+This is the official reference of CuPy, a multi-dimensional array on CUDA with a subset of NumPy interface.
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+
+Reference
+=========
 
 .. module:: cupy
 
 .. toctree::
    :maxdepth: 2
 
-   overview
    ndarray
    ufunc
    routines
