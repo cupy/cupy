@@ -71,7 +71,7 @@ def eigh(a, UPLO='L'):
 # TODO(okuta): Implement eigvals
 
 
-def eigvals(a, UPLO='L'):
+def eigvalsh(a, UPLO='L'):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, False)[0]

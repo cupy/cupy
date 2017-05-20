@@ -46,9 +46,9 @@ class TestEigenvalue(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_eigvals(self, xp, dtype):
+    def test_eigvalsh(self, xp, dtype):
         a = xp.array([[1, 0, 3], [0, 5, 0], [3, 0, 5]], dtype)
-        w = xp.linalg.eigvals(a)
+        w = xp.linalg.eigvalsh(a)
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
