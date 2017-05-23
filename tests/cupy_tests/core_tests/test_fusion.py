@@ -699,7 +699,7 @@ class TestFusionUfunc(unittest.TestCase):
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
         self.check_reduce(cupy.sqrt, 1, cupy.prod, self.random_int, 1, 2)
-        self.check_reduce(cupy.sqrt, 1, cupy.prod, self.random_real, 1, 2)
+        self.check_reduce(cupy.sqrt, 1, cupy.sum, self.random_real, 1, 2)
 
         self.check_reduce(lambda x: x, 1, cupy.amax, self.random_int)
         self.check_reduce(lambda x: x, 1, cupy.amin, self.random_int)
