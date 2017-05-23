@@ -19,6 +19,18 @@ class TestBasic(unittest.TestCase):
         a.fill(0)
         return a
 
+    @testing.slow
+    def test_empty_huge_size(self):
+        a = cupy.empty((1024, 2048, 1024), dtype='b')
+        a.fill(123)
+        self.assertTrue((a == 123).all())
+
+    @testing.slow
+    def test_empty_huge_size_fill0(self):
+        a = cupy.empty((1024, 2048, 1024), dtype='b')
+        a.fill(0)
+        self.assertTrue((a == 0).all())
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -34,6 +46,18 @@ class TestBasic(unittest.TestCase):
         a = xp.empty(3, dtype=dtype, order=order)
         a.fill(0)
         return a
+
+    @testing.slow
+    def test_empty_int_huge_size(self):
+        a = cupy.empty(2 ** 31, dtype='b')
+        a.fill(123)
+        self.assertTrue((a == 123).all())
+
+    @testing.slow
+    def test_empty_int_huge_size_fill0(self):
+        a = cupy.empty(2 ** 31, dtype='b')
+        a.fill(0)
+        self.assertTrue((a == 0).all())
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

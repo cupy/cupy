@@ -48,6 +48,14 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.sum(axis=1)
 
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose()
+    def test_sum_axis_huge(self, xp):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'b')
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return a.sum(axis=0)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_sum_axis(self, xp, dtype):
