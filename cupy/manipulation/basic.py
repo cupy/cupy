@@ -40,7 +40,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if src_is_python_scalar:
-        dst[...] = src
+        dst.fill(src)
         return
 
     if where is None:
