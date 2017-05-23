@@ -12,7 +12,7 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    overview
    install
    tutorial/index
-   cupy-reference/index
+   reference/index
    contribution
    compatibility
    license
