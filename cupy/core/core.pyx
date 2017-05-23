@@ -1222,10 +1222,16 @@ cdef class ndarray:
                 else:
                     dim = (s_stop - s_start + 1) // s_step + 1
 
-                shape.push_back(dim)
-                strides.push_back(self._strides[j] * s_step)
+                if dim == 0:
+                    strides.push_back(self._strides[j])
+                else:
+                    strides.push_back(self._strides[j] * s_step)
 
-                offset += max(0, s_start) * self._strides[j]
+                if self.size > 0:
+                    offset += self._strides[j] * max(0, s_start)
+
+                shape.push_back(dim)
+
                 j += 1
             elif numpy.isscalar(s):
                 ind = int(s)
@@ -1235,7 +1241,8 @@ cdef class ndarray:
                     msg = ('Index %s is out of bounds for axis %s with '
                            'size %s' % (s, j, self._shape[j]))
                     raise IndexError(msg)
-                offset += ind * self._strides[j]
+                if self.size > 0:
+                    offset += ind * self._strides[j]
                 j += 1
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))

@@ -66,6 +66,9 @@ from cupy import testing
      'indexes': (None, slice(None, None, -1))},
     {'shape': (1, 0, 1), 'transpose': None,
      'indexes': (None, slice(None, None, -1), None)},
+    #
+    {'shape': (2, 0), 'transpose': None,
+     'indexes': (1, slice(None, None, None))},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
