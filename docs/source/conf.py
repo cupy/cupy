@@ -12,10 +12,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import inspect
 import os
 import pkg_resources
-import shlex
-import sys
+import six
 
 
 __version__ = pkg_resources.get_distribution('cupy').version
@@ -42,7 +42,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.viewcode']
+              'sphinx.ext.linkcode']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -333,3 +333,41 @@ np.random.seed(0)
 
 spelling_lang = 'en_US'
 spelling_word_list_filename = 'spelling_wordlist.txt'
+
+
+def _import_object_from_name(name):
+    components = name.split('.')
+    obj = __import__(components[0])
+    for comp in components[1:]:
+        obj = getattr(obj, comp)
+    return obj
+
+
+def linkcode_resolve(domain, info):
+    if domain != 'py' or not info['module']:
+        return None
+
+    tag = 'v{}'.format(__version__)
+    repo_root_dir = os.path.realpath('..')
+
+    # Import the object from module path
+    obj = _import_object_from_name(
+        '{}.{}'.format(info['module'], info['fullname']))
+
+    # Get the source file name and line number at which obj is defined.
+    try:
+        filename = inspect.getsourcefile(obj)
+        _, linenum = inspect.getsourcelines(obj)
+    except TypeError:
+        # obj is not a module, class, function, ..etc.
+        return None
+
+    assert isinstance(linenum, six.integer_types)
+
+    filename = os.path.realpath(filename)
+    if not filename.startswith(repo_root_dir):
+        return None
+    relpath = os.path.relpath(filename, repo_root_dir)
+
+    return 'https://github.com/pfnet/chainer/blob/{}/{}#L{}'.format(
+        tag, relpath, linenum)
