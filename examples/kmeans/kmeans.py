@@ -1,12 +1,12 @@
 import argparse
 import contextlib
+import time
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import six
-import time
-
 import numpy as np
+import six
 
 import cupy
 
@@ -21,7 +21,7 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
-def use_custom_kernel(X, n_clusters, max_iter, elem):
+def fit(X, n_clusters, max_iter, use_custom_kernel):
     assert X.ndim == 2
     xp = cupy.get_array_module(X)
     pred = xp.zeros(len(X), dtype=np.int32)
@@ -33,7 +33,7 @@ def use_custom_kernel(X, n_clusters, max_iter, elem):
 
     for _ in six.moves.range(max_iter):
         # calculate distances and label
-        if not elem or xp == np:
+        if not use_custom_kernel or xp == np:
             distances = xp.linalg.norm(X[:, None, :] - centers[None, :, :],
                                        axis=2)
         else:
@@ -59,7 +59,7 @@ def use_custom_kernel(X, n_clusters, max_iter, elem):
         pred = new_pred
 
         # calculate centers
-        if not elem or xp == np:
+        if not use_custom_kernel or xp == np:
             centers = xp.stack([X[pred == i].mean(axis=0)
                                 for i in six.moves.range(n_clusters)])
         else:
@@ -96,22 +96,22 @@ def draw(X, n_clusters, centers, pred, output):
     plt.savefig(output + '.png')
 
 
-def run(gpuid, n_clusters, max_iter, elem, output):
+def run(gpuid, n_clusters, max_iter, use_custom_kernel, output):
     samples = np.random.randn(5000000, 2).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
     with timer(' CPU '):
         for i in range(repeat):
-            centers, pred = use_custom_kernel(X_train, n_clusters,
-                                              max_iter, elem)
+            centers, pred = fit(X_train, n_clusters, max_iter,
+                                use_custom_kernel)
 
     with cupy.cuda.Device(gpuid):
         X_train = cupy.asarray(X_train)
         with timer(' GPU '):
             for i in range(repeat):
-                centers, pred = use_custom_kernel(X_train, n_clusters,
-                                                  max_iter, elem)
+                centers, pred = fit(X_train, n_clusters, max_iter,
+                                    use_custom_kernel)
         if output is not None:
             index = np.random.choice(10000000, 300, replace=False)
             draw(X_train[index], n_clusters, centers, pred[index], output)
@@ -119,18 +119,19 @@ def run(gpuid, n_clusters, max_iter, elem, output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int, dest='gpuid',
+    parser.add_argument('--gpu-id', '-g', default=0, type=int,
                         help='ID of GPU.')
     parser.add_argument('--n-clusters', '-n', default=2, type=int,
-                        dest='n_clusters', help='number of clusters')
-    parser.add_argument('--maxiter', '-m', default=10, type=int,
-                        dest='max_iter', help='number of iterations')
-    parser.add_argument('--elem', action='store_true', default=False,
-                        help='use Elementwise kernel')
+                        help='number of clusters')
+    parser.add_argument('--max-iter', '-m', default=10, type=int,
+                        help='number of iterations')
+    parser.add_argument('--use-custom-kernel', action='store_true',
+                        default=False, help='use Elementwise kernel')
     parser.add_argument('--output-image', '-o', default=None, type=str,
-                        dest='output', help='output image file name')
+                        help='output image file name')
     args = parser.parse_args()
-    if args.n_clusters != 2 and args.elem:
+    if args.n_clusters != 2 and args.use_custom_kernel:
         msg = 'Can use Elementwise Kernel only when n-clusters is 2'
         raise ValueError(msg)
-    run(args.gpuid, args.n_clusters, args.max_iter, args.elem, args.output)
+    run(args.gpu_id, args.n_clusters, args.max_iter, args.use_custom_kernel,
+        args.output_image)
