@@ -59,30 +59,13 @@ class TestBasic(unittest.TestCase):
 @testing.parameterize(
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False],
-         'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)],
-         'dst_dtype': testing.helper._make_all_dtypes(False, False)}))
+         'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
 @testing.gpu
 class TestCopytoFromScalar(unittest.TestCase):
 
-    def _do_copyto(self, xp):
-        dst = xp.ones(self.dst_shape, dtype=self.dst_dtype)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto(self, xp, dtype):
+        dst = xp.ones(self.dst_shape, dtype=dtype)
         xp.copyto(dst, self.src)
         return dst
-
-    def test_copyto(self):
-        try:
-            dst_expected = self._do_copyto(numpy)
-            success_expected = True
-        except TypeError:
-            dst_expected = None
-            success_expected = False
-
-        if success_expected:
-            # Numpy succeeds; expected to succeed
-            testing.array.assert_array_equal(
-                dst_expected,
-                self._do_copyto(cupy))
-        else:
-            # Numpy fails; expected to fail
-            with self.assertRaises(TypeError):
-                self._do_copyto(cupy)
