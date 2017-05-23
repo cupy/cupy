@@ -39,19 +39,18 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
         else:
             distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
             cupy.ElementwiseKernel(
-                'S data, raw S centers, int32 dim', 'raw S dist',
+                'S data, raw S centers, int32 n_clusters, int32 dim',
+                'raw S dist',
                 '''
-                int cent_ind1[] = {0, i % dim};
-                int cent_ind2[] = {1, i % dim};
-                int dist_ind1[] = {i / dim, 0};
-                int dist_ind2[] = {i / dim, 1};
-                double diff1 = centers[cent_ind1] - data;
-                double diff2 = centers[cent_ind2] - data;
-                atomicAdd(&dist[dist_ind1], diff1 * diff1);
-                atomicAdd(&dist[dist_ind2], diff2 * diff2);
+                for (int j = 0; j < n_clusters; j++){
+                    int cent_ind[] = {j, i % dim};
+                    int dist_ind[] = {i / dim, j};
+                    double diff = centers[cent_ind] - data;
+                    atomicAdd(&dist[dist_ind], diff * diff);
+                }
                 ''',
                 'calc_distances'
-            )(X, centers, data_dim, distances)
+            )(X, centers, n_clusters, data_dim, distances)
 
         new_pred = xp.argmin(distances, axis=1).astype(np.int32)
         if xp.all(new_pred == pred):
@@ -130,8 +129,5 @@ if __name__ == '__main__':
     parser.add_argument('--output-image', '-o', default=None, type=str,
                         help='output image file name')
     args = parser.parse_args()
-    if args.n_clusters != 2 and args.use_custom_kernel:
-        msg = 'Can use Elementwise Kernel only when n-clusters is 2'
-        raise ValueError(msg)
     run(args.gpu_id, args.n_clusters, args.max_iter, args.use_custom_kernel,
         args.output_image)
