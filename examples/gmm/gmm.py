@@ -1,13 +1,13 @@
 import argparse
 import contextlib
+import time
+
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import mlab
 import matplotlib.pyplot as plt
-import six
-import time
-
 import numpy as np
+import six
 
 import cupy
 
@@ -25,9 +25,9 @@ def timer(message):
 def estimate_gaussian_parameters(X, xp, resp):
     nk = xp.sum(resp, axis=0)
     means = xp.dot(resp.T, X) / nk[:, None]
-    avg_X2 = xp.dot(resp.T, X * X) / nk[:, None]
+    avg_X = xp.dot(resp.T, X * X) / nk[:, None]
     avg_X_means = means * xp.dot(resp.T, X) / nk[:, None]
-    covariances = avg_X2 - 2 * avg_X_means + means ** 2
+    covariances = avg_X - 2 * avg_X_means + means ** 2
     return nk / len(X), means, covariances
 
 
@@ -60,7 +60,7 @@ def train_gmm(X, max_iter, tol):
     lower_bound = -np.infty
     converged = False
     weights = xp.array([0.5, 0.5], dtype=np.float32)
-    mean1 = xp.random.normal(3, xp.array([1, 2]), size=2)
+    mean1 = xp.random.normal(0, xp.array([1, 2]), size=2)
     mean2 = xp.random.normal(-3, xp.array([2, 1]), size=2)
     means = xp.stack((mean1, mean2))
     covariances = xp.random.rand(2, 2)
@@ -84,6 +84,12 @@ def train_gmm(X, max_iter, tol):
     return inv_cov, means, weights, covariances
 
 
+def predict(X, inv_cov, means, weights):
+    xp = cupy.get_array_module(X)
+    log_prob = estimate_log_prob(X, xp, inv_cov, means)
+    return (log_prob + xp.log(weights)).argmax(axis=1)
+
+
 def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol):
     xp = cupy.get_array_module(X_train)
     inv_cov, means, weights, cov = train_gmm(X_train, max_iter, tol)
@@ -94,12 +100,6 @@ def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol):
     print('train_accuracy : %f' % train_accuracy)
     print('test_accuracy : %f' % test_accuracy)
     return y_test_pred, means, cov
-
-
-def predict(X, inv_cov, means, weights):
-    xp = cupy.get_array_module(X)
-    log_prob = estimate_log_prob(X, xp, inv_cov, means)
-    return (log_prob + xp.log(weights)).argmax(axis=1)
 
 
 def draw(X, pred, means, covariances, output):
@@ -126,10 +126,10 @@ def draw(X, pred, means, covariances, output):
 
 
 def run(gpuid, max_iter, tol, output):
-    train1 = np.random.normal(3, [1, 2], size=(500000, 2)).astype(np.float32)
+    train1 = np.random.normal(0, [1, 2], size=(500000, 2)).astype(np.float32)
     train2 = np.random.normal(-3, [2, 1], size=(500000, 2)).astype(np.float32)
     X_train = np.r_[train1, train2]
-    test1 = np.random.normal(3, [1, 2], size=(100, 2)).astype(np.float32)
+    test1 = np.random.normal(0, [1, 2], size=(100, 2)).astype(np.float32)
     test2 = np.random.normal(-3, [2, 1], size=(100, 2)).astype(np.float32)
     X_test = np.r_[test1, test2]
     y_train = np.r_[np.zeros(500000), np.ones(500000)].astype(np.int32)
@@ -157,13 +157,13 @@ def run(gpuid, max_iter, tol, output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int, dest='gpuid',
+    parser.add_argument('--gpu-id', '-g', default=0, type=int,
                         help='ID of GPU.')
     parser.add_argument('--max-iter', '-m', default=30, type=int,
-                        dest='max_iter', help='number of iterations')
+                        help='number of iterations')
     parser.add_argument('--tol', '-t', default=1e-3, type=float,
-                        dest='tol', help='')
+                        help='Error tolerance to stop iterations')
     parser.add_argument('--output-image', '-o', default=None, type=str,
                         dest='output', help='output image file name')
     args = parser.parse_args()
-    run(args.gpuid, args.max_iter, args.tol, args.output)
+    run(args.gpu_id, args.max_iter, args.tol, args.output)
