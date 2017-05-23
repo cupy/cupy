@@ -16,6 +16,7 @@ import inspect
 import os
 import pkg_resources
 import six
+import sys
 
 
 __version__ = pkg_resources.get_distribution('cupy').version
@@ -335,10 +336,11 @@ spelling_lang = 'en_US'
 spelling_word_list_filename = 'spelling_wordlist.txt'
 
 
-def _import_object_from_name(name):
-    components = name.split('.')
-    obj = __import__(components[0])
-    for comp in components[1:]:
+def _import_object_from_name(module_name, fullname):
+    obj = sys.modules.get(module_name)
+    if obj is None:
+        return None
+    for comp in fullname.split('.'):
         obj = getattr(obj, comp)
     return obj
 
@@ -351,8 +353,7 @@ def linkcode_resolve(domain, info):
     repo_root_dir = os.path.realpath('..')
 
     # Import the object from module path
-    obj = _import_object_from_name(
-        '{}.{}'.format(info['module'], info['fullname']))
+    obj = _import_object_from_name(info['module'], info['fullname'])
 
     # Get the source file name and line number at which obj is defined.
     try:
