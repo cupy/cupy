@@ -9,6 +9,7 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
 .. toctree::
    :maxdepth: 1
 
+   overview
    install
    tutorial/index
    cupy-reference/index
