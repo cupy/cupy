@@ -77,8 +77,7 @@ def train_gmm(X, max_iter, tol):
             break
 
     if not converged:
-        msg = 'Failed to converge. Try different init parameters' \
-              'or increase max_iter, tol or check for degenerate data.'
+        msg = 'Failed to converge. Increase max-iter or tol.'
         print(msg)
 
     return inv_cov, means, weights, covariances
