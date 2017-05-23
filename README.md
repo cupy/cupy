@@ -88,15 +88,6 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 ```
 
 
-## Reference
-
-Tokui, S., Oono, K., Hido, S. and Clayton, J.,
-Chainer: a Next-Generation Open Source Framework for Deep Learning,
-*Proceedings of Workshop on Machine Learning Systems(LearningSys) in
-The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
-[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](cupy_bibtex.txt)
-
-
 ## More information
 
 - Official site: (to be appeared)
