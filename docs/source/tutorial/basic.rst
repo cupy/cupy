@@ -8,7 +8,6 @@ In this section, you will learn about the following things:
 * Basics of :class:`cupy.ndarray`
 * The concept of *current device*
 * CPU-GPU/GPU-GPU array transfer
-* How to write CPU-GPU agnostic codes with CuPy
 
 
 Basics of cupy.ndarray
@@ -169,24 +168,3 @@ We can also use :meth:`cupy.ndarray.get()`:
    a device and a host, or between different devices.
    Note that :func:`~chainer.cuda.to_gpu` has ``device`` option to specify
    the device which arrays are transferred.
-
-
-CPU-GPU generic code
-~~~~~~~~~~~~~~~~~~~~~
-
-The APIs of CuPy is designed to align with NumPy's ones, as we saw in the previous sections.
-This compatibility enables us to write *CPU/GPU generic* code, or, code that work with both on CPU and GPU.
-
-CuPy offers an utility function :func:`cupy.get_array_module`,
-that returns :mod:`numpy` or :mod:`cupy` module based on arguments.
-The following is an example of CPU/GPU generic softplus function with it.
-
-.. testcode::
-
-   # Stable implementation of softplus(x) = log(1 + exp(x))
-   def softplus(x):
-       xp = cupy.get_array_module(x)
-       return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
-
-It accepts if ``x`` is either :class:`numpy.ndarray` or :class:`cupy.ndarray`
-and returns the resulting array which is allocated on the same hardware as ``x``.
