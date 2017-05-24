@@ -7,7 +7,7 @@ import tempfile
 from install import utils
 
 
-minimum_cuda_version = 6050
+minimum_cuda_version = 7000
 minimum_cudnn_version = 2000
 maximum_cudnn_version = 6999
 # Although cuda 7.0 includes cusolver,

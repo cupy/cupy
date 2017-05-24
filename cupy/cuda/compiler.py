@@ -1,36 +1,33 @@
 import hashlib
 import os
 import re
-import subprocess
-import sys
 import tempfile
 
 import filelock
+from pynvrtc import compiler
 import six
 
 from cupy.cuda import device
 from cupy.cuda import function
 
+_nvrtc_version = None
 
-_nvcc_version = None
 
+def _get_nvrtc_version():
+    global _nvrtc_version
+    if _nvrtc_version is None:
+        interface = compiler.NVRTCInterface()
+        _nvrtc_version = interface.nvrtcVersion()
 
-def _get_nvcc_version():
-    global _nvcc_version
-    if _nvcc_version is None:
-        cmd = ['nvcc', '--version']
-        _nvcc_version = _run_nvcc(cmd, '.')
-
-    return _nvcc_version
+    return _nvrtc_version
 
 
 def _get_arch():
     cc = device.Device().compute_capability
-    return 'sm_%s' % cc
+    return 'compute_%s' % cc
 
 
 class TemporaryDirectory(object):
-
     def __enter__(self):
         self.path = tempfile.mkdtemp()
         return self.path
@@ -44,58 +41,31 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def _run_nvcc(cmd, cwd):
-    try:
-        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        msg = ('`nvcc` command returns non-zero exit status. \n'
-               'command: {0}\n'
-               'return-code: {1}\n'
-               'stdout/stderr: \n'
-               '{2}'.format(e.cmd, e.returncode, e.output))
-        raise RuntimeError(msg)
-    except OSError as e:
-        msg = 'Failed to run `nvcc` command. ' \
-              'Check PATH environment variable: ' \
-              + str(e)
-        raise OSError(msg)
-
-
-def nvcc(source, options=(), arch=None):
+def nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
-    cmd = ['nvcc', '--cubin', '-arch', arch] + list(options)
+
+    options += ('-arch={}'.format(arch),)
 
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path
-        cubin_path = '%s.cubin' % path
 
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        cmd.append(cu_path)
-        _run_nvcc(cmd, root_dir)
+        prog = compiler.Program(
+            six.b(source), six.b(os.path.basename(cu_path)))
+        ptx = prog.compile([six.b(o) for o in options])
 
-        with open(cubin_path, 'rb') as bin_file:
-            return bin_file.read()
+        return six.b(ptx)
 
 
 def preprocess(source, options=()):
-    cmd = ['nvcc', '--preprocess'] + list(options)
-    with TemporaryDirectory() as root_dir:
-        path = os.path.join(root_dir, 'kern')
-        cu_path = '%s.cu' % path
-
-        with open(cu_path, 'w') as cu_file:
-            cu_file.write(source)
-
-        cmd.append(cu_path)
-        pp_src = _run_nvcc(cmd, root_dir)
-
-        if isinstance(pp_src, six.binary_type):
-            pp_src = pp_src.decode('utf-8')
-        return re.sub('(?m)^#.*$', '', pp_src)
+    pp_src = compiler.Program(six.b(source), six.b('')).compile()
+    if isinstance(pp_src, six.binary_type):
+        pp_src = pp_src.decode('utf-8')
+    return re.sub('(?m)^#.*$', '', pp_src)
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
@@ -115,14 +85,9 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    if 'win32' == sys.platform:
-        options += ('-Xcompiler', '/wd 4819')
-        if sys.maxsize == 9223372036854775807:
-            options += '-m64',
-        elif sys.maxsize == 2147483647:
-            options += '-m32',
+    options += ('-ftz=true',)
 
-    env = (arch, options, _get_nvcc_version())
+    env = (arch, options, _get_nvrtc_version())
     if '#include' in source:
         pp_src = '%s %s' % (env, preprocess(source, options))
     else:
@@ -153,7 +118,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 cubin = file.read()
         else:
             lock.release()
-            cubin = nvcc(source, options, arch)
+            cubin = nvrtc(source, options, arch)
             lock.acquire()
             with open(path, 'wb') as cubin_file:
                 cubin_file.write(cubin)

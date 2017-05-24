@@ -47,6 +47,7 @@ MODULES = [
             'cudart',
             'curand',
             'nvToolsExt',
+            'nvrtc',
         ],
         'check_method': build.check_cuda_version,
     },
