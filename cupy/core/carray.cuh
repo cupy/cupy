@@ -160,7 +160,8 @@ public:
     return strides_;
   }
 
-  __device__ T& operator[](const int* idx) {
+  template <typename Int>
+  __device__ T& operator[](const Int (&idx)[ndim]) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
@@ -168,19 +169,8 @@ public:
     return *reinterpret_cast<T*>(ptr);
   }
 
-  __device__ T operator[](const int* idx) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[idx];
-  }
-
-  __device__ T& operator[](const ptrdiff_t* idx) {
-    char* ptr = reinterpret_cast<char*>(data_);
-    for (int dim = 0; dim < ndim; ++dim) {
-      ptr += strides_[dim] * idx[dim];
-    }
-    return *reinterpret_cast<T*>(ptr);
-  }
-
-  __device__ T operator[](const ptrdiff_t* idx) const {
+  template <typename Int>
+  __device__ T& operator[](const Int (&idx)[ndim]) const {
     return (*const_cast<CArray<T, ndim>*>(this))[idx];
   }
 
@@ -221,28 +211,14 @@ public:
     return NULL;
   }
 
-  __device__ T& operator[](const int* idx) {
-    return *reinterpret_cast<T*>(data_);
+  template <typename U>
+  __device__ T& operator[](const U&) {
+    return *data_;
   }
 
-  __device__ T operator[](const int* idx) const {
-    return (*const_cast<CArray<T, 0>*>(this))[idx];
-  }
-
-  __device__ T& operator[](const ptrdiff_t* idx) {
-    return *reinterpret_cast<T*>(data_);
-  }
-
-  __device__ T operator[](const ptrdiff_t* idx) const {
-    return (*const_cast<CArray<T, 0>*>(this))[idx];
-  }
-
-  __device__ T& operator[](ptrdiff_t i) {
-    return *reinterpret_cast<T*>(data_);
-  }
-
-  __device__ T operator[](ptrdiff_t i) const {
-    return (*const_cast<CArray<T, 0>*>(this))[i];
+  template <typename U>
+  __device__ T operator[](const U&) const {
+    return *data_;
   }
 };
 
@@ -252,6 +228,8 @@ private:
   ptrdiff_t size_;
   ptrdiff_t shape_[ndim];
   ptrdiff_t index_[ndim];
+
+  typedef ptrdiff_t index_t[ndim];
 
 public:
   __device__ ptrdiff_t size() const {
@@ -284,7 +262,7 @@ public:
     }
   }
 
-  __device__ const ptrdiff_t* get() const {
+  __device__ const index_t& get() const {
     return index_;
   }
 };
