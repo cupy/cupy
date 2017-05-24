@@ -5,14 +5,14 @@ Basics of CuPy
 
 In this section, you will learn about the following things:
 
-* Basics of `cupy.ndarray`
+* Basics of :class:`cupy.ndarray`
 * The concept of *current device*
 * CPU-GPU/GPU-GPU array transfer
 * How to write CPU-GPU agnostic codes with CuPy
 
 
-:class:`cupy.ndarray`
-~~~~~~~~~~~~~~~~~~~~~
+Basics of cupy.ndarray
+~~~~~~~~~~~~~~~~~~~~~~
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
@@ -53,8 +53,8 @@ So, we recommend you to read the `NumPy documentation <http://docs.scipy.org/doc
 Current Device
 ~~~~~~~~~~~~~~
 
-CuPy has a concept of the *current* device, which is the default device on which
-the allocation, manipulation calculation and so on of arrays take place.
+CuPy has a concept of the *current device*, which is the default device on which
+the allocation, manipulation, calculation etc. of arrays are taken place.
 Suppose the ID of current device is 0.
 The following code allocates array contents on GPU 0.
 
@@ -108,45 +108,67 @@ Be careful that if processing of an array on a non-current device will cause an 
 
 .. note::
 
-   The *with* statements in these codes are required to select the appropriate CUDA device.
-   If user uses only one device, these device switching is not needed.
+   If the environment has only one device, such explicit device switching is not needed.
 
 
 Data Transfer
 ~~~~~~~~~~~~~
 
-:func:`cupy.cuda.to_gpu` is used to transfer data to GPU from either CPU (:class:`numpy.ndarray`)
-or (possibly another) GPU (:class:`cupy.ndarray`).
+Move arrays to a device
+-----------------------
+
+:func:`cupy.asarray` can be used to move a :class:`numpy.ndarray`, a list, or any object
+that can be passed to :func:`numpy.array` to the current device:
 
 .. testcode::
 
    x_cpu = numpy.array([1, 2, 3])
-   x_gpu_0 = cupy.cuda.to_gpu(x_cpu, device=0)
-   x_gpu_1 = cupy.cuda.to_gpu(x_gpu_0, device=1)
+   x_gpu = cupy.asarray(x_cpu)  # move the data to the current device.
 
-If we omit ``device`` option, the array is transferred to the current device.
-
-:class:`cupy.ndarray` also has ``to_gpu`` method for transferring itself to another device.
+:func:`cupy.asarray` can accept :class:`cupy.ndarray`, which means we can
+transfer the array between devices with this function.
 
 .. testcode::
+
+   with cupy.cuda.Device(0):
+     x_gpu_0 = cupy.ndarray([1, 2, 3])  # create an array in GPU 0
 
    with cupy.cuda.Device(1):
-       x = cupy.array([1, 2, 3, 4, 5])  # x in on GPU 1
-
-   x.to_gpu(device=0)  # x is moved to GPU 0
+     x_gpu_1 = cupy.ndarray(x_gpu_0)  # move the array to GPU 1
 
 
-On the other hand, moving a device array to the host can be done by :func:`cupy.asnumpy` as follows:
+.. note::
+
+   :func:`cupy.asarray` does not copy the input array if possible.
+   So, if you put an array of the current device, it returns the input object itself.
+
+   If we do copy the array in this situation, you can use :func:`cupy.array` with `copy=True`.
+   Actually :func:`cupy.asarray` is equivalent to `cupy.array(arr, dtype, copy=False)`.
+
+
+Move array from a device to a device
+------------------------------------
+
+Moving a device array to the host can be done by :func:`cupy.asnumpy` as follows:
 
 .. testcode::
 
-   x_cpu = cupy.asnumpy(x_gpu)
+   x_gpu = cupy.array([1, 2, 3])  # create an array in the current device
+   x_cpu = cupy.asnumpy(x_gpu)  # move the array to the host.
 
-It is equivalent to the following code:
+We can also use :meth:`cupy.ndarray.get()`:
 
 .. testcode::
 
    x_cpu = x_gpu.get()
+
+.. note::
+
+   If you work with Chainer, you can also use :func:`~chainer.cuda.to_cpu` and
+   :func:`~chainer.cuda.to_gpu` to move arrays back and forth between
+   a device and a host, or between different devices.
+   Note that :func:`~chainer.cuda.to_gpu` has ``device`` option to specify
+   the device which arrays are transferred.
 
 
 CPU-GPU generic code
