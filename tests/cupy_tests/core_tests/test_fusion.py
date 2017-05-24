@@ -534,13 +534,13 @@ class TestFusionUfunc(unittest.TestCase):
         return cupy.square(cupy.add(x, y))
 
     def random_bool(self):
-        return numpy.random.randint(0, 1, (10, 10)) == 0
+        return numpy.random.randint(0, 1, (3, 3)) == 0
 
     def random_int(self, lower=-1000, higher=1000):
-        return numpy.random.randint(lower, higher, (10, 10))
+        return numpy.random.randint(lower, higher, (3, 3))
 
     def random_real(self, lower=-1000, higher=1000):
-        return numpy.random.rand(10, 10) * (higher - lower) + lower
+        return numpy.random.rand(3, 3) * (higher - lower) + lower
 
     def check(self, func, n, gen, *args):
         self._check(func, n, gen, args, True)
