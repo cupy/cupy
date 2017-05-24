@@ -198,7 +198,7 @@ public:
   }
 
   __device__ T& operator[](int i) {
-    return (*this)[reinterpret_cast<ptrdiff_t>(i)];
+    return (*this)[static_cast<ptrdiff_t>(i)];
   }
 
   __device__ T operator[](ptrdiff_t i) const {
@@ -206,7 +206,7 @@ public:
   }
 
   __device__ T operator[](int i) const {
-    return (*this)[reinterpret_cast<ptrdiff_t>(i)];
+    return (*this)[static_cast<ptrdiff_t>(i)];
   } 
 };
 
