@@ -197,9 +197,17 @@ public:
     return *reinterpret_cast<T*>(ptr);
   }
 
+  __device__ T& operator[](int i) {
+    return (*this)[reinterpret_cast<ptrdiff_t>(i)];
+  }
+
   __device__ T operator[](ptrdiff_t i) const {
     return (*const_cast<CArray<T, ndim>*>(this))[i];
   }
+
+  __device__ T operator[](int i) const {
+    return (*this)[reinterpret_cast<ptrdiff_t>(i)];
+  } 
 };
 
 template <typename T>
