@@ -11,7 +11,7 @@ We recommend these platforms.
 * `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
-CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
+CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+.
 CuPy uses C++ compiler such as g++.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
@@ -32,17 +32,16 @@ Install CuPy
 
 CuPy depends on these Python packages:
 
-* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5, 8.0
-* `filelock <https://filelock.readthedocs.org>`_
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
 
@@ -115,7 +114,9 @@ Install CuPy with CUDA and cuDNN
 cuDNN is a library for Deep Neural Networks that NVIDIA provides.
 CuPy can use cuDNN.
 If you want to enable cuDNN, install cuDNN and CUDA before installing CuPy.
-We recommend you to install cuDNN to CUDA directory.
+We recommend you to install developer library of deb package of cuDNN.
+
+If you want to install tar-gz version, we recommend you to install it to CUDA directory.
 For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include

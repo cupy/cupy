@@ -55,22 +55,32 @@ cdef extern from "cupy_cudnn.h":
     int cudnnSetFilterNdDescriptor_v3(
         FilterDescriptor filterDesc, DataType dataType, int nbDims,
         int* filterDimA) nogil
-    int cudnnGetFilterNdDescriptor_v5(
+    int cudnnSetFilter4dDescriptor_v4(
+        FilterDescriptor filterDesc, DataType dataType,
+        TensorFormat format, int k, int c, int h, int w) nogil
+    int cudnnSetFilterNdDescriptor_v4(
+        FilterDescriptor filterDesc, DataType dataType,
+        TensorFormat format, int nbDims, const int filterDimA[]) nogil
+    int cudnnGetFilterNdDescriptor_v4(
         FilterDescriptor wDesc, int nbDimsRequested, DataType* dataType,
         TensorFormat* format, int* nbDims, int filterDimA[]) nogil
     int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc) nogil
 
     # Convolution
     int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc) nogil
-    int cudnnSetConvolution2dDescriptor(
+    int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
-        int v, int upscalex, int upscaley, ConvolutionMode mode) nogil
+        int v, int dilation_h, int dilation_w, ConvolutionMode mode) nogil
+    int cudnnSetConvolution2dDescriptor_v5(
+        ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
+        int v, int dilation_h, int dilation_w, ConvolutionMode mode,
+        DataType computeType) nogil
     int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode) nogil
+        int* filterStrideA, int* dilationA, ConvolutionMode mode) nogil
     int cudnnSetConvolutionNdDescriptor_v3(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode,
+        int* filterStrideA, int* dilationA, ConvolutionMode mode,
         DataType dataType) nogil
     int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) nogil
     int cudnnFindConvolutionForwardAlgorithm(
@@ -180,8 +190,17 @@ cdef extern from "cupy_cudnn.h":
         int windowHeight, int windowWidth,
         int verticalPadding, int horizontalPadding,
         int verticalStride, int horizontalStride) nogil
+    int cudnnSetPooling2dDescriptor_v4(
+        PoolingDescriptor poolingDesc, PoolingMode mode,
+        NanPropagation maxpoolingNanOpt, int windowHeight, int windowWidth,
+        int verticalPadding, int horizontalPadding, int verticalStride,
+        int horizontalStride) nogil
     int cudnnSetPoolingNdDescriptor_v3(
         PoolingDescriptor poolingDesc, PoolingMode mode, int nbDims,
+        int* windowDimA, int* paddingA, int* strideA) nogil
+    int cudnnSetPoolingNdDescriptor_v4(
+        PoolingDescriptor poolingDesc, PoolingMode mode,
+        NanPropagation maxpoolingNanOpt, int nbDims,
         int* windowDimA, int* paddingA, int* strideA) nogil
     int cudnnDestroyPoolingDescriptor(PoolingDescriptor poolingDesc) nogil
     int cudnnPoolingForward(
@@ -227,6 +246,13 @@ cdef extern from "cupy_cudnn.h":
         double epsilon, void* savedMean, void* savedInvVariance) nogil
 
     # Activation
+    int cudnnCreateActivationDescriptor(
+        ActivationDescriptor* activationDesc) nogil
+    int cudnnSetActivationDescriptor(
+        ActivationDescriptor activationDesc, ActivationMode mode,
+        NanPropagation reluNanOpt, double reluCeiling) nogil
+    int cudnnDestroyActivationDescriptor(
+        ActivationDescriptor activationDesc) nogil
     int cudnnSoftmaxForward(
         Handle handle, SoftmaxAlgorithm algorithm, SoftmaxMode mode,
         void* alpha, TensorDescriptor srcDesc, void* srcData,
@@ -240,8 +266,18 @@ cdef extern from "cupy_cudnn.h":
         Handle handle, ActivationMode mode, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
         TensorDescriptor dstDesc, void* dstData) nogil
+    int cudnnActivationForward_v4(
+        Handle handle, ActivationDescriptor activationDesc, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor dstDesc, void* dstData) nogil
     int cudnnActivationBackward_v3(
         Handle handle, ActivationMode mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor srcDiffDesc, void* srcDiffData,
+        TensorDescriptor destDesc, void* destData, void* beta,
+        TensorDescriptor destDiffDesc, void* destDiffData) nogil
+    int cudnnActivationBackward_v4(
+        Handle handle, ActivationDescriptor activationDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor srcDiffDesc, void* srcDiffData,
         TensorDescriptor destDesc, void* destData, void* beta,
@@ -322,6 +358,31 @@ cdef extern from "cupy_cudnn.h":
         TensorDescriptor* yDesc, void* y,
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes) nogil
+
+    # Spatial Transformer
+    int cudnnCreateSpatialTransformerDescriptor(
+        SpatialTransformerDescriptor* stDesc) nogil
+    int cudnnDestroySpatialTransformerDescriptor(
+        SpatialTransformerDescriptor stDesc) nogil
+    int cudnnSetSpatialTransformerNdDescriptor(
+        SpatialTransformerDescriptor stDesc, SamplerType samplerType,
+        DataType dataType, int nbDims, int dimA[]) nogil
+    int cudnnSpatialTfGridGeneratorForward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* theta, void* grid) nogil
+    int cudnnSpatialTfGridGeneratorBackward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* dgrid, void* dtheta) nogil
+    int cudnnSpatialTfSamplerForward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* alpha, TensorDescriptor xDesc, void* x,
+        void* grid, void* beta, TensorDescriptor yDesc, void* y) nogil
+    int cudnnSpatialTfSamplerBackward(
+        Handle handle, SpatialTransformerDescriptor stDesc,
+        void* alpha, TensorDescriptor xDesc, void* x, void* beta,
+        TensorDescriptor dxDesc, void* dx, void* alphaDgrid,
+        TensorDescriptor dyDesc, void* dy, void* grid,
+        void* betaDgrid, void* dgrid) nogil
 
 ###############################################################################
 # Error handling
@@ -481,6 +542,24 @@ cpdef setFilterNdDescriptor_v3(
     check_status(status)
 
 
+cpdef setFilter4dDescriptor_v4(
+        size_t filterDesc, int dataType,
+        int format, int k, int c, int h, int w):
+    status = cudnnSetFilter4dDescriptor_v4(
+        <FilterDescriptor>filterDesc, <DataType> dataType,
+        <TensorFormat> format, k, c, h, w)
+    check_status(status)
+
+
+cpdef setFilterNdDescriptor_v4(
+        size_t filterDesc, int dataType,
+        int format, int nbDims, size_t filterDimA):
+    status = cudnnSetFilterNdDescriptor_v4(
+        <FilterDescriptor>filterDesc, <DataType>dataType,
+        <TensorFormat>format, nbDims, <int*>filterDimA)
+    check_status(status)
+
+
 cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested):
     cdef DataType dataType
     cdef TensorFormat format
@@ -488,7 +567,7 @@ cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested):
     cdef vector.vector[int] filterDimA
     filterDimA.resize(nbDimsRequested)
 
-    status = cudnnGetFilterNdDescriptor_v5(
+    status = cudnnGetFilterNdDescriptor_v4(
         <FilterDescriptor>wDesc, nbDimsRequested, &dataType,
         &format, &nbDims, &filterDimA[0])
     check_status(status)
@@ -511,30 +590,39 @@ cpdef size_t createConvolutionDescriptor() except *:
     return <size_t>desc
 
 
-cpdef setConvolution2dDescriptor(
-        size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-        int upscaley, int mode):
-    status = cudnnSetConvolution2dDescriptor(
-        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
-        upscaley, <ConvolutionMode>mode)
+cpdef setConvolution2dDescriptor_v4(
+        size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+        int dilation_w, int mode):
+    status = cudnnSetConvolution2dDescriptor_v4(
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
+        dilation_w, <ConvolutionMode>mode)
+    check_status(status)
+
+
+cpdef setConvolution2dDescriptor_v5(
+        size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
+        int dilation_w, int mode, size_t computeType):
+    status = cudnnSetConvolution2dDescriptor_v5(
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
+        dilation_w, <ConvolutionMode>mode, <DataType>computeType)
     check_status(status)
 
 
 cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode):
+        size_t dilationA, int mode):
     status = cudnnSetConvolutionNdDescriptor_v2(
         <ConvolutionDescriptor>convDesc, arrayLength, <int*>padA,
-        <int*>filterStrideA, <int*>upscaleA, <ConvolutionMode>mode)
+        <int*>filterStrideA, <int*>dilationA, <ConvolutionMode>mode)
     check_status(status)
 
 
 cpdef setConvolutionNdDescriptor_v3(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode, int dataType):
+        size_t dilationA, int mode, int dataType):
     status = cudnnSetConvolutionNdDescriptor_v3(
         <ConvolutionDescriptor>convDesc, arrayLength, <int*>padA,
-        <int*>filterStrideA, <int*>upscaleA, <ConvolutionMode>mode,
+        <int*>filterStrideA, <int*>dilationA, <ConvolutionMode>mode,
         <DataType>dataType)
     check_status(status)
 
@@ -818,11 +906,32 @@ cpdef setPooling2dDescriptor_v3(
     check_status(status)
 
 
+cpdef setPooling2dDescriptor_v4(
+        size_t poolingDesc, int mode, int maxpoolingNanOpt, int windowHeight,
+        int windowWidth, int verticalPadding, int horizontalPadding,
+        int verticalStride, int horizontalStride):
+    status = cudnnSetPooling2dDescriptor_v4(
+        <PoolingDescriptor>poolingDesc, <PoolingMode>mode,
+        <NanPropagation>maxpoolingNanOpt, windowHeight, windowWidth,
+        verticalPadding, horizontalPadding, verticalStride, horizontalStride)
+    check_status(status)
+
+
 cpdef setPoolingNdDescriptor_v3(
         size_t poolingDesc, int mode, int nbDims, size_t windowDimA,
         size_t paddingA, size_t strideA):
     status = cudnnSetPoolingNdDescriptor_v3(
         <PoolingDescriptor>poolingDesc, <PoolingMode>mode, nbDims,
+        <int*>windowDimA, <int*>paddingA, <int*>strideA)
+    check_status(status)
+
+
+cpdef setPoolingNdDescriptor_v4(
+        size_t poolingDesc, int mode, int maxpoolingNanOpt, int nbDims,
+        size_t windowDimA, size_t paddingA, size_t strideA):
+    status = cudnnSetPoolingNdDescriptor_v4(
+        <PoolingDescriptor>poolingDesc, <PoolingMode>mode,
+        <NanPropagation>maxpoolingNanOpt, nbDims,
         <int*>windowDimA, <int*>paddingA, <int*>strideA)
     check_status(status)
 
@@ -930,6 +1039,24 @@ cpdef batchNormalizationBackward(
 # Activation
 ###############################################################################
 
+cpdef size_t createActivationDescriptor() except *:
+    cdef ActivationDescriptor activationDesc
+    status = cudnnCreateActivationDescriptor(&activationDesc)
+    check_status(status)
+    return <size_t>activationDesc
+
+cpdef setActivationDescriptor(
+        size_t activationDesc, int mode, int reluNanOpt, double reluCeiling):
+    status = cudnnSetActivationDescriptor(
+        <ActivationDescriptor>activationDesc, <ActivationMode>mode,
+        <NanPropagation>reluNanOpt, reluCeiling)
+    check_status(status)
+
+cpdef destroyActivationDescriptor(size_t activationDesc):
+    status = cudnnDestroyActivationDescriptor(
+        <ActivationDescriptor>activationDesc)
+    check_status(status)
+
 cpdef softmaxForward(
         size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
         size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
@@ -965,6 +1092,17 @@ cpdef activationForward_v3(
     check_status(status)
 
 
+cpdef activationForward_v4(
+        size_t handle, size_t activationDesc, size_t alpha, size_t srcDesc,
+        size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
+    with nogil:
+        status = cudnnActivationForward_v4(
+            <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
+            <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+            <TensorDescriptor>dstDesc, <void*>dstData)
+    check_status(status)
+
+
 cpdef activationBackward_v3(
         size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
         size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
@@ -973,6 +1111,21 @@ cpdef activationBackward_v3(
     with nogil:
         status = cudnnActivationBackward_v3(
             <Handle>handle, <ActivationMode>mode, <void*>alpha,
+            <TensorDescriptor>srcDesc, <void*>srcData,
+            <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
+            <TensorDescriptor>destDesc, <void*>destData, <void*>beta,
+            <TensorDescriptor>destDiffDesc, <void*>destDiffData)
+    check_status(status)
+
+
+cpdef activationBackward_v4(
+        size_t handle, size_t activationDesc, size_t alpha, size_t srcDesc,
+        size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
+        size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
+        size_t destDiffData):
+    with nogil:
+        status = cudnnActivationBackward_v4(
+            <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
             <TensorDescriptor>srcDesc, <void*>srcData,
             <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
             <TensorDescriptor>destDesc, <void*>destData, <void*>beta,
@@ -1170,4 +1323,71 @@ cpdef RNNBackwardWeights(
             <void*>workspace, workSpaceSizeInBytes,
             <FilterDescriptor>dwDesc, <void*>dw,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+# Spatial Transformer
+
+cpdef size_t createSpatialTransformerDescriptor() except *:
+    cdef SpatialTransformerDescriptor stDesc
+    status = cudnnCreateSpatialTransformerDescriptor(&stDesc)
+    check_status(status)
+    return <size_t>stDesc
+
+
+cpdef destroySpatialTransformerDescriptor(size_t stDesc):
+    status = cudnnDestroySpatialTransformerDescriptor(
+        <SpatialTransformerDescriptor>stDesc)
+    check_status(status)
+
+
+cpdef setSpatialTransformerDescriptor(
+        size_t stDesc, size_t samplerType, int dataType,
+        int nbDims, size_t dimA):
+    status = cudnnSetSpatialTransformerNdDescriptor(
+        <SpatialTransformerDescriptor>stDesc, <SamplerType>samplerType,
+        <DataType>dataType, nbDims, <int*>dimA)
+    check_status(status)
+
+
+cpdef spatialTfGridGeneratorForward(
+        size_t handle, size_t stDesc, size_t theta, size_t grid):
+    with nogil:
+        status = cudnnSpatialTfGridGeneratorForward(
+            <Handle>handle, <SpatialTransformerDescriptor> stDesc,
+            <void*>theta, <void*>grid)
+    check_status(status)
+
+
+cpdef spatialTfGridGeneratorBackward(
+        size_t handle, size_t stDesc, size_t dgrid, size_t dtheta):
+    with nogil:
+        status = cudnnSpatialTfGridGeneratorBackward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>dgrid, <void*>dtheta)
+    check_status(status)
+
+
+cpdef spatialTfSamplerForward(
+        size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+        size_t x, size_t grid, size_t beta, size_t yDesc, size_t y):
+    with nogil:
+        status = cudnnSpatialTfSamplerForward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>alpha, <TensorDescriptor>xDesc, <void*>x, <void*>grid,
+            <void*>beta, <TensorDescriptor>yDesc, <void*>y)
+    check_status(status)
+
+
+cpdef spatialTfSamplerBackward(
+        size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
+        size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
+        size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid):
+    with nogil:
+        status = cudnnSpatialTfSamplerBackward(
+            <Handle>handle, <SpatialTransformerDescriptor>stDesc,
+            <void*>alpha, <TensorDescriptor>xDesc, <void*>x, <void*>beta,
+            <TensorDescriptor>dxDesc, <void*>dx, <void*>alphaDgrid,
+            <TensorDescriptor>dyDesc, <void*>dy, <void*>grid,
+            <void*>betaDgrid, <void*>dgrid)
     check_status(status)

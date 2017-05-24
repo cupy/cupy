@@ -41,7 +41,7 @@ class TestCArray(unittest.TestCase):
         y = cupy.empty_like(x)
         y = cupy.ElementwiseKernel(
             'raw T x', 'int32 y',
-            'int idx[] = {i / 12, i / 4 % 3, i % 4}; y = x[idx]',
+            'ptrdiff_t idx[] = {i / 12, i / 4 % 3, i % 4}; y = x[idx]',
             'test_carray_getitem_idx',
         )(x, y)
         testing.assert_array_equal(y, x)

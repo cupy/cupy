@@ -7,17 +7,18 @@ from cupy.cuda cimport function
 
 cdef struct _CArray:
     void* data
-    int size
-    int shape_and_strides[MAX_NDIM * 2]
+    Py_ssize_t size
+    Py_ssize_t shape_and_strides[MAX_NDIM * 2]
 
 
-cdef class CArray(cupy.cuda.function.CPointer):
+cdef class CArray(CPointer):
 
     cdef:
         _CArray val
 
     def __init__(self, ndarray arr):
-        cdef Py_ssize_t i, ndim = arr.ndim
+        cdef Py_ssize_t i
+        cdef int ndim = arr.ndim
         self.val.data = <void*>arr.data.ptr
         self.val.size = arr.size
         for i in range(ndim):
@@ -27,11 +28,11 @@ cdef class CArray(cupy.cuda.function.CPointer):
 
 
 cdef struct _CIndexer:
-    int size
-    int shape_and_index[MAX_NDIM * 2]
+    Py_ssize_t size
+    Py_ssize_t shape_and_index[MAX_NDIM * 2]
 
 
-cdef class CIndexer(cupy.cuda.function.CPointer):
+cdef class CIndexer(CPointer):
     cdef:
         _CIndexer val
 
@@ -49,10 +50,6 @@ cpdef inline CIndexer to_cindexer(Py_ssize_t size, tuple shape):
 
 
 cdef class Indexer:
-    cdef:
-        public Py_ssize_t size
-        public tuple shape
-
     def __init__(self, tuple shape):
         cdef Py_ssize_t size = 1
         for s in shape:
@@ -66,6 +63,9 @@ cdef class Indexer:
 
     @property
     def cstruct(self):
+        return to_cindexer(self.size, self.shape)
+
+    cdef CPointer get_pointer(self):
         return to_cindexer(self.size, self.shape)
 
 

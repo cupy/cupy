@@ -55,9 +55,11 @@ install:
 
 script:
   - flake8 --config=.flake8.cython
-  - autopep8 -r . --global-config .pep8 | tee check_autopep8
+  - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
-  - READTHEDOCS=True python setup.py develop
+  - PYTHONWARNINGS='ignore::FutureWarning,module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+      READTHEDOCS=True python setup.py develop;
+    fi
 
 sudo: false

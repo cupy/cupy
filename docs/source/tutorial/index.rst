@@ -5,3 +5,4 @@ CuPy Tutorial
    :maxdepth: 1
 
    basic
+   kernel

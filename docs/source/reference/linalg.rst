@@ -10,6 +10,13 @@ Matrix and vector products
 .. autofunction:: cupy.outer
 .. autofunction:: cupy.tensordot
 
+Decompositions
+--------------------------
+
+.. autofunction:: cupy.linalg.cholesky
+.. autofunction:: cupy.linalg.qr
+.. autofunction:: cupy.linalg.svd
+
 
 Norms etc.
 ----------

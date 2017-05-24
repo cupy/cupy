@@ -121,16 +121,25 @@ def create_tensor_nd_descriptor(arr):
     return desc
 
 
-def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
+def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createFilterDescriptor(),
                       cudnn.destroyFilterDescriptor)
     data_type = get_data_type(arr.dtype)
-    if arr.ndim == 4:
-        cudnn.setFilter4dDescriptor_v3(desc.value, data_type, *arr.shape)
+    if _cudnn_version >= 4000:
+        if arr.ndim == 4:
+            cudnn.setFilter4dDescriptor_v4(desc.value, data_type, format,
+                                           *arr.shape)
+        else:
+            c_shape = _to_ctypes_array(arr.shape)
+            cudnn.setFilterNdDescriptor_v4(desc.value, data_type, format,
+                                           arr.ndim, c_shape.data)
     else:
-        c_shape = _to_ctypes_array(arr.shape)
-        cudnn.setFilterNdDescriptor_v3(desc.value, data_type, arr.ndim,
-                                       c_shape.data)
+        if arr.ndim == 4:
+            cudnn.setFilter4dDescriptor_v3(desc.value, data_type, *arr.shape)
+        else:
+            c_shape = _to_ctypes_array(arr.shape)
+            cudnn.setFilterNdDescriptor_v3(desc.value, data_type, arr.ndim,
+                                           c_shape.data)
 
     return desc
 
@@ -144,12 +153,22 @@ def create_convolution_descriptor(pad, stride, dtype,
         raise ValueError('pad and stride must be of same length')
 
     if ndim == 2:
-        cudnn.setConvolution2dDescriptor(
-            desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
+        if _cudnn_version >= 5000:
+            data_type = get_data_type(dtype)
+            # TODO(takagi) Temporarily use computing precision of FP32 for
+            #     storing precision of FP16.
+            if dtype == numpy.float16:
+                data_type = cudnn.CUDNN_DATA_FLOAT
+            cudnn.setConvolution2dDescriptor_v5(
+                desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode,
+                data_type)
+        else:
+            cudnn.setConvolution2dDescriptor_v4(
+                desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
     else:
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
-        c_upscale = _to_ctypes_array((1,) * ndim)
+        c_dilation = _to_ctypes_array((1,) * ndim)
         if _cudnn_version >= 3000:
             data_type = get_data_type(dtype)
             # TODO(takagi) Temporarily use computing precision of FP32 for
@@ -157,11 +176,11 @@ def create_convolution_descriptor(pad, stride, dtype,
             if dtype == numpy.float16:
                 data_type = cudnn.CUDNN_DATA_FLOAT
             cudnn.setConvolutionNdDescriptor_v3(
-                desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
+                desc.value, ndim, c_pad.data, c_stride.data, c_dilation.data,
                 mode, data_type)
         else:
             cudnn.setConvolutionNdDescriptor_v2(
-                desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
+                desc.value, ndim, c_pad.data, c_stride.data, c_dilation.data,
                 mode)
 
     return desc
@@ -175,15 +194,26 @@ def create_pooling_descriptor(ksize, stride, pad, mode):
         raise ValueError('ksize, stride, and pad must be of same length')
 
     if ndim == 2:
-        cudnn.setPooling2dDescriptor_v3(
-            desc.value, mode, ksize[0], ksize[1], pad[0], pad[1],
-            stride[0], stride[1])
+        if _cudnn_version >= 4000:
+            cudnn.setPooling2dDescriptor_v4(
+                desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ksize[0],
+                ksize[1], pad[0], pad[1], stride[0], stride[1])
+        else:
+            cudnn.setPooling2dDescriptor_v3(
+                desc.value, mode, ksize[0], ksize[1], pad[0], pad[1],
+                stride[0], stride[1])
     else:
         c_ksize = _to_ctypes_array(ksize)
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
-        cudnn.setPoolingNdDescriptor_v3(
-            desc.value, mode, ndim, c_ksize.data, c_pad.data, c_stride.data)
+        if _cudnn_version >= 4000:
+            cudnn.setPoolingNdDescriptor_v4(
+                desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
+                c_ksize.data, c_pad.data, c_stride.data)
+        else:
+            cudnn.setPoolingNdDescriptor_v3(
+                desc.value, mode, ndim, c_ksize.data, c_pad.data,
+                c_stride.data)
 
     return desc
 
@@ -205,9 +235,18 @@ def activation_forward(x, mode):
     handle = get_handle()
     x_mat = _as4darray(x)
     desc = create_tensor_descriptor(x_mat)
-    cudnn.activationForward_v3(
-        handle, mode, one.data, desc.value, x_mat.data.ptr,
-        zero.data, desc.value, y.data.ptr)
+    if _cudnn_version >= 4000:
+        act_desc = Descriptor(cudnn.createActivationDescriptor(),
+                              cudnn.destroyActivationDescriptor)
+        cudnn.setActivationDescriptor(
+            act_desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+        cudnn.activationForward_v4(
+            handle, act_desc.value, one.data, desc.value, x_mat.data.ptr,
+            zero.data, desc.value, y.data.ptr)
+    else:
+        cudnn.activationForward_v3(
+            handle, mode, one.data, desc.value, x_mat.data.ptr,
+            zero.data, desc.value, y.data.ptr)
     return y
 
 
@@ -222,10 +261,20 @@ def activation_backward(x, y, gy, mode):
     handle = get_handle()
     y_mat = _as4darray(y)
     desc = create_tensor_descriptor(y_mat)
-    cudnn.activationBackward_v3(
-        handle, mode, one.data, desc.value, y.data.ptr,
-        desc.value, gy.data.ptr, desc.value, x.data.ptr,
-        zero.data, desc.value, gx.data.ptr)
+    if _cudnn_version >= 4000:
+        act_desc = Descriptor(cudnn.createActivationDescriptor(),
+                              cudnn.destroyActivationDescriptor)
+        cudnn.setActivationDescriptor(
+            act_desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+        cudnn.activationBackward_v4(
+            handle, act_desc.value, one.data, desc.value, y.data.ptr,
+            desc.value, gy.data.ptr, desc.value, x.data.ptr,
+            zero.data, desc.value, gx.data.ptr)
+    else:
+        cudnn.activationBackward_v3(
+            handle, mode, one.data, desc.value, y.data.ptr,
+            desc.value, gy.data.ptr, desc.value, x.data.ptr,
+            zero.data, desc.value, gx.data.ptr)
     return gx
 
 
@@ -286,6 +335,16 @@ def get_rnn_lin_layer_bias_params(
 def create_dropout_states(handle):
     state_size = cudnn.dropoutGetStatesSize(handle)
     return cupy.empty((state_size,), dtype='b')
+
+
+def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
+    desc = Descriptor(cudnn.createSpatialTransformerDescriptor(),
+                      cudnn.destroySpatialTransformerDescriptor)
+    data_type = get_data_type(dtype)
+
+    cudnn.setSpatialTransformerDescriptor(
+        desc.value, sampler_type, data_type, nb_dims, dim_A)
+    return desc
 
 
 if _cudnn_version >= 3000:

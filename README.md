@@ -4,9 +4,6 @@
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
 
-# Please do not send a PR yet
-Please see [chainer](https://github.com/pfnet/chainer) project.
-
 # CuPy : NumPy-like API accelerated with CUDA
 
 ## Requirements
@@ -20,11 +17,10 @@ Minimum requirements:
 
 Requirements for some features:
 - CUDA support
-  - CUDA 6.5, 7.0, 7.5, 8.0
-  - filelock
+  - CUDA 7.0, 7.5, 8.0
   - g++ 4.8.4+
 - cuDNN support
-  - cuDNN v2, v3, v4, v5, v5.1
+  - cuDNN v4, v5, v5.1, v6
 - Testing utilities
   - Mock
   - Nose
@@ -71,6 +67,12 @@ Do not forget to restart your terminal session (or `source` it) to enable these 
 And then, reinstall CuPy.
 
 
+### Multi-GPU Support
+
+Multi-GPU training is supported by MultiprocessParallelUpdater.
+If you want to use MultiprocessParallelUpdater, please install [NCCL](https://github.com/NVIDIA/nccl) by following the installation guide.
+
+
 ## Run with Docker
 
 We provide the official Docker image.
@@ -80,15 +82,6 @@ You can login to the environment with bash, and run the Python interpreter.
 ```
 $ nvidia-docker run -it cupy/cupy /bin/bash
 ```
-
-
-## Reference
-
-Tokui, S., Oono, K., Hido, S. and Clayton, J.,
-Chainer: a Next-Generation Open Source Framework for Deep Learning,
-*Proceedings of Workshop on Machine Learning Systems(LearningSys) in
-The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
-[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](cupy_bibtex.txt)
 
 
 ## More information

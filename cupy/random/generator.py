@@ -235,6 +235,71 @@ class RandomState(object):
         rand = self.random_sample(size=size, dtype=dtype)
         return dtype.type(low) + rand * dtype.type(high - low)
 
+    def choice(self, a, size=None, replace=True, p=None):
+        """Returns an array of random values from a given 1-D array.
+
+        .. seealso::
+            :func:`cupy.random.choice` for full document,
+            :meth:`numpy.random.choice`
+
+        """
+        if a is None:
+            raise ValueError('a must be 1-dimensional or an integer')
+        if isinstance(a, cupy.ndarray) and a.ndim == 0:
+            raise NotImplementedError
+        if isinstance(a, six.integer_types):
+            a_size = a
+            if a_size <= 0:
+                raise ValueError('a must be greater than 0')
+        else:
+            a = cupy.array(a, copy=False)
+            if a.ndim != 1:
+                raise ValueError('a must be 1-dimensional or an integer')
+            else:
+                a_size = len(a)
+                if a_size == 0:
+                    raise ValueError('a must be non-empty')
+
+        if p is not None:
+            p = cupy.array(p)
+            if p.ndim != 1:
+                raise ValueError('p must be 1-dimensional')
+            if len(p) != a_size:
+                raise ValueError('a and p must have same size')
+            if not (p >= 0).all():
+                raise ValueError('probabilities are not non-negative')
+            p_sum = cupy.sum(p).get()
+            if not numpy.allclose(p_sum, 1):
+                raise ValueError('probabilities do not sum to 1')
+
+        if not replace:
+            raise NotImplementedError
+
+        if size is None:
+            raise NotImplementedError
+        shape = size
+        size = numpy.prod(shape)
+
+        if p is not None:
+            p = cupy.broadcast_to(p, (size, a_size))
+            index = cupy.argmax(cupy.log(p) -
+                                cupy.random.gumbel(size=(size, a_size)),
+                                axis=1)
+            if not isinstance(shape, six.integer_types):
+                index = cupy.reshape(index, shape)
+        else:
+            index = cupy.random.randint(0, a_size, size=shape)
+            # Align the dtype with NumPy
+            index = index.astype(cupy.int64, copy=False)
+
+        if isinstance(a, six.integer_types):
+            return index
+
+        if index.ndim == 0:
+            return cupy.array(a[index], dtype=a.dtype)
+
+        return a[index]
+
 
 def seed(seed=None):
     """Resets the state of the random number generator with a seed.

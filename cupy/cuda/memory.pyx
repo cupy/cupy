@@ -83,6 +83,7 @@ cdef class MemoryPointer:
     """
 
     def __init__(self, mem, Py_ssize_t offset):
+        assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
         self.ptr = mem.ptr + offset
@@ -101,11 +102,13 @@ cdef class MemoryPointer:
         else:
             self = <MemoryPointer?>y
             offset = <Py_ssize_t?>x
+        assert self.ptr > 0 or offset == 0
         return MemoryPointer(self.mem,
                              self.ptr - self.mem.ptr + offset)
 
     def __iadd__(self, Py_ssize_t offset):
         """Adds an offset to the pointer in place."""
+        assert self.ptr > 0 or offset == 0
         self.ptr += offset
         return self
 

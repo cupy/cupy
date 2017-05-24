@@ -146,7 +146,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     >>> import unittest
     >>> from cupy import testing
-    ... @testing.gpu
+    >>> @testing.gpu
     ... class TestFoo(unittest.TestCase):
     ...
     ...     @testing.numpy_cupy_allclose()
@@ -766,7 +766,7 @@ def with_requires(*requirements):
     try:
         ws.require(*requirements)
         skip = False
-    except pkg_resources.VersionConflict:
+    except pkg_resources.ResolutionError:
         skip = True
 
     msg = 'requires: {}'.format(','.join(requirements))
