@@ -167,3 +167,18 @@ We can also use :meth:`cupy.ndarray.get()`:
    a device and a host, or between different devices.
    Note that :func:`~chainer.cuda.to_gpu` has ``device`` option to specify
    the device which arrays are transferred.
+
+How to write CPU/GPU agnostic code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The compatibility of CuPy with NumPy enables us to write CPU/GPU generic code.
+It can be made easy by the :func:`cupy.get_array_module` function.
+This function returns the :mod:`numpy` or :mod:`cupy` module based on arguments.
+A CPU/GPU generic function is defined using it like follows:
+
+.. testcode::
+
+   # Stable implementation of log(1 + exp(x))
+   def softplus(x):
+     xp = cupy.get_array_module(x)
+     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
