@@ -52,6 +52,7 @@ install:
   - pip install dist/*.tar.gz
   - pip install nose hacking mock
   - pip install autopep8
+  - pip install pynvrtc
 
 script:
   - flake8 --config=.flake8.cython
