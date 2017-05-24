@@ -143,6 +143,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 raise
 
     mod = function.Module()
+    # To handle conflicts in concurrent situation, we adopt lock-free method
+    # to avoid performance degradation.
     path = os.path.join(cache_dir, name)
     if os.path.exists(path):
         with open(path, 'rb') as file:
@@ -158,8 +160,9 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     cubin = nvcc(source, options, arch)
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
-    # Use shutil.move for atomic operation.
-    # This method requires using same filesystem.
+    # shutil.move is not atomic operation, so it could result in a corrupted
+    # file. We detect it by appending md5 hash at the beginning of each cache
+    # file. If the file is corrupted, it will be ignored next time it is read.
     with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
         tf.write(cubin_hash)
         tf.write(cubin)
