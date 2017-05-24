@@ -7,8 +7,7 @@ In this section, you will learn about the following things:
 
 * Basics of :class:`cupy.ndarray`
 * The concept of *current device*
-* CPU-GPU/GPU-GPU array transfer
-
+* host-device and device-device array transfer
 
 Basics of cupy.ndarray
 ~~~~~~~~~~~~~~~~~~~~~~
