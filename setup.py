@@ -28,6 +28,7 @@ install_requires = [
 ]
 
 ext_modules = cupy_setup_build.get_ext_modules()
+build_ext = cupy_setup_build.custom_build_ext
 
 setup(
     name='cupy',
@@ -64,4 +65,5 @@ setup(
     tests_require=['mock',
                    'nose'],
     ext_modules=ext_modules,
+    cmdclass={'build_ext': build_ext},
 )
