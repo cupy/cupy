@@ -7,7 +7,7 @@ cdef extern from '../cuda/cupy_common.h':  # thru parent to import in core
     ctypedef unsigned short cpy_ushort
     ctypedef int cpy_int
     ctypedef unsigned int cpy_uint
-    ctypedef long cpy_long
-    ctypedef unsigned long cpy_ulong
+    ctypedef long long cpy_long
+    ctypedef unsigned long long cpy_ulong
     ctypedef float cpy_float
     ctypedef double cpy_double
