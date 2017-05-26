@@ -162,20 +162,24 @@ public:
 
   template <typename Int>
   __device__ T& operator[](const Int (&idx)[ndim]) {
-    char* ptr = reinterpret_cast<char*>(data_);
-    for (int dim = 0; dim < ndim; ++dim) {
-      ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
-    }
-    return *reinterpret_cast<T*>(ptr);
+    return const_cast<T&>(const_cast<const CArray&>(*this)[idx]);
   }
 
   template <typename Int>
-  __device__ T& operator[](const Int (&idx)[ndim]) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[idx];
+  __device__ const T& operator[](const Int (&idx)[ndim]) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    for (int dim = 0; dim < ndim; ++dim) {
+      ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
+    }
+    return reinterpret_cast<const T&>(*ptr);
   }
 
   __device__ T& operator[](ptrdiff_t i) {
-    char* ptr = reinterpret_cast<char*>(data_);
+    return const_cast<T&>(const_cast<const CArray&>(*this)[i]);
+  }
+
+  __device__ const T& operator[](ptrdiff_t i) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
       i /= shape_[dim];
@@ -184,11 +188,7 @@ public:
       ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
     }
 
-    return *reinterpret_cast<T*>(ptr);
-  }
-
-  __device__ T operator[](ptrdiff_t i) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[i];
+    return reinterpret_cast<const T&>(*ptr);
   }
 };
 
