@@ -4,11 +4,11 @@ import re
 import shutil
 import tempfile
 
-from pynvrtc import compiler
 import six
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import nvrtc
 
 _nvrtc_version = None
 
@@ -16,8 +16,7 @@ _nvrtc_version = None
 def _get_nvrtc_version():
     global _nvrtc_version
     if _nvrtc_version is None:
-        interface = compiler.NVRTCInterface()
-        _nvrtc_version = interface.nvrtcVersion()
+        _nvrtc_version = nvrtc.getVersion()
 
     return _nvrtc_version
 
@@ -41,7 +40,7 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def nvrtc(source, options=(), arch=None):
+def compile_using_nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
 
@@ -54,7 +53,7 @@ def nvrtc(source, options=(), arch=None):
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = compiler.Program(
+        prog = _NVRTCProgram(
             six.b(source), six.b(os.path.basename(cu_path)))
         ptx = prog.compile([six.b(o) for o in options])
 
@@ -62,7 +61,7 @@ def nvrtc(source, options=(), arch=None):
 
 
 def preprocess(source, options=()):
-    pp_src = compiler.Program(six.b(source), six.b('')).compile()
+    pp_src = _NVRTCProgram(six.b(source), six.b('')).compile()
     if isinstance(pp_src, six.binary_type):
         pp_src = pp_src.decode('utf-8')
     return re.sub('(?m)^#.*$', '', pp_src)
@@ -122,7 +121,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 mod.load(cubin)
                 return mod
 
-    ptx = nvrtc(source, options, arch)
+    ptx = compile_using_nvrtc(source, options, arch)
     if isinstance(ptx, six.text_type):
         ptx = ptx.encode('utf-8')
     ptx = six.b(ptx)
@@ -142,3 +141,38 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
     mod.load(cubin)
     return mod
+
+
+class CompileException(Exception):
+
+    def __init__(self, msg):
+        self._msg = msg
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return self.get_message()
+
+    def get_message(self):
+        return self._msg
+
+
+class _NVRTCProgram(object):
+
+    def __init__(self, src, name="default_program", headers=(),
+                 include_names=()):
+        self.ptr = None
+        self.ptr = nvrtc.createProgram(src, name, headers, include_names)
+
+    def __del__(self):
+        if self.ptr:
+            nvrtc.destroyProgram(self.ptr)
+
+    def compile(self, options=()):
+        try:
+            nvrtc.compileProgram(self.ptr, options)
+            return nvrtc.getPTX(self.ptr)
+        except nvrtc.NVRTCError:
+            log = nvrtc.getProgramLog(self.ptr)
+            raise CompileException(log)
