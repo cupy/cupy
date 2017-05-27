@@ -60,6 +60,7 @@ typedef enum {
     CUDA_SUCCESS = 0,
 } CUresult;
 enum CUjit_option {};
+enum CUjitInputType {};
 
 
 typedef void* CUdeviceptr;
@@ -68,6 +69,7 @@ struct CUfunc_st;
 struct CUmod_st;
 struct CUstream_st;
 struct CUlinkState_st;
+
 
 typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
@@ -92,15 +94,15 @@ CUresult cuLinkCreate (...) {
 }
 
 CUresult cuLinkAddData(...) {
-    return cuLinkCreate;
+    return CUDA_SUCCESS;
 }
 
 CUresult cuLinkComplete(...) {
-    return cuLinkCreate;
+    return CUDA_SUCCESS;
 }
 
 CUresult cuLinkDestroy(...) {
-    return cuLinkCreate;
+    return CUDA_SUCCESS;
 }
 
 CUresult cuModuleLoad(...) {

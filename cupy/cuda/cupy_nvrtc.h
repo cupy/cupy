@@ -17,15 +17,42 @@ typedef enum {
 
 typedef struct _nvrtcProgram *nvrtcProgram;
 
-const char *nvrtcGetErrorString(...)
-nvrtcResult nvrtcVersion(...)
-nvrtcResult nvrtcCreateProgram(...)
-nvrtcResult nvrtcDestroyProgram(...)
-nvrtcResult nvrtcCompileProgram(...)
-nvrtcResult nvrtcGetPTXSize(...)
-nvrtcResult nvrtcGetPTX(...)
-nvrtcResult nvrtcGetProgramLogSize(...)
-nvrtcResult nvrtcGetProgramLog(...)
+const char *nvrtcGetErrorString(...) {
+    return NULL;
+}
+
+nvrtcResult nvrtcVersion(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcCreateProgram(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcDestroyProgram(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcCompileProgram(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetPTXSize(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetPTX(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetProgramLogSize(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetProgramLog(...) {
+    return NVRTC_SUCCESS;
+}
+
 }
 
 #endif // #ifndef CUPY_NO_CUDA
