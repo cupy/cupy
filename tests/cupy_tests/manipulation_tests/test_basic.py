@@ -1,7 +1,5 @@
-import numpy
 import unittest
 
-import cupy
 from cupy import cuda
 from cupy import testing
 
