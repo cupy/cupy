@@ -59,6 +59,7 @@ typedef int CUdevice;
 typedef enum {
     CUDA_SUCCESS = 0,
 } CUresult;
+enum CUjit_option {};
 
 
 typedef void* CUdeviceptr;
@@ -66,11 +67,13 @@ struct CUevent_st;
 struct CUfunc_st;
 struct CUmod_st;
 struct CUstream_st;
+struct CUlinkState_st;
 
 typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
+typedef struct CUlinkState_st *CUlinkState;
 
 
 // Error handling
@@ -84,6 +87,22 @@ CUresult cuGetErrorString(...) {
 
 
 // Module load and kernel execution
+CUresult cuLinkCreate (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuLinkAddData(...) {
+    return cuLinkCreate;
+}
+
+CUresult cuLinkComplete(...) {
+    return cuLinkCreate;
+}
+
+CUresult cuLinkDestroy(...) {
+    return cuLinkCreate;
+}
+
 CUresult cuModuleLoad(...) {
     return CUDA_SUCCESS;
 }

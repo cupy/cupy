@@ -167,3 +167,23 @@ cdef class Module:
 
     cpdef get_function(self, str name):
         return Function(self, name)
+
+
+cdef class LinkState:
+
+    """CUDA link state."""
+
+    def __init__(self):
+        self.ptr = driver.linkCreate()
+
+    def __del__(self):
+        if self.ptr:
+            driver.linkDestroy(self.ptr)
+            self.ptr = 0
+
+    cpdef add_ptr_data(self, bytes data, str name):
+        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
+
+    cpdef bytes complete(self):
+        cubin = driver.linkComplete(self.ptr)
+        return cubin

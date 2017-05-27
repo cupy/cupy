@@ -98,7 +98,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
-    name = '%s.ptx' % hashlib.md5(pp_src).hexdigest()
+    name = '%s_2.cubin' % hashlib.md5(pp_src).hexdigest()
 
     if not os.path.isdir(cache_dir):
         try:
@@ -123,10 +123,12 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 return mod
 
     ptx = nvrtc(source, options, arch)
-    # TODO(okuta) : compile
     if isinstance(ptx, six.text_type):
         ptx = ptx.encode('utf-8')
-    cubin = six.b(ptx)
+    ptx = six.b(ptx)
+    ls = function.LinkState()
+    ls.add_ptr_data(ptx, 'cupy.ptx')
+    cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
     # shutil.move is not atomic operation, so it could result in a corrupted
