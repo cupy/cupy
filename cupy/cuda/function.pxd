@@ -28,5 +28,5 @@ cdef class LinkState:
     cdef:
         public size_t ptr
 
-    cpdef add_ptr_data(self, bytes data, str name)
+    cpdef add_ptr_data(self, unicode data, unicode name)
     cpdef bytes complete(self)

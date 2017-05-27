@@ -181,8 +181,9 @@ cdef class LinkState:
             driver.linkDestroy(self.ptr)
             self.ptr = 0
 
-    cpdef add_ptr_data(self, bytes data, str name):
-        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
+    cpdef add_ptr_data(self, unicode data, unicode name):
+        cdef bytes data_byte = data.encode()
+        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
 
     cpdef bytes complete(self):
         cubin = driver.linkComplete(self.ptr)

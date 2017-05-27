@@ -82,14 +82,14 @@ cpdef size_t linkCreate() except *:
     return <size_t>state
 
 
-cpdef linkAddData(size_t state, int input_type, bytes data, str name):
+cpdef linkAddData(size_t state, int input_type, bytes data, unicode name):
     cdef const char* data_ptr = data
-    cdef size_t data_size = len(data)
+    cdef size_t data_size = len(data) + 1
     cdef bytes b_name = name.encode()
     cdef const char* b_name_ptr = b_name
     with nogil:
         status = cuLinkAddData(
-            <LinkState>state, <CUjitInputType> input_type, <void*>data_ptr,
+            <LinkState>state, <CUjitInputType>input_type, <void*>data_ptr,
             data_size, b_name_ptr, 0, <CUjit_option*>0, <void**>0)
     check_status(status)
 

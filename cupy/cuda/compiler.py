@@ -53,15 +53,14 @@ def compile_using_nvrtc(source, options=(), arch=None):
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = _NVRTCProgram(
-            six.b(source), six.b(os.path.basename(cu_path)))
-        ptx = prog.compile([six.b(o) for o in options])
+        prog = _NVRTCProgram(source, os.path.basename(cu_path))
+        ptx = prog.compile(options)
 
-        return six.b(ptx)
+        return ptx
 
 
 def preprocess(source, options=()):
-    pp_src = _NVRTCProgram(six.b(source), six.b('')).compile()
+    pp_src = _NVRTCProgram(source, '').compile(options)
     if isinstance(pp_src, six.binary_type):
         pp_src = pp_src.decode('utf-8')
     return re.sub('(?m)^#.*$', '', pp_src)
@@ -122,11 +121,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 return mod
 
     ptx = compile_using_nvrtc(source, options, arch)
-    if isinstance(ptx, six.text_type):
-        ptx = ptx.encode('utf-8')
-    ptx = six.b(ptx)
     ls = function.LinkState()
-    ls.add_ptr_data(ptx, 'cupy.ptx')
+    ls.add_ptr_data(ptx, six.u('cupy.ptx'))
     cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
@@ -163,6 +159,11 @@ class _NVRTCProgram(object):
     def __init__(self, src, name="default_program", headers=(),
                  include_names=()):
         self.ptr = None
+
+        if isinstance(src, six.binary_type):
+            src = src.decode('UTF-8')
+        if isinstance(name, six.binary_type):
+            name = name .decode('UTF-8')
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
     def __del__(self):

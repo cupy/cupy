@@ -29,7 +29,7 @@ cpdef enum:
 ###############################################################################
 
 cpdef size_t linkCreate() except *
-cpdef linkAddData(size_t state, int input_type, bytes data, str name)
+cpdef linkAddData(size_t state, int input_type, bytes data, unicode name)
 cpdef bytes linkComplete(size_t state)
 cpdef linkDestroy(size_t state)
 cpdef size_t moduleLoad(str filename) except *
