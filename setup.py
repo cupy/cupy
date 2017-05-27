@@ -21,7 +21,6 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
 
 setup_requires = []
 install_requires = [
-    'filelock',
     'nose',
     'numpy>=1.9.0',
     'six>=1.9.0',

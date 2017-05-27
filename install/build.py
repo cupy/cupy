@@ -9,6 +9,7 @@ from install import utils
 
 minimum_cuda_version = 7000
 minimum_cudnn_version = 2000
+maximum_cudnn_version = 6999
 # Although cuda 7.0 includes cusolver,
 # we tentatively support cusolver in cuda 8.0 only because
 # provided functions are insufficient to implement cupy.linalg
@@ -112,10 +113,30 @@ def check_cudnn_version(compiler, settings):
 
     cudnn_version = int(out)
 
-    if cudnn_version < minimum_cudnn_version:
+    if not minimum_cudnn_version <= cudnn_version <= maximum_cudnn_version:
+        min_major = minimum_cudnn_version // 1000
+        max_major = maximum_cudnn_version // 1000
         utils.print_warning(
-            'cuDNN version is too old: %d' % cudnn_version,
-            'cuDNN v2 or newer is required')
+            'Unsupported cuDNN version: %d' % cudnn_version,
+            'cuDNN v%d<= and <=v%d is required' % (min_major, max_major))
+        return False
+
+    return True
+
+
+def check_nccl_version(compiler, settings):
+    # NCCL does not provide version information.
+    # It only check whether there is nccl.h.
+    try:
+        build_and_run(compiler, '''
+        #include <nccl.h>
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot include NCCL\n{0}'.format(e))
         return False
 
     return True

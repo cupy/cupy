@@ -368,6 +368,8 @@ typedef enum {} cudnnRNNInputMode_t;
 
 typedef void* cudnnDropoutDescriptor_t;
 typedef void* cudnnRNNDescriptor_t;
+typedef void* cudnnSpatialTransformerDescriptor_t;
+typedef void* cudnnSamplerType_t;
 
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
@@ -463,6 +465,34 @@ cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx(...) {
 }
 
 cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateSpatialTransformerDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroySpatialTransformerDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetSpatialTransformerNdDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfGridGeneratorForward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfGridGeneratorBackward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfSamplerForward(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 

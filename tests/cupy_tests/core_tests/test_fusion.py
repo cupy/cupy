@@ -534,17 +534,22 @@ class TestFusionUfunc(unittest.TestCase):
         return cupy.square(cupy.add(x, y))
 
     def random_bool(self):
-        return numpy.random.randint(0, 1, (10, 10)) == 0
+        return numpy.random.randint(0, 1, (3, 3)) == 0
 
     def random_int(self, lower=-1000, higher=1000):
-        return numpy.random.randint(lower, higher, (10, 10))
+        return numpy.random.randint(lower, higher, (3, 3))
 
     def random_real(self, lower=-1000, higher=1000):
-        return numpy.random.rand(10, 10) * (higher - lower) + lower
+        return numpy.random.rand(3, 3) * (higher - lower) + lower
 
     def check(self, func, n, gen, *args):
+        self._check(func, n, gen, args, True)
+        self._check(func, n, gen, args, False)
 
-        @cupy.fuse(input_num=n)
+    def _check(self, func, n, gen, args, omit_nin):
+        nin = n if not omit_nin else None
+
+        @cupy.fuse(input_num=nin)
         def f(*x):
             return func(*x)
 
@@ -569,8 +574,13 @@ class TestFusionUfunc(unittest.TestCase):
             numpy.testing.assert_array_almost_equal(n, fc.get())
 
     def check_reduce(self, func, n, reduce_f, gen, *args):
+        self._check_reduce(func, n, reduce_f, gen, args, True)
+        self._check_reduce(func, n, reduce_f, gen, args, False)
 
-        @cupy.fuse(input_num=n, reduce=reduce_f)
+    def _check_reduce(self, func, n, reduce_f, gen, args, omit_nin):
+        nin = n if not omit_nin else None
+
+        @cupy.fuse(input_num=nin, reduce=reduce_f)
         def f(*x):
             return func(*x)
 

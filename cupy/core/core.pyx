@@ -367,6 +367,12 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
+        if isinstance(value, numpy.ndarray):
+            if value.shape != ():
+                raise ValueError(
+                    'non-scalar numpy.ndarray cannot be used for fill')
+            value = value.item()
+
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes, stream.Stream(True))
         else:
@@ -1216,10 +1222,16 @@ cdef class ndarray:
                 else:
                     dim = (s_stop - s_start + 1) // s_step + 1
 
-                shape.push_back(dim)
-                strides.push_back(self._strides[j] * s_step)
+                if dim == 0:
+                    strides.push_back(self._strides[j])
+                else:
+                    strides.push_back(self._strides[j] * s_step)
 
-                offset += s_start * self._strides[j]
+                if self.size > 0:
+                    offset += self._strides[j] * max(0, s_start)
+
+                shape.push_back(dim)
+
                 j += 1
             elif numpy.isscalar(s):
                 ind = int(s)
@@ -1229,11 +1241,14 @@ cdef class ndarray:
                     msg = ('Index %s is out of bounds for axis %s with '
                            'size %s' % (s, j, self._shape[j]))
                     raise IndexError(msg)
-                offset += ind * self._strides[j]
+                if self.size > 0:
+                    offset += ind * self._strides[j]
                 j += 1
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
 
+        # TODO(niboshi): offset can be non-zero even if self.data is an empty
+        # pointer.
         v = self.view()
         v.data = self.data + offset
         v._set_shape_and_strides(shape, strides)
@@ -2197,8 +2212,8 @@ cdef _concatenate_kernel = ElementwiseKernel(
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
     for (int j = ndim - 1; j >= 0; --j) {
-      int ind[] = {array_ind, j};
-      int offset;
+      ptrdiff_t ind[] = {array_ind, j};
+      ptrdiff_t offset;
       if (j == axis) {
         offset = axis_ind;
       } else {
@@ -2307,8 +2322,8 @@ cdef _take_kernel = ElementwiseKernel(
       S wrap_indices = indices % index_range;
       if (wrap_indices < 0) wrap_indices += index_range;
 
-      int li = i / (rdim * cdim);
-      int ri = i % rdim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
       out = a[(li * adim + wrap_indices) * rdim + ri];
     ''',
     'cupy_take')
@@ -2354,8 +2369,8 @@ cdef _scatter_update_kernel = ElementwiseKernel(
     '''
       S wrap_indices = indices % adim;
       if (wrap_indices < 0) wrap_indices += adim;
-      int li = i / (rdim * cdim);
-      int ri = i % rdim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
       a[(li * adim + wrap_indices) * rdim + ri] = v;
     ''',
     'cupy_scatter_update')
@@ -2367,8 +2382,8 @@ cdef _scatter_add_kernel = ElementwiseKernel(
     '''
       S wrap_indices = indices % adim;
       if (wrap_indices < 0) wrap_indices += adim;
-      int li = i / (rdim * cdim);
-      int ri = i % rdim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
       atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
     ''',
     'cupy_scatter_add')
@@ -3661,7 +3676,7 @@ def _nonzero_1d_kernel(src_dtype, index_dtype):
         const CArray<${index_dtype}, 1> scaned_index,
         CArray<${index_dtype}, 1> dst){
         int thid = blockIdx.x * blockDim.x + threadIdx.x;
-        int n = src.size();
+        ptrdiff_t n = src.size();
         if (thid < n){
             if (src[thid] != 0){
                 dst[scaned_index[thid] - 1] = thid;

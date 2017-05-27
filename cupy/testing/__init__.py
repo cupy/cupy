@@ -48,3 +48,4 @@ NumpyError = helper.NumpyError
 
 gpu = attr.gpu
 multi_gpu = attr.multi_gpu
+slow = attr.slow

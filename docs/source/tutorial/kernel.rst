@@ -166,15 +166,3 @@ For example, L2 norm along specified axes can be written as follows:
 .. note::
    ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
    It means, if you want to use ``raw`` specifier for at least one argument, the ``axis`` argument must be ``0`` or a contiguous increasing sequence of integers starting from ``0``, like ``(0, 1)``, ``(0, 1, 2)``, etc.
-
-
-Reference
----------
-
-.. module:: cupy
-
-.. autoclass:: cupy.ElementwiseKernel
-   :members:
-
-.. autoclass:: cupy.ReductionKernel
-   :members:

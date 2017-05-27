@@ -1,9 +1,9 @@
 import hashlib
 import os
 import re
+import shutil
 import tempfile
 
-import filelock
 from pynvrtc import compiler
 import six
 
@@ -98,9 +98,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
-    name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()
-
-    mod = function.Module()
+    name = '%s.ptx' % hashlib.md5(pp_src).hexdigest()
 
     if not os.path.isdir(cache_dir):
         try:
@@ -109,20 +107,36 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
             if not os.path.isdir(cache_dir):
                 raise
 
-    lock_path = os.path.join(cache_dir, 'lock_file.lock')
-
+    mod = function.Module()
+    # To handle conflicts in concurrent situation, we adopt lock-free method
+    # to avoid performance degradation.
     path = os.path.join(cache_dir, name)
-    with filelock.FileLock(lock_path) as lock:
-        if os.path.exists(path):
-            with open(path, 'rb') as file:
-                cubin = file.read()
-        else:
-            lock.release()
-            cubin = nvrtc(source, options, arch)
-            lock.acquire()
-            with open(path, 'wb') as cubin_file:
-                cubin_file.write(cubin)
+    if os.path.exists(path):
+        with open(path, 'rb') as file:
+            data = file.read()
+        if len(data) >= 32:
+            hash = data[:32]
+            cubin = data[32:]
+            cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+            if hash == cubin_hash:
+                mod.load(cubin)
+                return mod
+
+    ptx = nvrtc(source, options, arch)
+    # TODO(okuta) : compile
+    if isinstance(ptx, six.text_type):
+        ptx = ptx.encode('utf-8')
+    cubin = six.b(ptx)
+    cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+
+    # shutil.move is not atomic operation, so it could result in a corrupted
+    # file. We detect it by appending md5 hash at the beginning of each cache
+    # file. If the file is corrupted, it will be ignored next time it is read.
+    with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
+        tf.write(cubin_hash)
+        tf.write(cubin)
+        temp_path = tf.name
+    shutil.move(temp_path, path)
 
     mod.load(cubin)
-
     return mod
