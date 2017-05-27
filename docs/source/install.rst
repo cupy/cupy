@@ -1,15 +1,20 @@
-Install Guide
-=============
+Installation Guide
+==================
 
-.. _before_install:
+Recommended Environments
+------------------------
 
-Before installing CuPy
-----------------------
+We recommend these Linux distributions.
 
-We recommend these platforms.
-
-* `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
+* `Ubuntu <http://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
+
+The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
+
+.. note::
+
+   We are testing CuPy automatically with Jenkins, where all the above *recommended* environments are tested.
+   We cannot guarantee that CuPy works on other environments including Windows and macOS (especially with CUDA support), even if CuPy looks running correctly.
 
 CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+.
 CuPy uses C++ compiler such as g++.
@@ -27,13 +32,18 @@ If you use old ``setuptools``, upgrade it::
   $ pip install -U setuptools
 
 
-Install CuPy
----------------
+Dependencies
+------------
 
-CuPy depends on these Python packages:
+Before installing CuPy, we recommend to upgrade ``setuptools`` if you are using an old one::
+
+  $ pip install -U setuptools
+
+The following Python packages are required to install CuPy.
+The latest version of each package will automatically be installed if missing.
 
 * `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12
-* `Six <https://pythonhosted.org/six/>`_ 1.9
+* `Six <https://pythonhosted.org/six/>`_ 1.9+
 
 CUDA support
 
@@ -43,8 +53,12 @@ cuDNN support
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
 
-All these libraries are automatically installed with ``pip`` or ``setup.py``.
+NCCL support
 
+* `nccl <https://github.com/NVIDIA/nccl>`_ v1.3+
+
+Install CuPy
+------------
 
 Install CuPy via pip
 ~~~~~~~~~~~~~~~~~~~~
@@ -53,14 +67,26 @@ We recommend to install CuPy via pip::
 
   $ pip install cupy
 
+.. note::
+
+   All optional CUDA related libraries, cuDNN and NCCL, need to be installed before installing CuPy.
+   After you update these libraries, please reinstall CuPy because you need to compile and link to the newer version of them.
+
 
 Install CuPy from source
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use ``setup.py`` to install CuPy from source::
+The tarball of the source tree is available via ``pip download cupy`` or from `the release notes page <https://github.com/pfnet/cupy/releases>`_.
+You can use ``setup.py`` to install CuPy from the tarball::
 
   $ tar zxf cupy-x.x.x.tar.gz
   $ cd cupy-x.x.x
+  $ python setup.py install
+
+You can also install the development version of CuPy from a cloned Git repository::
+
+  $ git clone https://github.com/pfnet/cupy.git
+  $ cd cupy
   $ python setup.py install
 
 
@@ -70,7 +96,8 @@ When an error occurs...
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Use ``-vvvv`` option with ``pip`` command.
-That shows all logs of installation. It may helps you::
+That shows all logs of installation.
+It may help you::
 
   $ pip install cupy -vvvv
 
@@ -108,15 +135,16 @@ If you installed CUDA into a non-default directory, you need to specify the dire
 
 .. _install_cudnn:
 
-Install CuPy with CUDA and cuDNN
+Install CuPy with cuDNN and NCCL
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 cuDNN is a library for Deep Neural Networks that NVIDIA provides.
-CuPy can use cuDNN.
-If you want to enable cuDNN, install cuDNN and CUDA before installing CuPy.
-We recommend you to install developer library of deb package of cuDNN.
+NCCL is a library for collective multi-GPU communication.
+CuPy can use cuDNN and NCCL.
+If you want to enable these libraries, install them before installing CuPy.
+We recommend you to install developer library of deb package of cuDNN and NCCL.
 
-If you want to install tar-gz version, we recommend you to install it to CUDA directory.
+If you want to install tar-gz version of cuDNN, we recommend you to install it to CUDA directory.
 For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
@@ -124,7 +152,7 @@ For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
+If you want to use cuDNN or NCCL installed in other directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
   export CFLAGS=-I/path/to/cudnn/include
   export LDFLAGS=-L/path/to/cudnn/lib
@@ -154,8 +182,9 @@ Use pip to uninstall CuPy::
 
 .. note::
 
-   When you upgrade CuPy, ``pip`` sometimes installed various version of CuPy in ``site-packages``.
-   Please uninstall it repeatedly until ``pip`` returns an error.
+   When you upgrade Chainer, ``pip`` sometimes install the new version without removing the old one in ``site-packages``.
+   In this case, ``pip uninstall`` only removes the latest one.
+   To ensure that Chainer is completely removed, run the above command repeatedly until ``pip`` returns an error.
 
 
 Upgrade CuPy
@@ -182,38 +211,22 @@ You need to reinstall CuPy when you want to upgrade CUDA.
 Run CuPy with Docker
 -----------------------
 
-We provide the official Docker image.
+We are providing the official Docker image.
 Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run CuPy image with GPU.
 You can login to the environment with bash, and run the Python interpreter::
 
   $ nvidia-docker run -it cupy/cupy /bin/bash
 
-Or, run the interpreter directly::
+Or run the interpreter directly::
 
   $ nvidia-docker run -it cupy/cupy /usr/bin/python
-
-
-What "recommend" means?
------------------------
-
-We tests CuPy automatically with Jenkins.
-All supported environments are tested in this environment.
-We cannot guarantee that CuPy works on other environments.
 
 
 FAQ
 ---
 
-MemoryError happens
-~~~~~~~~~~~~~~~~~~~
-
-You maybe failed to install Cython.
-Please install it manually.
-See :ref:`install_error`.
-
-
-Examples says "cuDNN is not enabled"
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Warning message "cuDNN is not enabled" appears
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You failed to build CuPy with cuDNN.
 If you don't need cuDNN, ignore this message.
