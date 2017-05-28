@@ -163,7 +163,7 @@ class _NVRTCProgram(object):
         if isinstance(src, six.binary_type):
             src = src.decode('UTF-8')
         if isinstance(name, six.binary_type):
-            name = name .decode('UTF-8')
+            name = name.decode('UTF-8')
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
     def __del__(self):

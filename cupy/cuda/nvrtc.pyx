@@ -1,12 +1,12 @@
 # distutils: language = c++
 
-"""Thin wrapper of CUDA Driver API.
+"""Thin wrapper of NVRTC API.
 
 There are four differences compared to the original C API.
 
 1. Not all functions are ported.
-2. Errors are translated into CUDADriverError exceptions.
-3. The 'cu' prefix of each API is omitted and the next character is set to
+2. Errors are translated into NVRTCError exceptions.
+3. The 'nvrtc' prefix of each API is omitted and the next character is set to
    lower case.
 4. The resulting values are returned directly instead of references.
 
