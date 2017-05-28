@@ -20,9 +20,6 @@ def sort(a):
     return ret
 
 
-# TODO(okuta): Implement sort
-
-
 # TODO(okuta): Implement lexsort
 
 
