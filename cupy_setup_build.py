@@ -433,7 +433,8 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
         compiler_so = [build.get_nvcc_path()]
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
-        postargs = _nvcc_gencode_options() + ['-O2']
+        cuda_version = build.get_cuda_version()
+        postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
         print('NVCC options:', postargs)
 
         for obj in objects:
