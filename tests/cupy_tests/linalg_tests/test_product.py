@@ -274,6 +274,7 @@ class TestProduct(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_transposed_tensordot_with_int_axes(self, xp, dtype):
         if dtype in (numpy.uint8, numpy.int8, numpy.uint16, numpy.int16):
+            # Avoid overflow
             a = testing.shaped_arange(
                 (1, 2, 3), xp, dtype).transpose(2, 0, 1)
             b = testing.shaped_arange(
@@ -290,6 +291,7 @@ class TestProduct(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_tensordot_with_list_axes(self, xp, dtype):
         if dtype in (numpy.uint8, numpy.int8, numpy.uint16, numpy.int16):
+            # Avoid overflow
             a = testing.shaped_arange((1, 2, 3), xp, dtype)
             b = testing.shaped_arange((3, 1, 2), xp, dtype)
             return xp.tensordot(a, b, axes=([2, 1], [0, 2]))
@@ -302,6 +304,7 @@ class TestProduct(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_transposed_tensordot_with_list_axes(self, xp, dtype):
         if dtype in (numpy.uint8, numpy.int8, numpy.uint16, numpy.int16):
+            # Avoid overflow
             a = testing.shaped_arange(
                 (1, 2, 3), xp, dtype).transpose(2, 0, 1)
             b = testing.shaped_arange(
