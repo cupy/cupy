@@ -910,9 +910,9 @@ class TestFusionFuse(unittest.TestCase):
         @cupy.fuse()
         def g(x, y, z):
             x = ~(x & y) | (x ^ z) ^ (z | y)
-            y = 109 & y
-            z = 109 | z
-            z = 88 ^ z
+            y &= 109
+            z |= 109
+            z ^= 88
             return x + y + z
 
         return g(a, b, c)
