@@ -24,10 +24,10 @@ cdef extern from "cupy_nvrtc.h" nogil:
     int nvrtcVersion(int *major, int *minor)
     int nvrtcCreateProgram(
         Program* prog, const char* src, const char* name, int numHeaders,
-        const char* const* headers, const char* const* includeNames)
+        const char** headers, const char** includeNames)
     int nvrtcDestroyProgram(Program *prog)
     int nvrtcCompileProgram(Program prog, int numOptions,
-                            const char* const* options)
+                            const char** options)
     int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
     int nvrtcGetPTX(Program prog, char *ptx)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
@@ -68,16 +68,16 @@ cpdef size_t createProgram(unicode src, unicode name, headers,
                            include_names) except *:
     cdef Program prog
     cdef bytes b_src = src.encode()
-    cdef char* src_ptr = b_src
+    cdef const char* src_ptr = b_src
     cdef bytes b_name = name.encode()
-    cdef char* name_ptr = b_name
+    cdef const char* name_ptr = b_name
     cdef int num_headers = len(headers)
-    cdef vector.vector[char*] header_vec
-    cdef vector.vector[char*] include_name_vec
+    cdef vector.vector[const char*] header_vec
+    cdef vector.vector[const char*] include_name_vec
     for i in headers:
-        header_vec.push_back(<char*>i)
+        header_vec.push_back(<const char*>i)
     for i in include_names:
-        include_name_vec.push_back(<char*>i)
+        include_name_vec.push_back(<const char*>i)
 
     with nogil:
         status = nvrtcCreateProgram(
@@ -96,10 +96,10 @@ cpdef destroyProgram(size_t prog):
 
 cpdef compileProgram(size_t prog, options):
     cdef int option_num = len(options)
-    cdef vector.vector[char*] option_vec
+    cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
     for i in option_list:
-        option_vec.push_back(<char*>i)
+        option_vec.push_back(<const char*>i)
 
     with nogil:
         status = nvrtcCompileProgram(<Program>prog, option_num,
