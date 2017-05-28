@@ -15,14 +15,23 @@ maximum_cudnn_version = 6999
 # provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
+get_nvcc_path_warned = False
 
-def get_compiler_setting():
+
+def get_nvcc_path():
+    global get_nvcc_path_warned
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
-    cuda_path_default = None
-    if nvcc_path is None:
+    if nvcc_path is None and not get_nvcc_path_warned:
         utils.print_warning('nvcc not in path.',
                             'Please set path to nvcc.')
-    else:
+        get_nvcc_path_warned = True
+    return nvcc_path
+
+
+def get_compiler_setting():
+    nvcc_path = get_nvcc_path()
+    cuda_path_default = None
+    if nvcc_path is not None:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
@@ -70,7 +79,11 @@ def get_compiler_setting():
     }
 
 
+_cuda_version = None
+
+
 def check_cuda_version(compiler, settings):
+    global _cuda_version
     try:
         out = build_and_run(compiler, '''
         #include <cuda.h>
@@ -85,15 +98,24 @@ def check_cuda_version(compiler, settings):
         utils.print_warning('Cannot check CUDA version', str(e))
         return False
 
-    cuda_version = int(out)
+    _cuda_version = int(out)
 
-    if cuda_version < minimum_cuda_version:
+    if _cuda_version < minimum_cuda_version:
         utils.print_warning(
-            'CUDA version is too old: %d' % cuda_version,
+            'CUDA version is too old: %d' % _cuda_version,
             'CUDA v6.5 or newer is required')
         return False
 
     return True
+
+
+def get_cuda_version():
+    """Return CUDA Toolkit version cached in check_cuda_version()."""
+    global _cuda_version
+    if _cuda_version is None:
+        msg = 'check_cuda_version() must be called first.'
+        raise Exception(msg)
+    return _cuda_version
 
 
 def check_cudnn_version(compiler, settings):
