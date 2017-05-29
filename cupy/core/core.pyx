@@ -684,12 +684,12 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
-        if self.shape == ():
+        if self.ndim == 0:
             msg = 'Sorting arrays with the rank of zero is not supported'
             raise ValueError(msg)
 
         # TODO(takagi): Support ranks of two or more
-        if len(self.shape) > 1:
+        if self.ndim > 1:
             msg = ('Sorting arrays with the rank of two or more is '
                    'not supported')
             raise ValueError(msg)
@@ -700,7 +700,7 @@ cdef class ndarray:
 
         # TODO(takagi): Support float16 and bool
         try:
-            thrust.sort(self.dtype, self.data.ptr, self.shape[0])
+            thrust.sort(self.dtype, self.data.ptr, self._shape[0])
         except NameError:
             msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
                    'Toolkit with Thrust then reinstall Chainer after '
