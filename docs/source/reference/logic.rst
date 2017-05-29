@@ -1,12 +1,26 @@
 Logic Functions
 ===============
 
+Truth value testing
+-------------------
+
+.. autodata:: cupy.all
+.. autodata:: cupy.any
+
+
 Infinities and NaNs
 -------------------
 
 .. autodata:: cupy.isfinite
 .. autodata:: cupy.isinf
 .. autodata:: cupy.isnan
+
+
+Array type testing
+------------------
+
+.. autodata:: cupy.isscalar
+
 
 
 Logic operations

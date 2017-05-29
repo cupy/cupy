@@ -38,28 +38,31 @@ Edit dimensionalities
 Changing kind of array
 ----------------------
 
+.. autofunction:: cupy.asarray
+.. autofunction:: cupy.asanyarray
 .. autofunction:: cupy.asfortranarray
+.. autofunction:: cupy.ascontiguousarray
 
 
 Joining arrays along axis
 -------------------------
 
-.. autofunction:: cupy.column_stack
 .. autofunction:: cupy.concatenate
-.. autofunction:: cupy.vstack
-.. autofunction:: cupy.hstack
-.. autofunction:: cupy.dstack
 .. autofunction:: cupy.stack
+.. autofunction:: cupy.column_stack
+.. autofunction:: cupy.dstack
+.. autofunction:: cupy.hstack
+.. autofunction:: cupy.vstack
 
 
 Splitting arrays along axis
 ---------------------------
 
-.. autofunction:: cupy.array_split
 .. autofunction:: cupy.split
-.. autofunction:: cupy.vsplit
-.. autofunction:: cupy.hsplit
+.. autofunction:: cupy.array_split
 .. autofunction:: cupy.dsplit
+.. autofunction:: cupy.hsplit
+.. autofunction:: cupy.vsplit
 
 
 Repeating part of arrays along axis
@@ -75,5 +78,6 @@ Rearranging elements
 .. autofunction:: cupy.flip
 .. autofunction:: cupy.fliplr
 .. autofunction:: cupy.flipud
+.. autofunction:: cupy.reshape
 .. autofunction:: cupy.roll
 .. autofunction:: cupy.rot90

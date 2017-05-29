@@ -22,6 +22,7 @@ Sample random data
 .. autofunction:: cupy.random.random
 .. autofunction:: cupy.random.ranf
 .. autofunction:: cupy.random.sample
+.. autofunction:: cupy.random.bytes
 
 
 Distributions

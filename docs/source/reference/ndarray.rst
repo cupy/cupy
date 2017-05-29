@@ -5,3 +5,4 @@ Multi-Dimensional Array (ndarray)
    :members:
 
 .. autofunction:: cupy.asnumpy
+.. autofunction:: cupy.get_array_module

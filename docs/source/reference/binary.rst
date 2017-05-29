@@ -10,3 +10,16 @@ Elementwise bit operations
 .. autodata:: cupy.invert
 .. autodata:: cupy.left_shift
 .. autodata:: cupy.right_shift
+
+
+Bit packing
+-----------
+
+.. autodata:: cupy.packbits
+.. autodata:: cupy.unpackbits
+
+
+Bit packing
+-----------
+
+.. autodata:: cupy.binary_repr

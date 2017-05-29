@@ -15,3 +15,10 @@ String formatting
 
 .. autofunction:: cupy.array_repr
 .. autofunction:: cupy.array_str
+
+
+Base-n representations
+----------------------
+
+.. autofunction:: cupy.binary_repr
+.. autofunction:: cupy.base_repr

@@ -8,6 +8,7 @@ Matrix and vector products
 .. autofunction:: cupy.vdot
 .. autofunction:: cupy.inner
 .. autofunction:: cupy.outer
+.. autofunction:: cupy.matmul
 .. autofunction:: cupy.tensordot
 
 Decompositions
@@ -21,4 +22,5 @@ Decompositions
 Norms etc.
 ----------
 
+.. autofunction:: cupy.norm
 .. autofunction:: cupy.trace

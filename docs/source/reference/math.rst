@@ -36,6 +36,7 @@ Rounding
 .. autodata:: cupy.floor
 .. autodata:: cupy.ceil
 .. autodata:: cupy.trunc
+.. autodata:: cupy.fix
 
 
 Sums and products
@@ -43,6 +44,7 @@ Sums and products
 
 .. autofunction:: cupy.sum
 .. autofunction:: cupy.prod
+.. autofunction:: cupy.cumsum
 
 
 Exponential and logarithm functions
