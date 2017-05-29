@@ -38,8 +38,8 @@ MODULES = [
             'cupy.util',
         ],
         'include': [
-            'cublas_v2.h',
             'cuda.h',
+            'cublas_v2.h',
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
@@ -221,6 +221,7 @@ def make_extensions(options, compiler, use_cython):
         print('Library directories:', settings['library_dirs'])
 
         if not no_cuda:
+            err = False
             if not check_library(compiler,
                                  includes=module['include'],
                                  include_dirs=settings['include_dirs']):
@@ -228,20 +229,21 @@ def make_extensions(options, compiler, use_cython):
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
                     'Check your CFLAGS environment variable')
-                continue
-
-            if not check_library(compiler,
-                                 libraries=module['libraries'],
-                                 library_dirs=settings['library_dirs']):
+                err = True
+            elif not check_library(compiler,
+                                   libraries=module['libraries'],
+                                   library_dirs=settings['library_dirs']):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
                     'Check your LDFLAGS environment variable')
-                continue
+                err = True
+            elif('check_method' in module and
+                 not module['check_method'](compiler, settings)):
+                err = True
 
-            if 'check_method' in module and \
-               not module['check_method'](compiler, settings):
-                continue
+            if module['name'] == 'cuda' and err:
+                raise Exception('Please check above error log.')
 
         s = settings.copy()
         if not no_cuda:
