@@ -11,6 +11,9 @@ CuPy's ufunc supports following features of NumPy's one:
 CuPy's ufunc currently does not provide methods such as ``reduce``, ``accumulate``, ``reduceat``, ``outer``, and ``at``.
 
 
+.. contents:: :local:
+
+
 Ufunc class
 -----------
 
@@ -24,7 +27,7 @@ Available ufuncs
 Math operations
 ~~~~~~~~~~~~~~~
 
-.. module:: cupy
+.. currentmodule:: cupy
 
 :data:`add`
 :data:`subtract`

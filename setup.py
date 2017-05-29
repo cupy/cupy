@@ -21,13 +21,13 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
 
 setup_requires = []
 install_requires = [
-    'filelock',
     'nose',
     'numpy>=1.9.0',
     'six>=1.9.0',
 ]
 
 ext_modules = cupy_setup_build.get_ext_modules()
+build_ext = cupy_setup_build.custom_build_ext
 
 setup(
     name='cupy',
@@ -64,4 +64,5 @@ setup(
     tests_require=['mock',
                    'nose'],
     ext_modules=ext_modules,
+    cmdclass={'build_ext': build_ext},
 )

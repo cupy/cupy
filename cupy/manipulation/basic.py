@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from cupy import core
 
@@ -21,10 +22,25 @@ def copyto(dst, src, casting='same_kind', where=None):
     .. seealso:: :func:`numpy.copyto`
 
     """
-    if not numpy.can_cast(src.dtype, dst.dtype, casting):
+
+    src_type = type(src)
+    src_is_python_scalar = (src_type in six.integer_types or
+                            src_type in (bool, float, complex))
+    if src_is_python_scalar:
+        src_dtype = numpy.dtype(type(src))
+        can_cast = numpy.can_cast(src, dst.dtype, casting)
+    else:
+        src_dtype = src.dtype
+        can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
+
+    if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
-                        (src.dtype, dst.dtype, casting))
+                        (src_dtype, dst.dtype, casting))
     if dst.size == 0:
+        return
+
+    if src_is_python_scalar:
+        dst.fill(src)
         return
 
     if where is None:

@@ -52,3 +52,18 @@ class TestBasic(unittest.TestCase):
             b = xp.empty((2, 3, 4), dtype=dtype)
         xp.copyto(b, a)
         return b
+
+
+@testing.parameterize(
+    *testing.product(
+        {'src': [float(3.2), int(0), int(4), int(-4), True, False],
+         'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
+@testing.gpu
+class TestCopytoFromScalar(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto(self, xp, dtype):
+        dst = xp.ones(self.dst_shape, dtype=dtype)
+        xp.copyto(dst, self.src)
+        return dst

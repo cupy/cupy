@@ -85,17 +85,13 @@ public:
     return *this;
   }
 
-  static __device__ float16 copysign(float16 x, float16 y) {
+  friend __device__ float16 copysign(float16 x, float16 y) {
     float16 ret;
     ret.data_ = (x.data_ & 0x7fffu) | (y.data_ & 0x8000u);
     return ret;
   }
 
-  static __device__ int eq_nonan(const float16 x, const float16 y) {
-    return (x.data_ == y.data_ || ((x.data_ | y.data_) & 0x7fff) == 0);
-  }
-
-  static __device__ float16 nextafter(float16 x, float16 y) {
+  friend __device__ float16 nextafter(float16 x, float16 y) {
     float16 ret;
     if (!x.isfinite() || y.isnan()) {
       ret.data_ = nan;
@@ -116,6 +112,11 @@ public:
     }
     return ret;
   }
+
+private:
+  static __device__ int eq_nonan(const float16 x, const float16 y) {
+    return (x.data_ == y.data_ || ((x.data_ | y.data_) & 0x7fff) == 0);
+  }
 };
 
 __device__ float16 min(float16 x, float16 y) {
@@ -129,9 +130,6 @@ __device__ int isnan(float16 x) {return x.isnan();}
 __device__ int isinf(float16 x) {return x.isinf();}
 __device__ int isfinite(float16 x) {return x.isfinite();}
 __device__ int signbit(float16 x) {return x.signbit();}
-__device__ float16 copysign(float16 x, float16 y) {return float16::copysign(x, y);}
-__device__ float16 nextafter(float16 x, float16 y) {return float16::nextafter(x, y);}
-
 
 // CArray
 #define CUPY_FOR(i, n) \
@@ -160,32 +158,26 @@ public:
     return strides_;
   }
 
-  __device__ T& operator[](const int* idx) {
-    char* ptr = reinterpret_cast<char*>(data_);
+  template <typename Int>
+  __device__ T& operator[](const Int (&idx)[ndim]) {
+    return const_cast<T&>(const_cast<const CArray&>(*this)[idx]);
+  }
+
+  template <typename Int>
+  __device__ const T& operator[](const Int (&idx)[ndim]) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
     }
-    return *reinterpret_cast<T*>(ptr);
-  }
-
-  __device__ T operator[](const int* idx) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[idx];
-  }
-
-  __device__ T& operator[](const ptrdiff_t* idx) {
-    char* ptr = reinterpret_cast<char*>(data_);
-    for (int dim = 0; dim < ndim; ++dim) {
-      ptr += strides_[dim] * idx[dim];
-    }
-    return *reinterpret_cast<T*>(ptr);
-  }
-
-  __device__ T operator[](const ptrdiff_t* idx) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[idx];
+    return reinterpret_cast<const T&>(*ptr);
   }
 
   __device__ T& operator[](ptrdiff_t i) {
-    char* ptr = reinterpret_cast<char*>(data_);
+    return const_cast<T&>(const_cast<const CArray&>(*this)[i]);
+  }
+
+  __device__ const T& operator[](ptrdiff_t i) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
       i /= shape_[dim];
@@ -194,11 +186,7 @@ public:
       ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
     }
 
-    return *reinterpret_cast<T*>(ptr);
-  }
-
-  __device__ T operator[](ptrdiff_t i) const {
-    return (*const_cast<CArray<T, ndim>*>(this))[i];
+    return reinterpret_cast<const T&>(*ptr);
   }
 };
 
@@ -221,28 +209,14 @@ public:
     return NULL;
   }
 
-  __device__ T& operator[](const int* idx) {
-    return *reinterpret_cast<T*>(data_);
+  template <typename U>
+  __device__ T& operator[](const U&) {
+    return *data_;
   }
 
-  __device__ T operator[](const int* idx) const {
-    return (*const_cast<CArray<T, 0>*>(this))[idx];
-  }
-
-  __device__ T& operator[](const ptrdiff_t* idx) {
-    return *reinterpret_cast<T*>(data_);
-  }
-
-  __device__ T operator[](const ptrdiff_t* idx) const {
-    return (*const_cast<CArray<T, 0>*>(this))[idx];
-  }
-
-  __device__ T& operator[](ptrdiff_t i) {
-    return *reinterpret_cast<T*>(data_);
-  }
-
-  __device__ T operator[](ptrdiff_t i) const {
-    return (*const_cast<CArray<T, 0>*>(this))[i];
+  template <typename U>
+  __device__ T operator[](const U&) const {
+    return *data_;
   }
 };
 
@@ -252,6 +226,8 @@ private:
   ptrdiff_t size_;
   ptrdiff_t shape_[ndim];
   ptrdiff_t index_[ndim];
+
+  typedef ptrdiff_t index_t[ndim];
 
 public:
   __device__ ptrdiff_t size() const {
@@ -284,7 +260,7 @@ public:
     }
   }
 
-  __device__ const ptrdiff_t* get() const {
+  __device__ const index_t& get() const {
     return index_;
   }
 };
