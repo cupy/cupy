@@ -707,7 +707,51 @@ cdef class ndarray:
                    'uninstalling it.')
             raise RuntimeError(msg)
 
-    # TODO(okuta): Implement argsort
+    def argsort(self):
+        """Return the indices that would sort an array with stable sorting
+
+        .. note::
+            For its implementation reason, ``ndarray.argsort`` currently
+            supports only arrays with their rank of one, and does not support
+            ``axis``, ``kind`` and ``order`` parameters that
+            ``numpy.ndarray.argsort`` supports.
+
+        .. seealso::
+            :func:`cupy.argsort` for full documentation,
+            :meth:`numpy.ndarray.argsort`
+
+        """
+
+        # TODO(takagi): Support axis argument.
+        # TODO(takagi): Support kind argument.
+
+        if self.ndim == 0:
+            msg = 'Sorting arrays with the rank of zero is not supported'
+            raise ValueError(msg)
+
+        # TODO(takagi): Support ranks of two or more
+        if self.ndim > 1:
+            msg = ('Sorting arrays with the rank of two or more is '
+                   'not supported')
+            raise ValueError(msg)
+
+        # Assuming that Py_ssize_t can be represented with numpy.int64.
+        assert cython.sizeof(Py_ssize_t) == 8
+
+        idx_array = ndarray(self.shape, dtype=numpy.int64)
+
+        # TODO(takagi(: Support float16 and bool
+        try:
+            thrust.argsort(
+                self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
+        except NameError:
+            msg = ('Thrust is needed to use cupy.argsort. Please install CUDA '
+                   'Toolkit with Thrust then reinstall CuPy after '
+                   'uninstalling it.')
+            raise RuntimeError(msg)
+
+        return idx_array
+
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
