@@ -391,25 +391,44 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState = mock.Mock()
         self.rs_dict = generator._random_states
         generator._random_states = {}
+        self.cupy_seed = os.getenv('CUPY_SEED')
         self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
         generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
+        if self.cupy_seed is None:
+            os.environ.pop('CUPY_SEED', None)
+        else:
+            os.environ['CUPY_SEED'] = self.cupy_seed
         if self.chainer_seed is None:
             os.environ.pop('CHAINER_SEED', None)
         else:
             os.environ['CHAINER_SEED'] = self.chainer_seed
 
-    def test_get_random_state_no_chainer_seed(self):
+    def test_get_random_state_no_cupy_no_chainer_seed(self):
+        os.environ.pop('CUPY_SEED', None)
         os.environ.pop('CHAINER_SEED', None)
         generator.get_random_state()
         generator.RandomState.assert_called_with(None)
 
-    def test_get_random_state_with_chainer_seed(self):
-        os.environ['CHAINER_SEED'] = '1'
+    def test_get_random_state_no_cupy_with_chainer_seed(self):
+        os.environ.pop('CUPY_SEED', None)
+        os.environ['CHAINER_SEED'] = '5'
         generator.get_random_state()
-        generator.RandomState.assert_called_with('1')
+        generator.RandomState.assert_called_with('5')
+
+    def test_get_random_state_with_cupy_no_chainer_seed(self):
+        os.environ['CUPY_SEED'] = '6'
+        os.environ.pop('CHAINER_SEED', None)
+        generator.get_random_state()
+        generator.RandomState.assert_called_with('6')
+
+    def test_get_random_state_with_cupy_with_chainer_seed(self):
+        os.environ['CUPY_SEED'] = '7'
+        os.environ['CHAINER_SEED'] = '8'
+        generator.get_random_state()
+        generator.RandomState.assert_called_with('7')
 
 
 class TestCheckAndGetDtype(unittest.TestCase):
