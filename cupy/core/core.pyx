@@ -703,7 +703,7 @@ cdef class ndarray:
             thrust.sort(self.dtype, self.data.ptr, self._shape[0])
         except NameError:
             msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall Chainer after '
+                   'Toolkit with Thrust then reinstall CuPy after '
                    'uninstalling it.')
             raise RuntimeError(msg)
 
