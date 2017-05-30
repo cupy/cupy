@@ -18,7 +18,7 @@ For example, a kernel that computes a squared difference :math:`f(x, y) = (x - y
 
 .. doctest::
 
-   >>> squared_diff = cupy.ElementwiseKernel(
+   >>> squared_diff = cp.ElementwiseKernel(
    ...    'float32 x, float32 y',
    ...    'float32 z',
    ...    'z = (x - y) * (x - y)',
@@ -35,8 +35,8 @@ The above kernel can be called on either scalars or arrays with broadcasting:
 
 .. doctest::
 
-   >>> x = cupy.arange(10, dtype=np.float32).reshape(2, 5)
-   >>> y = cupy.arange(5, dtype=np.float32)
+   >>> x = cp.arange(10, dtype=np.float32).reshape(2, 5)
+   >>> y = cp.arange(5, dtype=np.float32)
    >>> squared_diff(x, y)
    array([[  0.,   0.,   0.,   0.,   0.],
           [ 25.,  25.,  25.,  25.,  25.]], dtype=float32)
@@ -48,7 +48,7 @@ Output arguments can be explicitly specified (next to the input arguments):
 
 .. doctest::
 
-   >>> z = cupy.empty((2, 5), dtype=np.float32)
+   >>> z = cp.empty((2, 5), dtype=np.float32)
    >>> squared_diff(x, y, z)
    array([[  0.,   0.,   0.,   0.,   0.],
           [ 25.,  25.,  25.,  25.,  25.]], dtype=float32)
@@ -63,7 +63,7 @@ For example, the above ``squared_diff`` kernel can be made type-generic as follo
 
 .. doctest::
 
-   >>> squared_diff_generic = cupy.ElementwiseKernel(
+   >>> squared_diff_generic = cp.ElementwiseKernel(
    ...     'T x, T y',
    ...     'T z',
    ...     'z = (x - y) * (x - y)',
@@ -78,7 +78,7 @@ The type placeholder can be used in the loop body code:
 
 .. doctest::
 
-   >>> squared_diff_generic = cupy.ElementwiseKernel(
+   >>> squared_diff_generic = cp.ElementwiseKernel(
    ...     'T x, T y',
    ...     'T z',
    ...     '''
@@ -92,7 +92,7 @@ For example, the above kernel can be further made generic over multiple argument
 
 .. doctest::
 
-   >>> squared_diff_super_generic = cupy.ElementwiseKernel(
+   >>> squared_diff_super_generic = cp.ElementwiseKernel(
    ...     'X x, Y y',
    ...     'Z z',
    ...     'z = (x - y) * (x - y)',
@@ -117,7 +117,7 @@ For example, a kernel that adds two vectors with reversing one of them can be wr
 
 .. doctest::
 
-   >>> add_reverse = cupy.ElementwiseKernel(
+   >>> add_reverse = cp.ElementwiseKernel(
    ...     'T x, raw T y', 'T z',
    ...     'z = x + y[_ind.size() - i - 1]',
    ...     'add_reverse')
@@ -150,7 +150,7 @@ For example, L2 norm along specified axes can be written as follows:
 
 .. doctest::
 
-   >>> l2norm_kernel = cupy.ReductionKernel(
+   >>> l2norm_kernel = cp.ReductionKernel(
    ...     'T x',  # input params
    ...     'T y',  # output params
    ...     'x * x',  # map
@@ -159,7 +159,7 @@ For example, L2 norm along specified axes can be written as follows:
    ...     '0',  # identity value
    ...     'l2norm'  # kernel name
    ... )
-   >>> x = cupy.arange(10, dtype='f').reshape(2, 5)
+   >>> x = cp.arange(10, dtype='f').reshape(2, 5)
    >>> l2norm_kernel(x, axis=1)
    array([  5.47722578,  15.96871948], dtype=float32)
 
