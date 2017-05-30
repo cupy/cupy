@@ -1,5 +1,8 @@
 .. module:: cupy
 
+Custom kernels
+==============
+
 .. autoclass:: cupy.ElementwiseKernel
    :members:
 
