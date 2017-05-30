@@ -19,7 +19,7 @@ Bit packing
 .. autodata:: cupy.unpackbits
 
 
-Bit packing
------------
+Output formatting
+-----------------
 
 .. autodata:: cupy.binary_repr
