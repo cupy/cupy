@@ -209,6 +209,8 @@ def make_extensions(options, compiler, use_cython):
     # with GCC 5's new ABI.
     settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
+    # When the gcc version is new, memcpy cannot be found in string.h
+    # This is a workaround for Ubuntu 16.04 environment with CUDA 7.5
     settings['define_macros'].append(('_FORCE_INLINES', '1'))
 
     if options['linetrace']:
