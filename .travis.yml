@@ -48,16 +48,13 @@ before_install:
 install:
   - pip install -U pip wheel
   - pip install cython
-  - python setup.py sdist
-  - pip install dist/*.tar.gz
-  - pip install nose hacking mock
-  - pip install autopep8
+  - python setup.py sdist --cupy-no-cuda
+  - pip install nose hacking mock autopep8
 
 script:
   - flake8 --config=.flake8.cython
   - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - PYTHONWARNINGS='ignore::FutureWarning,module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
   - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
       READTHEDOCS=True python setup.py develop;
     fi
