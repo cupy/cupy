@@ -22,5 +22,5 @@ Decompositions
 Norms etc.
 ----------
 
-.. autofunction:: cupy.norm
+.. autofunction:: cupy.linalg.norm
 .. autofunction:: cupy.trace
