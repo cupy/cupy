@@ -209,6 +209,8 @@ def make_extensions(options, compiler, use_cython):
     # with GCC 5's new ABI.
     settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
+    settings['define_macros'].append(('_FORCE_INLINES', '1'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
