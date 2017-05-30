@@ -38,8 +38,8 @@ MODULES = [
             'cupy.util',
         ],
         'include': [
-            'cuda.h',
             'cublas_v2.h',
+            'cuda.h',
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
