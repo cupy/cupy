@@ -209,6 +209,14 @@ def make_extensions(options, compiler, use_cython):
     # with GCC 5's new ABI.
     settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
+    # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
+    # automatically deal with memcpy because string.h header file has
+    # been changed. This is a workaround for that environment.
+    # See details in the below discussions:
+    # https://github.com/BVLC/caffe/issues/4046
+    # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
+    settings['define_macros'].append(('_FORCE_INLINES', '1'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
