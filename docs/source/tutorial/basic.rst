@@ -13,11 +13,18 @@ Basics of cupy.ndarray
 ~~~~~~~~~~~~~~~~~~~~~~
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
+In the following code, cp is an abbreviation of cupy, as np is numpy as with customarily done:
+
+.. doctest::
+   >>> import numpy as np
+   >>> import cupy as cp
+
+
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
 
-.. testcode::
+.. doctest::
 
-   x_gpu = cp.array([1, 2, 3])
+   >>> x_gpu = cp.array([1, 2, 3])
 
 ``x_gpu`` in the above example is an instane of :class:`cupy.ndarray`.
 You can see its creation of identical to ``NumPy``'s one, except that ``numpy`` is replaced with ``cupy``.
@@ -29,17 +36,17 @@ Most of array manipulations are also do in the way similar to NumPy.
 Take the Euclid norm (a.k.a L2 norm) for example.
 NumPy has `numpy.lina.g.norm` to calculate it on CPU.
 
-.. testcode::
+.. doctest::
 
-   x_cpu = np.array([1, 2, 3])
-   l2_cpu = np.linalg.norm(x_cpu)
+   >>> x_cpu = np.array([1, 2, 3])
+   >>> l2_cpu = np.linalg.norm(x_cpu)
 
 We can calculate it on GPU with CuPy in a similar way:
 
-.. testcode::
+.. doctest::
 
-   x_gpu = cp.array([1, 2, 3])
-   l2_gpu = cp.linalg.norm(x_gpu)
+   >>> x_gpu = cp.array([1, 2, 3])
+   >>> l2_gpu = cp.linalg.norm(x_gpu)
 
 
 CuPy implements many functions on :class:`cupy.ndarray` objects.
