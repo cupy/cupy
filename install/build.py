@@ -103,7 +103,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA v6.5 or newer is required')
+            'CUDA v7.0 or newer is required')
         return False
 
     return True
