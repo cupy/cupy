@@ -29,5 +29,6 @@ Reference
    memoize
    kernel
    testing
+   prof
    environment
    difference
