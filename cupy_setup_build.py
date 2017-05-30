@@ -251,7 +251,7 @@ def make_extensions(options, compiler, use_cython):
                 err = True
 
             if err:
-                if module['name']:
+                if module['name'] == 'cuda':
                     raise Exception('Your CUDA environment is invalid. '
                                     'Please check above error log.')
                 else:
