@@ -15,7 +15,6 @@ def setup_random(numpy_seed=None, cupy_seed=None):
     Args:
          numpy_seed(int or None): Seed to initialize ``numpy.random``. If
          ``None``, predetermined constant value is used.
-    Args:
          cupy_seed(int or None): Seed to initialize ``cupy.random``. If
          ``None``, predetermined constant value is used.
     """
@@ -27,7 +26,7 @@ def setup_random(numpy_seed=None, cupy_seed=None):
 
 
 def teardown_random():
-    """Tears down the deterministic random state.
+    """Tears down the deterministic random states set up by ``setup_random``.
     """
     global _nest_count
     assert _nest_count > 0
