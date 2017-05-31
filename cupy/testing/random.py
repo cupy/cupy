@@ -34,6 +34,7 @@ def setup_random(numpy_seed=None, cupy_seed=None):
 
 def teardown_random():
     """Tears down the deterministic random states set up by ``setup_random``.
+
     """
     global _nest_count
     assert _nest_count > 0
