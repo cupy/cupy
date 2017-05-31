@@ -26,7 +26,7 @@ The :class:`cupy.ndarray` class is in its core, which is a compatible GPU altern
 
    >>> x_gpu = cp.array([1, 2, 3])
 
-``x_gpu`` in the above example is an instane of :class:`cupy.ndarray`.
+``x_gpu`` in the above example is an instance of :class:`cupy.ndarray`.
 You can see its creation of identical to ``NumPy``'s one, except that ``numpy`` is replaced with ``cupy``.
 The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that the content is allocated on the device memory.
 Its data is allocated on the *current device*, which will be explained later.
