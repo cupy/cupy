@@ -1,3 +1,4 @@
+import atexit
 import numpy
 
 import cupy
@@ -7,6 +8,12 @@ import cupy
 # setUp/tearDown is nested. setup_random() and teardown_random() do their
 # work only in the outermost setUp/tearDown pair.
 _nest_count = 0
+
+
+@atexit.register
+def _check_teardown():
+    assert _nest_count == 0, ('setup_random() and teardown_random() '
+                              'must be called in pair.')
 
 
 def setup_random(numpy_seed=None, cupy_seed=None):
