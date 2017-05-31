@@ -2,6 +2,7 @@ import atexit
 import binascii
 import operator
 import os
+import threading
 import time
 
 import numpy
@@ -11,6 +12,9 @@ import cupy
 from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
+
+
+_lock = threading.Lock()
 
 
 class RandomState(object):
@@ -326,7 +330,8 @@ _random_states = {}
 @atexit.register
 def reset_states():
     global _random_states
-    _random_states = {}
+    with _lock:
+        _random_states = {}
 
 
 def get_random_state():
@@ -341,15 +346,15 @@ def get_random_state():
         device.
 
     """
-    global _random_states
     dev = cuda.Device()
-    rs = _random_states.get(dev.id, None)
-    if rs is None:
-        seed = os.getenv('CUPY_SEED')
-        if seed is None:
-            seed = os.getenv('CHAINER_SEED')
-        rs = RandomState(seed)
-        _random_states[dev.id] = rs
+    with _lock:
+        rs = _random_states.get(dev.id, None)
+        if rs is None:
+            seed = os.getenv('CUPY_SEED')
+            if seed is None:
+                seed = os.getenv('CHAINER_SEED')
+            rs = RandomState(seed)
+            _random_states[dev.id] = rs
     return rs
 
 
