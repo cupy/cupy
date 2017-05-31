@@ -4,6 +4,7 @@ import unittest
 import numpy
 import six
 
+import cupy
 from cupy import cuda
 from cupy import random
 from cupy import testing
@@ -248,3 +249,33 @@ class TestRandomSample(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             random.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.gpu
+class TestMultinomial(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @condition.retry(5)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_size_none(self, xp, dtype):
+        pvals = xp.array([0.2, 0.3, 0.5], dtype)
+        x = xp.random.multinomial(10000, pvals)
+        return x / 10000
+
+    @condition.retry(5)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_size_int(self, xp, dtype):
+        pvals = xp.array([0.2, 0.3, 0.5], dtype)
+        x = xp.random.multinomial(10000, pvals, 4)
+        return x / 10000
+
+    @condition.retry(5)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_size_tuple(self, xp, dtype):
+        pvals = xp.array([0.2, 0.3, 0.5], dtype)
+        x = xp.random.multinomial(10000, pvals, (2, 1))
+        return x / 10000
