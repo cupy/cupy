@@ -282,7 +282,7 @@ class RandomState(object):
 
         if p is not None:
             p = cupy.broadcast_to(p, (size, a_size))
-            index = cupy.argmax(cupy.log(p) -
+            index = cupy.argmax(cupy.log(p) +
                                 cupy.random.gumbel(size=(size, a_size)),
                                 axis=1)
             if not isinstance(shape, six.integer_types):
