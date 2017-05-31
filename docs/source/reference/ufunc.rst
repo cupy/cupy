@@ -11,14 +11,14 @@ CuPy's ufunc supports following features of NumPy's one:
 CuPy's ufunc currently does not provide methods such as ``reduce``, ``accumulate``, ``reduceat``, ``outer``, and ``at``.
 
 
-.. contents:: :local:
-
-
 Ufunc class
 -----------
 
-.. autoclass:: cupy.ufunc
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.ufunc
 
 
 Available ufuncs
@@ -27,99 +27,121 @@ Available ufuncs
 Math operations
 ~~~~~~~~~~~~~~~
 
-.. currentmodule:: cupy
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-:data:`add`
-:data:`subtract`
-:data:`multiply`
-:data:`divide`
-:data:`logaddexp`
-:data:`logaddexp2`
-:data:`true_divide`
-:data:`floor_divide`
-:data:`negative`
-:data:`power`
-:data:`remainder`
-:data:`mod`
-:data:`fmod`
-:data:`absolute`
-:data:`rint`
-:data:`sign`
-:data:`exp`
-:data:`exp2`
-:data:`log`
-:data:`log2`
-:data:`log10`
-:data:`expm1`
-:data:`log1p`
-:data:`sqrt`
-:data:`square`
-:data:`reciprocal`
+   cupy.add
+   cupy.subtract
+   cupy.multiply
+   cupy.divide
+   cupy.logaddexp
+   cupy.logaddexp2
+   cupy.true_divide
+   cupy.floor_divide
+   cupy.negative
+   cupy.power
+   cupy.remainder
+   cupy.mod
+   cupy.fmod
+   cupy.absolute
+   cupy.rint
+   cupy.sign
+   cupy.exp
+   cupy.exp2
+   cupy.log
+   cupy.log2
+   cupy.log10
+   cupy.expm1
+   cupy.log1p
+   cupy.sqrt
+   cupy.square
+   cupy.reciprocal
+
 
 Trigonometric functions
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-:data:`sin`
-:data:`cos`
-:data:`tan`
-:data:`arcsin`
-:data:`arccos`
-:data:`arctan`
-:data:`arctan2`
-:data:`hypot`
-:data:`sinh`
-:data:`cosh`
-:data:`tanh`
-:data:`arcsinh`
-:data:`arccosh`
-:data:`arctanh`
-:data:`deg2rad`
-:data:`rad2deg`
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.sin
+   cupy.cos
+   cupy.tan
+   cupy.arcsin
+   cupy.arccos
+   cupy.arctan
+   cupy.arctan2
+   cupy.hypot
+   cupy.sinh
+   cupy.cosh
+   cupy.tanh
+   cupy.arcsinh
+   cupy.arccosh
+   cupy.arctanh
+   cupy.deg2rad
+   cupy.rad2deg
+
 
 Bit-twiddling functions
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-:data:`bitwise_and`
-:data:`bitwise_or`
-:data:`bitwise_xor`
-:data:`invert`
-:data:`left_shift`
-:data:`right_shift`
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.bitwise_and
+   cupy.bitwise_or
+   cupy.bitwise_xor
+   cupy.invert
+   cupy.left_shift
+   cupy.right_shift
+
 
 Comparison functions
 ~~~~~~~~~~~~~~~~~~~~
 
-:data:`greater`
-:data:`greater_equal`
-:data:`less`
-:data:`less_equal`
-:data:`not_equal`
-:data:`equal`
-:data:`logical_and`
-:data:`logical_or`
-:data:`logical_xor`
-:data:`logical_not`
-:data:`maximum`
-:data:`minimum`
-:data:`fmax`
-:data:`fmin`
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.greater
+   cupy.greater_equal
+   cupy.less
+   cupy.less_equal
+   cupy.not_equal
+   cupy.equal
+   cupy.logical_and
+   cupy.logical_or
+   cupy.logical_xor
+   cupy.logical_not
+   cupy.maximum
+   cupy.minimum
+   cupy.fmax
+   cupy.fmin
+
 
 Floating point values
 ~~~~~~~~~~~~~~~~~~~~~
 
-:data:`isfinite`
-:data:`isinf`
-:data:`isnan`
-:data:`signbit`
-:data:`copysign`
-:data:`nextafter`
-:data:`modf`
-:data:`ldexp`
-:data:`frexp`
-:data:`fmod`
-:data:`floor`
-:data:`ceil`
-:data:`trunc`
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.isfinite
+   cupy.isinf
+   cupy.isnan
+   cupy.signbit
+   cupy.copysign
+   cupy.nextafter
+   cupy.modf
+   cupy.ldexp
+   cupy.frexp
+   cupy.fmod
+   cupy.floor
+   cupy.ceil
+   cupy.trunc
 
 
 ufunc.at

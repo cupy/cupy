@@ -4,5 +4,9 @@ Profiling
 time range
 ----------
 
-.. autofunction:: cupy.prof.TimeRangeDecorator
-.. autofunction:: cupy.prof.time_range
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.prof.TimeRangeDecorator
+   cupy.prof.time_range

@@ -1,8 +1,10 @@
 Multi-Dimensional Array (ndarray)
 =================================
 
-.. autoclass:: cupy.ndarray
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-.. autofunction:: cupy.asnumpy
-.. autofunction:: cupy.get_array_module
+   cupy.ndarray
+   cupy.asnumpy
+   cupy.get_array_module

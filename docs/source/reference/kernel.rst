@@ -1,10 +1,9 @@
-.. module:: cupy
-
 Custom kernels
 ==============
 
-.. autoclass:: cupy.ElementwiseKernel
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-.. autoclass:: cupy.ReductionKernel
-   :members:
+   cupy.ElementwiseKernel
+   cupy.ReductionKernel

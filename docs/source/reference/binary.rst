@@ -4,22 +4,34 @@ Binary Operations
 Elementwise bit operations
 --------------------------
 
-.. autodata:: cupy.bitwise_and
-.. autodata:: cupy.bitwise_or
-.. autodata:: cupy.bitwise_xor
-.. autodata:: cupy.invert
-.. autodata:: cupy.left_shift
-.. autodata:: cupy.right_shift
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.bitwise_and
+   cupy.bitwise_or
+   cupy.bitwise_xor
+   cupy.invert
+   cupy.left_shift
+   cupy.right_shift
 
 
 Bit packing
 -----------
 
-.. autodata:: cupy.packbits
-.. autodata:: cupy.unpackbits
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.packbits
+   cupy.unpackbits
 
 
 Output formatting
 -----------------
 
-.. autodata:: cupy.binary_repr
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.binary_repr
