@@ -2,6 +2,7 @@ from cupy.testing import array
 from cupy.testing import attr
 from cupy.testing import helper
 from cupy.testing import parameterized
+from cupy.testing import random
 
 assert_allclose = array.assert_allclose
 assert_array_almost_equal = array.assert_array_almost_equal
@@ -49,3 +50,7 @@ NumpyError = helper.NumpyError
 gpu = attr.gpu
 multi_gpu = attr.multi_gpu
 slow = attr.slow
+
+setup_random = random.setup_random
+teardown_random = random.teardown_random
+get_random_state = random.get_random_state

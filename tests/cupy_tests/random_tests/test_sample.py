@@ -51,11 +51,10 @@ class TestRandint(unittest.TestCase):
 class TestRandint2(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = random.generator._random_states
-        random.generator._random_states = {}
+        testing.setup_random()
 
     def tearDown(self):
-        random.generator._random_states = self.rs_tmp
+        testing.teardown_random()
 
     @condition.repeat(10)
     def test_within_interval(self):
@@ -124,11 +123,10 @@ class TestRandomIntegers2(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        self.rs_tmp = random.generator._random_states
-        random.generator._random_states = {}
+        testing.setup_random()
 
     def tearDown(self):
-        random.generator._random_states = self.rs_tmp
+        testing.teardown_random()
 
     @condition.repeat(10)
     def test_within_interval(self):

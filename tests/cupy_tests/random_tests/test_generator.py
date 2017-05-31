@@ -195,7 +195,11 @@ class TestRandAndRandN(unittest.TestCase):
 class TestInterval(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        testing.setup_random()
+        self.rs = cupy.random.get_random_state()
+
+    def tearDown(self):
+        testing.teardown_random()
 
     def test_zero(self):
         numpy.testing.assert_array_equal(
@@ -266,7 +270,11 @@ class TestInterval(unittest.TestCase):
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        testing.setup_random()
+        self.rs = cupy.random.get_random_state()
+
+    def tearDown(self):
+        testing.teardown_random()
 
     def test_dtype_shape(self):
         v = self.rs.choice(a=self.a, size=self.size, p=self.p)
@@ -310,7 +318,11 @@ class TestChoice(unittest.TestCase):
 class TestChoiceChi(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        testing.setup_random()
+        self.rs = cupy.random.get_random_state()
+
+    def tearDown(self):
+        testing.teardown_random()
 
     @condition.retry(5)
     def test_goodness_of_fit(self):
