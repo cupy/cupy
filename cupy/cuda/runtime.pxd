@@ -30,6 +30,10 @@ cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 
+    cudaMemAttachGlobal = 1
+    cudaMemAttachHost = 2
+    cudaMemAttachSingle = 4
+
     hostAllocDefault = 0
     hostAllocPortable = 1
     hostAllocMapped = 2

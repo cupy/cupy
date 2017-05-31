@@ -10,8 +10,11 @@ import six
 
 from cupy.cuda import runtime
 
-from cupy.cuda cimport device
+from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport runtime
+
+
+_cuda_version = runtime.runtimeGetVersion()
 
 
 cdef class Memory:
@@ -31,7 +34,7 @@ cdef class Memory:
         self.device = None
         self.ptr = 0
         if size > 0:
-            self.device = device.Device()
+            self.device = device_mod.Device()
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
@@ -41,6 +44,52 @@ cdef class Memory:
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr
+
+cdef class ManagedMemory(Memory):
+
+    """Memory allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA memory allocation.
+
+    Args:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        size (int): Size of the memory allocation in bytes.
+
+    """
+
+    def __init__(self, Py_ssize_t size):
+        self.size = size
+        self.device = None
+        self.ptr = 0
+        if size > 0:
+            self.device = device_mod.Device()
+            self.ptr = runtime.mallocManaged(size)
+
+    cpdef prefetch(self, stream):
+        """ Prefetch.
+
+        Args:
+            stream (cupy.cuda.Stream): Stream
+
+        """
+        #if _memory_options_enableprefetch <= 0:
+        #    return
+        if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
+            runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+                                     stream.ptr)
+        if _memory_options_memtrace:
+            print "MEMTRACE: PREFETCH", self.size, "%#x" % self.ptr
+
+    cpdef advise(self, int advise, device_mod.Device device):
+        """ Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            device (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
+            runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
 cdef set _peer_access_checked = set()
@@ -83,7 +132,6 @@ cdef class MemoryPointer:
     """
 
     def __init__(self, mem, Py_ssize_t offset):
-        assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
         self.ptr = mem.ptr + offset
@@ -102,13 +150,11 @@ cdef class MemoryPointer:
         else:
             self = <MemoryPointer?>y
             offset = <Py_ssize_t?>x
-        assert self.ptr > 0 or offset == 0
         return MemoryPointer(self.mem,
                              self.ptr - self.mem.ptr + offset)
 
     def __iadd__(self, Py_ssize_t offset):
         """Adds an offset to the pointer in place."""
-        assert self.ptr > 0 or offset == 0
         self.ptr += offset
         return self
 
@@ -265,7 +311,18 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
     return MemoryPointer(mem, 0)
 
 
+cpdef MemoryPointer _mallocManaged(Py_ssize_t size):
+    cdef ManagedMemory mem
+    mem = ManagedMemory(size)
+    # mem.advise(runtime.cudaMemAdviseSetPreferredLocation, mem.device)
+    # mem.prefetch(stream.Stream.null)
+    return MemoryPointer(mem, 0)
+
+
 cdef object _current_allocator = _malloc
+cdef int _current_usesize = 0
+cdef int _current_poolsize = 0
+cdef object _memory_options_memtrace = False
 
 
 cpdef MemoryPointer alloc(Py_ssize_t size):
@@ -295,6 +352,13 @@ cpdef set_allocator(allocator=_malloc):
     """
     global _current_allocator
     _current_allocator = allocator
+
+
+cpdef set_options(memtrace=False):
+    """Set memory trace option
+    """
+    global _memory_options_memtrace
+    _memory_options_memtrace = memtrace
 
 
 cdef class PooledMemory(Memory):
@@ -336,6 +400,8 @@ cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device."""
 
     def __init__(self, allocator=_malloc):
+        if _memory_options_memtrace:
+            print "MEMTRACE: INIT"
         self._in_use = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
@@ -345,6 +411,8 @@ cdef class SingleDeviceMemoryPool:
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
         cdef Memory mem
+        global _current_usesize
+        global _current_poolsize
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
@@ -355,33 +423,60 @@ cdef class SingleDeviceMemoryPool:
         free = self._free[size]
         if free:
             mem = free.pop()
+            if _memory_options_memtrace:
+                print "MEMTRACE: ALLOC POOL", size, "%#x" % mem.ptr
+                _current_usesize += size / unit
+                _current_poolsize -= size /unit
         else:
             try:
                 mem = self._alloc(size).mem
+                if _memory_options_memtrace:
+                    print "MEMTRACE: ALLOC REAL", size, "%#x" % mem.ptr
+                    _current_usesize += size / unit
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 self.free_all_free()
+                if _memory_options_memtrace:
+                    print "MEMTRACE: ALLFREE", size
+                    _current_poolsize = 0
                 try:
                     mem = self._alloc(size).mem
+                    if _memory_options_memtrace:
+                        print "MEMTRACE: ALLOC REAL", size, "%#x" % mem.ptr
+                        _current_usesize += size / unit
                 except runtime.CUDARuntimeError as e:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
                     gc.collect()
+                    if _memory_options_memtrace:
+                        print "MEMTRACE: GC", size
                     mem = self._alloc(size).mem
+                    if _memory_options_memtrace:
+                        print "MEMTRACE: ALLOC REAL", size, "%#x" % mem.ptr
+                        _current_usesize += size / unit
 
         self._in_use[mem.ptr] = mem
         pmem = PooledMemory(mem, self._weakref)
+        if _memory_options_memtrace:
+            print "MEMSTATE: ALLOC(UNIT)", _current_usesize, _current_poolsize
         return MemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef list free
         cdef Memory mem
+        global _current_usesize
+        global _current_poolsize
         mem = self._in_use.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
         free = self._free[size]
         free.append(mem)
+        if _memory_options_memtrace:
+            print "MEMTRACE: FREE POOL", size, "%#x" % mem.ptr
+            _current_usesize -= size / self._allocation_unit_size
+            _current_poolsize += size / self._allocation_unit_size
+            print "MEMSTATE: FREE(UNIT)", _current_usesize, _current_poolsize
 
     cpdef free_all_blocks(self):
         self._free = collections.defaultdict(list)
@@ -446,12 +541,12 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        dev = device.get_device_id()
+        dev = device_mod.get_device_id()
         return self._pools[dev].malloc(size)
 
     cpdef free_all_blocks(self):
         """Release free blocks."""
-        dev = device.get_device_id()
+        dev = device_mod.get_device_id()
         self._pools[dev].free_all_blocks()
 
     cpdef free_all_free(self):
@@ -467,5 +562,5 @@ cdef class MemoryPool(object):
         Returns:
             int: The total number of free blocks.
         """
-        dev = device.get_device_id()
+        dev = device_mod.get_device_id()
         return self._pools[dev].n_free_blocks()
