@@ -329,6 +329,20 @@ class TestChoiceChi(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.gpu
+class TestChoiceMultinomial(unittest.TestCase):
+
+    @condition.retry(5)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.01)
+    def test_choice_multinomial(self, xp, dtype):
+        p = xp.array([0.2, 0.3, 0.5], dtype)
+        trial = 10000
+        x = xp.random.choice(len(p), trial, p=p)
+        y = xp.bincount(x) / trial
+        return y
+
+
 @testing.parameterize(
     {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
