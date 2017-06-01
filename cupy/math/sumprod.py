@@ -49,9 +49,6 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 # TODO(okuta): Implement nansum
 
 
-# TODO(okuta): Implement cumprod
-
-
 def _axis_to_first(x, axis):
     if axis < 0:
         axis = x.ndim + axis
@@ -140,6 +137,84 @@ def cumsum(a, axis=None, dtype=None, out=None):
         }
         ''',
         'cumsum_kernel'
+    )
+
+    pos = 1
+    while pos < out.size:
+        kern(pos, out, size=out.size)
+        pos <<= 1
+    return out
+
+
+def _cumprod_batch(out):
+    kern = core.ElementwiseKernel(
+        'int32 pos, int32 batch', 'raw T x',
+        '''
+        int b = i % batch;
+        int j = i / batch;
+        if (j & pos) {
+          const int dst_index[] = {b, j};
+          const int src_index[] = {b, j ^ pos | (pos - 1)};
+          x[dst_index] *= x[src_index];
+        }
+        ''',
+        'cumprod_batch_kernel'
+    )
+
+    pos = 1
+    while pos < out.size:
+        kern(pos, out.shape[0], out, size=out.size)
+        pos <<= 1
+    return out
+
+
+def cumprod(a, axis=None, dtype=None, out=None):
+    """Returns the cumlative product of an array along a given axis.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumlative product is taken. If it is
+        not specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.cumprod`
+
+    """
+    if out is None:
+        if dtype is None:
+            kind = a.dtype.kind
+            if kind == 'b':
+                dtype = numpy.dtype('l')
+            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
+                dtype = numpy.dtype('l')
+            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
+                dtype = numpy.dtype('L')
+            else:
+                dtype = a.dtype
+
+        out = a.astype(dtype)
+    else:
+        out[...] = a
+
+    if axis is None:
+        out = out.ravel()
+    elif not (-a.ndim <= axis < a.ndim):
+        raise ValueError('axis(={}) out of bounds'.format(axis))
+    else:
+        return _proc_as_batch(_cumprod_batch, out, axis=axis)
+
+    kern = core.ElementwiseKernel(
+        'int32 pos', 'raw T x',
+        '''
+        if (i & pos) {
+          x[i] *= x[i ^ pos | (pos - 1)];
+        }
+        ''',
+        'cumprod_kernel'
     )
 
     pos = 1
