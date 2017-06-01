@@ -339,7 +339,7 @@ class TestChoiceMultinomial(unittest.TestCase):
         p = xp.array([0.2, 0.3, 0.5], dtype)
         trial = 10000
         x = xp.random.choice(len(p), trial, p=p)
-        y = xp.bincount(x) / trial
+        y = xp.bincount(x).astype('f') / trial
         return y
 
 
