@@ -3,7 +3,6 @@ import contextlib
 import time
 
 import numpy as np
-from scipy.sparse.linalg import cg
 import six
 
 import cupy
