@@ -344,6 +344,12 @@ class TestChoiceChi(unittest.TestCase):
 @testing.gpu
 class TestChoiceMultinomial(unittest.TestCase):
 
+    def setUp(self):
+        testing.setup_random()
+
+    def tearDown(self):
+        testing.teardown_random()
+
     @condition.retry(5)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=0.01)
