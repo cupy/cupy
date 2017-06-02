@@ -27,7 +27,7 @@ MODULES = [
             'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
-            'cupy.cuda.cusolver',
+            'cupy.cuda.cusparse',
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
