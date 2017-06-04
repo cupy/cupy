@@ -57,3 +57,25 @@ class TestNorm(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
             return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+
+
+@testing.parameterize(*testing.product({
+    'array': [
+        [[1, 2], [3, 4]],
+        [[1, 2], [1, 2]],
+        [[0, 0], [0, 0]],
+        [1, 2],
+        [0, 1],
+        [0, 0],
+    ],
+    'tol': [None, 1]
+}))
+class TestMatrixRank(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_norm(self, xp, dtype):
+        a = xp.array(self.array, dtype=dtype)
+        return xp.array(xp.linalg.matrix_rank(a, tol=self.tol))
