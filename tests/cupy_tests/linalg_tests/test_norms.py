@@ -90,3 +90,42 @@ class TestMatrixRank(unittest.TestCase):
             self.assertEqual(y.dtype, 'l')
             self.assertEqual(y.shape, ())
         return xp.array(y)
+
+
+class TestSlogdet(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet(self, xp, dtype):
+        a = testing.shaped_arange((2, 2), xp, dtype) + 1
+        sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet_3(self, xp, dtype):
+        a = testing.shaped_arange((2, 2, 2), xp, dtype) + 1
+        sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet_4(self, xp, dtype):
+        a = testing.shaped_arange((2, 2, 2, 2), xp, dtype) + 1
+        sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet_fail(self, xp, dtype):
+        a = xp.zeros((3, 3), dtype)
+        sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.numpy_cupy_raises(numpy.linalg.LinAlgError)
+    def test_slogdet_one_dim(self, xp, dtype):
+        a = testing.shaped_arange((2,), xp, dtype)
+        xp.linalg.slogdet(a)
+

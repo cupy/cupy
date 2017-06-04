@@ -7,6 +7,7 @@ from cupy.linalg import eigenvalue  # NOQA
 from cupy.linalg import norms  # NOQA
 from cupy.linalg.norms import matrix_rank  # NOQA
 from cupy.linalg.norms import norm  # NOQA
+from cupy.linalg.norms import slogdet  # NOQA
 from cupy.linalg import product  # NOQA
 from cupy.linalg import solve  # NOQA
 
