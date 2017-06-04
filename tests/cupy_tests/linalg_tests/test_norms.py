@@ -92,6 +92,9 @@ class TestMatrixRank(unittest.TestCase):
         return xp.array(y)
 
 
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestSlogdet(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -128,4 +131,3 @@ class TestSlogdet(unittest.TestCase):
     def test_slogdet_one_dim(self, xp, dtype):
         a = testing.shaped_arange((2,), xp, dtype)
         xp.linalg.slogdet(a)
-
