@@ -125,7 +125,19 @@ def norm(x, ord=None, axis=None, keepdims=False):
 # TODO(okuta): Implement cond
 
 
-# TODO(okuta): Implement det
+def det(a):
+    """Retruns the deteminant of an array.
+
+    Args:
+        a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
+
+    Returns:
+        cupy.ndarray: Determinant of `a`. Its shape is `a.shape[:-2]`.
+
+    .. seealso:: :func:`numpy.linalg.det`
+    """
+    sign, logdet = slogdet(a)
+    return sign * cupy.exp(logdet)
 
 
 def matrix_rank(M, tol=None):
