@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+from cupy import cuda
 from cupy import testing
 
 
@@ -70,6 +71,9 @@ class TestNorm(unittest.TestCase):
     ],
     'tol': [None, 1]
 }))
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
     _multiprocess_can_split_ = True
