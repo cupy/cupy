@@ -1,6 +1,7 @@
 import mock
 import operator
 import os
+import threading
 import unittest
 
 import numpy
@@ -350,9 +351,9 @@ class TestChoiceMultinomial(unittest.TestCase):
     def tearDown(self):
         testing.teardown_random()
 
-    @condition.retry(5)
+    @condition.retry(10)
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.01)
+    @testing.numpy_cupy_allclose(atol=0.02)
     def test_choice_multinomial(self, xp, dtype):
         p = xp.array([0.2, 0.3, 0.5], dtype)
         trial = 10000
@@ -413,6 +414,35 @@ class TestGetRandomState(unittest.TestCase):
         self.assertEqual('expected', generator._random_states[self.device_id])
         self.assertEqual('dummy', generator._random_states[self.device_id + 1])
         self.assertEqual('expected', rs)
+
+
+@testing.gpu
+class TestGetRandomStateThreadSafe(unittest.TestCase):
+
+    def setUp(self):
+        cupy.random.reset_states()
+
+    def test_thread_safe(self):
+        seed = 10
+        threads = [
+            threading.Thread(target=lambda: cupy.random.seed(seed)),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        actual = cupy.random.uniform()
+        cupy.random.seed(seed)
+        expected = cupy.random.uniform()
+        self.assertEqual(actual, expected)
 
 
 @testing.gpu

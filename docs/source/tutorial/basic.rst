@@ -16,6 +16,7 @@ CuPy is a GPU array backend that implements a subset of NumPy interface.
 In the following code, cp is an abbreviation of cupy, as np is numpy as is customarily done:
 
 .. doctest::
+
    >>> import numpy as np
    >>> import cupy as cp
 
