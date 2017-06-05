@@ -21,4 +21,5 @@ Decompositions
 Norms etc.
 ----------
 
+.. autofunction:: cupy.linalg.matrix_rank
 .. autofunction:: cupy.trace
