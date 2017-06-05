@@ -333,9 +333,9 @@ class TestChoiceChi(unittest.TestCase):
 @testing.gpu
 class TestChoiceMultinomial(unittest.TestCase):
 
-    @condition.retry(5)
+    @condition.retry(10)
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.01)
+    @testing.numpy_cupy_allclose(atol=0.02)
     def test_choice_multinomial(self, xp, dtype):
         p = xp.array([0.5, 0.25, 0.125, 0.125], dtype)
         trial = 10000
