@@ -40,9 +40,8 @@ def fit(A, b, x0, tol, max_iter):
 def run(gpuid, tol, max_iter):
     N = 1000
     max_val = 100
-    tri1 = np.tri(N) * np.random.randint(max_val, size=(N, N))
-    tri2 = np.flipud(np.rot90(tri1))
-    A = (tri1 + tri2).astype(np.float32)
+    A = np.random.randint(max_val, size=(N, N), dtype=np.float32)
+    A = A + A.T
     b = np.random.randint(max_val, size=N).astype(np.float32)
     x0 = np.zeros(N, dtype=np.float32)
     print('b =')
