@@ -79,7 +79,7 @@ class TestMatrixRank(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_array_equal()
     def test_norm(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
         return xp.array(xp.linalg.matrix_rank(a, tol=self.tol))
