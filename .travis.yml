@@ -19,6 +19,6 @@ script:
   - flake8 --config=.flake8.cython
   - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - READTHEDOCS=True python setup.py develop;
+  - READTHEDOCS=True python setup.py develop
 
 sudo: false
