@@ -271,7 +271,7 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 args.append('/openmp')
 
-        if module['name'] == 'thrust':
+        if not no_cuda and module['name'] == 'thrust':
             if build.get_nvcc_path() is None:
                 utils.print_warning(
                     'Cannot find nvcc in PATH.',
