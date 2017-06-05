@@ -1,6 +1,7 @@
 import mock
 import operator
 import os
+import threading
 import unittest
 
 import numpy
@@ -395,6 +396,35 @@ class TestGetRandomState(unittest.TestCase):
         self.assertEqual('expected', generator._random_states[self.device_id])
         self.assertEqual('dummy', generator._random_states[self.device_id + 1])
         self.assertEqual('expected', rs)
+
+
+@testing.gpu
+class TestGetRandomStateThreadSafe(unittest.TestCase):
+
+    def setUp(self):
+        cupy.random.reset_states()
+
+    def test_thread_safe(self):
+        seed = 10
+        threads = [
+            threading.Thread(target=lambda: cupy.random.seed(seed)),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        actual = cupy.random.uniform()
+        cupy.random.seed(seed)
+        expected = cupy.random.uniform()
+        self.assertEqual(actual, expected)
 
 
 @testing.gpu
