@@ -22,4 +22,5 @@ Norms etc.
 ----------
 
 .. autofunction:: cupy.linalg.matrix_rank
+.. autofunction:: cupy.linalg.slogdet
 .. autofunction:: cupy.trace
