@@ -49,7 +49,7 @@ install:
   - pip install -U pip wheel
   - pip install cython
   - python setup.py sdist --cupy-no-cuda
-  - pip install nose hacking mock autopep8
+  - pip install autopep8 hacking
 
 script:
   - flake8 --config=.flake8.cython
