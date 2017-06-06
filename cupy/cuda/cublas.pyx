@@ -320,23 +320,23 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
 # BLAS Level 3
 ###############################################################################
 
-cpdef sgemm(size_t handle, int transa, int transb,
-            int m, int n, int k, float alpha, size_t A, int lda,
-            size_t B, int ldb, float beta, size_t C, int ldc):
+cpdef sgemm(size_t handle, long long transa, long long transb,
+            long long m, long long n, long long k, float alpha, size_t A, long long lda,
+            size_t B, long long ldb, float beta, size_t C, long long ldc):
     with nogil:
         status = cublasSgemm(
-            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
+            &alpha, <float*>A, <int>lda, <float*>B, <int>ldb, &beta, <float*>C, <int>ldc)
     check_status(status)
 
 
-cpdef dgemm(size_t handle, int transa, int transb,
-            int m, int n, int k, double alpha, size_t A, int lda,
-            size_t B, int ldb, double beta, size_t C, int ldc):
+cpdef dgemm(size_t handle, long long transa, long long transb,
+            long long m, long long n, long long k, double alpha, size_t A, long long lda,
+            size_t B, long long ldb, double beta, size_t C, long long ldc):
     with nogil:
         status = cublasDgemm(
-            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
+            &alpha, <double*>A, <int>lda, <double*>B, <int>ldb, &beta, <double*>C, <int>ldc)
     check_status(status)
 
 
@@ -399,16 +399,16 @@ cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
 
 
 cpdef sgemmEx(
-        size_t handle, int transa, int transb, int m, int n, int k,
-        float alpha, size_t A, int Atype, int lda, size_t B,
-        int Btype, int ldb, float beta, size_t C, int Ctype,
-        int ldc):
+        size_t handle, long long transa, long long transb, long long m, long long n, long long k,
+        float alpha, size_t A, int Atype, long long lda, size_t B,
+        int Btype, long long ldb, float beta, size_t C, int Ctype,
+        long long ldc):
     with nogil:
         status = cublasSgemmEx(
-            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb, &beta, <void*>C,
-            <runtime.DataType>Ctype, ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
+            &alpha, <const void*>A, <runtime.DataType>Atype, <int>lda,
+            <const void*>B, <runtime.DataType>Btype, <int>ldb, &beta, <void*>C,
+            <runtime.DataType>Ctype, <int>ldc)
     check_status(status)
 
 

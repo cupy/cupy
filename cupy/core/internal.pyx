@@ -90,7 +90,8 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         bint is_c_contiguous) except *:
     cdef vector.vector[Py_ssize_t] strides
     cdef Py_ssize_t st, sh
-    cdef int i, idx
+    cdef int i
+    cdef long long idx
     strides.resize(shape.size(), 0)
     st = itemsize
 
