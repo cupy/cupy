@@ -16,3 +16,20 @@
 .rst-content .note {
     background-color: #e3e3e3 !important;
 }
+
+
+/* code style */
+.rst-content table.longtable.docutils code {
+    font-size: 100% !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.rst-content a.reference code {
+    color: #3399cc !important;
+}
+
+.rst-content a.reference code:hover {
+    text-decoration: underline !important;
+    color: #3366cc !important;
+}
