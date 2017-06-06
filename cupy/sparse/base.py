@@ -307,6 +307,7 @@ class spmatrix(object):
 def issparse(x):
     return isinstance(x, spmatrix)
 
+
 isspmatrix = issparse
 
 
