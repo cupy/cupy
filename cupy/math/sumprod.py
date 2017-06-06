@@ -94,6 +94,21 @@ def _cumsum_batch(out):
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
+    """Returns the cumlative sum of an array along a given axis.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumlative sum is taken. If it is not
+        specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.cumsum`
+
+    """
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
