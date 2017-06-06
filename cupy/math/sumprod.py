@@ -91,11 +91,11 @@ def _cumsum_batch(out):
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
-    """Returns the cumlative sum of an array along a given axis.
+    """Returns the cumulative sum of an array along a given axis.
 
     Args:
         a (cupy.ndarray): Input array.
-        axis (int): Axis along which the cumlative sum is taken. If it is not
+        axis (int): Axis along which the cumulative sum is taken. If it is not
         specified, the input is flattened.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
@@ -169,11 +169,11 @@ def _cumprod_batch(out):
 
 
 def cumprod(a, axis=None, dtype=None, out=None):
-    """Returns the cumlative product of an array along a given axis.
+    """Returns the cumulative product of an array along a given axis.
 
     Args:
         a (cupy.ndarray): Input array.
-        axis (int): Axis along which the cumlative product is taken. If it is
+        axis (int): Axis along which the cumulative product is taken. If it is
         not specified, the input is flattened.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
