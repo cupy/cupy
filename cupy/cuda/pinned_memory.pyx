@@ -259,7 +259,7 @@ cdef class PinnedMemoryPool:
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
-        self._free = collections.defaultdict(list)
+        self._free.clear()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
