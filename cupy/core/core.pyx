@@ -342,38 +342,21 @@ cdef class ndarray:
         """Returns a copy of the array.
 
         Args:
-            order ({'C', 'F'}): Row-major (C-style) or column-major
-                (Fortran-style) order. This function currently does not
-                support order 'A' and 'K'.
+            order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+                (Fortran-style) order.
+                When `order` is 'A', it uses 'F' if `a` is column-major and
+                uses `C` otherwise.
+                And when `order` is 'K', it keeps strides as closely as
+                possible.
+                This function currently does not support order 'K'.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
            :meth:`numpy.ndarray.copy`
 
         """
-        cdef ndarray a, newarray
-        # TODO(beam2d): Support ordering option 'A' and 'K'
-        if order not in ['C', 'F']:
-            raise TypeError('order not understood')
+        return self.astype(self.dtype, copy=True, order=order)
 
-        if self.size == 0:
-            return ndarray(self.shape, self.dtype, order=order)
-
-        a = self
-        if order == 'C' and not self._c_contiguous:
-            with self.device:
-                a = ascontiguousarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-        elif order == 'F' and not self._f_contiguous:
-            with self.device:
-                a = asfortranarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-
-        newarray = ndarray(a.shape, a.dtype, order=order)
-        newarray.data.copy_from_device(a.data, a.nbytes)
-        return newarray
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
