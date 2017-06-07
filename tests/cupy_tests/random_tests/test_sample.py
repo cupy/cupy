@@ -268,4 +268,5 @@ class TestMultinomial(unittest.TestCase):
     def test_multinomial(self, xp, dtype):
         pvals = xp.array([0.2, 0.3, 0.5], dtype)
         x = xp.random.multinomial(10000, pvals, self.size)
+        self.assertEqual(x.dtype, 'l')
         return x / 10000
