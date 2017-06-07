@@ -202,8 +202,12 @@ def multinomial(n, pvals, size=None):
             m *= x
 
     p = len(pvals)
-    xs = choice(p, p=pvals, size=n * m)
     shape = size + (p,)
+
+    if m == 0:
+        return basic.empty(shape, 'i')
+
+    xs = choice(p, p=pvals, size=n * m)
     ys = basic.zeros(shape, 'i')
     core.ElementwiseKernel(
         'int64 x, int32 p, int32 n', 'raw int32 ys',

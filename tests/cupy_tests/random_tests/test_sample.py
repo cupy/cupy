@@ -250,6 +250,13 @@ class TestRandomSample(unittest.TestCase):
             random.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.parameterize(
+    {'size': None},
+    {'size': ()},
+    {'size': 4},
+    {'size': (0,)},
+    {'size': (1, 0)},
+)
 @testing.gpu
 class TestMultinomial(unittest.TestCase):
 
@@ -258,23 +265,7 @@ class TestMultinomial(unittest.TestCase):
     @condition.retry(5)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=0.02)
-    def test_size_none(self, xp, dtype):
+    def test_multinomial(self, xp, dtype):
         pvals = xp.array([0.2, 0.3, 0.5], dtype)
-        x = xp.random.multinomial(10000, pvals)
-        return x / 10000
-
-    @condition.retry(5)
-    @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.02)
-    def test_size_int(self, xp, dtype):
-        pvals = xp.array([0.2, 0.3, 0.5], dtype)
-        x = xp.random.multinomial(10000, pvals, 4)
-        return x / 10000
-
-    @condition.retry(5)
-    @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.02)
-    def test_size_tuple(self, xp, dtype):
-        pvals = xp.array([0.2, 0.3, 0.5], dtype)
-        x = xp.random.multinomial(10000, pvals, (2, 1))
+        x = xp.random.multinomial(10000, pvals, self.size)
         return x / 10000
