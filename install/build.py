@@ -15,7 +15,7 @@ maximum_cudnn_version = 6999
 # provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
-_cuda_path = "NOT_INITIALIZED"
+_cuda_path = 'NOT_INITIALIZED'
 
 
 def get_cuda_path():
@@ -23,7 +23,7 @@ def get_cuda_path():
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
-    if _cuda_path is not "NOT_INITIALIZED":
+    if _cuda_path is not 'NOT_INITIALIZED':
         return _cuda_path
 
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
