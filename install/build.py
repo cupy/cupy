@@ -7,8 +7,8 @@ import tempfile
 from install import utils
 
 
-minimum_cuda_version = 6050
-minimum_cudnn_version = 2000
+minimum_cuda_version = 7000
+minimum_cudnn_version = 4000
 maximum_cudnn_version = 6999
 # Although cuda 7.0 includes cusolver,
 # we tentatively support cusolver in cuda 8.0 only because
@@ -103,7 +103,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA v6.5 or newer is required')
+            'CUDA v7.0 or newer is required')
         return False
 
     return True

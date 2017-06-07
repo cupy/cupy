@@ -684,12 +684,12 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
-        if self.shape == ():
+        if self.ndim == 0:
             msg = 'Sorting arrays with the rank of zero is not supported'
             raise ValueError(msg)
 
         # TODO(takagi): Support ranks of two or more
-        if len(self.shape) > 1:
+        if self.ndim > 1:
             msg = ('Sorting arrays with the rank of two or more is '
                    'not supported')
             raise ValueError(msg)
@@ -700,10 +700,10 @@ cdef class ndarray:
 
         # TODO(takagi): Support float16 and bool
         try:
-            thrust.sort(self.dtype, self.data.ptr, self.shape[0])
+            thrust.sort(self.dtype, self.data.ptr, self._shape[0])
         except NameError:
             msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall Chainer after '
+                   'Toolkit with Thrust then reinstall CuPy after '
                    'uninstalling it.')
             raise RuntimeError(msg)
 
@@ -1193,12 +1193,13 @@ cdef class ndarray:
 
         if mask_exists:
             n_not_slice_none = 0
+            mask_i = None
             for i, s in enumerate(slices):
                 if not isinstance(s, slice) or s != slice(None):
                     n_not_slice_none += 1
                     if issubclass(s.dtype.type, numpy.bool_):
                         mask_i = i
-            if n_not_slice_none != 1:
+            if n_not_slice_none != 1 and mask_i is not None:
                 raise ValueError('currently, CuPy only supports slices that '
                                  'consist of one boolean array.')
             return _getitem_mask_single(self, slices[mask_i], mask_i)

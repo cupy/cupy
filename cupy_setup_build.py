@@ -27,6 +27,7 @@ MODULES = [
             'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
+            'cupy.cuda.cusparse',
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
@@ -43,6 +44,7 @@ MODULES = [
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
+            'cusparse.h',
             'nvToolsExt.h',
         ],
         'libraries': [
@@ -50,6 +52,7 @@ MODULES = [
             'cuda',
             'cudart',
             'curand',
+            'cusparse',
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
@@ -209,6 +212,14 @@ def make_extensions(options, compiler, use_cython):
     # with GCC 5's new ABI.
     settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
+    # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
+    # automatically deal with memcpy because string.h header file has
+    # been changed. This is a workaround for that environment.
+    # See details in the below discussions:
+    # https://github.com/BVLC/caffe/issues/4046
+    # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
+    settings['define_macros'].append(('_FORCE_INLINES', '1'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
@@ -221,6 +232,7 @@ def make_extensions(options, compiler, use_cython):
         print('Library directories:', settings['library_dirs'])
 
         if not no_cuda:
+            err = False
             if not check_library(compiler,
                                  includes=module['include'],
                                  include_dirs=settings['include_dirs']):
@@ -228,20 +240,26 @@ def make_extensions(options, compiler, use_cython):
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
                     'Check your CFLAGS environment variable')
-                continue
-
-            if not check_library(compiler,
-                                 libraries=module['libraries'],
-                                 library_dirs=settings['library_dirs']):
+                err = True
+            elif not check_library(compiler,
+                                   libraries=module['libraries'],
+                                   library_dirs=settings['library_dirs']):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
                     'Check your LDFLAGS environment variable')
-                continue
+                err = True
+            elif('check_method' in module and
+                 not module['check_method'](compiler, settings)):
+                err = True
 
-            if 'check_method' in module and \
-               not module['check_method'](compiler, settings):
-                continue
+            if err:
+                if module['name'] == 'cuda':
+                    raise Exception('Your CUDA environment is invalid. '
+                                    'Please check above error log.')
+                else:
+                    # Other modules are optional. They are skipped.
+                    continue
 
         s = settings.copy()
         if not no_cuda:

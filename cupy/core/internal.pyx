@@ -94,7 +94,7 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
     strides.resize(shape.size(), 0)
     st = itemsize
 
-    for i in range(shape.size()):
+    for i in range(<int>shape.size()):
         if is_c_contiguous:
             idx = shape.size() - 1 - i
         else:
