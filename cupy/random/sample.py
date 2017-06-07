@@ -203,14 +203,11 @@ def multinomial(n, pvals, size=None):
 
     p = len(pvals)
     shape = size + (p,)
-
-    if m == 0:
-        return basic.empty(shape, 'i')
-
-    xs = choice(p, p=pvals, size=n * m)
     ys = basic.zeros(shape, 'i')
-    core.ElementwiseKernel(
-        'int64 x, int32 p, int32 n', 'raw int32 ys',
-        'atomicAdd(&ys[i / n * p + x], 1)',
-        'cupy_random_multinomial')(xs, p, n, ys)
+    if ys.size > 0:
+        xs = choice(p, p=pvals, size=n * m)
+        core.ElementwiseKernel(
+            'int64 x, int32 p, int32 n', 'raw int32 ys',
+            'atomicAdd(&ys[i / n * p + x], 1)',
+            'cupy_random_multinomial')(xs, p, n, ys)
     return ys
