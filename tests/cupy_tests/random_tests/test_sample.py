@@ -4,7 +4,6 @@ import unittest
 import numpy
 import six
 
-import cupy
 from cupy import cuda
 from cupy import random
 from cupy import testing
