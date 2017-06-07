@@ -261,7 +261,7 @@ cdef class ndarray:
         return six.moves.cPickle.dumps(self, -1)
 
     cpdef ndarray astype(
-        self, dtype, order='K', casting=None, subok=None, copy=True):
+            self, dtype, order='K', casting=None, subok=None, copy=True):
         """Casts the array to given data type.
 
         Args:
