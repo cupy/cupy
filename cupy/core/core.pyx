@@ -272,7 +272,6 @@ cdef class ndarray:
                 uses `C` otherwise.
                 And when `order` is 'K', it keeps strides as closely as
                 possible.
-                This function currently does not support order 'K'.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
 
