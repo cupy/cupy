@@ -260,11 +260,19 @@ cdef class ndarray:
         """Dumps a pickle of the array to a string."""
         return six.moves.cPickle.dumps(self, -1)
 
-    cpdef ndarray astype(self, dtype, copy=True):
+    cpdef ndarray astype(
+        self, dtype, order='K', casting=None, subok=None, copy=True):
         """Casts the array to given data type.
 
         Args:
             dtype: Type specifier.
+            order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+                (Fortran-style) order.
+                When `order` is 'A', it uses 'F' if `a` is column-major and
+                uses `C` otherwise.
+                And when `order` is 'K', it keeps strides as closely as
+                possible.
+                This function currently does not support order 'K'.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
 
@@ -274,23 +282,60 @@ cdef class ndarray:
             array.
 
         .. note::
-           This method currently does not support ``order``, ``casting``, and
-           ``subok`` arguments.
+           This method currently does not support ``casting``, and ``subok``
+           arguments.
 
         .. seealso:: :meth:`numpy.ndarray.astype`
 
         """
-        # TODO(beam2d): Support ordering, casting, and subok option
+        cdef vector.vector[Py_ssize_t] strides
+        cdef Py_ssize_t stride
+
+        # TODO(beam2d): Support casting and subok option
+        if casting is not None:
+            raise TypeError('casting is not supported yet')
+        if subok is not None:
+            raise TypeError('subok is not supported yet')
+
+        if order not in ['C', 'F', 'A', 'K']:
+            raise TypeError('order not understood')
+
         dtype = numpy.dtype(dtype)
         if dtype.type == self.dtype.type:
-            if copy:
-                return self.copy()
-            else:
+            if not copy and (
+                    order == 'K' or
+                    order == 'A' and (self._c_contiguous or
+                                      self._f_contiguous) or
+                    order == 'C' and self._c_contiguous or
+                    order == 'F' and self._f_contiguous):
                 return self
-        else:
+
+        if order == 'A':
+            if self._f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
+        elif order == 'K':
+            if self._f_contiguous:
+                order = 'F'
+            elif self._c_contiguous:
+                order = 'C'
+
+        if order == 'K':
             newarray = ndarray(self.shape, dtype=dtype)
-            elementwise_copy(self, newarray)
-            return newarray
+            stride_and_index = [
+                (abs(s), -i) for i, s in enumerate(self._strides)]
+            stride_and_index.sort()
+            strides.resize(self.ndim)
+            stride = dtype.itemsize
+            for s, i in stride_and_index:
+                strides[-i] = stride
+                stride *= self._shape[-i]
+            newarray._set_shape_and_strides(self._shape, strides)
+        else:
+            newarray = ndarray(self.shape, dtype=dtype, order=order)
+        elementwise_copy(self, newarray)
+        return newarray
 
     # TODO(okuta): Implement byteswap
 
