@@ -15,23 +15,23 @@ maximum_cudnn_version = 6999
 # provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
-get_nvcc_path_warned = False
+_cuda_path = 'NOT_INITIALIZED'
 
 
-def get_nvcc_path():
-    global get_nvcc_path_warned
+def get_cuda_path():
+    global _cuda_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _cuda_path is not 'NOT_INITIALIZED':
+        return _cuda_path
+
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
-    if nvcc_path is None and not get_nvcc_path_warned:
+    cuda_path_default = None
+    if nvcc_path is None:
         utils.print_warning('nvcc not in path.',
                             'Please set path to nvcc.')
-        get_nvcc_path_warned = True
-    return nvcc_path
-
-
-def get_compiler_setting():
-    nvcc_path = get_nvcc_path()
-    cuda_path_default = None
-    if nvcc_path is not None:
+    else:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
@@ -42,11 +42,37 @@ def get_compiler_setting():
             'nvcc path: %s' % cuda_path_default,
             'CUDA_PATH: %s' % cuda_path)
 
-    if not os.path.exists(cuda_path):
-        cuda_path = cuda_path_default
+    if os.path.exists(cuda_path):
+        _cuda_path = cuda_path
+    elif cuda_path_default is not None:
+        _cuda_path = cuda_path_default
+    elif os.path.exists('/usr/local/cuda'):
+        _cuda_path = '/usr/local/cuda'
+    else:
+        _cuda_path = None
 
-    if not cuda_path and os.path.exists('/usr/local/cuda'):
-        cuda_path = '/usr/local/cuda'
+    return _cuda_path
+
+
+def get_nvcc_path():
+    cuda_path = get_cuda_path()
+    if cuda_path is None:
+        return None
+
+    if sys.platform == 'win32':
+        nvcc_bin = 'bin/nvcc.exe'
+    else:
+        nvcc_bin = 'bin/nvcc'
+
+    nvcc_path = os.path.join(cuda_path, nvcc_bin)
+    if os.path.exists(nvcc_path):
+        return nvcc_path
+    else:
+        return None
+
+
+def get_compiler_setting():
+    cuda_path = get_cuda_path()
 
     include_dirs = []
     library_dirs = []
