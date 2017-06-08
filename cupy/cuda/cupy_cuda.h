@@ -75,7 +75,7 @@ typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
-typedef struct CUlinkState_st *CUlinkState;
+typedef struct CUlinkState_st* CUlinkState;
 
 
 // Error handling
