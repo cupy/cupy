@@ -1,12 +1,16 @@
 from __future__ import print_function
 from distutils import ccompiler
+from distutils import errors
+from distutils import msvccompiler
 from distutils import sysconfig
+from distutils import unixccompiler
 import os
 from os import path
 import sys
 
 import pkg_resources
 import setuptools
+from setuptools.command import build_ext
 
 from install import build
 from install import utils
@@ -23,6 +27,7 @@ MODULES = [
             'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
+            'cupy.cuda.cusparse',
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
@@ -40,6 +45,7 @@ MODULES = [
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
+            'cusparse.h',
             'nvrtc.h',
             'nvToolsExt.h',
         ],
@@ -48,6 +54,7 @@ MODULES = [
             'cuda',
             'cudart',
             'curand',
+            'cusparse',
             'nvrtc',
             'nvToolsExt',
         ],
@@ -91,6 +98,29 @@ MODULES = [
             'cusolver',
         ],
         'check_method': build.check_cusolver_version,
+    },
+    {
+        # The value of the key 'file' is a list that contains extension names
+        # or tuples of an extension name and a list of other souces files
+        # required to build the extension such as .cpp files and .cu files.
+        #
+        #   <extension name> | (<extension name>, a list of <other source>)
+        #
+        # The extension name is also interpreted as the name of the Cython
+        # source file required to build the extension with appending '.pyx'
+        # file extension.
+        'name': 'thrust',
+        'file': [
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+        ],
+        'include': [
+            'thrust/device_ptr.h',
+            'thrust/sort.h',
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
     }
 ]
 
@@ -104,6 +134,36 @@ if sys.platform == 'win32':
             'Cannot find nvToolsExt. nvtx was disabled.')
     else:
         mod_cuda['libraries'].append('nvToolsExt64_1')
+
+
+def ensure_module_file(file):
+    if isinstance(file, tuple):
+        return file
+    else:
+        return (file, [])
+
+
+def module_extension_name(file):
+    return ensure_module_file(file)[0]
+
+
+def module_extension_sources(file, use_cython, no_cuda):
+    pyx, others = ensure_module_file(file)
+    ext = '.pyx' if use_cython else '.cpp'
+    pyx = path.join(*pyx.split('.')) + ext
+
+    # If CUDA SDK is not available, remove CUDA C files from extension sources
+    # and use stubs defined in header files.
+    if no_cuda:
+        others1 = []
+        for source in others:
+            base, ext = os.path.splitext(source)
+            if ext == '.cu':
+                continue
+            others1.append(source)
+        others = others1
+
+    return [pyx] + others
 
 
 def check_readthedocs_environment():
@@ -155,6 +215,14 @@ def make_extensions(options, compiler, use_cython):
     # with GCC 5's new ABI.
     settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
 
+    # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
+    # automatically deal with memcpy because string.h header file has
+    # been changed. This is a workaround for that environment.
+    # See details in the below discussions:
+    # https://github.com/BVLC/caffe/issues/4046
+    # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
+    settings['define_macros'].append(('_FORCE_INLINES', '1'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
@@ -162,12 +230,12 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
     ret = []
-    ext = '.pyx' if use_cython else '.cpp'
     for module in MODULES:
         print('Include directories:', settings['include_dirs'])
         print('Library directories:', settings['library_dirs'])
 
         if not no_cuda:
+            err = False
             if not check_library(compiler,
                                  includes=module['include'],
                                  include_dirs=settings['include_dirs']):
@@ -175,20 +243,26 @@ def make_extensions(options, compiler, use_cython):
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
                     'Check your CFLAGS environment variable')
-                continue
-
-            if not check_library(compiler,
-                                 libraries=module['libraries'],
-                                 library_dirs=settings['library_dirs']):
+                err = True
+            elif not check_library(compiler,
+                                   libraries=module['libraries'],
+                                   library_dirs=settings['library_dirs']):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
                     'Check your LDFLAGS environment variable')
-                continue
+                err = True
+            elif('check_method' in module and
+                 not module['check_method'](compiler, settings)):
+                err = True
 
-            if 'check_method' in module and \
-               not module['check_method'](compiler, settings):
-                continue
+            if err:
+                if module['name'] == 'cuda':
+                    raise Exception('Your CUDA environment is invalid. '
+                                    'Please check above error log.')
+                else:
+                    # Other modules are optional. They are skipped.
+                    continue
 
         s = settings.copy()
         if not no_cuda:
@@ -203,9 +277,19 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 args.append('/openmp')
 
-        ret.extend([
-            setuptools.Extension(f, [path.join(*f.split('.')) + ext], **s)
-            for f in module['file']])
+        if not no_cuda and module['name'] == 'thrust':
+            if build.get_nvcc_path() is None:
+                utils.print_warning(
+                    'Cannot find nvcc in PATH.',
+                    'Skip installing thrust support.')
+                continue
+
+        for f in module['file']:
+            name = module_extension_name(f)
+            sources = module_extension_sources(f, use_cython, no_cuda)
+            extension = setuptools.Extension(name, sources, **s)
+            ret.append(extension)
+
     return ret
 
 
@@ -284,3 +368,156 @@ def get_ext_modules():
 
     check_extensions(extensions)
     return extensions
+
+
+def _nvcc_gencode_options(cuda_version):
+    """Returns NVCC GPU code generation options."""
+
+    # The arch_list specifies virtual architectures, such as 'compute_61', and
+    # real architectures, such as 'sm_61', for which the CUDA input files are
+    # to be compiled.
+    #
+    # The syntax of an entry of the list is
+    #
+    #     entry ::= virtual_arch | (virtual_arch, real_arch)
+    #
+    # where virtual_arch is a string which means a virtual architecture and
+    # real_arch is a string which means a real architecture.
+    #
+    # If a virtual architecture is supplied, NVCC generates a PTX code for the
+    # virtual architecture. If a pair of a virtual architecture and a real
+    # architecture is supplied, NVCC generates a PTX code for the virtual
+    # architecture as well as a cubin code for the real architecture.
+    #
+    # For example, making NVCC generate a PTX code for 'compute_60' virtual
+    # architecture, the arch_list has an entry of 'compute_60'.
+    #
+    #     arch_list = ['compute_60']
+    #
+    # For another, making NVCC generate a PTX code for 'compute_61' virtual
+    # architecture and a cubin code for 'sm_61' real architecture, the
+    # arch_list has an entry of ('compute_61', 'sm_61').
+    #
+    #     arch_list = [('compute_61', 'sm_61')]
+
+    arch_list = ['compute_30', 'compute_50']
+    if cuda_version >= 8000:
+        arch_list += ['compute_60']
+
+    options = []
+    for arch in arch_list:
+        if type(arch) is tuple:
+            virtual_arch, real_arch = arch
+            options.append('--generate-code=arch={},code={},{}'.format(
+                virtual_arch, real_arch, virtual_arch))
+        else:
+            options.append('--generate-code=arch={},code={}'.format(
+                arch, arch))
+
+    return options
+
+
+class _UnixCCompiler(unixccompiler.UnixCCompiler):
+    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)
+    src_extensions.append('.cu')
+
+    def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
+        # For sources other than CUDA C ones, just call the super class method.
+        if os.path.splitext(src)[1] != '.cu':
+            return unixccompiler.UnixCCompiler._compile(
+                self, obj, src, ext, cc_args, extra_postargs, pp_opts)
+
+        # For CUDA C source files, compile them with NVCC.
+        _compiler_so = self.compiler_so
+        try:
+            nvcc_path = build.get_nvcc_path()
+            self.set_executable('compiler_so', nvcc_path)
+
+            cuda_version = build.get_cuda_version()
+            postargs = _nvcc_gencode_options(cuda_version) + [
+                '-O2', '--compiler-options="-fPIC"']
+            print('NVCC options:', postargs)
+
+            return unixccompiler.UnixCCompiler._compile(
+                self, obj, src, ext, cc_args, postargs, pp_opts)
+        finally:
+            self.compiler_so = _compiler_so
+
+
+class _MSVCCompiler(msvccompiler.MSVCCompiler):
+    _cu_extensions = ['.cu']
+
+    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)
+    src_extensions.extend(_cu_extensions)
+
+    def _compile_cu(self, sources, output_dir=None, macros=None,
+                    include_dirs=None, debug=0, extra_preargs=None,
+                    extra_postargs=None, depends=None):
+        # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
+
+        macros, objects, extra_postargs, pp_opts, _build = \
+            self._setup_compile(output_dir, macros, include_dirs, sources,
+                                depends, extra_postargs)
+
+        compiler_so = [build.get_nvcc_path()]
+        cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+        cuda_version = build.get_cuda_version()
+        postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        print('NVCC options:', postargs)
+
+        for obj in objects:
+            try:
+                src, ext = _build[obj]
+            except KeyError:
+                continue
+            try:
+                self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
+            except errors.DistutilsExecError as e:
+                raise errors.CompileError(e.message)
+
+        return objects
+
+    def compile(self, sources, **kwargs):
+        # Split CUDA C sources and others.
+        cu_sources = []
+        other_sources = []
+        for source in sources:
+            if os.path.splitext(source)[1] == '.cu':
+                cu_sources.append(source)
+            else:
+                other_sources.append(source)
+
+        # Compile source files other than CUDA C ones.
+        other_objects = msvccompiler.MSVCCompiler.compile(
+            self, other_sources, **kwargs)
+
+        # Compile CUDA C sources.
+        cu_objects = self._compile_cu(cu_sources, **kwargs)
+
+        # Return compiled object filenames.
+        return other_objects + cu_objects
+
+
+class custom_build_ext(build_ext.build_ext):
+
+    """Custom `build_ext` command to include CUDA C source files."""
+
+    def run(self):
+        if build.get_nvcc_path() is not None:
+            def wrap_new_compiler(func):
+                def _wrap_new_compiler(*args, **kwargs):
+                    try:
+                        return func(*args, **kwargs)
+                    except errors.DistutilsPlatformError:
+                        if not sys.platform == 'win32':
+                            CCompiler = _UnixCCompiler
+                        else:
+                            CCompiler = _MSVCCompiler
+                        return CCompiler(
+                            None, kwargs['dry_run'], kwargs['force'])
+                return _wrap_new_compiler
+            ccompiler.new_compiler = wrap_new_compiler(ccompiler.new_compiler)
+            # Intentionally causes DistutilsPlatformError in
+            # ccompiler.new_compiler() function to hook.
+            self.compiler = 'nvidia'
+        build_ext.build_ext.run(self)

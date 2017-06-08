@@ -282,7 +282,7 @@ class RandomState(object):
 
         if p is not None:
             p = cupy.broadcast_to(p, (size, a_size))
-            index = cupy.argmax(cupy.log(p) -
+            index = cupy.argmax(cupy.log(p) +
                                 cupy.random.gumbel(size=(size, a_size)),
                                 axis=1)
             if not isinstance(shape, six.integer_types):
@@ -341,12 +341,14 @@ def get_random_state():
         device.
 
     """
-    global _random_states
     dev = cuda.Device()
     rs = _random_states.get(dev.id, None)
     if rs is None:
-        rs = RandomState(os.getenv('CHAINER_SEED'))
-        _random_states[dev.id] = rs
+        seed = os.getenv('CUPY_SEED')
+        if seed is None:
+            seed = os.getenv('CHAINER_SEED')
+        rs = RandomState(seed)
+        rs = _random_states.setdefault(dev.id, rs)
     return rs
 
 

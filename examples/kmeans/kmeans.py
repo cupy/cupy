@@ -87,7 +87,7 @@ def draw(X, n_clusters, centers, pred, output):
         labels = X[pred == i]
         if xp == cupy:
             labels = labels.get()
-        plt.scatter(labels[:, 0], labels[:, 1], color=np.random.rand(3, 1))
+        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(3))
     if xp == cupy:
         centers = centers.get()
     plt.scatter(centers[:, 0], centers[:, 1], s=120, marker='s',

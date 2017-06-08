@@ -4,62 +4,21 @@ cache:
   - pip
   - ccache
 
-matrix:
-  include:
-    - os: linux
-      python: "2.7"
-    - os: linux
-      python: "3.4"
-    - os: linux
-      python: "3.5.1"
-
-    - os: osx
-      language: generic
-      env:
-      - PYTHON_VERSION=2.7.10
-      - PYENV_ROOT=~/.pyenv
-      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
-    - os: osx
-      language: generic
-      env:
-      - PYTHON_VERSION=3.4.3
-      - PYENV_ROOT=~/.pyenv
-      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
-    - os: osx
-      language: generic
-      env:
-      - PYTHON_VERSION=3.5.1
-      - PYENV_ROOT=~/.pyenv
-      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
-
-before_install:
-  - if [[ $TRAVIS_OS_NAME = "osx" ]]; then
-      brew update >/dev/null;
-      brew outdated pyenv || brew upgrade --quiet pyenv;
-      brew install homebrew/boneyard/pyenv-pip-rehash;
-
-      PYTHON_CONFIGURE_OPTS="--enable-unicode=ucs2" pyenv install -ks $PYTHON_VERSION;
-      pyenv global $PYTHON_VERSION;
-      python --version;
-
-      brew install homebrew/science/hdf5;
-    fi
+python:
+  - "2.7"
+  - "3.4"
+  - "3.5"
 
 install:
   - pip install -U pip wheel
   - pip install cython
-  - python setup.py sdist
-  - pip install dist/*.tar.gz
-  - pip install nose hacking mock
-  - pip install autopep8
+  - python setup.py sdist --cupy-no-cuda
+  - pip install autopep8 hacking
 
 script:
   - flake8 --config=.flake8.cython
   - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - PYTHONWARNINGS='ignore::FutureWarning,module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
-      READTHEDOCS=True python setup.py develop;
-    fi
+  - READTHEDOCS=True python setup.py develop
 
 sudo: false

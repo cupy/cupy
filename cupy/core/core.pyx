@@ -9,6 +9,10 @@ import six
 
 from cupy.core import flags
 from cupy.cuda import stream
+try:
+    from cupy.cuda import thrust
+except ImportError:
+    pass
 from cupy import util
 
 cimport cpython
@@ -662,7 +666,47 @@ cdef class ndarray:
 
         return out
 
-    # TODO(okuta): Implement sort
+    def sort(self):
+        """Sort an array, in-place with a stable sorting algorithm.
+
+        .. note::
+           For its implementation reason, ``ndarray.sort`` currently supports
+           only arrays with their rank of one and their own data, and does not
+           support ``axis``, ``kind`` and ``order`` parameters that
+           ``numpy.ndarray.sort`` does support.
+
+        .. seealso::
+            :func:`cupy.sort` for full documentation,
+            :meth:`numpy.ndarray.sort`
+
+        """
+
+        # TODO(takagi): Support axis argument.
+        # TODO(takagi): Support kind argument.
+
+        if self.ndim == 0:
+            msg = 'Sorting arrays with the rank of zero is not supported'
+            raise ValueError(msg)
+
+        # TODO(takagi): Support ranks of two or more
+        if self.ndim > 1:
+            msg = ('Sorting arrays with the rank of two or more is '
+                   'not supported')
+            raise ValueError(msg)
+
+        # TODO(takagi): Support sorting views
+        if not self._c_contiguous:
+            raise ValueError('Sorting non-contiguous array is not supported.')
+
+        # TODO(takagi): Support float16 and bool
+        try:
+            thrust.sort(self.dtype, self.data.ptr, self._shape[0])
+        except NameError:
+            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
+                   'Toolkit with Thrust then reinstall CuPy after '
+                   'uninstalling it.')
+            raise RuntimeError(msg)
+
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
@@ -1149,12 +1193,13 @@ cdef class ndarray:
 
         if mask_exists:
             n_not_slice_none = 0
+            mask_i = None
             for i, s in enumerate(slices):
                 if not isinstance(s, slice) or s != slice(None):
                     n_not_slice_none += 1
                     if issubclass(s.dtype.type, numpy.bool_):
                         mask_i = i
-            if n_not_slice_none != 1:
+            if n_not_slice_none != 1 and mask_i is not None:
                 raise ValueError('currently, CuPy only supports slices that '
                                  'consist of one boolean array.')
             return _getitem_mask_single(self, slices[mask_i], mask_i)

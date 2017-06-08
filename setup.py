@@ -27,10 +27,11 @@ install_requires = [
 ]
 
 ext_modules = cupy_setup_build.get_ext_modules()
+build_ext = cupy_setup_build.custom_build_ext
 
 setup(
     name='cupy',
-    version='1.0.0b1',
+    version='1.0.0.1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -55,7 +56,10 @@ setup(
               'cupy.statistics',
               'cupy.testing'],
     package_data={
-        'cupy': ['core/carray.cuh'],
+        'cupy': [
+            'core/carray.cuh',
+            'cuda/cupy_thrust.cu',
+        ],
     },
     zip_safe=False,
     setup_requires=setup_requires,
@@ -63,4 +67,5 @@ setup(
     tests_require=['mock',
                    'nose'],
     ext_modules=ext_modules,
+    cmdclass={'build_ext': build_ext},
 )

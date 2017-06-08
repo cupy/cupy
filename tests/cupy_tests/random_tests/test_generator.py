@@ -1,6 +1,7 @@
 import mock
 import operator
 import os
+import threading
 import unittest
 
 import numpy
@@ -329,6 +330,20 @@ class TestChoiceChi(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.gpu
+class TestChoiceMultinomial(unittest.TestCase):
+
+    @condition.retry(10)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_choice_multinomial(self, xp, dtype):
+        p = xp.array([0.5, 0.25, 0.125, 0.125], dtype)
+        trial = 10000
+        x = xp.random.choice(len(p), trial, p=p)
+        y = xp.bincount(x).astype('f') / trial
+        return y
+
+
 @testing.parameterize(
     {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
@@ -384,6 +399,35 @@ class TestGetRandomState(unittest.TestCase):
 
 
 @testing.gpu
+class TestGetRandomStateThreadSafe(unittest.TestCase):
+
+    def setUp(self):
+        cupy.random.reset_states()
+
+    def test_thread_safe(self):
+        seed = 10
+        threads = [
+            threading.Thread(target=lambda: cupy.random.seed(seed)),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.get_random_state()),
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        actual = cupy.random.uniform()
+        cupy.random.seed(seed)
+        expected = cupy.random.uniform()
+        self.assertEqual(actual, expected)
+
+
+@testing.gpu
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):
@@ -391,25 +435,44 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState = mock.Mock()
         self.rs_dict = generator._random_states
         generator._random_states = {}
+        self.cupy_seed = os.getenv('CUPY_SEED')
         self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
         generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
+        if self.cupy_seed is None:
+            os.environ.pop('CUPY_SEED', None)
+        else:
+            os.environ['CUPY_SEED'] = self.cupy_seed
         if self.chainer_seed is None:
             os.environ.pop('CHAINER_SEED', None)
         else:
             os.environ['CHAINER_SEED'] = self.chainer_seed
 
-    def test_get_random_state_no_chainer_seed(self):
+    def test_get_random_state_no_cupy_no_chainer_seed(self):
+        os.environ.pop('CUPY_SEED', None)
         os.environ.pop('CHAINER_SEED', None)
         generator.get_random_state()
         generator.RandomState.assert_called_with(None)
 
-    def test_get_random_state_with_chainer_seed(self):
-        os.environ['CHAINER_SEED'] = '1'
+    def test_get_random_state_no_cupy_with_chainer_seed(self):
+        os.environ.pop('CUPY_SEED', None)
+        os.environ['CHAINER_SEED'] = '5'
         generator.get_random_state()
-        generator.RandomState.assert_called_with('1')
+        generator.RandomState.assert_called_with('5')
+
+    def test_get_random_state_with_cupy_no_chainer_seed(self):
+        os.environ['CUPY_SEED'] = '6'
+        os.environ.pop('CHAINER_SEED', None)
+        generator.get_random_state()
+        generator.RandomState.assert_called_with('6')
+
+    def test_get_random_state_with_cupy_with_chainer_seed(self):
+        os.environ['CUPY_SEED'] = '7'
+        os.environ['CHAINER_SEED'] = '8'
+        generator.get_random_state()
+        generator.RandomState.assert_called_with('7')
 
 
 class TestCheckAndGetDtype(unittest.TestCase):

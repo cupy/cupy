@@ -8,15 +8,24 @@ from install import utils
 
 
 minimum_cuda_version = 7000
-minimum_cudnn_version = 2000
+minimum_cudnn_version = 4000
 maximum_cudnn_version = 6999
 # Although cuda 7.0 includes cusolver,
 # we tentatively support cusolver in cuda 8.0 only because
 # provided functions are insufficient to implement cupy.linalg
 minimum_cusolver_cuda_version = 8000
 
+_cuda_path = 'NOT_INITIALIZED'
 
-def get_compiler_setting():
+
+def get_cuda_path():
+    global _cuda_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _cuda_path is not 'NOT_INITIALIZED':
+        return _cuda_path
+
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
     if nvcc_path is None:
@@ -33,11 +42,37 @@ def get_compiler_setting():
             'nvcc path: %s' % cuda_path_default,
             'CUDA_PATH: %s' % cuda_path)
 
-    if not os.path.exists(cuda_path):
-        cuda_path = cuda_path_default
+    if os.path.exists(cuda_path):
+        _cuda_path = cuda_path
+    elif cuda_path_default is not None:
+        _cuda_path = cuda_path_default
+    elif os.path.exists('/usr/local/cuda'):
+        _cuda_path = '/usr/local/cuda'
+    else:
+        _cuda_path = None
 
-    if not cuda_path and os.path.exists('/usr/local/cuda'):
-        cuda_path = '/usr/local/cuda'
+    return _cuda_path
+
+
+def get_nvcc_path():
+    cuda_path = get_cuda_path()
+    if cuda_path is None:
+        return None
+
+    if sys.platform == 'win32':
+        nvcc_bin = 'bin/nvcc.exe'
+    else:
+        nvcc_bin = 'bin/nvcc'
+
+    nvcc_path = os.path.join(cuda_path, nvcc_bin)
+    if os.path.exists(nvcc_path):
+        return nvcc_path
+    else:
+        return None
+
+
+def get_compiler_setting():
+    cuda_path = get_cuda_path()
 
     include_dirs = []
     library_dirs = []
@@ -70,7 +105,11 @@ def get_compiler_setting():
     }
 
 
+_cuda_version = None
+
+
 def check_cuda_version(compiler, settings):
+    global _cuda_version
     try:
         out = build_and_run(compiler, '''
         #include <cuda.h>
@@ -85,15 +124,24 @@ def check_cuda_version(compiler, settings):
         utils.print_warning('Cannot check CUDA version', str(e))
         return False
 
-    cuda_version = int(out)
+    _cuda_version = int(out)
 
-    if cuda_version < minimum_cuda_version:
+    if _cuda_version < minimum_cuda_version:
         utils.print_warning(
-            'CUDA version is too old: %d' % cuda_version,
-            'CUDA v6.5 or newer is required')
+            'CUDA version is too old: %d' % _cuda_version,
+            'CUDA v7.0 or newer is required')
         return False
 
     return True
+
+
+def get_cuda_version():
+    """Return CUDA Toolkit version cached in check_cuda_version()."""
+    global _cuda_version
+    if _cuda_version is None:
+        msg = 'check_cuda_version() must be called first.'
+        raise Exception(msg)
+    return _cuda_version
 
 
 def check_cudnn_version(compiler, settings):
