@@ -40,7 +40,7 @@ def sgemm(A, B,
 
     grid = (math.ceil(m / blk_m), math.ceil(n / blk_n), 1)
     block = (dim_x, dim_y, 1)
-    args = (m, n, k, A, m, B, k, C, m)
+    args = (m, n, k, A, B, C)
     shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
     kern(grid, block, args=args, shared_mem=shared_mem)
     return C

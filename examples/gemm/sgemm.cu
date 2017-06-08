@@ -11,16 +11,13 @@
 //#define THR_N  ${THR_N}
 //#define THR_M  ${THR_M}
 
-// LDA is M
-// LDB is K
-
 
 extern "C" __global__
 void sgemm(
         int M, int N, int K,
-        const float* A, int LDA,
-        const float* B, int LDB,
-        float * C, int LDC)
+        const float* A,
+        const float* B,
+        float * C)
 {
     int idx = threadIdx.x;
     int idy = threadIdx.y;
@@ -49,10 +46,10 @@ void sgemm(
     float ra[BLK_K / DIM_YA][BLK_M / DIM_XA];
     float rb[BLK_N / DIM_YB][BLK_K / DIM_XB];
 
-    const float* offs_dA = A + blx * BLK_M       + idyA * LDA + idxA;
-    int boundA = (LDA * (K - 1) + M) - (blx * BLK_M + idyA * LDA + idxA) - 1;
-    const float* offs_dB = B + bly * BLK_N * LDB + idyB * LDB + idxB;
-    int boundB = (LDB * (N - 1) + K) - (bly * BLK_N * LDB + idyB * LDB + idxB) - 1;
+    const float* offs_dA = A + blx * BLK_M       + idyA * M + idxA;
+    int boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
+    const float* offs_dB = B + bly * BLK_N * K + idyB * K + idxB;
+    int boundB = (K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
 
     int m, n, k, kk;
     
@@ -67,19 +64,19 @@ void sgemm(
     for (n = 0; n < BLK_K; n += DIM_YA)
         #pragma unroll
         for (m = 0; m < BLK_M; m += DIM_XA)
-            sA[n + idyA][m + idxA] = offs_dA[n * LDA + m];
+            sA[n + idyA][m + idxA] = offs_dA[n * M + m];
     // blockwise transpose to transpose load
     #pragma unroll
     for (n = 0; n < BLK_N; n += DIM_YB)
         #pragma unroll
         for (m = 0; m < BLK_K; m += DIM_XB)
-            sB[n + idyB][m + idxB] = offs_dB[n * LDB + m];
+            sB[n + idyB][m + idxB] = offs_dB[n * K + m];
     __syncthreads();
 
     for (kk = 0; kk < K - BLK_K; kk += BLK_K)
     {
-        offs_dA += BLK_K * LDA;
-        boundA -= BLK_K * LDA;
+        offs_dA += BLK_K * M;
+        boundA -= BLK_K * M;
         offs_dB += BLK_K;
         boundB -= BLK_K;
         
@@ -87,13 +84,13 @@ void sgemm(
         for (n = 0; n < BLK_K / DIM_YA; n++)
             #pragma unroll
             for (m = 0; m < BLK_M / DIM_XA; m++)
-                ra[n][m] = offs_dA[n * DIM_YA * LDA + m * DIM_XA];
+                ra[n][m] = offs_dA[n * DIM_YA * M + m * DIM_XA];
 
         #pragma unroll
         for (n = 0; n < BLK_N / DIM_YB; n++)
             #pragma unroll
             for (m = 0; m < BLK_K / DIM_XB; m++)
-                rb[n][m] = offs_dB[n * DIM_YB * LDB + m * DIM_XB];
+                rb[n][m] = offs_dB[n * DIM_YB * K + m * DIM_XB];
 
         // multiply
         #pragma unroll
@@ -165,7 +162,7 @@ void sgemm(
         for (m = 0; m < THR_M; m++) {
             int coord_dCm = blx * BLK_M + m * DIM_X + idx;
             if (coord_dCm < M && coord_dCn < N) {
-                C[coord_dCn * LDC + coord_dCm] = rC[n][m];
+                C[coord_dCn * M + coord_dCm] = rC[n][m];
             }
         }
     }
