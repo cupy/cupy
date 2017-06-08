@@ -1,6 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
-
+// These parameters will be determined by utils.read_code
 //#define DIM_X  ${DIM_X}
 //#define DIM_Y  ${DIM_Y}
 //#define BLK_M  ${BLK_M}
@@ -12,7 +10,6 @@
 //#define DIM_YB  ${DIM_YB}
 //#define THR_N  ${THR_N}
 //#define THR_M  ${THR_M}
-//
 
 // LDA is M
 // LDB is K
