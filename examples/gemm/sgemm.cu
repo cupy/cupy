@@ -1,3 +1,12 @@
+/*
+Original works by:
+--------------------------------------------------------
+MAGMA
+Copyright (c) 2017 The University of Tennessee. All rights reserved.
+Licensed under modified BSD license
+*/
+
+
 // These parameters will be determined by utils.read_code
 //#define DIM_X  ${DIM_X}
 //#define DIM_Y  ${DIM_Y}
