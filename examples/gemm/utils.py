@@ -18,12 +18,11 @@ def read_code(code_filename, params):
 
 def bencmark(func, args, n_run):
     times = []
-    
     for _ in range(n_run):
         start = cp.cuda.Event()
         end = cp.cuda.Event()
         start.record()
-        out = func(*args)
+        func(*args)
         end.record()
         end.synchronize()
         times.append(cp.cuda.get_elapsed_time(start, end))  # milliseconds
