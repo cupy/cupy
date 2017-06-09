@@ -140,3 +140,9 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(TypeError):
             return cupy.argsort(a)
+
+    def test_argsort_keep_original_array(self):
+        a = testing.shaped_random((10,), cupy)
+        b = cupy.array(a)
+        a.argsort()
+        testing.assert_allclose(a, b)
