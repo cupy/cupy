@@ -43,19 +43,15 @@ def run(gpuid, tol, max_iter):
     # Solve simultaneous linear equations, Ax = b.
     for repeat in range(1):
         print("Trial: %d" % repeat)
-        # create the large sparse symmetric matrix 'A'.
+        # Create the large sparse symmetric matrix 'A'.
         N = 2000
         max_val = 50
-        density = 0.3
-        A = rand(N, N, density / 2).A
+        A = rand(N, N, 0.4).A
         ran = np.random.randint(max_val, size=(N, N))
-        A *= ran
-        A = (A + A.T).astype(np.int32)
-        b = rand(1, N, density).A.reshape((N),)
-        ran = np.random.randint(max_val, size=N)
-        b *= ran
-        b = b.astype(np.int32)
-        x0 = np.zeros(N, dtype=np.int32)
+        A = (A * ran).astype(np.int32)
+        A = (A + A.T).astype(np.float32)
+        b = np.random.randint(max_val, size=N).astype(np.float32)
+        x0 = np.zeros(N, dtype=np.float32)
 
         msg = 'b[:20]='
         print(msg)
@@ -64,7 +60,7 @@ def run(gpuid, tol, max_iter):
         with timer(' CPU '):
             x = fit(A, b, x0, tol, max_iter)
             b_calc = np.dot(A, x)
-            print(np.rint(b_calc[:20]).astype(np.int32))
+            print(np.rint(b_calc[:20]))
 
         with cupy.cuda.Device(gpuid):
             A_gpu = cupy.asarray(A)
@@ -73,12 +69,12 @@ def run(gpuid, tol, max_iter):
             with timer(' GPU '):
                 x = fit(A_gpu, b_gpu, x0_gpu, tol, max_iter)
                 b_calc = cupy.dot(A_gpu, x)
-                print(cupy.rint(b_calc[:20]).astype(np.int32))
+                print(cupy.rint(b_calc[:20]))
 
         with timer(' SciPy '):
             x = cg(A, b)
             b_calc = np.dot(A, x[0])
-            print(np.rint(b_calc[:20]).astype(np.int32))
+            print(np.rint(b_calc[:20]))
 
         print()
 
