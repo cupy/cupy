@@ -1,16 +1,3 @@
-# Modified work or matrix_rank:
-# -----------------------------------------------------------------------------
-# Copyright (c) 2017 Preferred Networks, Inc.
-
-# Original work of matrix_rank:
-# -----------------------------------------------------------------------------
-# NumPy
-# Copyright (c) 2005 NumPy Developers
-# Licensed under The 3-Clause BSD License
-# See https://docs.scipy.org/doc/numpy/license.html
-# -----------------------------------------------------------------------------
-
-
 import numpy
 
 import cupy
