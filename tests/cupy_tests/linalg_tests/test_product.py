@@ -278,7 +278,7 @@ class TestProduct(unittest.TestCase):
             a = testing.shaped_arange(
                 (1, 2, 3), xp, dtype).transpose(2, 0, 1)
             b = testing.shaped_arange(
-                (3, 2, 1), xp, dtype).transpose(1, 0, 2)
+                (3, 2, 1), xp, dtype).transpose(2, 1, 0)
             return xp.tensordot(a, b, axes=2)
         else:
             a = testing.shaped_arange(
