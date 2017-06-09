@@ -112,6 +112,7 @@ MODULES = [
         ],
         'include': [
             'thrust/device_ptr.h',
+            'thrust/sequence.h',
             'thrust/sort.h',
         ],
         'libraries': [
