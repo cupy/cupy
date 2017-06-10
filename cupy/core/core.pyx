@@ -357,7 +357,6 @@ cdef class ndarray:
         """
         return self.astype(self.dtype, copy=True, order=order)
 
-
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
 
