@@ -348,14 +348,26 @@ cdef class ndarray:
                 uses `C` otherwise.
                 And when `order` is 'K', it keeps strides as closely as
                 possible.
-                This function currently does not support order 'K'.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
            :meth:`numpy.ndarray.copy`
 
         """
-        return self.astype(self.dtype, copy=True, order=order)
+        if self.size == 0:
+            return self.astype(self.dtype, copy=True, order=order)
+
+        with self.device:
+            x = self.astype(self.dtype, copy=True, order=order)
+
+        if device.Device() != self.device:
+            newarray = ndarray(x.shape, dtype=x.dtype)
+            newarray._set_shape_and_strides(x._shape, x._strides)
+            newarray.data.copy_from_device(x.data, x.nbytes)
+            return newarray
+        else:
+            return x
+
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
