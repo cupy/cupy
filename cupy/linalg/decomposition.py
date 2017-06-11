@@ -37,7 +37,7 @@ def cholesky(a):
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
-    x = a.astype(dtype, copy=True)
+    x = a.astype(dtype, order='C', copy=True)
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -104,7 +104,7 @@ def qr(a, mode='reduced'):
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     m, n = a.shape
-    x = a.transpose().astype(dtype, copy=True)
+    x = a.transpose().astype(dtype, order='C', copy=True)
     mn = min(m, n)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -206,11 +206,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
     if m >= n:
-        x = cupy.ascontiguousarray(a.astype(dtype, copy=False))
+        x = a.astype(dtype, order='C', copy=False)
         trans_flag = False
     else:
         m, n = a.shape
-        x = cupy.ascontiguousarray(a.transpose().astype(dtype, copy=False))
+        x = a.transpose().astype(dtype, order='C', copy=False)
         trans_flag = True
     mn = min(m, n)
 

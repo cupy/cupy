@@ -1887,7 +1887,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     if isinstance(obj, ndarray):
         if dtype is None:
             dtype = obj.dtype
-        a = obj.astype(dtype, copy)
+        a = obj.astype(dtype, copy=copy)
 
         ndim = a._shape.size()
         if ndmin > ndim:
