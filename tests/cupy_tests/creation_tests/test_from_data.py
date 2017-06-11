@@ -44,6 +44,16 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
+    @testing.multi_gpu(2)
+    def test_array_multidevice(self):
+        with cuda.Device(0):
+            x = testing.shaped_arange((2, 3, 4), cupy, dtype='f')
+        with cuda.Device(1):
+            y = cupy.array(x)
+        self.assertIsInstance(y, cupy.ndarray)
+        self.assertIsNot(x, y)  # Do copy
+        testing.assert_array_equal(x, y)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy_ndmin(self, xp, dtype):
