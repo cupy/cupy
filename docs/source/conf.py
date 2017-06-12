@@ -362,11 +362,16 @@ def linkcode_resolve(domain, info):
     # Get the source file name and line number at which obj is defined.
     try:
         filename = inspect.getsourcefile(obj)
-        _, linenum = inspect.getsourcelines(obj)
     except TypeError:
         # obj is not a module, class, function, ..etc.
         return None
 
+    # inspect can return None for cython objects
+    if filename is None:
+        return None
+
+    # Get the source line number
+    _, linenum = inspect.getsourcelines(obj)
     assert isinstance(linenum, six.integer_types)
 
     filename = os.path.realpath(filename)
