@@ -357,16 +357,16 @@ cdef class ndarray:
         if self.size == 0:
             return self.astype(self.dtype, copy=True, order=order)
 
-        with self.device:
-            x = self.astype(self.dtype, copy=True, order=order)
-
-        if device.Device() != self.device:
+        if device.Device() == self.device:
+            return self.astype(self.dtype, copy=True, order=order)
+        else:
+            # It need to make a contiguous copy for copying from another device
+            with self.device:
+                x = self.astype(self.dtype, copy=False, order=order)
             newarray = ndarray(x.shape, dtype=x.dtype)
             newarray._set_shape_and_strides(x._shape, x._strides)
             newarray.data.copy_from_device(x.data, x.nbytes)
             return newarray
-        else:
-            return x
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
