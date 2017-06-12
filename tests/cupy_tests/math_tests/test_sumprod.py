@@ -236,7 +236,7 @@ class TestCumprod(unittest.TestCase):
     @testing.slow
     @testing.numpy_cupy_allclose()
     def test_cumprod_axis_huge(self, xp):
-        a = xp.ones(2048*1024*1024, 'b')
+        a = xp.ones(2048 * 1024 * 1024, 'b')
         return xp.cumprod(a, axis=0)
 
     @testing.for_all_dtypes()
