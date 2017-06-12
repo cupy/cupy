@@ -12,7 +12,10 @@ interface.
 
 The following is a brief overview of supported subset of NumPy interface:
 
-- `Basic and advanced indexing <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
+- `Basic indexing <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
+  (indexing by ints, slices, newaxes, and Ellipsis)
+- Most of `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
+  (except for some indexing patterns with boolean masks)
 - Data types (dtypes): ``bool_``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``, ``float16``, ``float32``, ``float64``
 - Most of the `array creation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html>`_ (\ ``empty``, ``ones_like``, ``diag``, etc.)
 - Most of the `array manipulation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)

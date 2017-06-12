@@ -6,6 +6,7 @@ Sorting, Searching, and Counting
    :nosignatures:
 
    cupy.sort
+   cupy.argsort
    cupy.argmax
    cupy.argmin
    cupy.count_nonzero

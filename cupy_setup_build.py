@@ -112,6 +112,7 @@ MODULES = [
         ],
         'include': [
             'thrust/device_ptr.h',
+            'thrust/sequence.h',
             'thrust/sort.h',
         ],
         'libraries': [
@@ -273,6 +274,13 @@ def make_extensions(options, compiler, use_cython):
                 args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 args.append('/openmp')
+
+        if not no_cuda and module['name'] == 'thrust':
+            if build.get_nvcc_path() is None:
+                utils.print_warning(
+                    'Cannot find nvcc in PATH.',
+                    'Skip installing thrust support.')
+                continue
 
         for f in module['file']:
             name = module_extension_name(f)

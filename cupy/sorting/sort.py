@@ -23,7 +23,24 @@ def sort(a):
 # TODO(okuta): Implement lexsort
 
 
-# TODO(okuta): Implement argsort
+def argsort(a):
+    """Return the indices that would sort an array with a stable sorting.
+
+    Args:
+        a (cupy.ndarray): Array to sort.
+
+    Returns:
+        cupy.ndarray: Array of indices that sort ``a``.
+
+    .. note::
+       For its implementation reason, ``cupy.argsort`` currently supports only
+       arrays with their rank of one and does not support ``axis``, ``kind``
+       and ``order`` parameters that ``numpy.argsort`` supports.
+
+    .. seealso:: :func:`numpy.argsort`
+
+    """
+    return a.argsort()
 
 
 # TODO(okuta): Implement msort

@@ -19,7 +19,7 @@ cdef class ndarray:
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef dumps(self)
-    cpdef ndarray astype(self, dtype, copy=*)
+    cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
     cpdef fill(self, value)

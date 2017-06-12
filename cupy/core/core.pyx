@@ -260,11 +260,18 @@ cdef class ndarray:
         """Dumps a pickle of the array to a string."""
         return six.moves.cPickle.dumps(self, -1)
 
-    cpdef ndarray astype(self, dtype, copy=True):
+    cpdef ndarray astype(
+            self, dtype, order='K', casting=None, subok=None, copy=True):
         """Casts the array to given data type.
 
         Args:
             dtype: Type specifier.
+            order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+                (Fortran-style) order.
+                When `order` is 'A', it uses 'F' if `a` is column-major and
+                uses `C` otherwise.
+                And when `order` is 'K', it keeps strides as closely as
+                possible.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
 
@@ -274,23 +281,60 @@ cdef class ndarray:
             array.
 
         .. note::
-           This method currently does not support ``order``, ``casting``, and
-           ``subok`` arguments.
+           This method currently does not support ``casting``, and ``subok``
+           arguments.
 
         .. seealso:: :meth:`numpy.ndarray.astype`
 
         """
-        # TODO(beam2d): Support ordering, casting, and subok option
+        cdef vector.vector[Py_ssize_t] strides
+        cdef Py_ssize_t stride
+
+        # TODO(beam2d): Support casting and subok option
+        if casting is not None:
+            raise TypeError('casting is not supported yet')
+        if subok is not None:
+            raise TypeError('subok is not supported yet')
+
+        if order not in ['C', 'F', 'A', 'K']:
+            raise TypeError('order not understood')
+
         dtype = numpy.dtype(dtype)
         if dtype.type == self.dtype.type:
-            if copy:
-                return self.copy()
-            else:
+            if not copy and (
+                    order == 'K' or
+                    order == 'A' and (self._c_contiguous or
+                                      self._f_contiguous) or
+                    order == 'C' and self._c_contiguous or
+                    order == 'F' and self._f_contiguous):
                 return self
-        else:
+
+        if order == 'A':
+            if self._f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
+        elif order == 'K':
+            if self._f_contiguous:
+                order = 'F'
+            elif self._c_contiguous:
+                order = 'C'
+
+        if order == 'K':
             newarray = ndarray(self.shape, dtype=dtype)
-            elementwise_copy(self, newarray)
-            return newarray
+            stride_and_index = [
+                (abs(s), -i) for i, s in enumerate(self._strides)]
+            stride_and_index.sort()
+            strides.resize(self.ndim)
+            stride = dtype.itemsize
+            for s, i in stride_and_index:
+                strides[-i] = stride
+                stride *= self._shape[-i]
+            newarray._set_shape_and_strides(self._shape, strides)
+        else:
+            newarray = ndarray(self.shape, dtype=dtype, order=order)
+        elementwise_copy(self, newarray)
+        return newarray
 
     # TODO(okuta): Implement byteswap
 
@@ -707,7 +751,51 @@ cdef class ndarray:
                    'uninstalling it.')
             raise RuntimeError(msg)
 
-    # TODO(okuta): Implement argsort
+    def argsort(self):
+        """Return the indices that would sort an array with stable sorting
+
+        .. note::
+            For its implementation reason, ``ndarray.argsort`` currently
+            supports only arrays with their rank of one, and does not support
+            ``axis``, ``kind`` and ``order`` parameters that
+            ``numpy.ndarray.argsort`` supports.
+
+        .. seealso::
+            :func:`cupy.argsort` for full documentation,
+            :meth:`numpy.ndarray.argsort`
+
+        """
+
+        # TODO(takagi): Support axis argument.
+        # TODO(takagi): Support kind argument.
+
+        if self.ndim == 0:
+            msg = 'Sorting arrays with the rank of zero is not supported'
+            raise ValueError(msg)
+
+        # TODO(takagi): Support ranks of two or more
+        if self.ndim > 1:
+            msg = ('Sorting arrays with the rank of two or more is '
+                   'not supported')
+            raise ValueError(msg)
+
+        # Assuming that Py_ssize_t can be represented with numpy.int64.
+        assert cython.sizeof(Py_ssize_t) == 8
+
+        idx_array = ndarray(self.shape, dtype=numpy.int64)
+
+        # TODO(takagi): Support float16 and bool
+        try:
+            thrust.argsort(
+                self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
+        except NameError:
+            msg = ('Thrust is needed to use cupy.argsort. Please install CUDA '
+                   'Toolkit with Thrust then reinstall CuPy after '
+                   'uninstalling it.')
+            raise RuntimeError(msg)
+
+        return idx_array
+
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
@@ -1799,7 +1887,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     if isinstance(obj, ndarray):
         if dtype is None:
             dtype = obj.dtype
-        a = obj.astype(dtype, copy)
+        a = obj.astype(dtype, copy=copy)
 
         ndim = a._shape.size()
         if ndmin > ndim:
