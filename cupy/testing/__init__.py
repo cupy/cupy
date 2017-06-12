@@ -53,4 +53,3 @@ slow = attr.slow
 
 setup_random = random.setup_random
 teardown_random = random.teardown_random
-get_random_state = random.get_random_state
