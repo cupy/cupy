@@ -187,6 +187,14 @@ class TestCumsum(unittest.TestCase):
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
 
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_huge(self, xp):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'b')
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return xp.cumsum(a, axis=0)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower(self, xp, dtype):
@@ -224,6 +232,12 @@ class TestCumprod(unittest.TestCase):
         n = len(axes)
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
         return xp.cumprod(a, axis=self.axis)
+
+    @testing.slow
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_axis_huge(self, xp):
+        a = xp.ones(2048*1024*1024, 'b')
+        return xp.cumprod(a, axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
