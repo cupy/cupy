@@ -368,7 +368,6 @@ cdef class ndarray:
         else:
             return x
 
-
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
 
