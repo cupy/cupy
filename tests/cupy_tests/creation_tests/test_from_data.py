@@ -3,6 +3,7 @@ import unittest
 import cupy
 from cupy import cuda
 from cupy import testing
+import numpy
 
 
 @testing.gpu
@@ -14,6 +15,12 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array(self, xp, dtype):
         return xp.array([[1, 2, 3], [2, 3, 4]], dtype=dtype)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_numpy(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        return xp.array(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -35,6 +42,11 @@ class TestFromData(unittest.TestCase):
     def test_array_copy_with_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         return xp.array(a, dtype=dtype2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_array_copy_with_dtype_being_none(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.array(a, dtype=None)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -97,3 +109,52 @@ class TestFromData(unittest.TestCase):
         with cuda.Device(1):
             dst = src.copy(order)
         testing.assert_allclose(src, dst, rtol=0, atol=0)
+
+
+@testing.parameterize(
+    *testing.product({
+        'ndmin': [0, 1, 2, 3],
+        'copy': [True, False],
+        'xp': [numpy, cupy]
+    })
+)
+class TestArrayPreservationOfShape(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_cupy_array(self, dtype):
+        shape = 2, 3
+        a = testing.shaped_arange(shape, self.xp, dtype)
+        cupy.array(a, copy=self.copy, ndmin=self.ndmin)
+
+        # Check if cupy.ndarray does not alter
+        # the shape of the original array.
+        self.assertEqual(a.shape, shape)
+
+
+@testing.parameterize(
+    *testing.product({
+        'ndmin': [0, 1, 2, 3],
+        'copy': [True, False],
+        'xp': [numpy, cupy]
+    })
+)
+class TestArrayCopy(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_cupy_array(self, dtype):
+        a = testing.shaped_arange((2, 3), self.xp, dtype)
+        actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
+
+        should_copy = (self.xp is numpy) or self.copy
+        # TODO(Kenta Oono): Better determination of copy.
+        is_copied = not ((actual is a) or (actual.base is a) or
+                         (actual.base is a.base and a.base is not None))
+        self.assertEqual(should_copy, is_copied)
+
+
+class TestArrayInvalidObject(unittest.TestCase):
+
+    def test_invalid_type(self):
+        a = numpy.array([1, 2, 3], dtype=object)
+        with self.assertRaises(ValueError):
+            cupy.array(a)
