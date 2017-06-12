@@ -349,7 +349,11 @@ def linkcode_resolve(domain, info):
     if domain != 'py' or not info['module']:
         return None
 
-    tag = 'v{}'.format(__version__)
+    rtd_version = os.environ.get('READTHEDOCS_VERSION')
+    if rtd_version == 'latest':
+        tag = 'master'
+    else:
+        tag = 'v{}'.format(__version__)
     repo_root_dir = os.path.realpath('..')
 
     # Import the object from module path
@@ -370,5 +374,5 @@ def linkcode_resolve(domain, info):
         return None
     relpath = os.path.relpath(filename, repo_root_dir)
 
-    return 'https://github.com/pfnet/chainer/blob/{}/{}#L{}'.format(
+    return 'https://github.com/chainer/chainer/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)
