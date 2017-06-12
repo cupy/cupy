@@ -374,5 +374,5 @@ def linkcode_resolve(domain, info):
         return None
     relpath = os.path.relpath(filename, repo_root_dir)
 
-    return 'https://github.com/chainer/chainer/blob/{}/{}#L{}'.format(
+    return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)
