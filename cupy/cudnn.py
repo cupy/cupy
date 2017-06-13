@@ -144,7 +144,7 @@ def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     return desc
 
 
-def create_convolution_descriptor(pad, stride, dtype,
+def create_convolution_descriptor(pad, stride, dtype, dilation=(1, 1),
                                   mode=cudnn.CUDNN_CROSS_CORRELATION):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       cudnn.destroyConvolutionDescriptor)
@@ -154,14 +154,17 @@ def create_convolution_descriptor(pad, stride, dtype,
 
     if ndim == 2:
         if _cudnn_version >= 5000:
+            if _cudnn_version < 6000:
+                if dilation[0] != 1 or dilation[1] != 1:
+                    raise ValueError('dilation must be one when cudnn < 6.0')
             data_type = get_data_type(dtype)
             # TODO(takagi) Temporarily use computing precision of FP32 for
             #     storing precision of FP16.
             if dtype == numpy.float16:
                 data_type = cudnn.CUDNN_DATA_FLOAT
             cudnn.setConvolution2dDescriptor_v5(
-                desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode,
-                data_type)
+                desc.value, pad[0], pad[1], stride[0], stride[1],
+                dilation[0], dilation[1], mode, data_type)
         else:
             cudnn.setConvolution2dDescriptor_v4(
                 desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
