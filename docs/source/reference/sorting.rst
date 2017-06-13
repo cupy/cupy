@@ -2,6 +2,7 @@ Sorting, Searching, and Counting
 ================================
 
 .. autofunction:: cupy.sort
+.. autofunction:: cupy.lexsort
 .. autofunction:: cupy.argsort
 .. autofunction:: cupy.argmax
 .. autofunction:: cupy.argmin

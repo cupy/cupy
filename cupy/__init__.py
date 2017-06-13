@@ -395,6 +395,7 @@ from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
 from cupy.sorting.sort import argsort  # NOQA
+from cupy.sorting.sort import lexsort  # NOQA
 from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------

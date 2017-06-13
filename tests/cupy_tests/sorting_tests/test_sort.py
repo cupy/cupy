@@ -87,6 +87,50 @@ class TestSort(unittest.TestCase):
 
 
 @testing.gpu
+class TestLexsort(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    # Test ranks
+
+    @testing.numpy_cupy_raises()
+    def test_lexsort_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        return xp.lexsort(a)
+
+    @testing.numpy_cupy_array_equal
+    def test_lexsort_one_dim(self, xp):
+        a = testing.shaped_random((2,), xp)
+        return xp.lexsort(a)
+
+    @testing.numpy_cupy_array_equal
+    def test_lexsort_two_dim(self, xp):
+        a = xp.array([[9, 4, 0, 4, 0, 2, 1],
+                      [1, 5, 1, 4, 3, 4, 4]])  # from numpy.lexsort example
+        return xp.lexsort(a)
+
+    def test_lexsort_three_or_more_dim(self):
+        a = testing.shaped_random((2, 10, 10), cupy)
+        with self.assertRaises(ValueError):
+            return cupy.lexsort(a)
+
+    # Test dtypes
+
+    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L',
+                         numpy.float32, numpy.float64])
+    @testing.numpy_cupy_allclose()
+    def test_lexsort_dtype(self, xp, dtype):
+        a = testing.shaped_random((2, 10), xp, dtype)
+        return xp.lexsort(a)
+
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
+    def test_lexsort_unsupported_dtype(self, dtype):
+        a = testing.shaped_random((2, 10), cupy, dtype)
+        with self.assertRaises(TypeError):
+            return cupy.lexsort(a)
+
+
+@testing.gpu
 class TestArgsort(unittest.TestCase):
 
     _multiprocess_can_split_ = True
