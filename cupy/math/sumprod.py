@@ -148,7 +148,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
 
 def _cumprod_batch(out):
     kern = core.ElementwiseKernel(
-        'int64 pos, int32 batch', 'raw T x',
+        'int64 pos, int64 batch', 'raw T x',
         '''
         int b = i % batch;
         int j = i / batch;
