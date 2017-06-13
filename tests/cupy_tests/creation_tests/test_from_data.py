@@ -45,13 +45,27 @@ class TestFromData(unittest.TestCase):
         return b
 
     @testing.multi_gpu(2)
-    def test_array_multidevice(self):
+    def test_array_multi_device(self):
         with cuda.Device(0):
             x = testing.shaped_arange((2, 3, 4), cupy, dtype='f')
         with cuda.Device(1):
             y = cupy.array(x)
         self.assertIsInstance(y, cupy.ndarray)
         self.assertIsNot(x, y)  # Do copy
+        self.assertEqual(int(x.device), 0)
+        self.assertEqual(int(y.device), 1)
+        testing.assert_array_equal(x, y)
+
+    @testing.multi_gpu(2)
+    def test_array_multi_device_zero_size(self):
+        with cuda.Device(0):
+            x = testing.shaped_arange((0,), cupy, dtype='f')
+        with cuda.Device(1):
+            y = cupy.array(x)
+        self.assertIsInstance(y, cupy.ndarray)
+        self.assertIsNot(x, y)  # Do copy
+        self.assertIsNone(x.device)
+        self.assertIsNone(y.device)
         testing.assert_array_equal(x, y)
 
     @testing.for_all_dtypes()
