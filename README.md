@@ -2,7 +2,7 @@
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
-[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs.cupy.chainer.org/en/stable/?badge=stable)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
 
 # CuPy : NumPy-like API accelerated with CUDA
 
@@ -87,7 +87,7 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 ## More information
 
 - Official site: (to be appeared)
-- Official document: https://docs.cupy.chainer.org/
+- Official document: http://docs.cupy.chainer.org/
 - github: https://github.com/cupy/cupy
 - Forum: https://groups.google.com/forum/#!forum/cupy
 - Forum (Japanese): https://groups.google.com/forum/#!forum/cupy-ja

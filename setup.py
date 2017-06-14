@@ -35,7 +35,7 @@ setup(
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://docs.cupy.chainer.org/',
+    url='http://docs.cupy.chainer.org/',
     license='MIT License',
     packages=['cupy',
               'cupy.binary',
