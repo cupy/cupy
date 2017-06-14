@@ -1,5 +1,4 @@
 <div align="center"><img src="docs/image/cupy_logo_1000px.png" width="400"/></div>
-<br />
 
 # CuPy : NumPy-like API accelerated with CUDA
 
