@@ -248,3 +248,25 @@ class TestRandomSample(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             random.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.parameterize(
+    {'size': None},
+    {'size': ()},
+    {'size': 4},
+    {'size': (0,)},
+    {'size': (1, 0)},
+)
+@testing.gpu
+class TestMultinomial(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @condition.retry(5)
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_multinomial(self, xp, dtype):
+        pvals = xp.array([0.2, 0.3, 0.5], dtype)
+        x = xp.random.multinomial(10000, pvals, self.size)
+        self.assertEqual(x.dtype, 'l')
+        return x / 10000
