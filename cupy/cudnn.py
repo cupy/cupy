@@ -153,10 +153,10 @@ def create_convolution_descriptor(pad, stride, dtype, dilation=(1, 1),
         raise ValueError('pad and stride must be of same length')
 
     if ndim == 2:
+        if _cudnn_version < 6000:
+            if dilation[0] != 1 or dilation[1] != 1:
+                raise ValueError('dilation must be one when cudnn < 6.0')
         if _cudnn_version >= 5000:
-            if _cudnn_version < 6000:
-                if dilation[0] != 1 or dilation[1] != 1:
-                    raise ValueError('dilation must be one when cudnn < 6.0')
             data_type = get_data_type(dtype)
             # TODO(takagi) Temporarily use computing precision of FP32 for
             #     storing precision of FP16.
