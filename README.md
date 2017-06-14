@@ -1,10 +1,13 @@
+<div align="center"><img src="docs/image/cupy_logo_1000px.png" width="400"/></div>
+<br />
+
+# CuPy : NumPy-like API accelerated with CUDA
+
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
-
-# CuPy : NumPy-like API accelerated with CUDA
 
 ## Requirements
 
