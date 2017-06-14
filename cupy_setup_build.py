@@ -344,7 +344,7 @@ def check_extensions(extensions):
                 msg = ('Missing file: %s\n' % f +
                        'Please install Cython. ' +
                        'Please also check the version of Cython.\n' +
-                       'See http://docs.chainer.org/en/stable/install.html')
+                       'See https://docs.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
 
