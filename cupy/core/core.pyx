@@ -1906,11 +1906,11 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
             raise ValueError('Unsupported dtype %s' % dtype)
         a = ndarray(a_cpu.shape, dtype=dtype)
         mem = pinned_memory.alloc_pinned_memory(a.nbytes)
-        src = numpy.frombuffer(mem, a_cpu.dtype,
-                               a_cpu.size).reshape(a_cpu.shape)
-        src[...] = a_cpu
+        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
+                                   a_cpu.size).reshape(a_cpu.shape)
+        src_cpu[...] = a_cpu
         stream = cuda.Stream.null
-        a.set(src, stream)
+        a.set(src_cpu, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
 
