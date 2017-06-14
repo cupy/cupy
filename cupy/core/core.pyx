@@ -1888,7 +1888,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         src = obj
         if dtype is None:
             dtype = src.dtype
-        if src.data.device.id == device.get_device_id():
+        if (src.data.device is None or
+            src.data.device.id == device.get_device_id()):
             a = src.astype(dtype, copy=copy)
         else:
             a = src.copy().astype(dtype, copy=False)
