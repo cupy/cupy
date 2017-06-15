@@ -94,3 +94,16 @@ last element among elements referencing duplicate locations.
   >>> a_cpu[i_cpu] = v_cpu
   >>> a_cpu
   array([ 9998.,  9999.])
+
+
+Reduction methods return zero-dimensional array
+-----------------------------------------------
+
+NumPy's reduction methods such as :func:`numpy.sum` returns a scalar value.
+However CuPy's one returns zero-dimensional array because it is required to synchronize GPU and CPU to return a scalar value.
+If you want to use a scalar value, cast a result array to a scalar explicitly.
+
+  >>> type(np.sum(np.arange(3)))
+  <class 'numpy.int64'>
+  >>> type(cupy.sum(cupy.arange(3)))
+  <class 'cupy.core.core.ndarray'>
