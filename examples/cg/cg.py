@@ -4,7 +4,6 @@ import time
 
 import numpy as np
 from scipy.sparse.linalg import cg
-from scipy.sparse import rand
 import six
 
 import cupy
@@ -41,26 +40,25 @@ def fit(A, b, x0, tol, max_iter):
 
 def run(gpuid, tol, max_iter):
     # Solve simultaneous linear equations, Ax = b.
-    for repeat in range(1):
+    # To check whether the answers are correct, each 'b' is printed.
+    for repeat in range(3):
         print("Trial: %d" % repeat)
         # Create the large sparse symmetric matrix 'A'.
         N = 2000
-        max_val = 50
-        A = rand(N, N, 0.4).A
-        ran = np.random.randint(max_val, size=(N, N))
-        A = (A * ran).astype(np.int32)
-        A = (A + A.T).astype(np.float32)
-        b = np.random.randint(max_val, size=N).astype(np.float32)
+        A = np.random.randint(2, size=(N, N))
+        A = ((A + A.T) % 2).astype(np.float32)
+        b = A[:, N - 1]
         x0 = np.zeros(N, dtype=np.float32)
 
-        msg = 'b[:20]='
+        np.set_printoptions(precision=2, suppress=True)
+        msg = 'b[:18]='
         print(msg)
-        print(b[:20])
+        print(b[:18])
 
         with timer(' CPU '):
             x = fit(A, b, x0, tol, max_iter)
             b_calc = np.dot(A, x)
-            print(np.rint(b_calc[:20]))
+            print(b_calc[:18])
 
         with cupy.cuda.Device(gpuid):
             A_gpu = cupy.asarray(A)
@@ -69,12 +67,12 @@ def run(gpuid, tol, max_iter):
             with timer(' GPU '):
                 x = fit(A_gpu, b_gpu, x0_gpu, tol, max_iter)
                 b_calc = cupy.dot(A_gpu, x)
-                print(cupy.rint(b_calc[:20]))
+                print(b_calc[:18])
 
         with timer(' SciPy '):
             x = cg(A, b)
             b_calc = np.dot(A, x[0])
-            print(np.rint(b_calc[:20]))
+            print(b_calc[:18])
 
         print()
 
@@ -83,7 +81,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu-id', '-g', default=0, type=int,
                         help='ID of GPU.')
-    parser.add_argument('--tol', '-t', default=5.0, type=float,
+    parser.add_argument('--tol', '-t', default=0.1, type=float,
                         help='tolerance to stop iteration')
     parser.add_argument('--max-iter', '-m', default=5000, type=int,
                         help='number of iterations')
