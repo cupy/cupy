@@ -51,16 +51,17 @@ def run(gpuid, tol, max_iter):
         x0 = np.zeros(N, dtype=np.float32)
 
         np.set_printoptions(precision=2, suppress=True)
-        msg = 'b[:18]='
-        print(msg)
+        print('b[:18]=')
         print(b[:18])
 
         with timer(' CPU '):
+            print('Running CPU...')
             x = fit(A, b, x0, tol, max_iter)
             b_calc = np.dot(A, x)
             print(b_calc[:18])
 
         with cupy.cuda.Device(gpuid):
+            print('Running GPU...')
             A_gpu = cupy.asarray(A)
             b_gpu = cupy.asarray(b)
             x0_gpu = cupy.asarray(x0)
@@ -70,6 +71,7 @@ def run(gpuid, tol, max_iter):
                 print(b_calc[:18])
 
         with timer(' SciPy '):
+            print('Running SciPy...')
             x = cg(A, b)
             b_calc = np.dot(A, x[0])
             print(b_calc[:18])
