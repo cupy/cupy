@@ -1,3 +1,5 @@
+import math
+
 import numpy
 
 import cupy
@@ -34,6 +36,10 @@ def arange(start, stop=None, step=1, dtype=None):
     if stop is None:
         stop = start
         start = 0
+
+    if step is None:
+        step = 1
+
     size = int(numpy.ceil((stop - start) / step))
     if size <= 0:
         return cupy.empty((0,), dtype=dtype)
