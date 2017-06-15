@@ -205,3 +205,49 @@ class TestMeshgrid(unittest.TestCase):
         y = xp.arange(3).astype(dtype)
         z = xp.arange(4).astype(dtype)
         return xp.meshgrid(x, y, z, indexing=self.indexing, copy=self.copy)
+
+
+@testing.gpu
+class TestMgrid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_mgrid0(self, dtype):
+        out = cupy.mgrid[0:]
+        assert(out == [])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_mgrid1(self, xp):
+        return xp.mgrid[-10:10]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_mgrid2(self, xp):
+        return xp.mgrid[-10:10:10j]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_mgrid3(self, xp):
+        x = xp.zeros(10)[:, None]
+        y = xp.ones(10)[:, None]
+        return xp.mgrid[x:y:10j]
+
+
+@testing.gpu
+class TestOgrid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_ogrid0(self, dtype):
+        out = cupy.ogrid[0:]
+        assert(out == [])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ogrid1(self, xp):
+        return xp.ogrid[-10:10]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ogrid2(self, xp):
+        return xp.ogrid[-10:10:10j]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ogrid3(self, xp):
+        x = xp.zeros(10)[:, None]
+        y = xp.ones(10)[:, None]
+        return xp.ogrid[x:y:10j]

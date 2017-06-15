@@ -141,6 +141,8 @@ from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
 from cupy.creation.ranges import logspace  # NOQA
 from cupy.creation.ranges import meshgrid  # NOQA
+from cupy.creation.ranges import mgrid  # NOQA
+from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
