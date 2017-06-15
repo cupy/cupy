@@ -1,3 +1,4 @@
+import numpy
 import unittest
 
 import cupy
@@ -10,11 +11,17 @@ class TestDims(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def check_atleast(self, func, xp):
-        a = testing.shaped_arange((), xp)
-        b = testing.shaped_arange((2,), xp)
-        c = testing.shaped_arange((2, 2), xp)
-        d = testing.shaped_arange((4, 3, 2), xp)
-        return func(a, b, c, d)
+        arys = []
+        # For xp=numpy, only numpy arrays are tested as inputs.
+        # For xp=cupy, both cupy and numpy arrays are tested as inputs.
+        for src_xp in (xp, numpy):
+            arys += [
+                testing.shaped_arange((), src_xp),
+                testing.shaped_arange((2,), src_xp),
+                testing.shaped_arange((2, 2), src_xp),
+                testing.shaped_arange((4, 3, 2), src_xp),
+            ]
+        return func(*arys)
 
     @testing.numpy_cupy_array_list_equal()
     def test_atleast_1d1(self, xp):
