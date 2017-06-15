@@ -6,6 +6,22 @@ from cupy import testing
 
 
 @testing.gpu
+class TestIndices(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_indices_list(self, xp, dtype):
+        return xp.indices((0,), dtype)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_indices_list(self, xp, dtype):
+        return xp.indices((1, 2, 3, 4), dtype)
+
+
+@testing.gpu
 class TestIX_(unittest.TestCase):
 
     _multiprocess_can_split_ = True
