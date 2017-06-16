@@ -34,7 +34,7 @@ def _atleast_nd_helper(n, func_name, arys):
         res.append(a)
 
     if len(res) == 1:
-        res = res[0]
+        res, = res
     return res
 
 
