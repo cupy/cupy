@@ -229,8 +229,8 @@ def _slogdet_one(a):
         sign = (non_zero % 2) * -2 + 1
         logdet = cupy.log(abs(diag)).sum()
     else:
-        sign = dtype.type(0.0)
-        logdet = dtype.type('-inf')
+        sign = cupy.array(0.0, dtype=dtype)
+        logdet = cupy.array(float('-inf'), dtype)
 
     return sign, logdet
 
