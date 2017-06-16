@@ -3,7 +3,6 @@ import contextlib
 import time
 
 import numpy as np
-from scipy.sparse.linalg import cg
 import six
 
 import cupy
@@ -42,7 +41,7 @@ def run(gpu_id, tol, max_iter):
     '''CuPy Congugate gradient example
 
     Solve simultaneous linear equations, Ax = b.
-    'x' is computed in three ways. To check whether the answers are correct,
+    'x' is computed in two ways. To check whether the answers are correct,
     'b' is computed from matrix multiplication of 'A' and 'x' in each case,
     and printed.
 
@@ -75,12 +74,6 @@ def run(gpu_id, tol, max_iter):
                 x = fit(A_gpu, b_gpu, x0_gpu, tol, max_iter)
             b_calc = cupy.dot(A_gpu, x)
             print(b_calc[:18])
-
-        print('Running SciPy...')
-        with timer(' SciPy '):
-            x = cg(A, b)
-        b_calc = np.dot(A, x[0])
-        print(b_calc[:18])
 
         print()
 
