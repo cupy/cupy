@@ -1,9 +1,7 @@
-import numpy
 import six
 
 import cupy
 from cupy import core
-from cupy.creation import from_data
 
 
 zip_longest = six.moves.zip_longest
@@ -27,16 +25,12 @@ def _atleast_nd_helper(n, func_name, arys):
 
     res = []
     for a in arys:
-        if isinstance(a, numpy.ndarray):
-            a = from_data.array(a)
-
         if isinstance(a, cupy.ndarray):
             if a.ndim < n:
                 new_shape = _atleast_nd_shape_map[(n, a.ndim)](a.shape)
                 a = a.reshape(*new_shape)
         else:
-            raise TypeError('Invalid array type given in {}: {}'.format(
-                func_name, type(a)))
+            raise TypeError('Unsupported type {}'.format(type(a)))
         res.append(a)
 
     if len(res) == 1:
