@@ -357,7 +357,8 @@ cdef class ndarray:
         if self.size == 0:
             return self.astype(self.dtype, copy=True, order=order)
 
-        if device.Device() == self.device:
+        if (self.data.device is None or
+                self.data.device.id == device.get_device_id()):
             return self.astype(self.dtype, copy=True, order=order)
         else:
             # It need to make a contiguous copy for copying from another device
