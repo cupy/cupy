@@ -8,7 +8,6 @@
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
 
-# CuPy : NumPy-like API accelerated with CUDA
 [**Website**](https://cupy.chainer.org/)
 | [**Docs**](http://docs.cupy.chainer.org/en/stable/)
 | [**Install Guide**](http://docs.cupy.chainer.org/en/stable/install.html)
