@@ -20,7 +20,7 @@ _atleast_nd_shape_map = {
 }
 
 
-def _atleast_nd_helper(n, func_name, arys):
+def _atleast_nd_helper(n, arys):
     """Helper function for atleast_nd functions."""
 
     res = []
@@ -53,7 +53,7 @@ def atleast_1d(*arys):
     .. seealso:: :func:`numpy.atleast_1d`
 
     """
-    return _atleast_nd_helper(1, 'atleast_1d', arys)
+    return _atleast_nd_helper(1, arys)
 
 
 def atleast_2d(*arys):
@@ -73,7 +73,7 @@ def atleast_2d(*arys):
     .. seealso:: :func:`numpy.atleast_2d`
 
     """
-    return _atleast_nd_helper(2, 'atleast_2d', arys)
+    return _atleast_nd_helper(2, arys)
 
 
 def atleast_3d(*arys):
@@ -99,7 +99,7 @@ def atleast_3d(*arys):
     .. seealso:: :func:`numpy.atleast_3d`
 
     """
-    return _atleast_nd_helper(3, 'atleast_3d', arys)
+    return _atleast_nd_helper(3, arys)
 
 
 broadcast = core.broadcast
