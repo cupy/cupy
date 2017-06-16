@@ -341,6 +341,10 @@ cdef class ndarray:
     cpdef ndarray copy(self, order='C'):
         """Returns a copy of the array.
 
+        This method makes a copy of a given array in the current device.
+        Even when a given array is located in another device, you can copy it
+        to the current device.
+
         Args:
             order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
                 (Fortran-style) order.
