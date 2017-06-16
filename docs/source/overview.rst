@@ -8,7 +8,7 @@ CuPy Overview
 CuPy is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, :class:`cupy.ndarray`,
 and many functions on it. It supports a subset of :class:`numpy.ndarray`
-interface that is enough for `Chainer <http://chainer.org/>`_.
+interface that is enough for `Chainer <https://chainer.org/>`_.
 
 The following is a brief overview of supported subset of NumPy interface:
 
