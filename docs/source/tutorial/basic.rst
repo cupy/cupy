@@ -148,7 +148,7 @@ transfer the array between devices with this function.
    Actually :func:`cupy.asarray` is equivalent to `cupy.array(arr, dtype, copy=False)`.
 
 
-Move array from a device to a device
+Move array from a device to the host
 ------------------------------------
 
 Moving a device array to the host can be done by :func:`cupy.asnumpy` as follows:
