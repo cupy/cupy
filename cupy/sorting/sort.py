@@ -98,7 +98,29 @@ def argsort(a):
     return a.argsort()
 
 
-# TODO(okuta): Implement msort
+def msort(a):
+    """Returns a copy of an array sorted along the first axis.
+
+    Args:
+        a (cupy.ndarray): Array to be sorted.
+
+    Returns:
+        cupy.ndarray: Array of the same type and shape as ``a``.
+
+    .. note:
+        ``cupy.msort(a)``, the CuPy counterpart of ``numpy.msort(a)``, is
+        equivalent to ``cupy.sort(a, axis=0)``. For its implementation reason,
+        ``cupy.sort`` currently supports only sorting an array with its rank of
+        one, so ``cupy.msort(a)`` is actually the same as ``cupy.sort(a)`` for
+        now.
+
+    .. seealso:: :func:`numpy.msort`
+
+    """
+    # TODO(takagi): Support axis argument.
+    # TODO(takagi): Support ranks of two or more.
+    # TODO(takagi): Support float16 and bool.
+    return sort(a)
 
 
 # TODO(okuta): Implement sort_complex
