@@ -38,43 +38,49 @@ def fit(A, b, x0, tol, max_iter):
     return x
 
 
-def run(gpuid, tol, max_iter):
-    # Solve simultaneous linear equations, Ax = b.
-    # To check whether the answers are correct, each 'b' is printed.
+def run(gpu_id, tol, max_iter):
+    '''CuPy Congugate gradient example
+
+    Solve simultaneous linear equations, Ax = b.
+    'x' is computed in three ways. To check whether the answers are correct,
+    'b' is computed from matrix multiplication of 'A' and 'x' in each case,
+    and printed.
+
+    '''
     for repeat in range(3):
         print("Trial: %d" % repeat)
-        # Create the large sparse symmetric matrix 'A'.
+        # Create the large symmetric matrix 'A'.
         N = 2000
-        A = np.random.randint(2, size=(N, N))
-        A = ((A + A.T) % 2).astype(np.float32)
-        b = A[:, N - 1]
-        x0 = np.zeros(N, dtype=np.float32)
+        A = np.random.randint(50, size=(N, N))
+        A = (A + A.T).astype(np.float64)
+        b = np.random.randint(50, size=N).astype(np.float64)
+        x0 = np.zeros(N, dtype=np.float64)
 
         np.set_printoptions(precision=2, suppress=True)
         print('b[:18]=')
         print(b[:18])
 
+        print('Running CPU...')
         with timer(' CPU '):
-            print('Running CPU...')
             x = fit(A, b, x0, tol, max_iter)
-            b_calc = np.dot(A, x)
-            print(b_calc[:18])
+        b_calc = np.dot(A, x)
+        print(b_calc[:18])
 
-        with cupy.cuda.Device(gpuid):
-            print('Running GPU...')
+        with cupy.cuda.Device(gpu_id):
             A_gpu = cupy.asarray(A)
             b_gpu = cupy.asarray(b)
             x0_gpu = cupy.asarray(x0)
+            print('Running GPU...')
             with timer(' GPU '):
                 x = fit(A_gpu, b_gpu, x0_gpu, tol, max_iter)
-                b_calc = cupy.dot(A_gpu, x)
-                print(b_calc[:18])
-
-        with timer(' SciPy '):
-            print('Running SciPy...')
-            x = cg(A, b)
-            b_calc = np.dot(A, x[0])
+            b_calc = cupy.dot(A_gpu, x)
             print(b_calc[:18])
+
+        print('Running SciPy...')
+        with timer(' SciPy '):
+            x = cg(A, b)
+        b_calc = np.dot(A, x[0])
+        print(b_calc[:18])
 
         print()
 
