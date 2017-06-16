@@ -225,10 +225,8 @@ def _slogdet_one(a):
         # ipiv is 1-origin
         non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
                     cupy.count_nonzero(diag < 0))
-        if non_zero % 2 == 0:
-            sign = dtype.type(1.0)
-        else:
-            sign = dtype.type(-1.0)
+        # Note: sign == -1 ** (non_zero % 2)
+        sign = (non_zero % 2) * -2 + 1
         logdet = cupy.log(abs(diag)).sum()
     else:
         sign = dtype.type(0.0)
