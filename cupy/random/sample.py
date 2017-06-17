@@ -1,3 +1,7 @@
+import six
+
+from cupy import core
+from cupy.creation import basic
 from cupy.random import distributions
 from cupy.random import generator
 
@@ -164,3 +168,50 @@ def choice(a, size=None, replace=True, p=None):
     """
     rs = generator.get_random_state()
     return rs.choice(a, size, replace, p)
+
+
+def multinomial(n, pvals, size=None):
+    """Returns an array from multinomial distribution.
+
+    Args:
+        n (int): Number of trials.
+        pvals (cupy.ndarray): Probabilities of each of the ``p`` different
+            outcomes. The sum of these values must be 1.
+        size (int or tuple of ints or None): Shape of a sample in each trial.
+            For example when ``size`` is ``(a, b)``, shape of returned value is
+            ``(a, b, p)`` where ``p`` is ``len(pvals)``.
+            If ``size`` is ``None``, it is treated as ``()``. So, shape of
+            returned value is ``(p,)``.
+
+    Returns:
+        cupy.ndarray: An array drawn from multinomial distribution.
+
+    .. note::
+       It does not support ``sum(pvals) < 1`` case.
+
+    .. seealso:: :func:`numpy.random.multinomial`
+    """
+
+    if size is None:
+        m = 1
+        size = ()
+    elif isinstance(size, six.integer_types):
+        m = size
+        size = (size,)
+    else:
+        size = tuple(size)
+        m = 1
+        for x in size:
+            m *= x
+
+    p = len(pvals)
+    shape = size + (p,)
+    # atomicAdd only supports int32
+    ys = basic.zeros(shape, 'i')
+    if ys.size > 0:
+        xs = choice(p, p=pvals, size=n * m)
+        core.ElementwiseKernel(
+            'int64 x, int32 p, int32 n', 'raw int32 ys',
+            'atomicAdd(&ys[i / n * p + x], 1)',
+            'cupy_random_multinomial')(xs, p, n, ys)
+    return ys.astype('l')
