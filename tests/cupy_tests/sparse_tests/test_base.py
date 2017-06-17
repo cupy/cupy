@@ -59,7 +59,7 @@ class TestSpmatrix(unittest.TestCase):
         return bool(s)
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_bool_true(self, xp, sp):
+    def test_bool_invalid(self, xp, sp):
         s = dummies[sp](shape=(2, 1))
         bool(s)
 
