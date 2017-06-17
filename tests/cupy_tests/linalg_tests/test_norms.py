@@ -80,6 +80,6 @@ class TestMatrixRank(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_array_equal()
-    def test_norm(self, xp, dtype):
+    def test_matrix_rank(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
         return xp.array(xp.linalg.matrix_rank(a, tol=self.tol))
