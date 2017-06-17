@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import cuda
 from cupy import testing
 
@@ -82,4 +83,9 @@ class TestMatrixRank(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_matrix_rank(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
-        return xp.array(xp.linalg.matrix_rank(a, tol=self.tol))
+        y = xp.linalg.matrix_rank(a, tol=self.tol)
+        if xp is cupy:
+            # Note numpy returns int
+            self.assertIsInstance(y, cupy.ndarray)
+            self.assertEqual(y.dtype, 'l')
+        return xp.array(y)
