@@ -213,13 +213,13 @@ class TestCumprod(unittest.TestCase):
         return xp.cumprod(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_cumprod_2dim(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumprod(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_cumprod_axis(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
