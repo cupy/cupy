@@ -53,7 +53,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = _NVRTCProgram(source, os.path.basename(cu_path))
+        prog = _NVRTCProgram(source, cu_path)
         ptx = prog.compile(options)
 
         return ptx
