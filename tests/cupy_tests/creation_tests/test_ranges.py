@@ -31,6 +31,11 @@ class TestRanges(unittest.TestCase):
     def test_arange4(self, xp, dtype):
         return xp.arange(20, 2, -3, dtype=dtype)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_arange5(self, xp, dtype):
+        return xp.arange(0, 100, None, dtype=dtype)
+
     @testing.numpy_cupy_array_equal()
     def test_arange_no_dtype_int(self, xp):
         return xp.arange(1, 11, 2)
