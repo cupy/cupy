@@ -341,39 +341,37 @@ cdef class ndarray:
     cpdef ndarray copy(self, order='C'):
         """Returns a copy of the array.
 
+        This method makes a copy of a given array in the current device.
+        Even when a given array is located in another device, you can copy it
+        to the current device.
+
         Args:
-            order ({'C', 'F'}): Row-major (C-style) or column-major
-                (Fortran-style) order. This function currently does not
-                support order 'A' and 'K'.
+            order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+                (Fortran-style) order.
+                When `order` is 'A', it uses 'F' if `a` is column-major and
+                uses `C` otherwise.
+                And when `order` is 'K', it keeps strides as closely as
+                possible.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
            :meth:`numpy.ndarray.copy`
 
         """
-        cdef ndarray a, newarray
-        # TODO(beam2d): Support ordering option 'A' and 'K'
-        if order not in ['C', 'F']:
-            raise TypeError('order not understood')
-
         if self.size == 0:
-            return ndarray(self.shape, self.dtype, order=order)
+            return self.astype(self.dtype, copy=True, order=order)
 
-        a = self
-        if order == 'C' and not self._c_contiguous:
+        if (self.data.device is None or
+                self.data.device.id == device.get_device_id()):
+            return self.astype(self.dtype, copy=True, order=order)
+        else:
+            # It need to make a contiguous copy for copying from another device
             with self.device:
-                a = ascontiguousarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-        elif order == 'F' and not self._f_contiguous:
-            with self.device:
-                a = asfortranarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-
-        newarray = ndarray(a.shape, a.dtype, order=order)
-        newarray.data.copy_from_device(a.data, a.nbytes)
-        return newarray
+                x = self.astype(self.dtype, copy=False, order=order)
+            newarray = ndarray(x.shape, dtype=x.dtype)
+            newarray._set_shape_and_strides(x._shape, x._strides)
+            newarray.data.copy_from_device(x.data, x.nbytes)
+            return newarray
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
