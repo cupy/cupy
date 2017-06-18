@@ -2299,8 +2299,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
                     cum += a._shape[axis]
 
                 _concatenate_kernel(
-                    x, axis, len(shape), array(cum_sizes), array(x_strides),
-                    ret)
+                    x, axis, array(cum_sizes), array(x_strides), ret)
             return ret
 
     skip = (slice(None),) * axis
@@ -2327,7 +2326,7 @@ cdef _concatenate_kernel_one = ElementwiseKernel(
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, int32 ndim, raw int32 cum_sizes,
+    '''raw P x, int32 axis, raw int32 cum_sizes,
     raw int32 x_strides''',
     'T y',
     '''
@@ -2347,7 +2346,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
     int array_ind = left;
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
-    for (int j = ndim - 1; j >= 0; --j) {
+    for (int j = _ind.ndim - 1; j >= 0; --j) {
       ptrdiff_t ind[] = {array_ind, j};
       ptrdiff_t offset;
       if (j == axis) {
