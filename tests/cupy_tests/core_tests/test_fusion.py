@@ -560,8 +560,10 @@ class TestFusionUfunc(unittest.TestCase):
 
         ret0 = func(*data)  # Non-fused
         ret1 = f(*data)  # Fused
-        ret0 = list(ret0) if isinstance(ret0, tuple) else [ret0]
-        ret1 = list(ret1) if isinstance(ret1, tuple) else [ret1]
+        if not isinstance(ret0, tuple):
+            ret0 = [ret0]
+        if not isinstance(ret1, tuple):
+            ret1 = [ret1]
         for nf, f in zip(ret0, ret1):
             numpy.testing.assert_array_almost_equal(nf.get(), f.get())
 
