@@ -218,7 +218,7 @@ class TestMgrid(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_mgrid0(self, dtype):
         out = cupy.mgrid[0:]
-        assert(out == [])
+        self.assertListEqual(out, [])
 
     @testing.numpy_cupy_array_list_equal()
     def test_mgrid1(self, xp):
@@ -234,6 +234,18 @@ class TestMgrid(unittest.TestCase):
         y = xp.ones(10)[:, None]
         return xp.mgrid[x:y:10j]
 
+    @testing.numpy_cupy_array_list_equal()
+    def test_mgrid4(self, xp):
+        # check len(keys) > 1
+        return xp.mgrid[-10:10:10j, -10:10:10j]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_mgrid5(self, xp):
+        # check len(keys) > 1
+        x = xp.zeros(10)[:, None]
+        y = xp.ones(10)[:, None]
+        return xp.mgrid[x:y:10j, x:y:10j]
+
 
 @testing.gpu
 class TestOgrid(unittest.TestCase):
@@ -241,7 +253,7 @@ class TestOgrid(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_ogrid0(self, dtype):
         out = cupy.ogrid[0:]
-        assert(out == [])
+        self.assertListEqual(out, [])
 
     @testing.numpy_cupy_array_list_equal()
     def test_ogrid1(self, xp):
@@ -256,3 +268,15 @@ class TestOgrid(unittest.TestCase):
         x = xp.zeros(10)[:, None]
         y = xp.ones(10)[:, None]
         return xp.ogrid[x:y:10j]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ogrid4(self, xp):
+        # check len(keys) > 1
+        return xp.ogrid[-10:10:10j, -10:10:10j]
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ogrid5(self, xp):
+        # check len(keys) > 1
+        x = xp.zeros(10)[:, None]
+        y = xp.ones(10)[:, None]
+        return xp.ogrid[x:y:10j, x:y:10j]
