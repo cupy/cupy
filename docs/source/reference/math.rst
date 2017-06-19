@@ -43,6 +43,8 @@ Sums and products
 
 .. autofunction:: cupy.sum
 .. autofunction:: cupy.prod
+.. autofunction:: cupy.cumsum
+.. autofunction:: cupy.cumprod
 
 
 Exponential and logarithm functions

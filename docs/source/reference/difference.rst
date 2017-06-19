@@ -24,22 +24,6 @@ This is Intel CPU result.
   array([2147483647], dtype=int32)
 
 
-Boolean values squared
-----------------------
-
-In NumPy implementation, ``x ** 2`` is calculated using multiplication operator as ``x * x``.
-Because the result of the multiplication of boolean values is boolean, ``True ** 2`` return boolean value.
-However, when you use power operator with other arguments, it returns int values.
-If we aligned the behavior of the squared boolean values of CuPy to that of NumPy, we would have to check their values in advance of the calculation.
-But it would be slow because it would force CPUs to wait until the calculation on GPUs end.
-So we decided not to check its value.
-
-  >>> np.array([True]) ** 2
-  array([ True], dtype=bool)
-  >>> cupy.array([True]) ** 2
-  array([1])
-
-
 Random methods support dtype argument
 -------------------------------------
 

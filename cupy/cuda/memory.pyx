@@ -384,7 +384,7 @@ cdef class SingleDeviceMemoryPool:
         free.append(mem)
 
     cpdef free_all_blocks(self):
-        self._free = collections.defaultdict(list)
+        self._free.clear()
 
     cpdef free_all_free(self):
         warnings.warn(

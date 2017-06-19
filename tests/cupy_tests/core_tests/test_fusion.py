@@ -535,18 +535,18 @@ class TestFusionUfunc(unittest.TestCase):
 
     def random_bool(self):
         return testing.shaped_random((3, 3),
-                                     xp=numpy,
+                                     xp=cupy,
                                      dtype=numpy.bool_)
 
     def random_int(self, lower=-1000, higher=1000):
         return testing.shaped_random((3, 3),
-                                     xp=numpy,
+                                     xp=cupy,
                                      dtype=numpy.int64,
                                      scale=(higher - lower)) + lower
 
     def random_real(self, lower=-1000, higher=1000):
         return testing.shaped_random((3, 3),
-                                     xp=numpy,
+                                     xp=cupy,
                                      dtype=numpy.float64,
                                      scale=(higher - lower)) + lower
 
@@ -562,24 +562,18 @@ class TestFusionUfunc(unittest.TestCase):
             return func(*x)
 
         if type(gen) == tuple:
-            ndata = [g(*a) for i, g, a in zip(range(n), list(gen), args)]
+            data = [g(*a) for i, g, a in zip(range(n), list(gen), args)]
         else:
-            ndata = [gen(*args) for i in range(n)]
-        nret = func(*ndata)
-        fnret = f(*ndata)
-        nret = list(nret) if type(nret) == tuple else [nret]
-        fnret = list(fnret) if type(fnret) == tuple else [fnret]
-        for n, fn in zip(nret, fnret):
-            numpy.testing.assert_array_almost_equal(n, fn)
+            data = [gen(*args) for i in range(n)]
 
-        cdata = [cupy.asarray(_) for _ in ndata]
-        cret = func(*cdata)
-        fcret = f(*cdata)
-        cret = list(cret) if type(cret) == tuple else [cret]
-        fcret = list(fcret) if type(fcret) == tuple else [fcret]
-        for n, c, fc in zip(nret, cret, fcret):
-            numpy.testing.assert_array_almost_equal(n, c.get())
-            numpy.testing.assert_array_almost_equal(n, fc.get())
+        ret0 = func(*data)  # Non-fused
+        ret1 = f(*data)  # Fused
+        if not isinstance(ret0, tuple):
+            ret0 = [ret0]
+        if not isinstance(ret1, tuple):
+            ret1 = [ret1]
+        for nf, f in zip(ret0, ret1):
+            numpy.testing.assert_array_almost_equal(nf.get(), f.get())
 
     def check_reduce(self, func, n, reduce_f, gen, *args):
         self._check_reduce(func, n, reduce_f, gen, args, True)
@@ -592,11 +586,10 @@ class TestFusionUfunc(unittest.TestCase):
         def f(*x):
             return func(*x)
 
-        ndata = [gen(*args) for i in range(n)]
-        fnret = f(*ndata)
-        cdata = [cupy.asarray(_) for _ in ndata]
-        fcret = f(*cdata)
-        numpy.testing.assert_array_almost_equal(fnret, fcret.get())
+        data = [gen(*args) for i in range(n)]
+        ret0 = reduce_f(func(*data))  # Non-fused
+        ret1 = f(*data)  # Fused
+        numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
     def test_bitwise(self):
         self.check(cupy.bitwise_and, 2, self.random_int)

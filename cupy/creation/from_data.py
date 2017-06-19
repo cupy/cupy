@@ -89,9 +89,12 @@ def copy(a, order='C'):
 
     Args:
         a (cupy.ndarray): The source array.
-        order ({'C', 'F'}): Row-major (C-style) or column-major
-            (Fortran-style) order. This function currently does not
-            support order 'A' and 'K'.
+        order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
+            When `order` is 'A', it uses 'F' if `a` is column-major and
+            uses `C` otherwise.
+            And when `order` is 'K', it keeps strides as closely as
+            possible.
 
     Returns:
         cupy.ndarray: The copy of ``a`` on the current device.
@@ -102,7 +105,6 @@ def copy(a, order='C'):
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the
     # contents over the devices.
-    # TODO(beam2d): Support ordering option 'A' and 'K'
     return a.copy(order=order)
 
 

@@ -8,12 +8,14 @@ CuPy Overview
 CuPy is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, :class:`cupy.ndarray`,
 and many functions on it. It supports a subset of :class:`numpy.ndarray`
-interface that is enough for `Chainer <http://chainer.org/>`_.
+interface that is enough for `Chainer <https://chainer.org/>`_.
 
 The following is a brief overview of supported subset of NumPy interface:
 
 - `Basic indexing <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
   (indexing by ints, slices, newaxes, and Ellipsis)
+- Most of `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
+  (except for some indexing patterns with boolean masks)
 - Element types (dtypes): bool\_, (u)int{8, 16, 32, 64}, float{16, 32, 64}
 - Most of the array creation routines
 - Reshaping and transposition
