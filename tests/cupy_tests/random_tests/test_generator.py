@@ -221,25 +221,21 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(v.dtype, 'i')
         self.assertEqual(v.shape, (1, 2))
 
-    @condition.repeat(10)
-    def test_within_interval(self):
-        val = self.rs.interval(10, (2, 3)).get()
-        numpy.testing.assert_array_less(
-            numpy.full((2, 3), -1, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full((2, 3), 11, dtype=numpy.int64))
+    @condition.repeat(3, 10)
+    def test_bound_1(self):
+        vals = [self.rs.interval(10, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 10)
 
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = self.rs.interval(2, None).get()
-        self.assertEqual(0, val)
+    @condition.repeat(3, 10)
+    def test_bound_2(self):
+        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        self.assertEqual(min(vals), 0)
+        self.assertEqual(max(vals), 2)
 
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = self.rs.interval(2, None).get()
-        self.assertEqual(2, val)
-
-    @condition.retry(5)
+    @condition.repeat(3)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
@@ -249,7 +245,7 @@ class TestInterval(unittest.TestCase):
         expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3)
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = self.rs.interval(mx, (5, 5)).get()
@@ -290,29 +286,15 @@ class TestChoice(unittest.TestCase):
         self.assertEqual(v.dtype, expected_dtype)
         self.assertEqual(v.shape, expected_shape)
 
-    @condition.repeat(10)
-    def test_within_choice_and_shape(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        minimum = -1
-        maximum = 3
-        numpy.testing.assert_array_less(
-            numpy.full(self.size, minimum, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full(self.size, maximum, dtype=numpy.int64))
-
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        val = val.item() if self.size == () else val.item(0)
-        lower = 0
-        self.assertEqual(lower, val)
-
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        val = val.item() if self.size == () else val.item(0)
-        upper = 2
-        self.assertEqual(upper, val)
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        vals = [self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+                for _ in range(20)]
+        size_ = self.size if isinstance(self.size, tuple) else (self.size,)
+        for val in vals:
+            self.assertEqual(val.shape, size_)
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 2)
 
 
 @testing.gpu
@@ -325,7 +307,7 @@ class TestChoiceChi(unittest.TestCase):
     def tearDown(self):
         testing.teardown_random()
 
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         trial = 100
         vals = [self.rs.choice(3, 1, True, [0.3, 0.3, 0.4]).get()
@@ -334,7 +316,7 @@ class TestChoiceChi(unittest.TestCase):
         expected = numpy.array([30, 30, 40])
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
         vals = self.rs.choice(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
@@ -351,7 +333,7 @@ class TestChoiceMultinomial(unittest.TestCase):
     def tearDown(self):
         testing.teardown_random()
 
-    @condition.retry(10)
+    @condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=0.02)
     def test_choice_multinomial(self, xp, dtype):

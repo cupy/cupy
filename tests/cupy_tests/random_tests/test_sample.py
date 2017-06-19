@@ -56,25 +56,23 @@ class TestRandint2(unittest.TestCase):
     def tearDown(self):
         testing.teardown_random()
 
-    @condition.repeat(10)
-    def test_within_interval(self):
-        val = random.randint(0, 10, (2, 3)).get()
-        numpy.testing.assert_array_less(
-            numpy.full((2, 3), -1, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full((2, 3), 10, dtype=numpy.int64))
+    @condition.repeat(3, 10)
+    def test_bound_1(self):
+        vals = [random.randint(0, 10, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 9)
 
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = random.randint(0, 2).get()
-        self.assertEqual(0, val)
+    @condition.repeat(3, 10)
+    def test_bound_2(self):
+        vals = [random.randint(0, 2).get() for _ in range(20)]
+        for val in vals:
+            self.assertEqual(val.shape, ())
+        self.assertEqual(min(vals), 0)
+        self.assertEqual(max(vals), 1)
 
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = random.randint(0, 2).get()
-        self.assertEqual(1, val)
-
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
@@ -83,7 +81,7 @@ class TestRandint2(unittest.TestCase):
         expected = numpy.array([float(trial) / mx] * mx)
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
@@ -128,25 +126,23 @@ class TestRandomIntegers2(unittest.TestCase):
     def tearDown(self):
         testing.teardown_random()
 
-    @condition.repeat(10)
-    def test_within_interval(self):
-        val = random.random_integers(0, 10, (2, 3)).get()
-        numpy.testing.assert_array_less(
-            numpy.full((2, 3), -1, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full((2, 3), 11, dtype=numpy.int64))
+    @condition.repeat(3, 10)
+    def test_bound_1(self):
+        vals = [random.random_integers(0, 10, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 10)
 
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = random.random_integers(0, 2).get()
-        self.assertEqual(0, val)
+    @condition.repeat(3, 10)
+    def test_bound_2(self):
+        vals = [random.random_integers(0, 2).get() for _ in range(20)]
+        for val in vals:
+            self.assertEqual(val.shape, ())
+        self.assertEqual(min(vals), 0)
+        self.assertEqual(max(vals), 2)
 
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = random.random_integers(0, 2).get()
-        self.assertEqual(2, val)
-
-    @condition.retry(5)
+    @condition.repeat(3)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
@@ -155,7 +151,7 @@ class TestRandomIntegers2(unittest.TestCase):
         expected = numpy.array([float(trial) / mx] * mx)
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3)
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
