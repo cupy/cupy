@@ -99,7 +99,7 @@ def repeat(times, intensive_times=None):
     if casual_test:
         return repeat_with_success_at_least(times, times)
     else:
-        times_ = intensive_times or times
+        times_ = intensive_times if intensive_times is not None else times
         return repeat_with_success_at_least(times_, times_)
 
 
