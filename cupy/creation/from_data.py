@@ -1,7 +1,7 @@
 from cupy import core
 
 
-def array(obj, dtype=None, copy=True, ndmin=0):
+def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     """Creates an array on the current device.
 
     This function currently does not support the ``order`` and ``subok``
@@ -13,17 +13,33 @@ def array(obj, dtype=None, copy=True, ndmin=0):
         dtype: Data type specifier.
         copy (bool): If ``False``, this function returns ``obj`` if possible.
             Otherwise this function always returns a new array.
+        order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
+            When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
+            uses 'C' otherwise.
+            And when ``order`` is 'K', it keeps strides as closely as
+            possible.
+            If ``obj`` is ``numpy.ndarray``, thi function returns 'C' or 'F'
+            order array.
+        subok (bool): If True, then sub-classes will be passed-through,
+            otherwise the returned array will be forced to be a base-class
+            array (default).
         ndmin (int): Minimum number of dimensions. Ones are inserted to the
             head of the shape if needed.
 
     Returns:
         cupy.ndarray: An array on the current device.
 
+
+
+    .. note::
+       This method currently does not support ``subok``
+       arguments.
+
     .. seealso:: :func:`numpy.array`
 
     """
-    # TODO(beam2d): Support order and subok options
-    return core.array(obj, dtype, copy, ndmin)
+    return core.array(obj, dtype, copy, order, subok, ndmin)
 
 
 def asarray(a, dtype=None):
