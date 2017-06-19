@@ -235,7 +235,7 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
-    @condition.repeat(3)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
