@@ -158,13 +158,13 @@ cdef class _EventWatcher:
         """ Check and release completed events.
 
         """
-        if len(self.events) == 0:
+        if not self.events:
             return
         with self.lock:
             self._check_and_release_without_lock()
 
     cpdef _check_and_release_without_lock(self):
-        while len(self.events) != 0 and self.events[0][0].done:
+        while self.events and self.events[0][0].done:
             del self.events[0]
 
 
