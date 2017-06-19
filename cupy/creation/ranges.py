@@ -228,51 +228,7 @@ class nd_grid(object):
         self.sparse = sparse
 
     def __getitem__(self, key):
-        try:
-            size = []
-            typ = int
-            for k in range(len(key)):
-                step = key[k].step
-                start = key[k].start
-                if start is None:
-                    start = 0
-                if step is None:
-                    step = 1
-                if isinstance(step, complex):
-                    size.append(int(abs(step)))
-                    typ = float
-                else:
-                    size.append(
-                        int(math.ceil((key[k].stop - start) / (step * 1.0))))
-                if (isinstance(step, float) or
-                        isinstance(start, float) or
-                        isinstance(key[k].stop, float)):
-                    typ = float
-            if self.sparse:
-                nn = [cupy.arange(_x, dtype=_t)
-                      for _x, _t in zip(size, (typ,) * len(size))]
-            else:
-                nn = cupy.indices(size, typ)
-            for k in range(len(size)):
-                step = key[k].step
-                start = key[k].start
-                if start is None:
-                    start = 0
-                if step is None:
-                    step = 1
-                if isinstance(step, complex):
-                    step = int(abs(step))
-                    if step != 1:
-                        step = (key[k].stop - start) / float(step - 1)
-                nn[k] = (nn[k] * step + start)
-            if self.sparse:
-                slobj = [cupy.newaxis] * len(size)
-                for k in range(len(size)):
-                    slobj[k] = slice(None, None)
-                    nn[k] = nn[k][slobj]
-                    slobj[k] = cupy.newaxis
-            return nn
-        except (IndexError, TypeError):
+        if isinstance(key, slice):
             step = key.step
             stop = key.stop
             start = key.start
@@ -287,6 +243,50 @@ class nd_grid(object):
                 return cupy.arange(0, length, 1, float) * step + start
             else:
                 return cupy.arange(start, stop, step)
+
+        size = []
+        typ = int
+        for k in range(len(key)):
+            step = key[k].step
+            start = key[k].start
+            if start is None:
+                start = 0
+            if step is None:
+                step = 1
+            if isinstance(step, complex):
+                size.append(int(abs(step)))
+                typ = float
+            else:
+                size.append(
+                    int(math.ceil((key[k].stop - start) / (step * 1.0))))
+            if (isinstance(step, float) or
+                    isinstance(start, float) or
+                    isinstance(key[k].stop, float)):
+                typ = float
+        if self.sparse:
+            nn = [cupy.arange(_x, dtype=_t)
+                  for _x, _t in zip(size, (typ,) * len(size))]
+        else:
+            nn = cupy.indices(size, typ)
+        for k in range(len(size)):
+            step = key[k].step
+            start = key[k].start
+            if start is None:
+                start = 0
+            if step is None:
+                step = 1
+            if isinstance(step, complex):
+                step = int(abs(step))
+                if step != 1:
+                    step = (key[k].stop - start) / float(step - 1)
+            nn[k] = (nn[k] * step + start)
+        if self.sparse:
+            slobj = [cupy.newaxis] * len(size)
+            for k in range(len(size)):
+                slobj[k] = slice(None, None)
+                nn[k] = nn[k][slobj]
+                slobj[k] = cupy.newaxis
+        return nn
 
     def __len__(self):
         return 0
