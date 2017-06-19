@@ -1900,11 +1900,15 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)
-        dtype = a_cpu.dtype
-        if dtype.char not in '?bhilqBHILQefd':
-            raise ValueError('Unsupported dtype %s' % dtype)
-        a = ndarray(a_cpu.shape, dtype=dtype)
+        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
+                            ndmin=ndmin)
+        a_dtype = a_cpu.dtype
+        if a_dtype.char not in '?bhilqBHILQefd':
+            raise ValueError('Unsupported dtype %s' % a_dtype)
+        a = ndarray(a_cpu.shape, dtype=a_dtype)
+        if a_cpu.ndim == 0:
+            a.fill(a_cpu[()])
+            return a
         mem = pinned_memory.alloc_pinned_memory(a.nbytes)
         src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
                                    a_cpu.size).reshape(a_cpu.shape)
