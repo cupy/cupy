@@ -137,8 +137,10 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += blockDim.x * gridDim.x)
 
-template <typename T, int ndim>
+template <typename T, int _ndim>
 class CArray {
+public:
+  static const int ndim = _ndim;
 private:
   T* data_;
   ptrdiff_t size_;
@@ -197,6 +199,8 @@ private:
   ptrdiff_t size_;
 
 public:
+  static const int ndim = 0;
+
   __device__ int size() const {
     return size_;
   }
@@ -220,8 +224,10 @@ public:
   }
 };
 
-template <int ndim>
+template <int _ndim>
 class CIndexer {
+public:
+  static const int ndim = _ndim;
 private:
   ptrdiff_t size_;
   ptrdiff_t shape_[ndim];
@@ -271,6 +277,8 @@ private:
   ptrdiff_t size_;
 
 public:
+  static const int ndim = 0;
+
   __device__ int size() const {
     return size_;
   }
