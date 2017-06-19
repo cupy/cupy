@@ -144,8 +144,9 @@ def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     return desc
 
 
-def create_convolution_descriptor(pad, stride, dtype, dilation=(1, 1),
-                                  mode=cudnn.CUDNN_CROSS_CORRELATION):
+def create_convolution_descriptor(pad, stride, dtype,
+                                  mode=cudnn.CUDNN_CROSS_CORRELATION,
+                                  dilation=(1, 1)):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       cudnn.destroyConvolutionDescriptor)
     ndim = len(pad)
