@@ -26,6 +26,12 @@ class TestCount(unittest.TestCase):
         def func(xp):
             a = xp.array(1.0, dtype=dtype)
             c = xp.count_nonzero(a)
+            if xp is cupy:
+                # CuPy returns zero-dimensional array instead of
+                # returning a scalar value
+                self.assertIsInstance(c, xp.ndarray)
+                self.assertEqual(c.dtype, 'l')
+                self.assertEqual(c.shape, ())
             return int(c)
         self.assertEqual(func(numpy), func(cupy))
 
