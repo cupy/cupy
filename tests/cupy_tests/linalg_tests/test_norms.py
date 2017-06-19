@@ -88,4 +88,5 @@ class TestMatrixRank(unittest.TestCase):
             # Note numpy returns int
             self.assertIsInstance(y, cupy.ndarray)
             self.assertEqual(y.dtype, 'l')
+            self.assertEqual(y.shape, ())
         return xp.array(y)
