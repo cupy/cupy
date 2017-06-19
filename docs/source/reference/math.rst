@@ -61,6 +61,7 @@ Sums and products
    cupy.sum
    cupy.prod
    cupy.cumsum
+   cupy.cumprod
 
 
 Exponential and logarithm functions

@@ -1,6 +1,7 @@
 import six
 from six.moves import builtins
 import string
+import threading
 import warnings
 
 import numpy
@@ -12,6 +13,9 @@ from cupy import math
 from cupy import sorting
 from cupy import statistics
 from cupy import util
+
+
+_thread_local = threading.local()
 
 
 class FusionOp(object):
@@ -592,6 +596,13 @@ class Fusion(object):
         return "<Fusion '%s'>" % self.name
 
     def __call__(self, *args, **kwargs):
+        _thread_local.in_fusion = True
+        try:
+            return self._call(*args, **kwargs)
+        finally:
+            _thread_local.in_fusion = False
+
+    def _call(self, *args, **kwargs):
         axis = kwargs['axis'] if 'axis' in kwargs else None
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
@@ -684,12 +695,14 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if builtins.any(type(_) is _FusionRef for _ in args):
-            return _convert(self._fusion_op)(*args, **kwargs)
-        elif builtins.any(type(_) is numpy.ndarray for _ in args):
-            return self._numpy_op(*args, **kwargs)
-        else:
-            return self._cupy_op(*args, **kwargs)
+        in_fusion = getattr(_thread_local, 'in_fusion', False)
+        if in_fusion:
+            if builtins.any(isinstance(_, _FusionRef) for _ in args):
+                return _convert(self._fusion_op)(*args, **kwargs)
+            elif builtins.any(isinstance(_, numpy.ndarray) for _ in args):
+                return self._numpy_op(*args, **kwargs)
+
+        return self._cupy_op(*args, **kwargs)
 
     __doc__ = core.ufunc.__doc__
     __call__.__doc__ = core.ufunc.__call__.__doc__

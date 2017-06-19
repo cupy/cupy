@@ -198,3 +198,45 @@ class TestCumsum(unittest.TestCase):
     def test_invalid_axis_upper(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumsum(a, axis=a.ndim + 1)
+
+
+@testing.gpu
+class TestCumprod(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.cumprod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_cumprod_2dim_without_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumprod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumprod(a, axis=1)
+
+    @testing.slow
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_huge_array(self, xp):
+        a = xp.ones(2 ** 32, 'b')
+        return xp.cumprod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_axis_lower(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumprod(a, axis=-a.ndim - 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_axis_upper(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.cumprod(a, axis=a.ndim)
