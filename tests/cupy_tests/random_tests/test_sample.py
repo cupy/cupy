@@ -151,7 +151,7 @@ class TestRandomIntegers2(unittest.TestCase):
         expected = numpy.array([float(trial) / mx] * mx)
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.repeat(3)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
@@ -256,11 +256,17 @@ class TestMultinomial(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @condition.retry(5)
+    def setUp(self):
+        testing.setup_random()
+
+    def tearDown(self):
+        testing.teardown_random()
+
+    @condition.repeat(3, 10)
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.02)
+    @testing.numpy_cupy_allclose(rtol=0.05)
     def test_multinomial(self, xp, dtype):
         pvals = xp.array([0.2, 0.3, 0.5], dtype)
-        x = xp.random.multinomial(10000, pvals, self.size)
+        x = xp.random.multinomial(100000, pvals, self.size)
         self.assertEqual(x.dtype, 'l')
-        return x / 10000
+        return x / 100000
