@@ -1,6 +1,9 @@
 import os
 import atexit
+import functools
 import numpy
+import types
+import unittest
 
 import cupy
 
@@ -62,3 +65,43 @@ def teardown_random():
         cupy.random.generator._random_states = _old_cupy_random_states
         _old_numpy_random_state = None
         _old_cupy_random_states = None
+
+
+def fixed_random():
+    # TODO(niboshi): Prevent this decorator from being applied within
+    #    condition.repeat or condition.retry decorators. That would repeat
+    #    tests with the same random seeds. It's okay to apply this outside
+    #    these decorators.
+
+    def decorator(impl):
+        if type(impl) is types.FunctionType:
+            # Applied to test method
+            @functools.wraps(impl)
+            def test_func(self, *args, **kw):
+                setup_random()
+                impl(self, *args, **kw)
+                teardown_random()
+            return test_func
+        elif type(impl) is type and issubclass(impl, unittest.TestCase):
+            # Applied to test case class
+            klass = impl
+
+            def wrap_setUp(f):
+                def func(self):
+                    setup_random()
+                    f(self)
+                return func
+
+            def wrap_tearDown(f):
+                def func(self):
+                    f(self)
+                    teardown_random()
+                return func
+
+            klass.setUp = wrap_setUp(klass.setUp)
+            klass.tearDown = wrap_tearDown(klass.tearDown)
+            return klass
+        else:
+            raise ValueError('Invalid object {}'.format(type(impl)))
+
+    return decorator

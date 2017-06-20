@@ -53,3 +53,4 @@ slow = attr.slow
 
 setup_random = random.setup_random
 teardown_random = random.teardown_random
+fixed_random = random.fixed_random

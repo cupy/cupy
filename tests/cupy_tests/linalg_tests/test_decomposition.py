@@ -43,12 +43,6 @@ class TestQRDecomposition(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
-
     @testing.for_float_dtypes(no_float16=True)
     def check_mode(self, array, mode, dtype):
         a_cpu = numpy.asarray(array, dtype=dtype)
@@ -63,6 +57,7 @@ class TestQRDecomposition(unittest.TestCase):
             self.assertEqual(result_cpu.dtype, result_gpu.dtype)
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
+    @testing.fixed_random()
     @condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
@@ -73,18 +68,13 @@ class TestQRDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
+@testing.fixed_random()
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSVD(unittest.TestCase):
 
     _multiprocess_can_split_ = True
-
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
 
     @testing.for_float_dtypes(no_float16=True)
     def check_usv(self, array, dtype):

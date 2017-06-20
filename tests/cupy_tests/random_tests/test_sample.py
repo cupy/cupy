@@ -47,14 +47,9 @@ class TestRandint(unittest.TestCase):
         self.m.interval.assert_called_with(1, (1, 2, 3))
 
 
+@testing.fixed_random()
 @testing.gpu
 class TestRandint2(unittest.TestCase):
-
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
@@ -115,16 +110,11 @@ class TestRandomIntegers(unittest.TestCase):
         random.sample_.randint.assert_called_with(3, 6, (1, 2, 3))
 
 
+@testing.fixed_random()
 @testing.gpu
 class TestRandomIntegers2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
-
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
@@ -251,16 +241,11 @@ class TestRandomSample(unittest.TestCase):
     {'size': (0,)},
     {'size': (1, 0)},
 )
+@testing.fixed_random()
 @testing.gpu
 class TestMultinomial(unittest.TestCase):
 
     _multiprocess_can_split_ = True
-
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
 
     @condition.repeat(3, 10)
     @testing.for_float_dtypes()

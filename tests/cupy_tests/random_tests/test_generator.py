@@ -30,6 +30,7 @@ class FunctionSwitcher(object):
         setattr(curand, self.func_name, self.tmp)
 
 
+@testing.fixed_random()
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -38,7 +39,7 @@ class TestRandomState(unittest.TestCase):
     size = None
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
 
     def check_lognormal(self, curand_func, dtype):
         shape = core.get_size(self.size)
@@ -165,11 +166,12 @@ class TestRandomState8(TestRandomState):
     size = ()
 
 
+@testing.fixed_random()
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
 
     def test_rand(self):
         self.rs.random_sample = mock.Mock()
@@ -359,7 +361,7 @@ class TestChoiceMultinomial(unittest.TestCase):
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
 
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):
