@@ -35,6 +35,7 @@ Norms etc.
    :toctree: generated/
    :nosignatures:
 
+   cupy.linalg.det
    cupy.linalg.norm
    cupy.linalg.matrix_rank
    cupy.linalg.slogdet
