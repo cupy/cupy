@@ -63,6 +63,32 @@ def _syevd(a, UPLO, with_eigen_vector):
 
 
 def eigh(a, UPLO='L'):
+    """Eigenvalues and eigenvectors of a Hermitian or symmetric matrix.
+
+    This method calculates eigenvalues and eigenvectors of a given
+    Hermitian or symmetric matrix.
+
+    .. note::
+
+       Currenlty only 2-D matrix is supported.
+
+    .. note::
+
+       CUDA >=8.0 is required.
+
+    Args:
+        a (cupy.ndarray): Hermitian or symmetric 2-D square matrix.
+        UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
+            part of ``a`` is used. ``'L'`` uses the lower triangular part of
+            ``a``, and ``'U'`` uses the upper triangular part of ``a``.
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
+            ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
+            corresponding to an eigenvalue ``w[i]``.
+
+    .. seealso:: :func:`numpy.linalg.eigh`
+    """
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, True)
@@ -72,6 +98,31 @@ def eigh(a, UPLO='L'):
 
 
 def eigvalsh(a, UPLO='L'):
+    """Calculates eigenvalues of a Hermitian or symmetric matrix.
+
+    This method calculates eigenvalues a given Hermitian or symmetric matrix.
+    Note that :func:`cupy.linalg.eigh` calculates both eigenvalues and
+    eigenvectors.
+
+    .. note::
+
+       Currenlty only 2-D matrix is supported.
+
+    .. note::
+
+       CUDA >=8.0 is required.
+
+    Args:
+        a (cupy.ndarray): Hermitian or symmetric 2-D square matrix.
+        UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
+            part of ``a`` is used. ``'L'`` uses the lower triangular part of
+            ``a``, and ``'U'`` uses the upper triangular part of ``a``.
+    Returns:
+        cupy.ndarray:
+            Returns eigenvalues as a vector.
+
+    .. seealso:: :func:`numpy.linalg.eigvalsh`
+    """
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, False)[0]
