@@ -63,10 +63,10 @@ def _syevd(a, UPLO, with_eigen_vector):
 
 
 def eigh(a, UPLO='L'):
-    """Eigenvalues and eigenvectors of a Hermitian or symmetric matrix.
+    """Eigenvalues and eigenvectors of a symmetric matrix.
 
     This method calculates eigenvalues and eigenvectors of a given
-    Hermitian or symmetric matrix.
+    symmetric matrix.
 
     .. note::
 
@@ -77,7 +77,7 @@ def eigh(a, UPLO='L'):
        CUDA >=8.0 is required.
 
     Args:
-        a (cupy.ndarray): Hermitian or symmetric 2-D square matrix.
+        a (cupy.ndarray): A symmetric 2-D square matrix.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
@@ -98,9 +98,9 @@ def eigh(a, UPLO='L'):
 
 
 def eigvalsh(a, UPLO='L'):
-    """Calculates eigenvalues of a Hermitian or symmetric matrix.
+    """Calculates eigenvalues of a symmetric matrix.
 
-    This method calculates eigenvalues a given Hermitian or symmetric matrix.
+    This method calculates eigenvalues a given symmetric matrix.
     Note that :func:`cupy.linalg.eigh` calculates both eigenvalues and
     eigenvectors.
 
@@ -113,7 +113,7 @@ def eigvalsh(a, UPLO='L'):
        CUDA >=8.0 is required.
 
     Args:
-        a (cupy.ndarray): Hermitian or symmetric 2-D square matrix.
+        a (cupy.ndarray): A symmetric 2-D square matrix.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
