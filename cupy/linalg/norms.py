@@ -1,7 +1,14 @@
 import numpy
+from numpy import linalg
 
 import cupy
+from cupy import cuda
+from cupy.cuda import device
 from cupy.linalg import decomposition
+
+
+if cuda.cusolver_enabled:
+    from cupy.cuda import cusolver
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -147,7 +154,86 @@ def matrix_rank(M, tol=None):
     return (S > tol).sum(axis=-1)
 
 
-# TODO(okuta): Implement slogdet
+def slogdet(a):
+    """Returns sign and logarithm of the determinat of an array.
+
+    It calculates the natural logarithm of the deteminant of a given value.
+
+    Args:
+        a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
+
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            It returns a tuple ``(sign, logdet)``. ``sign`` represents each
+            sign of the deteminant as a real number ``0``, ``1`` or ``-1``.
+            'logdet' represents the natural logarithm of the absolute of the
+            deteminant.
+            If the deteninant is zero, ``sign`` will be ``0`` and ``logdet``
+            will be ``-inf``.
+            The shapes of both ``sign`` and ``logdet`` are equal to
+            ``a.shape[:-2]``.
+
+    .. seealso:: :func:`numpy.linalg.slogdet`
+    """
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
+
+    if a.ndim < 2:
+        msg = ('%d-dimensional array given. '
+               'Array must be at least two-dimensional' % a.ndim)
+        raise linalg.LinAlgError(msg)
+
+    dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+    shape = a.shape[:-2]
+    sign = cupy.empty(shape, dtype)
+    logdet = cupy.empty(shape, dtype)
+
+    a = a.astype(dtype)
+    for index in numpy.ndindex(*shape):
+        s, l = _slogdet_one(a[index])
+        sign[index] = s
+        logdet[index] = l
+    return sign, logdet
+
+
+def _slogdet_one(a):
+    decomposition._assert_rank2(a)
+    decomposition._assert_nd_squareness(a)
+    dtype = a.dtype
+
+    handle = device.get_cusolver_handle()
+    m = len(a)
+    ipiv = cupy.empty(m, 'i')
+    info = cupy.empty((), 'i')
+
+    # Need to make a copy because getrf works inplace
+    a_copy = a.copy(order='F')
+
+    if dtype == 'f':
+        getrf_bufferSize = cusolver.sgetrf_bufferSize
+        getrf = cusolver.sgetrf
+    else:
+        getrf_bufferSize = cusolver.dgetrf_bufferSize
+        getrf = cusolver.dgetrf
+
+    buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
+          ipiv.data.ptr, info.data.ptr)
+
+    if info[()] == 0:
+        diag = cupy.diag(a_copy)
+        # ipiv is 1-origin
+        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
+                    cupy.count_nonzero(diag < 0))
+        # Note: sign == -1 ** (non_zero % 2)
+        sign = (non_zero % 2) * -2 + 1
+        logdet = cupy.log(abs(diag)).sum()
+    else:
+        sign = cupy.array(0.0, dtype=dtype)
+        logdet = cupy.array(float('-inf'), dtype)
+
+    return sign, logdet
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
