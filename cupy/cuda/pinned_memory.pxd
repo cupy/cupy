@@ -17,6 +17,9 @@ cdef class PinnedMemoryPointer:
     cpdef Py_ssize_t size(self)
 
 
+cpdef _add_to_watch_list(event, obj)
+
+
 cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size)
 
 
