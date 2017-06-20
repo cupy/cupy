@@ -30,7 +30,7 @@ class FunctionSwitcher(object):
         setattr(curand, self.func_name, self.tmp)
 
 
-@testing.fixed_random()
+@testing.fix_random()
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -39,7 +39,7 @@ class TestRandomState(unittest.TestCase):
     size = None
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def check_lognormal(self, curand_func, dtype):
         shape = core.get_size(self.size)
@@ -166,12 +166,12 @@ class TestRandomState8(TestRandomState):
     size = ()
 
 
-@testing.fixed_random()
+@testing.fix_random()
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def test_rand(self):
         self.rs.random_sample = mock.Mock()
@@ -194,15 +194,13 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.fix_random()
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
     def setUp(self):
-        testing.setup_random()
         self.rs = cupy.random.get_random_state()
-
-    def tearDown(self):
-        testing.teardown_random()
+        self.rs.seed(testing.generate_seed())
 
     def test_zero(self):
         numpy.testing.assert_array_equal(
@@ -357,11 +355,12 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
+@testing.fix_random()
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=numpy.random.randint(0xffff))
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):

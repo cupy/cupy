@@ -47,7 +47,7 @@ class TestRandint(unittest.TestCase):
         self.m.interval.assert_called_with(1, (1, 2, 3))
 
 
-@testing.fixed_random()
+@testing.fix_random()
 @testing.gpu
 class TestRandint2(unittest.TestCase):
 
@@ -110,7 +110,7 @@ class TestRandomIntegers(unittest.TestCase):
         random.sample_.randint.assert_called_with(3, 6, (1, 2, 3))
 
 
-@testing.fixed_random()
+@testing.fix_random()
 @testing.gpu
 class TestRandomIntegers2(unittest.TestCase):
 
@@ -241,7 +241,7 @@ class TestRandomSample(unittest.TestCase):
     {'size': (0,)},
     {'size': (1, 0)},
 )
-@testing.fixed_random()
+@testing.fix_random()
 @testing.gpu
 class TestMultinomial(unittest.TestCase):
 

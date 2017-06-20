@@ -57,7 +57,7 @@ class TestQRDecomposition(unittest.TestCase):
             self.assertEqual(result_cpu.dtype, result_gpu.dtype)
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
-    @testing.fixed_random()
+    @testing.fix_random()
     @condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
@@ -68,7 +68,7 @@ class TestQRDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
-@testing.fixed_random()
+@testing.fix_random()
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
