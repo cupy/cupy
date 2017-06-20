@@ -361,7 +361,7 @@ cdef class SingleDeviceMemoryPool:
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
-                self.free_all_free()
+                self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
@@ -446,13 +446,13 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        dev = device.get_device_id()
-        return self._pools[dev].malloc(size)
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.malloc(size)
 
     cpdef free_all_blocks(self):
         """Release free blocks."""
-        dev = device.get_device_id()
-        self._pools[dev].free_all_blocks()
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp.free_all_blocks()
 
     cpdef free_all_free(self):
         """Release free blocks."""
@@ -467,5 +467,5 @@ cdef class MemoryPool(object):
         Returns:
             int: The total number of free blocks.
         """
-        dev = device.get_device_id()
-        return self._pools[dev].n_free_blocks()
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.n_free_blocks()
