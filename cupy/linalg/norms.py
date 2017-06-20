@@ -132,7 +132,7 @@ def det(a):
         a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
 
     Returns:
-        cupy.ndarray: Determinant of `a`. Its shape is `a.shape[:-2]`.
+        cupy.ndarray: Determinant of ``a``. Its shape is ``a.shape[:-2]``.
 
     .. seealso:: :func:`numpy.linalg.det`
     """
