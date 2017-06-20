@@ -9,9 +9,9 @@
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
 
 [**Website**](https://cupy.chainer.org/)
-| [**Docs**](http://docs.cupy.chainer.org/en/stable/)
-| [**Install Guide**](http://docs.cupy.chainer.org/en/stable/install.html)
-| [**Tutorial**](http://docs.cupy.chainer.org/en/stable/tutorial/)
+| [**Docs**](https://docs-cupy.chainer.org/en/stable/)
+| [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
+| [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
 | **Examples** ([Official](https://github.com/cupy/cupy/blob/master/examples))
 | **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-jp))
 
