@@ -242,7 +242,7 @@ class TestInterval(unittest.TestCase):
         vals = [self.rs.interval(mx, None).get()
                 for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
-        expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
+        expected = numpy.array([float(trial) / (mx + 1)] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
     @condition.retry(5)
@@ -250,7 +250,7 @@ class TestInterval(unittest.TestCase):
         mx = 5
         vals = self.rs.interval(mx, (5, 5)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
-        expected = numpy.array([float(vals.size) / mx + 1] * (mx + 1))
+        expected = numpy.array([float(vals.size) / (mx + 1)] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
