@@ -2,6 +2,8 @@ import unittest
 
 import numpy
 
+import cupy
+from cupy import cuda
 from cupy import testing
 
 
@@ -57,3 +59,34 @@ class TestNorm(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
             return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+
+
+@testing.parameterize(*testing.product({
+    'array': [
+        [[1, 2], [3, 4]],
+        [[1, 2], [1, 2]],
+        [[0, 0], [0, 0]],
+        [1, 2],
+        [0, 1],
+        [0, 0],
+    ],
+    'tol': [None, 1]
+}))
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestMatrixRank(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_array_equal()
+    def test_matrix_rank(self, xp, dtype):
+        a = xp.array(self.array, dtype=dtype)
+        y = xp.linalg.matrix_rank(a, tol=self.tol)
+        if xp is cupy:
+            # Note numpy returns int
+            self.assertIsInstance(y, cupy.ndarray)
+            self.assertEqual(y.dtype, 'l')
+            self.assertEqual(y.shape, ())
+        return xp.array(y)

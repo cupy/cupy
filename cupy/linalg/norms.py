@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy.linalg import decomposition
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -120,7 +121,30 @@ def norm(x, ord=None, axis=None, keepdims=False):
 # TODO(okuta): Implement det
 
 
-# TODO(okuta): Implement matrix_rank
+def matrix_rank(M, tol=None):
+    """Return matrix rank of array using SVD method
+
+    Args:
+        M (cupy.ndarray): Input array. Its `ndim` must be less than or equal to
+            2.
+        tol (None or float): Threshold of singular value of `M`.
+            When `tol` is `None`, and `eps` is the epsilon value for datatype
+            of `M`, then `tol` is set to `S.max() * max(M.shape) * eps`,
+            where `S` is the singular value of `M`.
+            It obeys :func:`numpy.linalg.matrix_rank`.
+
+    Returns:
+        cupy.ndarray: Rank of `M`.
+
+    .. seealso:: :func:`numpy.linalg.matrix_rank`
+    """
+    if M.ndim < 2:
+        return (M != 0).any().astype('l')
+    S = decomposition.svd(M, compute_uv=False)
+    if tol is None:
+        tol = (S.max(axis=-1, keepdims=True) * max(M.shape[-2:]) *
+               numpy.finfo(S.dtype).eps)
+    return (S > tol).sum(axis=-1)
 
 
 # TODO(okuta): Implement slogdet
