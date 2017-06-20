@@ -4,21 +4,24 @@ from cupy import core
 def count_nonzero(a, axis=None):
     """Counts the number of non-zero values in the array.
 
+    .. note::
+
+       :func:`numpy.count_nonzero` returns `int` value when `axis=None`,
+       but :func:`cupy.count_nonzero` returns zero-dimensional array to reduce
+       CPU-GPU synchronization.
+
     Args:
         a (cupy.ndarray): The array for which to count non-zeros.
         axis (int or tuple, optional): Axis or tuple of axes along which to
             count non-zeros. Default is None, meaning that non-zeros will be
             counted along a flattened version of ``a``
     Returns:
-        int or cupy.ndarray of int: Number of non-zero values in the array
+        cupy.ndarray of int: Number of non-zero values in the array
             along a given axis. Otherwise, the total number of non-zero values
             in the array is returned.
     """
 
-    if axis is None:
-        return int(_count_nonzero(a))
-    else:
-        return _count_nonzero(a, axis=axis)
+    return _count_nonzero(a, axis=axis)
 
 
 _count_nonzero = core.create_reduction_func(
