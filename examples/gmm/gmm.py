@@ -120,6 +120,15 @@ def draw(X, pred, means, covariances, output):
 
 
 def run(gpuid, max_iter, tol, output):
+    '''CuPy Gaussian Mixture Model example
+
+    Compute GMM parameters, weights, means and covariance matrix, depending on
+    sampled data. There are two main components, e_step and m_step.
+    In e_step, compute burden rate, which is expressed `resp`, by latest
+    weights, means and covariance matrix.
+    In m_step, compute weights, means and covariance matrix by latest `resp`.
+
+    '''
     train1 = np.random.normal(0, [1, 2], size=(500000, 2)).astype(np.float32)
     train2 = np.random.normal(-3, [2, 1], size=(500000, 2)).astype(np.float32)
     X_train = np.r_[train1, train2]
@@ -128,7 +137,7 @@ def run(gpuid, max_iter, tol, output):
     X_test = np.r_[test1, test2]
     y_train = np.r_[np.zeros(500000), np.ones(500000)].astype(np.int32)
     y_test = np.r_[np.zeros(100), np.ones(100)].astype(np.int32)
-    repeat = 1
+    repeat = 5
 
     print('Running CPU...')
     with timer(' CPU '):
