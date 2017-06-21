@@ -355,9 +355,13 @@ cdef class SingleDeviceMemoryPool:
         unit = self._allocation_unit_size
         size = (((size + unit - 1) // unit) * unit)
         free = self._free[size]
+        mem = None
         if free:
-            mem = free.pop()
-        else:
+            try:
+                mem = free.pop()
+            except IndexError:
+                pass
+        if mem is None:
             try:
                 mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
