@@ -144,6 +144,29 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p2 = self.pool.malloc(1000)
         self.assertNotEqual(ptr1, p2.ptr)
 
+    def test_used_bytes(self):
+        p1 = self.pool.malloc(1000)
+        self.assertEqual(1024, self.pool.used_bytes())
+        p2 = self.pool.malloc(2000)
+        self.assertEqual(3072, self.pool.used_bytes())
+
+    def test_free_bytes(self):
+        p1 = self.pool.malloc(1000)
+        del p1
+        self.assertEqual(1024, self.pool.free_bytes())
+        p2 = self.pool.malloc(2000)
+        del p2
+        self.assertEqual(3072, self.pool.free_bytes())
+
+    def test_total_bytes(self):
+        p1 = self.pool.malloc(1000)
+        self.assertEqual(1024, self.pool.total_bytes())
+        p2 = self.pool.malloc(2000)
+        del p1
+        self.assertEqual(3072, self.pool.total_bytes())
+        del p2
+        self.assertEqual(3072, self.pool.total_bytes())
+
 
 @testing.gpu
 class TestMemoryPool(unittest.TestCase):
@@ -201,3 +224,15 @@ class TestMemoryPool(unittest.TestCase):
         with cupy.cuda.Device(0):
             # call directly without malloc/free_all_free.
             self.assertEqual(self.pool.n_free_blocks(), 0)
+
+    def test_used_bytes(self):
+        with cupy.cuda.Device(0):
+            self.assertEqual(0, self.pool.used_bytes())
+
+    def test_free_bytes(self):
+        with cupy.cuda.Device(0):
+            self.assertEqual(0, self.pool.free_bytes())
+
+    def test_total_bytes(self):
+        with cupy.cuda.Device(0):
+            self.assertEqual(0, self.pool.total_bytes())
