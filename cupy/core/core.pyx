@@ -729,7 +729,7 @@ cdef class ndarray:
 
         if self.ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
-                             'supported')
+                             'supported')  # as numpy.sort() raises
 
         # TODO(takagi): Support sorting views
         if not self._c_contiguous:
