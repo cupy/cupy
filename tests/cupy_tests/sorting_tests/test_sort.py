@@ -23,15 +23,16 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         return xp.sort(a)
 
-    def test_sort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
-            a.sort()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_two_or_more_dim(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        a.sort()
+        return a
 
-    def test_external_sort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
-            return cupy.sort(a)
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_two_or_more_dim(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return xp.sort(a)
 
     # Test dtypes
 
