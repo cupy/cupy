@@ -1,7 +1,7 @@
-import os
 import atexit
 import functools
 import numpy
+import os
 import types
 import unittest
 
@@ -86,7 +86,7 @@ def fix_random():
     #    these decorators.
 
     def decorator(impl):
-        if (type(impl) is types.FunctionType and
+        if (isinstance(impl, types.FunctionType) and
                 impl.__name__.startswith('test_')):
             # Applied to test method
             @functools.wraps(impl)
@@ -95,7 +95,7 @@ def fix_random():
                 impl(self, *args, **kw)
                 teardown_random()
             return test_func
-        elif type(impl) is type and issubclass(impl, unittest.TestCase):
+        elif isinstance(impl, type) and issubclass(impl, unittest.TestCase):
             # Applied to test case class
             klass = impl
 
