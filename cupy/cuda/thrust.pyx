@@ -50,8 +50,8 @@ cpdef sort(dtype, size_t start, vector.vector[ptrdiff_t]& shape):
     elif dtype == numpy.float64:
         _sort[common.cpy_double](_start, shape)
     else:
-        raise TypeError('Sorting arrays with dtype \'{}\' is not '
-                        'supported'.format(dtype))
+        raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
+                                  'supported'.format(dtype))
 
 
 cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):

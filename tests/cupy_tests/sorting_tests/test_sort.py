@@ -54,13 +54,13 @@ class TestSort(unittest.TestCase):
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_sort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             a.sort()
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_external_sort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             return cupy.sort(a)
 
     # Test contiguous arrays
@@ -73,7 +73,7 @@ class TestSort(unittest.TestCase):
 
     def test_sort_non_contiguous(self):
         a = testing.shaped_random((10,), cupy)[::2]  # Non contiguous view
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             a.sort()
 
     @testing.numpy_cupy_allclose()
