@@ -82,8 +82,8 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
     elif dtype == numpy.float64:
         _lexsort[common.cpy_double](idx_ptr, keys_ptr, k, n)
     else:
-        msg = "Sorting keys with dtype '{}' is not supported"
-        raise TypeError(msg.format(dtype))
+        raise TypeError('Sorting keys with dtype \'{}\' is not '
+                        'supported'.format(dtype))
 
 
 cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t num):
