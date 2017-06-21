@@ -736,7 +736,7 @@ cdef class ndarray:
             raise ValueError('Sorting non-contiguous array is not supported.')
 
         # TODO(takagi): Support float16 and bool
-        c_shape = numpy.array(self.shape, dtype=numpy.int64).ctypes
+        c_shape = numpy.array(self.shape, dtype=numpy.intp).ctypes
         try:
             thrust.sort(self.dtype, self.data.ptr, self.ndim, c_shape.data)
         except NameError:
