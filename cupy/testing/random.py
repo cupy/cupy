@@ -73,13 +73,21 @@ def generate_seed():
 
 
 def fix_random():
+    """Decorator that fixes random numbers in a test.
+
+    This decorator can be applied to either a test case class or a test method.
+    It should not be applied within ``condition.retry`` or
+    ``condition.repeat``.
+    """
+
     # TODO(niboshi): Prevent this decorator from being applied within
     #    condition.repeat or condition.retry decorators. That would repeat
     #    tests with the same random seeds. It's okay to apply this outside
     #    these decorators.
 
     def decorator(impl):
-        if type(impl) is types.FunctionType:
+        if (type(impl) is types.FunctionType and
+                impl.__name__.startswith('test_')):
             # Applied to test method
             @functools.wraps(impl)
             def test_func(self, *args, **kw):
@@ -107,6 +115,6 @@ def fix_random():
             klass.tearDown = wrap_tearDown(klass.tearDown)
             return klass
         else:
-            raise ValueError('Invalid object {}'.format(type(impl)))
+            raise ValueError('Can\'t apply fix_random to {}'.format(impl))
 
     return decorator
