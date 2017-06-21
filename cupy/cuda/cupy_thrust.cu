@@ -52,7 +52,7 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k, size_
     device_ptr<size_t> dp_last  = device_pointer_cast(idx_start + n);
     sequence(dp_first, dp_last);
     for (size_t i = 0; i < k; ++i) {
-        T *key_start = (T *)keys_start + i * n;
+        T *key_start = static_cast<T*>(keys_start) + i * n;
         stable_sort< device_ptr<size_t> >(dp_first, dp_last, elem_less<T>(key_start));
     }
 }
