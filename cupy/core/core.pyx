@@ -736,7 +736,6 @@ cdef class ndarray:
             raise NotImplementedError('Sorting non-contiguous array is not '
                                       'supported.')
 
-        # TODO(takagi): Support float16 and bool
         try:
             thrust.sort(self.dtype, self.data.ptr, self._shape)
         except NameError:
