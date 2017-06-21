@@ -215,10 +215,9 @@ class TestMeshgrid(unittest.TestCase):
 @testing.gpu
 class TestMgrid(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    def test_mgrid0(self, dtype):
-        out = cupy.mgrid[0:]
-        self.assertListEqual(out, [])
+    @testing.numpy_cupy_array_equal()
+    def test_mgrid0(self, xp):
+        return xp.mgrid[0:]
 
     @testing.numpy_cupy_array_list_equal()
     def test_mgrid1(self, xp):
@@ -250,10 +249,9 @@ class TestMgrid(unittest.TestCase):
 @testing.gpu
 class TestOgrid(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    def test_ogrid0(self, dtype):
-        out = cupy.ogrid[0:]
-        self.assertListEqual(out, [])
+    @testing.numpy_cupy_array_equal()
+    def test_ogrid0(self, xp):
+        return xp.ogrid[0:]
 
     @testing.numpy_cupy_array_list_equal()
     def test_ogrid1(self, xp):
