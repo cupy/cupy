@@ -263,15 +263,13 @@ class TestInterval(unittest.TestCase):
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
+@testing.fix_random()
 @testing.gpu
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
-        testing.setup_random()
         self.rs = cupy.random.get_random_state()
-
-    def tearDown(self):
-        testing.teardown_random()
+        self.rs.seed(testing.generate_seed())
 
     def test_dtype_shape(self):
         v = self.rs.choice(a=self.a, size=self.size, p=self.p)
@@ -297,15 +295,13 @@ class TestChoice(unittest.TestCase):
         self.assertEqual(max(_.max() for _ in vals), 2)
 
 
+@testing.fix_random()
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
     def setUp(self):
-        testing.setup_random()
         self.rs = cupy.random.get_random_state()
-
-    def tearDown(self):
-        testing.teardown_random()
+        self.rs.seed(testing.generate_seed())
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
@@ -324,14 +320,9 @@ class TestChoiceChi(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.fix_random()
 @testing.gpu
 class TestChoiceMultinomial(unittest.TestCase):
-
-    def setUp(self):
-        testing.setup_random()
-
-    def tearDown(self):
-        testing.teardown_random()
 
     @condition.repeat(3, 10)
     @testing.for_float_dtypes()
