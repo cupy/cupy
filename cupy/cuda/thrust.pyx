@@ -60,9 +60,6 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
     idx_ptr = <size_t *>idx_start
     keys_ptr = <void *>keys_start
 
-    # Assuming that Py_ssize_t can be represented with numpy.int64.
-    assert cython.sizeof(Py_ssize_t) == 8
-
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
         _lexsort[common.cpy_byte](idx_ptr, keys_ptr, k, n)

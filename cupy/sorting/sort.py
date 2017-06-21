@@ -64,7 +64,7 @@ def lexsort(keys):
                'not supported in lexsort')
         raise ValueError(msg)
 
-    idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.int64)
+    idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
     n = keys._shape[1]
 
