@@ -18,8 +18,13 @@ class TestCount(unittest.TestCase):
             m = testing.shaped_random((2, 3), xp, xp.bool_)
             a = testing.shaped_random((2, 3), xp, dtype) * m
             c = xp.count_nonzero(a)
-            self.assertIsInstance(c, int)
-            return c
+            if xp is cupy:
+                # CuPy returns zero-dimensional array instead of
+                # returning a scalar value
+                self.assertIsInstance(c, xp.ndarray)
+                self.assertEqual(c.dtype, 'l')
+                self.assertEqual(c.shape, ())
+            return int(c)
         self.assertEqual(func(numpy), func(cupy))
 
     @testing.for_all_dtypes()
@@ -27,8 +32,13 @@ class TestCount(unittest.TestCase):
         def func(xp):
             a = xp.array(1.0, dtype=dtype)
             c = xp.count_nonzero(a)
-            self.assertIsInstance(c, int)
-            return c
+            if xp is cupy:
+                # CuPy returns zero-dimensional array instead of
+                # returning a scalar value
+                self.assertIsInstance(c, xp.ndarray)
+                self.assertEqual(c.dtype, 'l')
+                self.assertEqual(c.shape, ())
+            return int(c)
         self.assertEqual(func(numpy), func(cupy))
 
     @testing.with_requires('numpy>=1.12')

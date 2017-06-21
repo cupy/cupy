@@ -49,6 +49,10 @@ cdef extern from 'cupy_cusolver.h':
                          const int* devIpiv, double* B, int ldb,
                          int* devInfo) nogil
 
+    int cusolverDnSgetrf_bufferSize(Handle handle, int m, int n,
+                                    float *A, int lda, int* lwork) nogil
+    int cusolverDnDgetrf_bufferSize(Handle handle, int m, int n,
+                                    double *A, int lda, int* lwork) nogil
     int cusolverDnSgeqrf_bufferSize(Handle handle, int m, int n,
                                     float* A, int lda, int* lwork) nogil
     int cusolverDnDgeqrf_bufferSize(Handle handle, int m, int n,
@@ -267,6 +271,24 @@ cpdef dgetrs(size_t handle, int trans, int n, int nrhs,
             <const double*> A, lda, <const int*>devIpiv,
             <double*>B, ldb, <int*> devInfo)
     check_status(status)
+
+cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *:
+    cdef int lwork
+    with nogil:
+        status = cusolverDnSgetrf_bufferSize(
+            <Handle>handle, m, n, <float*>A, lda, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *:
+    cdef int lwork
+    with nogil:
+        status = cusolverDnDgetrf_bufferSize(
+            <Handle>handle, m, n, <double*>A, lda, &lwork)
+    check_status(status)
+    return lwork
 
 cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *:

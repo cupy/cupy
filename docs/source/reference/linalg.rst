@@ -36,4 +36,6 @@ Norms etc.
    :nosignatures:
 
    cupy.linalg.norm
+   cupy.linalg.matrix_rank
+   cupy.linalg.slogdet
    cupy.trace

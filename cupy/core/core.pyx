@@ -22,6 +22,7 @@ from libcpp cimport vector
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
+from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
@@ -1886,8 +1887,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         src = obj
         if dtype is None:
             dtype = src.dtype
-        if (src.data.device is None or
-                src.data.device.id == device.get_device_id()):
+        dev = src.data.device
+        if dev is None or dev.id == device.get_device_id():
             a = src.astype(dtype, copy=copy)
         else:
             a = src.copy().astype(dtype, copy=False)
@@ -1898,7 +1899,6 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-        return a
     else:
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
                             ndmin=ndmin)
@@ -1909,8 +1909,14 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
-        a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), a.nbytes)
-        return a
+        mem = pinned_memory.alloc_pinned_memory(a.nbytes)
+        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
+                                   a_cpu.size).reshape(a_cpu.shape)
+        src_cpu[...] = a_cpu
+        stream = cuda.Stream.null
+        a.set(src_cpu, stream)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    return a
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):

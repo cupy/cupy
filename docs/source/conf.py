@@ -12,9 +12,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import inspect
 import os
 import pkg_resources
-import shlex
+import six
 import sys
 
 
@@ -42,7 +43,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.viewcode']
+              'sphinx.ext.linkcode']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -333,3 +334,50 @@ np.random.seed(0)
 
 spelling_lang = 'en_US'
 spelling_word_list_filename = 'spelling_wordlist.txt'
+
+
+def _import_object_from_name(module_name, fullname):
+    obj = sys.modules.get(module_name)
+    if obj is None:
+        return None
+    for comp in fullname.split('.'):
+        obj = getattr(obj, comp)
+    return obj
+
+
+def linkcode_resolve(domain, info):
+    if domain != 'py' or not info['module']:
+        return None
+
+    rtd_version = os.environ.get('READTHEDOCS_VERSION')
+    if rtd_version == 'latest':
+        tag = 'master'
+    else:
+        tag = 'v{}'.format(__version__)
+    repo_root_dir = os.path.realpath('..')
+
+    # Import the object from module path
+    obj = _import_object_from_name(info['module'], info['fullname'])
+
+    # Get the source file name and line number at which obj is defined.
+    try:
+        filename = inspect.getsourcefile(obj)
+    except TypeError:
+        # obj is not a module, class, function, ..etc.
+        return None
+
+    # inspect can return None for cython objects
+    if filename is None:
+        return None
+
+    # Get the source line number
+    _, linenum = inspect.getsourcelines(obj)
+    assert isinstance(linenum, six.integer_types)
+
+    filename = os.path.realpath(filename)
+    if not filename.startswith(repo_root_dir):
+        return None
+    relpath = os.path.relpath(filename, repo_root_dir)
+
+    return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
+        tag, relpath, linenum)

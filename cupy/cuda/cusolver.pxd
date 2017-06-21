@@ -62,6 +62,11 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
+cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+
 cpdef sgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,
