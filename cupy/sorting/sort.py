@@ -1,5 +1,6 @@
 import cupy
 import numpy
+
 try:
     from cupy.cuda import thrust
 except ImportError:
