@@ -44,7 +44,7 @@ private:
 };
 
 template <typename T>
-void cupy::thrust::_lexsort (size_t *idx_start, void *keys_start, size_t k, size_t n) {
+void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k, size_t n) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
