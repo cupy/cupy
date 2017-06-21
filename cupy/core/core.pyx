@@ -728,8 +728,8 @@ cdef class ndarray:
         # TODO(takagi): Support kind argument.
 
         if self.ndim == 0:
-            msg = 'Sorting arrays with the rank of zero is not supported'
-            raise ValueError(msg)
+            raise ValueError('Sorting arrays with the rank of zero is not '
+                             'supported')
 
         # TODO(takagi): Support sorting views
         if not self._c_contiguous:
@@ -739,10 +739,9 @@ cdef class ndarray:
         try:
             thrust.sort(self.dtype, self.data.ptr, self._shape)
         except NameError:
-            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall CuPy after '
-                   'uninstalling it.')
-            raise RuntimeError(msg)
+            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
+                               'install CUDA Toolkit with Thrust then '
+                               'reinstall CuPy after uninstalling it.')
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
