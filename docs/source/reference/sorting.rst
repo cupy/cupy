@@ -1,10 +1,15 @@
 Sorting, Searching, and Counting
 ================================
 
-.. autofunction:: cupy.sort
-.. autofunction:: cupy.argmax
-.. autofunction:: cupy.argmin
-.. autofunction:: cupy.count_nonzero
-.. autofunction:: cupy.nonzero
-.. autofunction:: cupy.flatnonzero
-.. autofunction:: cupy.where
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.sort
+   cupy.argsort
+   cupy.argmax
+   cupy.argmin
+   cupy.count_nonzero
+   cupy.nonzero
+   cupy.flatnonzero
+   cupy.where

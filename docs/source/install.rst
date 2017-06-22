@@ -1,6 +1,8 @@
 Installation Guide
 ==================
 
+.. contents:: :local:
+
 Recommended Environments
 ------------------------
 

@@ -4,43 +4,52 @@ Low-Level CUDA Support
 Device management
 -----------------
 
-.. autoclass:: cupy.cuda.Device
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.Device
 
 
 Memory management
 -----------------
 
-.. autoclass:: cupy.cuda.Memory
-   :members:
-.. autoclass:: cupy.cuda.MemoryPointer
-   :members:
-.. autofunction:: cupy.cuda.alloc
-.. autofunction:: cupy.cuda.set_allocator
-.. autoclass:: cupy.cuda.MemoryPool
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.Memory
+   cupy.cuda.MemoryPointer
+   cupy.cuda.alloc
+   cupy.cuda.set_allocator
+   cupy.cuda.MemoryPool
 
 
 Streams and events
 ------------------
 
-.. autoclass:: cupy.cuda.Stream
-   :members:
-.. autoclass:: cupy.cuda.Event
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-.. autofunction:: cupy.cuda.get_elapsed_time
+   cupy.cuda.Stream
+   cupy.cuda.Event
+   cupy.cuda.get_elapsed_time
 
 
 Profiler
 --------
 
-.. autofunction:: cupy.cuda.profile
-.. autofunction:: cupy.cuda.profiler.initialize
-.. autofunction:: cupy.cuda.profiler.start
-.. autofunction:: cupy.cuda.profiler.stop
-.. autofunction:: cupy.cuda.nvtx.Mark
-.. autofunction:: cupy.cuda.nvtx.MarkC
-.. autofunction:: cupy.cuda.nvtx.RangePush
-.. autofunction:: cupy.cuda.nvtx.RangePushC
-.. autofunction:: cupy.cuda.nvtx.RangePop
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.profile
+   cupy.cuda.profiler.initialize
+   cupy.cuda.profiler.start
+   cupy.cuda.profiler.stop
+   cupy.cuda.nvtx.Mark
+   cupy.cuda.nvtx.MarkC
+   cupy.cuda.nvtx.RangePush
+   cupy.cuda.nvtx.RangePushC
+   cupy.cuda.nvtx.RangePop

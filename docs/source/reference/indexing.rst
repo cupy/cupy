@@ -1,9 +1,17 @@
 Indexing Routines
 =================
 
-.. autofunction:: cupy.take
-.. autofunction:: cupy.diagonal
-.. autofunction:: cupy.ix_
-.. autofunction:: cupy.fill_diagonal
-.. autodata:: cupy.c_
-.. autodata:: cupy.r_
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.c_
+   cupy.r_
+   cupy.nonzero
+   cupy.where
+   cupy.ix_
+   cupy.take
+   cupy.choose
+   cupy.diag
+   cupy.diagonal
+   cupy.fill_diagonal

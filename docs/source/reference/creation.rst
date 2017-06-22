@@ -4,39 +4,55 @@ Array Creation Routines
 Basic creation routines
 -----------------------
 
-.. autofunction:: cupy.empty
-.. autofunction:: cupy.empty_like
-.. autofunction:: cupy.eye
-.. autofunction:: cupy.identity
-.. autofunction:: cupy.ones
-.. autofunction:: cupy.ones_like
-.. autofunction:: cupy.zeros
-.. autofunction:: cupy.zeros_like
-.. autofunction:: cupy.full
-.. autofunction:: cupy.full_like
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.empty
+   cupy.empty_like
+   cupy.eye
+   cupy.identity
+   cupy.ones
+   cupy.ones_like
+   cupy.zeros
+   cupy.zeros_like
+   cupy.full
+   cupy.full_like
 
 
 Creation from other data
 ------------------------
 
-.. autofunction:: cupy.array
-.. autofunction:: cupy.asarray
-.. autofunction:: cupy.asanyarray
-.. autofunction:: cupy.ascontiguousarray
-.. autofunction:: cupy.copy
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.array
+   cupy.asarray
+   cupy.asanyarray
+   cupy.ascontiguousarray
+   cupy.copy
 
 
 Numerical ranges
 ----------------
 
-.. autofunction:: cupy.arange
-.. autofunction:: cupy.linspace
-.. autofunction:: cupy.logspace
-.. autofunction:: cupy.meshgrid
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.arange
+   cupy.linspace
+   cupy.logspace
+   cupy.meshgrid
 
 
 Matrix creation
 ---------------
 
-.. autofunction:: cupy.diag
-.. autofunction:: cupy.diagflat
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.diag
+   cupy.diagflat
