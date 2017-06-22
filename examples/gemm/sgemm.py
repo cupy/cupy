@@ -67,7 +67,7 @@ def main():
         low=-1., high=1., size=(args.k, args.n)).astype(cp.float32)
 
     # check correctness
-    np.testing.assert_equal(sgemm(A, B).get(), cp.dot(A, B).get())
+    cp.testing.assert_array_equal(sgemm(A, B), cp.dot(A, B))
 
     # dry run
     for _ in range(3):
