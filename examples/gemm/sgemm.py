@@ -6,7 +6,7 @@ import math
 import cupy as cp
 import numpy as np
 
-from utils import bencmark
+from utils import benchmark
 from utils import load_kernel
 from utils import read_code
 
@@ -72,11 +72,11 @@ def main():
     # dry run
     for _ in range(3):
         sgemm(A, B)
-    kernel_times = bencmark(sgemm, (A, B), n_run=5)
+    kernel_times = benchmark(sgemm, (A, B), n_run=5)
 
     for _ in range(3):
         cp.dot(A, B)
-    cublas_times = bencmark(cp.dot, (A, B), n_run=5)
+    cublas_times = benchmark(cp.dot, (A, B), n_run=5)
 
     print('=============================Result===============================')
     print('hand written kernel time {} ms'.format(np.mean(kernel_times)))

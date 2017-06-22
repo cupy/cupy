@@ -12,11 +12,11 @@ def read_code(code_filename, params):
     with open(code_filename, 'r') as f:
         code = f.read()
     for k, v in params.items():
-        code = "#define " + k + " " + str(v) + "\n" + code
+        code = '#define ' + k + ' ' + str(v) + '\n' + code
     return code
 
 
-def bencmark(func, args, n_run):
+def benchmark(func, args, n_run):
     times = []
     for _ in range(n_run):
         start = cp.cuda.Event()
