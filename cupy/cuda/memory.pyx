@@ -363,7 +363,7 @@ cdef class SingleDeviceMemoryPool:
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
-                self.free_all_free()
+                self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
