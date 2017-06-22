@@ -44,6 +44,14 @@ def arange(start, stop=None, step=1, dtype=None):
     if size <= 0:
         return cupy.empty((0,), dtype=dtype)
 
+    if numpy.dtype(dtype).type == numpy.bool_:
+        if size > 2:
+            raise ValueError('no fill-function for data-type.')
+        if size == 2:
+            return cupy.array([start, start - step], dtype=numpy.bool_)
+        else:
+            return cupy.array([start], dtype=numpy.bool_)
+
     ret = cupy.empty((size,), dtype=dtype)
     typ = numpy.dtype(dtype).type
     _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
