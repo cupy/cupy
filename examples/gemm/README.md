@@ -9,7 +9,7 @@ The demo contains a script that calculates matrix multiplication of A (m x k) an
 The demo can be run by the following command.
 
 ```
-python sgemm.py [--m m] [--n n] [--k k]
+python sgemm.py [--gpu GPU_ID] [--m m] [--n n] [--k k]
 ```
 
 

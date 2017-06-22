@@ -49,6 +49,8 @@ def sgemm(A, B,
 def main():
     parser = argparse.ArgumentParser(
         description='SGEMM kernel call from CuPy')
+    parser.add_argument('--gpu', '-g', default=0, type=int,
+                        help='ID of GPU.')
     parser.add_argument(
         '--m', type=int, default=np.random.randint(5000, 12000))
     parser.add_argument(
@@ -61,22 +63,23 @@ def main():
     print('start benchmarking')
     print('')
 
-    A = cp.random.uniform(
-        low=-1., high=1., size=(args.m, args.k)).astype(cp.float32)
-    B = cp.random.uniform(
-        low=-1., high=1., size=(args.k, args.n)).astype(cp.float32)
+    with cp.cuda.Device(args.gpu):
+        A = cp.random.uniform(
+            low=-1., high=1., size=(args.m, args.k)).astype(cp.float32)
+        B = cp.random.uniform(
+            low=-1., high=1., size=(args.k, args.n)).astype(cp.float32)
 
-    # check correctness
-    cp.testing.assert_array_equal(sgemm(A, B), cp.dot(A, B))
+        # check correctness
+        cp.testing.assert_array_equal(sgemm(A, B), cp.dot(A, B))
 
-    # dry run
-    for _ in range(3):
-        sgemm(A, B)
-    kernel_times = benchmark(sgemm, (A, B), n_run=5)
+        # dry run
+        for _ in range(3):
+            sgemm(A, B)
+        kernel_times = benchmark(sgemm, (A, B), n_run=5)
 
-    for _ in range(3):
-        cp.dot(A, B)
-    cublas_times = benchmark(cp.dot, (A, B), n_run=5)
+        for _ in range(3):
+            cp.dot(A, B)
+        cublas_times = benchmark(cp.dot, (A, B), n_run=5)
 
     print('=============================Result===============================')
     print('hand written kernel time {} ms'.format(np.mean(kernel_times)))
