@@ -18,9 +18,9 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
-def fit(A, b, x0, tol, max_iter):
+def fit(A, b, tol, max_iter):
     xp = cupy.get_array_module(A)
-    x = x0
+    x = xp.zeros(len(b), dtype=np.float64)
     r0 = b - xp.dot(A, x)
     p = r0
     for i in six.moves.range(max_iter):
@@ -32,8 +32,7 @@ def fit(A, b, x0, tol, max_iter):
         b = xp.dot(r1.T, r1) / xp.dot(r0.T, r0)
         p = r1 + b * p
         r0 = r1
-    msg = 'Failed to converge. Increase max-iter or tol.'
-    print(msg)
+    print('Failed to converge. Increase max-iter or tol.')
     return x
 
 
@@ -41,39 +40,33 @@ def run(gpu_id, tol, max_iter):
     '''CuPy Congugate gradient example
 
     Solve simultaneous linear equations, Ax = b.
-    'x' is computed in two ways. To check whether the answers are correct,
-    'b' is computed from matrix multiplication of 'A' and 'x' in each case,
-    and printed.
+    'A' and 'x' are created randomly and 'b' is computed by 'Ax' at first.
+    'x' is the answer and computed in two ways. To check whether the computed
+    'x' is correct, the euclidean distance between the answer 'x' and the
+    computed 'x' is printed.
 
     '''
     for repeat in range(3):
-        print("Trial: %d" % repeat)
+        print('Trial: %d' % repeat)
         # Create the large symmetric matrix 'A'.
         N = 2000
-        A = np.random.randint(50, size=(N, N))
+        A = np.random.randint(-50, 50, size=(N, N))
         A = (A + A.T).astype(np.float64)
-        b = np.random.randint(50, size=N).astype(np.float64)
-        x0 = np.zeros(N, dtype=np.float64)
-
-        np.set_printoptions(precision=2, suppress=True)
-        print('b[:18]=')
-        print(b[:18])
+        x_ans = np.random.randint(-50, 50, size=N).astype(np.float64)
+        b = np.dot(A, x_ans)
 
         print('Running CPU...')
         with timer(' CPU '):
-            x = fit(A, b, x0, tol, max_iter)
-        b_calc = np.dot(A, x)
-        print(b_calc[:18])
+            x_cpu = fit(A, b, tol, max_iter)
+        print(np.linalg.norm(x_cpu - x_ans))
 
         with cupy.cuda.Device(gpu_id):
             A_gpu = cupy.asarray(A)
             b_gpu = cupy.asarray(b)
-            x0_gpu = cupy.asarray(x0)
             print('Running GPU...')
             with timer(' GPU '):
-                x = fit(A_gpu, b_gpu, x0_gpu, tol, max_iter)
-            b_calc = cupy.dot(A_gpu, x)
-            print(b_calc[:18])
+                x_gpu = fit(A_gpu, b_gpu, tol, max_iter)
+            print(np.linalg.norm(cupy.asnumpy(x_gpu) - x_ans))
 
         print()
 
