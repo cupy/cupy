@@ -46,8 +46,6 @@ void sgemm(
     __shared__ float sB[BLK_N][BLK_K + 1];
 
     // registers for the innermost loop
-    // performance was highest when type of rC was fixed to uint32
-    // Note that the performance was highest when C's type was short
     float rC[THR_N][THR_M];
     float rA[THR_M];
     float rB[THR_N];
@@ -138,8 +136,8 @@ void sgemm(
         __syncthreads();
     }
 
-    // Multiply last full (BLK_K) or partial block of columns of op(A) and
-    // rows of op(B).
+    // Multiply last full (BLK_K) or partial block of columns of A and
+    // rows of B.
     // It's okay that m,n exceed matrix bounds as all work is in registers
     // or shared memory, and out-of-bounds rC[n][m] will not be saved later.
 
