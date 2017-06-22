@@ -20,6 +20,8 @@ Licensed under modified BSD license
 //#define THR_N  ${THR_N}
 //#define THR_M  ${THR_M}
 
+#define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
+
 
 extern "C" __global__
 void sgemm(
@@ -73,7 +75,7 @@ void sgemm(
     for (n = 0; n < BLK_K; n += DIM_YA) {
         #pragma unroll
         for (m = 0; m < BLK_M; m += DIM_XA) {
-            sA[n + idyA][m + idxA] = offs_dA[n * M + m];
+            sA[n + idyA][m + idxA] = fetch(offs_dA, M, m, n, boundA);
         }
     }
     // blockwise transpose to transpose load
@@ -81,7 +83,7 @@ void sgemm(
     for (n = 0; n < BLK_N; n += DIM_YB) {
         #pragma unroll
         for (m = 0; m < BLK_K; m += DIM_XB) {
-            sB[n + idyB][m + idxB] = offs_dB[n * K + m];
+            sB[n + idyB][m + idxB] = fetch(offs_dB, K, m, n, boundB);
         }
     }
     __syncthreads();
@@ -97,7 +99,7 @@ void sgemm(
         for (n = 0; n < BLK_K / DIM_YA; n++) {
             #pragma unroll
             for (m = 0; m < BLK_M / DIM_XA; m++) {
-                ra[n][m] = offs_dA[n * DIM_YA * M + m * DIM_XA];
+                ra[n][m] = fetch(offs_dA, M, m * DIM_XA, n * DIM_YA, boundA);
             }
         }
 
@@ -105,7 +107,7 @@ void sgemm(
         for (n = 0; n < BLK_N / DIM_YB; n++) {
             #pragma unroll
             for (m = 0; m < BLK_K / DIM_XB; m++) {
-                rb[n][m] = offs_dB[n * DIM_YB * K + m * DIM_XB];
+                rb[n][m] = fetch(offs_dB, K, m * DIM_XB, n * DIM_YB, boundB);
             }
         }
 
@@ -150,10 +152,6 @@ void sgemm(
             #pragma unroll
             for (m = 0; m < BLK_K / DIM_XB; m++)
             {
-                if (BLK_N <= n * DIM_YB + idyB)
-                    printf("aaa %d %d\n", BLK_N, n * DIM_YB + idyB);
-                if ((BLK_K + 1) <= (m * DIM_XB + idxB))
-                    printf("bbb %d %d %d %d\n", BLK_K + 1, m * DIM_XB + idxB, m, BLK_K / DIM_XB);
                 sB[n * DIM_YB + idyB][m * DIM_XB + idxB] = rb[n][m];
             }
         }
