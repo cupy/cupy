@@ -2,7 +2,7 @@ CuPy Contribution Guide
 =======================
 
 This is a guide for all contributions to CuPy.
-The development of CuPy is running on `the official repository at GitHub <https://github.com/pfnet/cupy>`_.
+The development of CuPy is running on `the official repository at GitHub <https://github.com/cupy/cupy>`_.
 Anyone that wants to register an issue or to send a pull request should read through this document.
 
 Classification of Contributions
@@ -72,7 +72,7 @@ If you can write code to fix an issue, send a PR to the master branch.
 Before writing your code for PRs, read through the :ref:`coding-guide`.
 The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your code for developers, a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/cupy/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/cupy>`_ for Windows.
+Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/cupy/cupy/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/cupy/cupy>`_ for Windows.
 Your PR need to pass at least the test for Linux on Travis CI.
 After the automatic test passes, some of the core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
@@ -124,7 +124,7 @@ For example, ``cupy.cuda.Device`` is a shortcut of ``cupy.cuda.device.Device``.
 **It is not allowed to use such shortcuts in the ``cupy`` library implementation**.
 Note that you can still use them in ``tests`` and ``examples`` directories.
 
-Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_.
+Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/cupy/cupy/>`_.
 The reviewing process starts after the check passes.
 
 The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.

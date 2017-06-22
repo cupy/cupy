@@ -4,23 +4,38 @@ Linear Algebra
 Matrix and vector products
 --------------------------
 
-.. autofunction:: cupy.dot
-.. autofunction:: cupy.vdot
-.. autofunction:: cupy.inner
-.. autofunction:: cupy.outer
-.. autofunction:: cupy.tensordot
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.dot
+   cupy.vdot
+   cupy.inner
+   cupy.outer
+   cupy.matmul
+   cupy.tensordot
+
 
 Decompositions
 --------------------------
 
-.. autofunction:: cupy.linalg.cholesky
-.. autofunction:: cupy.linalg.qr
-.. autofunction:: cupy.linalg.svd
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.linalg.cholesky
+   cupy.linalg.qr
+   cupy.linalg.svd
 
 
 Norms etc.
 ----------
 
-.. autofunction:: cupy.linalg.matrix_rank
-.. autofunction:: cupy.linalg.slogdet
-.. autofunction:: cupy.trace
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.linalg.norm
+   cupy.linalg.matrix_rank
+   cupy.linalg.slogdet
+   cupy.trace

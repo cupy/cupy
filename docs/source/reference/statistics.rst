@@ -4,21 +4,33 @@ Statistics
 Order statistics
 ----------------
 
-.. autofunction:: cupy.amin
-.. autofunction:: cupy.amax
-.. autofunction:: cupy.nanmin
-.. autofunction:: cupy.nanmax
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.amin
+   cupy.amax
+   cupy.nanmin
+   cupy.nanmax
 
 
 Means and variances
 -------------------
 
-.. autofunction:: cupy.mean
-.. autofunction:: cupy.var
-.. autofunction:: cupy.std
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.mean
+   cupy.var
+   cupy.std
 
 
 Histograms
 ----------
 
-.. autofunction:: cupy.bincount
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.bincount

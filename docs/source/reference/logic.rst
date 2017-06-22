@@ -1,29 +1,63 @@
 Logic Functions
 ===============
 
+Truth value testing
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.all
+   cupy.any
+
+
 Infinities and NaNs
 -------------------
 
-.. autodata:: cupy.isfinite
-.. autodata:: cupy.isinf
-.. autodata:: cupy.isnan
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.isfinite
+   cupy.isinf
+   cupy.isnan
+
+
+Array type testing
+------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.isscalar
+
 
 
 Logic operations
 ----------------
 
-.. autodata:: cupy.logical_and
-.. autodata:: cupy.logical_or
-.. autodata:: cupy.logical_not
-.. autodata:: cupy.logical_xor
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.logical_and
+   cupy.logical_or
+   cupy.logical_not
+   cupy.logical_xor
 
 
 Comparison operations
 ---------------------
 
-.. autodata:: cupy.greater
-.. autodata:: cupy.greater_equal
-.. autodata:: cupy.less
-.. autodata:: cupy.less_equal
-.. autodata:: cupy.equal
-.. autodata:: cupy.not_equal
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.greater
+   cupy.greater_equal
+   cupy.less
+   cupy.less_equal
+   cupy.equal
+   cupy.not_equal

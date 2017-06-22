@@ -1,14 +1,14 @@
-.. _cupy-overview
+.. _overview:
 
 CuPy Overview
 =============
 
 .. module:: cupy
 
-CuPy is an implementation of NumPy-compatible multi-dimensional array on CUDA.
-CuPy consists of the core multi-dimensional array class, :class:`cupy.ndarray`,
+`CuPy <https://github.com/cupy/cupy>`_ is an implementation of NumPy-compatible multi-dimensional array on CUDA.
+CuPy consists of :class:`cupy.ndarray`, the core multi-dimensional array class,
 and many functions on it. It supports a subset of :class:`numpy.ndarray`
-interface that is enough for `Chainer <https://chainer.org/>`_.
+interface.
 
 The following is a brief overview of supported subset of NumPy interface:
 
@@ -16,21 +16,22 @@ The following is a brief overview of supported subset of NumPy interface:
   (indexing by ints, slices, newaxes, and Ellipsis)
 - Most of `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
   (except for some indexing patterns with boolean masks)
-- Element types (dtypes): bool\_, (u)int{8, 16, 32, 64}, float{16, 32, 64}
-- Most of the array creation routines
-- Reshaping and transposition
-- All operators with broadcasting
-- All `Universal functions <http://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_ (a.k.a. ufuncs)
-  for elementwise operations except those for complex numbers
-- Dot product functions (except einsum) using cuBLAS
-- Reduction along axes (sum, max, argmax, etc.)
+- Data types (dtypes): ``bool_``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``, ``float16``, ``float32``, ``float64``
+- Most of the `array creation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html>`_ (\ ``empty``, ``ones_like``, ``diag``, etc.)
+- Most of the `array manipulation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)
+- All operators with `broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_
+- All `universal functions <http://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_
+  for elementwise operations (except those for complex numbers).
+- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_.
+- Reduction along axes (``sum``, ``max``, ``argmax``, etc.)
 
-CuPy also includes following features for performance:
+CuPy also includes the following features for performance:
 
-- Customizable memory allocator, and a simple memory pool as an example
-- User-defined elementwise kernels
-- User-defined reduction kernels
-- cuDNN utilities
+- User-defined elementwise CUDA kernels
+- User-defined reduction CUDA kernels
+- Fusing CUDA kernels to optimize user-defined calculation
+- Customizable memory allocator and memory pool
+- `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
 
 CuPy uses on-the-fly kernel synthesis: when a kernel call is required, it
 compiles a kernel code optimized for the shapes and dtypes of given arguments,

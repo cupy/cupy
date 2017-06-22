@@ -1,5 +1,9 @@
 Kernel binary memoization
 =========================
 
-.. autofunction:: cupy.memoize
-.. autofunction:: cupy.clear_memo
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.memoize
+   cupy.clear_memo
