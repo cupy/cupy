@@ -24,6 +24,14 @@ cdef extern from "cupy_cuda.h":
     int cuGetErrorString(Result error, const char** pStr) nogil
 
     # Module load and kernel execution
+    int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
+                     void** optionValues, LinkState* stateOut) nogil
+    int cuLinkAddData(LinkState state, CUjitInputType type, void* data,
+                      size_t size, const char* name, unsigned int  numOptions,
+                      CUjit_option* options, void** optionValues) nogil
+    int cuLinkComplete(LinkState state, void** cubinOut,
+                       size_t* sizeOut) nogil
+    int cuLinkDestroy(LinkState state) nogil
     int cuModuleLoad(Module* module, char* fname) nogil
     int cuModuleLoadData(Module* module, void* image) nogil
     int cuModuleUnload(Module hmod) nogil
@@ -65,6 +73,41 @@ cpdef inline check_status(int status):
 ###############################################################################
 # Module load and kernel execution
 ###############################################################################
+
+cpdef size_t linkCreate() except *:
+    cpdef LinkState state
+    with nogil:
+        status = cuLinkCreate(0, <CUjit_option*>0, <void**>0, &state)
+    check_status(status)
+    return <size_t>state
+
+
+cpdef linkAddData(size_t state, int input_type, bytes data, unicode name):
+    cdef const char* data_ptr = data
+    cdef size_t data_size = len(data) + 1
+    cdef bytes b_name = name.encode()
+    cdef const char* b_name_ptr = b_name
+    with nogil:
+        status = cuLinkAddData(
+            <LinkState>state, <CUjitInputType>input_type, <void*>data_ptr,
+            data_size, b_name_ptr, 0, <CUjit_option*>0, <void**>0)
+    check_status(status)
+
+
+cpdef bytes linkComplete(size_t state):
+    cdef void* cubinOut
+    cdef size_t sizeOut
+    with nogil:
+        status = cuLinkComplete(<LinkState>state, &cubinOut, &sizeOut)
+    check_status(status)
+    return bytes((<char*>cubinOut)[:sizeOut])
+
+
+cpdef linkDestroy(size_t state):
+    with nogil:
+        status = cuLinkDestroy(<LinkState>state)
+    check_status(status)
+
 
 cpdef size_t moduleLoad(str filename) except *:
     cdef Module module

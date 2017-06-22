@@ -31,6 +31,7 @@ MODULES = [
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
+            'cupy.cuda.nvrtc',
             'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',
             'cupy.cuda.nvtx',
@@ -45,6 +46,7 @@ MODULES = [
             'cuda_runtime.h',
             'curand.h',
             'cusparse.h',
+            'nvrtc.h',
             'nvToolsExt.h',
         ],
         'libraries': [
@@ -53,6 +55,7 @@ MODULES = [
             'cudart',
             'curand',
             'cusparse',
+            'nvrtc',
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,

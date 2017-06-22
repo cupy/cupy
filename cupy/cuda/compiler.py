@@ -2,35 +2,31 @@ import hashlib
 import os
 import re
 import shutil
-import subprocess
-import sys
 import tempfile
 
 import six
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import nvrtc
+
+_nvrtc_version = None
 
 
-_nvcc_version = None
+def _get_nvrtc_version():
+    global _nvrtc_version
+    if _nvrtc_version is None:
+        _nvrtc_version = nvrtc.getVersion()
 
-
-def _get_nvcc_version():
-    global _nvcc_version
-    if _nvcc_version is None:
-        cmd = ['nvcc', '--version']
-        _nvcc_version = _run_nvcc(cmd, '.')
-
-    return _nvcc_version
+    return _nvrtc_version
 
 
 def _get_arch():
     cc = device.Device().compute_capability
-    return 'sm_%s' % cc
+    return 'compute_%s' % cc
 
 
 class TemporaryDirectory(object):
-
     def __enter__(self):
         self.path = tempfile.mkdtemp()
         return self.path
@@ -44,58 +40,30 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def _run_nvcc(cmd, cwd):
-    try:
-        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        msg = ('`nvcc` command returns non-zero exit status. \n'
-               'command: {0}\n'
-               'return-code: {1}\n'
-               'stdout/stderr: \n'
-               '{2}'.format(e.cmd, e.returncode, e.output))
-        raise RuntimeError(msg)
-    except OSError as e:
-        msg = 'Failed to run `nvcc` command. ' \
-              'Check PATH environment variable: ' \
-              + str(e)
-        raise OSError(msg)
-
-
-def nvcc(source, options=(), arch=None):
+def compile_using_nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
-    cmd = ['nvcc', '--cubin', '-arch', arch] + list(options)
+
+    options += ('-arch={}'.format(arch),)
 
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path
-        cubin_path = '%s.cubin' % path
 
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        cmd.append(cu_path)
-        _run_nvcc(cmd, root_dir)
+        prog = _NVRTCProgram(source, cu_path)
+        ptx = prog.compile(options)
 
-        with open(cubin_path, 'rb') as bin_file:
-            return bin_file.read()
+        return ptx
 
 
 def preprocess(source, options=()):
-    cmd = ['nvcc', '--preprocess'] + list(options)
-    with TemporaryDirectory() as root_dir:
-        path = os.path.join(root_dir, 'kern')
-        cu_path = '%s.cu' % path
-
-        with open(cu_path, 'w') as cu_file:
-            cu_file.write(source)
-
-        cmd.append(cu_path)
-        pp_src = _run_nvcc(cmd, root_dir)
-
-        if isinstance(pp_src, six.binary_type):
-            pp_src = pp_src.decode('utf-8')
-        return re.sub('(?m)^#.*$', '', pp_src)
+    pp_src = _NVRTCProgram(source, '').compile(options)
+    if isinstance(pp_src, six.binary_type):
+        pp_src = pp_src.decode('utf-8')
+    return re.sub('(?m)^#.*$', '', pp_src)
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
@@ -115,14 +83,9 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    if 'win32' == sys.platform:
-        options += ('-Xcompiler', '/wd 4819')
-        if sys.maxsize == 9223372036854775807:
-            options += '-m64',
-        elif sys.maxsize == 2147483647:
-            options += '-m32',
+    options += ('-ftz=true',)
 
-    env = (arch, options, _get_nvcc_version())
+    env = (arch, options, _get_nvrtc_version())
     if '#include' in source:
         pp_src = '%s %s' % (env, preprocess(source, options))
     else:
@@ -157,7 +120,10 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
                 mod.load(cubin)
                 return mod
 
-    cubin = nvcc(source, options, arch)
+    ptx = compile_using_nvrtc(source, options, arch)
+    ls = function.LinkState()
+    ls.add_ptr_data(ptx, six.u('cupy.ptx'))
+    cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
     # shutil.move is not atomic operation, so it could result in a corrupted
@@ -171,3 +137,43 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
     mod.load(cubin)
     return mod
+
+
+class CompileException(Exception):
+
+    def __init__(self, msg):
+        self._msg = msg
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return self.get_message()
+
+    def get_message(self):
+        return self._msg
+
+
+class _NVRTCProgram(object):
+
+    def __init__(self, src, name="default_program", headers=(),
+                 include_names=()):
+        self.ptr = None
+
+        if isinstance(src, six.binary_type):
+            src = src.decode('UTF-8')
+        if isinstance(name, six.binary_type):
+            name = name.decode('UTF-8')
+        self.ptr = nvrtc.createProgram(src, name, headers, include_names)
+
+    def __del__(self):
+        if self.ptr:
+            nvrtc.destroyProgram(self.ptr)
+
+    def compile(self, options=()):
+        try:
+            nvrtc.compileProgram(self.ptr, options)
+            return nvrtc.getPTX(self.ptr)
+        except nvrtc.NVRTCError:
+            log = nvrtc.getProgramLog(self.ptr)
+            raise CompileException(log)

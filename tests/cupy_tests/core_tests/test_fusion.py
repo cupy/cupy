@@ -880,7 +880,7 @@ class TestFusionFuse(unittest.TestCase):
         a = xp.arange(15, dtype=dtype)
         b = a * a[::-1]
         a = a * 3 + 11
-        c = (a * b) ** 2 % 63
+        c = (a * b) % 63
 
         @cupy.fuse()
         def g(x, y, z):
@@ -898,14 +898,14 @@ class TestFusionFuse(unittest.TestCase):
         a = xp.arange(15, dtype=dtype)
         b = a * a[::-1]
         a = a * 3 + 11
-        c = (a * b) ** 2 % 63
+        c = (a * b) % 63
 
         @cupy.fuse()
         def g(x, y, z):
             x = ~(x & y) | (x ^ z) ^ (z | y)
-            y = 109 & y
-            z = 109 | z
-            z = 88 ^ z
+            y &= 109
+            z |= 109
+            z ^= 88
             return x + y + z
 
         return g(a, b, c)
