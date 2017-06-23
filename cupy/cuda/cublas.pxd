@@ -8,6 +8,8 @@
 cdef extern from *:
     ctypedef void* Handle 'cublasHandle_t'
 
+    ctypedef int DiagType 'cublasDiagType_t'
+    ctypedef int FillMode 'cublasFillMode_t'
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int PointerMode 'cublasPointerMode_t'
     ctypedef int SideMode 'cublasSideMode_t'
@@ -30,6 +32,9 @@ cpdef enum:
 
     CUBLAS_FILL_MODE_LOWER = 0
     CUBLAS_FILL_MODE_UPPER = 1
+
+    CUBLAS_DIAG_NON_UNIT = 0
+    CUBLAS_DIAG_UNIT = 1
 
 
 ###############################################################################
@@ -102,6 +107,12 @@ cpdef dgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, double alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, double beta, size_t Carray, int ldc,
                    int batchCount)
+cpdef strsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, float alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
+cpdef dtrsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, double alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
 
 ###############################################################################
 # BLAS extension

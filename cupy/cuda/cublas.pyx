@@ -78,6 +78,14 @@ cdef extern from 'cupy_cuda.h':
         int n, int k, const double* alpha, const double** Aarray,
         int lda, const double** Barray, int ldb, const double* beta,
         double** Carray, int ldc, int batchCount) nogil
+    int cublasStrsm(
+        Handle handle, SideMode size, FillMode uplo, Operation trans,
+        DiagType diag, int m, int n, const float* alpha, const float* A,
+        int lda, float* B, int ldb) nogil
+    int cublasDtrsm(
+        Handle handle, SideMode size, FillMode uplo, Operation trans,
+        DiagType diag, int m, int n, const double* alpha, const double* A,
+        int lda, double* B, int ldb) nogil
 
     # BLAS extension
     int cublasSgeam(
@@ -362,6 +370,31 @@ cpdef dgemmBatched(
             &alpha, <const double**>Aarray, lda, <const double**>Barray, ldb,
             &beta, <double**>Carray, ldc, batchCount)
     check_status(status)
+
+
+cpdef strsm(
+        size_t handle, int side, int uplo, int trans, int diag,
+        int m, int n, float alpha, size_t Aarray, int lda,
+        size_t Barray, int ldb):
+    with nogil:
+        status = cublasStrsm(
+            <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
+            <DiagType>diag, m, n, &alpha, <const float*>Aarray, lda,
+            <float*>Barray, ldb)
+    check_status(status)
+
+
+cpdef dtrsm(
+        size_t handle, int side, int uplo, int trans, int diag,
+        int m, int n, double alpha, size_t Aarray, int lda,
+        size_t Barray, int ldb):
+    with nogil:
+        status = cublasDtrsm(
+            <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
+            <DiagType>diag, m, n, &alpha, <const double*>Aarray, lda,
+            <double*>Barray, ldb)
+    check_status(status)
+
 
 ###############################################################################
 # BLAS extension
