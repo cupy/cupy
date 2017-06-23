@@ -111,7 +111,7 @@ class TestLexsort(unittest.TestCase):
 
     def test_lexsort_three_or_more_dim(self):
         a = testing.shaped_random((2, 10, 10), cupy)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             return cupy.lexsort(a)
 
     # Test dtypes
