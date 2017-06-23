@@ -1,4 +1,8 @@
 Padding
 ================================
 
-.. autofunction:: cupy.pad
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.pad

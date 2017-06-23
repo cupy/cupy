@@ -7,7 +7,7 @@ Here are the environment variables CuPy uses.
 +--------------------+----------------------------------------------------+
 | ``CUPY_CACHE_DIR`` | Path to the directory to store kernel cache.       |
 |                    | ``$(HOME)/.cupy.kernel_cache`` is used by default. |
-|                    | See :ref:`cupy-overview` for detail.               |
+|                    | See :ref:`overview` for details.                   |
 +--------------------+----------------------------------------------------+
 
 

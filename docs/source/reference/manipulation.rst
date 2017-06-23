@@ -4,76 +4,116 @@ Array Manipulation Routines
 Basic manipulations
 -------------------
 
-.. autofunction:: cupy.copyto
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.copyto
 
 
 Shape manipulation
 ------------------
 
-.. autofunction:: cupy.reshape
-.. autofunction:: cupy.ravel
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.reshape
+   cupy.ravel
 
 
 Transposition
 -------------
 
-.. autofunction:: cupy.rollaxis
-.. autofunction:: cupy.swapaxes
-.. autofunction:: cupy.transpose
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.rollaxis
+   cupy.swapaxes
+   cupy.transpose
 
 
 Edit dimensionalities
 ---------------------
 
-.. autofunction:: cupy.atleast_1d
-.. autofunction:: cupy.atleast_2d
-.. autofunction:: cupy.atleast_3d
-.. autoclass:: cupy.broadcast
-.. autofunction:: cupy.broadcast_arrays
-.. autofunction:: cupy.broadcast_to
-.. autofunction:: cupy.expand_dims
-.. autofunction:: cupy.squeeze
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.atleast_1d
+   cupy.atleast_2d
+   cupy.atleast_3d
+   cupy.broadcast
+   cupy.broadcast_arrays
+   cupy.broadcast_to
+   cupy.expand_dims
+   cupy.squeeze
 
 
 Changing kind of array
 ----------------------
 
-.. autofunction:: cupy.asfortranarray
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.asarray
+   cupy.asanyarray
+   cupy.asfortranarray
+   cupy.ascontiguousarray
 
 
 Joining arrays along axis
 -------------------------
 
-.. autofunction:: cupy.column_stack
-.. autofunction:: cupy.concatenate
-.. autofunction:: cupy.vstack
-.. autofunction:: cupy.hstack
-.. autofunction:: cupy.dstack
-.. autofunction:: cupy.stack
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.concatenate
+   cupy.stack
+   cupy.column_stack
+   cupy.dstack
+   cupy.hstack
+   cupy.vstack
 
 
 Splitting arrays along axis
 ---------------------------
 
-.. autofunction:: cupy.array_split
-.. autofunction:: cupy.split
-.. autofunction:: cupy.vsplit
-.. autofunction:: cupy.hsplit
-.. autofunction:: cupy.dsplit
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.split
+   cupy.array_split
+   cupy.dsplit
+   cupy.hsplit
+   cupy.vsplit
 
 
 Repeating part of arrays along axis
 ===================================
 
-.. autofunction:: cupy.tile
-.. autofunction:: cupy.repeat
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.tile
+   cupy.repeat
 
 
 Rearranging elements
 ====================
 
-.. autofunction:: cupy.flip
-.. autofunction:: cupy.fliplr
-.. autofunction:: cupy.flipud
-.. autofunction:: cupy.roll
-.. autofunction:: cupy.rot90
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.flip
+   cupy.fliplr
+   cupy.flipud
+   cupy.reshape
+   cupy.roll
+   cupy.rot90
