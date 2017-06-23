@@ -158,7 +158,46 @@ array([1, 2, 3, 0, 0, 4, 5, 6], dtype=int32)
 
 """
 
-# TODO(okuta): Implement indices
+
+def indices(dimensions, dtype=int):
+    """Return an array representing the indices of a grid.
+
+    Compute an array where the subarrays contain index values 0,1,...
+    varying only along the corresponding axis.
+
+    Args:
+        dimensions: The shape of the grid.
+        dtype: Data type specifier. It is int by default.
+
+    Returns:
+        ndarray:
+        The array of grid indices,
+        ``grid.shape = (len(dimensions),) + tuple(dimensions)``.
+
+    Examples
+    --------
+    >>> grid = cupy.indices((2, 3))
+    >>> grid.shape
+    (2, 2, 3)
+    >>> grid[0]        # row indices
+    array([[0, 0, 0],
+           [1, 1, 1]])
+    >>> grid[1]        # column indices
+    array([[0, 1, 2],
+           [0, 1, 2]])
+
+    .. seealso:: :func:`numpy.indices`
+
+    """
+    dimensions = tuple(dimensions)
+    N = len(dimensions)
+    shape = (1,) * N
+    res = cupy.empty((N,) + dimensions, dtype=dtype)
+    for i, dim in enumerate(dimensions):
+        res[i] = cupy.arange(dim, dtype=dtype).reshape(
+            shape[:i] + (dim,) + shape[i + 1:]
+        )
+    return res
 
 
 def ix_(*args):
