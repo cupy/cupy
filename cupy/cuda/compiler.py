@@ -1,7 +1,9 @@
 import hashlib
+import math
 import os
 import re
 import shutil
+import sys
 import tempfile
 
 import six
@@ -40,6 +42,22 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
+def _dump_source(e, source, options, arch):
+    lines = source.split('\n')
+    digits = int(math.floor(math.log10(len(lines)))) + 1
+    linum_fmt = '{{:0{}d}} '.format(digits)
+    f = sys.stderr
+    f.write('NVRTC compilation error: {}\n'.format(e))
+    f.write('-----\n')
+    f.write('Options: {}\n'.format(' '.join(_ for _ in options)))
+    f.write('Arch: {}\n'.format(arch))
+    f.write('CUDA source:\n')
+    for i, line in enumerate(lines):
+        f.write(linum_fmt.format(i + 1) + line.rstrip() + '\n')
+    f.write('-----\n')
+    f.flush()
+
+
 def compile_using_nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
@@ -54,13 +72,27 @@ def compile_using_nvrtc(source, options=(), arch=None):
             cu_file.write(source)
 
         prog = _NVRTCProgram(source, cu_path)
-        ptx = prog.compile(options)
+        try:
+            ptx = prog.compile(options)
+        except CompileException as e:
+            dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
+            if dump:
+                _dump_source(e, source, options, None)
+            raise
 
         return ptx
 
 
 def preprocess(source, options=()):
-    pp_src = _NVRTCProgram(source, '').compile(options)
+    prog = _NVRTCProgram(source, '')
+    try:
+        pp_src = prog.compile(options)
+    except CompileException as e:
+        dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
+        if dump:
+            _dump_source(e, source, options, None)
+        raise
+
     if isinstance(pp_src, six.binary_type):
         pp_src = pp_src.decode('utf-8')
     return re.sub('(?m)^#.*$', '', pp_src)
