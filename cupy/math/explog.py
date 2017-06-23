@@ -22,7 +22,9 @@ expm1 = ufunc.create_math_ufunc(
 
 exp2 = core.create_ufunc(
     'cupy_exp2',
-    ('e->e', 'f->f', ('d->d', 'out0 = pow(2., in0)')),
+    ('e->e', 'f->f', ('d->d', 'out0 = pow(2., in0)'),
+     ('F->F', 'out0 = 	thrust::pow(float(2), in0)'),
+     ('D->D', 'out0 = 	thrust::pow(double(2), in0)')),
     'out0 = powf(2.f, in0)',
     doc='''Elementwise exponentiation with base 2.
 

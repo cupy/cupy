@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import collections
+import threading
 import weakref
 
 import six
@@ -129,12 +130,63 @@ cdef class PinnedMemoryPointer:
         return self.size()
 
 
+cdef class _EventWatcher:
+    cdef:
+        cdef list events
+        cdef object lock
+
+    def __init__(self):
+        self.events = []
+        self.lock = threading.Lock()
+
+    cpdef add(self, event, obj):
+        """ Add event to be monitored.
+
+        The ``obj`` are automatically released when the event done.
+
+        Args:
+            event (cupy.cuda.Event): The CUDA event to be monitored.
+            obj: The object to be held.
+        """
+        with self.lock:
+            self._check_and_release_without_lock()
+            if event.done:
+                return
+            self.events.append((event, obj))
+
+    cpdef check_and_release(self):
+        """ Check and release completed events.
+
+        """
+        if len(self.events) == 0:
+            return
+        with self.lock:
+            self._check_and_release_without_lock()
+
+    cpdef _check_and_release_without_lock(self):
+        while len(self.events) != 0 and self.events[0][0].done:
+            del self.events[0]
+
+
 cpdef PinnedMemoryPointer _malloc(Py_ssize_t size):
     mem = PinnedMemory(size, runtime.hostAllocPortable)
     return PinnedMemoryPointer(mem, 0)
 
 
 cdef object _current_allocator = _malloc
+cdef _EventWatcher _watcher = _EventWatcher()
+
+
+cpdef _add_to_watch_list(event, obj):
+    """ Add event to be monitored.
+
+    The ``obj`` are automatically released when the event done.
+
+    Args:
+        event (cupy.cuda.Event): The CUDA event to be monitored.
+        obj: The object to be held.
+    """
+    _watcher.add(event, obj)
 
 
 cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size):
@@ -150,8 +202,8 @@ cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size):
         ~cupy.cuda.PinnedMemoryPointer: Pointer to the allocated buffer.
 
     """
+    _watcher.check_and_release()
     return _current_allocator(size)
-
 
 cpdef set_pinned_memory_allocator(allocator=_malloc):
     """Sets the current allocator.
@@ -259,7 +311,7 @@ cdef class PinnedMemoryPool:
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
-        self._free = collections.defaultdict(list)
+        self._free.clear()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
