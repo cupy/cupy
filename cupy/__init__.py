@@ -35,7 +35,7 @@ from cupy import sorting  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
-
+from cupy.core.core import cupy_complex_available  # NOQA
 
 # import class and function
 from cupy.core import ndarray  # NOQA
@@ -359,6 +359,10 @@ from cupy.core.fusion import fmod  # NOQA
 from cupy.core.fusion import modf  # NOQA
 from cupy.core.fusion import multiply  # NOQA
 from cupy.core.fusion import negative  # NOQA
+from cupy.core.fusion import conj  # NOQA
+from cupy.core.fusion import angle  # NOQA
+from cupy.core.fusion import real  # NOQA
+from cupy.core.fusion import imag  # NOQA
 from cupy.core.fusion import power  # NOQA
 from cupy.core.fusion import reciprocal  # NOQA
 from cupy.core.fusion import remainder  # NOQA
@@ -394,6 +398,7 @@ from cupy.core.fusion import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
+from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
