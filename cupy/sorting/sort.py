@@ -1,10 +1,8 @@
 import cupy
 import numpy
 
-try:
+if cupy.cuda.thrust_enabled:
     from cupy.cuda import thrust
-except ImportError:
-    pass
 
 
 def sort(a):
@@ -51,6 +49,11 @@ def lexsort(keys):
 
     # TODO(takagi): Support axis argument.
 
+    if not cupy.cuda.thrust_enabled:
+        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
+                           'install CUDA Toolkit with Thrust then reinstall '
+                           'CuPy after uninstalling it.')
+
     if keys.ndim == ():
         # as numpy.lexsort() raises
         raise TypeError('need sequence of keys with len > 0 in lexsort')
@@ -66,13 +69,7 @@ def lexsort(keys):
     idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
     n = keys._shape[1]
-
-    try:
-        thrust.lexsort(keys.dtype, idx_array.data.ptr, keys.data.ptr, k, n)
-    except NameError:
-        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
-                           'install CUDA Toolkit with Thrust then reinstall '
-                           'CuPy after uninstalling it.')
+    thrust.lexsort(keys.dtype, idx_array.data.ptr, keys.data.ptr, k, n)
 
     return idx_array
 
