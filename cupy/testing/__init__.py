@@ -51,7 +51,5 @@ gpu = attr.gpu
 multi_gpu = attr.multi_gpu
 slow = attr.slow
 
-setup_random = random.setup_random
-teardown_random = random.teardown_random
 fix_random = random.fix_random
 generate_seed = random.generate_seed

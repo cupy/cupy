@@ -9,7 +9,7 @@ import cupy
 
 
 # In some tests (which utilize condition.repeat or condition.retry),
-# setUp/tearDown is nested. setup_random() and teardown_random() do their
+# setUp/tearDown is nested. _setup_random() and _teardown_random() do their
 # work only in the outermost setUp/tearDown pair.
 _nest_count = 0
 
@@ -19,11 +19,11 @@ _old_cupy_random_states = None
 
 @atexit.register
 def _check_teardown():
-    assert _nest_count == 0, ('setup_random() and teardown_random() '
+    assert _nest_count == 0, ('_setup_random() and _teardown_random() '
                               'must be called in pairs.')
 
 
-def setup_random():
+def _setup_random():
     """Sets up the deterministic random states of ``numpy`` and ``cupy``.
 
     """
@@ -51,14 +51,14 @@ def setup_random():
     _nest_count += 1
 
 
-def teardown_random():
-    """Tears down the deterministic random states set up by ``setup_random``.
+def _teardown_random():
+    """Tears down the deterministic random states set up by ``_setup_random``.
 
     """
     global _nest_count
     global _old_numpy_random_state
     global _old_cupy_random_states
-    assert _nest_count > 0, 'setup_random has not been called'
+    assert _nest_count > 0, '_setup_random has not been called'
     _nest_count -= 1
     if _nest_count == 0:
         numpy.random.set_state(_old_numpy_random_state)
@@ -91,9 +91,9 @@ def fix_random():
             # Applied to test method
             @functools.wraps(impl)
             def test_func(self, *args, **kw):
-                setup_random()
+                _setup_random()
                 impl(self, *args, **kw)
-                teardown_random()
+                _teardown_random()
             return test_func
         elif isinstance(impl, type) and issubclass(impl, unittest.TestCase):
             # Applied to test case class
@@ -101,14 +101,14 @@ def fix_random():
 
             def wrap_setUp(f):
                 def func(self):
-                    setup_random()
+                    _setup_random()
                     f(self)
                 return func
 
             def wrap_tearDown(f):
                 def func(self):
                     f(self)
-                    teardown_random()
+                    _teardown_random()
                 return func
 
             klass.setUp = wrap_setUp(klass.setUp)
