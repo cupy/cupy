@@ -141,6 +141,8 @@ from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
 from cupy.creation.ranges import logspace  # NOQA
 from cupy.creation.ranges import meshgrid  # NOQA
+from cupy.creation.ranges import mgrid  # NOQA
+from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
@@ -246,6 +248,7 @@ from numpy import typename  # NOQA
 # Indexing routines
 # -----------------------------------------------------------------------------
 from cupy.indexing.generate import c_  # NOQA
+from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
 
@@ -334,6 +337,7 @@ from cupy.core.fusion import trunc  # NOQA
 
 from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
+from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
 
 from cupy.core.fusion import exp  # NOQA

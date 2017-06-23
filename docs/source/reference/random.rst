@@ -13,31 +13,43 @@ This option enables us to generate float32 values directly without any space ove
 Sample random data
 ------------------
 
-.. autofunction:: cupy.random.choice
-.. autofunction:: cupy.random.rand
-.. autofunction:: cupy.random.randn
-.. autofunction:: cupy.random.randint
-.. autofunction:: cupy.random.random_integers
-.. autofunction:: cupy.random.random_sample
-.. autofunction:: cupy.random.random
-.. autofunction:: cupy.random.ranf
-.. autofunction:: cupy.random.sample
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.random.choice
+   cupy.random.rand
+   cupy.random.randn
+   cupy.random.randint
+   cupy.random.random_integers
+   cupy.random.random_sample
+   cupy.random.random
+   cupy.random.ranf
+   cupy.random.sample
+   cupy.random.bytes
 
 
 Distributions
 -------------
 
-.. autofunction:: cupy.random.gumbel
-.. autofunction:: cupy.random.lognormal
-.. autofunction:: cupy.random.normal
-.. autofunction:: cupy.random.standard_normal
-.. autofunction:: cupy.random.uniform
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.random.gumbel
+   cupy.random.lognormal
+   cupy.random.normal
+   cupy.random.standard_normal
+   cupy.random.uniform
 
 
 Random number generator
 -----------------------
 
-.. autofunction:: cupy.random.seed
-.. autofunction:: cupy.random.get_random_state
-.. autoclass:: cupy.random.RandomState
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.random.seed
+   cupy.random.get_random_state
+   cupy.random.RandomState

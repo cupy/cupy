@@ -340,7 +340,9 @@ cdef class SingleDeviceMemoryPool:
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
-        self._allocation_unit_size = 256
+        # cudaMalloc() is aligned to at least 512 bytes
+        # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
+        self._allocation_unit_size = 512
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
@@ -361,7 +363,7 @@ cdef class SingleDeviceMemoryPool:
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
-                self.free_all_free()
+                self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
@@ -446,13 +448,13 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        dev = device.get_device_id()
-        return self._pools[dev].malloc(size)
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.malloc(size)
 
     cpdef free_all_blocks(self):
         """Release free blocks."""
-        dev = device.get_device_id()
-        self._pools[dev].free_all_blocks()
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp.free_all_blocks()
 
     cpdef free_all_free(self):
         """Release free blocks."""
@@ -467,5 +469,5 @@ cdef class MemoryPool(object):
         Returns:
             int: The total number of free blocks.
         """
-        dev = device.get_device_id()
-        return self._pools[dev].n_free_blocks()
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.n_free_blocks()

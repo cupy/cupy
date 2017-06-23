@@ -21,3 +21,12 @@ cdef class Module:
     cpdef load(self, bytes cubin)
     cpdef get_global_var(self, str name)
     cpdef get_function(self, str name)
+
+
+cdef class LinkState:
+
+    cdef:
+        public size_t ptr
+
+    cpdef add_ptr_data(self, unicode data, unicode name)
+    cpdef bytes complete(self)

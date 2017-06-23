@@ -83,6 +83,14 @@ cusolverStatus_t cusolverDnDgeqrf_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnSgetrf_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgetrf_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSgeqrf(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }

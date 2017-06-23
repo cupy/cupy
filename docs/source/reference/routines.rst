@@ -19,6 +19,7 @@ These functions cover a subset of
    linalg
    logic
    math
+   pad
    random
    sorting
    statistics

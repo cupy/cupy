@@ -534,13 +534,13 @@ class TestFusionUfunc(unittest.TestCase):
         return cupy.square(cupy.add(x, y))
 
     def random_bool(self):
-        return numpy.random.randint(0, 1, (3, 3)) == 0
+        return cupy.random.randint(0, 1, (3, 3)) == 0
 
     def random_int(self, lower=-1000, higher=1000):
-        return numpy.random.randint(lower, higher, (3, 3))
+        return cupy.random.randint(lower, higher, (3, 3))
 
     def random_real(self, lower=-1000, higher=1000):
-        return numpy.random.rand(3, 3) * (higher - lower) + lower
+        return cupy.random.rand(3, 3) * (higher - lower) + lower
 
     def check(self, func, n, gen, *args):
         self._check(func, n, gen, args, True)
@@ -554,24 +554,18 @@ class TestFusionUfunc(unittest.TestCase):
             return func(*x)
 
         if type(gen) == tuple:
-            ndata = [g(*a) for i, g, a in zip(range(n), list(gen), args)]
+            data = [g(*a) for i, g, a in zip(range(n), list(gen), args)]
         else:
-            ndata = [gen(*args) for i in range(n)]
-        nret = func(*ndata)
-        fnret = f(*ndata)
-        nret = list(nret) if type(nret) == tuple else [nret]
-        fnret = list(fnret) if type(fnret) == tuple else [fnret]
-        for n, fn in zip(nret, fnret):
-            numpy.testing.assert_array_almost_equal(n, fn)
+            data = [gen(*args) for i in range(n)]
 
-        cdata = [cupy.asarray(_) for _ in ndata]
-        cret = func(*cdata)
-        fcret = f(*cdata)
-        cret = list(cret) if type(cret) == tuple else [cret]
-        fcret = list(fcret) if type(fcret) == tuple else [fcret]
-        for n, c, fc in zip(nret, cret, fcret):
-            numpy.testing.assert_array_almost_equal(n, c.get())
-            numpy.testing.assert_array_almost_equal(n, fc.get())
+        ret0 = func(*data)  # Non-fused
+        ret1 = f(*data)  # Fused
+        if not isinstance(ret0, tuple):
+            ret0 = [ret0]
+        if not isinstance(ret1, tuple):
+            ret1 = [ret1]
+        for nf, f in zip(ret0, ret1):
+            numpy.testing.assert_array_almost_equal(nf.get(), f.get())
 
     def check_reduce(self, func, n, reduce_f, gen, *args):
         self._check_reduce(func, n, reduce_f, gen, args, True)
@@ -584,11 +578,10 @@ class TestFusionUfunc(unittest.TestCase):
         def f(*x):
             return func(*x)
 
-        ndata = [gen(*args) for i in range(n)]
-        fnret = f(*ndata)
-        cdata = [cupy.asarray(_) for _ in ndata]
-        fcret = f(*cdata)
-        numpy.testing.assert_array_almost_equal(fnret, fcret.get())
+        data = [gen(*args) for i in range(n)]
+        ret0 = reduce_f(func(*data))  # Non-fused
+        ret1 = f(*data)  # Fused
+        numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
     def test_bitwise(self):
         self.check(cupy.bitwise_and, 2, self.random_int)
@@ -887,7 +880,7 @@ class TestFusionFuse(unittest.TestCase):
         a = xp.arange(15, dtype=dtype)
         b = a * a[::-1]
         a = a * 3 + 11
-        c = (a * b) ** 2 % 63
+        c = (a * b) % 63
 
         @cupy.fuse()
         def g(x, y, z):
@@ -905,14 +898,14 @@ class TestFusionFuse(unittest.TestCase):
         a = xp.arange(15, dtype=dtype)
         b = a * a[::-1]
         a = a * 3 + 11
-        c = (a * b) ** 2 % 63
+        c = (a * b) % 63
 
         @cupy.fuse()
         def g(x, y, z):
             x = ~(x & y) | (x ^ z) ^ (z | y)
-            y = 109 & y
-            z = 109 | z
-            z = 88 ^ z
+            y &= 109
+            z |= 109
+            z ^= 88
             return x + y + z
 
         return g(a, b, c)
@@ -1104,3 +1097,32 @@ class TestFusionFuse(unittest.TestCase):
             return x
 
         return g(a, axis=0)
+
+
+@testing.gpu
+class TestFusionDecorator(unittest.TestCase):
+    @testing.numpy_cupy_array_equal()
+    def test_without_paren(self, xp):
+        @cupy.fuse
+        def func_wo_paren(x):
+            """Fuse without parentheses"""
+            return x + x
+
+        self.assertEqual(func_wo_paren.__name__, 'func_wo_paren')
+        self.assertEqual(func_wo_paren.__doc__, 'Fuse without parentheses')
+
+        a = xp.array([1])
+        return func_wo_paren(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_with_paren(self, xp):
+        @cupy.fuse()
+        def func_w_paren(x):
+            """Fuse with parentheses"""
+            return x + x
+
+        self.assertEqual(func_w_paren.__name__, 'func_w_paren')
+        self.assertEqual(func_w_paren.__doc__, 'Fuse with parentheses')
+
+        a = xp.array([1])
+        return func_w_paren(a)

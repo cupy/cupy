@@ -13,14 +13,5 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    install
    tutorial/index
    reference/index
-   contribution
-   compatibility
+   developers
    license
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
