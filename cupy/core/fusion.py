@@ -1,3 +1,4 @@
+import functools
 import six
 from six.moves import builtins
 import string
@@ -644,7 +645,7 @@ class Fusion(object):
                 return self.post_map(self.reduce(self.func(*args), axis=axis))
 
 
-def fuse(input_num=None, reduce=None, post_map=lambda x: x):
+def fuse(*args, **kwargs):
     """Function fusing decorator.
 
     This decorator can be used to define an elementwise or reduction kernel
@@ -660,7 +661,15 @@ def fuse(input_num=None, reduce=None, post_map=lambda x: x):
             If not assigned, post_map step is skipped.
     """
     util.experimental('cupy.core.fusion')
-    return lambda f: Fusion(f, input_num, reduce, post_map)
+
+    def wrapper(f, input_num=None, reduce=None, post_map=lambda x: x):
+        return Fusion(f, input_num, reduce, post_map)
+
+    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        return functools.update_wrapper(wrapper(args[0]), args[0])
+    else:
+        return lambda f: functools.update_wrapper(
+            wrapper(f, *args, **kwargs), f)
 
 
 def build_kernel_name(entity):
