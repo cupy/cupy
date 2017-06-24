@@ -157,7 +157,7 @@ def _get_compiler_base_options():
     with _tempdir() as temp_dir:
         test_cu_path = os.path.join(temp_dir, 'test.cu')
         with open(test_cu_path, 'w') as f:
-            f.write('int main() { return 0; }');
+            f.write('int main() { return 0; }')
         proc = subprocess.Popen(
             [nvcc_path, test_cu_path],
             stdout=subprocess.PIPE,
