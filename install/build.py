@@ -1,3 +1,4 @@
+import contextlib
 import os
 import shutil
 import subprocess
@@ -16,6 +17,15 @@ maximum_cudnn_version = 6999
 minimum_cusolver_cuda_version = 8000
 
 _cuda_path = 'NOT_INITIALIZED'
+
+
+@contextlib.contextmanager
+def _tempdir():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def get_cuda_path():
@@ -217,9 +227,7 @@ def check_cusolver_version(compiler, settings):
 
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
-
-    try:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
@@ -239,15 +247,10 @@ def build_shlib(compiler, source, libraries=(),
             msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
             raise Exception(msg)
 
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
 
 def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
-
-    try:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
@@ -274,6 +277,3 @@ def build_and_run(compiler, source, libraries=(),
         except Exception as e:
             msg = 'Cannot execute a stub file.\nOriginal error: {0}'.format(e)
             raise Exception(msg)
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
