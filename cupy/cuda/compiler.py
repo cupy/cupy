@@ -42,7 +42,7 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def _dump_source(e, source, options, arch):
+def _dump_source(e, source, options):
     lines = source.split('\n')
     digits = int(math.floor(math.log10(len(lines)))) + 1
     linum_fmt = '{{:0{}d}} '.format(digits)
@@ -50,7 +50,6 @@ def _dump_source(e, source, options, arch):
     f.write('NVRTC compilation error: {}\n'.format(e))
     f.write('-----\n')
     f.write('Options: {}\n'.format(' '.join(_ for _ in options)))
-    f.write('Arch: {}\n'.format(arch))
     f.write('CUDA source:\n')
     for i, line in enumerate(lines):
         f.write(linum_fmt.format(i + 1) + line.rstrip() + '\n')
@@ -78,7 +77,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
             dump = bool(int(
                 os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
             if dump:
-                _dump_source(e, source, options, None)
+                _dump_source(e, source, options)
             raise
 
         return ptx
@@ -91,7 +90,7 @@ def preprocess(source, options=()):
     except CompileException as e:
         dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
         if dump:
-            _dump_source(e, source, options, None)
+            _dump_source(e, source, options)
         raise
 
     if isinstance(pp_src, six.binary_type):
