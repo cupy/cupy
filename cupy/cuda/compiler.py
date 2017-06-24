@@ -75,7 +75,8 @@ def compile_using_nvrtc(source, options=(), arch=None):
         try:
             ptx = prog.compile(options)
         except CompileException as e:
-            dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
+            dump = bool(int(
+                os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
             if dump:
                 _dump_source(e, source, options, None)
             raise
