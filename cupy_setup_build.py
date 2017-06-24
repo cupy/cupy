@@ -341,7 +341,7 @@ def check_extensions(extensions):
                        'Please install Cython. ' +
                        'Please also check the version of Cython.\n' +
                        'See ' +
-                       'http://docs.cupy.chainer.org/en/stable/install.html')
+                       'https://docs-cupy.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
 

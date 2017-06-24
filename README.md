@@ -6,12 +6,12 @@
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
-[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs-cupy.chainer.org/en/stable/)
 
 [**Website**](https://cupy.chainer.org/)
-| [**Docs**](http://docs.cupy.chainer.org/en/stable/)
-| [**Install Guide**](http://docs.cupy.chainer.org/en/stable/install.html)
-| [**Tutorial**](http://docs.cupy.chainer.org/en/stable/tutorial/)
+| [**Docs**](https://docs-cupy.chainer.org/en/stable/)
+| [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
+| [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
 | **Examples** ([Official](https://github.com/cupy/cupy/blob/master/examples))
 | **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-jp))
 
