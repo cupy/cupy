@@ -3,8 +3,10 @@ import numpy
 import cupy
 from cupy import cuda
 from cupy.cuda import cublas
-from cupy.cuda import cusolver
 from cupy.cuda import device
+
+if cuda.cusolver_enabled:
+    from cupy.cuda import cusolver
 
 
 def _syevd(a, UPLO, with_eigen_vector):
