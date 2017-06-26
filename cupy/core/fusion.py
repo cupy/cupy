@@ -274,15 +274,23 @@ def _const_to_str(val):
     return str(val).lower() if type(val) is bool else str(val)
 
 
-def _normalize_arg(arg, mem):
+def _get_var(arg, mem):
+    # Returns _FusionVar associated with an argument.
+    # - If `arg` is _FusionRef, returns it's associated variable.
+    # - If `arg` is a scalar or an array, returns new _FusionVar instance.
+    # - Raises error otherwise.
     arg_type = type(arg)
     if arg_type is _FusionRef:
         return arg._var
-    is_scalar = arg_type in [int, float, bool]
-    is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
-    if is_scalar or is_ndarray:
-        return mem.get_fresh(numpy.dtype(arg_type), const=arg)
-    raise Exception('Unsupported type %s' % arg_type)
+    is_scalar = arg_type in (int, float, bool)
+    if not is_scalar:
+        try:
+            is_ndarray = arg.dtype in _dtype_list
+        except AttributeError:
+            is_ndarray = False
+        if not is_ndarray:
+            raise Exception('Unsupported type %s' % arg_type)
+    return mem.get_fresh(numpy.dtype(arg_type), const=arg)
 
 
 def _convert(f):
@@ -334,9 +342,9 @@ def _convert_from_ufunc(ufunc):
 
     def res(*args, **kwargs):
         mem = get_mem(args)
-        var_list = [_normalize_arg(_, mem) for _ in args]
+        var_list = [_get_var(_, mem) for _ in args]
         if 'out' in kwargs:
-            var_list.append(_normalize_arg(kwargs.pop('out'), mem))
+            var_list.append(_get_var(kwargs.pop('out'), mem))
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
         assert nin <= len(var_list) <= nin + nout
@@ -502,8 +510,8 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     out_refs = func(*in_refs)
     out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
     out_refs = [_ for _ in out_refs if _ is not None]
-    out_refs = [_FusionRef(_normalize_arg(_, mem), mem) for _ in out_refs]
-    out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
+    out_refs = [_FusionRef(_get_var(_, mem), mem) for _ in out_refs]
+    out_vars = [_get_var(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
     tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
@@ -546,7 +554,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
         post_in = [_FusionVar(0, reduce_type)]
         mem = _FusionMem(post_in)
         post_in_ref = [_FusionRef(_, mem) for _ in post_in]
-        post_out = _normalize_arg(post_map(*post_in_ref), mem)
+        post_out = _get_var(post_map(*post_in_ref), mem)
         if type(post_out) == tuple:
             raise Exception("Can't reduce a tuple")
         post_vars = mem.var_list
