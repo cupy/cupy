@@ -92,8 +92,10 @@ def fix_random():
             @functools.wraps(impl)
             def test_func(self, *args, **kw):
                 _setup_random()
-                impl(self, *args, **kw)
-                _teardown_random()
+                try:
+                    impl(self, *args, **kw)
+                finally:
+                    _teardown_random()
             return test_func
         elif isinstance(impl, type) and issubclass(impl, unittest.TestCase):
             # Applied to test case class
@@ -107,8 +109,10 @@ def fix_random():
 
             def wrap_tearDown(f):
                 def func(self):
-                    f(self)
-                    _teardown_random()
+                    try:
+                        f(self)
+                    finally:
+                        _teardown_random()
                 return func
 
             klass.setUp = wrap_setUp(klass.setUp)
