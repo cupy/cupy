@@ -65,7 +65,8 @@ class TestListEqualityAssertion(unittest.TestCase):
 
     def test_inequality_numpy(self):
         self.xs[0] += 1
-        with self.assertRaisesRegex(AssertionError, '^\nArrays are not equal'):
+        with six.assertRaisesRegex(self, AssertionError,
+                                   '^\nArrays are not equal'):
             testing.assert_array_equal(self.xs, self.ys)
 
 
