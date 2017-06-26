@@ -14,6 +14,18 @@ if cuda.cusolver_enabled:
 
 
 def solve(a, b):
+    '''Solves a linear matrix equation.
+
+    It computes the exact solution of ``x`` in ``ax = b``,
+    where ``a`` is a square and full rank matrix.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(N, N)``
+        b (cupy.ndarray): The vector with ``M`` elements, or
+            the matrix with dimension ``(M, K)``
+
+    .. seealso:: :func:`numpy.linalg.solve`
+    '''
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
     #       we manually solve a linear system with QR decomposition.
     #       For details, please see the following:
