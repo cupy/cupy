@@ -40,9 +40,7 @@ def solve(a, b):
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
-    if b.ndim == 1:
-        b = b[:, None]
-    m, k = b.shape
+    m, k = (b.size, 1) if b.ndim == 1 else b.shape
     a = a.transpose().astype(dtype, order='C', copy=True)
     b = b.transpose().astype(dtype, order='C', copy=True)
     cusolver_handle = device.get_cusolver_handle()
@@ -79,7 +77,7 @@ def solve(a, b):
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
         m, k, 1, a.data.ptr, m, b.data.ptr, m)
-    return b
+    return b.transpose()
 
 
 def _check_status(dev_info):
