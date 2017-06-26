@@ -110,6 +110,16 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
+    x_type = type(xlist)
+    y_type = type(ylist)
+    if x_type is not y_type:
+        raise AssertionError(
+            'Matching types of list or tuple are expected, '
+            'but were different types '
+            '(xlist:{} ylist:{})'.format(x_type, y_type))
+    if x_type not in (list, tuple):
+        raise AssertionError(
+            'List or tuple is expected, but was {}'.format(x_type))
     if len(xlist) != len(ylist):
         raise AssertionError('List size is different')
     for x, y in zip(xlist, ylist):
