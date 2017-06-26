@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import numpy
-import six
 
 cimport cpython
 from libcpp cimport vector
