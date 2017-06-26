@@ -149,6 +149,8 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.assertEqual(1024, self.pool.used_bytes())
         p2 = self.pool.malloc(2000)
         self.assertEqual(3072, self.pool.used_bytes())
+        del p1
+        del p2
 
     def test_free_bytes(self):
         p1 = self.pool.malloc(1000)
