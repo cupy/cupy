@@ -238,26 +238,26 @@ class TestMgrid(unittest.TestCase):
     def test_mgrid0(self, xp):
         return xp.mgrid[0:]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_mgrid1(self, xp):
         return xp.mgrid[-10:10]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_mgrid2(self, xp):
         return xp.mgrid[-10:10:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_mgrid3(self, xp):
         x = xp.zeros(10)[:, None]
         y = xp.ones(10)[:, None]
         return xp.mgrid[x:y:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_mgrid4(self, xp):
         # check len(keys) > 1
         return xp.mgrid[-10:10:10j, -10:10:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_mgrid5(self, xp):
         # check len(keys) > 1
         x = xp.zeros(10)[:, None]
@@ -272,15 +272,15 @@ class TestOgrid(unittest.TestCase):
     def test_ogrid0(self, xp):
         return xp.ogrid[0:]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ogrid1(self, xp):
         return xp.ogrid[-10:10]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ogrid2(self, xp):
         return xp.ogrid[-10:10:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ogrid3(self, xp):
         x = xp.zeros(10)[:, None]
         y = xp.ones(10)[:, None]
