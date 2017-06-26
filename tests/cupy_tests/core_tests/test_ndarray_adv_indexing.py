@@ -79,7 +79,7 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool)},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool)},
     # list indexes
     {'shape': (2, 3, 4), 'indexes': [1]},
     {'shape': (2, 3, 4), 'indexes': [1, 1]},
@@ -262,7 +262,7 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool)),
      'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool),
      'value': numpy.random.uniform(size=(4,))},
     # list indexes
     {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
