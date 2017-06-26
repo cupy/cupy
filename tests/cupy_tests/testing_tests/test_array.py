@@ -61,12 +61,13 @@ class TestListEqualityAssertion(unittest.TestCase):
         self.ys = _convert_array(ys, self.array_module_y)
 
     def test_equality_numpy(self):
-        testing.assert_array_list_equal(self.xs, self.ys)
+        testing.assert_array_equal(self.xs, self.ys)
 
     def test_inequality_numpy(self):
         self.xs[0] += 1
-        with self.assertRaises(AssertionError):
-            testing.assert_array_list_equal(self.xs, self.ys)
+        with six.assertRaisesRegex(self, AssertionError,
+                                   '^\nArrays are not equal'):
+            testing.assert_array_equal(self.xs, self.ys)
 
 
 @testing.parameterize(
