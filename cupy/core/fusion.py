@@ -336,10 +336,10 @@ def _convert_from_ufunc(ufunc):
         mem = get_mem(args)
         var_list = [_normalize_arg(_, mem) for _ in args]
         if 'out' in kwargs:
-            var_list.append(_normalize_arg.pop('out'))
+            var_list.append(_normalize_arg(kwargs.pop('out'), mem))
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
-        assert nin <= len(var_list) and len(var_list) <= nin + nout
+        assert nin <= len(var_list) <= nin + nout
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
         can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
@@ -360,9 +360,12 @@ def _convert_from_ufunc(ufunc):
                         v = out_vars[i]
                         ret.append(_FusionRef(v, mem))
                     else:
-                        raise TypeError("Cannot cast from %s to %s"
-                                        % (ty_outs[i], out_vars[i].ty)
-                                        + " with casting rule 'same_kind'")
+                        raise TypeError(
+                            'output (typecode \'{}\') could not be coerced '
+                            'to provided output parameter (typecode \'{}\') '
+                            'according to the casting rule '
+                            '"same_kind"'.format(
+                                ty_outs[i].char, out_vars[i].ty.char))
                 mem.set_op(ufunc.name, op, param_names, nin, nout,
                            in_vars, out_vars, ty_ins + ty_outs)
                 return ret[0] if len(ret) == 1 else tuple(ret)
@@ -498,7 +501,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     in_refs = [_FusionRef(_, mem) for _ in in_vars]
     out_refs = func(*in_refs)
     out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
-    out_refs = filter(lambda i: i is not None, out_refs)
+    out_refs = [_ for _ in out_refs if _ is not None]
     out_refs = [_FusionRef(_normalize_arg(_, mem), mem) for _ in out_refs]
     out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)

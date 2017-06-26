@@ -591,6 +591,57 @@ class TestFusionUfunc(unittest.TestCase):
         ret1 = f(*data)  # Fused
         numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
+    @testing.for_dtypes_combination(
+        [numpy.float16, numpy.float32, numpy.float64,
+         numpy.int8, numpy.int16, numpy.int32, numpy.int64,
+         numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
+         numpy.bool_],
+        names=['src_dtype', 'dst_dtype'], full=True)
+    def test_out_arg(self, src_dtype, dst_dtype):
+
+        # non-fused
+        def func_n(x, y, z):
+            return cupy.add(x, y, out=z)
+
+        # fused
+        @cupy.fuse()
+        def func_f(x, y, z):
+            return cupy.add(x, y, out=z)
+
+        a = testing.shaped_random((2, 3), xp=cupy, dtype=src_dtype)
+        b = testing.shaped_random((2, 3), xp=cupy, dtype=src_dtype)
+
+        outs = []
+        rets = []
+        errors = []
+        for func in (func_n, func_f):
+            a_ = a.copy()
+            b_ = b.copy()
+            out = cupy.empty((2, 3), dtype=dst_dtype)
+            try:
+                ret = func(a_, b_, out)
+                err = None
+            except TypeError as e:
+                ret = None
+                err = e
+            outs.append(out)
+            rets.append(ret)
+            errors.append(err)
+
+        # If one raised an error, the other must raise an error with the same
+        # type.
+        self.assertEqual(type(errors[0]), type(errors[1]))
+
+        if errors[0] is not None:
+            # ...and error messages must match.
+            self.assertEqual(str(errors[0]), str(errors[1]))
+        else:
+            # The array passed as out and the returned array must be equal
+            testing.assert_array_equal(outs[0], rets[0])  # non-fused
+            testing.assert_array_equal(outs[1], rets[1])  # fused
+            # Non-fused output and fused output must be equal
+            testing.assert_array_equal(outs[0], outs[1])
+
     def test_bitwise(self):
         self.check(cupy.bitwise_and, 2, self.random_int)
         self.check(cupy.bitwise_or, 2, self.random_int)
