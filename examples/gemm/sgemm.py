@@ -52,11 +52,11 @@ def main():
     parser.add_argument('--gpu', '-g', default=0, type=int,
                         help='ID of GPU.')
     parser.add_argument(
-        '--m', type=int, default=np.random.randint(5000, 12000))
+        '--m', type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--n', type=int, default=np.random.randint(5000, 12000))
+        '--n', type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--k', type=int, default=np.random.randint(500, 5000))
+        '--k', type=int, default=np.random.randint(500, 3000))
     args = parser.parse_args()
 
     print('m={} n={} k={}'.format(args.m, args.n, args.k))
