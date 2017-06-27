@@ -20,7 +20,7 @@ def solve(a, b):
     where ``a`` is a square and full rank matrix.
 
     Args:
-        a (cupy.ndarray): The matrix with dimension ``(N, N)``
+        a (cupy.ndarray): The matrix with dimension ``(M, M)``
         b (cupy.ndarray): The vector with ``M`` elements, or
             the matrix with dimension ``(M, K)``
 
