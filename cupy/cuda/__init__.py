@@ -20,6 +20,12 @@ try:
 except ImportError:
     nvtx_enabled = False
 
+try:
+    from cupy.cuda import thrust  # NOQA
+    thrust_enabled = True
+except ImportError:
+    thrust_enabled = False
+
 
 # import class and function
 from cupy.cuda.compiler import compile_with_cache  # NOQA
