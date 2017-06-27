@@ -107,6 +107,8 @@ def tensorsolve(a, b, axes=None):
     Args:
         a (cupy.ndarray): The tensor with ``len(shape) >= 1``
         b (cupy.ndarray): The tensor with ``len(shape) >= 1``
+        axes (tuple of ints): Axes in ``a`` to reorder to the right
+            before inversion.
 
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     '''
