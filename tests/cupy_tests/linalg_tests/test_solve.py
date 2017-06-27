@@ -5,6 +5,7 @@ import numpy
 import cupy
 from cupy import cuda
 from cupy import testing
+from cupy.testing import condition
 
 
 @unittest.skipUnless(
@@ -31,6 +32,7 @@ class TestSolve(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.solve(a, b)
 
+    @condition.retry(10)
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
