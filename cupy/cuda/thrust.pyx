@@ -4,6 +4,7 @@
 
 cimport cython
 import numpy
+from libcpp.vector cimport vector
 
 from cupy.cuda cimport common
 
@@ -13,7 +14,7 @@ from cupy.cuda cimport common
 ###############################################################################
 
 cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
-    void _sort[T](void *start, size_t ndim, size_t *shape)
+    void _sort[T](void *start, vector.vector[ptrdiff_t]&)
     void _lexsort[T](size_t *idx_start, void *keys_start, size_t k, size_t n)
     void _argsort[T](size_t *idx_start, void *data_start, size_t num)
 
@@ -22,36 +23,32 @@ cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
 # Python interface
 ###############################################################################
 
-cpdef sort(dtype, size_t start, size_t ndim, size_t shape):
-    cdef void *_start
-    cdef size_t _ndim
-    cdef size_t *_shape
+cpdef sort(dtype, size_t start, vector.vector[ptrdiff_t]& shape):
 
+    cdef void *_start
     _start = <void *>start
-    _ndim = <size_t>ndim
-    _shape = <size_t *>shape
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
-        _sort[common.cpy_byte](_start, _ndim, _shape)
+        _sort[common.cpy_byte](_start, shape)
     elif dtype == numpy.uint8:
-        _sort[common.cpy_ubyte](_start, _ndim, _shape)
+        _sort[common.cpy_ubyte](_start, shape)
     elif dtype == numpy.int16:
-        _sort[common.cpy_short](_start, _ndim, _shape)
+        _sort[common.cpy_short](_start, shape)
     elif dtype == numpy.uint16:
-        _sort[common.cpy_ushort](_start, _ndim, _shape)
+        _sort[common.cpy_ushort](_start, shape)
     elif dtype == numpy.int32:
-        _sort[common.cpy_int](_start, _ndim, _shape)
+        _sort[common.cpy_int](_start, shape)
     elif dtype == numpy.uint32:
-        _sort[common.cpy_uint](_start, _ndim, _shape)
+        _sort[common.cpy_uint](_start, shape)
     elif dtype == numpy.int64:
-        _sort[common.cpy_long](_start, _ndim, _shape)
+        _sort[common.cpy_long](_start, shape)
     elif dtype == numpy.uint64:
-        _sort[common.cpy_ulong](_start, _ndim, _shape)
+        _sort[common.cpy_ulong](_start, shape)
     elif dtype == numpy.float32:
-        _sort[common.cpy_float](_start, _ndim, _shape)
+        _sort[common.cpy_float](_start, shape)
     elif dtype == numpy.float64:
-        _sort[common.cpy_double](_start, _ndim, _shape)
+        _sort[common.cpy_double](_start, shape)
     else:
         msg = "Sorting arrays with dtype '{}' is not supported"
         raise TypeError(msg.format(dtype))
