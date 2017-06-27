@@ -30,6 +30,7 @@ class FunctionSwitcher(object):
         setattr(curand, self.func_name, self.tmp)
 
 
+@testing.fix_random()
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -38,7 +39,7 @@ class TestRandomState(unittest.TestCase):
     size = None
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def check_lognormal(self, curand_func, dtype):
         shape = core.get_size(self.size)
@@ -165,11 +166,12 @@ class TestRandomState8(TestRandomState):
     size = ()
 
 
+@testing.fix_random()
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def test_rand(self):
         self.rs.random_sample = mock.Mock()
@@ -192,11 +194,13 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.fix_random()
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
 
     def test_zero(self):
         numpy.testing.assert_array_equal(
@@ -217,25 +221,21 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(v.dtype, 'i')
         self.assertEqual(v.shape, (1, 2))
 
-    @condition.repeat(10)
-    def test_within_interval(self):
-        val = self.rs.interval(10, (2, 3)).get()
-        numpy.testing.assert_array_less(
-            numpy.full((2, 3), -1, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full((2, 3), 11, dtype=numpy.int64))
+    @condition.repeat(3, 10)
+    def test_bound_1(self):
+        vals = [self.rs.interval(10, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 10)
 
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = self.rs.interval(2, None).get()
-        self.assertEqual(0, val)
+    @condition.repeat(3, 10)
+    def test_bound_2(self):
+        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        self.assertEqual(min(vals), 0)
+        self.assertEqual(max(vals), 2)
 
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = self.rs.interval(2, None).get()
-        self.assertEqual(2, val)
-
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
@@ -245,7 +245,7 @@ class TestInterval(unittest.TestCase):
         expected = numpy.array([float(trial) / (mx + 1)] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3)
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = self.rs.interval(mx, (5, 5)).get()
@@ -263,11 +263,13 @@ class TestInterval(unittest.TestCase):
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
+@testing.fix_random()
 @testing.gpu
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
 
     def test_dtype_shape(self):
         v = self.rs.choice(a=self.a, size=self.size, p=self.p)
@@ -282,38 +284,26 @@ class TestChoice(unittest.TestCase):
         self.assertEqual(v.dtype, expected_dtype)
         self.assertEqual(v.shape, expected_shape)
 
-    @condition.repeat(10)
-    def test_within_choice_and_shape(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        minimum = -1
-        maximum = 3
-        numpy.testing.assert_array_less(
-            numpy.full(self.size, minimum, dtype=numpy.int64), val)
-        numpy.testing.assert_array_less(
-            val, numpy.full(self.size, maximum, dtype=numpy.int64))
-
-    @condition.retry(20)
-    def test_lower_bound(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        val = val.item() if self.size == () else val.item(0)
-        lower = 0
-        self.assertEqual(lower, val)
-
-    @condition.retry(20)
-    def test_upper_bound(self):
-        val = self.rs.choice(a=self.a, size=self.size, p=self.p).get()
-        val = val.item() if self.size == () else val.item(0)
-        upper = 2
-        self.assertEqual(upper, val)
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        vals = [self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+                for _ in range(20)]
+        size_ = self.size if isinstance(self.size, tuple) else (self.size,)
+        for val in vals:
+            self.assertEqual(val.shape, size_)
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 2)
 
 
+@testing.fix_random()
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
 
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         trial = 100
         vals = [self.rs.choice(3, 1, True, [0.3, 0.3, 0.4]).get()
@@ -322,7 +312,7 @@ class TestChoiceChi(unittest.TestCase):
         expected = numpy.array([30, 30, 40])
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
-    @condition.retry(5)
+    @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
         vals = self.rs.choice(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
@@ -330,10 +320,11 @@ class TestChoiceChi(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.fix_random()
 @testing.gpu
 class TestChoiceMultinomial(unittest.TestCase):
 
-    @condition.retry(10)
+    @condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=0.02)
     def test_choice_multinomial(self, xp, dtype):
@@ -355,11 +346,12 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
+@testing.fix_random()
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState()
+        self.rs = generator.RandomState(seed=testing.generate_seed())
 
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):
