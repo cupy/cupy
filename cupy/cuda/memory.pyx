@@ -400,6 +400,22 @@ cdef class SingleDeviceMemoryPool:
             n += len(v)
         return n
 
+    cpdef used_bytes(self):
+        cdef Py_ssize_t size = 0
+        for mem in six.itervalues(self._in_use):
+            size += mem.size
+        return size
+
+    cpdef free_bytes(self):
+        cdef Py_ssize_t size = 0
+        for free_list in six.itervalues(self._free):
+            for mem in free_list:
+                size += mem.size
+        return size
+
+    cpdef total_bytes(self):
+        return self.used_bytes() + self.free_bytes()
+
 
 cdef class MemoryPool(object):
 
@@ -471,3 +487,30 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.n_free_blocks()
+
+    cpdef used_bytes(self):
+        """Get the total number of bytes used.
+
+        Returns:
+            int: The total number of bytes used.
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.used_bytes()
+
+    cpdef free_bytes(self):
+        """Get the total number of bytes acquired but not used in the pool.
+
+        Returns:
+            int: The total number of bytes acquired but not used in the pool.
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.free_bytes()
+
+    cpdef total_bytes(self):
+        """Get the total number of bytes acquired in the pool.
+
+        Returns:
+            int: The total number of bytes acquired in the pool.
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.total_bytes()
