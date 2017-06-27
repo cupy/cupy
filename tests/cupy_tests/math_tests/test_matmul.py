@@ -42,8 +42,8 @@ class TestMatmul(unittest.TestCase):
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(name='dtype1')
-    @testing.for_all_dtypes(name='dtype2')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2', no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
     def test_operator_matmul(self, xp, dtype1, dtype2):
         if dtype1 == numpy.float16 and dtype2 == numpy.int8:
@@ -75,8 +75,8 @@ class TestMatmul(unittest.TestCase):
         return operator.matmul(x1, x2)
 
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(name='dtype1')
-    @testing.for_all_dtypes(name='dtype2')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2', no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
     def test_cupy_matmul(self, xp, dtype1, dtype2):
         if dtype1 == numpy.float16 and dtype2 == numpy.int8:
