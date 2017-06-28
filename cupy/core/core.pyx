@@ -7,6 +7,7 @@ import sys
 import numpy
 import six
 
+import cupy
 from cupy.core import flags
 from cupy.cuda import stream
 try:
