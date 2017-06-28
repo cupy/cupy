@@ -36,10 +36,11 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
-    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()
     def test_array_copy_with_dtype(self, xp, dtype1, dtype2):
+        # complex to real makes no sense
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         return xp.array(a, dtype=dtype2)
 

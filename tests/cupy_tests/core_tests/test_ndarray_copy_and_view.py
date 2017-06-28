@@ -64,7 +64,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         return b
 
     @testing.for_orders('CFAK')
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype(self, xp, src_dtype, dst_dtype, order):

@@ -70,3 +70,5 @@ cdef class Indexer:
         public Py_ssize_t size
         public tuple shape
     cdef CPointer get_pointer(self)
+
+cdef bint c_cupy_complex_available
