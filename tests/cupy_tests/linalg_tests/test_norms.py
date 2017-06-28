@@ -107,24 +107,24 @@ class TestDet(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_slogdet_3(self, xp, dtype):
+    def test_det_3(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2), xp, dtype) + 1
         return xp.linalg.det(a)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_slogdet_4(self, xp, dtype):
+    def test_det_4(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2, 2), xp, dtype) + 1
         return xp.linalg.det(a)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_slogdet_fail(self, xp, dtype):
+    def test_det_fail(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         return xp.linalg.det(a)
 
     @testing.numpy_cupy_raises(numpy.linalg.LinAlgError)
-    def test_slogdet_one_dim(self, xp, dtype):
+    def test_det_one_dim(self, xp, dtype):
         a = testing.shaped_arange((2,), xp, dtype)
         xp.linalg.det(a)
 
