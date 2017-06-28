@@ -96,9 +96,9 @@ cdef inline size_t _get_stream(strm) except *:
     return 0 if strm is None else strm.ptr
 
 
-cdef void _launch(size_t func, long long grid0, int grid1, int grid2,
-                  long long block0, int block1, int block2,
-                  args, long long shared_mem, size_t stream) except *:
+cdef void _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
+                  Py_ssize_t block0, int block1, int block2,
+                  args, Py_ssize_t shared_mem, size_t stream) except *:
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp

@@ -88,12 +88,12 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
 # BLAS Level 3
 ###############################################################################
 
-cpdef sgemm(size_t handle, Py_ssize_t transa, Py_ssize_t transb,
-            Py_ssize_t m, Py_ssize_t n, Py_ssize_t k, float alpha, size_t A, Py_ssize_t lda,
-            size_t B, Py_ssize_t ldb, float beta, size_t C, Py_ssize_t ldc)
-cpdef dgemm(size_t handle, Py_ssize_t transa, Py_ssize_t transb,
-            Py_ssize_t m, Py_ssize_t n, Py_ssize_t k, double alpha, size_t A, Py_ssize_t lda,
-            size_t B, Py_ssize_t ldb, double beta, size_t C, Py_ssize_t ldc)
+cpdef sgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, float alpha, size_t A, int lda,
+            size_t B, int ldb, float beta, size_t C, int ldc)
+cpdef dgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, double alpha, size_t A, int lda,
+            size_t B, int ldb, double beta, size_t C, int ldc)
 cpdef sgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, float alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, float beta, size_t Carray, int ldc,
@@ -115,10 +115,10 @@ cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
             size_t C, int ldc)
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
-cpdef sgemmEx(size_t handle, Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n, Py_ssize_t k,
-              float alpha, size_t A, int Atype, Py_ssize_t lda, size_t B,
-              int Btype, Py_ssize_t ldb, float beta, size_t C, int Ctype,
-              Py_ssize_t ldc)
+cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,
+              float alpha, size_t A, int Atype, int lda, size_t B,
+              int Btype, int ldb, float beta, size_t C, int Ctype,
+              int ldc)
 cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
 

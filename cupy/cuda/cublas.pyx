@@ -320,23 +320,23 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
 # BLAS Level 3
 ###############################################################################
 
-cpdef sgemm(size_t handle, Py_ssize_t transa, Py_ssize_t transb,
-            Py_ssize_t m, Py_ssize_t n, Py_ssize_t k, float alpha, size_t A, Py_ssize_t lda,
-            size_t B, Py_ssize_t ldb, float beta, size_t C, Py_ssize_t ldc):
+cpdef sgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, float alpha, size_t A, int lda,
+            size_t B, int ldb, float beta, size_t C, int ldc):
     with nogil:
         status = cublasSgemm(
-            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
-            &alpha, <float*>A, <int>lda, <float*>B, <int>ldb, &beta, <float*>C, <int>ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha, <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
     check_status(status)
 
 
-cpdef dgemm(size_t handle, Py_ssize_t transa, Py_ssize_t transb,
-            Py_ssize_t m, Py_ssize_t n, Py_ssize_t k, double alpha, size_t A, Py_ssize_t lda,
-            size_t B, Py_ssize_t ldb, double beta, size_t C, Py_ssize_t ldc):
+cpdef dgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, double alpha, size_t A, int lda,
+            size_t B, int ldb, double beta, size_t C, int ldc):
     with nogil:
         status = cublasDgemm(
-            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
-            &alpha, <double*>A, <int>lda, <double*>B, <int>ldb, &beta, <double*>C, <int>ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha, <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
     check_status(status)
 
 
@@ -399,16 +399,16 @@ cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
 
 
 cpdef sgemmEx(
-        size_t handle, Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n, Py_ssize_t k,
-        float alpha, size_t A, int Atype, Py_ssize_t lda, size_t B,
-        int Btype, Py_ssize_t ldb, float beta, size_t C, int Ctype,
-        Py_ssize_t ldc):
+        size_t handle, int transa, int transb, int m, int n, int k,
+        float alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, float beta, size_t C, int Ctype,
+        int ldc):
     with nogil:
         status = cublasSgemmEx(
-            <Handle>handle, <Operation>transa, <Operation>transb, <int>m, <int>n, <int>k,
-            &alpha, <const void*>A, <runtime.DataType>Atype, <int>lda,
-            <const void*>B, <runtime.DataType>Btype, <int>ldb, &beta, <void*>C,
-            <runtime.DataType>Ctype, <int>ldc)
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha, <const void*>A, <runtime.DataType>Atype, lda,
+            <const void*>B, <runtime.DataType>Btype, ldb, &beta, <void*>C,
+            <runtime.DataType>Ctype, ldc)
     check_status(status)
 
 

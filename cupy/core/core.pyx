@@ -1902,9 +1902,9 @@ cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=0):
     return a._transpose(axes)
 
 
-def array_split(ndarray ary, indices_or_sections, long long axis):
+def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
 
-    cdef long long i, ndim, size, each_size, index, prev, offset, stride
+    cdef Py_ssize_t i, ndim, size, each_size, index, prev, offset, stride
     cdef vector.vector[Py_ssize_t] shape
 
     ndim = ary.ndim
@@ -2455,7 +2455,7 @@ cdef _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
-cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, long long axis):
+cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
     cdef tuple lshape, rshape, out_shape
@@ -2568,7 +2568,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
 
 
 cpdef _scatter_op_single(ndarray a, ndarray indices, v,
-                         long long li=0, long long ri=0, op=''):
+                         Py_ssize_t li=0, Py_ssize_t ri=0, op=''):
     # When op == 'update', this function behaves similarly to
     # a code below using NumPy under the condition that a = a._reshape(shape)
     # does not invoke copy.
@@ -2579,7 +2579,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
     # slices = (slice(None),) * li + indices +\
     #     (slice(None),) * (a.ndim - indices.ndim - ri)
     # a[slices] = v
-    cdef long long ndim, adim, cdim, rdim
+    cdef Py_ssize_t ndim, adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
 
     ndim = a._shape.size()
@@ -2629,7 +2629,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
         raise ValueError('provided op is not supported')
 
 
-cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, long long axis, op):
+cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
     cdef ndarray mask_scanned
     cdef tuple masked_shape
 
@@ -2657,7 +2657,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t n_not_slice_none, mask_i
     cdef Py_ssize_t ellipsis_size
     cdef ndarray v, x, y, a_interm, reduced_idx
-    cdef long long li, ri
+    cdef Py_ssize_t li, ri
 
     if isinstance(slices, tuple):
         slices = list(slices)
@@ -2828,7 +2828,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
-    cdef long long i, p, li, ri
+    cdef Py_ssize_t i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, ret
     cdef tuple a_shape
 
@@ -3045,7 +3045,7 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     # ToDo: remove python object out_shape
     # ToDo: remove python object .reshape
     cdef Py_ssize_t i, n, m, ka, kb
-    cdef long long batchCount
+    cdef Py_ssize_t batchCount
     cdef ndarray out, ap, bp, outp
 
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
@@ -3199,7 +3199,7 @@ cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
         Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
     cdef vector.vector[Py_ssize_t] shape
-    cdef long long inca, incb, transa, transb, lda, ldb
+    cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
     cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
@@ -3273,14 +3273,14 @@ cpdef ndarray tensordot_core(
     if use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
         cublas.sgemmEx(
-            handle, transb, transa, m, n, k, 1, b.data.ptr, runtime.CUDA_R_16F,
-            ldb, a.data.ptr, runtime.CUDA_R_16F, lda, 0, c.data.ptr, Ctype, m)
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, runtime.CUDA_R_16F,
+            <int>ldb, a.data.ptr, runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
-        cublas.sgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
-                     a.data.ptr, lda, 0, c.data.ptr, m)
+        cublas.sgemm(handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, <int>ldb,
+                     a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
     elif dtype == 'd':
-        cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
-                     a.data.ptr, lda, 0, c.data.ptr, m)
+        cublas.dgemm(handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, <int>ldb,
+                     a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
 
     if out is not ret:
         elementwise_copy(out, ret)
