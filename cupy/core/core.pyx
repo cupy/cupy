@@ -780,7 +780,6 @@ cdef class ndarray:
 
         idx_array = ndarray(self.shape, dtype=numpy.int64)
 
-        # TODO(takagi): Support float16 and bool
         thrust.argsort(
             self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
 
