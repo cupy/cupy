@@ -617,6 +617,7 @@ cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
     can_cast = numpy.can_cast
     for op in ops:
         op_types = op[0]
+        print(op_types)
         for i in range(n):
             if not can_cast(in_types[i], op_types[i]):
                 break

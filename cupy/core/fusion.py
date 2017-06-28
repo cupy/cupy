@@ -251,6 +251,8 @@ _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
+    numpy.dtype('complex64'): 'thrust::complex<float>',
+    numpy.dtype('complex128'): 'thrust::complex<double>',
     numpy.dtype('int64'): 'long long',
     numpy.dtype('int32'): 'int',
     numpy.dtype('int16'): 'short',
@@ -262,7 +264,7 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefd']
+_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 
 def _const_to_str(val):
