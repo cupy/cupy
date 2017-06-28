@@ -1,5 +1,9 @@
+import itertools
 import unittest
 
+import numpy
+
+import cupy
 from cupy import cuda
 from cupy import testing
 
@@ -42,6 +46,48 @@ class TestBasic(unittest.TestCase):
         xp.copyto(a, b, where=c)
         return a
 
+    def _check_copyto_where_multigpu(self, dtype, ngpus):
+        def get_numpy():
+            a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+            b = testing.shaped_reverse_arange((2, 3, 4), numpy, dtype)
+            c = testing.shaped_arange((2, 3, 4), numpy, '?')
+            numpy.copyto(a, b, where=c)
+            return a
+
+        expected = get_numpy()
+
+        for dev1, dev2, dev3, dev4 in itertools.product(*[range(ngpus)] * 4):
+            if dev1 == dev2 == dev3 == dev4:
+                continue
+            if not dev1 <= dev2 <= dev3 <= dev4:
+                continue
+
+            with cuda.Device(dev1):
+                a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+            with cuda.Device(dev2):
+                b = testing.shaped_reverse_arange((2, 3, 4), cupy, dtype)
+            with cuda.Device(dev3):
+                c = testing.shaped_arange((2, 3, 4), cupy, '?')
+            with cuda.Device(dev4):
+                cupy.copyto(a, b, where=c)
+
+            testing.assert_array_equal(expected, a.get())
+
+    @testing.multi_gpu(2)
+    @testing.for_all_dtypes()
+    def test_copyto_where_multigpu_2(self, dtype):
+        self._check_copyto_where_multigpu(dtype, 2)
+
+    @testing.multi_gpu(3)
+    @testing.for_all_dtypes()
+    def test_copyto_where_multigpu_3(self, dtype):
+        self._check_copyto_where_multigpu(dtype, 3)
+
+    @testing.multi_gpu(4)
+    @testing.for_all_dtypes()
+    def test_copyto_where_multigpu_4(self, dtype):
+        self._check_copyto_where_multigpu(dtype, 4)
+
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -52,6 +98,22 @@ class TestBasic(unittest.TestCase):
             b = xp.empty((2, 3, 4), dtype=dtype)
         xp.copyto(b, a)
         return b
+
+    @testing.multi_gpu(2)
+    @testing.for_all_dtypes()
+    def test_copyto_multigpu_noncontinguous(self, dtype):
+        with cuda.Device(0):
+            src = testing.shaped_arange((2, 3, 4), cupy, dtype)
+            src = src.swapaxes(0, 1)
+        with cuda.Device(1):
+            dst = cupy.empty_like(src)
+            cupy.copyto(dst, src)
+
+        expected = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        expected = expected.swapaxes(0, 1)
+
+        testing.assert_array_equal(expected, src.get())
+        testing.assert_array_equal(expected, dst.get())
 
 
 @testing.parameterize(
