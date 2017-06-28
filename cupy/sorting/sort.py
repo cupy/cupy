@@ -5,25 +5,27 @@ if cupy.cuda.thrust_enabled:
     from cupy.cuda import thrust
 
 
-def sort(a):
+def sort(a, axis=-1):
     """Returns a sorted copy of an array with a stable sorting algorithm.
 
     Args:
         a (cupy.ndarray): Array to be sorted.
+        axis (int): Axis along which to sort. Default is -1, which means sort
+            along the last axis.
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
        For its implementation reason, ``cupy.sort`` currently does not support
-       ``axis``, ``kind`` and ``order`` parameters that ``numpy.sort`` does
+       ``kind`` and ``order`` parameters that ``numpy.sort`` does
        support.
 
     .. seealso:: :func:`numpy.sort`
 
     """
     ret = a.copy()
-    ret.sort()
+    ret.sort(axis=axis)
     return ret
 
 

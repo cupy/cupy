@@ -84,6 +84,29 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((10,), xp)[::2]  # Non contiguous view
         return xp.sort(a)
 
+    # Test axis
+
+    @testing.numpy_cupy_array_equal()
+    def test_sort_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        a.sort(axis=0)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return xp.sort(a, axis=0)
+
+    @testing.numpy_cupy_raises()
+    def test_sort_invalid_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        a.sort(axis=3)
+
+    @testing.numpy_cupy_raises()
+    def test_external_sort_invalid_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        xp.sort(a, axis=3)
+
 
 @testing.gpu
 class TestLexsort(unittest.TestCase):
