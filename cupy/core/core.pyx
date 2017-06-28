@@ -761,6 +761,11 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
+        if not cupy.cuda.thrust_enabled:
+            raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
+                               'install CUDA Toolkit with Thrust then '
+                               'reinstall CuPy after uninstalling it.')
+
         if self.ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
@@ -776,13 +781,8 @@ cdef class ndarray:
         idx_array = ndarray(self.shape, dtype=numpy.int64)
 
         # TODO(takagi): Support float16 and bool
-        try:
-            thrust.argsort(
-                self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
-        except NameError:
-            raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
-                               'install CUDA Toolkit with Thrust then '
-                               'reinstall CuPy after uninstalling it.')
+        thrust.argsort(
+            self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
 
         return idx_array
 
