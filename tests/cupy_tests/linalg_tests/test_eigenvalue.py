@@ -7,6 +7,9 @@ from cupy import cuda
 from cupy import testing
 
 
+@testing.parameterize(*testing.product({
+    'UPLO': ['U', 'L'],
+}))
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
@@ -17,8 +20,8 @@ class TestEigenvalue(unittest.TestCase):
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigh(self, xp, dtype):
-        a = xp.array([[1, 0, 3], [0, 5, 0], [3, 0, 5]], dtype)
-        w, v = xp.linalg.eigh(a)
+        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
@@ -32,26 +35,27 @@ class TestEigenvalue(unittest.TestCase):
 
     def test_eigh_float16(self):
         # NumPy's eigh deos not support float16
-        a = cupy.array([[1, 0, 3], [0, 5, 0], [3, 0, 5]], 'e')
-        w, v = cupy.linalg.eigh(a)
+        a = cupy.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], 'e')
+        w, v = cupy.linalg.eigh(a, UPLO=self.UPLO)
 
         self.assertEqual(w.dtype, numpy.float16)
         self.assertEqual(v.dtype, numpy.float16)
 
-        a = a.astype('d')
-        w = w.astype('d')
-        v = v.astype('d')
+        na = numpy.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], 'f')
+        nw, nv = numpy.linalg.eigh(na, UPLO=self.UPLO)
 
-        testing.assert_allclose(a.dot(v), w * v, rtol=1e-3, atol=1e-4)
+        testing.assert_allclose(w, nw, rtol=1e-3, atol=1e-4)
+        testing.assert_allclose(v, nv, rtol=1e-3, atol=1e-4)
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigvalsh(self, xp, dtype):
-        a = xp.array([[1, 0, 3], [0, 5, 0], [3, 0, 5]], dtype)
-        w = xp.linalg.eigvalsh(a)
+        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        w = xp.linalg.eigvalsh(a, UPLO=self.UPLO)
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
+        print(w)
         if xp is numpy:
             inds = numpy.argsort(w)
         else:
