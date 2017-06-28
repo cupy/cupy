@@ -118,14 +118,21 @@ class TestDet(unittest.TestCase):
         return xp.linalg.det(a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_det_fail(self, xp, dtype):
-        a = xp.zeros((3, 3), dtype)
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def test_det_different_last_two_dims(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 2), xp, dtype)
         return xp.linalg.det(a)
 
-    @testing.numpy_cupy_raises(numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
     def test_det_one_dim(self, xp, dtype):
         a = testing.shaped_arange((2,), xp, dtype)
+        xp.linalg.det(a)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def test_det_zero_dim(self, xp, dtype):
+        a = testing.shaped_arange((), xp, dtype)
         xp.linalg.det(a)
 
 
