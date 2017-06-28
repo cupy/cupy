@@ -27,7 +27,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         copy (bool):
 
     .. see::
-       :class:`scipy.sparse.csc_matrix`
+       :class:`scipy.sparse.csr_matrix`
 
     """
 
