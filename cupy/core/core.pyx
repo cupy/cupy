@@ -763,7 +763,7 @@ cdef class ndarray:
 
         if self.ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
-                             'supported')
+                             'supported')  # as numpy.argsort() raises
 
         # TODO(takagi): Support ranks of two or more
         if self.ndim > 1:
