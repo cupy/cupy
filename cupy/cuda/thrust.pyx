@@ -116,5 +116,5 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t num):
     elif dtype == numpy.float64:
         _argsort[common.cpy_double](idx_ptr, data_ptr, n)
     else:
-        msg = "Sorting arrays with dtype '{}' is not supported"
+        msg = 'Sorting arrays with dtype \'{}\' is not supported'
         raise TypeError(msg.format(dtype))
