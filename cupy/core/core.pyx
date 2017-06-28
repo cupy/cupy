@@ -714,9 +714,9 @@ cdef class ndarray:
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their rank of one and their own data, and does not
-           support ``axis``, ``kind`` and ``order`` parameters that
-           ``numpy.ndarray.sort`` does support.
+           only arrays with their own data, and does not support ``axis``,
+           ``kind`` and ``order`` parameters that ``numpy.ndarray.sort``
+           does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
@@ -728,27 +728,20 @@ cdef class ndarray:
         # TODO(takagi): Support kind argument.
 
         if self.ndim == 0:
-            msg = 'Sorting arrays with the rank of zero is not supported'
-            raise ValueError(msg)
-
-        # TODO(takagi): Support ranks of two or more
-        if self.ndim > 1:
-            msg = ('Sorting arrays with the rank of two or more is '
-                   'not supported')
-            raise ValueError(msg)
+            raise ValueError('Sorting arrays with the rank of zero is not '
+                             'supported')  # as numpy.sort() raises
 
         # TODO(takagi): Support sorting views
         if not self._c_contiguous:
-            raise ValueError('Sorting non-contiguous array is not supported.')
+            raise NotImplementedError('Sorting non-contiguous array is not '
+                                      'supported.')
 
-        # TODO(takagi): Support float16 and bool
         try:
-            thrust.sort(self.dtype, self.data.ptr, self._shape[0])
+            thrust.sort(self.dtype, self.data.ptr, self._shape)
         except NameError:
-            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall CuPy after '
-                   'uninstalling it.')
-            raise RuntimeError(msg)
+            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
+                               'install CUDA Toolkit with Thrust then '
+                               'reinstall CuPy after uninstalling it.')
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
