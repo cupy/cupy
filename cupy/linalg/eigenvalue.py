@@ -13,22 +13,19 @@ def _syevd(a, UPLO, with_eigen_vector):
     if UPLO not in ('L', 'U'):
         raise ValueError("UPLO argument must be 'L' or 'U'")
 
-    # Note that cuSolver uses tranpose of a matrix.
-    if not issubclass(a.dtype.type, numpy.inexact):
-        # NumPy uses float64 when an input is not floating point number.
-        v = a.T.astype('d', copy=True)
-        ret_type = numpy.float64
-    elif a.dtype == 'e':
-        # cuSolver does not have API for float16.
-        v = a.T.astype('f', copy=True)
-        ret_type = numpy.float16
-    else:
-        v = a.T.copy()
+    if a.dtype == 'f' or a.dtype == 'e':
+        dtype = 'f'
         ret_type = a.dtype
+    else:
+        # NumPy uses float64 when an input is not floating point number.
+        dtype = 'd'
+        ret_type = 'd'
 
-    dtype = v.dtype
+    # Note that cuSolver assumes fortran array
+    v = a.astype(dtype, order='F', copy=True)
+
     m, lda = a.shape
-    W = cupy.empty(m, dtype)
+    w = cupy.empty(m, dtype)
     dev_info = cupy.empty((), 'i')
     handle = device.Device().cusolver_handle
 
@@ -52,13 +49,13 @@ def _syevd(a, UPLO, with_eigen_vector):
         raise RuntimeError('Only float and double are supported')
 
     work_size = buffer_size(
-        handle, jobz, uplo, m, v.data.ptr, lda, W.data.ptr)
+        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
     work = cupy.empty(work_size, dtype)
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
-        W.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
+        w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
 
-    return W.astype(ret_type, copy=False), v.T.astype(ret_type, copy=False)
+    return w.astype(ret_type, copy=False), v.astype(ret_type, copy=False)
 
 
 # TODO(okuta): Implement eig
