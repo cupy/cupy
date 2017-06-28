@@ -13,12 +13,14 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
+    Now it has only one initializer format below:
+
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
 
     Args:
-        arg1: 
+        arg1: Arguments for the initializer.
         shape (tuple): Shape of a matrix. Its length must be two.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool):
