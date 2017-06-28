@@ -13,7 +13,7 @@ using namespace thrust;
  */
 
 template <typename T>
-void cupy::thrust::_sort(void *start, std::vector<ptrdiff_t>& shape) {
+void cupy::thrust::_sort(void *start, const std::vector<ptrdiff_t>& shape) {
 
     size_t ndim = shape.size();
     ptrdiff_t size;
@@ -53,16 +53,16 @@ void cupy::thrust::_sort(void *start, std::vector<ptrdiff_t>& shape) {
     }
 }
 
-template void cupy::thrust::_sort<cpy_byte>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ubyte>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_short>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ushort>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_int>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_uint>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_long>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ulong>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_float>(void *, std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_double>(void *, std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_byte>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ubyte>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_short>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ushort>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_int>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_uint>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_long>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ulong>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_float>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_double>(void *, const std::vector<ptrdiff_t>& shape);
 
 
 /*
