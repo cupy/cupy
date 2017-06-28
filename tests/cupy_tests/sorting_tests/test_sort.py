@@ -150,12 +150,12 @@ class TestArgsort(unittest.TestCase):
 
     def test_argsort_two_or_more_dim(self):
         a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             return a.argsort()
 
     def test_external_argsort_two_or_more_dim(self):
         a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             return cupy.argsort(a)
 
     # Test dtypes
@@ -177,13 +177,13 @@ class TestArgsort(unittest.TestCase):
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_argsort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             return a.argsort()
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_external_argsort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             return cupy.argsort(a)
 
     def test_argsort_keep_original_array(self):

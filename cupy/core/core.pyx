@@ -767,8 +767,8 @@ cdef class ndarray:
 
         # TODO(takagi): Support ranks of two or more
         if self.ndim > 1:
-            raise ValueError('Sorting arrays with the rank of two or more is '
-                             'not supported')
+            raise NotImplementedError('Sorting arrays with the rank of two or '
+                                      'more is not supported')
 
         # Assuming that Py_ssize_t can be represented with numpy.int64.
         assert cython.sizeof(Py_ssize_t) == 8
