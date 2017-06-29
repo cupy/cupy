@@ -1,13 +1,13 @@
 from cupy.sparse.base import issparse  # NOQA
 from cupy.sparse.base import isspmatrix  # NOQA
 from cupy.sparse.base import spmatrix  # NOQA
+from cupy.sparse.coo import coo_matrix  # NOQA
 from cupy.sparse.csc import csc_matrix  # NOQA
 from cupy.sparse.csc import isspmatrix_csc  # NOQA
 from cupy.sparse.csr import csr_matrix  # NOQA
 from cupy.sparse.csr import isspmatrix_csr  # NOQA
 
 # TODO(unno): implement bsr_matrix
-# TODO(unno): implement coo_matrix
 # TODO(unno): implement dia_matrix
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
