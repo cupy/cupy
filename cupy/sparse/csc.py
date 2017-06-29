@@ -23,7 +23,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         arg1: Arguments for the initializer.
         shape (tuple): Shape of a matrix. Its length must be two.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-        copy (bool):
+        copy (bool): If ``True``, copies of given data are always used.
 
     .. see::
        :class:`scipy.sparse.csc_matrix`
