@@ -117,8 +117,6 @@ def msort(a):
     .. seealso:: :func:`numpy.msort`
 
     """
-    # TODO(takagi): Support axis argument.
-    # TODO(takagi): Support ranks of two or more.
     # TODO(takagi): Support float16 and bool.
     return sort(a)
 
