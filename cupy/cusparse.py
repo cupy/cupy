@@ -347,7 +347,11 @@ def csr2dense(x, out=None):
 
 
 def csrsort(x):
-    """
+    """Sort indices of CSR-matrix in place.
+
+    Args:
+        x (cupy.sparse.csr_matrix): A sparse matrix to sort.
+
     """
     handle = get_handle()
     m, n = x.shape
@@ -369,6 +373,12 @@ def csrsort(x):
 
 
 def cscsort(x):
+    """Sort indices of CSC-matrix in place.
+
+    Args:
+        x (cupy.sparse.csc_matrix): A sparse matrix to sort.
+
+    """
     handle = get_handle()
     m, n = x.shape
     nnz = x.nnz
