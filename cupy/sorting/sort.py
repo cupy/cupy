@@ -10,8 +10,9 @@ def sort(a, axis=-1):
 
     Args:
         a (cupy.ndarray): Array to be sorted.
-        axis (int): Axis along which to sort. Default is -1, which means sort
-            along the last axis.
+        axis (int or None): Axis along which to sort. Default is -1, which
+            means sort along the last axis. If None is supplied, the array is
+            flattened before sorting.
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
@@ -24,7 +25,11 @@ def sort(a, axis=-1):
     .. seealso:: :func:`numpy.sort`
 
     """
-    ret = a.copy()
+    if axis is None:
+        ret = a.flatten()
+        axis = -1
+    else:
+        ret = a.copy()
     ret.sort(axis=axis)
     return ret
 

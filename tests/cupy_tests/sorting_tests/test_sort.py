@@ -109,6 +109,11 @@ class TestSort(unittest.TestCase):
         return xp.sort(a, axis=-2)
 
     @testing.numpy_cupy_raises()
+    def test_external_sort_none_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return xp.sort(a, axis=None)
+
+    @testing.numpy_cupy_raises()
     def test_sort_invalid_axis(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
         a.sort(axis=3)
