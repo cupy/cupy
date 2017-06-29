@@ -138,6 +138,34 @@ def cscsort(x):
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
+def coosort(x):
+    handle = get_handle()
+    m, n = x.shape
+    nnz = x.nnz
+
+    buffer_size = cusparse.xcoosort_bufferSizeExt(
+        handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
+    buf = cupy.empty(buffer_size, 'b')
+    P = cupy.empty(nnz, 'i')
+    cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
+    cusparse.xcoosortByRow(
+        handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+        P.data.ptr, buf.data.ptr)
+    cusparse.sgthr(
+        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+
+def coo2csr(x):
+    m = x.shape[0]
+    indptr = cupy.empty(m + 1, 'i')
+    cusparse.xcoo2csr(
+        get_handle(), x.row.data.ptr, x.nnz, m,
+        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupy.sparse.csr.csr_matrix(
+        (x.data, x.col, indptr), shape=x.shape)
+
+
 def csr2csc(x):
     m, n = x.shape
     nnz = x.nnz
