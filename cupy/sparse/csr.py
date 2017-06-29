@@ -81,16 +81,19 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement sum_duplicates
 
     def toarray(self, order=None, out=None):
-        if order is None:
-            order = 'C'
-        if order not in ['C', 'F']:
-            raise ValueError('order "%s" is not supported' % str(order))
+        """Returns a dense matrix representing the same value.
 
-        A = cusparse.csr2dense(self, out)
-        if order == 'C':
-            return cupy.ascontiguousarray(A)
-        else:
-            return A
+        Args:
+            order (str): Not supported.
+            out: Not supported.
+
+        Returns:
+            cupy.ndarray: Dense array representing the same value.
+
+        .. seealso:: :func:`cupy.sparse.csr_array.toarray`
+
+        """
+        return cusparse.csr2dense(self)
 
     # TODO(unno): Implement tobsr
     # TODO(unno): Implement tocoo

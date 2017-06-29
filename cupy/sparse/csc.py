@@ -82,7 +82,15 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
 
-        
+        Args:
+            order: Not supported.
+            out: Not supported.
+
+        Returns:
+            cupy.ndarray: Dense array representing the same value.
+
+        .. seealso:: :func:`cupy.sparse.csc_array.toarray`
+
         """
         return self.T.toarray().T
 
