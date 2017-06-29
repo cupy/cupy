@@ -95,12 +95,12 @@ def repeat(times, intensive_times=None):
         intensive_times(int or None): The number of trials in more intensive
             test. If ``None``, the same number as `times` is used.
     """
-    casual_test = bool(int(os.environ.get('CUPY_TEST_CASUAL', '0')))
-    if casual_test:
+    if intensive_times is None:
         return repeat_with_success_at_least(times, times)
-    else:
-        times_ = intensive_times if intensive_times is not None else times
-        return repeat_with_success_at_least(times_, times_)
+
+    casual_test = bool(int(os.environ.get('CUPY_TEST_CASUAL', '0')))
+    times_ = times if casual_test else intensive_times
+    return repeat_with_success_at_least(times_, times_)
 
 
 def retry(times):
