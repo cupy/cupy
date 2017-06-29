@@ -117,7 +117,7 @@ cpdef tuple _get_args_info(list args):
     ret = []
     for a in args:
         t = type(a)
-        if t == Indexer:
+        if t is Indexer:
             dtype = None
         else:
             dtype = a.dtype.type
