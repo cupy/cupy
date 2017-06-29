@@ -42,21 +42,6 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def _dump_source(e, source, options):
-    lines = source.split('\n')
-    digits = int(math.floor(math.log10(len(lines)))) + 1
-    linum_fmt = '{{:0{}d}} '.format(digits)
-    f = sys.stderr
-    f.write('NVRTC compilation error: {}\n'.format(e))
-    f.write('-----\n')
-    f.write('Options: {}\n'.format(' '.join(_ for _ in options)))
-    f.write('CUDA source:\n')
-    for i, line in enumerate(lines):
-        f.write(linum_fmt.format(i + 1) + line.rstrip() + '\n')
-    f.write('-----\n')
-    f.flush()
-
-
 def compile_using_nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
@@ -77,7 +62,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
             dump = bool(int(
                 os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
             if dump:
-                _dump_source(e, source, options)
+                e.dump(sys.stderr)
             raise
 
         return ptx
@@ -90,7 +75,7 @@ def preprocess(source, options=()):
     except CompileException as e:
         dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
         if dump:
-            _dump_source(e, source, options)
+            e.dump(sys.stderr)
         raise
 
     if isinstance(pp_src, six.binary_type):
@@ -173,8 +158,11 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
 class CompileException(Exception):
 
-    def __init__(self, msg):
+    def __init__(self, msg, source, name, options):
         self._msg = msg
+        self.source = source
+        self.name = name
+        self.options = options
 
     def __repr__(self):
         return str(self)
@@ -184,6 +172,20 @@ class CompileException(Exception):
 
     def get_message(self):
         return self._msg
+
+    def dump(self, f):
+        lines = self.source.split('\n')
+        digits = int(math.floor(math.log10(len(lines)))) + 1
+        linum_fmt = '{{:0{}d}} '.format(digits)
+        f.write('NVRTC compilation error: {}\n'.format(self))
+        f.write('-----\n')
+        f.write('Name: {}\n'.format(' '.join(self.name)))
+        f.write('Options: {}\n'.format(' '.join(self.options)))
+        f.write('CUDA source:\n')
+        for i, line in enumerate(lines):
+            f.write(linum_fmt.format(i + 1) + line.rstrip() + '\n')
+        f.write('-----\n')
+        f.flush()
 
 
 class _NVRTCProgram(object):
@@ -196,6 +198,9 @@ class _NVRTCProgram(object):
             src = src.decode('UTF-8')
         if isinstance(name, six.binary_type):
             name = name.decode('UTF-8')
+
+        self.src = src
+        self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
     def __del__(self):
@@ -208,4 +213,4 @@ class _NVRTCProgram(object):
             return nvrtc.getPTX(self.ptr)
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
-            raise CompileException(log)
+            raise CompileException(log, self.src, self.name, options)
