@@ -1,5 +1,3 @@
-import numpy
-
 import cupy
 from cupy import cuda
 from cupy.cuda import cublas
