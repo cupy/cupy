@@ -591,41 +591,25 @@ class TestFusionUfunc(unittest.TestCase):
         ret1 = f(*data)  # Fused
         numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
-    @testing.for_dtypes_combination(
-        [numpy.float16, numpy.float32, numpy.float64,
-         numpy.int8, numpy.int16, numpy.int32, numpy.int64,
-         numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
-         numpy.bool_],
-        names=['src_dtype', 'dst_dtype'], full=True)
-    def test_out_arg(self, src_dtype, dst_dtype):
+    def _check_fuse(self, func_nofuse, dtypes):
+        func_fuse = cupy.fuse(func_nofuse)
 
-        # non-fused
-        def func_n(x, y, z):
-            return cupy.add(x, y, out=z)
+        orig_arrs = [
+            testing.shaped_random((2, 3), xp=cupy, dtype=dtype)
+            for dtype in dtypes]
 
-        # fused
-        @cupy.fuse()
-        def func_f(x, y, z):
-            return cupy.add(x, y, out=z)
-
-        a = testing.shaped_random((2, 3), xp=cupy, dtype=src_dtype)
-        b = testing.shaped_random((2, 3), xp=cupy, dtype=src_dtype)
-
-        outs = []
-        rets = []
+        results = []
         errors = []
-        for func in (func_n, func_f):
-            a_ = a.copy()
-            b_ = b.copy()
-            out = cupy.empty((2, 3), dtype=dst_dtype)
+        for func in (func_nofuse, func_fuse):
+            arrs = [_.copy() for _ in orig_arrs]
+
             try:
-                ret = func(a_, b_, out)
+                ret = func(*arrs)
                 err = None
             except TypeError as e:
                 ret = None
                 err = e
-            outs.append(out)
-            rets.append(ret)
+            results.append([ret] + arrs)
             errors.append(err)
 
         # If one raised an error, the other must raise an error with the same
@@ -635,12 +619,58 @@ class TestFusionUfunc(unittest.TestCase):
         if errors[0] is not None:
             # ...and error messages must match.
             self.assertEqual(str(errors[0]), str(errors[1]))
+            return None
         else:
-            # The array passed as out and the returned array must be equal
-            testing.assert_array_equal(outs[0], rets[0])  # non-fused
-            testing.assert_array_equal(outs[1], rets[1])  # fused
             # Non-fused output and fused output must be equal
-            testing.assert_array_equal(outs[0], outs[1])
+            for i, (arr1, arr2) in enumerate(zip(results[0], results[1])):
+                if i == 0:
+                    # Return values can be None
+                    if arr1 is arr2 is None:
+                        continue
+                testing.assert_array_equal(arr1, arr2)
+
+            return results[0], results[1]
+
+    @testing.for_dtypes_combination(
+        [numpy.float16, numpy.float32, numpy.float64,
+         numpy.int8, numpy.int16, numpy.int32, numpy.int64,
+         numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
+         numpy.bool_],
+        names=['src_dtype', 'dst_dtype'], full=True)
+    def test_out_arg(self, src_dtype, dst_dtype):
+
+        def func(x, y, z):
+            return cupy.add(x, y, out=z)
+
+        results = self._check_fuse(func, [src_dtype, src_dtype, dst_dtype])
+
+        if results is not None:
+            results_n, results_f = results
+
+            # The returned array must equal to z
+            arr_ret = results_f[0]
+            arr_z = results_f[3]
+            testing.assert_array_equal(arr_ret, arr_z)
+
+    def test_out_arg2(self):
+
+        dtype = numpy.float32
+
+        def func(x, y, z, u, v):
+            cupy.add(x, y, out=z)
+            cupy.subtract(z, x, out=u)
+            cupy.multiply(z, x, out=v)
+            return u
+
+        results = self._check_fuse(func, [dtype] * 5)
+
+        self.assertIsNotNone(results)
+        results_n, results_f = results
+
+        # The returned array must equal to u
+        arr_ret = results_f[0]
+        arr_u = results_f[4]
+        testing.assert_array_equal(arr_ret, arr_u)
 
     def test_bitwise(self):
         self.check(cupy.bitwise_and, 2, self.random_int)
