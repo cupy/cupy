@@ -12,9 +12,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
                 raise ValueError(
                     'Only two-dimensional sparse arrays are supported.')
 
-            if not(base.isdense(data) and data.ndim == 1 and
-                   base.isdense(indices) and indices.ndim == 1 and
-                   base.isdense(indptr) and indptr.ndim == 1):
+            if not (base.isdense(data) and data.ndim == 1 and
+                    base.isdense(indices) and indices.ndim == 1 and
+                    base.isdense(indptr) and indptr.ndim == 1):
                 raise ValueError(
                     'data, indices, and indptr should be 1-D')
 
