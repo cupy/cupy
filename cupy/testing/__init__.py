@@ -5,7 +5,6 @@ from cupy.testing import parameterized  # NOQA
 from cupy.testing import random  # NOQA
 
 from cupy.testing.array import assert_allclose  # NOQA
-from cupy.testing.array import assert_allclose  # NOQA
 from cupy.testing.array import assert_array_almost_equal  # NOQA
 from cupy.testing.array import assert_array_almost_equal_nulp  # NOQA
 from cupy.testing.array import assert_array_equal  # NOQA
