@@ -1,7 +1,11 @@
 import unittest
 
 import numpy
-import scipy.sparse
+try:
+    import scipy.sparse
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
 import cupy.sparse
@@ -42,6 +46,7 @@ class TestCsrMatrix(unittest.TestCase):
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 4)
 
+    @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
         m = self.m.get()
         self.assertIsInstance(m, scipy.sparse.csr_matrix)
@@ -71,6 +76,7 @@ class TestCsrMatrix(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixInvalidInit(unittest.TestCase):
 
     def setUp(self):
@@ -145,6 +151,7 @@ class TestCsrMatrixInvalidInit(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
@@ -177,6 +184,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixScipyCompressed(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -191,6 +199,7 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixData(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -236,6 +245,7 @@ class TestCsrMatrixData(unittest.TestCase):
         'tan', 'tanh', 'trunc',
     ],
 }))
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestUfunc(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
