@@ -83,6 +83,27 @@ cpdef str _get_header_source():
             _header_source = header_file.read()
         if c_cupy_complex_available:
             files = [
+                'complex/complex.h',
+                'complex/math_private.h',
+                'complex/complex_inl.h',
+                'complex/arithmetic.h',
+                'complex/cproj.h',
+                'complex/cexp.h',
+                'complex/cexpf.h',
+                'complex/clog.h',
+                'complex/clogf.h',
+                'complex/cpow.h',
+                'complex/cpowf.h',
+                'complex/ccosh.h',
+                'complex/ccoshf.h',
+                'complex/csinh.h',
+                'complex/csinhf.h',
+                'complex/ctanh.h',
+                'complex/ctanhf.h',
+                'complex/csqrt.h',
+                'complex/csqrtf.h',
+                'complex/catrig.h',
+                'complex/catrigf.h',
                 'complex.cuh',
             ]
             for file_path in files:
