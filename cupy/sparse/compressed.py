@@ -88,8 +88,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         else:
             return NotImplemented
 
-    def __radd__(self, x):
-        return self.__add__(x)
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def get_shape(self):
         """Shape of the matrix.
