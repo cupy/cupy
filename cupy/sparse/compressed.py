@@ -1,5 +1,6 @@
 import numpy
 
+import cupy
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import data as sparse_data
