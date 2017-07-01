@@ -190,3 +190,36 @@ class TestArgsort(unittest.TestCase):
         b = cupy.array(a)
         a.argsort()
         testing.assert_allclose(a, b)
+
+
+@testing.gpu
+class TestMsort(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    # Test ranks
+
+    @testing.numpy_cupy_raises()
+    def test_msort_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        return xp.msort(a)
+
+    def test_msort_two_or_more_dim(self):
+        a = testing.shaped_random((2, 3), cupy)
+        with self.assertRaises(ValueError):
+            return cupy.msort(a)
+
+    # Test dtypes
+
+    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
+                         numpy.float32, numpy.float64])
+    @testing.numpy_cupy_allclose()
+    def test_msort_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return xp.msort(a)
+
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
+    def test_msort_unsupported_dtype(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype)
+        with self.assertRaises(TypeError):
+            return cupy.msort(a)
