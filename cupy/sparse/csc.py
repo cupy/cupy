@@ -94,6 +94,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """
         return self.T.toarray().T
 
+    def _add_sparse(self, other):
+        return cusparse.csrgeam(self.T, other.tocsc().T).T
+
     # TODO(unno): Implement tobsr
 
     def tocoo(self, copy=False):

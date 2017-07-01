@@ -69,6 +69,27 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
     def _swap(self, x, y):
         raise NotImplementedError
 
+    def _add_sparse(self, other):
+        raise NotImplementedError
+
+    def __add__(self, other):
+        if cupy.isscalar(other):
+            if other == 0:
+                return self.copy()
+            else:
+                raise NotImplementedError(
+                    'adding a nonzero scalar to a sparse matrix is not '
+                    'supported')
+        elif base.isspmatrix(other):
+            return self._add_sparse(other)
+        elif base.isdense(other):
+            return self.todense() + other
+        else:
+            return NotImplemented
+
+    def __radd__(self, x):
+        return self.__add__(x)
+
     def get_shape(self):
         """Shape of the matrix.
 
