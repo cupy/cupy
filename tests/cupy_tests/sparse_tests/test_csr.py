@@ -37,6 +37,28 @@ class TestCsrMatrix(unittest.TestCase):
     def setUp(self):
         self.m = _make(cupy, cupy.sparse, self.dtype)
 
+    def test_init_copy(self):
+        n = cupy.sparse.csr_matrix(self.m)
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
+    def test_init_copy_other_sparse(self):
+        n = cupy.sparse.csr_matrix(self.m.tocsc())
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
+    def test_copy(self):
+        n = self.m.copy()
+        self.assertIsInstance(n, cupy.sparse.csr_matrix)
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 
