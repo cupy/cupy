@@ -208,6 +208,8 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    # __add__
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -236,6 +238,24 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         n = xp.arange(12).reshape(3, 4)
         return m + n
+
+    # __radd__
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (0 + m).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_radd_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        1 + m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return n + m
 
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)

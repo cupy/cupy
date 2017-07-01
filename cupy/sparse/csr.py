@@ -75,6 +75,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             return NotImplemented
 
+    def __radd__(self, x):
+        return self.__add__(x)
 
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
