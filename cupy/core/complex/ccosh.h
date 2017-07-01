@@ -45,9 +45,9 @@
  *    lib/msun/src/s_ccosh.c
  */
 
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 /*
  * Hyperbolic cosine of a complex argument z = x + i y.
@@ -58,12 +58,10 @@ namespace complex{
  * Exceptional values are noted in the comments within the source code.
  * These values and the return value were taken from n1124.pdf.
  */
-      
-__device__ inline
-thrust::complex<double> ccosh(const thrust::complex<double>& z){
-  
 
-  const double huge = 8.98846567431157953864652595395e+307; // 0x1p1023
+__device__ inline thrust::complex<double> ccosh(
+    const thrust::complex<double>& z) {
+  const double huge = 8.98846567431157953864652595395e+307;  // 0x1p1023
   double x, y, h;
   uint32_t hx, hy, ix, iy, lx, ly;
 
@@ -78,10 +76,10 @@ thrust::complex<double> ccosh(const thrust::complex<double>& z){
 
   /* Handle the nearly-non-exceptional cases where x and y are finite. */
   if (ix < 0x7ff00000 && iy < 0x7ff00000) {
-    if ((iy | ly) == 0)
-      return (thrust::complex<double>(::cosh(x), x * y));
-    if (ix < 0x40360000)	/* small x: normal case */
-      return (thrust::complex<double>(::cosh(x) * ::cos(y), ::sinh(x) * ::sin(y)));
+    if ((iy | ly) == 0) return (thrust::complex<double>(::cosh(x), x * y));
+    if (ix < 0x40360000) /* small x: normal case */
+      return (
+          thrust::complex<double>(::cosh(x) * ::cos(y), ::sinh(x) * ::sin(y)));
 
     /* |x| >= 22, so cosh(x) ~= exp(|x|) */
     if (ix < 0x40862e42) {
@@ -145,8 +143,7 @@ thrust::complex<double> ccosh(const thrust::complex<double>& z){
    * cosh(+-Inf + I y)   = +Inf cos(y) +- I Inf sin(y)
    */
   if (ix >= 0x7ff00000 && ((hx & 0xfffff) | lx) == 0) {
-    if (iy >= 0x7ff00000)
-      return (thrust::complex<double>(x * x, x * (y - y)));
+    if (iy >= 0x7ff00000) return (thrust::complex<double>(x * x, x * (y - y)));
     return (thrust::complex<double>((x * x) * cos(y), x * sin(y)));
   }
 
@@ -164,45 +161,40 @@ thrust::complex<double> ccosh(const thrust::complex<double>& z){
   return (thrust::complex<double>((x * x) * (y - y), (x + x) * (y - y)));
 }
 
-
-__device__ inline
-thrust::complex<double> ccos(const thrust::complex<double>& z){	
+__device__ inline thrust::complex<double> ccos(
+    const thrust::complex<double>& z) {
   /* ccos(z) = ccosh(I * z) */
   return (ccosh(thrust::complex<double>(-z.imag(), z.real())));
 }
 
-} // namespace complex
+}  // namespace complex
 
-} // namespace detail
+}  // namespace detail
 
 template <typename ValueType>
-__device__
-inline complex<ValueType> cos(const complex<ValueType>& z){
+__device__ inline complex<ValueType> cos(const complex<ValueType>& z) {
   const ValueType re = z.real();
   const ValueType im = z.imag();
-  return complex<ValueType>(::cos(re) * ::cosh(im), 
-			    -::sin(re) * ::sinh(im));
+  return complex<ValueType>(::cos(re) * ::cosh(im), -::sin(re) * ::sinh(im));
 }
-  
+
 template <typename ValueType>
-__device__
-inline complex<ValueType> cosh(const complex<ValueType>& z){
+__device__ inline complex<ValueType> cosh(const complex<ValueType>& z) {
   const ValueType re = z.real();
   const ValueType im = z.imag();
-  return complex<ValueType>(::cosh(re) * ::cos(im), 
-			    ::sinh(re) * ::sin(im));
+  return complex<ValueType>(::cosh(re) * ::cos(im), ::sinh(re) * ::sin(im));
 }
 
 template <>
-__device__
-inline thrust::complex<double> cos(const thrust::complex<double>& z){
+__device__ inline thrust::complex<double> cos(
+    const thrust::complex<double>& z) {
   return detail::complex::ccos(z);
 }
 
 template <>
-__device__
-inline thrust::complex<double> cosh(const thrust::complex<double>& z){
+__device__ inline thrust::complex<double> cosh(
+    const thrust::complex<double>& z) {
   return detail::complex::ccosh(z);
 }
 
-} // namespace thrust
+}  // namespace thrust

@@ -48,14 +48,13 @@
 
 #pragma once
 
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
-  
-__device__ inline
-      complex<float> clog_for_large_values(complex<float> z);
+
+__device__ inline complex<float> clog_for_large_values(complex<float> z);
 
 /*
  * The algorithm is very close to that in "Implementing the complex arcsine
@@ -71,14 +70,9 @@ __device__ inline
  * a few comments on the right of declarations remain.
  */
 
-__device__
-inline float
-f(float a, float b, float hypot_a_b)
-{
-  if (b < 0.0f)
-    return ((hypot_a_b - b) / 2.0f);
-  if (b == 0.0f)
-    return (a / 2.0f);
+__device__ inline float f(float a, float b, float hypot_a_b) {
+  if (b < 0.0f) return ((hypot_a_b - b) / 2.0f);
+  if (b == 0.0f) return (a / 2.0f);
   return (a * a / (hypot_a_b + b) / 2.0f);
 }
 
@@ -92,22 +86,21 @@ f(float a, float b, float hypot_a_b)
  * If returning sqrt_A2my2 has potential to result in an underflow, it is
  * rescaled, and new_y is similarly rescaled.
  */
-__device__
-inline void
-do_hard_work(float x, float y, float *rx, int *B_is_usable, float *B,
-	     float *sqrt_A2my2, float *new_y)
-{
-  float R, S, A; /* A, B, R, and S are as in Hull et al. */
+__device__ inline void do_hard_work(float x, float y, float* rx,
+                                    int* B_is_usable, float* B,
+                                    float* sqrt_A2my2, float* new_y) {
+  float R, S, A;  /* A, B, R, and S are as in Hull et al. */
   float Am1, Amy; /* A-1, A-y. */
-  const float A_crossover = 10; /* Hull et al suggest 1.5, but 10 works better */
-  const float FOUR_SQRT_MIN = 4.336808689942017736029811e-19f;; /* =0x1p-61; >= 4 * sqrt(FLT_MIN) */
+  const float A_crossover =
+      10; /* Hull et al suggest 1.5, but 10 works better */
+  const float FOUR_SQRT_MIN = 4.336808689942017736029811e-19f;
+  ;                                  /* =0x1p-61; >= 4 * sqrt(FLT_MIN) */
   const float B_crossover = 0.6417f; /* suggested by Hull et al */
   R = hypotf(x, y + 1);
   S = hypotf(x, y - 1);
 
   A = (R + S) / 2;
-  if (A < 1)
-    A = 1;
+  if (A < 1) A = 1;
 
   if (A < A_crossover) {
     if (y == 1 && x < FLT_EPSILON * FLT_EPSILON / 128) {
@@ -144,20 +137,16 @@ do_hard_work(float x, float y, float *rx, int *B_is_usable, float *B,
       Amy = f(x, y + 1, R) + f(x, y - 1, S);
       *sqrt_A2my2 = sqrtf(Amy * (A + y));
     } else if (y > 1) {
-      *sqrt_A2my2 = x * (4 / FLT_EPSILON / FLT_EPSILON) * y /
-	sqrtf((y + 1) * (y - 1));
+      *sqrt_A2my2 =
+          x * (4 / FLT_EPSILON / FLT_EPSILON) * y / sqrtf((y + 1) * (y - 1));
       *new_y = y * (4 / FLT_EPSILON / FLT_EPSILON);
     } else {
       *sqrt_A2my2 = sqrtf((1 - y) * (1 + y));
     }
   }
-
 }
 
-__device__ inline
-complex<float>
-casinhf(complex<float> z)
-{
+__device__ inline complex<float> casinhf(complex<float> z) {
   float x, y, ax, ay, rx, ry, B, sqrt_A2my2, new_y;
   int B_is_usable;
   complex<float> w;
@@ -169,12 +158,9 @@ casinhf(complex<float> z)
   ay = fabsf(y);
 
   if (isnan(x) || isnan(y)) {
-    if (isinf(x))
-      return (complex<float>(x, y + y));
-    if (isinf(y))
-      return (complex<float>(y, x + x));
-    if (y == 0)
-      return (complex<float>(x + x, y));
+    if (isinf(x)) return (complex<float>(x, y + y));
+    if (isinf(y)) return (complex<float>(y, x + x));
+    if (y == 0) return (complex<float>(x + x, y));
     return (complex<float>(x + 0.0f + (y + 0), x + 0.0f + (y + 0)));
   }
 
@@ -183,18 +169,15 @@ casinhf(complex<float> z)
       w = clog_for_large_values(z) + m_ln2;
     else
       w = clog_for_large_values(-z) + m_ln2;
-    return (complex<float>(copysignf(w.real(), x),
-			   copysignf(w.imag(), y)));
+    return (complex<float>(copysignf(w.real(), x), copysignf(w.imag(), y)));
   }
 
-  if (x == 0 && y == 0)
-    return (z);
+  if (x == 0 && y == 0) return (z);
 
   raise_inexact();
 
-  const float SQRT_6_EPSILON = 8.4572793338e-4f;	/*  0xddb3d7.0p-34 */
-  if (ax < SQRT_6_EPSILON / 4 && ay < SQRT_6_EPSILON / 4)
-    return (z);
+  const float SQRT_6_EPSILON = 8.4572793338e-4f; /*  0xddb3d7.0p-34 */
+  if (ax < SQRT_6_EPSILON / 4 && ay < SQRT_6_EPSILON / 4) return (z);
 
   do_hard_work(ax, ay, &rx, &B_is_usable, &B, &sqrt_A2my2, &new_y);
   if (B_is_usable)
@@ -204,23 +187,20 @@ casinhf(complex<float> z)
   return (complex<float>(copysignf(rx, x), copysignf(ry, y)));
 }
 
-__device__ inline
-complex<float> casinf(complex<float> z)
-{
+__device__ inline complex<float> casinf(complex<float> z) {
   complex<float> w = casinhf(complex<float>(z.imag(), z.real()));
 
   return (complex<float>(w.imag(), w.real()));
 }
 
-__device__ inline
-complex<float> cacosf(complex<float> z)
-{
+__device__ inline complex<float> cacosf(complex<float> z) {
   float x, y, ax, ay, rx, ry, B, sqrt_A2mx2, new_x;
   int sx, sy;
   int B_is_usable;
   complex<float> w;
   const float pio2_hi = 1.5707963267948966e0f; /*  0x1921fb54442d18.0p-52 */
-  const volatile float pio2_lo = 6.1232339957367659e-17f;	/*  0x11a62633145c07.0p-106 */
+  const volatile float pio2_lo =
+      6.1232339957367659e-17f;                /*  0x11a62633145c07.0p-106 */
   const float m_ln2 = 6.9314718055994531e-1f; /*  0x162e42fefa39ef.0p-53 */
 
   x = z.real();
@@ -231,12 +211,9 @@ complex<float> cacosf(complex<float> z)
   ay = fabsf(y);
 
   if (isnan(x) || isnan(y)) {
-    if (isinf(x))
-      return (complex<float>(y + y, -infinity<float>()));
-    if (isinf(y))
-      return (complex<float>(x + x, -y));
-    if (x == 0)
-      return (complex<float>(pio2_hi + pio2_lo, y + y));
+    if (isinf(x)) return (complex<float>(y + y, -infinity<float>()));
+    if (isinf(y)) return (complex<float>(x + x, -y));
+    if (x == 0) return (complex<float>(pio2_hi + pio2_lo, y + y));
     return (complex<float>(x + 0.0f + (y + 0), x + 0.0f + (y + 0)));
   }
 
@@ -245,17 +222,15 @@ complex<float> cacosf(complex<float> z)
     w = clog_for_large_values(z);
     rx = fabsf(w.imag());
     ry = w.real() + m_ln2;
-    if (sy == 0)
-      ry = -ry;
+    if (sy == 0) ry = -ry;
     return (complex<float>(rx, ry));
   }
 
-  if (x == 1 && y == 0)
-    return (complex<float>(0, -y));
+  if (x == 1 && y == 0) return (complex<float>(0, -y));
 
   raise_inexact();
 
-  const float SQRT_6_EPSILON = 8.4572793338e-4f;	/*  0xddb3d7.0p-34 */
+  const float SQRT_6_EPSILON = 8.4572793338e-4f; /*  0xddb3d7.0p-34 */
   if (ax < SQRT_6_EPSILON / 4 && ay < SQRT_6_EPSILON / 4)
     return (complex<float>(pio2_hi - (x - pio2_lo), -y));
 
@@ -271,14 +246,11 @@ complex<float> cacosf(complex<float> z)
     else
       rx = atan2f(sqrt_A2mx2, -new_x);
   }
-  if (sy == 0)
-    ry = -ry;
+  if (sy == 0) ry = -ry;
   return (complex<float>(rx, ry));
 }
 
-__device__ inline
-complex<float> cacoshf(complex<float> z)
-{
+__device__ inline complex<float> cacoshf(complex<float> z) {
   complex<float> w;
   float rx, ry;
 
@@ -286,24 +258,19 @@ complex<float> cacoshf(complex<float> z)
   rx = w.real();
   ry = w.imag();
   /* cacosh(NaN + I*NaN) = NaN + I*NaN */
-  if (isnan(rx) && isnan(ry))
-    return (complex<float>(ry, rx));
+  if (isnan(rx) && isnan(ry)) return (complex<float>(ry, rx));
   /* cacosh(NaN + I*+-Inf) = +Inf + I*NaN */
   /* cacosh(+-Inf + I*NaN) = +Inf + I*NaN */
-  if (isnan(rx))
-    return (complex<float>(fabsf(ry), rx));
+  if (isnan(rx)) return (complex<float>(fabsf(ry), rx));
   /* cacosh(0 + I*NaN) = NaN + I*NaN */
-  if (isnan(ry))
-    return (complex<float>(ry, ry));
+  if (isnan(ry)) return (complex<float>(ry, ry));
   return (complex<float>(fabsf(ry), copysignf(rx, z.imag())));
 }
 
-  /*
-   * Optimized version of clog() for |z| finite and larger than ~RECIP_EPSILON.
-   */
-__device__ inline
-complex<float> clog_for_large_values(complex<float> z)
-{
+/*
+ * Optimized version of clog() for |z| finite and larger than ~RECIP_EPSILON.
+ */
+__device__ inline complex<float> clog_for_large_values(complex<float> z) {
   float x, y;
   float ax, ay, t;
   const float m_e = 2.7182818284590452e0f; /*  0x15bf0a8b145769.0p-51 */
@@ -319,11 +286,12 @@ complex<float> clog_for_large_values(complex<float> z)
   }
 
   if (ax > FLT_MAX / 2)
-    return (complex<float>(logf(hypotf(x / m_e, y / m_e)) + 1,
-			   atan2f(y, x)));
+    return (complex<float>(logf(hypotf(x / m_e, y / m_e)) + 1, atan2f(y, x)));
 
-  const float QUARTER_SQRT_MAX = 2.3058430092136939520000000e+18f; /* = 0x1p61; <= sqrt(FLT_MAX) / 4 */
-  const float SQRT_MIN =	1.084202172485504434007453e-19f; /* 0x1p-63; >= sqrt(FLT_MIN) */
+  const float QUARTER_SQRT_MAX =
+      2.3058430092136939520000000e+18f; /* = 0x1p61; <= sqrt(FLT_MAX) / 4 */
+  const float SQRT_MIN =
+      1.084202172485504434007453e-19f; /* 0x1p-63; >= sqrt(FLT_MIN) */
   if (ax > QUARTER_SQRT_MAX || ay < SQRT_MIN)
     return (complex<float>(logf(hypotf(x, y)), atan2f(y, x)));
 
@@ -343,20 +311,16 @@ complex<float> clog_for_large_values(complex<float> z)
  * Assumes y is non-negative.
  * Assumes fabsf(x) >= FLT_EPSILON.
  */
-__device__
-inline float sum_squares(float x, float y)
-{
-  const float SQRT_MIN =	1.084202172485504434007453e-19f; /* 0x1p-63; >= sqrt(FLT_MIN) */
+__device__ inline float sum_squares(float x, float y) {
+  const float SQRT_MIN =
+      1.084202172485504434007453e-19f; /* 0x1p-63; >= sqrt(FLT_MIN) */
   /* Avoid underflow when y is small. */
-  if (y < SQRT_MIN)
-    return (x * x);
+  if (y < SQRT_MIN) return (x * x);
 
   return (x * x + y * y);
 }
 
-__device__
-inline float real_part_reciprocal(float x, float y)
-{
+__device__ inline float real_part_reciprocal(float x, float y) {
   float scale;
   uint32_t hx, hy;
   int32_t ix, iy;
@@ -369,10 +333,8 @@ inline float real_part_reciprocal(float x, float y)
   const int BIAS = FLT_MAX_EXP - 1;
   //#define	CUTOFF	(FLT_MANT_DIG / 2 + 1)
   const int CUTOFF = (FLT_MANT_DIG / 2 + 1);
-  if (ix - iy >= CUTOFF << 23 || isinf(x))
-    return (1 / x);
-  if (iy - ix >= CUTOFF << 23)
-    return (x / y / y);
+  if (ix - iy >= CUTOFF << 23 || isinf(x)) return (1 / x);
+  if (iy - ix >= CUTOFF << 23) return (x / y / y);
   if (ix <= (BIAS + FLT_MAX_EXP / 2 - CUTOFF) << 23)
     return (x / (x * x + y * y));
   set_float_word(scale, 0x7f800000 - ix);
@@ -382,39 +344,32 @@ inline float real_part_reciprocal(float x, float y)
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
-__device__ inline
-complex<float> catanhf(complex<float> z)
-{
+__device__ inline complex<float> catanhf(complex<float> z) {
   float x, y, ax, ay, rx, ry;
-  const volatile float pio2_lo = 6.1232339957367659e-17; /*  0x11a62633145c07.0p-106 */
-  const float pio2_hi = 1.5707963267948966e0;/*  0x1921fb54442d18.0p-52 */
-
+  const volatile float pio2_lo =
+      6.1232339957367659e-17;                 /*  0x11a62633145c07.0p-106 */
+  const float pio2_hi = 1.5707963267948966e0; /*  0x1921fb54442d18.0p-52 */
 
   x = z.real();
   y = z.imag();
   ax = fabsf(x);
   ay = fabsf(y);
 
+  if (y == 0 && ax <= 1) return (complex<float>(atanhf(x), y));
 
-  if (y == 0 && ax <= 1)
-    return (complex<float>(atanhf(x), y));
-
-  if (x == 0)
-    return (complex<float>(x, atanf(y)));
+  if (x == 0) return (complex<float>(x, atanf(y)));
 
   if (isnan(x) || isnan(y)) {
-    if (isinf(x))
-      return (complex<float>(copysignf(0, x), y + y));
+    if (isinf(x)) return (complex<float>(copysignf(0, x), y + y));
     if (isinf(y))
-      return (complex<float>(copysignf(0, x),
-			     copysignf(pio2_hi + pio2_lo, y)));
+      return (complex<float>(copysignf(0, x), copysignf(pio2_hi + pio2_lo, y)));
     return (complex<float>(x + 0.0f + (y + 0.0f), x + 0.0f + (y + 0.0f)));
   }
 
   const float RECIP_EPSILON = 1.0f / FLT_EPSILON;
   if (ax > RECIP_EPSILON || ay > RECIP_EPSILON)
     return (complex<float>(real_part_reciprocal(x, y),
-			   copysignf(pio2_hi + pio2_lo, y)));
+                           copysignf(pio2_hi + pio2_lo, y)));
 
   const float SQRT_3_EPSILON = 5.9801995673e-4; /*  0x9cc471.0p-34 */
   if (ax < SQRT_3_EPSILON / 2 && ay < SQRT_3_EPSILON / 2) {
@@ -438,57 +393,48 @@ complex<float> catanhf(complex<float> z)
   return (complex<float>(copysignf(rx, x), copysignf(ry, y)));
 }
 
-__device__ inline
-complex<float>catanf(complex<float> z){
+__device__ inline complex<float> catanf(complex<float> z) {
   complex<float> w = catanhf(complex<float>(z.imag(), z.real()));
   return (complex<float>(w.imag(), w.real()));
 }
 #endif
 
-} // namespace complex
+}  // namespace complex
 
-} // namespace detail
-
+}  // namespace detail
 
 template <>
-__device__
-inline complex<float> acos(const complex<float>& z){
+__device__ inline complex<float> acos(const complex<float>& z) {
   return detail::complex::cacosf(z);
 }
 
 template <>
-__device__
-inline complex<float> asin(const complex<float>& z){
+__device__ inline complex<float> asin(const complex<float>& z) {
   return detail::complex::casinf(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__
-inline complex<float> atan(const complex<float>& z){
+__device__ inline complex<float> atan(const complex<float>& z) {
   return detail::complex::catanf(z);
 }
 #endif
 
 template <>
-__device__
-inline complex<float> acosh(const complex<float>& z){
+__device__ inline complex<float> acosh(const complex<float>& z) {
   return detail::complex::cacoshf(z);
 }
 
-
 template <>
-__device__
-inline complex<float> asinh(const complex<float>& z){
+__device__ inline complex<float> asinh(const complex<float>& z) {
   return detail::complex::casinhf(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__
-inline complex<float> atanh(const complex<float>& z){
+__device__ inline complex<float> atanh(const complex<float>& z) {
   return detail::complex::catanhf(z);
 }
 #endif
 
-} // namespace thrust
+}  // namespace thrust

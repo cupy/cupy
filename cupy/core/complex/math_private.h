@@ -30,127 +30,114 @@
  *    lib/msun/src/math_private.h
  */
 
-namespace thrust{
+namespace thrust {
 
 const float FLT_MIN = 1.17549435e-38F;
 const float FLT_MAX = 3.40282347e+38F;
-const float FLT_EPSILON =  1.19209290e-07F;
+const float FLT_EPSILON = 1.19209290e-07F;
 const int FLT_MAX_EXP = 128;
 const int FLT_MANT_DIG = 24;
 
-const double DBL_MIN =  2.2250738585072014e-308;
+const double DBL_MIN = 2.2250738585072014e-308;
 const double DBL_MAX = 1.7976931348623157e+308;
 const double DBL_EPSILON = 2.2204460492503131e-16;
 const int DBL_MAX_EXP = 1024;
 const int DBL_MANT_DIG = 53;
 
-namespace detail{
-namespace complex{
+namespace detail {
+namespace complex {
 
 typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
 
-typedef union
-{
+typedef union {
   float value;
   uint32_t word;
 } ieee_float_shape_type;
-  
-__device__
-inline void get_float_word(uint32_t & i, float d){
+
+__device__ inline void get_float_word(uint32_t& i, float d) {
   ieee_float_shape_type gf_u;
   gf_u.value = (d);
   (i) = gf_u.word;
 }
 
-__device__
-inline void get_float_word(int32_t & i, float d){
+__device__ inline void get_float_word(int32_t& i, float d) {
   ieee_float_shape_type gf_u;
   gf_u.value = (d);
   (i) = gf_u.word;
 }
 
-__device__
-inline void set_float_word(float & d, uint32_t i){
+__device__ inline void set_float_word(float& d, uint32_t i) {
   ieee_float_shape_type sf_u;
   sf_u.word = (i);
   (d) = sf_u.value;
 }
 
 // Assumes little endian ordering
-typedef union
-{
+typedef union {
   double value;
-  struct
-  {
+  struct {
     uint32_t lsw;
     uint32_t msw;
   } parts;
-  struct
-  {
+  struct {
     uint64_t w;
   } xparts;
 } ieee_double_shape_type;
-  
-__device__ inline
-void get_high_word(uint32_t & i,double d){
+
+__device__ inline void get_high_word(uint32_t& i, double d) {
   ieee_double_shape_type gh_u;
   gh_u.value = (d);
-  (i) = gh_u.parts.msw;                                   
+  (i) = gh_u.parts.msw;
 }
-  
+
 /* Set the more significant 32 bits of a double from an int.  */
-__device__ inline
-void set_high_word(double & d, uint32_t v){
+__device__ inline void set_high_word(double& d, uint32_t v) {
   ieee_double_shape_type sh_u;
   sh_u.value = (d);
   sh_u.parts.msw = (v);
   (d) = sh_u.value;
 }
-  
-  
-__device__ inline
-void  insert_words(double & d, uint32_t ix0, uint32_t ix1){
+
+__device__ inline void insert_words(double& d, uint32_t ix0, uint32_t ix1) {
   ieee_double_shape_type iw_u;
   iw_u.parts.msw = (ix0);
   iw_u.parts.lsw = (ix1);
   (d) = iw_u.value;
 }
-  
+
 /* Get two 32 bit ints from a double.  */
-__device__ inline
-void  extract_words(uint32_t & ix0,uint32_t & ix1, double d){
-  ieee_double_shape_type ew_u;
-  ew_u.value = (d);
-  (ix0) = ew_u.parts.msw;
-  (ix1) = ew_u.parts.lsw;
-}
-  
-/* Get two 32 bit ints from a double.  */
-__device__ inline
-void  extract_words(int32_t & ix0,int32_t & ix1, double d){
+__device__ inline void extract_words(uint32_t& ix0, uint32_t& ix1, double d) {
   ieee_double_shape_type ew_u;
   ew_u.value = (d);
   (ix0) = ew_u.parts.msw;
   (ix1) = ew_u.parts.lsw;
 }
 
-template <typename T> inline __device__ T infinity();
+/* Get two 32 bit ints from a double.  */
+__device__ inline void extract_words(int32_t& ix0, int32_t& ix1, double d) {
+  ieee_double_shape_type ew_u;
+  ew_u.value = (d);
+  (ix0) = ew_u.parts.msw;
+  (ix1) = ew_u.parts.lsw;
+}
 
-template <> inline __device__ float infinity<float>()
-{
+template <typename T>
+inline __device__ T infinity();
+
+template <>
+inline __device__ float infinity<float>() {
   float res;
   set_float_word(res, 0x7f800000);
   return res;
 }
 
-
-template <> inline __device__ double infinity<double>()
-{
+template <>
+inline __device__ double infinity<double>() {
   double res;
-  insert_words(res, 0x7ff00000,0);
+  insert_words(res, 0x7ff00000, 0);
   return res;
 }
 
@@ -172,10 +159,9 @@ using ::isnan;
 using ::signbit;
 using ::isfinite;
 
+}  // namespace complex
 
-} // namespace complex
-
-} // namespace detail
+}  // namespace detail
 
 using ::abs;
 using ::log;
@@ -195,4 +181,4 @@ using ::isnan;
 using ::signbit;
 using ::isfinite;
 
-} // namespace thrust
+}  // namespace thrust

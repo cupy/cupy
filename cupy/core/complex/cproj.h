@@ -15,25 +15,25 @@
  *  limitations under the License.
  */
 
-namespace thrust{
-namespace detail{
-namespace complex{
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<float> cprojf(const complex<float>& z){
-  if(!isinf(z.real()) && !isinf(z.imag())){
+__device__ inline complex<float> cprojf(const complex<float>& z) {
+  if (!isinf(z.real()) && !isinf(z.imag())) {
     return z;
-  }else{
+  } else {
     // std::numeric_limits<T>::infinity() doesn't run on the GPU
     return complex<float>(infinity<float>(), copysignf(0.0, z.imag()));
   }
 }
 
-__device__ inline complex<double> cproj(const complex<double>& z){
-  if(!isinf(z.real()) && !isinf(z.imag())){
+__device__ inline complex<double> cproj(const complex<double>& z) {
+  if (!isinf(z.real()) && !isinf(z.imag())) {
     return z;
-  }else{
+  } else {
     // numeric_limits<T>::infinity() doesn't run on the GPU
     return complex<double>(infinity<double>(), copysign(0.0, z.imag()));
   }
@@ -41,19 +41,19 @@ __device__ inline complex<double> cproj(const complex<double>& z){
 }
 }
 
-template <typename T> __device__
-inline thrust::complex<T> proj(const thrust::complex<T>& z){
+template <typename T>
+__device__ inline thrust::complex<T> proj(const thrust::complex<T>& z) {
   return detail::complex::cproj(z);
 }
 
-template <> __device__
-inline thrust::complex<double> proj(const thrust::complex<double>& z){
+template <>
+__device__ inline thrust::complex<double> proj(
+    const thrust::complex<double>& z) {
   return detail::complex::cproj(z);
 }
 
-template <> __device__
-inline thrust::complex<float> proj(const thrust::complex<float>& z){
+template <>
+__device__ inline thrust::complex<float> proj(const thrust::complex<float>& z) {
   return detail::complex::cprojf(z);
 }
-
 }

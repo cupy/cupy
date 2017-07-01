@@ -43,40 +43,36 @@
 
 /* adapted from FreeBSDs msun:*/
 
-namespace thrust{
-namespace detail{
-namespace complex{
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
 /* round down to 8 = 24/3 bits */
-__device__ inline
-float trim(float x){
+__device__ inline float trim(float x) {
   uint32_t hx;
   get_float_word(hx, x);
   hx &= 0xffff0000;
   float ret;
-  set_float_word(ret,hx);
+  set_float_word(ret, hx);
   return ret;
 }
 
-
-__device__ inline
-complex<float> clogf(const complex<float>& z){
-
+__device__ inline complex<float> clogf(const complex<float>& z) {
   // Adapted from FreeBSDs msun
   float x, y;
   float ax, ay;
   float x0, y0, x1, y1, x2, y2, t, hm1;
   float val[12];
-  int i, sorted;	
+  int i, sorted;
   const float e = 2.7182818284590452354f;
 
   x = z.real();
   y = z.imag();
 
   /* Handle NaNs using the general formula to mix them right. */
-  if (x != x || y != y){
+  if (x != x || y != y) {
     return (complex<float>(::log(norm(z)), ::atan2(y, x)));
   }
 
@@ -97,11 +93,11 @@ complex<float> clogf(const complex<float>& z){
    */
   // For high values of ay -> hypotf(FLT_MAX,ay) = inf
   // We expect that for values at or below ay = 1e34f this should not happen
-  if (ay > 1e34f){ 
+  if (ay > 1e34f) {
     return (complex<float>(::log(hypotf(x / e, y / e)) + 1.0f, ::atan2(y, x)));
   }
   if (ax == 1.f) {
-    if (ay < 1e-19f){
+    if (ay < 1e-19f) {
       return (complex<float>((ay * 0.5f) * ay, ::atan2(y, x)));
     }
     return (complex<float>(log1pf(ay * ay) * 0.5f, ::atan2(y, x)));
@@ -111,23 +107,24 @@ complex<float> clogf(const complex<float>& z){
    * Because atan2 and hypot conform to C99, this also covers all the
    * edge cases when x or y are 0 or infinite.
    */
-  if (ax < 1e-6f || ay < 1e-6f || ax > 1e6f || ay > 1e6f){
+  if (ax < 1e-6f || ay < 1e-6f || ax > 1e6f || ay > 1e6f) {
     return (complex<float>(::log(hypotf(x, y)), ::atan2(y, x)));
   }
 
-  /* 
+  /*
    * From this point on, we don't need to worry about underflow or
    * overflow in calculating ax*ax or ay*ay.
    */
 
   /* Some easy cases. */
 
-  if (ax >= 1.0f){
-    return (complex<float>(log1pf((ax-1.f)*(ax+1.f) + ay*ay) * 0.5f, atan2(y, x)));
+  if (ax >= 1.0f) {
+    return (complex<float>(log1pf((ax - 1.f) * (ax + 1.f) + ay * ay) * 0.5f,
+                           atan2(y, x)));
   }
 
-  if (ax*ax + ay*ay <= 0.7f){
-    return (complex<float>(::log(ax*ax + ay*ay) * 0.5f, ::atan2(y, x)));
+  if (ax * ax + ay * ay <= 0.7f) {
+    return (complex<float>(::log(ax * ax + ay * ay) * 0.5f, ::atan2(y, x)));
   }
 
   /*
@@ -135,59 +132,56 @@ complex<float> clogf(const complex<float>& z){
    * moderately close to 1.
    */
 
-
   x0 = trim(ax);
-  ax = ax-x0;
+  ax = ax - x0;
   x1 = trim(ax);
-  x2 = ax-x1;
+  x2 = ax - x1;
   y0 = trim(ay);
-  ay = ay-y0;
+  ay = ay - y0;
   y1 = trim(ay);
-  y2 = ay-y1;
+  y2 = ay - y1;
 
-  val[0] = x0*x0;
-  val[1] = y0*y0;
-  val[2] = 2*x0*x1;
-  val[3] = 2*y0*y1;
-  val[4] = x1*x1;
-  val[5] = y1*y1;
-  val[6] = 2*x0*x2;
-  val[7] = 2*y0*y2;
-  val[8] = 2*x1*x2;
-  val[9] = 2*y1*y2;
-  val[10] = x2*x2;
-  val[11] = y2*y2;
+  val[0] = x0 * x0;
+  val[1] = y0 * y0;
+  val[2] = 2 * x0 * x1;
+  val[3] = 2 * y0 * y1;
+  val[4] = x1 * x1;
+  val[5] = y1 * y1;
+  val[6] = 2 * x0 * x2;
+  val[7] = 2 * y0 * y2;
+  val[8] = 2 * x1 * x2;
+  val[9] = 2 * y1 * y2;
+  val[10] = x2 * x2;
+  val[11] = y2 * y2;
 
   /* Bubble sort. */
 
   do {
     sorted = 1;
-    for (i=0;i<11;i++) {
-      if (val[i] < val[i+1]) {
-	sorted = 0;
-	t = val[i];
-	val[i] = val[i+1];
-	val[i+1] = t;
+    for (i = 0; i < 11; i++) {
+      if (val[i] < val[i + 1]) {
+        sorted = 0;
+        t = val[i];
+        val[i] = val[i + 1];
+        val[i + 1] = t;
       }
     }
   } while (!sorted);
 
   hm1 = -1;
-  for (i=0;i<12;i++){
+  for (i = 0; i < 12; i++) {
     hm1 += val[i];
   }
   return (complex<float>(0.5f * log1pf(hm1), atan2(y, x)));
 }
 
-} // namespace complex
+}  // namespace complex
 
-} // namespace detail
+}  // namespace detail
 
 template <>
-__device__
-inline complex<float> log(const complex<float>& z){
+__device__ inline complex<float> log(const complex<float>& z) {
   return detail::complex::clogf(z);
 }
 
-} // namespace thrust
-    
+}  // namespace thrust

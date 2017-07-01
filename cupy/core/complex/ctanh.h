@@ -85,14 +85,13 @@
  *   precision.  I also handle large x differently.
  */
 
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
-__device__ inline
-complex<double> ctanh(const complex<double>& z){
+__device__ inline complex<double> ctanh(const complex<double>& z) {
   double x, y;
   double t, beta, s, rho, denom;
   uint32_t hx, ix, lx;
@@ -120,9 +119,9 @@ complex<double> ctanh(const complex<double>& z){
    * y is infinite.
    */
   if (ix >= 0x7ff00000) {
-    if ((ix & 0xfffff) | lx)	/* x is NaN */
+    if ((ix & 0xfffff) | lx) /* x is NaN */
       return (complex<double>(x, (y == 0 ? y : x * y)));
-    set_high_word(x, hx - 0x40000000);	/* x = copysign(1, x) */
+    set_high_word(x, hx - 0x40000000); /* x = copysign(1, x) */
     return (complex<double>(x, copysign(0.0, isinf(y) ? y : sin(y) * cos(y))));
   }
 
@@ -130,65 +129,58 @@ complex<double> ctanh(const complex<double>& z){
    * ctanh(x + i NAN) = NaN + i NaN
    * ctanh(x +- i Inf) = NaN + i NaN
    */
-  if (!isfinite(y))
-    return (complex<double>(y - y, y - y));
+  if (!isfinite(y)) return (complex<double>(y - y, y - y));
 
   /*
    * ctanh(+-huge + i +-y) ~= +-1 +- i 2sin(2y)/exp(2x), using the
    * approximation sinh^2(huge) ~= exp(2*huge) / 4.
    * We use a modified formula to avoid spurious overflow.
    */
-  if (ix >= 0x40360000) {	/* x >= 22 */
+  if (ix >= 0x40360000) { /* x >= 22 */
     double exp_mx = exp(-fabs(x));
     return (complex<double>(copysign(1.0, x),
-			    4.0 * sin(y) * cos(y) * exp_mx * exp_mx));
+                            4.0 * sin(y) * cos(y) * exp_mx * exp_mx));
   }
 
   /* Kahan's algorithm */
   t = tan(y);
-  beta = 1.0 + t * t;	/* = 1 / cos^2(y) */
+  beta = 1.0 + t * t; /* = 1 / cos^2(y) */
   s = sinh(x);
-  rho = sqrt(1.0 + s * s);	/* = cosh(x) */
+  rho = sqrt(1.0 + s * s); /* = cosh(x) */
   denom = 1.0 + beta * s * s;
   return (complex<double>((beta * rho * s) / denom, t / denom));
 }
 
-__device__ inline
-complex<double> ctan(complex<double> z){
+__device__ inline complex<double> ctan(complex<double> z) {
   /* ctan(z) = -I * ctanh(I * z) */
   z = ctanh(complex<double>(-z.imag(), z.real()));
   return (complex<double>(z.imag(), -z.real()));
 }
 
-} // namespace complex
+}  // namespace complex
 
-} // namespace detail
-
+}  // namespace detail
 
 template <typename ValueType>
-__device__
-inline complex<ValueType> tan(const complex<ValueType>& z){
-  return sin(z)/cos(z);
+__device__ inline complex<ValueType> tan(const complex<ValueType>& z) {
+  return sin(z) / cos(z);
 }
 
 template <typename ValueType>
-__device__
-inline complex<ValueType> tanh(const complex<ValueType>& z){
+__device__ inline complex<ValueType> tanh(const complex<ValueType>& z) {
   // This implementation seems better than the simple sin/cos
-  return (thrust::exp(ValueType(2)*z)-ValueType(1))/
-    (thrust::exp(ValueType(2)*z)+ValueType(1));
+  return (thrust::exp(ValueType(2) * z) - ValueType(1)) /
+         (thrust::exp(ValueType(2) * z) + ValueType(1));
 }
 
 template <>
-__device__
-inline complex<double> tan(const complex<double>& z){
+__device__ inline complex<double> tan(const complex<double>& z) {
   return detail::complex::ctan(z);
 }
-  
+
 template <>
-__device__
-inline complex<double> tanh(const complex<double>& z){
+__device__ inline complex<double> tanh(const complex<double>& z) {
   return detail::complex::ctanh(z);
 }
-  
-} // namespace thrust
+
+}  // namespace thrust

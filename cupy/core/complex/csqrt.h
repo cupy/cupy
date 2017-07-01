@@ -46,14 +46,13 @@
  *    freebsd/lib/msun/src/s_csqrt.c
  */
 
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
-__device__ inline
-complex<double> csqrt(const complex<double>& z){
+__device__ inline complex<double> csqrt(const complex<double>& z) {
   complex<double> result;
   double a, b;
   double t;
@@ -66,13 +65,11 @@ complex<double> csqrt(const complex<double>& z){
   b = z.imag();
 
   /* Handle special cases. */
-  if (z == 0.0)
-    return (complex<double>(0.0, b));
-  if (isinf(b))
-    return (complex<double>(infinity<double>(), b));
+  if (z == 0.0) return (complex<double>(0.0, b));
+  if (isinf(b)) return (complex<double>(infinity<double>(), b));
   if (isnan(a)) {
-    t = (b - b) / (b - b);	/* raise invalid if b is not a NaN */
-    return (complex<double>(a, t));	/* return NaN + NaN i */
+    t = (b - b) / (b - b);          /* raise invalid if b is not a NaN */
+    return (complex<double>(a, t)); /* return NaN + NaN i */
   }
   if (isinf(a)) {
     /*
@@ -100,13 +97,12 @@ complex<double> csqrt(const complex<double>& z){
     a *= 0.25;
     b *= 0.25;
     scale = 1;
-  }else if (fabs(a) <= low_thresh && fabs(b) <= low_thresh) {
+  } else if (fabs(a) <= low_thresh && fabs(b) <= low_thresh) {
     /* Scale to avoid underflow. */
     a *= 4.0;
     b *= 4.0;
     scale = 2;
   }
-	
 
   /* Algorithm 312, CACM vol 10, Oct 1967. */
   if (a >= 0.0) {
@@ -125,21 +121,19 @@ complex<double> csqrt(const complex<double>& z){
   else
     return (result);
 }
-      
-} // namespace complex
 
-} // namespace detail
+}  // namespace complex
+
+}  // namespace detail
 
 template <typename ValueType>
-__device__
-inline complex<ValueType> sqrt(const complex<ValueType>& z){
-  return thrust::polar(::sqrt(thrust::abs(z)),thrust::arg(z)/ValueType(2));
+__device__ inline complex<ValueType> sqrt(const complex<ValueType>& z) {
+  return thrust::polar(::sqrt(thrust::abs(z)), thrust::arg(z) / ValueType(2));
 }
 
 template <>
-__device__
-inline complex<double> sqrt(const complex<double>& z){
+__device__ inline complex<double> sqrt(const complex<double>& z) {
   return detail::complex::csqrt(z);
 }
 
-} // namespace thrust
+}  // namespace thrust

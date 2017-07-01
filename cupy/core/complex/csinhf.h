@@ -45,20 +45,17 @@
  *    lib/msun/src/s_csinhf.c
  */
 
-
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
-__device__ inline
-complex<float> csinhf(const complex<float>& z){
-
+__device__ inline complex<float> csinhf(const complex<float>& z) {
   float x, y, h;
   uint32_t hx, hy, ix, iy;
 
-  const float huge = 1.70141183460469231731687303716e+38; //0x1p127;
+  const float huge = 1.70141183460469231731687303716e+38;  // 0x1p127;
 
   x = z.real();
   y = z.imag();
@@ -70,9 +67,8 @@ complex<float> csinhf(const complex<float>& z){
   iy = 0x7fffffff & hy;
 
   if (ix < 0x7f800000 && iy < 0x7f800000) {
-    if (iy == 0)
-      return (complex<float>(sinhf(x), y));
-    if (ix < 0x41100000)	/* small x: normal case */
+    if (iy == 0) return (complex<float>(sinhf(x), y));
+    if (ix < 0x41100000) /* small x: normal case */
       return (complex<float>(sinhf(x) * cosf(y), coshf(x) * sinf(y)));
 
     /* |x| >= 9, so cosh(x) ~= exp(|x|) */
@@ -95,8 +91,7 @@ complex<float> csinhf(const complex<float>& z){
     return (complex<float>(copysignf(0, x * (y - y)), y - y));
 
   if (iy == 0 && ix >= 0x7f800000) {
-    if ((hx & 0x7fffff) == 0)
-      return (complex<float>(x, y));
+    if ((hx & 0x7fffff) == 0) return (complex<float>(x, y));
     return (complex<float>(x, copysignf(0.0f, y)));
   }
 
@@ -104,34 +99,30 @@ complex<float> csinhf(const complex<float>& z){
     return (complex<float>(y - y, x * (y - y)));
 
   if (ix >= 0x7f800000 && (hx & 0x7fffff) == 0) {
-    if (iy >= 0x7f800000)
-      return (complex<float>(x * x, x * (y - y)));
+    if (iy >= 0x7f800000) return (complex<float>(x * x, x * (y - y)));
     return (complex<float>(x * cosf(y), infinity<float>() * sinf(y)));
   }
 
   return (complex<float>((x * x) * (y - y), (x + x) * (y - y)));
 }
 
-__device__ inline
-complex<float> csinf(complex<float> z){
+__device__ inline complex<float> csinf(complex<float> z) {
   z = csinhf(complex<float>(-z.imag(), z.real()));
   return (complex<float>(z.imag(), -z.real()));
 }
-      
-} // namespace complex
 
-} // namespace detail
-  
+}  // namespace complex
+
+}  // namespace detail
+
 template <>
-__device__
-inline complex<float> sin(const complex<float>& z){
+__device__ inline complex<float> sin(const complex<float>& z) {
   return detail::complex::csinf(z);
 }
 
 template <>
-__device__
-inline complex<float> sinh(const complex<float>& z){
+__device__ inline complex<float> sinh(const complex<float>& z) {
   return detail::complex::csinhf(z);
 }
 
-} // namespace thrust
+}  // namespace thrust

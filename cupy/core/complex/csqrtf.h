@@ -46,15 +46,13 @@
  *    freebsd/lib/msun/src/s_csqrt.c
  */
 
-
-namespace thrust{
-namespace detail{
-namespace complex{		      	
+namespace thrust {
+namespace detail {
+namespace complex {
 
 using thrust::complex;
 
-__device__ inline
-complex<float> csqrtf(const complex<float>& z){
+__device__ inline complex<float> csqrtf(const complex<float>& z) {
   float a = z.real(), b = z.imag();
   float t;
   int scale;
@@ -64,13 +62,11 @@ complex<float> csqrtf(const complex<float>& z){
   const float THRESH = 1.40949553037932e+38f;
 
   /* Handle special cases. */
-  if (z == 0.0f)
-    return (complex<float>(0, b));
-  if (isinf(b))
-    return (complex<float>(infinity<float>(), b));
+  if (z == 0.0f) return (complex<float>(0, b));
+  if (isinf(b)) return (complex<float>(infinity<float>(), b));
   if (isnan(a)) {
-    t = (b - b) / (b - b);	/* raise invalid if b is not a NaN */
-    return (complex<float>(a, t));	/* return NaN + NaN i */
+    t = (b - b) / (b - b);         /* raise invalid if b is not a NaN */
+    return (complex<float>(a, t)); /* return NaN + NaN i */
   }
   if (isinf(a)) {
     /*
@@ -89,7 +85,7 @@ complex<float> csqrtf(const complex<float>& z){
    * the normal code path below.
    */
 
-  /* 
+  /*
    * Unlike in the FreeBSD code we'll avoid using double precision as
    * not all hardware supports it.
    */
@@ -103,7 +99,7 @@ complex<float> csqrtf(const complex<float>& z){
     a *= 0.25f;
     b *= 0.25f;
     scale = 1;
-  }else if (fabsf(a) <= low_thresh && fabsf(b) <= low_thresh) {
+  } else if (fabsf(a) <= low_thresh && fabsf(b) <= low_thresh) {
     /* Scale to avoid underflow. */
     a *= 4.f;
     b *= 4.f;
@@ -126,16 +122,15 @@ complex<float> csqrtf(const complex<float>& z){
     return (result * 0.5f);
   else
     return (result);
-}      
+}
 
-} // namespace complex
+}  // namespace complex
 
-} // namespace detail
+}  // namespace detail
 
 template <>
-__device__
-inline complex<float> sqrt(const complex<float>& z){
+__device__ inline complex<float> sqrt(const complex<float>& z) {
   return detail::complex::csqrtf(z);
 }
 
-} // namespace thrust
+}  // namespace thrust
