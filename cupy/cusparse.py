@@ -1,4 +1,5 @@
 import atexit
+import collections
 
 import six
 
@@ -7,16 +8,12 @@ from cupy import cuda
 from cupy.cuda import cusparse
 
 
-_handles = {}
+_handles = collections.defaultdict(cusparse.create)
 
 
 def get_handle():
     dev = cuda.get_device_id()
-    if dev in _handles:
-        return _handles[dev]
-    handle = cusparse.create()
-    _handles[dev] = handle
-    return handle
+    return _handles[dev]
 
 
 @atexit.register
