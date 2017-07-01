@@ -15,21 +15,23 @@ python sgemm.py [--gpu GPU_ID] [--m m] [--n n] [--k k]
 
 ### What this demo contains
 
-CuPy arrays can be used without abstractions such as `ElementwiseKernel` if convenient `ndarray` interface is not necessary.
-In this example, we work at the level of linear arrays (`float*`) and `cuLaunchKernel` to call a SGEMM kernel that exploits the predefined memory layout.
+In this example, we work on a SGEMM kernel that requires complete interface to `cuLaunchKernel` (e.g. grid size and size of shared memory), which is not provided by `cupy.ElementwiseKernel`.
+CuPy arrays work regardless of the underlying memory layouts thanks to `ndarray` abstraction.
+As is the case for this example, `ndarray` abstraction does not need to be used if the underlying memory layouts of arrays are ones expected by a kernel.
+Fontran contiguous memory layout is expected by the SGEMM kernel, and the input arrays are forced to be in this layout using `cupy.asfortranarray`.
 
 For compilation, `load_kernel` is used to compile a CUDA code written in `sgemm.cu`.
 This function takes a text of code and name of the kernel as input and returns `cupy.cuda.Function` object.
 The compiled code is cached, and it avoids the compilation process after the first time.
 Also, the CUDA code can be modified at Python level because it is simply a text.
-In this example, C macros that determines distribution of data to threads are specified at runtime.
+In this example, C macros that determine distribution of data to threads are specified at runtime.
 
 Back to `cupy.cuda.Function`, this object allows you to call the kernel with CUDA's `cuLaunchKernel` interface.
 In other words, you have control over grid size, block size, shared memory size and stream id.
-At this level of interface, it becomes straightforward to transfer `.cpp` code that calls CUDA kernels to CuPy code.
+At this level of interface, it becomes straightforward to transfer host `.cu` that calls CUDA kernels to Python.
 
 Some points to note.
 
-1. When writing kernels by yourself, remember to put `extern "C"` on top of the kernel that you want to call from Python.
+1. When writing a kernel by yourself, remember to put `extern "C"` on top of the kernel that you want to call from Python.
 2. When `ndarray` abstraction is not used as is the case in this example, the code behavior can differ depending on memory layout of the input CuPy arrays.
 In that case, it is important to enforce the expected memory layout using functions such as `cupy.ascontigousarray` and `cupy.asfortranarray`.
