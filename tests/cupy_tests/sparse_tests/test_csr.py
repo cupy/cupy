@@ -214,6 +214,11 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocoo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocoo().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsc().toarray()

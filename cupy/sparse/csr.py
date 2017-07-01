@@ -96,7 +96,26 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return cupy.ascontiguousarray(cusparse.csr2dense(self))
 
     # TODO(unno): Implement tobsr
-    # TODO(unno): Implement tocoo
+
+    def tocoo(self, copy=False):
+        """Convert the matrix to COOdinate format.
+
+        Args:
+            copy (bool): If ``False``, it shares data arrays as much as
+                possible.
+
+        Returns:
+            cupy.sparse.coo_matrix: Converte matrix.
+
+        """
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+        else:
+            data = self.data
+            indices = self.indices
+
+        return cusparse.csr2coo(self, data, indices)
 
     def tocsc(self, copy=False):
         """Converts the matrix to Compressed Sparse Column format.
