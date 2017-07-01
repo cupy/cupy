@@ -20,7 +20,7 @@ def get_handle():
 def reset_handles():
     global _handles
     handles = _handles
-    _handles = {}
+    _handles = collections.defaultdict(cusparse.create)
 
     for handle in six.itervalues(handles):
         cusparse.destroy(handle)
