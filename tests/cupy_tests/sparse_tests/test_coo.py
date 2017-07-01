@@ -13,13 +13,13 @@ from cupy import testing
 
 
 def _make(xp, sp, dtype):
-    data = cupy.array([0, 1, 2, 3], dtype)
-    row = cupy.array([0, 0, 1, 2], 'i')
-    col = cupy.array([0, 1, 3, 2], 'i')
+    data = xp.array([0, 1, 2, 3], dtype)
+    row = xp.array([0, 0, 1, 2], 'i')
+    col = xp.array([0, 1, 3, 2], 'i')
     # 0, 1, 0, 0
     # 0, 0, 0, 2
     # 0, 0, 3, 0
-    return cupy.sparse.coo_matrix((data, (row, col)), shape=(3, 4))
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
 @testing.parameterize(*testing.product({
