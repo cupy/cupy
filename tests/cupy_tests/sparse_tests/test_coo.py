@@ -60,6 +60,7 @@ class TestCooMatrix(unittest.TestCase):
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
+    @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
         self.assertEqual(str(self.m), '''  (0, 0)\t0.0
   (0, 1)\t1.0
