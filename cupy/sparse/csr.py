@@ -4,7 +4,9 @@ try:
 except ImportError:
     _scipy_available = False
 
+import cupy
 from cupy import cusparse
+from cupy.sparse import base
 from cupy.sparse import compressed
 from cupy.sparse import csc
 
@@ -57,6 +59,22 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return (x, y)
 
     # TODO(unno): Implement __getitem__
+
+    def __add__(self, other):
+        if cupy.isscalar(other):
+            if other == 0:
+                return self.copy()
+            else:
+                raise NotImplementedError(
+                    'adding a nonzero scalar to a sparse matrix is not '
+                    'supported')
+        elif base.isspmatrix(other):
+            return cusparse.csrgeam(self, other.tocsr())
+        elif base.isdense(other):
+            return self.todense() + other
+        else:
+            return NotImplemented
+
 
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin

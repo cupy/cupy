@@ -1,6 +1,7 @@
 import atexit
 import collections
 
+import numpy
 import six
 
 import cupy
@@ -48,6 +49,13 @@ class MatDescriptor(object):
         cusparse.setMatIndexBase(self.descriptor, base)
 
 
+def _cast_common_type(*xs):
+    dtypes = [x.dtype for x in xs if x is not None]
+    dtype = numpy.find_common_type(dtypes, [])
+    return [x.astype(dtype) if x is not None and x.dtype != dtype else x
+            for x in xs]
+
+
 def _call_cusparse(name, dtype, *args):
     if dtype == 'f':
         prefix = 's'
@@ -57,6 +65,58 @@ def _call_cusparse(name, dtype, *args):
         raise TypeError
     f = getattr(cusparse, prefix + name)
     return f(*args)
+
+
+def csrgeam(a, b, alpha=1, beta=1):
+    """Matrix-matrix addition.
+
+    .. math::
+        C = \\alpha A + \\beta B
+
+    Args:
+        a (cupy.sparse.csr_matrix): Sparse matrix A.
+        b (cupy.sparse.csr_matrix): Sparse matrix B.
+        alpha (float): Coefficient for A.
+        beta (float): Coefficient for B.
+
+    Returns:
+        cupy.sparse.csr_matrix: Result matrix.
+
+    """
+    if a.shape != b.shape:
+        raise ValueError('inconsistent shapes')
+
+    handle = get_handle()
+    m, n = a.shape
+    a, b = _cast_common_type(a, b)
+    nnz = numpy.empty((), 'i')
+    cusparse.setPointerMode(
+        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+
+    c_descr = MatDescriptor.create()
+    c_indptr = cupy.empty(m + 1, 'i')
+
+    cusparse.xcsrgeamNnz(
+        handle, m, n,
+        a._descr.descriptor, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
+        b._descr.descriptor, b.nnz, b.indptr.data.ptr, b.indices.data.ptr,
+        c_descr.descriptor, c_indptr.data.ptr, nnz.ctypes.data)
+
+    c_indices = cupy.empty(int(nnz), 'i')
+    c_data = cupy.empty(int(nnz), a.dtype)
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    _call_cusparse(
+        'csrgeam', a.dtype,
+        handle, m, n, alpha.data,
+        a._descr.descriptor, a.nnz, a.data.data.ptr,
+        a.indptr.data.ptr, a.indices.data.ptr, beta.data,
+        b._descr.descriptor, b.nnz, b.data.data.ptr,
+        b.indptr.data.ptr, b.indices.data.ptr,
+        c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
+        c_indices.data.ptr)
+
+    return cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=a.shape)
 
 
 def csr2dense(x, out=None):
