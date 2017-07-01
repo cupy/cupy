@@ -98,8 +98,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         # To return C-contiguous array, it uses transpose.
         return cusparse.csr2dense(self.T).T
 
-    def _add_sparse(self, other):
-        return cusparse.csrgeam(self.T, other.tocsc().T).T
+    def _add_sparse(self, other, alpha, beta):
+        return cusparse.csrgeam(self.T, other.tocsc().T, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 

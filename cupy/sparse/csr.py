@@ -61,8 +61,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     # TODO(unno): Implement __getitem__
 
-    def _add_sparse(self, other):
-        return cusparse.csrgeam(self, other.tocsr())
+    def _add_sparse(self, other, alpha, beta):
+        return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
 
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
