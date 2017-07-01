@@ -151,7 +151,8 @@ def coosort(x):
     cusparse.xcoosortByRow(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
         P.data.ptr, buf.data.ptr)
-    cusparse.sgthr(
+    _call_cusparse(
+        'gthr', x.dtype,
         handle, nnz, x.data.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 

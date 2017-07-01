@@ -22,6 +22,16 @@ def _make(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make_unordered(xp, sp, dtype):
+    data = xp.array([1, 4, 3, 2], dtype)
+    row = xp.array([0, 2, 1, 0], 'i')
+    col = xp.array([0, 2, 3, 1], 'i')
+    # 1, 2, 0, 0
+    # 0, 0, 0, 3
+    # 0, 0, 4, 0
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -174,6 +184,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
+        return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr_unordered(self, xp, sp):
+        m = _make_unordered(xp, sp, self.dtype)
         return m.tocsr().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
