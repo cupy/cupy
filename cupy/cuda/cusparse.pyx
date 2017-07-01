@@ -6,6 +6,7 @@ cdef extern from "cupy_cusparse.h":
     Status cusparseCreate(Handle *handle)
     Status cusparseCreateMatDescr(MatDescr descr)
     Status cusparseDestroy(Handle handle)
+    Status cusparseDestroyMatDescr(MatDescr descr)
     Status cusparseSetMatIndexBase(MatDescr descr, IndexBase base)
     Status cusparseSetMatType(MatDescr descr, MatrixType type)
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
@@ -208,6 +209,11 @@ cpdef createMatDescr():
 
 cpdef destroy(size_t handle):
     status = cusparseDestroy(<Handle >handle)
+    check_status(status)
+
+
+cpdef destroyMatDescr(size_t descr):
+    status = cusparseDestroyMatDescr(<MatDescr>descr)
     check_status(status)
 
 
