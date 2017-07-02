@@ -1704,7 +1704,7 @@ _elementwise_copy = create_ufunc(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = out0_type(in0)')
-# complex numbers requires out0 = thrust::complex<T>(in0)
+# complex numbers requires out0 = complex<T>(in0)
 
 
 def elementwise_copy(*args, **kwargs):
@@ -3582,7 +3582,7 @@ add = create_arithmetic(
 conj = create_ufunc(
     'cupy_conj',
     ('F->F', 'D->D'),
-    'out0 = thrust::conj(in0)',
+    'out0 = conj(in0)',
     doc='''Return the complex conjugate, element-wise.
 
     .. seealso:: :data:`numpy.conj`
@@ -3593,7 +3593,7 @@ conj = create_ufunc(
 angle = create_ufunc(
     'cupy_angle',
     ('F->f', 'D->d'),
-    'out0 = thrust::arg(in0)',
+    'out0 = arg(in0)',
     doc='''Return the angle of the complex argument.
 
     .. seealso:: :data:`numpy.angle`
