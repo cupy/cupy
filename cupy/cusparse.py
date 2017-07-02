@@ -34,6 +34,13 @@ def _cast_common_type(*xs):
             for x in xs]
 
 
+def _transpose_flag(trans):
+    if trans:
+        return cusparse.CUSPARSE_OPERATION_TRANSPOSE
+    else:
+        return cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+
+
 def _call_cusparse(name, dtype, *args):
     if dtype == 'f':
         prefix = 's'
@@ -43,6 +50,145 @@ def _call_cusparse(name, dtype, *args):
         raise TypeError
     f = getattr(cusparse, prefix + name)
     return f(*args)
+
+
+def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
+    """Matrix-vector product for a CSR-matrix and a dense vector.
+
+    .. math::
+
+       y = \\alpha * op(A) x + \\beta y,
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y.
+        alpha (float): Coefficient for x.
+        beta (float): Coefficient for y.
+        transa (bool): If ``True``, transpose of ``A`` is used.
+
+    Returns:
+        cupy.ndarray: Calculated ``y``.
+
+    """
+    assert a.shape[1] == len(x)
+    a_shape = a.shape if not transa else a.shape[::-1]
+
+    handle = device.get_cusparse_handle()
+    m, n = a_shape
+    a, x, y = _cast_common_type(a, x, y)
+    dtype = a.dtype
+    if y is None:
+        y = cupy.zeros(m, dtype)
+    else:
+        y = cupy.asfortranarray(y)
+    alpha = numpy.array(alpha, dtype).ctypes
+    beta = numpy.array(beta, dtype).ctypes
+    _call_cusparse(
+        'csrmv', dtype,
+        handle, _transpose_flag(transa),
+        m, n, a.nnz, alpha.data, a._descr.descriptor,
+        a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
+        x.data.ptr, beta.data, y.data.ptr)
+
+    return y
+
+
+def csrmm(a, b, c, alpha=1, beta=0, transa=False):
+    """Matrix-matrix product for CSR-matrixes.
+
+    .. math::
+
+       C = \\alpha o_a(A) B + \\beta C
+
+    Args:
+        a (cupy.sparse.csr): Sparse matrix A.
+        b (cupy.ndarray): Dense matrix B.
+        c (cupy.ndarray): Dense matrix C.
+        alpha (float): Coefficient for AB.
+        beta (float): Coefficient for C.
+        transa (bool): If ``True``, transpose of A is used.
+
+    Returns:
+        cupy.ndarray: Calculated C.
+
+    """
+    assert a.ndim == b.ndim == 2
+    a_shape = a.shape if not transa else a.shape[::-1]
+    assert a_shape[1] == b.shape[0]
+
+    handle = device.get_cusparse_handle()
+    m, k = a_shape
+    n = b.shape[1]
+
+    a, b, c = _cast_common_type(a, b, c)
+    if c is None:
+        c = cupy.zeros((m, n), a.dtype, 'F')
+
+    b = cupy.asfortranarray(b)
+    c = cupy.asfortranarray(c)
+    ldb = k
+    ldc = m
+
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    _call_cusparse(
+        'csrmm', a.dtype,
+        handle, _transpose_flag(transa), m, n, k, a.nnz,
+        alpha.data, a._descr.descriptor, a.data.data.ptr,
+        a.indptr.data.ptr, a.indices.data.ptr,
+        b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
+    return c
+
+
+def csrmm2(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
+    """Matrix-matrix product for CSR-matrixes.
+
+    .. math::
+
+       C = \\alpha o_a(A) o_b(B) + \\beta C
+
+    Args:
+        a (cupy.sparse.csr): Sparse matrix A.
+        b (cupy.ndarray): Dense matrix B.
+        c (cupy.ndarray or None): Dense matrix C.
+        alpha (float): Coefficient for AB.
+        beta (float): Coefficient for C.
+        transa (bool): If ``True``, transpose of A is used.
+        transb (bool): If ``True``, transpose of B is used.
+
+    Returns:
+        cupy.ndarray: Calculated C.
+
+    """
+    assert a.ndim == b.ndim == 2
+    a_shape = a.shape if not transa else a.shape[::-1]
+    b_shape = b.shape if not transb else b.shape[::-1]
+    assert a_shape[1] == b_shape[0]
+
+    handle = device.get_cusparse_handle()
+    m, k = a_shape
+    n = b_shape[1]
+
+    a, b, c = _cast_common_type(a, b, c)
+    if c is None:
+        c = cupy.zeros((m, n), a.dtype, 'F')
+
+    b = cupy.asfortranarray(b)
+    c = cupy.asfortranarray(c)
+    ldb = b.shape[0]
+    ldc = c.shape[0]
+    op_a = _transpose_flag(transa)
+    op_b = _transpose_flag(transb)
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    _call_cusparse(
+        'csrmm2', a.dtype,
+        handle, op_a, op_b, m, n, k, a.nnz,
+        alpha.data, a._descr.descriptor, a.data.data.ptr,
+        a.indptr.data.ptr, a.indices.data.ptr,
+        b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
+    return c
 
 
 def csrgeam(a, b, alpha=1, beta=1):
@@ -95,6 +241,63 @@ def csrgeam(a, b, alpha=1, beta=1):
         c_indices.data.ptr)
 
     return cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=a.shape)
+
+
+def csrgemm(a, b, transa=False, transb=False):
+    """Matrix-matrix product for CSR-matrix.
+
+    math::
+       C = op(A) op(B),
+
+    Args:
+        a (cupy.sparse.csr_matrix): Sparse matrix A.
+        b (cupy.sparse.csr_matrix): Sparse matrix B.
+        transa (bool): If ``True``, transpose of A is used.
+        transb (bool): If ``True``, transpose of B is used.
+
+    Returns:
+        cupy.sparse.csr_matrix: Calculated C.
+
+    """
+    assert a.ndim == b.ndim == 2
+    a_shape = a.shape if not transa else a.shape[::-1]
+    b_shape = b.shape if not transb else b.shape[::-1]
+    assert a_shape[1] == b_shape[0]
+
+    handle = device.get_cusparse_handle()
+    m, k = a_shape
+    n = b_shape[1]
+
+    a, b = _cast_common_type(a, b)
+
+    op_a = _transpose_flag(transa)
+    op_b = _transpose_flag(transb)
+
+    nnz = numpy.empty((), 'i')
+    cusparse.setPointerMode(
+        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+
+    c_descr = MatDescriptor.create()
+    c_indptr = cupy.empty(m + 1, 'i')
+
+    cusparse.xcsrgemmNnz(
+        handle, op_a, op_b, m, n, k, a._descr.descriptor, a.nnz,
+        a.indptr.data.ptr, a.indices.data.ptr, b._descr.descriptor, b.nnz,
+        b.indptr.data.ptr, b.indices.data.ptr, c_descr.descriptor,
+        c_indptr.data.ptr, nnz.ctypes.data)
+
+    c_indices = cupy.empty(int(nnz), 'i')
+    c_data = cupy.empty(int(nnz), a.dtype)
+    _call_cusparse(
+        'csrgemm', a.dtype,
+        handle, op_a, op_b, m, n, k, a._descr.descriptor, a.nnz,
+        a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
+        b._descr.descriptor, b.nnz, b.data.data.ptr, b.indptr.data.ptr,
+        b.indices.data.ptr,
+        c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
+        c_indices.data.ptr)
+
+    return cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
 
 
 def csr2dense(x, out=None):
