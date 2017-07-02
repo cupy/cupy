@@ -258,7 +258,6 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         return m.tocsc().toarray()
 
     # __add__
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -289,7 +288,6 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         return m + n
 
     # __radd__
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_radd_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -307,7 +305,6 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         return n + m
 
     # __sub__
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -338,7 +335,6 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         return m - n
 
     # __rsub__
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rsub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
