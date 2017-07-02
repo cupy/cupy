@@ -117,6 +117,42 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
     def __rsub__(self, other):
         return self._add(other, True, False)
 
+    def __getitem__(self, slices):
+        if isinstance(slices, tuple):
+            slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
+
+        if len(slices) == 2:
+            row, col = slices
+        else:
+            raise IndexError('invalid number of indices')
+
+        if numpy.isscalar(row):
+            i = int(row)
+            if numpy.isscalar(col):
+                j = int(col)
+                return self._get_single(*self._swap(i, j))
+            else:
+                raise ValueError('unsupported indexing')
+        else:
+            raise ValueError('unsupported indexing')
+
+    def _get_single(self, major, minor):
+        start = self.indptr[major]
+        end = self.indptr[major + 1]
+        answer = cupy.zeros((), self.dtype)
+        kern = cupy.ElementwiseKernel(
+            'T d, S ind, int32 minor', 'raw T answer',
+            'if (ind == minor) atomicAdd(&answer[0], d);',
+            'compress_getitem')
+        kern(self.data[start:end], self.indices[start:end], minor, answer)
+        return answer[()]
+
     def get_shape(self):
         """Returns the shape of the matrix.
 
