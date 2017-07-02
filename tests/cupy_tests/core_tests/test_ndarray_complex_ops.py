@@ -75,7 +75,7 @@ class TestRealImag(unittest.TestCase):
         return x
 
     @testing.for_dtypes('df', name='dtype')
-    @testing.numpy_cupy_raises(exception_class=TypeError)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_imag_setter_raise(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
         if numpy.dtype(dtype).kind == 'c':

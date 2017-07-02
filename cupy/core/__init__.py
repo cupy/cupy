@@ -31,8 +31,8 @@ from cupy.core.core import equal  # NOQA
 from cupy.core.core import floor_divide  # NOQA
 from cupy.core.core import greater  # NOQA
 from cupy.core.core import greater_equal  # NOQA
-from cupy.core.core import invert  # NOQA
 from cupy.core.core import imag  # NOQA
+from cupy.core.core import invert  # NOQA
 from cupy.core.core import left_shift  # NOQA
 from cupy.core.core import less  # NOQA
 from cupy.core.core import less_equal  # NOQA

@@ -4,8 +4,6 @@ from cupy import cuda
 
 from cupy.cuda cimport function
 
-from cupy.core.core cimport c_cupy_complex_available
-
 
 cdef struct _CArray:
     void* data
@@ -77,39 +75,38 @@ cdef str _header_source = None
 cpdef str _get_header_source():
     global _header_source
     if _header_source is None:
+        files = [
+            'complex/complex.h',
+            'complex/math_private.h',
+            'complex/complex_inl.h',
+            'complex/arithmetic.h',
+            'complex/cproj.h',
+            'complex/cexp.h',
+            'complex/cexpf.h',
+            'complex/clog.h',
+            'complex/clogf.h',
+            'complex/cpow.h',
+            'complex/cpowf.h',
+            'complex/ccosh.h',
+            'complex/ccoshf.h',
+            'complex/csinh.h',
+            'complex/csinhf.h',
+            'complex/ctanh.h',
+            'complex/ctanhf.h',
+            'complex/csqrt.h',
+            'complex/csqrtf.h',
+            'complex/catrig.h',
+            'complex/catrigf.h',
+            'complex.cuh',
+            'carray.cuh',
+        ]
         dirname = os.path.dirname(__file__)
-        header_path = os.path.join(dirname, 'carray.cuh')
-        with open(header_path) as header_file:
-            _header_source = header_file.read()
-        if c_cupy_complex_available:
-            files = [
-                'complex/complex.h',
-                'complex/math_private.h',
-                'complex/complex_inl.h',
-                'complex/arithmetic.h',
-                'complex/cproj.h',
-                'complex/cexp.h',
-                'complex/cexpf.h',
-                'complex/clog.h',
-                'complex/clogf.h',
-                'complex/cpow.h',
-                'complex/cpowf.h',
-                'complex/ccosh.h',
-                'complex/ccoshf.h',
-                'complex/csinh.h',
-                'complex/csinhf.h',
-                'complex/ctanh.h',
-                'complex/ctanhf.h',
-                'complex/csqrt.h',
-                'complex/csqrtf.h',
-                'complex/catrig.h',
-                'complex/catrigf.h',
-                'complex.cuh',
-            ]
-            for file_path in files:
-                header_path = os.path.join(dirname, file_path)
-                with open(header_path) as header_file:
-                    _header_source += header_file.read()
+        source = []
+        for file_path in files:
+            header_path = os.path.join(dirname, file_path)
+            with open(header_path) as header_file:
+                source.append(header_file.read())
+            _header_source = '\n'.join(source)
     return _header_source
 
 

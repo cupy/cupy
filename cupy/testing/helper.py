@@ -480,9 +480,6 @@ def for_dtypes(dtypes, name='dtype'):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             for dtype in dtypes:
-                if not cupy.cupy_complex_available and \
-                        numpy.dtype(dtype).kind == 'c':
-                    continue
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
@@ -492,6 +489,7 @@ def for_dtypes(dtypes, name='dtype'):
 
         return test_func
     return decorator
+
 
 _complex_dtypes = (numpy.complex64, numpy.complex128)
 _regular_float_dtypes = (numpy.float64, numpy.float32)

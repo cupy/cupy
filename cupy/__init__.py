@@ -37,8 +37,6 @@ from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
 
 
-from cupy.core.core import cupy_complex_available
-
 # import class and function
 from cupy.core import ndarray  # NOQA
 
@@ -110,7 +108,6 @@ from numpy import float64  # NOQA
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
-
 
 
 # =============================================================================
@@ -374,10 +371,10 @@ from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
 # TODO(okuta): implement fusion function
-from cupy.core import conj  # NOQA
 from cupy.core import angle  # NOQA
-from cupy.core import real  # NOQA
+from cupy.core import conj  # NOQA
 from cupy.core import imag  # NOQA
+from cupy.core import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
