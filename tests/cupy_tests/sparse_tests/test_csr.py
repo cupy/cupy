@@ -359,6 +359,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         n = xp.arange(12).reshape(3, 4)
         return n - m
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
         m.sort_indices()
