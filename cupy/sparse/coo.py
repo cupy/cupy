@@ -56,6 +56,9 @@ class coo_matrix(sparse_data._data_matrix):
             row = arg1.row
             col = arg1.col
 
+            if shape is None:
+                shape = arg1.shape
+
         else:
             raise ValueError(
                 'Only (data, (row, col)) format is supported')
