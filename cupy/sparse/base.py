@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import cupy
 from cupy.core import core
 
 
@@ -96,7 +97,14 @@ class spmatrix(object):
         return self.tocsr().__mul__(other)
 
     def __rmul__(self, other):
-        return self.tocsr().__rmul__(other)
+        if cupy.isscalar(other) or isdense(other) and other.ndim == 0:
+            return self * other
+        else:
+            try:
+                tr = other.T
+            except AttributeError:
+                return NotImplemented
+            return (self.T * tr).T
 
     def __div__(self, other):
         return self.tocsr().__div__(other)
