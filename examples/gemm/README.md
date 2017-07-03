@@ -32,9 +32,3 @@ Note that `"extern C"` needs to be put on top of the kernel that is called.
 Back to `cupy.cuda.Function`, this object allows you to call the kernel with CUDA's `cuLaunchKernel` interface.
 In other words, you have control over grid size, block size, shared memory size and stream id.
 At this level of interface, it becomes straightforward to replace host `.cu` that calls CUDA kernels with Python code.
-
-Some points to note.
-
-1. When writing a kernel by yourself, remember to put `extern "C"` on top of the kernel that you want to call from Python.
-2. When `ndarray` abstraction is not used as is the case in this example, the code behavior can differ depending on memory layout of the input CuPy arrays.
-In that case, it is important to enforce the expected memory layout using functions such as `cupy.ascontigousarray` and `cupy.asfortranarray`.
