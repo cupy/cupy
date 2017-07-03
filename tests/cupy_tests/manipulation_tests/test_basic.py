@@ -1,4 +1,5 @@
 import itertools
+import six
 import unittest
 
 import numpy
@@ -46,15 +47,13 @@ class TestBasic(unittest.TestCase):
         xp.copyto(a, b, where=c)
         return a
 
-    def _check_copyto_where_multigpu(self, dtype, ngpus):
+    def _check_copyto_where_multigpu_raises(self, dtype, ngpus):
         def get_numpy():
             a = testing.shaped_arange((2, 3, 4), numpy, dtype)
             b = testing.shaped_reverse_arange((2, 3, 4), numpy, dtype)
             c = testing.shaped_arange((2, 3, 4), numpy, '?')
             numpy.copyto(a, b, where=c)
             return a
-
-        expected = get_numpy()
 
         for dev1, dev2, dev3, dev4 in itertools.product(*[range(ngpus)] * 4):
             if dev1 == dev2 == dev3 == dev4:
@@ -69,24 +68,15 @@ class TestBasic(unittest.TestCase):
             with cuda.Device(dev3):
                 c = testing.shaped_arange((2, 3, 4), cupy, '?')
             with cuda.Device(dev4):
-                cupy.copyto(a, b, where=c)
-
-            testing.assert_array_equal(expected, a.get())
+                with six.assertRaisesRegex(
+                        self, ValueError,
+                        '^Array device must be same as the current device'):
+                    cupy.copyto(a, b, where=c)
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
-    def test_copyto_where_multigpu_2(self, dtype):
-        self._check_copyto_where_multigpu(dtype, 2)
-
-    @testing.multi_gpu(3)
-    @testing.for_all_dtypes()
-    def test_copyto_where_multigpu_3(self, dtype):
-        self._check_copyto_where_multigpu(dtype, 3)
-
-    @testing.multi_gpu(4)
-    @testing.for_all_dtypes()
-    def test_copyto_where_multigpu_4(self, dtype):
-        self._check_copyto_where_multigpu(dtype, 4)
+    def test_copyto_where_multigpu_raises(self, dtype):
+        self._check_copyto_where_multigpu_raises(dtype, 2)
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
