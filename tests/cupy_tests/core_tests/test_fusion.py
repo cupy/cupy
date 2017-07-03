@@ -646,11 +646,7 @@ class TestFusionUfunc(unittest.TestCase):
         ret1 = f(*data)  # Fused
         numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
-    @testing.for_dtypes_combination(
-        [numpy.float16, numpy.float32, numpy.float64,
-         numpy.int8, numpy.int16, numpy.int32, numpy.int64,
-         numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
-         numpy.bool_],
+    @testing.for_all_dtypes_combination(
         names=['src_dtype', 'dst_dtype'], full=True)
     def test_out_arg(self, src_dtype, dst_dtype):
 
