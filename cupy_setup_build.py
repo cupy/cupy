@@ -211,6 +211,14 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
+    if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
+        # clang does not have this option.
+        args = settings.setdefault('extra_link_args', [])
+        args.append('-fopenmp')
+    elif compiler.compiler_type == 'msvc':
+        args = settings.setdefault('extra_link_args', [])
+        args.append('/openmp')
+
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
     # with GCC 5's new ABI.

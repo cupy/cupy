@@ -17,7 +17,7 @@ Matrix and vector products
 
 
 Decompositions
---------------------------
+--------------
 
 .. autosummary::
    :toctree: generated/
@@ -27,6 +27,11 @@ Decompositions
    cupy.linalg.qr
    cupy.linalg.svd
 
+Matrix eigenvalues
+------------------
+
+.. autofunction:: cupy.linalg.eigh
+.. autofunction:: cupy.linalg.eigvalsh
 
 Norms etc.
 ----------
