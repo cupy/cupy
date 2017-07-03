@@ -490,7 +490,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.swapaxes`
 
         """
-        cdef Py_ssize_t ndim=self.ndim
+        cdef Py_ssize_t ndim = self.ndim
         cdef vector.vector[Py_ssize_t] axes
         if axis1 < -ndim or axis1 >= ndim or axis2 < -ndim or axis2 >= ndim:
             raise ValueError('Axis out of range')
@@ -520,7 +520,8 @@ cdef class ndarray:
             elementwise_copy(self, newarray)
 
         newarray._shape.assign(<Py_ssize_t>1, self.size)
-        newarray._strides.assign(<Py_ssize_t>1, <Py_ssize_t>self.itemsize)
+        newarray._strides.assign(<Py_ssize_t>1,
+                                 <Py_ssize_t>self.itemsize)
         newarray._c_contiguous = True
         newarray._f_contiguous = True
         return newarray
@@ -1514,8 +1515,8 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t] & shape,
+                                 vector.vector[Py_ssize_t] & strides,
                                  bint update_c_contiguity=True):
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
@@ -1535,7 +1536,7 @@ cdef object newaxis = numpy.newaxis  # == None
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
-        ndarray a, vector.vector[Py_ssize_t]& newshape) except *:
+        ndarray a, vector.vector[Py_ssize_t] & newshape) except *:
     cdef vector.vector[Py_ssize_t] newstrides
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
     size = a.size
@@ -1880,7 +1881,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 # -----------------------------------------------------------------------------
 
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=0):
-    cdef Py_ssize_t i, ndim=a.ndim
+    cdef Py_ssize_t i, ndim = a.ndim
     cdef vector.vector[Py_ssize_t] axes
     if axis < 0:
         axis += ndim
@@ -2880,11 +2881,11 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         strides.insert(0, s * strides[0])
 
     # convert all negative indices to wrap_indices
-    for i in range(li, ri+1):
+    for i in range(li, ri + 1):
         slices[i] %= a_interm_shape[i]
 
     flattened_indexes = [stride * s
-                         for stride, s in zip(strides, slices[li:ri+1])]
+                         for stride, s in zip(strides, slices[li:ri + 1])]
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
@@ -2905,7 +2906,8 @@ cpdef ndarray _getitem_multiple(ndarray a, list slices):
     a_interm, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
 
     a_interm_shape = a_interm.shape
-    out_shape = a_interm_shape[:li] + reduced_idx.shape + a_interm_shape[ri+1:]
+    out_shape = a_interm_shape[:li] + \
+        reduced_idx.shape + a_interm_shape[ri + 1:]
     ret_flat = _take(a_interm, reduced_idx.ravel(), li=li, ri=ri)
     ret = ret_flat._reshape(out_shape)
     return ret
@@ -2980,8 +2982,8 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
 
 
 cpdef ndarray _get_all_addresses(size_t start_adr,
-                                 vector.vector[size_t]& shape,
-                                 vector.vector[size_t]& strides):
+                                 vector.vector[size_t] & shape,
+                                 vector.vector[size_t] & strides):
     idx = numpy.array([start_adr])
     for sh_, st_ in zip(shape, strides):
         idx = (idx[:, None] + (numpy.arange(sh_) * st_)[None, :]).ravel()
@@ -3273,14 +3275,17 @@ cpdef ndarray tensordot_core(
     if use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
         cublas.sgemmEx(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, runtime.CUDA_R_16F,
-            <int>ldb, a.data.ptr, runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
+            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
+            runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
-        cublas.sgemm(handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, <int>ldb,
-                     a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+        cublas.sgemm(
+            handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
+            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
     elif dtype == 'd':
-        cublas.dgemm(handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1, b.data.ptr, <int>ldb,
-                     a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+        cublas.dgemm(
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
 
     if out is not ret:
         elementwise_copy(out, ret)
