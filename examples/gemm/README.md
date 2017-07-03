@@ -25,7 +25,7 @@ For compilation, `load_kernel` is used to compile a CUDA code written in `sgemm.
 This function takes a text of code and name of the kernel as input and returns `cupy.cuda.Function` object.
 The compiled code is cached, and it avoids the compilation process after the first time.
 Also, the CUDA code can be modified at Python level because it is simply a text.
-In this example, C macros that determine distribution of data to threads are specified at runtime.
+In this example, C macros that determine a distribution of data to threads are specified at runtime.
 Note that `"extern C"` needs to be put on top of the kernel that is called.
 
 #### How to supply grid size, block size and shared memory size on launching a kernel function
