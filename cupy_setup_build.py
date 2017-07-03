@@ -426,6 +426,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         _compiler_so = self.compiler_so
         try:
             nvcc_path = build.get_nvcc_path()
+            base_opts = build.get_compiler_base_options()
             self.set_executable('compiler_so', nvcc_path)
 
             cuda_version = build.get_cuda_version()
@@ -434,7 +435,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, cc_args, postargs, pp_opts)
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
 
