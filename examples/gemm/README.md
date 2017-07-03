@@ -18,7 +18,7 @@ python sgemm.py [--gpu GPU_ID] [--m m] [--n n] [--k k]
 In this example, we work on a SGEMM kernel that requires a complete interface to `cuLaunchKernel` (e.g. grid size and size of shared memory), which is not provided by `cupy.ElementwiseKernel`.
 CuPy arrays work regardless of the underlying memory layouts thanks to `ndarray` abstraction.
 As is the case for this example, `ndarray` abstraction does not need to be used if the underlying memory layouts of arrays match the ones expected by a kernel.
-The SGEMM kernel expects input and output arrays to be in Fortran contiguous memory layout, which is enforced by `cupy.asfortranarray`.
+The SGEMM kernel expects input and output arrays to be in Fortran contiguous memory layout, and this layout is enforced by `cupy.asfortranarray`.
 
 For compilation, `load_kernel` is used to compile a CUDA code written in `sgemm.cu`.
 This function takes a text of code and name of the kernel as input and returns `cupy.cuda.Function` object.
