@@ -113,6 +113,11 @@ def msort(a):
     .. seealso:: :func:`numpy.msort`
 
     """
+
+    if a.ndim > 1:
+        raise ValueError('Sorting arrays with the rank of two or more is not '
+                         'Supported')
+
     # TODO(takagi): Support float16 and bool.
     return sort(a)
 
