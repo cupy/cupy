@@ -50,15 +50,11 @@ def e_step(X, inv_cov, means, weights):
     return xp.mean(log_prob_norm), log_resp
 
 
-def train_gmm(X, max_iter, tol):
+def train_gmm(X, max_iter, tol, means, covariances):
     xp = cupy.get_array_module(X)
     lower_bound = -np.infty
     converged = False
     weights = xp.array([0.5, 0.5], dtype=np.float32)
-    mean1 = xp.random.normal(0, xp.array([1, 2]), size=2)
-    mean2 = xp.random.normal(-3, xp.array([2, 1]), size=2)
-    means = xp.c_[mean1, mean2]
-    covariances = xp.random.rand(2, 2)
     inv_cov = 1 / xp.sqrt(covariances)
 
     for n_iter in six.moves.range(max_iter):
@@ -84,9 +80,11 @@ def predict(X, inv_cov, means, weights):
     return (log_prob + xp.log(weights)).argmax(axis=1)
 
 
-def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol):
+def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol, means,
+             covariances):
     xp = cupy.get_array_module(X_train)
-    inv_cov, means, weights, cov = train_gmm(X_train, max_iter, tol)
+    inv_cov, means, weights, cov = \
+        train_gmm(X_train, max_iter, tol, means, covariances)
     y_train_pred = predict(X_train, inv_cov, means, weights)
     train_accuracy = xp.mean(y_train_pred == y_train) * 100
     y_test_pred = predict(X_test, inv_cov, means, weights)
@@ -108,8 +106,8 @@ def draw(X, pred, means, covariances, output):
         covariances = covariances.get()
     plt.scatter(means[:, 0], means[:, 1], s=120, marker='s', facecolors='y',
                 edgecolors='k')
-    x = np.linspace(-10, 10, 1000)
-    y = np.linspace(-10, 10, 1000)
+    x = np.linspace(-5, 5, 1000)
+    y = np.linspace(-5, 5, 1000)
     X, Y = np.meshgrid(x, y)
     for i in six.moves.range(2):
         Z = mlab.bivariate_normal(X, Y, np.sqrt(covariances[i][0]),
@@ -129,37 +127,43 @@ def run(gpuid, num, dim, max_iter, tol, output):
     In m_step, compute weights, means and covariance matrix by latest `resp`.
 
     '''
-    train1 = np.random.normal(0, [1, 2], size=(num, dim)).astype(np.float32)
-    train2 = np.random.normal(-3, [2, 1], size=(num, dim)).astype(np.float32)
+    scale = np.ones(dim)
+    train1 = np.random.normal(1, scale, size=(num, dim)).astype(np.float32)
+    train2 = np.random.normal(-1, scale, size=(num, dim)).astype(np.float32)
     X_train = np.r_[train1, train2]
-    test1 = np.random.normal(0, [1, 2], size=(100, dim)).astype(np.float32)
-    test2 = np.random.normal(-3, [2, 1], size=(100, dim)).astype(np.float32)
+    test1 = np.random.normal(1, scale, size=(100, dim)).astype(np.float32)
+    test2 = np.random.normal(-1, scale, size=(100, dim)).astype(np.float32)
     X_test = np.r_[test1, test2]
     y_train = np.r_[np.zeros(num), np.ones(num)].astype(np.int32)
     y_test = np.r_[np.zeros(100), np.ones(100)].astype(np.int32)
+
     repeat = 5
+    for i in six.moves.range(repeat):
+        mean1 = np.random.normal(1, scale, size=dim)
+        mean2 = np.random.normal(-1, scale, size=dim)
+        means = np.stack([mean1, mean2])
+        covariances = np.random.rand(2, dim)
+        print('Running CPU...')
+        with timer(' CPU '):
+                y_test_pred, means, cov = \
+                    calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
+                             means, covariances)
 
-    print('Running CPU...')
-    with timer(' CPU '):
-        for i in six.moves.range(repeat):
-            y_test_pred, means, cov = calc_acc(X_train, y_train, X_test,
-                                               y_test, max_iter, tol)
-
-    with cupy.cuda.Device(gpuid):
-        X_train_gpu = cupy.array(X_train)
-        y_train_gpu = cupy.array(y_train)
-        y_test_gpu = cupy.array(y_test)
-        X_test_gpu = cupy.array(X_test)
-        print('Running GPU...')
-        with timer(' GPU '):
-            for i in six.moves.range(repeat):
-                y_test_pred, means, cov = calc_acc(X_train_gpu, y_train_gpu,
-                                                   X_test_gpu, y_test_gpu,
-                                                   max_iter, tol)
-        if output is not None:
-            draw(X_test_gpu, y_test_pred, means, cov, output)
-
-    print()
+        with cupy.cuda.Device(gpuid):
+            X_train_gpu = cupy.array(X_train)
+            y_train_gpu = cupy.array(y_train)
+            y_test_gpu = cupy.array(y_test)
+            X_test_gpu = cupy.array(X_test)
+            means = cupy.array(means)
+            covariances = cupy.array(covariances)
+            print('Running GPU...')
+            with timer(' GPU '):
+                y_test_pred, means, cov = \
+                    calc_acc(X_train_gpu, y_train_gpu, X_test_gpu, y_test_gpu,
+                             max_iter, tol, means, covariances)
+            if output is not None and i == repeat - 1:
+                draw(X_test_gpu, y_test_pred, means, cov, output)
+        print()
 
 
 if __name__ == '__main__':
