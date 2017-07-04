@@ -103,7 +103,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_floor_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('floor_divide')
+            self.check_binary('floor_divide', no_complex=True)
         self.check_raises_with_numpy_input(2, 'floor_divide')
 
     def test_floor_divide_negative(self):
@@ -112,7 +112,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('fmod')
+            self.check_binary('fmod', no_complex=True)
         self.check_raises_with_numpy_input(2, 'fmod')
 
     def test_fmod_negative(self):
@@ -131,7 +131,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_remainder(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('remainder')
+            self.check_binary('remainder', no_complex=True)
         self.check_raises_with_numpy_input(2, 'remainder')
 
     def test_remainder_negative(self):
