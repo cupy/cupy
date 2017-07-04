@@ -145,9 +145,9 @@ def run(gpuid, num, dim, max_iter, tol, output):
         covariances = np.random.rand(2, dim)
         print('Running CPU...')
         with timer(' CPU '):
-                y_test_pred, means, cov = \
-                    calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
-                             means, covariances)
+            y_test_pred, means, cov = \
+                calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
+                         means, covariances)
 
         with cupy.cuda.Device(gpuid):
             X_train_gpu = cupy.array(X_train)
