@@ -119,7 +119,7 @@ def draw(X, pred, means, covariances, output):
     plt.savefig(output + '.png')
 
 
-def run(gpuid, max_iter, tol, output):
+def run(gpuid, num, dim, max_iter, tol, output):
     '''CuPy Gaussian Mixture Model example
 
     Compute GMM parameters, weights, means and covariance matrix, depending on
@@ -129,13 +129,13 @@ def run(gpuid, max_iter, tol, output):
     In m_step, compute weights, means and covariance matrix by latest `resp`.
 
     '''
-    train1 = np.random.normal(0, [1, 2], size=(500000, 2)).astype(np.float32)
-    train2 = np.random.normal(-3, [2, 1], size=(500000, 2)).astype(np.float32)
+    train1 = np.random.normal(0, [1, 2], size=(num, dim)).astype(np.float32)
+    train2 = np.random.normal(-3, [2, 1], size=(num, dim)).astype(np.float32)
     X_train = np.r_[train1, train2]
-    test1 = np.random.normal(0, [1, 2], size=(100, 2)).astype(np.float32)
-    test2 = np.random.normal(-3, [2, 1], size=(100, 2)).astype(np.float32)
+    test1 = np.random.normal(0, [1, 2], size=(100, dim)).astype(np.float32)
+    test2 = np.random.normal(-3, [2, 1], size=(100, dim)).astype(np.float32)
     X_test = np.r_[test1, test2]
-    y_train = np.r_[np.zeros(500000), np.ones(500000)].astype(np.int32)
+    y_train = np.r_[np.zeros(num), np.ones(num)].astype(np.int32)
     y_test = np.r_[np.zeros(100), np.ones(100)].astype(np.int32)
     repeat = 5
 
@@ -166,11 +166,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu-id', '-g', default=0, type=int,
                         help='ID of GPU.')
+    parser.add_argument('--num', '-n', default=500000, type=int,
+                        help='number of train data')
+    parser.add_argument('--dim', '-d', default=2, type=int,
+                        help='dimension of each data')
     parser.add_argument('--max-iter', '-m', default=30, type=int,
                         help='number of iterations')
     parser.add_argument('--tol', '-t', default=1e-3, type=float,
-                        help='Error tolerance to stop iterations')
+                        help='error tolerance to stop iterations')
     parser.add_argument('--output-image', '-o', default=None, type=str,
                         dest='output', help='output image file name')
     args = parser.parse_args()
-    run(args.gpu_id, args.max_iter, args.tol, args.output)
+    run(args.gpu_id, args.num, args.dim, args.max_iter, args.tol, args.output)
