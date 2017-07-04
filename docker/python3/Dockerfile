@@ -6,4 +6,4 @@ RUN apt-get update -y && \
     python3-pip && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install cupy==1.0.0.1
+RUN pip3 install cupy==1.0.1
