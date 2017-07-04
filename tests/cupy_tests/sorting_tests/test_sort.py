@@ -222,5 +222,5 @@ class TestMsort(unittest.TestCase):
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_msort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             return cupy.msort(a)
