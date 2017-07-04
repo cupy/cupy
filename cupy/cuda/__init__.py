@@ -6,6 +6,7 @@ from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
+from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
 
 try:
@@ -25,6 +26,16 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
+
+
+def is_available():
+    n = 0
+    try:
+        n = runtime.getDeviceCount()
+    except runtime.CUDARuntimeError as e:
+        if e.args[0] != 'cudaErrorNoDevice: no CUDA-capable device is detected':
+            raise
+    return n > 0
 
 
 # import class and function
