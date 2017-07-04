@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 from __future__ import division
-import ctypes
 import sys
 
 import numpy
@@ -22,6 +21,7 @@ from libcpp cimport vector
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
+from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
@@ -341,39 +341,37 @@ cdef class ndarray:
     cpdef ndarray copy(self, order='C'):
         """Returns a copy of the array.
 
+        This method makes a copy of a given array in the current device.
+        Even when a given array is located in another device, you can copy it
+        to the current device.
+
         Args:
-            order ({'C', 'F'}): Row-major (C-style) or column-major
-                (Fortran-style) order. This function currently does not
-                support order 'A' and 'K'.
+            order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
+                (Fortran-style) order.
+                When `order` is 'A', it uses 'F' if `a` is column-major and
+                uses `C` otherwise.
+                And when `order` is 'K', it keeps strides as closely as
+                possible.
 
         .. seealso::
            :func:`cupy.copy` for full documentation,
            :meth:`numpy.ndarray.copy`
 
         """
-        cdef ndarray a, newarray
-        # TODO(beam2d): Support ordering option 'A' and 'K'
-        if order not in ['C', 'F']:
-            raise TypeError('order not understood')
-
         if self.size == 0:
-            return ndarray(self.shape, self.dtype, order=order)
+            return self.astype(self.dtype, copy=True, order=order)
 
-        a = self
-        if order == 'C' and not self._c_contiguous:
+        if (self.data.device is None or
+                self.data.device.id == device.get_device_id()):
+            return self.astype(self.dtype, copy=True, order=order)
+        else:
+            # It need to make a contiguous copy for copying from another device
             with self.device:
-                a = ascontiguousarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-        elif order == 'F' and not self._f_contiguous:
-            with self.device:
-                a = asfortranarray(self)
-            if a.data.device.id == device.get_device_id():
-                return a
-
-        newarray = ndarray(a.shape, a.dtype, order=order)
-        newarray.data.copy_from_device(a.data, a.nbytes)
-        return newarray
+                x = self.astype(self.dtype, copy=False, order=order)
+            newarray = ndarray(x.shape, dtype=x.dtype)
+            newarray._set_shape_and_strides(x._shape, x._strides)
+            newarray.data.copy_from_device(x.data, x.nbytes)
+            return newarray
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
@@ -715,9 +713,9 @@ cdef class ndarray:
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their rank of one and their own data, and does not
-           support ``axis``, ``kind`` and ``order`` parameters that
-           ``numpy.ndarray.sort`` does support.
+           only arrays with their own data, and does not support ``axis``,
+           ``kind`` and ``order`` parameters that ``numpy.ndarray.sort``
+           does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
@@ -729,27 +727,20 @@ cdef class ndarray:
         # TODO(takagi): Support kind argument.
 
         if self.ndim == 0:
-            msg = 'Sorting arrays with the rank of zero is not supported'
-            raise ValueError(msg)
-
-        # TODO(takagi): Support ranks of two or more
-        if self.ndim > 1:
-            msg = ('Sorting arrays with the rank of two or more is '
-                   'not supported')
-            raise ValueError(msg)
+            raise ValueError('Sorting arrays with the rank of zero is not '
+                             'supported')  # as numpy.sort() raises
 
         # TODO(takagi): Support sorting views
         if not self._c_contiguous:
-            raise ValueError('Sorting non-contiguous array is not supported.')
+            raise NotImplementedError('Sorting non-contiguous array is not '
+                                      'supported.')
 
-        # TODO(takagi): Support float16 and bool
         try:
-            thrust.sort(self.dtype, self.data.ptr, self._shape[0])
+            thrust.sort(self.dtype, self.data.ptr, self._shape)
         except NameError:
-            msg = ('Thrust is needed to use cupy.sort. Please install CUDA '
-                   'Toolkit with Thrust then reinstall CuPy after '
-                   'uninstalling it.')
-            raise RuntimeError(msg)
+            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
+                               'install CUDA Toolkit with Thrust then '
+                               'reinstall CuPy after uninstalling it.')
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
@@ -1883,11 +1874,16 @@ cdef _argmax = create_reduction_func(
 cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support order and subok options
     cdef Py_ssize_t nvidem
-    cdef ndarray a
+    cdef ndarray a, src
     if isinstance(obj, ndarray):
+        src = obj
         if dtype is None:
-            dtype = obj.dtype
-        a = obj.astype(dtype, copy=copy)
+            dtype = src.dtype
+        dev = src.data.device
+        if dev is None or dev.id == device.get_device_id():
+            a = src.astype(dtype, copy=copy)
+        else:
+            a = src.copy().astype(dtype, copy=False)
 
         ndim = a._shape.size()
         if ndmin > ndim:
@@ -1895,19 +1891,24 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-        return a
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)
-        if a_cpu.dtype.char not in '?bhilqBHILQefd':
-            raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
-        if a_cpu.ndim > 0:
-            a_cpu = numpy.ascontiguousarray(a_cpu)
-        a = ndarray(a_cpu.shape, dtype=a_cpu.dtype)
-        a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), a.nbytes)
-        if a_cpu.dtype == a.dtype:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
+                            ndmin=ndmin)
+        a_dtype = a_cpu.dtype
+        if a_dtype.char not in '?bhilqBHILQefd':
+            raise ValueError('Unsupported dtype %s' % a_dtype)
+        a = ndarray(a_cpu.shape, dtype=a_dtype)
+        if a_cpu.ndim == 0:
+            a.fill(a_cpu[()])
             return a
-        else:
-            return a.view(dtype=a_cpu.dtype)
+        mem = pinned_memory.alloc_pinned_memory(a.nbytes)
+        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
+                                   a_cpu.size).reshape(a_cpu.shape)
+        src_cpu[...] = a_cpu
+        stream = cuda.Stream.null
+        a.set(src_cpu, stream)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    return a
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
@@ -2296,8 +2297,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
                     cum += a._shape[axis]
 
                 _concatenate_kernel(
-                    x, axis, len(shape), array(cum_sizes), array(x_strides),
-                    ret)
+                    x, axis, array(cum_sizes), array(x_strides), ret)
             return ret
 
     skip = (slice(None),) * axis
@@ -2324,7 +2324,7 @@ cdef _concatenate_kernel_one = ElementwiseKernel(
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, int32 ndim, raw int32 cum_sizes,
+    '''raw P x, int32 axis, raw int32 cum_sizes,
     raw int32 x_strides''',
     'T y',
     '''
@@ -2344,7 +2344,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
     int array_ind = left;
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
-    for (int j = ndim - 1; j >= 0; --j) {
+    for (int j = _ind.ndim - 1; j >= 0; --j) {
       ptrdiff_t ind[] = {array_ind, j};
       ptrdiff_t offset;
       if (j == axis) {

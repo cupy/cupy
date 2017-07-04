@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import numpy
-import six
 
 cimport cpython
 from libcpp cimport vector
@@ -69,16 +68,6 @@ cdef inline CPointer _pointer(x):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, core.Indexer):
         return (<core.Indexer>x).get_pointer()
-
-    if type(x) not in _pointer_numpy_types:
-        if isinstance(x, six.integer_types):
-            x = numpy.int64(x)
-        elif isinstance(x, float):
-            x = numpy.float64(x)
-        elif isinstance(x, bool):
-            x = numpy.bool_(x)
-        else:
-            raise TypeError('Unsupported type %s' % type(x))
 
     itemsize = x.itemsize
     if itemsize == 1:
@@ -167,3 +156,24 @@ cdef class Module:
 
     cpdef get_function(self, str name):
         return Function(self, name)
+
+
+cdef class LinkState:
+
+    """CUDA link state."""
+
+    def __init__(self):
+        self.ptr = driver.linkCreate()
+
+    def __del__(self):
+        if self.ptr:
+            driver.linkDestroy(self.ptr)
+            self.ptr = 0
+
+    cpdef add_ptr_data(self, unicode data, unicode name):
+        cdef bytes data_byte = data.encode()
+        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
+
+    cpdef bytes complete(self):
+        cubin = driver.linkComplete(self.ptr)
+        return cubin

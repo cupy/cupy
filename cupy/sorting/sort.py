@@ -1,9 +1,8 @@
 import cupy
 import numpy
-try:
+
+if cupy.cuda.thrust_enabled:
     from cupy.cuda import thrust
-except ImportError:
-    pass
 
 
 def sort(a):
@@ -16,9 +15,9 @@ def sort(a):
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
-       For its implementation reason, ``cupy.sort`` currently supports only
-       arrays with their rank of one and does not support ``axis``, ``kind``
-       and ``order`` parameters that ``numpy.sort`` does support.
+       For its implementation reason, ``cupy.sort`` currently does not support
+       ``axis``, ``kind`` and ``order`` parameters that ``numpy.sort`` does
+       support.
 
     .. seealso:: :func:`numpy.sort`
 
@@ -50,30 +49,27 @@ def lexsort(keys):
 
     # TODO(takagi): Support axis argument.
 
+    if not cupy.cuda.thrust_enabled:
+        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
+                           'install CUDA Toolkit with Thrust then reinstall '
+                           'CuPy after uninstalling it.')
+
     if keys.ndim == ():
-        msg = 'need sequence of keys with len > 0 in lexsort'
-        raise TypeError(msg)    # as numpy.lexsort() raises
+        # as numpy.lexsort() raises
+        raise TypeError('need sequence of keys with len > 0 in lexsort')
 
     if keys.ndim == 1:
         return 0
 
     # TODO(takagi): Support ranks of three or more.
     if keys.ndim > 2:
-        msg = ('Keys with the rank of three or more is '
-               'not supported in lexsort')
-        raise ValueError(msg)
+        raise NotImplementedError('Keys with the rank of three or more is not '
+                                  'supported in lexsort')
 
-    idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.int64)
+    idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
     n = keys._shape[1]
-
-    try:
-        thrust.lexsort(keys.dtype, idx_array.data.ptr, keys.data.ptr, k, n)
-    except NameError:
-        msg = ('Thrust is needed to use cupy.lexsort. Please install CUDA '
-               'Toolkit with Thrust then reinstall CuPy after '
-               'uninstalling it.')
-        raise RuntimeError(msg)
+    thrust.lexsort(keys.dtype, idx_array.data.ptr, keys.data.ptr, k, n)
 
     return idx_array
 

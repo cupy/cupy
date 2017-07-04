@@ -1,4 +1,8 @@
 NumPy-CuPy Generic Code Support
 ===============================
 
-.. autofunction:: cupy.get_array_module
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.get_array_module

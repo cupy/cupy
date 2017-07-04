@@ -23,15 +23,16 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         return xp.sort(a)
 
-    def test_sort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
-            a.sort()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_two_or_more_dim(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        a.sort()
+        return a
 
-    def test_external_sort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
-            return cupy.sort(a)
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_two_or_more_dim(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return xp.sort(a)
 
     # Test dtypes
 
@@ -53,13 +54,13 @@ class TestSort(unittest.TestCase):
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_sort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             a.sort()
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_external_sort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(NotImplementedError):
             return cupy.sort(a)
 
     # Test contiguous arrays
@@ -72,7 +73,7 @@ class TestSort(unittest.TestCase):
 
     def test_sort_non_contiguous(self):
         a = testing.shaped_random((10,), cupy)[::2]  # Non contiguous view
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             a.sort()
 
     @testing.numpy_cupy_allclose()
@@ -111,7 +112,7 @@ class TestLexsort(unittest.TestCase):
 
     def test_lexsort_three_or_more_dim(self):
         a = testing.shaped_random((2, 10, 10), cupy)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             return cupy.lexsort(a)
 
     # Test dtypes

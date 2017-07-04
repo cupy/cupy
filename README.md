@@ -1,10 +1,23 @@
+<div align="center"><img src="docs/image/cupy_logo_1000px.png" width="400"/></div>
+
+# CuPy : NumPy-like API accelerated with CUDA
+
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
-[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy.chainer.org/en/stable/?badge=stable)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs-cupy.chainer.org/en/stable/)
 
-# CuPy : NumPy-like API accelerated with CUDA
+[**Website**](https://cupy.chainer.org/)
+| [**Docs**](https://docs-cupy.chainer.org/en/stable/)
+| [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
+| [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
+| **Examples** ([Official](https://github.com/cupy/cupy/blob/master/examples))
+| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-jp))
+
+*CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
+CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and many functions on it.
+It supports a subset of `numpy.ndarray` interface.
 
 ## Requirements
 
@@ -83,17 +96,56 @@ You can login to the environment with bash, and run the Python interpreter.
 $ nvidia-docker run -it cupy/cupy /bin/bash
 ```
 
+## Development
+
+Build CuPy from the source code as:
+
+```
+python setup.py develop
+```
+
+Run all tests as:
+
+```
+python -m unittest discover test "test_*.py"
+```
+
+Run a specific test file, or a specific test method respectively:
+
+```
+python -m unittest tests/cupy_tests/cuda_tests/test_memory.py
+python -m unittest tests.cupy_tests.cuda_tests.test_memory.TestMemoryPointer.test_int
+```
+
+### Rebuild pxd files
+
+Currently, we have problems that cython does not rebuild pxd files well with `python setup.py develop`.
+
+Clean `*.cpp` and `*.so` files once with:
+
+```
+git clean -fdx
+```
+
+Then, run `python setup.py develop` again.
+
+### ccache
+
+We do not officially support, but some of the developer members use [ccache](https://ccache.samba.org/) to boost compilation time.
+
+For example, on Ubuntu, set up as followings:
+
+```
+sudo apt-get install ccache
+export PATH=/usr/lib/ccache:$PATH
+```
+
+See [ccache](https://ccache.samba.org/) for details.
 
 ## More information
 
-- Official site: (to be appeared)
-- Official document: http://docs.cupy.chainer.org/
-- github: https://github.com/cupy/cupy
-- Forum: https://groups.google.com/forum/#!forum/cupy
-- Forum (Japanese): https://groups.google.com/forum/#!forum/cupy-ja
-- Twitter: https://twitter.com/ChainerOfficial
-- Twitter (Japanese): https://twitter.com/chainerjp
-- Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
+- [Release notes](https://github.com/cupy/cupy/releases)
+- [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
 
 ## License
 

@@ -67,6 +67,7 @@ cdef class ndarray:
 
 cdef class Indexer:
     cdef:
-        public Py_ssize_t size
-        public tuple shape
+        readonly Py_ssize_t size
+        readonly tuple shape
+
     cdef CPointer get_pointer(self)

@@ -1,6 +1,8 @@
+import functools
 import six
 from six.moves import builtins
 import string
+import threading
 import warnings
 
 import numpy
@@ -12,6 +14,9 @@ from cupy import math
 from cupy import sorting
 from cupy import statistics
 from cupy import util
+
+
+_thread_local = threading.local()
 
 
 class FusionOp(object):
@@ -331,10 +336,10 @@ def _convert_from_ufunc(ufunc):
         mem = get_mem(args)
         var_list = [_normalize_arg(_, mem) for _ in args]
         if 'out' in kwargs:
-            var_list.append(_normalize_arg.pop('out'))
+            var_list.append(_normalize_arg(kwargs.pop('out'), mem))
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
-        assert nin <= len(var_list) and len(var_list) <= nin + nout
+        assert nin <= len(var_list) <= nin + nout
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
         can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
@@ -355,9 +360,12 @@ def _convert_from_ufunc(ufunc):
                         v = out_vars[i]
                         ret.append(_FusionRef(v, mem))
                     else:
-                        raise TypeError("Cannot cast from %s to %s"
-                                        % (ty_outs[i], out_vars[i].ty)
-                                        + " with casting rule 'same_kind'")
+                        raise TypeError(
+                            'output (typecode \'{}\') could not be coerced '
+                            'to provided output parameter (typecode \'{}\') '
+                            'according to the casting rule '
+                            '"same_kind"'.format(
+                                ty_outs[i].char, out_vars[i].ty.char))
                 mem.set_op(ufunc.name, op, param_names, nin, nout,
                            in_vars, out_vars, ty_ins + ty_outs)
                 return ret[0] if len(ret) == 1 else tuple(ret)
@@ -493,7 +501,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     in_refs = [_FusionRef(_, mem) for _ in in_vars]
     out_refs = func(*in_refs)
     out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
-    out_refs = filter(lambda i: i is not None, out_refs)
+    out_refs = [_ for _ in out_refs if _ is not None]
     out_refs = [_FusionRef(_normalize_arg(_, mem), mem) for _ in out_refs]
     out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
@@ -592,6 +600,13 @@ class Fusion(object):
         return "<Fusion '%s'>" % self.name
 
     def __call__(self, *args, **kwargs):
+        _thread_local.in_fusion = True
+        try:
+            return self._call(*args, **kwargs)
+        finally:
+            _thread_local.in_fusion = False
+
+    def _call(self, *args, **kwargs):
         axis = kwargs['axis'] if 'axis' in kwargs else None
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
@@ -633,7 +648,7 @@ class Fusion(object):
                 return self.post_map(self.reduce(self.func(*args), axis=axis))
 
 
-def fuse(input_num=None, reduce=None, post_map=lambda x: x):
+def fuse(*args, **kwargs):
     """Function fusing decorator.
 
     This decorator can be used to define an elementwise or reduction kernel
@@ -649,7 +664,15 @@ def fuse(input_num=None, reduce=None, post_map=lambda x: x):
             If not assigned, post_map step is skipped.
     """
     util.experimental('cupy.core.fusion')
-    return lambda f: Fusion(f, input_num, reduce, post_map)
+
+    def wrapper(f, input_num=None, reduce=None, post_map=lambda x: x):
+        return Fusion(f, input_num, reduce, post_map)
+
+    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        return functools.update_wrapper(wrapper(args[0]), args[0])
+    else:
+        return lambda f: functools.update_wrapper(
+            wrapper(f, *args, **kwargs), f)
 
 
 def build_kernel_name(entity):
@@ -684,12 +707,14 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if builtins.any(type(_) is _FusionRef for _ in args):
-            return _convert(self._fusion_op)(*args, **kwargs)
-        elif builtins.any(type(_) is numpy.ndarray for _ in args):
-            return self._numpy_op(*args, **kwargs)
-        else:
-            return self._cupy_op(*args, **kwargs)
+        in_fusion = getattr(_thread_local, 'in_fusion', False)
+        if in_fusion:
+            if builtins.any(isinstance(_, _FusionRef) for _ in args):
+                return _convert(self._fusion_op)(*args, **kwargs)
+            elif builtins.any(isinstance(_, numpy.ndarray) for _ in args):
+                return self._numpy_op(*args, **kwargs)
+
+        return self._cupy_op(*args, **kwargs)
 
     __doc__ = core.ufunc.__doc__
     __call__.__doc__ = core.ufunc.__call__.__doc__

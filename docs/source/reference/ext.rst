@@ -1,4 +1,8 @@
 External Functions
 ==================
 
-.. autofunction:: cupy.scatter_add
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.scatter_add

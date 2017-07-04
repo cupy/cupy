@@ -31,6 +31,7 @@ MODULES = [
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
+            'cupy.cuda.nvrtc',
             'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',
             'cupy.cuda.nvtx',
@@ -45,6 +46,7 @@ MODULES = [
             'cuda_runtime.h',
             'curand.h',
             'cusparse.h',
+            'nvrtc.h',
             'nvToolsExt.h',
         ],
         'libraries': [
@@ -53,6 +55,7 @@ MODULES = [
             'cudart',
             'curand',
             'cusparse',
+            'nvrtc',
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
@@ -208,6 +211,14 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
+    if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
+        # clang does not have this option.
+        args = settings.setdefault('extra_link_args', [])
+        args.append('-fopenmp')
+    elif compiler.compiler_type == 'msvc':
+        args = settings.setdefault('extra_link_args', [])
+        args.append('/openmp')
+
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
     # with GCC 5's new ABI.
@@ -344,7 +355,8 @@ def check_extensions(extensions):
                 msg = ('Missing file: %s\n' % f +
                        'Please install Cython. ' +
                        'Please also check the version of Cython.\n' +
-                       'See http://docs.chainer.org/en/stable/install.html')
+                       'See ' +
+                       'https://docs-cupy.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
 
@@ -429,6 +441,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         _compiler_so = self.compiler_so
         try:
             nvcc_path = build.get_nvcc_path()
+            base_opts = build.get_compiler_base_options()
             self.set_executable('compiler_so', nvcc_path)
 
             cuda_version = build.get_cuda_version()
@@ -437,7 +450,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, cc_args, postargs, pp_opts)
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
 

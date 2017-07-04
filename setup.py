@@ -31,11 +31,11 @@ build_ext = cupy_setup_build.custom_build_ext
 
 setup(
     name='cupy',
-    version='1.0.0.1',
+    version='2.0.0a1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='http://docs.cupy.chainer.org/',
+    url='https://docs-cupy.chainer.org/',
     license='MIT License',
     packages=['cupy',
               'cupy.binary',
@@ -53,6 +53,7 @@ setup(
               'cupy.prof',
               'cupy.random',
               'cupy.sorting',
+              'cupy.sparse',
               'cupy.statistics',
               'cupy.testing'],
     package_data={

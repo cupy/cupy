@@ -14,6 +14,21 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int FillMode 'cublasFillMode_t'
 
+    ctypedef int EigMode 'cusolverEigType_t'
+    ctypedef int EigMode 'cusolverEigMode_t'
+
+###############################################################################
+# Enum
+###############################################################################
+
+cpdef enum:
+    CUSOLVER_EIG_TYPE_1 = 1
+    CUSOLVER_EIG_TYPE_2 = 2
+    CUSOLVER_EIG_TYPE_3 = 3
+
+    CUSOLVER_EIG_MODE_NOVECTOR = 0
+    CUSOLVER_EIG_MODE_VECTOR = 1
+
 ###############################################################################
 # Context
 ###############################################################################
@@ -62,6 +77,11 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
+cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+
 cpdef sgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,

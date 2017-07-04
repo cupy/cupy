@@ -85,29 +85,30 @@ cpdef str _get_typename(dtype):
 
 
 cpdef list _preprocess_args(args):
+    """Preprocesses arguments for kernel invocation
+
+    - Checks device compatibility for ndarrays
+    - Converts Python scalars into NumPy scalars
+    """
     cdef list ret = []
     cdef int dev_id = device.get_device_id()
+    cdef type typ
 
     for arg in args:
-        if type(arg) in _python_scalar_type_set:
-            if numpy.array(arg).dtype == numpy.int32:
-                arg = numpy.int32(arg)
-            else:
-                arg = _python_type_to_numpy_type[type(arg)](arg)
-        elif type(arg) in _numpy_scalar_type_set:
-            pass
-        elif isinstance(arg, ndarray):
+        typ = type(arg)
+        if typ is ndarray:
             arr_dev = (<ndarray?>arg).data.device
             if arr_dev is not None and arr_dev.id != dev_id:
                 raise ValueError(
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
-        elif isinstance(arg, _python_scalar_type + _numpy_scalar_type):
-            arg = numpy.dtype(type(arg)).type(arg)
-            assert arg in _numpy_scalar_type
+        elif typ in _python_scalar_type_set:
+            arg = _python_type_to_numpy_type[typ](arg)
+        elif typ in _numpy_scalar_type_set:
+            pass
         else:
-            raise TypeError('Unsupported type %s' % type(arg))
+            raise TypeError('Unsupported type %s' % typ)
         ret.append(arg)
     return ret
 
@@ -116,7 +117,7 @@ cpdef tuple _get_args_info(list args):
     ret = []
     for a in args:
         t = type(a)
-        if t == Indexer:
+        if t is Indexer:
             dtype = None
         else:
             dtype = a.dtype.type

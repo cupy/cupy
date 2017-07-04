@@ -1,4 +1,5 @@
 #include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 #include "cupy_common.h"
@@ -12,22 +13,56 @@ using namespace thrust;
  */
 
 template <typename T>
-void cupy::thrust::_sort(void *start, ptrdiff_t num) {
-    device_ptr<T> dp_first = device_pointer_cast((T *)start);
-    device_ptr<T> dp_last  = device_pointer_cast((T *)start + num);
-    stable_sort< device_ptr<T> >(dp_first, dp_last);
+void cupy::thrust::_sort(void *start, const std::vector<ptrdiff_t>& shape) {
+
+    size_t ndim = shape.size();
+    ptrdiff_t size;
+    device_ptr<T> dp_first, dp_last;
+
+    // Compute the total size of the array.
+    size = shape[0];
+    for (size_t i = 1; i < ndim; ++i) {
+        size *= shape[i];
+    }
+
+    dp_first = device_pointer_cast(static_cast<T*>(start));
+    dp_last  = device_pointer_cast(static_cast<T*>(start) + size);
+
+    if (ndim == 1) {
+        stable_sort(dp_first, dp_last);
+    } else {
+        device_vector<size_t> d_keys(size);
+
+        // Generate key indices.
+        transform(make_counting_iterator<size_t>(0),
+                  make_counting_iterator<size_t>(size),
+                  make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  d_keys.begin(),
+                  divides<size_t>());
+
+        // Sorting with back-to-back approach.
+        stable_sort_by_key(dp_first,
+                           dp_last,
+                           d_keys.begin(),
+                           less<T>());
+
+        stable_sort_by_key(d_keys.begin(),
+                           d_keys.end(),
+                           dp_first,
+                           less<size_t>());
+    }
 }
 
-template void cupy::thrust::_sort<cpy_byte>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_ubyte>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_short>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_ushort>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_int>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_uint>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_long>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_ulong>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_float>(void *, ptrdiff_t);
-template void cupy::thrust::_sort<cpy_double>(void *, ptrdiff_t);
+template void cupy::thrust::_sort<cpy_byte>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ubyte>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_short>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ushort>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_int>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_uint>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_long>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ulong>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_float>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_double>(void *, const std::vector<ptrdiff_t>& shape);
 
 
 /*
@@ -44,7 +79,7 @@ private:
 };
 
 template <typename T>
-void cupy::thrust::_lexsort (size_t *idx_start, void *keys_start, size_t k, size_t n) {
+void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k, size_t n) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
@@ -52,7 +87,7 @@ void cupy::thrust::_lexsort (size_t *idx_start, void *keys_start, size_t k, size
     device_ptr<size_t> dp_last  = device_pointer_cast(idx_start + n);
     sequence(dp_first, dp_last);
     for (size_t i = 0; i < k; ++i) {
-        T *key_start = (T *)keys_start + i * n;
+        T *key_start = static_cast<T*>(keys_start) + i * n;
         stable_sort< device_ptr<size_t> >(dp_first, dp_last, elem_less<T>(key_start));
     }
 }

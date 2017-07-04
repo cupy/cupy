@@ -38,7 +38,7 @@ def empty_like(a, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return empty(a.shape, dtype=dtype)
+    return cupy.ndarray(a.shape, dtype=dtype)
 
 
 def eye(N, M=None, k=0, dtype=float):
@@ -100,7 +100,9 @@ def ones(shape, dtype=float):
 
     """
     # TODO(beam2d): Support ordering option
-    return full(shape, 1, dtype)
+    a = cupy.ndarray(shape, dtype=dtype)
+    a.fill(1)
+    return a
 
 
 def ones_like(a, dtype=None):
@@ -121,7 +123,9 @@ def ones_like(a, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return ones(a.shape, dtype)
+    a = cupy.ndarray(a.shape, dtype=dtype)
+    a.fill(1)
+    return a
 
 
 def zeros(shape, dtype=float, order='C'):
@@ -162,7 +166,9 @@ def zeros_like(a, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return zeros(a.shape, dtype=dtype)
+    a = cupy.ndarray(a.shape, dtype)
+    a.data.memset(0, a.nbytes)
+    return a
 
 
 def full(shape, fill_value, dtype=None):
@@ -182,7 +188,7 @@ def full(shape, fill_value, dtype=None):
 
     """
     # TODO(beam2d): Support ordering option
-    a = empty(shape, dtype)
+    a = cupy.ndarray(shape, dtype=dtype)
     a.fill(fill_value)
     return a
 
@@ -206,4 +212,6 @@ def full_like(a, fill_value, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return full(a.shape, fill_value, dtype)
+    a = cupy.ndarray(a.shape, dtype=dtype)
+    a.fill(fill_value)
+    return a
