@@ -14,6 +14,7 @@ Matrix and vector products
    cupy.outer
    cupy.matmul
    cupy.tensordot
+   cupy.einsum
 
 
 Decompositions

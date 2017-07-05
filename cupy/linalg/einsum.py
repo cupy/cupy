@@ -9,9 +9,7 @@ def einsum(equation, *inputs):
 
     match = re.match('([a-z,]+)(->[a-z]*)?', equation)
     if not match:
-        raise ValueError(
-            'Indices have incorrect format: %s' % equation
-        )
+        raise ValueError('Indices have incorrect format: %s' % equation)
 
     inputs = list(inputs)
     input_axis_labels = match.group(1).split(',')
@@ -154,7 +152,7 @@ def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
 
         t0_shape = list(t0.shape)
         num_broadcast_elements_t0 = _total_size(
-            t0_shape[len(preserved_axes):-len(axes_to_sum)])
+            t0_shape[len(preserved_axes): -len(axes_to_sum)])
         num_summed_elements = _total_size(t0_shape[-len(axes_to_sum):])
         new_shape = (t0_shape[:len(preserved_axes)]
                      + [num_broadcast_elements_t0, num_summed_elements])
@@ -223,9 +221,7 @@ def _exponential_space_einsum(equation, *inputs):
 
     match = re.match('([a-z,]+)(->[a-z]*)?', equation)
     if not match:
-        raise ValueError(
-            'Indices have incorrect format: %s' % equation
-        )
+        raise ValueError('Indices have incorrect format: %s' % equation)
 
     inputs = list(inputs)
     idx_in = match.group(1).split(',')
@@ -234,7 +230,6 @@ def _exponential_space_einsum(equation, *inputs):
 
     if match.group(2):
         idx_out = match.group(2)[2:]
-
     else:
         # infer the output subscripts if not given, assume alphabetical order
         counts = {ax: 0 for ax in indices}
@@ -249,14 +244,11 @@ def _exponential_space_einsum(equation, *inputs):
 
     if len(idx_in) != len(inputs):
         raise ValueError(
-            'Expected %d inputs but got %d' % (len(idx_in), len(inputs))
-        )
+            'Expected %d inputs but got %d' % (len(idx_in), len(inputs)))
 
     missing_idx = set(idx_out).difference(idx_all)
     if missing_idx:
-        raise ValueError(
-            'Unknown output axes: %s' % missing_idx
-        )
+        raise ValueError('Unknown output axes: %s' % missing_idx)
 
     axis_order = {}
     for ax in indices:
@@ -271,16 +263,14 @@ def _exponential_space_einsum(equation, *inputs):
             raise ValueError(
                 'Input %d with axes %s has incorrect'
                 ' number of dimensions (expected %d, got %d)' % (
-                    i, axes_, len(axes_), input_.ndim
-                )
-            )
+                    i, axes_, len(axes_), input_.ndim))
 
         sorted_idx = sorted(axes_, key=axis_order.get)
 
         if len(set(axes_)) != len(axes_):
             raise ValueError(
-                'Subscript not supported: an axis appears more than once: %s' % axes_
-            )
+                'Subscript not supported: an axis appears more than once: %s'
+                % axes_)
 
         if list(axes_) != sorted_idx:
             permuted = [axes_.find(ax) for ax in sorted_idx]
@@ -304,9 +294,7 @@ def _exponential_space_einsum(equation, *inputs):
                     dims.append(dim)
 
         if len(set(dims)) > 1:
-            raise ValueError(
-                'Dimension mismatch on axis: %s' % ax
-            )
+            raise ValueError('Dimension mismatch on axis: %s' % ax)
 
         if ax not in idx_out:
             reduction_idx.append(j)
@@ -325,11 +313,10 @@ def _exponential_space_einsum(equation, *inputs):
 
 if __name__ == '__main__':
     m0 = cupy.random.uniform(-1, 1, (3, 3))
-    # m1 = cupy.random.uniform(-1, 1, (3, 3))
-    # print(einsum('ij,jk->ik', m0, m1))
-    # print(einsum('ij,jk,kl->il', m0, m1, m1))
-    # print(cupy.dot(m0, m1))
-    #
-    # print(einsum('ii', m0))
-    # print(einsum('ji', m0))
-    print(einsum('ii->i', m0))
+    m1 = cupy.random.uniform(-1, 1, (3, 3))
+    print(einsum('ij,jk->ik', m0, m1))
+    print(einsum('ij,jk,kl->il', m0, m1, m1))
+    print(cupy.dot(m0, m1))
+    print(einsum('ii', m0))
+    print(einsum('ji', m0))
+    print(einsum('ii->i', m0))  # Not work
