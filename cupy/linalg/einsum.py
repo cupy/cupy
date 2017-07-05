@@ -117,12 +117,12 @@ def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
     # 3. in input 1, summed axes come next, followed by broadcast axes
     def sort_key(input_index, a):
         if a in preserved_axes:
-            return (-1, a)
+            return -1, a
         elif ((input_index == 0 and a in broadcast_axes[0]) or
               (input_index == 1 and a in axes_to_sum)):
-            return (0, a)
+            return 0, a
         else:
-            return (1, a)
+            return 1, a
 
     axis_labels = [t0_axis_labels, t1_axis_labels]
     sorted_axes = [sorted(sym_list, key=lambda a: sort_key(i, a))
@@ -134,8 +134,8 @@ def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
     t0, t1 = inputs
 
     if not axes_to_sum:
-        # In the special case where there are no axes to sum over, reduce to mul()
-        # rather than to batch matrix multiplication.
+        # In the special case where there are no axes to sum over,
+        # reduce to mul() rather than to batch matrix multiplication.
         for _ in broadcast_axes[1]:
             t0 = cupy.expand_dims(t0, -1)
         for _ in broadcast_axes[0]:
@@ -215,7 +215,8 @@ def _total_size(shape_values):
 
 
 def _exponential_space_einsum(equation, *inputs):
-    """Fallback implementation that supports summing an index over > 2 inputs."""
+    """Fallback implementation that supports summing an index over > 2 inputs.
+    """
     if '...' in equation:
         raise ValueError("Subscripts with ellipses are not yet supported.")
 
@@ -308,7 +309,6 @@ def _exponential_space_einsum(equation, *inputs):
 
     # contract
     return cupy.sum(expanded_output, reduction_idx)
-
 
 
 if __name__ == '__main__':
