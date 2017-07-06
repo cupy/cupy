@@ -1086,7 +1086,11 @@ cdef class ndarray:
         return self.copy()
 
     def __deepcopy__(self, memo):
-        return self.copy()
+        if self.device is not None:
+            with self.device:
+                return self.copy()
+        else:
+            return self.copy()
 
     def __reduce__(self):
         return array, (self.get(),)
