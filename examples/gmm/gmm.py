@@ -137,33 +137,31 @@ def run(gpuid, num, dim, max_iter, tol, output):
     y_train = np.r_[np.zeros(num), np.ones(num)].astype(np.int32)
     y_test = np.r_[np.zeros(100), np.ones(100)].astype(np.int32)
 
-    repeat = 5
-    for i in six.moves.range(repeat):
-        mean1 = np.random.normal(1, scale, size=dim)
-        mean2 = np.random.normal(-1, scale, size=dim)
-        means = np.stack([mean1, mean2])
-        covariances = np.random.rand(2, dim)
-        print('Running CPU...')
-        with timer(' CPU '):
-            y_test_pred, means, cov = \
-                calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
-                         means, covariances)
+    mean1 = np.random.normal(1, scale, size=dim)
+    mean2 = np.random.normal(-1, scale, size=dim)
+    means = np.stack([mean1, mean2])
+    covariances = np.random.rand(2, dim)
+    print('Running CPU...')
+    with timer(' CPU '):
+        y_test_pred, means, cov = \
+            calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
+                     means, covariances)
 
-        with cupy.cuda.Device(gpuid):
-            X_train_gpu = cupy.array(X_train)
-            y_train_gpu = cupy.array(y_train)
-            y_test_gpu = cupy.array(y_test)
-            X_test_gpu = cupy.array(X_test)
-            means = cupy.array(means)
-            covariances = cupy.array(covariances)
-            print('Running GPU...')
-            with timer(' GPU '):
-                y_test_pred, means, cov = \
-                    calc_acc(X_train_gpu, y_train_gpu, X_test_gpu, y_test_gpu,
-                             max_iter, tol, means, covariances)
-            if output is not None and i == repeat - 1:
-                draw(X_test_gpu, y_test_pred, means, cov, output)
-        print()
+    with cupy.cuda.Device(gpuid):
+        X_train_gpu = cupy.array(X_train)
+        y_train_gpu = cupy.array(y_train)
+        y_test_gpu = cupy.array(y_test)
+        X_test_gpu = cupy.array(X_test)
+        means = cupy.array(means)
+        covariances = cupy.array(covariances)
+        print('Running GPU...')
+        with timer(' GPU '):
+            y_test_pred, means, cov = \
+                calc_acc(X_train_gpu, y_train_gpu, X_test_gpu, y_test_gpu,
+                         max_iter, tol, means, covariances)
+        if output is not None:
+            draw(X_test_gpu, y_test_pred, means, cov, output)
+    print()
 
 
 if __name__ == '__main__':
