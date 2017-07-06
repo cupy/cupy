@@ -1795,11 +1795,15 @@ cdef _argmax = create_reduction_func(
 cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support order and subok options
     cdef Py_ssize_t nvidem
-    cdef ndarray a
+    cdef ndarray a, src
     if isinstance(obj, ndarray):
+        src = obj
         if dtype is None:
-            dtype = obj.dtype
-        a = obj.astype(dtype, copy)
+            dtype = src.dtype
+        if src.data.device.id == device.get_device_id():
+            a = src.astype(dtype, copy=copy)
+        else:
+            a = src.copy().astype(dtype, copy=False)
 
         ndim = a._shape.size()
         if ndmin > ndim:
