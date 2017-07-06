@@ -3,9 +3,11 @@
 import collections
 import ctypes
 import gc
+import six
 import warnings
 import weakref
 
+from cupy.cuda import memory_hook
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
@@ -388,8 +390,9 @@ cdef class SingleDeviceMemoryPool:
         self._initial_bins_size = 1024
         self._in_use = {}
         self._free = [[] for i in range(self._initial_bins_size)]
-        self._alloc = allocator
+        self._allocator = allocator
         self._weakref = weakref.ref(self)
+        self._device_id = device.get_device_id()
 
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
         """Round up the memory size to fit memory alignment of cudaMalloc."""
@@ -448,7 +451,40 @@ cdef class SingleDeviceMemoryPool:
             merged.next.prev = merged
         return merged
 
+    cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            device_id = self._device_id
+            # Note Ordereddict.itervalues() is not available even in cython
+            for hook in six.itervalues(hooks):
+                hook.alloc_preprocess(device_id, rounded_size)
+            try:
+                memptr = self._allocator(rounded_size)
+            finally:
+                for hook in six.itervalues(hooks):
+                    hook.alloc_postprocess(device_id, rounded_size)
+            return memptr
+        else:
+            return self._allocator(rounded_size)
+
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        rounded_size = self._round_size(size)
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            device_id = self._device_id
+            # Note Ordereddict.itervalues() is not available even in cython
+            for hook in six.itervalues(hooks):
+                hook.malloc_preprocess(device_id, size, rounded_size)
+            try:
+                memptr = self._malloc(rounded_size)
+            finally:
+                for hook in six.itervalues(hooks):
+                    hook.malloc_postprocess(device_id, size, rounded_size)
+            return memptr
+        else:
+            return self._malloc(rounded_size)
+
+    cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef list free_list = None
         cdef Chunk chunk = None
         cdef MemoryPointer memptr
@@ -457,7 +493,6 @@ cdef class SingleDeviceMemoryPool:
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        size = self._round_size(size)
         index = self._bin_index_from_size(size)
         # find best-fit, or a smallest larger allocation
         length = len(self._free)
