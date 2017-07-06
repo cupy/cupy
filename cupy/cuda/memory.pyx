@@ -340,7 +340,9 @@ cdef class SingleDeviceMemoryPool:
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
-        self._allocation_unit_size = 256
+        # cudaMalloc() is aligned to at least 512 bytes
+        # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
+        self._allocation_unit_size = 512
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
