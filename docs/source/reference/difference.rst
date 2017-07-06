@@ -99,9 +99,10 @@ last element among elements referencing duplicate locations.
 Reduction methods return zero-dimensional array
 -----------------------------------------------
 
-NumPy's reduction methods such as :func:`numpy.sum` returns a scalar value.
-However CuPy's one returns zero-dimensional array because it is required to synchronize GPU and CPU to return a scalar value.
-If you want to use a scalar value, cast a result array to a scalar explicitly.
+NumPy's reduction methods such as :func:`numpy.sum` returns a scalar value such as :class:`numpy.float32`.
+However CuPy's one returns zero-dimensional array because CuPy's scalar value such as :class:`cupy.float32` is allocated in CPU memory.
+To return a scalar value it is required to synchronize GPU and CPU.
+If you want to use a scalar value, cast a result array explicitly.
 
   >>> type(np.sum(np.arange(3)))
   <class 'numpy.int64'>
