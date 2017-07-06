@@ -1813,17 +1813,17 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
             a.shape = (1,) * (ndmin - ndim) + a.shape
         return a
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)
-        if a_cpu.dtype.char not in '?bhilqBHILQefd':
-            raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
-        if a_cpu.ndim > 0:
-            a_cpu = numpy.ascontiguousarray(a_cpu)
-        a = ndarray(a_cpu.shape, dtype=a_cpu.dtype)
-        a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), a.nbytes)
-        if a_cpu.dtype == a.dtype:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
+                            ndmin=ndmin)
+        a_dtype = a_cpu.dtype
+        if a_dtype.char not in '?bhilqBHILQefd':
+            raise ValueError('Unsupported dtype %s' % a_dtype)
+        a = ndarray(a_cpu.shape, dtype=a_dtype)
+        if a_cpu.ndim == 0:
+            a.fill(a_cpu[()])
             return a
-        else:
-            return a.view(dtype=a_cpu.dtype)
+        a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), a.nbytes)
+        return a
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
