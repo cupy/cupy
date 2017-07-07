@@ -36,16 +36,14 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -117,8 +115,7 @@ class TestLexsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
@@ -160,15 +157,13 @@ class TestArgsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_argsort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return a.argsort()
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_external_argsort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -212,8 +207,7 @@ class TestMsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-                         numpy.float32, numpy.float64])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_msort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
