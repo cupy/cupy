@@ -1,4 +1,5 @@
 import re
+import string
 
 import cupy
 
@@ -10,6 +11,16 @@ def einsum(equation, *inputs):
     match = re.match('([a-z,]+)(->[a-z]*)?', equation)
     if not match:
         raise ValueError('Indices have incorrect format: %s' % equation)
+
+    for char in set(equation):
+        if char in string.ascii_lowercase:
+            continue
+        if char in string.digits:
+            continue
+        if char in '.,->':
+            continue
+        raise ValueError("invalid subscript '{}' in einstein sum subscripts "
+                         "string, subscripts must be letters".format(char))
 
     inputs = list(inputs)
     input_axis_labels = match.group(1).split(',')

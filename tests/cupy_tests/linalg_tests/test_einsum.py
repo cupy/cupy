@@ -46,11 +46,11 @@ class TestEinSum(unittest.TestCase):
 
         # invalid subscript character
         with self.assertRaises(ValueError):
-            numpy.einsum("i%", [0, 0])
+            cupy.einsum("i%", [0, 0])
         with self.assertRaises(ValueError):
-            numpy.einsum("j$", [0, 0])
+            cupy.einsum("j$", [0, 0])
         with self.assertRaises(ValueError):
-            numpy.einsum("i->&", [0, 0])
+            cupy.einsum("i->&", [0, 0])
 
         # output subscripts must appear in inumpy.t
         with self.assertRaises(ValueError):
