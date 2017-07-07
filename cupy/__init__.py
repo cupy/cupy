@@ -275,6 +275,7 @@ from numpy import base_repr  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
+from cupy.linalg.product import kron  # NOQA
 from cupy.linalg.product import matmul  # NOQA
 from cupy.linalg.product import outer  # NOQA
 from cupy.linalg.product import tensordot  # NOQA
