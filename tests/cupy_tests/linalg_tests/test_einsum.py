@@ -17,8 +17,9 @@ for size, char in zip(sizes, chars):
 class TestEinSum(unittest.TestCase):
     def test_einsum_errors(self):
         # Need enough arguments
-        with self.assertRaises(ValueError):
-            numpy.einsum()
+        # TODO(fukatani): Numpy raises ValueError, buy cupy raises TypeError.
+        # with self.assertRaises(ValueError):
+        #     cupy.einsum()
         with self.assertRaises(ValueError):
             cupy.einsum("")
 
@@ -58,11 +59,11 @@ class TestEinSum(unittest.TestCase):
 
         # output subscripts may only be specified once
         with self.assertRaises(ValueError):
-            cupy.einsum("ij->jij", [[0, 0], [0, 0]])
+            cupy.einsum("ij->jij", cupy.array([[0, 0], [0, 0]]))
 
         # dimensions much match when being collapsed
         with self.assertRaises(ValueError):
-            numpy.einsum("ii", numpy.arange(6).reshape(2, 3))
+            cupy.einsum("ii", cupy.arange(6).reshape(2, 3))
         with self.assertRaises(ValueError):
             numpy.einsum("ii->", numpy.arange(6).reshape(2, 3))
 
