@@ -182,12 +182,25 @@ def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
         return product, ''.join(product_axes)
 
 
-def _transpose_if_necessary(tensor, perm):
+def _transpose_if_necessary(a, perm):
     """Like transpose(), but avoids creating a new tensor if possible."""
+
+    # For compatibility with numpy.
+    # numpy einsum is acceptable for cupy.
+    a = cupy.asarray(a)
+
+    # TODO(fukatani): Error message is slightly different with numpy.
+    if a.ndim < len(perm):
+        raise ValueError("einstein sum subscripts string contains too "
+                         "many subscripts for operand.")
+    elif a.ndim > len(perm):
+        raise ValueError("operand has more dimensions than subscripts given "
+                         "in einstein sum, but no '...' ellipsis provided to "
+                         "broadcast the extra dimensions.")
     if perm != range(len(perm)):
-        return cupy.transpose(tensor, perm)
+        return cupy.transpose(a, perm)
     else:
-        return tensor
+        return a
 
 
 def _reshape_if_necessary(tensor, new_shape):

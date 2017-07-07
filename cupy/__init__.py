@@ -281,6 +281,7 @@ from cupy.linalg.product import tensordot  # NOQA
 from cupy.linalg.product import vdot  # NOQA
 
 from cupy.linalg.norms import trace  # NOQA
+from cupy.linalg.einsum import einsum  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
