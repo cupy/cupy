@@ -105,7 +105,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.csc_matrix: Converte matrix.
+            cupy.sparse.csc_matrix: Converted matrix.
 
         """
         # copy is ignored

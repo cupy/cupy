@@ -104,7 +104,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.coo_matrix: Converte matrix.
+            cupy.sparse.coo_matrix: Converted matrix.
 
         """
         return self.T.tocoo(copy).T
@@ -133,7 +133,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.csr_matrix: Converte matrix.
+            cupy.sparse.csr_matrix: Converted matrix.
 
         """
         return self.T.tocsc(copy).T
