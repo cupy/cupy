@@ -5,6 +5,24 @@ import cupy
 
 
 def einsum(equation, *inputs):
+    """Returns a product of two arrays.
+    For arrays with more than one axis, it computes the dot product along the
+    last axis of ``a`` and the second-to-last axis of ``b``. This is just a
+    matrix product if the both arrays are 2-D. For 1-D arrays, it uses their
+    unique axis as an axis to take dot product over.
+    Args:
+        subscripts (str): Specifies the subscripts for summation.
+        inputs (cupy.ndarray): These are the arrays for the operation.
+    Returns:
+        cupy.ndarray: The calculation based on the Einstein summation convention.
+    .. seealso:: :func:`numpy.einsum`
+    """
+    #TODO(fukatani): Support out option.
+    #TODO(fukatani): Support dtype option.
+    #TODO(fukatani): Support order option.
+    #TODO(fukatani): Support casting option.
+    #TODO(fukatani): Support optimize option.
+    
     if '...' in equation:
         raise ValueError('Subscripts with ellipses are not yet supported.')
 
@@ -79,18 +97,18 @@ def einsum(equation, *inputs):
 def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
     """Helper for einsum() that computes the result of a two-argument einsum().
     Args:
-      t0: a `Tensor`
-      t0_axis_labels: a string of axis labels.  This string's length must equal
+      t0 (cupy.ndarray): The left argument.
+      t0_axis_labels (str): a string of axis labels.  This string's length must equal
         the rank of t0.
-      t1: a `Tensor`
-      t1_axis_labels: a string to axis labels.  This string's length must equal
+      t1 (cupy.ndarray): The right argument.
+      t1_axis_labels (str): a string to axis labels.  This string's length must equal
         the rank of t1.
       axes_to_sum: set of labels of axes to be summed over
     Returns:
-      A `Tensor` whose elements are obtained by summing, over all axes in
-      `axes_to_sum`, the corresponding elements of `t0` and `t1`.
-      For example, if t0_axis_labels == 'abijk', t1_axis_labels == 'acjkl', and
-      axes_to_sum == {j,k}, this will return a tensor x where
+      cupy.ndarray: A `cupy.ndarray` whose elements are obtained by summing, 
+      over all axes in `axes_to_sum`, the corresponding elements of `t0` and
+      `t1`. For example, if t0_axis_labels == 'abijk', t1_axis_labels == 'acjkl',
+      and axes_to_sum == {j,k}, this will return a tensor x where
         out[a,b,c,i,l] = sum_j sum_k t0[a,b,i,j,k] * t1[a,c,j,k,l]
     Raises:
       ValueError: if the rank of `t0` does not match the length of
@@ -197,7 +215,7 @@ def _transpose_if_necessary(a, perm):
     """Like transpose(), but avoids creating a new tensor if possible."""
 
     # For compatibility with numpy.
-    # numpy einsum is acceptable for cupy.
+    # numpy einsum is acceptable with scalar value.
     a = cupy.asarray(a)
 
     # TODO(fukatani): Error message is slightly different with numpy.
@@ -214,20 +232,20 @@ def _transpose_if_necessary(a, perm):
         return a
 
 
-def _reshape_if_necessary(tensor, new_shape):
-    """Like reshape(), but avoids creating a new tensor if possible."""
+def _reshape_if_necessary(a, new_shape):
+    """Like reshape(), but avoids creating a new array if possible."""
     # Accept None as an alias for -1 in new_shape.
     new_shape = tuple(-1 if x is None else x for x in new_shape)
     cur_shape = tensor.shape
     if (len(new_shape) == len(cur_shape) and
             all(d0 == d1 or d1 == -1 for d0, d1 in zip(cur_shape, new_shape))):
-        return tensor
+        return a
     else:
-        return cupy.reshape(tensor, new_shape)
+        return cupy.reshape(a, new_shape)
 
 
 def _total_size(shape_values):
-    """Given list of tensor shape values, returns total size.
+    """Given list of array shape values, returns total size.
     If shape_values contains tensor values (which are results of
     array_ops.shape), then it returns a scalar tensor.
     If not, it returns an integer."""
@@ -241,8 +259,6 @@ def _total_size(shape_values):
 def _exponential_space_einsum(equation, *inputs):
     """Fallback implementation that supports summing an index over > 2 inputs.
     """
-    if '...' in equation:
-        raise ValueError("Subscripts with ellipses are not yet supported.")
 
     match = re.match('([a-z,]+)(->[a-z]*)?', equation)
     if not match:
