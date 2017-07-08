@@ -27,6 +27,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if dtype != 'f' and dtype != 'd':
                 raise ValueError('Only float32 and float64 are supported')
 
+            data = data.astype(dtype, copy=copy)
             sparse_data._data_matrix.__init__(self, data)
 
             self.indices = indices.astype('i', copy=copy)
