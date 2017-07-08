@@ -22,7 +22,7 @@ def einsum(equation, *inputs):
     #TODO(fukatani): Support order option.
     #TODO(fukatani): Support casting option.
     #TODO(fukatani): Support optimize option.
-    
+
     if '...' in equation:
         raise ValueError('Subscripts with ellipses are not yet supported.')
 
@@ -105,7 +105,7 @@ def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
         the rank of t1.
       axes_to_sum: set of labels of axes to be summed over
     Returns:
-      cupy.ndarray: A `cupy.ndarray` whose elements are obtained by summing, 
+      cupy.ndarray: A `cupy.ndarray` whose elements are obtained by summing,
       over all axes in `axes_to_sum`, the corresponding elements of `t0` and
       `t1`. For example, if t0_axis_labels == 'abijk', t1_axis_labels == 'acjkl',
       and axes_to_sum == {j,k}, this will return a tensor x where
@@ -236,7 +236,7 @@ def _reshape_if_necessary(a, new_shape):
     """Like reshape(), but avoids creating a new array if possible."""
     # Accept None as an alias for -1 in new_shape.
     new_shape = tuple(-1 if x is None else x for x in new_shape)
-    cur_shape = tensor.shape
+    cur_shape = a.shape
     if (len(new_shape) == len(cur_shape) and
             all(d0 == d1 or d1 == -1 for d0, d1 in zip(cur_shape, new_shape))):
         return a
@@ -246,8 +246,8 @@ def _reshape_if_necessary(a, new_shape):
 
 def _total_size(shape_values):
     """Given list of array shape values, returns total size.
-    If shape_values contains tensor values (which are results of
-    array_ops.shape), then it returns a scalar tensor.
+    If shape_values contains ndarray values (which are results of
+    ndarray.shape), then it returns a scalar ndarray.
     If not, it returns an integer."""
 
     result = 1
