@@ -92,6 +92,7 @@ class TestCsrMatrix(unittest.TestCase):
             [0, 0, 0, 2],
             [0, 0, 3, 0]
         ]
+        self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
 
 
@@ -208,7 +209,9 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.toarray()
+        a = m.toarray()
+        self.assertTrue(a.flags.c_contiguous)
+        return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):

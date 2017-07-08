@@ -92,7 +92,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csc_array.toarray`
 
         """
-        return self.T.toarray().T
+        return cusparse.csr2dense(self.T).T
 
     # TODO(unno): Implement tobsr
 
