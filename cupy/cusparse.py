@@ -60,7 +60,7 @@ def _call_cusparse(name, dtype, *args):
 
 
 def csr2dense(x, out=None):
-    """Convert CSR-matrix to a dense matrix.
+    """Converts CSR-matrix to a dense matrix.
 
     Args:
         x (cupy.sparse.csr_matrix): A sparse matrix to convert.
@@ -87,7 +87,7 @@ def csr2dense(x, out=None):
 
 
 def csrsort(x):
-    """Sort indices of CSR-matrix in place.
+    """Sorts indices of CSR-matrix in place.
 
     Args:
         x (cupy.sparse.csr_matrix): A sparse matrix to sort.
@@ -113,7 +113,7 @@ def csrsort(x):
 
 
 def cscsort(x):
-    """Sort indices of CSC-matrix in place.
+    """Sorts indices of CSC-matrix in place.
 
     Args:
         x (cupy.sparse.csc_matrix): A sparse matrix to sort.

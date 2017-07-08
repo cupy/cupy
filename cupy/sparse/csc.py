@@ -97,7 +97,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tobsr
 
     def tocoo(self, copy=False):
-        """Convert the matrix to COOdinate format.
+        """Converts the matrix to COOdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -110,14 +110,14 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         return self.T.tocoo(copy).T
 
     def tocsc(self, copy=False):
-        """Convert the matrix to Compressed Sparse Column format.
+        """Converts the matrix to Compressed Sparse Column format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
                 possible.
 
         Returns:
-            cupy.sparse.csc_matrix: Converte matrix.
+            cupy.sparse.csc_matrix: Converted matrix.
 
         """
         if copy:
@@ -126,7 +126,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             return self
 
     def tocsr(self, copy=False):
-        """Convert the matrix to Compressed Sparse Row format.
+        """Converts the matrix to Compressed Sparse Row format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -162,7 +162,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
 
 def isspmatrix_csc(x):
-    """Check if a given matrix is CSC format.
+    """Checks if a given matrix is CSC format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.csc_matrix`.

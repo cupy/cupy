@@ -74,7 +74,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
-        """Sort the indices of the matrix in place."""
+        """Sorts the indices of the matrix in place."""
         cusparse.csrsort(self)
 
     # TODO(unno): Implement sum_duplicates
@@ -98,7 +98,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tocoo
 
     def tocsc(self, copy=False):
-        """Convert the matrix to Compressed Sparse Column format.
+        """Converts the matrix to Compressed Sparse Column format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -119,7 +119,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.csr_matrix: Converte matrix.
+            cupy.sparse.csr_matrix: Converted matrix.
 
         """
         if copy:
@@ -151,7 +151,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
 
 def isspmatrix_csr(x):
-    """Check if a given matrix is CSR format.
+    """Checks if a given matrix is CSR format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.csr_matrix`.
