@@ -174,10 +174,20 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
         m.sort_indices()
         return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sorted_indices(self, xp, sp):
+        m = _make_unordered(xp, sp, self.dtype)
+        return m.sorted_indices().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
