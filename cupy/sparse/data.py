@@ -43,7 +43,7 @@ class _data_matrix(base.spmatrix):
         return self._with_data(self.data.astype(t))
 
     def count_nonzero(self):
-        """Returns number of non-zero entry.
+        """Returns number of non-zero entries.
 
         .. note::
            This method counts the actual number of non-zero entories, which
