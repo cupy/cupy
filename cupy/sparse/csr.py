@@ -102,7 +102,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in csr to csc conversion.
 
         Returns:
             cupy.sparse.csc_matrix: Converted matrix.
