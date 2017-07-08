@@ -276,3 +276,22 @@ class TestUfunc(unittest.TestCase):
     def test_ufun(self, xp, sp):
         x = _make(xp, sp, self.dtype)
         return getattr(x, self.ufunc)().toarray()
+
+
+class TestIsspmatrixCsc(unittest.TestCase):
+
+    def test_csr(self):
+        x = cupy.sparse.csr_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([], 'i'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertFalse(cupy.sparse.isspmatrix_csc(x))
+
+    def test_csc(self):
+        x = cupy.sparse.csc_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([], 'i'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertTrue(cupy.sparse.isspmatrix_csc(x))
