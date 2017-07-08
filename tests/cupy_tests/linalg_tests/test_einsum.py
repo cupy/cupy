@@ -63,7 +63,8 @@ class TestEinSum(unittest.TestCase):
 
         # dimensions much match when being collapsed
         with self.assertRaises(ValueError):
-            cupy.einsum("ii", cupy.arange(6).reshape(2, 3))
+            numpy.einsum("ii", numpy.arange(6).reshape(2, 3))
+            # cupy.einsum("ii", cupy.array([[0, 1, 2], [0, 3, 0]]))
         with self.assertRaises(ValueError):
             numpy.einsum("ii->", numpy.arange(6).reshape(2, 3))
 
@@ -123,96 +124,102 @@ class TestEinSum(unittest.TestCase):
         n = 5
         # sum(a, axis=-1)
         a = numpy.arange(n, dtype=dtype)
-        testing.assert_array_equal(numpy.einsum("i->", a),
-                     numpy.sum(a, axis=-1).astype(dtype))
+        testing.assert_array_almost_equal(numpy.einsum("i->", a),
+                                          cupy.einsum("i->", cupy.asarray(a)))
 
         # trace(a)
-        a = numpy.arange(n*n, dtype=dtype).reshape(n, n)
-        testing.assert_array_equal(numpy.einsum("ii", a),
-                     numpy.trace(a).astype(dtype))
+        # a = numpy.arange(n*n, dtype=dtype).reshape(n, n)
+        # testing.assert_array_almost_equal(numpy.einsum("ii", a),
+        #                                   cupy.einsum("ii", cupy.asarray(a)))
 
         # outer(a,b)
         a = numpy.arange(3, dtype=dtype) + 1
         b = numpy.arange(n, dtype=dtype) + 1
-        testing.assert_array_equal(numpy.einsum("i,j", a, b),
-                                   numpy.outer(a, b))
+        testing.assert_array_almost_equal(numpy.einsum("i,j", a, b),
+                                          cupy.einsum("i,j", cupy.asarray(a), cupy.asarray(b)))
 
         # matvec(a,b) / a.dot(b) where a is matrix, b is vector
         a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
         b = numpy.arange(n, dtype=dtype)
-        testing.assert_array_equal(numpy.einsum("ij, j", a, b),
-                     numpy.dot(a, b))
-
-        c = numpy.einsum("ij,j", a, b)
-        testing.assert_array_equal(c, numpy.dot(a, b))
+        testing.assert_array_almost_equal(numpy.einsum("ij, j", a, b),
+                                   cupy.einsum("ij, j", cupy.asarray(a),
+                                               cupy.asarray(b)))
 
         a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
         b = numpy.arange(n, dtype=dtype)
-        testing.assert_array_equal(numpy.einsum("ji,j", a.T, b.T),
-                     numpy.dot(b.T, a.T))
-
-        c = numpy.einsum("ji,j", a.T, b.T)
-        testing.assert_array_equal(c, numpy.dot(b.T, a.T))
+        testing.assert_array_almost_equal(numpy.einsum("ji,j", a.T, b.T),
+                                   cupy.einsum("ji,j", cupy.asarray(a).T,
+                                               cupy.asarray(b).T))
 
         # matmat(a,b) / a.dot(b) where a is matrix, b is matrix
         a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
         b = numpy.arange(n*6, dtype=dtype).reshape(n, 6)
         testing.assert_array_equal(numpy.einsum("ij,jk", a, b),
-                     numpy.dot(a, b))
+                                   cupy.einsum("ij,jk", cupy.asarray(a),
+                                               cupy.asarray(b)))
 
         a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
         b = numpy.arange(n*6, dtype=dtype).reshape(n, 6)
-        c = numpy.einsum("ij,jk", a, b)
-        testing.assert_array_equal(c, numpy.dot(a, b).astype(dtype))
+        testing.assert_array_equal(numpy.einsum("ij,jk", a, b),
+                                   cupy.einsum("ij,jk", cupy.asarray(a),
+                                               cupy.asarray(b)))
 
         # matrix triple product (note this is not currently an efficient
         # way to multiply 3 matrices)
         a = numpy.arange(12, dtype=dtype).reshape(3, 4)
         b = numpy.arange(20, dtype=dtype).reshape(4, 5)
         c = numpy.arange(30, dtype=dtype).reshape(5, 6)
-        if dtype != 'f2':
+        if dtype != 'f2' and dtype != 'i2':
             testing.assert_array_equal(numpy.einsum("ij,jk,kl", a, b, c),
-                         a.dot(b).dot(c))
+                                       cupy.einsum("ij,jk,kl", cupy.asarray(a),
+                                                   cupy.asarray(b),
+                                                   cupy.asarray(c)))
 
         # tensordot(a, b)
         if numpy.dtype(dtype) != numpy.dtype('f2'):
             a = numpy.arange(60, dtype=dtype).reshape(3, 4, 5)
             b = numpy.arange(24, dtype=dtype).reshape(4, 3, 2)
             testing.assert_array_equal(numpy.einsum("ijk, jil -> kl", a, b),
-                         numpy.tensordot(a, b, axes=([1, 0], [0, 1])))
-
-            c = numpy.einsum("ijk,jil->kl", a, b)
-            testing.assert_array_equal(c, numpy.tensordot(a, b,
-                         axes=([1, 0], [0, 1])))
+                                       cupy.einsum("ijk, jil -> kl", cupy.asarray(a), cupy.asarray(b)))
 
         a = numpy.arange(9, dtype=dtype)
-        testing.assert_array_equal(numpy.einsum(",i->", 3, a), 3*numpy.sum(a))
-        testing.assert_array_equal(numpy.einsum("i,->", a, 3), 3*numpy.sum(a))
+        testing.assert_array_equal(numpy.einsum(",i->", 3, a),
+                                   cupy.einsum(",i->", cupy.asarray(3),
+                                               cupy.asarray(a)),)
 
         # Various stride0, contiguous, and SSE aligned variants
         a = numpy.arange(n, dtype=dtype)
         if numpy.dtype(dtype).itemsize > 1:
-            testing.assert_array_equal(numpy.einsum("i,i", a, a), numpy.dot(a, a))
-            testing.assert_array_equal(numpy.einsum("i,->i", a, 2), 2*a)
-            testing.assert_array_equal(numpy.einsum(",i->i", 2, a), 2*a)
-            testing.assert_array_equal(numpy.einsum("i,->", a, 2), 2*numpy.sum(a))
-            testing.assert_array_equal(numpy.einsum(",i->", 2, a), 2*numpy.sum(a))
+            testing.assert_array_equal(numpy.einsum("i,i", a, a),
+                                       cupy.einsum("i,i", cupy.asarray(a),
+                                                   cupy.asarray(a)))
+            testing.assert_array_equal(numpy.einsum("i,->i", a, 2),
+                                       cupy.einsum("i,->i", cupy.asarray(a),
+                                                   cupy.asarray(2)))
+            testing.assert_array_equal(numpy.einsum(",i->i", 2, a),
+                                       cupy.einsum(",i->i", cupy.asarray(2),
+                                                   cupy.asarray(a)))
+            testing.assert_array_equal(numpy.einsum("i,->", a, 2),
+                                       cupy.einsum("i,->", cupy.asarray(a),
+                                                   cupy.asarray(2)))
+            testing.assert_array_equal(numpy.einsum(",i->", 2, a),
+                                       cupy.einsum(",i->", cupy.asarray(2),
+                                                   cupy.asarray(a)))
 
             testing.assert_array_equal(numpy.einsum("i,i", a[1:], a[:-1]),
-                         numpy.dot(a[1:], a[:-1]))
-            testing.assert_array_equal(numpy.einsum("i,->i", a[1:], 2), 2*a[1:])
-            testing.assert_array_equal(numpy.einsum(",i->i", 2, a[1:]), 2*a[1:])
+                                       cupy.einsum("i,i", cupy.asarray(a[1:]),
+                                                   cupy.asarray(a[:-1])))
+
+
+
+            testing.assert_array_equal(numpy.einsum("i,->i", a[1:], 2),
+                                       cupy.einsum("i,->i", cupy.asarray(a[1:]), cupy.asarray(2)))
+            testing.assert_array_equal(numpy.einsum(",i->i", 2, a[1:]),
+                                       cupy.einsum(",i->i", cupy.asarray(2), cupy.asarray(a[1:])))
             testing.assert_array_equal(numpy.einsum("i,->", a[1:], 2),
-                         2*numpy.sum(a[1:]))
+                                       cupy.einsum("i,->", cupy.asarray(a[1:]), cupy.asarray(2)))
             testing.assert_array_equal(numpy.einsum(",i->", 2, a[1:]),
-                         2*numpy.sum(a[1:]))
-
-        # An object array, summed as the data type
-        a = numpy.arange(9, dtype=object)
-
-        b = numpy.einsum("i->", a, dtype=dtype, casting='unsafe')
-        testing.assert_array_equal(b, numpy.sum(a))
-        testing.assert_array_equal(b.dtype, numpy.dtype(dtype))
+                                       cupy.einsum(",i->", cupy.asarray(2), cupy.asarray(a[1:])))
 
     def test_einsum_sums_int8(self):
         self.check_einsum_sums('i1')
@@ -246,9 +253,6 @@ class TestEinSum(unittest.TestCase):
 
     def test_einsum_sums_float64(self):
         self.check_einsum_sums('f8')
-
-    def test_einsum_sums_longdouble(self):
-        self.check_einsum_sums(numpy.longdouble)
 
     def test_einsum_broadcast(self):
         dims = [2, 3, 4, 5]

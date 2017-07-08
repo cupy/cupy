@@ -26,6 +26,7 @@ def einsum(equation, *inputs):
     if '...' in equation:
         raise ValueError('Subscripts with ellipses are not yet supported.')
 
+    equation = equation.replace(" ", "")
     match = re.match('([a-z,]+)(->[a-z]*)?', equation)
     if not match:
         raise ValueError('Indices have incorrect format: %s' % equation)
@@ -35,7 +36,7 @@ def einsum(equation, *inputs):
             continue
         if char in string.digits:
             continue
-        if char in '.,->':
+        if char in '.,-> ':
             continue
         raise ValueError("invalid subscript '{}' in einstein sum subscripts "
                          "string, subscripts must be letters".format(char))
