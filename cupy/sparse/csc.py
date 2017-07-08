@@ -137,7 +137,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupy.sparse.csr_matrix: Converted matrix.
 
         """
-        return self.T.tocsc(copy).T
+        return self.T.tocsc(copy=False).T
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
