@@ -132,7 +132,14 @@ def msort(a):
 # TODO(okuta): Implement sort_complex
 
 
-# TODO(okuta): Implement partition
+def partition(a, kth, axis=-1):
+    if axis is None:
+        ret = a.flatten()
+        axis = -1
+    else:
+        ret = a.copy()
+    ret.partition(kth, axis=axis)
+    return ret
 
 
 # TODO(okuta): Implement argpartition

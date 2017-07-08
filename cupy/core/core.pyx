@@ -801,7 +801,15 @@ cdef class ndarray:
 
         return idx_array
 
-    # TODO(okuta): Implement partition
+    def partition(self, kth, axis=-1):
+        ndim = self.ndim
+        if kth < 0:
+            kth += ndim
+        if not (0 <= kth < ndim):
+            raise ValueError('kth(={}) out of bounds {}'.format(kth, ndim))
+
+        self.sort(axis=axis)
+
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
 
