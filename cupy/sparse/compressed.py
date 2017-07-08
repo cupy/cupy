@@ -1,3 +1,5 @@
+import numpy
+
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import data as sparse_data
@@ -23,6 +25,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
             if dtype is None:
                 dtype = data.dtype
+            else:
+                dtype = numpy.dtype(dtype)
 
             if dtype != 'f' and dtype != 'd':
                 raise ValueError('Only float32 and float64 are supported')

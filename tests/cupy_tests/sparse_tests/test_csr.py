@@ -99,7 +99,7 @@ class TestCsrMatrix(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCsrMatrixInvalidInit(unittest.TestCase):
+class TestCsrMatrixInit(unittest.TestCase):
 
     def setUp(self):
         self.shape = (3, 4)
@@ -112,6 +112,30 @@ class TestCsrMatrixInvalidInit(unittest.TestCase):
 
     def indptr(self, xp):
         return xp.array([0, 2, 3, 4], 'i')
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_shape_none(self, xp, sp):
+        x = sp.csr_matrix(
+            (self.data(xp), self.indices(xp), self.indptr(xp)), shape=None)
+        self.assertEqual(x.shape, (3, 4))
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_dtype(self, xp, sp):
+        data = self.data(xp).astype('i')
+        x = sp.csr_matrix(
+            (data, self.indices(xp), self.indptr(xp)), dtype=self.dtype)
+        self.assertEqual(x.dtype, self.dtype)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_copy_true(self, xp, sp):
+        data = self.data(xp)
+        indices = self.indices(xp)
+        indptr = self.indptr(xp)
+        x = sp.csr_matrix((data, indices, indptr), copy=True)
+
+        self.assertIsNot(data, x.data)
+        self.assertIsNot(indices, x.indices)
+        self.assertIsNot(indptr, x.indptr)
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):

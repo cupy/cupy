@@ -96,7 +96,7 @@ class TestCscMatrix(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCscMatrixInvalidInit(unittest.TestCase):
+class TestCscMatrixInit(unittest.TestCase):
 
     def setUp(self):
         self.shape = (3, 4)
@@ -105,10 +105,34 @@ class TestCscMatrixInvalidInit(unittest.TestCase):
         return xp.array([1, 2, 3, 4], self.dtype)
 
     def indices(self, xp):
-        return xp.array([0, 1, 3, 2], 'i')
+        return xp.array([0, 0, 2, 1], 'i')
 
     def indptr(self, xp):
-        return xp.array([0, 2, 3, 4], 'i')
+        return xp.array([0, 1, 2, 3, 4], 'i')
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_shape_none(self, xp, sp):
+        x = sp.csc_matrix(
+            (self.data(xp), self.indices(xp), self.indptr(xp)), shape=None)
+        self.assertEqual(x.shape, (3, 4))
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_dtype(self, xp, sp):
+        data = self.data(xp).astype('i')
+        x = sp.csc_matrix(
+            (data, self.indices(xp), self.indptr(xp)), dtype=self.dtype)
+        self.assertEqual(x.dtype, self.dtype)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_copy_true(self, xp, sp):
+        data = self.data(xp)
+        indices = self.indices(xp)
+        indptr = self.indptr(xp)
+        x = sp.csc_matrix((data, indices, indptr), copy=True)
+
+        self.assertIsNot(data, x.data)
+        self.assertIsNot(indices, x.indices)
+        self.assertIsNot(indptr, x.indptr)
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):
