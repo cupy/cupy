@@ -65,6 +65,7 @@ def csr2dense(x, out=None):
     Args:
         x (cupy.sparse.csr_matrix): A sparse matrix to convert.
         out (cupy.ndarray or None): A dense metrix to store the result.
+            It must be F-contiguous.
 
     Returns:
         cupy.ndarray: Converted result.
@@ -75,7 +76,7 @@ def csr2dense(x, out=None):
     if out is None:
         out = cupy.empty(x.shape, dtype=dtype, order='F')
     else:
-        out = out.asfortranarray(out)
+        assert out.flags.f_contiguous
 
     _call_cusparse(
         'csr2dense', x.dtype,
