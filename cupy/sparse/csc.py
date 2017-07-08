@@ -109,21 +109,17 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """
         return self.T.tocoo(copy).T
 
-    def tocsc(self, copy=False):
+    def tocsc(self, copy=None):
         """Converts the matrix to Compressed Sparse Column format.
 
         Args:
-            copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+            copy: Not supported yet.
 
         Returns:
             cupy.sparse.csc_matrix: Converted matrix.
 
         """
-        if copy:
-            return self.copy()
-        else:
-            return self
+        return self
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.

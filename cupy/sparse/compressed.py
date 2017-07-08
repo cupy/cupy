@@ -77,8 +77,4 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         else:
             raise ValueError
 
-    def sorted_indices(self):
-        """Returns a copy of the matrix with sorted indices."""
-        x = self.copy()
-        x.sort_indices()
-        return x
+    # TODO(unno): Implement sorted_indices

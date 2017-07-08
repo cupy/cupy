@@ -112,21 +112,17 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # copy is ignored
         return cusparse.csr2csc(self)
 
-    def tocsr(self, copy=False):
+    def tocsr(self, copy=None):
         """Converts the matrix to Compressed Sparse Row format.
 
         Args:
-            copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+            copy: Not supported yet.
 
         Returns:
             cupy.sparse.csr_matrix: Converted matrix.
 
         """
-        if copy:
-            return self.copy()
-        else:
-            return self
+        return self
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
