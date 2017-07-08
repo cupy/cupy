@@ -74,7 +74,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
-        """Sort the indices of the matrix in place."""
+        """Sorts the indices of the matrix in place."""
         cusparse.cscsort(self)
 
     # TODO(unno): Implement sum_duplicates
