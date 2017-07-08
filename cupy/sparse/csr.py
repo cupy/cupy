@@ -23,7 +23,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         arg1: Arguments for the initializer.
         shape (tuple): Shape of a matrix. Its length must be two.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-        copy (bool): If ``True``, copies of given data are always used.
+        copy (bool): If ``True``, copies of given arrays are always used.
 
     .. see::
        :class:`scipy.sparse.csr_matrix`
@@ -87,7 +87,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             out: Not supported.
 
         Returns:
-            cupy.ndarray: Dense array representing the same value.
+            cupy.ndarray: Dense array representing the same matrix.
 
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
@@ -113,7 +113,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return cusparse.csr2csc(self)
 
     def tocsr(self, copy=False):
-        """Convert the matrix to Compressed Sparse Row format.
+        """Converts the matrix to Compressed Sparse Row format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -140,6 +140,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             copy (bool): If ``True``, a returned matrix shares no data.
                 Otherwise, it shared data arrays as much as possible.
 
+        Returns:
+            cupy.sparse.spmatrix: Transpose matrix.
+
         """
         if axes is not None:
             raise ValueError(
@@ -152,7 +155,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
 
 def isspmatrix_csr(x):
-    """Checks if a given matrix is CSR format.
+    """Checks if a given matrix is of CSR format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.csr_matrix`.

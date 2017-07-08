@@ -37,7 +37,7 @@ class _data_matrix(base.spmatrix):
             dtype: Type specifier.
 
         Returns:
-            Returns a copy of the array with a given type.
+            A copy of the array with a given type.
 
         """
         return self._with_data(self.data.astype(t))
@@ -46,12 +46,13 @@ class _data_matrix(base.spmatrix):
         """Returns number of non-zero entry.
 
         .. note::
-           This method counts the actual number of non-zero entroies, which
+           This method counts the actual number of non-zero entories, which
            does not include explicit zero entries.
-           Instead ``nnz`` returns the number of entries.
+           Instead ``nnz`` returns the number of entries including explicit
+           zeros.
 
         Returns:
-            Number of non-zero entry.
+            Number of non-zero entries.
 
         """
         return cupy.count_nonzero(self.data)

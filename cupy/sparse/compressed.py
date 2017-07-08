@@ -55,7 +55,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         raise NotImplementedError
 
     def get_shape(self):
-        """Shape of the matrix.
+        """Returns the shape of the matrix.
 
         Returns:
             tuple: Shape of the matrix.
@@ -63,7 +63,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         return self._shape
 
     def getnnz(self, axis=None):
-        """Number of stored values, including explicit zeros."""
+        """Returns the number of stored values, including explicit zeros.
+
+        Args:
+            axis: Not supported yet.
+
+        Returns:
+            int: The number of stored values.
+
+        """
         if axis is None:
             return self.data.size
         else:

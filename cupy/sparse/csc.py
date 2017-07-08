@@ -23,7 +23,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         arg1: Arguments for the initializer.
         shape (tuple): Shape of a matrix. Its length must be two.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-        copy (bool): If ``True``, copies of given data are always used.
+        copy (bool): If ``True``, copies of given arrays are always used.
 
     .. see::
        :class:`scipy.sparse.csc_matrix`
@@ -87,7 +87,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             out: Not supported.
 
         Returns:
-            cupy.ndarray: Dense array representing the same value.
+            cupy.ndarray: Dense array representing the same matrix.
 
         .. seealso:: :func:`cupy.sparse.csc_array.toarray`
 
@@ -130,7 +130,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in csr to csc conversion.
 
         Returns:
             cupy.sparse.csr_matrix: Converted matrix.
@@ -150,6 +151,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             copy (bool): If ``True``, a returned matrix shares no data.
                 Otherwise, it shared data arrays as much as possible.
 
+        Returns:
+            cupy.sparse.spmatrix: Transpose matrix.
+
         """
         if axes is not None:
             raise ValueError(
@@ -162,7 +166,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
 
 def isspmatrix_csc(x):
-    """Checks if a given matrix is CSC format.
+    """Checks if a given matrix is of CSC format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.csc_matrix`.
