@@ -25,8 +25,11 @@ def _make(xp, sp, dtype):
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
-    indptr = xp.array([0, 0, 0, 2, 4], 'i')
-    return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
+    indptr = xp.array([0, 2, 3, 4], 'i')
+    # 2, 1, 0, 0
+    # 0, 3, 0, 0
+    # 0, 0, 4, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
 @testing.parameterize(*testing.product({
