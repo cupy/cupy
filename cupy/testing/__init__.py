@@ -2,6 +2,7 @@ from cupy.testing import array  # NOQA
 from cupy.testing import attr  # NOQA
 from cupy.testing import helper  # NOQA
 from cupy.testing import parameterized  # NOQA
+from cupy.testing import random  # NOQA
 
 from cupy.testing.array import assert_allclose  # NOQA
 from cupy.testing.array import assert_array_almost_equal  # NOQA
@@ -41,3 +42,5 @@ from cupy.testing.helper import shaped_reverse_arange  # NOQA
 from cupy.testing.helper import with_requires  # NOQA
 from cupy.testing.parameterized import parameterize  # NOQA
 from cupy.testing.parameterized import product  # NOQA
+from cupy.testing.random import fix_random  # NOQA
+from cupy.testing.random import generate_seed  # NOQA
