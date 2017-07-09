@@ -71,3 +71,5 @@ cdef class Indexer:
         readonly tuple shape
 
     cdef CPointer get_pointer(self)
+
+cdef bint c_cupy_complex_available

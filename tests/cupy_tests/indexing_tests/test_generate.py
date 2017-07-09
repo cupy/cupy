@@ -15,12 +15,12 @@ class TestIndices(unittest.TestCase):
     def test_indices_list0(self, xp, dtype):
         return xp.indices((0,), dtype)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_indices_list1(self, xp, dtype):
         return xp.indices((1, 2), dtype)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_indices_list2(self, xp, dtype):
         return xp.indices((1, 2, 3, 4), dtype)

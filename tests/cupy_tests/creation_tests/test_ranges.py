@@ -11,42 +11,42 @@ class TestRanges(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange(self, xp, dtype):
         return xp.arange(10, dtype=dtype)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange2(self, xp, dtype):
         return xp.arange(5, 10, dtype=dtype)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange3(self, xp, dtype):
         return xp.arange(1, 11, 2, dtype=dtype)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange4(self, xp, dtype):
         return xp.arange(20, 2, -3, dtype=dtype)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange5(self, xp, dtype):
         return xp.arange(0, 100, None, dtype=dtype)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange6(self, xp, dtype):
         return xp.arange(0, 2, dtype=dtype)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange7(self, xp, dtype):
         return xp.arange(10, 11, dtype=dtype)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_arange8(self, xp, dtype):
         return xp.arange(10, 8, -1, dtype=dtype)

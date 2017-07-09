@@ -14,8 +14,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
+    @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
+    def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
+                              no_complex=False):
+        if no_complex and (numpy.dtype(x_type).kind == 'c'
+                           or numpy.dtype(y_type).kind == 'c'):
+            return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
             return op(y_type(3), a)
@@ -86,16 +90,17 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_floordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.floordiv)
+            self.check_array_scalar_op(operator.floordiv, no_complex=True)
 
     def test_rfloordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.floordiv, swap=True)
+            self.check_array_scalar_op(operator.floordiv, swap=True,
+                                       no_complex=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_ifloordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.ifloordiv)
+            self.check_array_scalar_op(operator.ifloordiv, no_complex=True)
 
     def test_pow_scalar(self):
         self.check_array_scalar_op(operator.pow)
@@ -115,31 +120,35 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_divmod0_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0])
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0],
+                                       no_complex=True)
 
     def test_divmod1_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1])
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1],
+                                       no_complex=True)
 
     def test_rdivmod0_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0], swap=True)
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0], swap=True,
+                                       no_complex=True)
 
     def test_rdivmod1_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True)
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True,
+                                       no_complex=True)
 
     def test_lt_scalar(self):
-        self.check_array_scalar_op(operator.lt)
+        self.check_array_scalar_op(operator.lt, no_complex=True)
 
     def test_le_scalar(self):
-        self.check_array_scalar_op(operator.le)
+        self.check_array_scalar_op(operator.le, no_complex=True)
 
     def test_gt_scalar(self):
-        self.check_array_scalar_op(operator.gt)
+        self.check_array_scalar_op(operator.gt, no_complex=True)
 
     def test_ge_scalar(self):
-        self.check_array_scalar_op(operator.ge)
+        self.check_array_scalar_op(operator.ge, no_complex=True)
 
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
@@ -199,12 +208,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_floordiv_array(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.floordiv)
+            self.check_array_array_op(operator.floordiv, no_complex=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_ifloordiv_array(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.ifloordiv)
+            self.check_array_array_op(operator.ifloordiv, no_complex=True)
 
     def test_pow_array(self):
         self.check_array_array_op(operator.pow)
@@ -229,16 +238,16 @@ class TestArrayElementwiseOp(unittest.TestCase):
             self.check_array_array_op(lambda x, y: divmod(x, y)[1])
 
     def test_lt_array(self):
-        self.check_array_array_op(operator.lt)
+        self.check_array_array_op(operator.lt, no_complex=True)
 
     def test_le_array(self):
-        self.check_array_array_op(operator.le)
+        self.check_array_array_op(operator.le, no_complex=True)
 
     def test_gt_array(self):
-        self.check_array_array_op(operator.gt)
+        self.check_array_array_op(operator.gt, no_complex=True)
 
     def test_ge_array(self):
-        self.check_array_array_op(operator.ge)
+        self.check_array_array_op(operator.ge, no_complex=True)
 
     def test_eq_array(self):
         self.check_array_array_op(operator.eq)
@@ -248,7 +257,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_broadcasted_op(self, op, xp, x_type, y_type):
+    def check_array_broadcasted_op(self, op, xp, x_type, y_type,
+                                   no_complex=False):
+        if no_complex:
+            if numpy.dtype(x_type).kind == 'c' \
+                    or numpy.dtype(y_type).kind == 'c':
+                return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
         return op(a, b)
@@ -298,12 +312,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_broadcasted_floordiv(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.floordiv)
+            self.check_array_broadcasted_op(operator.floordiv, no_complex=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ifloordiv(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.ifloordiv)
+            self.check_array_broadcasted_op(operator.ifloordiv,
+                                            no_complex=True)
 
     def test_broadcasted_pow(self):
         self.check_array_broadcasted_op(operator.pow)
@@ -322,23 +337,25 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_broadcasted_divmod0(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0])
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0],
+                                            no_complex=True)
 
     def test_broadcasted_divmod1(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1])
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1],
+                                            no_complex=True)
 
     def test_broadcasted_lt(self):
-        self.check_array_broadcasted_op(operator.lt)
+        self.check_array_broadcasted_op(operator.lt, no_complex=True)
 
     def test_broadcasted_le(self):
-        self.check_array_broadcasted_op(operator.le)
+        self.check_array_broadcasted_op(operator.le, no_complex=True)
 
     def test_broadcasted_gt(self):
-        self.check_array_broadcasted_op(operator.gt)
+        self.check_array_broadcasted_op(operator.gt, no_complex=True)
 
     def test_broadcasted_ge(self):
-        self.check_array_broadcasted_op(operator.ge)
+        self.check_array_broadcasted_op(operator.ge, no_complex=True)
 
     def test_broadcasted_eq(self):
         self.check_array_broadcasted_op(operator.eq)
@@ -348,7 +365,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
+    def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
+                                          no_complex=False):
+        if no_complex:
+            if numpy.dtype(x_type).kind == 'c' \
+                    or numpy.dtype(y_type).kind == 'c':
+                return x_type(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
         return op(a, b)
@@ -368,7 +390,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_doubly_broadcasted_floordiv(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_doubly_broadcasted_op(operator.floordiv)
+            self.check_array_doubly_broadcasted_op(operator.floordiv,
+                                                   no_complex=True)
 
     def test_doubly_broadcasted_div(self):
         if six.PY3:
@@ -382,24 +405,26 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_doubly_broadcasted_divmod0(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(
-                lambda x, y: divmod(x, y)[0])
+                lambda x, y: divmod(x, y)[0],
+                no_complex=True)
 
     def test_doubly_broadcasted_divmod1(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(
-                lambda x, y: divmod(x, y)[1])
+                lambda x, y: divmod(x, y)[1],
+                no_complex=True)
 
     def test_doubly_broadcasted_lt(self):
-        self.check_array_doubly_broadcasted_op(operator.lt)
+        self.check_array_doubly_broadcasted_op(operator.lt, no_complex=True)
 
     def test_doubly_broadcasted_le(self):
-        self.check_array_doubly_broadcasted_op(operator.le)
+        self.check_array_doubly_broadcasted_op(operator.le, no_complex=True)
 
     def test_doubly_broadcasted_gt(self):
-        self.check_array_doubly_broadcasted_op(operator.gt)
+        self.check_array_doubly_broadcasted_op(operator.gt, no_complex=True)
 
     def test_doubly_broadcasted_ge(self):
-        self.check_array_doubly_broadcasted_op(operator.ge)
+        self.check_array_doubly_broadcasted_op(operator.ge, no_complex=True)
 
     def test_doubly_broadcasted_eq(self):
         self.check_array_doubly_broadcasted_op(operator.eq)

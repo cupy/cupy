@@ -64,7 +64,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         return b
 
     @testing.for_orders('CFAK')
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype(self, xp, src_dtype, dst_dtype, order):
@@ -72,7 +72,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         return a.astype(dst_dtype, order=order)
 
     @testing.for_orders('CFAK')
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     def test_astype_type(self, src_dtype, dst_dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, src_dtype)
@@ -96,28 +96,28 @@ class TestArrayCopyAndView(unittest.TestCase):
         b = a.astype(dtype, order=order, copy=False)
         self.assertTrue(b is a)
 
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype_strides(self, xp, src_dtype, dst_dtype):
         src = xp.empty((1, 2, 3), dtype=src_dtype)
         return numpy.array(src.astype(dst_dtype, order='K').strides)
 
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype_strides_negative(self, xp, src_dtype, dst_dtype):
         src = xp.empty((2, 3), dtype=src_dtype)[::-1, :]
         return numpy.array(src.astype(dst_dtype, order='K').strides)
 
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype_strides_swapped(self, xp, src_dtype, dst_dtype):
         src = xp.swapaxes(xp.empty((2, 3, 4), dtype=src_dtype), 1, 0)
         return numpy.array(src.astype(dst_dtype, order='K').strides)
 
-    @testing.for_all_dtypes(name='src_dtype')
+    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype_strides_broadcast(self, xp, src_dtype, dst_dtype):
