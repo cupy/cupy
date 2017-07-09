@@ -133,6 +133,33 @@ def msort(a):
 
 
 def partition(a, kth, axis=-1):
+    """Returns a partially sorted copy of an array.
+
+    Creates a copy of the array whose elements are rearranged such that the
+    value of the element in k-th position would occur in that position in a
+    sorted array. All of the elements before the new k-th element are less
+    than or equal to the elements after the new k-th element.
+
+    Args:
+        a (cupy.ndarray): Array to be sorted.
+        kth (int or sequence of ints): Element index to partition by. If
+            supplied with a sequence of k-th it will partition all elements
+            indexed by k-th of them into their sorted position at once.
+        axis (int or None): Axis along which to sort. Default is -1, which
+            means sort along the last axis. If None is supplied, the array is
+            flattened before sorting.
+
+    Returns:
+        cupy.ndarray: Array of the same type and shape as ``a``.
+
+    .. note::
+       For its implementation reason, `cupy.partition` fully sorts the given
+       array as `cupy.sort` does. It also does not support ``kind`` and
+       ``order`` parameters that ``numpy.partition`` supports.
+
+    .. seealso:: :func:`numpy.partition`
+
+    """
     if axis is None:
         ret = a.flatten()
         axis = -1

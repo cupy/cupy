@@ -802,6 +802,26 @@ cdef class ndarray:
         return idx_array
 
     def partition(self, kth, axis=-1):
+        """Partially sorts an array
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
+
+        .. note::
+           For its implementation reason, `cupy.ndarray.partition` fully sorts
+           the given array as `cupy.ndarray.sort` does. It also does not
+           support ``kind`` and ``order`` parameters that ``numpy.partition``
+           supports.
+
+        .. seealso::
+            :func: `cupy.partition` for full documentation,
+            :meth:`numpy.ndarray.partition`
+
+        """
         ndim = self.ndim
         if kth < 0:
             kth += ndim
