@@ -4,7 +4,7 @@ import string
 import cupy
 
 
-def einsum(equation, *inputs):
+def einsum(subscripts, *inputs):
     """Returns a product of two arrays.
     For arrays with more than one axis, it computes the dot product along the
     last axis of ``a`` and the second-to-last axis of ``b``. This is just a
@@ -22,16 +22,17 @@ def einsum(equation, *inputs):
     #TODO(fukatani): Support order option.
     #TODO(fukatani): Support casting option.
     #TODO(fukatani): Support optimize option.
+    #TODO(fukatani): Support '...' ellipses.
 
-    if '...' in equation:
+    if '...' in subscripts:
         raise ValueError('Subscripts with ellipses are not yet supported.')
 
-    equation = equation.replace(" ", "")
-    match = re.match('([a-z,]+)(->[a-z]*)?', equation)
+    subscripts = subscripts.replace(" ", "")
+    match = re.match('([a-z,]+)(->[a-z]*)?', subscripts)
     if not match:
-        raise ValueError('Indices have incorrect format: %s' % equation)
+        raise ValueError('Indices have incorrect format: %s' % subscripts)
 
-    for char in set(equation):
+    for char in set(subscripts):
         if char in string.ascii_lowercase:
             continue
         if char in string.digits:
@@ -46,7 +47,7 @@ def einsum(equation, *inputs):
 
     if len(inputs) != len(input_axis_labels):
         raise ValueError('Got %d arguments for equation "%s", expecting %d' % (
-            len(inputs), equation, len(input_axis_labels)))
+            len(inputs), subscripts, len(input_axis_labels)))
 
     axis_labels = set(''.join(input_axis_labels))
     if match.group(2):
@@ -67,17 +68,17 @@ def einsum(equation, *inputs):
     for a in axis_labels:
         input_count = len([s for s in input_axis_labels if a in s])
         if input_count > 2 and a not in output_axis_labels:
-            return _exponential_space_einsum(equation, *inputs)
+            return _exponential_space_einsum(subscripts, *inputs)
 
     temp = inputs[0]
     temp_axis_labels = input_axis_labels[0]
-    for i in range(len(inputs) - 1):
-        axes_to_sum = (set(temp_axis_labels) & set(input_axis_labels[i + 1])
+    for i in range(1, len(inputs)):
+        axes_to_sum = (set(temp_axis_labels) & set(input_axis_labels[i])
                        - set(output_axis_labels))
         temp, temp_axis_labels = _einsum_reduction(temp,
                                                    temp_axis_labels,
-                                                   inputs[i + 1],
-                                                   input_axis_labels[i + 1],
+                                                   inputs[i],
+                                                   input_axis_labels[i],
                                                    axes_to_sum)
 
     missing_indices = set(temp_axis_labels) - set(output_axis_labels)
@@ -89,7 +90,7 @@ def einsum(equation, *inputs):
                                    if a in output_axis_labels)
 
     if sorted(temp_axis_labels) != sorted(output_axis_labels):
-        raise ValueError('Invalid equation: %s' % equation)
+        raise ValueError('Invalid equation: %s' % subscripts)
 
     perm = [temp_axis_labels.index(a) for a in output_axis_labels]
     return _transpose_if_necessary(temp, perm)
@@ -279,10 +280,7 @@ def _exponential_space_einsum(equation, *inputs):
             for ax in axes_:
                 counts[ax] += 1
 
-        idx_out = ''.join(sorted(
-            ax for ax in indices
-            if counts[ax] == 1
-        ))
+        idx_out = ''.join(sorted(ax for ax in indices if counts[ax] == 1))
 
     if len(idx_in) != len(inputs):
         raise ValueError(
@@ -320,9 +318,7 @@ def _exponential_space_einsum(equation, *inputs):
             idx_in[i] = sorted_idx
 
     reduction_idx = []
-    shapes = [[dim if dim else -1
-               for dim in tensor.shape]
-              for tensor in inputs]
+    shapes = [[dim if dim else -1 for dim in a.shape] for a in inputs]
 
     # validate shapes for broadcasting
     for j, ax in enumerate(sorted(idx_all, key=axis_order.get)):
