@@ -301,7 +301,7 @@ class TestPartition(unittest.TestCase):
         kth = 2
         x = _partition(xp, self.external, a, kth)
         self.assertTrue(xp.all(x[0:kth] <= x[kth]))
-        self.assertTrue(xp.all(x[kth] <= x[kth+1:]))
+        self.assertTrue(xp.all(x[kth] <= x[kth + 1:]))
         return x[kth]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
@@ -311,7 +311,7 @@ class TestPartition(unittest.TestCase):
         kth = 2
         x = _partition(xp, self.external, a, kth)
         self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth]))
-        self.assertTrue(xp.all(x[:, :, kth] <= x[:, :, kth+1:]))
+        self.assertTrue(xp.all(x[:, :, kth] <= x[:, :, kth + 1:]))
         return x[:, :, kth]
 
     # Test unsupported dtype
