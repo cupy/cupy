@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 from cupy.cuda import compiler
-from cupy.cuda import function
 from cupy import testing
 
 
