@@ -828,6 +828,7 @@ cdef class ndarray:
         if not (0 <= kth < ndim):
             raise ValueError('kth(={}) out of bounds {}'.format(kth, ndim))
 
+        # kth is ignored.
         self.sort(axis=axis)
 
     # TODO(okuta): Implement argpartition
