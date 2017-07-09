@@ -451,9 +451,9 @@ cdef class ElementwiseKernel:
     cdef:
         readonly tuple in_params
         readonly tuple out_params
-        readonly int nin
-        readonly int nout
-        readonly int nargs
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
         readonly tuple params
         readonly str operation
         readonly str name
