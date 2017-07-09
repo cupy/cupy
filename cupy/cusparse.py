@@ -1,29 +1,6 @@
-import atexit
-import collections
-
-import six
-
 import cupy
-from cupy import cuda
 from cupy.cuda import cusparse
-
-
-_handles = collections.defaultdict(cusparse.create)
-
-
-def get_handle():
-    dev = cuda.get_device_id()
-    return _handles[dev]
-
-
-@atexit.register
-def reset_handles():
-    global _handles
-    handles = _handles
-    _handles = collections.defaultdict(cusparse.create)
-
-    for handle in six.itervalues(handles):
-        cusparse.destroy(handle)
+from cupy.cuda import device
 
 
 class MatDescriptor(object):
@@ -78,9 +55,10 @@ def csr2dense(x, out=None):
     else:
         assert out.flags.f_contiguous
 
+    handle = device.get_cusparse_handle()
     _call_cusparse(
         'csr2dense', x.dtype,
-        get_handle(), x.shape[0], x.shape[1], x._descr.descriptor,
+        handle, x.shape[0], x.shape[1], x._descr.descriptor,
         x.data.data.ptr, x.indptr.data.ptr, x.indices.data.ptr,
         out.data.ptr, x.shape[0])
 
@@ -94,7 +72,7 @@ def csrsort(x):
         x (cupy.sparse.csr_matrix): A sparse matrix to sort.
 
     """
-    handle = get_handle()
+    handle = device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
 
@@ -120,7 +98,7 @@ def cscsort(x):
         x (cupy.sparse.csc_matrix): A sparse matrix to sort.
 
     """
-    handle = get_handle()
+    handle = device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
 
@@ -140,6 +118,7 @@ def cscsort(x):
 
 
 def csr2csc(x):
+    handle = device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
     data = cupy.empty(nnz, x.dtype)
@@ -148,7 +127,7 @@ def csr2csc(x):
 
     _call_cusparse(
         'csr2csc', x.dtype,
-        get_handle(), m, n, nnz, x.data.data.ptr,
+        handle, m, n, nnz, x.data.data.ptr,
         x.indptr.data.ptr, x.indices.data.ptr,
         data.data.ptr, indices.data.ptr, indptr.data.ptr,
         cusparse.CUSPARSE_ACTION_NUMERIC,
