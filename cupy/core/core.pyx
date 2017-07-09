@@ -6,6 +6,7 @@ import sys
 import numpy
 import six
 
+import cupy
 from cupy.core import flags
 from cupy.cuda import stream
 try:
@@ -727,6 +728,11 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
+        if not cupy.cuda.thrust_enabled:
+            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
+                               'install CUDA Toolkit with Thrust then '
+                               'reinstall CuPy after uninstalling it.')
+
         if self.ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.sort() raises
@@ -736,12 +742,7 @@ cdef class ndarray:
             raise NotImplementedError('Sorting non-contiguous array is not '
                                       'supported.')
 
-        try:
-            thrust.sort(self.dtype, self.data.ptr, self._shape)
-        except NameError:
-            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
-                               'install CUDA Toolkit with Thrust then '
-                               'reinstall CuPy after uninstalling it.')
+        thrust.sort(self.dtype, self.data.ptr, self._shape)
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
