@@ -824,7 +824,7 @@ cdef class ndarray:
                                (self.ravel(), Indexer(self.shape),
                                 scan_index, dst))
             return tuple([dst[i::self.ndim]
-                          for i in six.moves.range(self.ndim)])
+                          for i in range(self.ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -2894,7 +2894,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     else:
         min_axis, max_axis = axis2, axis1
 
-    tr = list(six.moves.range(a.ndim))
+    tr = list(range(a.ndim))
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:

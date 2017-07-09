@@ -2,12 +2,8 @@ import collections
 import string
 
 import numpy
-import six
 
 from cupy import util
-
-
-six_zip = six.moves.zip
 
 
 cpdef _get_simple_reduction_kernel(
@@ -275,7 +271,7 @@ def _get_reduction_kernel(
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
     kernel_params = _get_kernel_params(params, args_info)
-    arrays = [p for p, a in six_zip(params, args_info)
+    arrays = [p for p, a in zip(params, args_info)
               if not p.raw and a[0] is ndarray]
     type_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k)
@@ -413,7 +409,7 @@ class ReductionKernel(object):
             return out_args[0]
 
         in_args = [x if isinstance(x, ndarray) else t(x)
-                   for x, t in six_zip(in_args, in_types)]
+                   for x, t in zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)
 
@@ -455,7 +451,7 @@ cpdef create_reduction_func(name, ops, routine=None, identity=None,
             rt = routine
         else:
             typ, rt = t
-            rt = tuple([i or j for i, j in six_zip(rt, routine)])
+            rt = tuple([i or j for i, j in zip(rt, routine)])
 
         types = typ.split('->')
         if len(types) == 1:
