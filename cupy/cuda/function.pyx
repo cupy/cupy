@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import numpy
+import six
 
 cimport cpython
 from libcpp cimport vector
@@ -68,6 +69,16 @@ cdef inline CPointer _pointer(x):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, core.Indexer):
         return (<core.Indexer>x).get_pointer()
+
+    if type(x) not in _pointer_numpy_types:
+        if isinstance(x, six.integer_types):
+            x = numpy.int64(x)
+        elif isinstance(x, float):
+            x = numpy.float64(x)
+        elif isinstance(x, bool):
+            x = numpy.bool_(x)
+        else:
+            raise TypeError('Unsupported type %s' % type(x))
 
     itemsize = x.itemsize
     if itemsize == 1:
