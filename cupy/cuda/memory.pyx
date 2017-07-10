@@ -416,23 +416,31 @@ cdef class SingleDeviceMemoryPool:
         cdef int index
         head = Chunk(chunk.mem, chunk.offset, size)
         remaining = Chunk(chunk.mem, chunk.offset + size, chunk.size - size)
-        head.prev = chunk.prev
+        if chunk.prev is not None:
+            head.prev = chunk.prev
+            chunk.prev.next = head
+        if chunk.next is not None:
+            remaining.next = chunk.next
+            chunk.next.prev = remaining
         head.next = remaining
         remaining.prev = head
-        remaining.next = chunk.next
         index = self._bin_index_from_size(remaining.size)
         self._free[index].append(remaining)
         return (head, remaining)
 
-    cpdef Chunk _merge(self, Chunk chunk_prev, Chunk chunk_next):
+    cpdef Chunk _merge(self, Chunk head, Chunk remaining):
         """Merge previously splitted block (chunk)"""
-        assert not chunk_prev.in_use
-        assert not chunk_next.in_use
+        assert not head.in_use
+        assert not remaining.in_use
         cdef Chunk merged
-        size = chunk_prev.size + chunk_next.size
-        merged = Chunk(chunk_prev.mem, chunk_prev.offset, size)
-        merged.prev = chunk_prev.prev
-        merged.next = chunk_next.next
+        size = head.size + remaining.size
+        merged = Chunk(head.mem, head.offset, size)
+        if head.prev is not None:
+            merged.prev = head.prev
+            merged.prev.next = merged
+        if remaining.next is not None:
+            merged.next = remaining.next
+            merged.next.prev = merged
         return merged
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):

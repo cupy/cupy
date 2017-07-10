@@ -75,8 +75,8 @@ cdef class SingleDeviceMemoryPool:
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size)
     cpdef Py_ssize_t _bin_index_from_size(self, Py_ssize_t size)
     cpdef void _grow_free_if_necessary(self, Py_ssize_t size)
-    cpdef tuple _split(self, Chunk memptr, Py_ssize_t size)
-    cpdef Chunk _merge(self, Chunk memptr_prev, Chunk memptr_next)
+    cpdef tuple _split(self, Chunk chunk, Py_ssize_t size)
+    cpdef Chunk _merge(self, Chunk head, Chunk remaining)
 
 cdef class MemoryPool:
 
