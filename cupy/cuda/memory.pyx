@@ -13,7 +13,6 @@ from cupy.cuda import runtime
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
-
 cdef class Memory:
 
     """Memory allocation on a CUDA device.
@@ -119,6 +118,10 @@ cdef class MemoryPointer:
     def __isub__(self, Py_ssize_t offset):
         """Subtracts an offset from the pointer in place."""
         return self.__iadd__(-offset)
+
+    cpdef set_ptr(self, size_t ptr):
+        """Sets ptr."""
+        self.ptr = ptr
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size):
         """Copies a memory sequence from a (possibly different) device.
@@ -337,6 +340,7 @@ cdef class SingleDeviceMemoryPool:
 
     def __init__(self, allocator=_malloc):
         self._in_use = {}
+        self._in_use_memptr = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
@@ -361,25 +365,31 @@ cdef class SingleDeviceMemoryPool:
             try:
                 mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
+                runtime.deviceSynchronize()
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
+                    runtime.deviceSynchronize()
                     if e.status != runtime.errorMemoryAllocation:
                         raise
+                    self.realloc_all()
                     gc.collect()
                     mem = self._alloc(size).mem
 
-        self._in_use[mem.ptr] = mem
         pmem = PooledMemory(mem, self._weakref)
-        return MemoryPointer(pmem, 0)
+        memptr = MemoryPointer(pmem, 0)
+        self._in_use[mem.ptr] = mem
+        self._in_use_memptr[mem.ptr] = weakref.ref(memptr)
+        return memptr
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef list free
         cdef Memory mem
         mem = self._in_use.pop(ptr, None)
+        memptr = self._in_use_memptr.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
         free = self._free[size]
@@ -393,6 +403,48 @@ cdef class SingleDeviceMemoryPool:
             'free_all_free is deprecated. Use free_all_blocks instead.',
             DeprecationWarning)
         self.free_all_blocks()
+
+    cpdef size_t realloc(self, size_t ptr, Py_ssize_t new_size):
+        """Reallocates the given area of memory."""
+        cdef Memory cur_mem
+        cdef Memory new_mem
+        cdef MemoryPointer memptr
+        cur_size = self._in_use[ptr].size
+        try:
+            new_mem = self._alloc(new_size).mem
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            runtime.deviceSynchronize()
+            new_mem = None
+        if new_mem is None:
+            return ptr
+        # memory copy
+        cur_mem = self._in_use.pop(ptr, None)
+        _size = min(cur_size, new_size)
+        runtime.memcpy(new_mem.ptr, cur_mem.ptr, _size, runtime.memcpyDeviceToDevice)
+        runtime.deviceSynchronize()
+        del cur_mem
+        # update info
+        memptr = self._in_use_memptr.pop(ptr, None)()
+        memptr.mem.ptr = new_mem.ptr
+        memptr.mem.size = new_mem.size
+        memptr.set_ptr(new_mem.ptr)
+        self._in_use[new_mem.ptr] = new_mem
+        self._in_use_memptr[new_mem.ptr] = weakref.ref(memptr)
+
+        return new_mem.ptr
+
+    cpdef realloc_all(self):
+        """Reallocates the memory of all in-use arrays"""
+        _in_use = collections.defaultdict(list)
+        for ptr in self._in_use.keys():
+            mem = self._in_use[ptr]
+            _in_use[mem.size].append(ptr)
+
+        for size in sorted(_in_use.keys()):
+            for ptr in sorted(_in_use[size]):
+                self.realloc(ptr, size)
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0

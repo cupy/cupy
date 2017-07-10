@@ -14,7 +14,9 @@ cdef class MemoryPointer:
         readonly device.Device device
         readonly object mem
         readonly size_t ptr
+        object __weakref__
 
+    cpdef set_ptr(self, size_t ptr)
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream)
     cpdef copy_from_host(self, mem, size_t size)
@@ -46,6 +48,7 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _alloc
         dict _in_use
+        dict _in_use_memptr
         object _free
         object __weakref__
         object _weakref
@@ -56,6 +59,8 @@ cdef class SingleDeviceMemoryPool:
     cpdef free_all_blocks(self)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)
+    cpdef size_t realloc(self, size_t ptr, Py_ssize_t size)
+    cpdef realloc_all(self)
     cpdef used_bytes(self)
     cpdef free_bytes(self)
     cpdef total_bytes(self)
