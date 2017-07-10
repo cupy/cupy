@@ -13,6 +13,8 @@ from cupy.cuda import runtime
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
+_debug = False
+
 cdef class Memory:
 
     """Memory allocation on a CUDA device.
@@ -368,6 +370,8 @@ cdef class SingleDeviceMemoryPool:
                 runtime.deviceSynchronize()
                 if e.status != runtime.errorMemoryAllocation:
                     raise
+                if _debug:
+                    print('# memory.pyx: free_all_blocks() is called.')
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
@@ -375,6 +379,9 @@ cdef class SingleDeviceMemoryPool:
                     runtime.deviceSynchronize()
                     if e.status != runtime.errorMemoryAllocation:
                         raise
+                    if _debug:
+                        print('# memory.pyx: total_bytes:{}, size:{}'.format(self.total_bytes(), size))
+                        print('# memory.pyx: realloc_all() is called.')
                     self.realloc_all()
                     gc.collect()
                     mem = self._alloc(size).mem
@@ -444,7 +451,9 @@ cdef class SingleDeviceMemoryPool:
 
         for size in sorted(_in_use.keys()):
             for ptr in sorted(_in_use[size]):
-                self.realloc(ptr, size)
+                new_ptr = self.realloc(ptr, size)
+                if new_ptr > ptr:
+                    self.realloc(new_ptr, size)
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
