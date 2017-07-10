@@ -380,7 +380,8 @@ cdef class SingleDeviceMemoryPool:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
                     if _debug:
-                        print('# memory.pyx: total_bytes:{}, size:{}'.format(self.total_bytes(), size))
+                        print('# memory.pyx: total_bytes:{}, size:{}'
+                              .format(self.total_bytes(), size))
                         print('# memory.pyx: realloc_all() is called.')
                     self.realloc_all()
                     gc.collect()
@@ -429,7 +430,8 @@ cdef class SingleDeviceMemoryPool:
         # memory copy
         cur_mem = self._in_use.pop(ptr, None)
         _size = min(cur_size, new_size)
-        runtime.memcpy(new_mem.ptr, cur_mem.ptr, _size, runtime.memcpyDeviceToDevice)
+        runtime.memcpy(new_mem.ptr, cur_mem.ptr, _size,
+                       runtime.memcpyDeviceToDevice)
         runtime.deviceSynchronize()
         del cur_mem
         # update info
