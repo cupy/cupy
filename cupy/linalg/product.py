@@ -217,14 +217,9 @@ def kron(a, b):
     if a_ndim == 0 or b_ndim == 0:
         return cupy.multiply(a, b)
 
+    ndim = b_ndim
     a_shape = a.shape
     b_shape = b.shape
-    if not a.flags.c_contiguous:
-        a = cupy.reshape(a, a_shape)
-    if not b.flags.c_contiguous:
-        b = cupy.reshape(b, b_shape)
-
-    ndim = b_ndim
     if a_ndim != b_ndim:
         if b_ndim > a_ndim:
             a_shape = (1,) * (b_ndim - a_ndim) + a_shape
