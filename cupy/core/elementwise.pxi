@@ -9,28 +9,66 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 
 
-cpdef _get_simple_elementwise_kernel(
-        params, operation, name, preamble,
-        loop_prep='', after_loop='', options=()):
+cpdef str _generate_elementwise_class_def(
+        str name, ParameterList param_list, operation, preamble,
+        loop_prep='', after_loop=''):
+
+    params_decl = param_list.get_elementwise_function_params_decl()
     module_code = string.Template('''
-    ${preamble}
-    extern "C" __global__ void ${name}(${params}) {
-      ${loop_prep};
-      CUPY_FOR(i, _ind.size()) {
-        _ind.set(i);
-        ${operation};
+
+    class ${name} {
+    private:
+      ${preamble}
+    public:
+      __device__ void compute(${params_decl}) {
+        ${loop_prep};
+        CUPY_FOR(i, _ind.size()) {
+          _ind.set(i);
+          ${operation};
+        }
+        ${after_loop};
       }
-      ${after_loop};
-    }
+    };
     ''').substitute(
-        params=params,
+        params_decl=params_decl,
         operation=operation,
         name=name,
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
+    return module_code
+
+
+cpdef _get_simple_elementwise_kernel(
+        ParameterList param_list, operation, str kernel_name, preamble,
+        loop_prep='', after_loop='', options=()):
+
+    kernel_params_decl = param_list.get_kernel_params_decl()
+    elementwise_param_list = param_list.get_elementwise_function_param_list()
+    class_name = kernel_name + '__impl'
+
+    class_def = _generate_elementwise_class_def(
+        class_name, param_list, operation, preamble, loop_prep, after_loop)
+
+    module_code = string.Template('''
+    // Elementwise function class
+    ${class_def}
+
+    // Kernel function
+    extern "C" __global__ void ${kernel_name}(${kernel_params_decl}) {
+      ${class_name}().compute(${elementwise_param_list});
+    }
+    ''').substitute(
+        kernel_name=kernel_name,
+        kernel_params_decl=kernel_params_decl,
+        elementwise_param_list=elementwise_param_list,
+        class_name=class_name,
+        class_def=class_def,
+        preamble=preamble,
+        loop_prep=loop_prep,
+        after_loop=after_loop)
     module = compile_with_cache(module_code, options)
-    return module.get_function(name)
+    return module.get_function(kernel_name)
 
 
 cdef dict _typenames_base = {
@@ -320,6 +358,20 @@ cdef class ParameterList:
             ret.append('%s %s' % (base_type, var_name))
         return ', '.join(ret)
 
+    cdef str get_elementwise_function_params_decl(self):
+        self._ensure_var_names()
+        self._ensure_base_types()
+        ret = []
+        for i in range(len(self.params)):
+            base_type = <str>(self._base_types[i])
+            var_name = <str>(self._var_names[i])
+            ret.append('%s %s' % (base_type, var_name))
+        return ', '.join(ret)
+
+    cdef str get_elementwise_function_param_list(self):
+        self._ensure_var_names()
+        return ', '.join(self._var_names)
+
     cdef str get_reduction_function_params_decl(self):
         self._ensure_var_names()
         self._ensure_base_types()
@@ -484,7 +536,6 @@ cdef list _get_out_args_with_params(
 @util.memoize(for_each_device=True)
 def _get_elementwise_kernel(ParameterList param_list, types, operation, name,
                             preamble, kwargs):
-    kernel_params = param_list.get_kernel_params_decl()
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
     preamble = types_preamble + '\n' + preamble
@@ -495,7 +546,7 @@ def _get_elementwise_kernel(ParameterList param_list, types, operation, name,
     op.append(operation)
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name,
+        param_list, operation, name,
         preamble, **dict(kwargs))
 
 
@@ -650,7 +701,6 @@ cdef class ElementwiseKernel:
 def _get_ufunc_kernel(
         in_types, out_types, routine, ParameterList param_list, name,
         preamble):
-    kernel_params = param_list.get_kernel_params_decl()
 
     types = []
     op = []
@@ -672,7 +722,7 @@ def _get_ufunc_kernel(
     preamble = '\n'.join(types)
 
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble)
+        param_list, operation, name, preamble)
 
 
 cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
