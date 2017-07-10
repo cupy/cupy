@@ -949,7 +949,7 @@ class TestFusionFuse(unittest.TestCase):
 
         return g(a, b, c)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_fuse3(self, xp, dtype):
         a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)

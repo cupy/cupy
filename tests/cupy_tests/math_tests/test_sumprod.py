@@ -188,12 +188,14 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_upper(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
@@ -230,12 +232,14 @@ class TestCumprod(unittest.TestCase):
         return xp.cumprod(a)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_upper(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)

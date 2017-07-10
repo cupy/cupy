@@ -206,7 +206,7 @@ class TestJoin(unittest.TestCase):
         b = testing.shaped_arange((2, 4), xp)
         return xp.stack([a, b])
 
-    @testing.with_requires('numpy>=1.10')
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_stack_out_of_bounds(self, xp):
         a = testing.shaped_arange((2, 3), xp)

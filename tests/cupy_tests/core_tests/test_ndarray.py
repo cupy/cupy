@@ -217,6 +217,7 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_axis_overrun(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)

@@ -57,12 +57,14 @@ class TestRoll(unittest.TestCase):
         return xp.roll(x, 5)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_roll_invalid_axis(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, 1, axis=2)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_roll_invalid_negative_axis(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)

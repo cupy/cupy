@@ -94,4 +94,4 @@ class TestHistogram(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_bincount_zero_minlength(self, xp, dtype):
         x = testing.shaped_arange((3,), xp, dtype)
-        return xp.bincount(x, minlength=0)
+        return xp.bincount(x, minlength=-1)

@@ -125,7 +125,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     if axis is None:
         out = out.ravel()
     elif not (-a.ndim <= axis < a.ndim):
-        raise ValueError('axis(={}) out of bounds'.format(axis))
+        raise numpy.AxisError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(_cumsum_batch, out, axis=axis)
 
@@ -203,7 +203,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     if axis is None:
         out = out.ravel()
     elif not (-a.ndim <= axis < a.ndim):
-        raise ValueError('axis(={}) out of bounds'.format(axis))
+        raise numpy.AxisError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(_cumprod_batch, out, axis=axis)
 
