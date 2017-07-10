@@ -213,10 +213,10 @@ def make_extensions(options, compiler, use_cython):
 
     if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
         # clang does not have this option.
-        args = settings.setdefault('extra_link_args', [])
+        args = settings.setdefault('extra_compile_args', [])
         args.append('-fopenmp')
     elif compiler.compiler_type == 'msvc':
-        args = settings.setdefault('extra_link_args', [])
+        args = settings.setdefault('extra_compile_args', [])
         args.append('/openmp')
 
     # This is a workaround for Anaconda.
@@ -278,7 +278,7 @@ def make_extensions(options, compiler, use_cython):
             s['libraries'] = module['libraries']
 
         if module['name'] == 'cusolver':
-            args = s.setdefault('extra_link_args', [])
+            args = s.setdefault('extra_compile_args', [])
             # openmp is required for cusolver
             if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
                 # In mac environment, openmp is not required.
@@ -474,6 +474,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        postargs += ['-Xcompiler', '/MD']
         print('NVCC options:', postargs)
 
         for obj in objects:
