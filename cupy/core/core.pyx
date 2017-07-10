@@ -339,7 +339,7 @@ cdef class ndarray:
 
     # TODO(okuta): Implement byteswap
 
-    cpdef ndarray copy(self, order='K'):
+    cpdef ndarray copy(self, order='C'):
         """Returns a copy of the array.
 
         This method makes a copy of a given array in the current device.
