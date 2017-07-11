@@ -118,7 +118,7 @@ def cscsort(x):
 
 
 def coosort(x):
-    handle = get_handle()
+    handle = device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
 
@@ -137,10 +137,11 @@ def coosort(x):
 
 
 def coo2csr(x):
+    handle = device.get_cusparse_handle()
     m = x.shape[0]
     indptr = cupy.empty(m + 1, 'i')
     cusparse.xcoo2csr(
-        get_handle(), x.row.data.ptr, x.nnz, m,
+        handle, x.row.data.ptr, x.nnz, m,
         indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
