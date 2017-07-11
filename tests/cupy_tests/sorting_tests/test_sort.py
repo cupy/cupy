@@ -152,7 +152,7 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return self.argsort(a)
