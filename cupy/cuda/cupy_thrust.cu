@@ -113,10 +113,29 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, size_t num) {
     /* idx_start is the beggining of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
-    device_ptr<size_t> dp_first = device_pointer_cast(idx_start);
-    device_ptr<size_t> dp_last  = device_pointer_cast(idx_start + num);
-    sequence(dp_first, dp_last);
-    stable_sort< device_ptr<size_t> >(dp_first, dp_last, elem_less<T>((T *)data_start));
+
+    device_ptr<T> dp_data_first, dp_data_last;
+    device_ptr<size_t> dp_idx_first, dp_idx_last;
+    device_vector<T> d_vals0, d_vals;
+
+    // Make a data vector from the data pointer.
+    dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
+    dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + num);
+    d_vals0(dp_data_first, dp_data_last);
+
+    // Copy the data vector to keep the original data as it is.
+    d_vals = d_vals0;
+
+    // Make an index sequence.
+    dp_idx_first = device_pointer_cast(static_cast<size_t*>(idx_start));
+    dp_idx_last  = device_pointer_cast(static_cast<size_t*>(idx_start) + num);
+    sequence(dp_idx_first, dp_idx_last);
+
+    // Sort the index sequence by the data vector.
+    stable_sort_by_key(d_vals.begin(),
+                       d_vals.end(),
+                       dp_idx_first,
+                       less<T>());
 }
 
 template void cupy::thrust::_argsort<cpy_byte>(size_t *, void *, size_t);
