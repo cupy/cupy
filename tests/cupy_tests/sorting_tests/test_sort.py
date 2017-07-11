@@ -159,7 +159,7 @@ class TestArgsort(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     def test_argsort_multi_dim(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
+        a = testing.shaped_random((2, 3), cupy, dtype)
         with self.assertRaises(NotImplementedError):
             return _argsort(cupy, self.external, a)
 
@@ -167,7 +167,7 @@ class TestArgsort(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_argsort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((2, 3), cupy, dtype)
+        a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
             return _argsort(cupy, self.external, a)
 
