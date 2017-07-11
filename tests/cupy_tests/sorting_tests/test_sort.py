@@ -128,13 +128,6 @@ class TestLexsort(unittest.TestCase):
             return cupy.lexsort(a)
 
 
-def _argsort(xp, external, a):
-    if external:
-        return xp.argsort(a)
-    else:
-        return a.argsort()
-
-
 @testing.parameterize(*testing.product({
     'external': [False, True],
 }))
@@ -143,25 +136,32 @@ class TestArgsort(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    def argsort(self, a):
+        if self.external:
+            xp = cupy.get_array_module(a)
+            return xp.argsort(a)
+        else:
+            return a.argsort()
+
     # Test base cases
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_raises()
     def test_argsort_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
-        return _argsort(xp, self.external, a)
+        return self.argsort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_equal()
     def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        return _argsort(xp, self.external, a)
+        return self.argsort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     def test_argsort_multi_dim(self, dtype):
         a = testing.shaped_random((2, 3), cupy, dtype)
         with self.assertRaises(NotImplementedError):
-            return _argsort(cupy, self.external, a)
+            return self.argsort(a)
 
     # Test unsupported dtype
 
@@ -169,14 +169,14 @@ class TestArgsort(unittest.TestCase):
     def test_argsort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
-            return _argsort(cupy, self.external, a)
+            return self.argsort(a)
 
     # Misc tests
 
     def test_argsort_original_array_not_modified(self):
         a = testing.shaped_random((10,), cupy)
         b = cupy.array(a)
-        _argsort(cupy, self.external, a)
+        self.argsort(a)
         testing.assert_allclose(a, b)
 
 
