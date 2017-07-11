@@ -776,13 +776,15 @@ cdef class ndarray:
             raise NotImplementedError('Sorting arrays with the rank of two or '
                                       'more is not supported')
 
+        data = cupy.ascontiguousarray(self)
+
         # Assuming that Py_ssize_t can be represented with numpy.int64.
         assert cython.sizeof(Py_ssize_t) == 8
 
         idx_array = ndarray(self.shape, dtype=numpy.int64)
 
         thrust.argsort(
-            self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
+            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
 
         return idx_array
 
