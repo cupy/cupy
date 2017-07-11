@@ -143,29 +143,31 @@ class TestArgsort(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    # Test ranks
-
-    @testing.numpy_cupy_raises()
-    def test_argsort_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        return _argsort(xp, self.external, a)
-
-    def test_argsort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(NotImplementedError):
-            return _argsort(cupy, self.external, a)
-
-    # Test dtypes
+    # Test base cases
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose()
-    def test_argsort_dtype(self, xp, dtype):
+    @testing.numpy_cupy_raises()
+    def test_argsort_zero_dim(self, xp, dtype):
+        a = testing.shaped_random((), xp, dtype)
+        return _argsort(xp, self.external, a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_equal()
+    def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return _argsort(xp, self.external, a)
 
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    def test_argsort_multi_dim(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype)
+        with self.assertRaises(NotImplementedError):
+            return _argsort(cupy, self.external, a)
+
+    # Test unsupported dtype
+
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_argsort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
+        a = testing.shaped_random((2, 3), cupy, dtype)
         with self.assertRaises(NotImplementedError):
             return _argsort(cupy, self.external, a)
 
