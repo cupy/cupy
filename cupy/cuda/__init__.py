@@ -15,10 +15,10 @@ from cupy.cuda import stream  # NOQA
 _available = None
 
 
-try:
+if runtime.runtimeGetVersion() >= 8000:
     from cupy.cuda import cusolver  # NOQA
     cusolver_enabled = True
-except ImportError:
+else:
     cusolver_enabled = False
 
 try:
