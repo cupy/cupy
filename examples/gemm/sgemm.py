@@ -2,6 +2,7 @@ from __future__ import division
 
 import argparse
 import math
+import os
 
 import cupy as cp
 import numpy as np
@@ -11,7 +12,7 @@ from utils import load_kernel
 from utils import read_code
 
 
-sgemm_file = 'sgemm.cu'
+sgemm_file = os.path.join(os.path.dirname(__file__), 'sgemm.cu')
 
 
 def sgemm(A, B,
