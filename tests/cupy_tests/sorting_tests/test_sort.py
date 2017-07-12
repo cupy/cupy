@@ -164,7 +164,7 @@ class TestArgsort(unittest.TestCase):
             return self.argsort(a)
 
     @testing.numpy_cupy_array_equal()
-    def test_argsort_no_contiguous_array(self, xp):
+    def test_argsort_non_contiguous(self, xp):
         a = xp.array([1, 0, 2, 3])[::2]
         return self.argsort(a)
 
