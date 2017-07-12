@@ -305,6 +305,7 @@ class TestUfunc(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_ufun(self, xp, sp):
         x = _make(xp, sp, self.dtype)
+        x.data *= 0.1
         return getattr(x, self.ufunc)().toarray()
 
 
