@@ -270,7 +270,7 @@ def make_extensions(options, compiler, use_cython):
             s['libraries'] = module['libraries']
 
         if module['name'] == 'cusolver':
-            compiler_args = s.setdefault('extra_compile_args', [])
+            compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
             if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
@@ -278,7 +278,7 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
-                compiler_args.append('/openmp')
+                compile_args.append('/openmp')
                 link_args.append('/openmp')
 
         if not no_cuda and module['name'] == 'thrust':
