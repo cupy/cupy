@@ -447,27 +447,19 @@ cublasStatus_t cublasDger(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-int cublasCgeru(
-        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
-        int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+int cublasCgeru(...) {
     return 0;
 }
 
-int cublasCgerc(
-        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
-        int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+int cublasCgerc(...) {
     return 0;
 }
 
-int cublasZgeru(
-        Handle handle, int m, int n, cuDoubleComplex* alpha, cuDoubleComplex* x,
-        int incx, cuDoubleComplex* y, int incy, cuDoubleComplex* A, int lda) {
+int cublasZgeru(...) {
     return 0;
 }
 
-int cublasZgerc(
-        Handle handle, int m, int n, cuDoubleComplex* alpha, cuDoubleComplex* x,
-        int incx, cuDoubleComplex* y, int incy, cuDoubleComplex* A, int lda) {
+int cublasZgerc(...) {
     return 0;
 }
 
