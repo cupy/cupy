@@ -248,3 +248,129 @@ class TestMsort(unittest.TestCase):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
             return cupy.msort(a)
+
+
+@testing.parameterize(*testing.product({
+    'external': [False, True],
+}))
+@testing.gpu
+class TestArgpartition(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    def argpartition(self, a, kth, axis=-1):
+        if self.external:
+            xp = cupy.get_array_module(a)
+            return xp.argpartition(a, kth, axis=axis)
+        else:
+            return a.argpartition(kth, axis=axis)
+
+    # Test base cases
+
+    @testing.numpy_cupy_raises()
+    def test_argpartition_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        kth = 2
+        return self.argpartition(a, kth)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_equal()
+    def test_argpartition_one_dim(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype, 100)
+        kth = 2
+        idx = self.argpartition(a, kth)
+        return idx[kth]
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_argpartition_multi_dim(self, xp, dtype):
+        a = testing.shaped_random((3, 3, 10), xp, dtype, 100)
+        kth = 2
+        idx = self.argpartition(a, kth)
+        return idx[:, :, kth:kth + 1]
+
+    # Test unsupported dtype
+
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
+    def test_argpartition_unsupported_dtype(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype, 100)
+        kth = 2
+        with self.assertRaises(NotImplementedError):
+            return self.argpartition(a, kth)
+
+    # Test non-contiguous array
+
+    @testing.numpy_cupy_equal()
+    def test_argpartition_non_contiguous(self, xp):
+        a = testing.shaped_random((10,), xp, 'i', 100)[::2]
+        kth = 2
+        idx = self.argpartition(a, kth)
+        return idx[kth]
+
+    # Test kth
+
+    @testing.numpy_cupy_equal()
+    def test_argpartition_sequence_kth(self, xp):
+        a = testing.shaped_random((10,), xp, scale=100)
+        kth = (2, 4)
+        idx = self.argpartition(a, kth)
+        return (idx[2], idx[4])
+
+    @testing.numpy_cupy_equal()
+    def test_argpartition_negative_kth(self, xp):
+        a = testing.shaped_random((10,), xp, scale=100)
+        kth = -3
+        idx = self.argpartition(a, kth)
+        return idx[kth]
+
+    @testing.numpy_cupy_raises()
+    def test_argpartition_invalid_kth(self, xp):
+        a = testing.shaped_random((10,), xp, scale=100)
+        kth = 10
+        return self.argpartition(a, kth)
+
+    @testing.numpy_cupy_raises()
+    def test_argpartition_invalid_negative_kth(self, xp):
+        a = testing.shaped_random((10,), xp, scale=100)
+        kth = -11
+        return self.argpartition(a, kth)
+
+    # Test axis
+
+    @testing.numpy_cupy_array_equal()
+    def test_argpartition_axis(self, xp):
+        a = testing.shaped_random((10, 3, 3), xp, scale=100)
+        kth = 2
+        axis = 0
+        idx = self.argpartition(a, kth, axis=axis)
+        return idx[kth:kth + 1, :, :]
+
+    @testing.numpy_cupy_array_equal()
+    def test_argpartition_negative_axis(self, xp):
+        a = testing.shaped_random((3, 3, 10), xp, scale=100)
+        kth = 2
+        axis = -1
+        idx = self.argpartition(a, kth, axis=axis)
+        return idx[:, :, kth:kth + 1]
+
+    @testing.numpy_cupy_equal()
+    def test_argpartition_none_axis(self, xp):
+        a = testing.shaped_random((2, 2), xp, scale=100)
+        kth = 2
+        axis = None
+        idx = self.argpartition(a, kth, axis=axis)
+        return idx[kth]
+
+    @testing.numpy_cupy_raises()
+    def test_argpartition_invalid_axis(self, xp):
+        a = testing.shaped_random((2, 2, 2), xp, scale=100)
+        kth = 1
+        axis = 3
+        return self.argpartition(a, kth, axis=axis)
+
+    @testing.numpy_cupy_raises()
+    def test_argpartition_invalid_negative_axis(self, xp):
+        a = testing.shaped_random((2, 2, 2), xp, scale=100)
+        kth = 1
+        axis = -4
+        return self.argpartition(a, kth, axis=axis)
