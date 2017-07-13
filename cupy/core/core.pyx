@@ -822,11 +822,11 @@ cdef class ndarray:
             :meth:`numpy.ndarray.partition`
 
         """
-        ndim = self.ndim
+        len = self.shape[axis]
         if kth < 0:
-            kth += ndim
-        if not (0 <= kth < ndim):
-            raise ValueError('kth(={}) out of bounds {}'.format(kth, ndim))
+            kth += len
+        if not (0 <= kth < len):
+            raise ValueError('kth(={}) out of bounds {}'.format(kth, len))
 
         # kth is ignored.
         self.sort(axis=axis)
