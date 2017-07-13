@@ -279,7 +279,6 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
-                link_args.append('/openmp')
 
         if not no_cuda and module['name'] == 'thrust':
             if build.get_nvcc_path() is None:
