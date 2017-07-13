@@ -85,7 +85,8 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
                         'supported'.format(dtype))
 
 
-cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t buff_start, size_t num):
+cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t buff_start,
+              size_t num):
     cdef size_t *idx_ptr
     cdef void *data_ptr
     cdef void *buff_ptr
