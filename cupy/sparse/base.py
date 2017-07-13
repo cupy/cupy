@@ -42,6 +42,8 @@ class spmatrix(object):
                         'use getnnz() or shape[0]')
 
     def __str__(self):
+        # TODO(unno): Do not use get method which is only available when scipy
+        # is installed.
         return str(self.get())
 
     def __iter__(self):

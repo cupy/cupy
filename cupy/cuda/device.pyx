@@ -5,6 +5,7 @@ import atexit
 import six
 
 from cupy.cuda cimport cublas
+from cupy.cuda cimport cusparse
 from cupy.cuda cimport runtime
 
 try:
@@ -20,6 +21,7 @@ cpdef int get_device_id() except *:
 
 cdef dict _cublas_handles = {}
 cdef dict _cusolver_handles = {}
+cdef dict _cusparse_handles = {}
 
 
 cpdef get_cublas_handle():
@@ -34,6 +36,13 @@ cpdef get_cusolver_handle():
     if dev_id in _cusolver_handles:
         return _cusolver_handles[dev_id]
     return Device().cusolver_handle
+
+
+cpdef get_cusparse_handle():
+    dev_id = get_device_id()
+    if dev_id in _cusparse_handles:
+        return _cusparse_handles[dev_id]
+    return Device().cusparse_handle
 
 
 cdef class Device:
@@ -145,6 +154,21 @@ cdef class Device:
             _cusolver_handles[self.id] = handle
             return handle
 
+    @property
+    def cusparse_handle(self):
+        """The cuSPARSE handle for this device.
+
+        The same handle is used for the same device even if the Device instance
+        itself is different.
+
+        """
+        if self.id in _cusparse_handles:
+            return _cusparse_handles[self.id]
+        with self:
+            handle = cusparse.create()
+            _cusparse_handles[self.id] = handle
+            return handle
+
     def __richcmp__(Device self, Device other, int op):
         if op == 0:
             return self.id < other.id
@@ -182,3 +206,12 @@ def destroy_cublas_handles():
     for handle in six.itervalues(_cublas_handles):
         cublas.destroy(handle)
     _cublas_handles = {}
+
+
+@atexit.register
+def destroy_cusparse_handles():
+    """Destroys the cuSPARSE handles for all devices."""
+    global _cusparse_handles
+    for handle in six.itervalues(_cusparse_handles):
+        cusparse.destroy(handle)
+    _cusparse_handles = {}
