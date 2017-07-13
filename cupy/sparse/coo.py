@@ -99,7 +99,7 @@ class coo_matrix(sparse_data._data_matrix):
             (data, (self.row.copy(), self.col.copy())), shape=self.shape)
 
     def get_shape(self):
-        """Shape of the matrix.
+        """Returns the shape of the matrix.
 
         Returns:
             tuple: Shape of the matrix.
@@ -107,7 +107,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self._shape
 
     def getnnz(self, axis=None):
-        """Number of stored values, including explicit zeros."""
+        """Returns the number of stored values, including explicit zeros."""
         if axis is None:
             return self.data.size
         else:
@@ -149,7 +149,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
-        """Convert the matrix to COOdinate format.
+        """Converts the matrix to COOdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -165,7 +165,7 @@ class coo_matrix(sparse_data._data_matrix):
             return self
 
     def tocsc(self, copy=False):
-        """Convert the matrix to Compressed Sparse Column format.
+        """Converts the matrix to Compressed Sparse Column format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -178,7 +178,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.T.tocsr(copy).T
 
     def tocsr(self, copy=False):
-        """Convert the matrix to Compressed Sparse Row format.
+        """Converts the matrix to Compressed Sparse Row format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -212,7 +212,7 @@ class coo_matrix(sparse_data._data_matrix):
 
 
 def isspmatrix_coo(x):
-    """Check if a given matrix is COO format.
+    """Checks if a given matrix is COO format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.coo_matrix`.
