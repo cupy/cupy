@@ -1,4 +1,6 @@
+import contextlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -16,6 +18,16 @@ maximum_cudnn_version = 6999
 minimum_cusolver_cuda_version = 8000
 
 _cuda_path = 'NOT_INITIALIZED'
+_compiler_base_options = None
+
+
+@contextlib.contextmanager
+def _tempdir():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def get_cuda_path():
@@ -103,6 +115,78 @@ def get_compiler_setting():
         'define_macros': define_macros,
         'language': 'c++',
     }
+
+
+def _match_output_lines(output_lines, regexs):
+    # Matches regular expressions `regexs` against `output_lines` and finds the
+    # consecutive matching lines from `output_lines`.
+    # `None` is returned if no match is found.
+    if len(output_lines) < len(regexs):
+        return None
+
+    matches = [None] * len(regexs)
+    for i in range(len(output_lines) - len(regexs)):
+        for j in range(len(regexs)):
+            m = re.match(regexs[j], output_lines[i + j])
+            if not m:
+                break
+            matches[j] = m
+        else:
+            # Match found
+            return matches
+
+    # No match
+    return None
+
+
+def get_compiler_base_options():
+    """Returns base options for nvcc compiler.
+
+    """
+    global _compiler_base_options
+    if _compiler_base_options is None:
+        _compiler_base_options = _get_compiler_base_options()
+    return _compiler_base_options
+
+
+def _get_compiler_base_options():
+    # Try compiling a dummy code.
+    # If the compilation fails, try to parse the output of compilation
+    # and try to compose base options according to it.
+    nvcc_path = get_nvcc_path()
+    with _tempdir() as temp_dir:
+        test_cu_path = os.path.join(temp_dir, 'test.cu')
+        test_out_path = os.path.join(temp_dir, 'test.out')
+        with open(test_cu_path, 'w') as f:
+            f.write('int main() { return 0; }')
+        proc = subprocess.Popen(
+            [nvcc_path, '-o', test_out_path, test_cu_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        stdoutdata, stderrdata = proc.communicate()
+        stderrlines = stderrdata.split(b'\n')
+        if proc.returncode != 0:
+
+            # No supported host compiler
+            matches = _match_output_lines(
+                stderrlines,
+                [
+                    b'^ERROR: No supported gcc/g\+\+ host compiler found, but '
+                    b'.* is available.$',
+
+                    b'^ *Use \'nvcc (.*)\' to use that instead.$',
+                ])
+            if matches is not None:
+                base_opts = matches[1].group(1)
+                base_opts = base_opts.decode('utf8').split(' ')
+                return base_opts
+
+            # Unknown error
+            raise RuntimeError(
+                'Encountered unknown error while testing nvcc:\n' +
+                stderrdata.decode('utf8'))
+
+    return []
 
 
 _cuda_version = None
@@ -217,9 +301,7 @@ def check_cusolver_version(compiler, settings):
 
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
-
-    try:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
@@ -239,15 +321,10 @@ def build_shlib(compiler, source, libraries=(),
             msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
             raise Exception(msg)
 
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
 
 def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
-
-    try:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
@@ -274,6 +351,3 @@ def build_and_run(compiler, source, libraries=(),
         except Exception as e:
             msg = 'Cannot execute a stub file.\nOriginal error: {0}'.format(e)
             raise Exception(msg)
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)

@@ -19,6 +19,14 @@ except ImportError:
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
+
+from cupy import cuda
+
+
+def is_available():
+    return cuda.is_available()
+
+
 __version__ = pkg_resources.get_distribution('cupy').version
 
 
@@ -406,6 +414,7 @@ from cupy.sorting.search import argmin  # NOQA
 
 from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import lexsort  # NOQA
+from cupy.sorting.sort import msort  # NOQA
 from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------

@@ -24,9 +24,9 @@ def mock_alloc(size):
     mem = MockMemory(size)
     return memory.MemoryPointer(mem, 0)
 
-
 # -----------------------------------------------------------------------------
 # Memory pointer
+
 
 @testing.gpu
 class TestMemoryPointer(unittest.TestCase):
@@ -105,69 +105,208 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.SingleDeviceMemoryPool(allocator=mock_alloc)
+        self.unit = self.pool._allocation_unit_size
+
+    def test_round_size(self):
+        self.assertEqual(self.pool._round_size(self.unit - 1), self.unit)
+        self.assertEqual(self.pool._round_size(self.unit), self.unit)
+        self.assertEqual(self.pool._round_size(self.unit + 1), self.unit * 2)
+
+    def test_bin_index_from_size(self):
+        self.assertEqual(self.pool._bin_index_from_size(self.unit - 1), 0)
+        self.assertEqual(self.pool._bin_index_from_size(self.unit), 0)
+        self.assertEqual(self.pool._bin_index_from_size(self.unit + 1), 1)
+
+    def test_split(self):
+        mem = MockMemory(self.unit * 4)
+        chunk = memory.Chunk(mem, 0, mem.size)
+        head, tail = self.pool._split(chunk, self.unit * 2)
+        self.assertEqual(head.ptr,      chunk.ptr)
+        self.assertEqual(head.offset,   0)
+        self.assertEqual(head.size,     self.unit * 2)
+        self.assertEqual(head.prev,     None)
+        self.assertEqual(head.next.ptr, tail.ptr)
+        self.assertEqual(tail.ptr,      chunk.ptr + self.unit * 2)
+        self.assertEqual(tail.offset,   self.unit * 2)
+        self.assertEqual(tail.size,     self.unit * 2)
+        self.assertEqual(tail.prev.ptr, head.ptr)
+        self.assertEqual(tail.next,     None)
+
+        head_of_head, tail_of_head = self.pool._split(head, self.unit)
+        self.assertEqual(head_of_head.ptr,      chunk.ptr)
+        self.assertEqual(head_of_head.offset,   0)
+        self.assertEqual(head_of_head.size,     self.unit)
+        self.assertEqual(head_of_head.prev,     None)
+        self.assertEqual(head_of_head.next.ptr, tail_of_head.ptr)
+        self.assertEqual(tail_of_head.ptr,      chunk.ptr + self.unit)
+        self.assertEqual(tail_of_head.offset,   self.unit)
+        self.assertEqual(tail_of_head.size,     self.unit)
+        self.assertEqual(tail_of_head.prev.ptr, head_of_head.ptr)
+        self.assertEqual(tail_of_head.next.ptr, tail.ptr)
+
+        head_of_tail, tail_of_tail = self.pool._split(tail, self.unit)
+        self.assertEqual(head_of_tail.ptr,      chunk.ptr + self.unit * 2)
+        self.assertEqual(head_of_tail.offset,   self.unit * 2)
+        self.assertEqual(head_of_tail.size,     self.unit)
+        self.assertEqual(head_of_tail.prev.ptr, tail_of_head.ptr)
+        self.assertEqual(head_of_tail.next.ptr, tail_of_tail.ptr)
+        self.assertEqual(tail_of_tail.ptr,      chunk.ptr + self.unit * 3)
+        self.assertEqual(tail_of_tail.offset,   self.unit * 3)
+        self.assertEqual(tail_of_tail.size,     self.unit)
+        self.assertEqual(tail_of_tail.prev.ptr, head_of_tail.ptr)
+        self.assertEqual(tail_of_tail.next,     None)
+
+    def test_merge(self):
+        mem = MockMemory(self.unit * 4)
+        chunk = memory.Chunk(mem, 0, mem.size)
+
+        head, tail = self.pool._split(chunk, self.unit * 2)
+        head_ptr, tail_ptr = head.ptr, tail.ptr
+        head_of_head, tail_of_head = self.pool._split(head, self.unit)
+        head_of_tail, tail_of_tail = self.pool._split(tail, self.unit)
+
+        merged_head = self.pool._merge(head_of_head, tail_of_head)
+        self.assertEqual(merged_head.ptr,      head.ptr)
+        self.assertEqual(merged_head.offset,   head.offset)
+        self.assertEqual(merged_head.size,     head.size)
+        self.assertEqual(merged_head.prev,     None)
+        self.assertEqual(merged_head.next.ptr, tail_ptr)
+
+        merged_tail = self.pool._merge(head_of_tail, tail_of_tail)
+        self.assertEqual(merged_tail.ptr,      tail.ptr)
+        self.assertEqual(merged_tail.offset,   tail.offset)
+        self.assertEqual(merged_tail.size,     tail.size)
+        self.assertEqual(merged_tail.prev.ptr, head_ptr)
+        self.assertEqual(merged_tail.next,     None)
+
+        merged = self.pool._merge(merged_head, merged_tail)
+        self.assertEqual(merged.ptr,    chunk.ptr)
+        self.assertEqual(merged.offset, chunk.offset)
+        self.assertEqual(merged.size,   chunk.size)
+        self.assertEqual(merged.prev,   None)
+        self.assertEqual(merged.next,   None)
 
     def test_alloc(self):
-        p1 = self.pool.malloc(1000)
-        p2 = self.pool.malloc(1000)
-        p3 = self.pool.malloc(2000)
+        p1 = self.pool.malloc(self.unit * 4)
+        p2 = self.pool.malloc(self.unit * 4)
+        p3 = self.pool.malloc(self.unit * 8)
         self.assertNotEqual(p1.ptr, p2.ptr)
         self.assertNotEqual(p1.ptr, p3.ptr)
         self.assertNotEqual(p2.ptr, p3.ptr)
 
+    def test_alloc_split(self):
+        p = self.pool.malloc(self.unit * 4)
+        ptr = p.ptr
+        del p
+        head = self.pool.malloc(self.unit * 2)
+        tail = self.pool.malloc(self.unit * 2)
+        self.assertEqual(ptr, head.ptr)
+        self.assertEqual(ptr + self.unit * 2, tail.ptr)
+
     def test_free(self):
-        p1 = self.pool.malloc(1000)
+        p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
         del p1
-        p2 = self.pool.malloc(1000)
+        p2 = self.pool.malloc(self.unit * 4)
         self.assertEqual(ptr1, p2.ptr)
 
+    def test_free_merge(self):
+        p = self.pool.malloc(self.unit * 4)
+        ptr = p.ptr
+        del p
+
+        # merge head into tail
+        head = self.pool.malloc(self.unit * 2)
+        tail = self.pool.malloc(self.unit * 2)
+        self.assertEqual(ptr, head.ptr)
+        del tail
+        del head
+        p = self.pool.malloc(self.unit * 4)
+        self.assertEqual(ptr, p.ptr)
+        del p
+
+        # merge tail into head
+        head = self.pool.malloc(self.unit * 2)
+        tail = self.pool.malloc(self.unit * 2)
+        self.assertEqual(ptr, head.ptr)
+        del head
+        del tail
+        p = self.pool.malloc(self.unit * 4)
+        self.assertEqual(ptr, p.ptr)
+        del p
+
     def test_free_different_size(self):
-        p1 = self.pool.malloc(1000)
+        p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
         del p1
-        p2 = self.pool.malloc(2000)
+        p2 = self.pool.malloc(self.unit * 8)
         self.assertNotEqual(ptr1, p2.ptr)
 
     def test_free_all_blocks(self):
-        p1 = self.pool.malloc(1000)
+        p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
         del p1
         self.pool.free_all_blocks()
-        p2 = self.pool.malloc(1000)
+        p2 = self.pool.malloc(self.unit * 4)
         self.assertNotEqual(ptr1, p2.ptr)
+        del p2
+
+        # do not free splitted blocks
+        head = self.pool.malloc(self.unit * 2)
+        tail = self.pool.malloc(self.unit * 2)
+        tailptr = tail.ptr
+        del tail
+        self.pool.free_all_blocks()
+        p = self.pool.malloc(self.unit * 2)
+        self.assertEqual(tailptr, p.ptr)
+        del head
 
     def test_free_all_free(self):
-        p1 = self.pool.malloc(1000)
+        p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
         del p1
         self.pool.free_all_free()
-        p2 = self.pool.malloc(1000)
+        p2 = self.pool.malloc(self.unit * 4)
         self.assertNotEqual(ptr1, p2.ptr)
 
     def test_used_bytes(self):
-        p1 = self.pool.malloc(1000)
-        self.assertEqual(1024, self.pool.used_bytes())
-        p2 = self.pool.malloc(2000)
-        self.assertEqual(3072, self.pool.used_bytes())
-        del p1
+        p1 = self.pool.malloc(self.unit * 2)
+        self.assertEqual(self.unit * 2, self.pool.used_bytes())
+        p2 = self.pool.malloc(self.unit * 4)
+        self.assertEqual(self.unit * 6, self.pool.used_bytes())
         del p2
+        self.assertEqual(self.unit * 2, self.pool.used_bytes())
+        del p1
+        self.assertEqual(self.unit * 0, self.pool.used_bytes())
+        p3 = self.pool.malloc(self.unit * 1)
+        self.assertEqual(self.unit * 1, self.pool.used_bytes())
+        del p3
 
     def test_free_bytes(self):
-        p1 = self.pool.malloc(1000)
-        del p1
-        self.assertEqual(1024, self.pool.free_bytes())
-        p2 = self.pool.malloc(2000)
+        p1 = self.pool.malloc(self.unit * 2)
+        self.assertEqual(self.unit * 0, self.pool.free_bytes())
+        p2 = self.pool.malloc(self.unit * 4)
+        self.assertEqual(self.unit * 0, self.pool.free_bytes())
         del p2
-        self.assertEqual(3072, self.pool.free_bytes())
+        self.assertEqual(self.unit * 4, self.pool.free_bytes())
+        del p1
+        self.assertEqual(self.unit * 6, self.pool.free_bytes())
+        p3 = self.pool.malloc(self.unit * 1)
+        self.assertEqual(self.unit * 5, self.pool.free_bytes())
+        del p3
 
     def test_total_bytes(self):
-        p1 = self.pool.malloc(1000)
-        self.assertEqual(1024, self.pool.total_bytes())
-        p2 = self.pool.malloc(2000)
+        p1 = self.pool.malloc(self.unit * 2)
+        self.assertEqual(self.unit * 2, self.pool.total_bytes())
+        p2 = self.pool.malloc(self.unit * 4)
+        self.assertEqual(self.unit * 6, self.pool.total_bytes())
         del p1
-        self.assertEqual(3072, self.pool.total_bytes())
+        self.assertEqual(self.unit * 6, self.pool.total_bytes())
         del p2
-        self.assertEqual(3072, self.pool.total_bytes())
+        self.assertEqual(self.unit * 6, self.pool.total_bytes())
+        p3 = self.pool.malloc(self.unit * 1)
+        self.assertEqual(self.unit * 6, self.pool.total_bytes())
+        del p3
 
 
 @testing.gpu
