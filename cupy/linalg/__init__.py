@@ -15,4 +15,7 @@ from cupy.linalg.decomposition import cholesky  # NOQA
 from cupy.linalg.decomposition import qr  # NOQA
 from cupy.linalg.decomposition import svd  # NOQA
 
+from cupy.linalg.eigenvalue import eigh  # NOQA
+from cupy.linalg.eigenvalue import eigvalsh  # NOQA
+
 from cupy.linalg.solve import solve  # NOQA

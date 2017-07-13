@@ -17,6 +17,9 @@ typedef enum {
     CUSOLVER_STATUS_SUCCESS = 0,
 } cusolverStatus_t;
 
+typedef enum{} cusolverEigType_t;
+typedef enum{} cusolverEigMode_t;
+
 typedef void* cusolverDnHandle_t;
 
 cusolverStatus_t cusolverDnCreate(...) {
@@ -152,6 +155,22 @@ cusolverStatus_t cusolverDnSgesvd(...) {
 }
 
 cusolverStatus_t cusolverDnDgesvd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSsyevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDsyevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSsyevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

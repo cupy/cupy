@@ -270,7 +270,7 @@ def make_extensions(options, compiler, use_cython):
             s['libraries'] = module['libraries']
 
         if module['name'] == 'cusolver':
-            args = s.setdefault('extra_link_args', [])
+            args = s.setdefault('extra_compile_args', [])
             # openmp is required for cusolver
             if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
                 # In mac environment, openmp is not required.
@@ -348,7 +348,7 @@ def check_extensions(extensions):
                        'Please install Cython. ' +
                        'Please also check the version of Cython.\n' +
                        'See ' +
-                       'http://docs.cupy.chainer.org/en/stable/install.html')
+                       'https://docs-cupy.chainer.org/en/stable/install.html')
                 raise RuntimeError(msg)
 
 
@@ -433,6 +433,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         _compiler_so = self.compiler_so
         try:
             nvcc_path = build.get_nvcc_path()
+            base_opts = build.get_compiler_base_options()
             self.set_executable('compiler_so', nvcc_path)
 
             cuda_version = build.get_cuda_version()
@@ -441,7 +442,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, cc_args, postargs, pp_opts)
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
 
@@ -465,6 +466,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        postargs += ['-Xcompiler', '/MD']
         print('NVCC options:', postargs)
 
         for obj in objects:

@@ -1,13 +1,3 @@
-# Modified work:
-# Copyright (c) 2017 Preferred Networks, inc.
-
-# Partially copied from SciPy (scipy/sparse/base.py)
-# Copyright (c) 2001, 2002 Enthought, Inc.
-# Copyright (c) 2003-2013 SciPy Developers.
-# Licensed under 3-Clause BSD License
-#   see https://www.scipy.org/scipylib/license.html
-
-
 import numpy
 import six
 
@@ -52,6 +42,8 @@ class spmatrix(object):
                         'use getnnz() or shape[0]')
 
     def __str__(self):
+        # TODO(unno): Do not use get method which is only available when scipy
+        # is installed.
         return str(self.get())
 
     def __iter__(self):

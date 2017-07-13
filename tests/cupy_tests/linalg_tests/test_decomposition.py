@@ -57,7 +57,8 @@ class TestQRDecomposition(unittest.TestCase):
             self.assertEqual(result_cpu.dtype, result_gpu.dtype)
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
-    @condition.retry(10)
+    @testing.fix_random()
+    @condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
@@ -67,6 +68,7 @@ class TestQRDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
+@testing.fix_random()
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
@@ -98,19 +100,19 @@ class TestSVD(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.svd(array, full_matrices=self.full_matrices)
 
-    @condition.retry(10)
+    @condition.repeat(3, 10)
     def test_svd(self):
         self.check_usv(numpy.random.randn(2, 3))
         self.check_usv(numpy.random.randn(2, 2))
         self.check_usv(numpy.random.randn(3, 2))
 
-    @condition.retry(10)
+    @condition.repeat(3, 10)
     def test_svd_no_uv(self):
         self.check_singular(numpy.random.randn(2, 3))
         self.check_singular(numpy.random.randn(2, 2))
         self.check_singular(numpy.random.randn(3, 2))
 
-    @condition.retry(10)
+    @condition.repeat(3, 10)
     def test_rank2(self):
         self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
         self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))

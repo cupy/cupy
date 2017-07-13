@@ -11,17 +11,17 @@ class TestIndices(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_indices_list0(self, xp, dtype):
         return xp.indices((0,), dtype)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_indices_list1(self, xp, dtype):
         return xp.indices((1, 2), dtype)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_indices_list2(self, xp, dtype):
         return xp.indices((1, 2, 3, 4), dtype)
 
