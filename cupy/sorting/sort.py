@@ -130,4 +130,5 @@ def msort(a):
 # TODO(okuta): Implement partition
 
 
-# TODO(okuta): Implement argpartition
+def argpartition(a, kth, axis=-1):
+    return a.argpartition(kth, axis=axis)

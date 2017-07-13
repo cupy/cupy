@@ -808,7 +808,31 @@ cdef class ndarray:
             return cupy.ascontiguousarray(cupy.rollaxis(idx_array, -1, axis))
 
     # TODO(okuta): Implement partition
-    # TODO(okuta): Implement argpartition
+
+    def argpartition(self, kth, axis=-1):
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
+
+        ndim = data.ndim
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
+        len = data.shape[axis]
+        kth = (kth,) if isinstance(kth, int) else kth
+        for k in kth:
+            if k < 0:
+                k += len
+            if not (0 <= k < len):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, len))
+
+        # kth is ignored.
+        return cupy.argsort(data, axis=axis)
+
     # TODO(okuta): Implement searchsorted
 
     def nonzero(self):
