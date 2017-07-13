@@ -154,8 +154,6 @@ cudnnStatus_t cudnnSoftmaxBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-// ***_v3 functions are not declared in cuDNN v2.
-// Following definitions are for compatibility with cuDNN v3.
 
 typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
@@ -224,9 +222,6 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-
-// ***_v2 functions are not declared in cuDNN v2 and v3.
-// Following definitions are for compatibility with cuDNN v4.
 
 typedef enum {} cudnnBatchNormMode_t;
 typedef enum {} cudnnNanPropagation_t;
