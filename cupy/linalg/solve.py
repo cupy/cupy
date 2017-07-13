@@ -5,9 +5,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import cublas
 from cupy.cuda import device
-from cupy.linalg.util import _assert_cupy_array
-from cupy.linalg.util import _assert_nd_squareness
-from cupy.linalg.util import _assert_rank2
+from cupy.linalg import util
 
 if cuda.cusolver_enabled:
     from cupy.cuda import cusolver
@@ -34,9 +32,9 @@ def solve(a, b):
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    _assert_cupy_array(a, b)
-    _assert_rank2(a)
-    _assert_nd_squareness(a)
+    util._assert_cupy_array(a, b)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
     if 2 < b.ndim:
         raise linalg.LinAlgError(
             '{}-dimensional array given. Array must be '

@@ -5,11 +5,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import cublas
 from cupy.cuda import device
-from cupy.linalg.util import _assert_cupy_array
-from cupy.linalg.util import _assert_nd_squareness
-from cupy.linalg.util import _assert_rank2
-from cupy.linalg.util import _tril
-from cupy.linalg.util import _triu
+from cupy.linalg import util
 
 if cuda.cusolver_enabled:
     from cupy.cuda import cusolver
@@ -32,9 +28,9 @@ def cholesky(a):
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    _assert_cupy_array(a)
-    _assert_rank2(a)
-    _assert_nd_squareness(a)
+    util._assert_cupy_array(a)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
 
     # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
@@ -68,7 +64,7 @@ def cholesky(a):
     elif status < 0:
         raise linalg.LinAlgError(
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
-    _tril(x, k=0)
+    util._tril(x, k=0)
     return x
 
 
@@ -92,8 +88,8 @@ def qr(a, mode='reduced'):
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    _assert_cupy_array(a)
-    _assert_rank2(a)
+    util._assert_cupy_array(a)
+    util._assert_rank2(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
@@ -135,7 +131,7 @@ def qr(a, mode='reduced'):
 
     if mode == 'r':
         r = x[:, :mn].transpose()
-        return _triu(r)
+        return util._triu(r)
 
     if mode == 'raw':
         if a.dtype.char == 'f':
@@ -172,7 +168,7 @@ def qr(a, mode='reduced'):
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
-    return q, _triu(r)
+    return q, util._triu(r)
 
 
 def svd(a, full_matrices=True, compute_uv=True):
@@ -196,8 +192,8 @@ def svd(a, full_matrices=True, compute_uv=True):
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    _assert_cupy_array(a)
-    _assert_rank2(a)
+    util._assert_cupy_array(a)
+    util._assert_rank2(a)
 
     # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
