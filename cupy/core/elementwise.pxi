@@ -9,28 +9,66 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 
 
-cpdef _get_simple_elementwise_kernel(
-        params, operation, name, preamble,
-        loop_prep='', after_loop='', options=()):
+cpdef str _generate_elementwise_class_def(
+        str name, ParameterList param_list, operation, preamble,
+        loop_prep='', after_loop=''):
+
+    params_decl = param_list.get_elementwise_function_params_decl()
     module_code = string.Template('''
-    ${preamble}
-    extern "C" __global__ void ${name}(${params}) {
-      ${loop_prep};
-      CUPY_FOR(i, _ind.size()) {
-        _ind.set(i);
-        ${operation};
+
+    class ${name} {
+    private:
+      ${preamble}
+    public:
+      __device__ void compute(${params_decl}) {
+        ${loop_prep};
+        CUPY_FOR(i, _ind.size()) {
+          _ind.set(i);
+          ${operation};
+        }
+        ${after_loop};
       }
-      ${after_loop};
-    }
+    };
     ''').substitute(
-        params=params,
+        params_decl=params_decl,
         operation=operation,
         name=name,
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
+    return module_code
+
+
+cpdef _get_simple_elementwise_kernel(
+        ParameterList param_list, operation, str kernel_name, preamble,
+        loop_prep='', after_loop='', options=()):
+
+    kernel_params_decl = param_list.get_kernel_params_decl()
+    elementwise_param_list = param_list.get_elementwise_function_param_list()
+    class_name = kernel_name + '__impl'
+
+    class_def = _generate_elementwise_class_def(
+        class_name, param_list, operation, preamble, loop_prep, after_loop)
+
+    module_code = string.Template('''
+    // Elementwise function class
+    ${class_def}
+
+    // Kernel function
+    extern "C" __global__ void ${kernel_name}(${kernel_params_decl}) {
+      ${class_name}().compute(${elementwise_param_list});
+    }
+    ''').substitute(
+        kernel_name=kernel_name,
+        kernel_params_decl=kernel_params_decl,
+        elementwise_param_list=elementwise_param_list,
+        class_name=class_name,
+        class_def=class_def,
+        preamble=preamble,
+        loop_prep=loop_prep,
+        after_loop=after_loop)
     module = compile_with_cache(module_code, options)
-    return module.get_function(name)
+    return module.get_function(kernel_name)
 
 
 cdef dict _typenames_base = {
@@ -123,25 +161,6 @@ cpdef tuple _get_args_info(list args):
             dtype = a.dtype.type
         ret.append((t, dtype, a.ndim))
     return tuple(ret)
-
-
-cpdef str _get_kernel_params(tuple params, tuple args_info):
-    cdef ParameterInfo p
-    ret = []
-    for i in range(len(params)):
-        p = params[i]
-        type, dtype, ndim = <tuple>(args_info[i])
-        is_array = type is ndarray
-        if type is Indexer:
-            t = 'CIndexer<%d>' % ndim
-        else:
-            t = _get_typename(dtype)
-            if is_array:
-                t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s %s%s' % (t,
-                                '_raw_' if is_array and not p.raw else '',
-                                p.name))
-    return ', '.join(ret)
 
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
@@ -254,6 +273,131 @@ cdef class ParameterInfo:
                 self.raw = True
             else:
                 raise Exception('Unknown keyword "%s"' % i)
+
+
+cdef class ParameterList:
+    cdef:
+        readonly tuple params
+        readonly tuple infos
+        readonly tuple _var_names
+        readonly tuple _base_types
+
+    def __init__(self, tuple params, list args):
+        assert len(params) == len(args)
+        self.params = params
+        self.infos = self._get_infos(args)
+
+        self._var_names = None
+        self._base_types = None
+
+    def __hash__(self):
+        return hash(self.params) ^ hash(self.infos)
+
+    def __richcmp__(ParameterList x, ParameterList y, int op):
+        if op == 2:
+            return (x.params == y.params and
+                    x.infos == y.infos)
+        raise NotImplementedError()
+
+    cdef tuple _get_infos(self, list args):
+        ret = []
+        for a in args:
+            t = type(a)
+            if t is Indexer:
+                dtype = None
+            else:
+                dtype = a.dtype.type
+            ret.append((t, dtype, a.ndim))
+        return tuple(ret)
+
+    cdef tuple _ensure_var_names(self):
+        cdef ParameterInfo p
+        cdef tuple a
+        if self._var_names is not None:
+            return
+        ret = []
+        for p, a in six_zip(self.params, self.infos):
+            is_array = a[0] is ndarray
+            if is_array and not p.raw:
+                ret.append('_raw_' + p.name)
+            else:
+                ret.append(p.name)
+        self._var_names = tuple(ret)
+
+    cdef tuple _ensure_base_types(self):
+        if self._base_types is not None:
+            return
+        ret = []
+        for i in range(len(self.params)):
+            p = <ParameterInfo>(self.params[i])
+            type, dtype, ndim = <tuple>(self.infos[i])
+            is_array = type is ndarray
+            if type is Indexer:
+                t = 'CIndexer<%d>' % ndim
+            else:
+                t = _get_typename(dtype)
+                if is_array:
+                    t = 'CArray<%s, %d>' % (t, ndim)
+            ret.append(t)
+        self._base_types = tuple(ret)
+
+    cdef list get_arrays(self):
+        cdef ParameterInfo p
+        cdef tuple a
+
+        return [p for p, a in six_zip(self.params, self.infos)
+                if not p.raw and a[0] is ndarray]
+
+    cdef str get_kernel_params_decl(self):
+        self._ensure_var_names()
+        self._ensure_base_types()
+        ret = []
+        for i in range(len(self.params)):
+            var_name = <str>(self._var_names[i])
+            base_type = <str>(self._base_types[i])
+            ret.append('%s %s' % (base_type, var_name))
+        return ', '.join(ret)
+
+    cdef str get_elementwise_function_params_decl(self):
+        self._ensure_var_names()
+        self._ensure_base_types()
+        ret = []
+        for i in range(len(self.params)):
+            base_type = <str>(self._base_types[i])
+            var_name = <str>(self._var_names[i])
+            ret.append('%s %s' % (base_type, var_name))
+        return ', '.join(ret)
+
+    cdef str get_elementwise_function_param_list(self):
+        self._ensure_var_names()
+        return ', '.join(self._var_names)
+
+    cdef str get_reduction_function_params_decl(self):
+        self._ensure_var_names()
+        self._ensure_base_types()
+        ret = []
+        for i in range(len(self.params)):
+            base_type = <str>(self._base_types[i])
+            var_name = <str>(self._var_names[i])
+            ret.append('%s %s' % (base_type, var_name))
+        return ', '.join(ret)
+
+    cdef str get_reduction_function_param_list(self):
+        self._ensure_var_names()
+        return ', '.join(self._var_names)
+
+    cdef list generate_ref_variable_decl_init_stmts(self):
+        cdef ParameterInfo p
+        cdef tuple a
+        stmts = []
+        for p, a in six.moves.zip(self.params, self.infos):
+            if not p.raw and a[0] is ndarray:
+                if p.is_const:
+                    fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                else:
+                    fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                stmts.append(fmt.format(t=p.ctype, n=p.name))
+        return stmts
 
 
 @util.memoize()
@@ -390,25 +534,19 @@ cdef list _get_out_args_with_params(
 
 
 @util.memoize(for_each_device=True)
-def _get_elementwise_kernel(args_info, types, params, operation, name,
+def _get_elementwise_kernel(ParameterList param_list, types, operation, name,
                             preamble, kwargs):
-    kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
     preamble = types_preamble + '\n' + preamble
 
     op = []
-    for p, a in six.moves.zip(params, args_info):
-        if not p.raw and a[0] == ndarray:
-            if p.is_const:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
-            else:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
-            op.append(fmt.format(t=p.ctype, n=p.name))
+    for stmt in param_list.generate_ref_variable_decl_init_stmts():
+        op.append(stmt)
     op.append(operation)
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name,
+        param_list, operation, name,
         preamble, **dict(kwargs))
 
 
@@ -549,9 +687,10 @@ cdef class ElementwiseKernel:
         indexer = Indexer(shape)
         inout_args.append(indexer)
 
-        args_info = _get_args_info(inout_args)
+        param_list = ParameterList(self.params, inout_args)
+
         kern = _get_elementwise_kernel(
-            args_info, types, self.params, self.operation,
+            param_list, types, self.operation,
             self.name, self.preamble, self.kwargs)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=128, stream=stream)
@@ -560,21 +699,21 @@ cdef class ElementwiseKernel:
 
 @util.memoize(for_each_device=True)
 def _get_ufunc_kernel(
-        in_types, out_types, routine, args_info, params, name, preamble):
-    kernel_params = _get_kernel_params(params, args_info)
+        in_types, out_types, routine, ParameterList param_list, name,
+        preamble):
 
     types = []
     op = []
     for i, x in enumerate(in_types):
         types.append('typedef %s in%d_type;' % (_get_typename(x), i))
-        if args_info[i][0] is ndarray:
+        if param_list.infos[i][0] is ndarray:
             op.append(
                 'const in{0}_type in{0} = _raw_in{0}[_ind.get()];'.format(i))
 
     for i, x in enumerate(out_types):
         types.append('typedef %s out%d_type;' % (_get_typename(x), i))
         op.append('{1} &out{0} = _raw_out{0}[_ind.get()];'.format(
-            i, _get_typename(args_info[i + len(in_types)][1])))
+            i, _get_typename(param_list.infos[i + len(in_types)][1])))
 
     op.append(routine)
     operation = '\n'.join(op)
@@ -583,7 +722,7 @@ def _get_ufunc_kernel(
     preamble = '\n'.join(types)
 
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble)
+        param_list, operation, name, preamble)
 
 
 cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
@@ -772,11 +911,11 @@ class ufunc(object):
         inout_args, shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
-        args_info = _get_args_info(inout_args)
+        param_list = ParameterList(self._params, inout_args)
 
         kern = _get_ufunc_kernel(
-            in_types, out_types, routine, args_info,
-            self._params, self.name, self._preamble)
+            in_types, out_types, routine, param_list,
+            self.name, self._preamble)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
