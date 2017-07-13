@@ -91,7 +91,7 @@ def solve(a, b):
 
 
 def _check_status(dev_info):
-    status = int(dev_info[0])
+    status = int(dev_info)
     if status < 0:
         raise linalg.LinAlgError(
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
