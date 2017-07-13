@@ -783,8 +783,9 @@ cdef class ndarray:
 
         idx_array = ndarray(self.shape, dtype=numpy.int64)
 
-        thrust.argsort(
-            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
+        buf_array = ndarray(self.shape, dtype=data.dtype)
+        thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
+                       buf_array.data.ptr, self._shape[0])
 
         return idx_array
 
