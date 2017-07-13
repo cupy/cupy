@@ -304,7 +304,7 @@ class TestPartition(unittest.TestCase):
         return x[kth]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_multi_dim(self, xp, dtype):
         a = testing.shaped_random((10, 10, 10), xp, dtype)
         kth = 2
@@ -360,7 +360,7 @@ class TestPartition(unittest.TestCase):
 
     # Test axis
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_axis(self, xp):
         a = testing.shaped_random((10, 10, 10), xp)
         kth = 2
@@ -368,7 +368,7 @@ class TestPartition(unittest.TestCase):
         x = self.partition(a, kth, axis=axis)
         return x[kth, :, :]
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_negative_axis(self, xp):
         a = testing.shaped_random((10, 10, 10), xp)
         kth = 2
