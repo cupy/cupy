@@ -299,8 +299,8 @@ class TestPartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[0:kth] <= x[kth]))
-        self.assertTrue(xp.all(x[kth] <= x[kth + 1:]))
+        self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
+        self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
         return x[kth]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
@@ -309,9 +309,9 @@ class TestPartition(unittest.TestCase):
         a = testing.shaped_random((10, 10, 10), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth]))
-        self.assertTrue(xp.all(x[:, :, kth] <= x[:, :, kth + 1:]))
-        return x[:, :, kth]
+        self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
+        self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
+        return x[:, :, kth:kth + 1]
 
     # Test unsupported dtype
 
