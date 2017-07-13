@@ -169,20 +169,22 @@ class coo_matrix(sparse_data._data_matrix):
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in coo to csc conversion.
 
         Returns:
             cupy.sparse.csc_matrix: Converte matrix.
 
         """
-        return self.T.tocsr(copy).T
+        return self.T.tocsr().T
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
-                possible.
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in coo to csr conversion.
 
         Returns:
             cupy.sparse.csr_matrix: Converte matrix.
