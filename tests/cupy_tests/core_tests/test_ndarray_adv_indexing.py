@@ -363,7 +363,8 @@ class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'], no_complex=True)
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
+                                        no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_differnt_dtypes(self, xp, src_dtype, dst_dtype):
         shape = (2, 3)
@@ -372,7 +373,8 @@ class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
         a[:, indexes] = xp.array(1, dtype=dst_dtype)
         return a
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'], no_complex=True)
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
+                                        no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_differnt_dtypes_mask(self, xp, src_dtype, dst_dtype):
         shape = (2, 3)
