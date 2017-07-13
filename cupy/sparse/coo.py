@@ -94,6 +94,10 @@ class coo_matrix(sparse_data._data_matrix):
         self.col = col
         self._shape = shape
 
+    def _with_data(self, data):
+        return coo_matrix(
+            (data, (self.row.copy(), self.col.copy())), shape=self.shape)
+
     def get_shape(self):
         """Shape of the matrix.
 

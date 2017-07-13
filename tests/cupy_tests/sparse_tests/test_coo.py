@@ -198,6 +198,24 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m.transpose().toarray()
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'ufunc': [
+        'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',
+        'floor', 'log1p', 'rad2deg', 'rint', 'sign', 'sin', 'sinh', 'sqrt',
+        'tan', 'tanh', 'trunc',
+    ],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestUfunc(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
+    def test_ufun(self, xp, sp):
+        x = _make(xp, sp, self.dtype)
+        x.data *= 0.1
+        return getattr(x, self.ufunc)().toarray()
+
+
 class TestIsspmatrixCoo(unittest.TestCase):
 
     def test_coo(self):
