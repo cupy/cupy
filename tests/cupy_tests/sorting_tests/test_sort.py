@@ -323,9 +323,9 @@ class TestPartition(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             return self.partition(a, kth)
 
-    # Test array C contiguousness
+    # Test non-contiguous array
 
-    def test_partition_not_C_contiguous(self):
+    def test_partition_non_contiguous(self):
         a = testing.shaped_random((10,), cupy)[::2]
         kth = 2
         with self.assertRaises(NotImplementedError):
