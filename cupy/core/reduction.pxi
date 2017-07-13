@@ -10,70 +10,84 @@ from cupy import util
 six_zip = six.moves.zip
 
 
-cpdef _get_simple_reduction_kernel(
-        name, block_size, reduce_type, params, identity,
-        pre_map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options):
+cpdef str _generate_reduction_class_def(
+        str name, int block_size, str reduce_type, ParameterList param_list,
+        object identity, str pre_map_expr, str reduce_expr, str post_map_expr,
+        str type_preamble, str input_expr, str output_expr):
+
     if identity is None:
         identity = ''
-    module_code = string.Template('''
-    ${type_preamble}
-    ${preamble}
-    #define REDUCE(a, b) (${reduce_expr})
-    #define POST_MAP(a) (${post_map_expr})
-    #define _REDUCE(_offset) if (_tid < _offset) { \
-      _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
-      _sdata[_tid] = REDUCE(_a, _b); \
-    }
 
-    typedef ${reduce_type} _type_reduce;
-    extern "C" __global__ void ${name}(${params}) {
-      extern __shared__ _type_reduce _sdata_raw[];
-      _type_reduce *_sdata = _sdata_raw;
-      unsigned int _tid = threadIdx.x;
+    params_decl = param_list.get_reduction_function_params_decl()
+    module_code = <str>string.Template('''
 
-      int _J_offset = _tid / _block_stride;
-      int _j_offset = _J_offset * _out_ind.size();
-      int _J_stride = ${block_size};
-      long long _j_stride = ${block_size}LL * _out_ind.size();
+    class ${name} {
+      typedef ${reduce_type} _type_reduce;
 
-      for (int _i_base = blockIdx.x * _block_stride;
-           _i_base < _out_ind.size();
-           _i_base += gridDim.x * _block_stride) {
-        _type_reduce _s = _type_reduce(${identity});
-        int _i = _i_base + _tid % _block_stride;
-        int _J = _J_offset;
-        for (long long _j = _i + _j_offset; _j < _in_ind.size();
-             _j += _j_stride, _J += _J_stride) {
-          _in_ind.set(_j);
-          ${input_expr}
-          _type_reduce _a = ${pre_map_expr};
-          _s = REDUCE(_s, _a);
+    private:
+      __device__ _type_reduce REDUCE(const _type_reduce& a,
+                                     const _type_reduce& b) {
+        return (${reduce_expr});
+      }
+
+      __device__ void _REDUCE(_type_reduce* _sdata,
+                              unsigned int tid,
+                              unsigned int offset) {
+        if (tid < offset) {
+          _type_reduce _a = _sdata[tid], _b = _sdata[(tid + offset)];
+          _sdata[tid] = REDUCE(_a, _b);
         }
-        if (_block_stride < ${block_size}) {
-          _sdata[_tid] = _s;
-          __syncthreads();
-          if (_block_stride <= 256) {
-            _REDUCE(256);
+      }
+
+    public:
+      __device__ void compute(${params_decl}) {
+        extern __shared__ _type_reduce _sdata_raw[];
+        _type_reduce *_sdata = _sdata_raw;
+        unsigned int _tid = threadIdx.x;
+
+        int _J_offset = _tid / _block_stride;
+        int _j_offset = _J_offset * _out_ind.size();
+        int _J_stride = ${block_size};
+        long long _j_stride = ${block_size}LL * _out_ind.size();
+
+        for (int _i_base = blockIdx.x * _block_stride;
+             _i_base < _out_ind.size();
+             _i_base += gridDim.x * _block_stride) {
+          _type_reduce _s = _type_reduce(${identity});
+          int _i = _i_base + _tid % _block_stride;
+          int _J = _J_offset;
+          for (long long _j = _i + _j_offset; _j < _in_ind.size();
+               _j += _j_stride, _J += _J_stride) {
+            _in_ind.set(_j);
+            ${input_expr}
+            _type_reduce _a = ${pre_map_expr};
+            _s = REDUCE(_s, _a);
+          }
+          if (_block_stride < ${block_size}) {
+            _sdata[_tid] = _s;
             __syncthreads();
-            if (_block_stride <= 128) {
-              _REDUCE(128)
+            if (_block_stride <= 256) {
+              _REDUCE(_sdata, _tid, 256);
               __syncthreads();
-              if (_block_stride <= 64) {
-                _REDUCE(64)
+              if (_block_stride <= 128) {
+                _REDUCE(_sdata, _tid, 128);
                 __syncthreads();
-                if (_block_stride <= 32) {
-                  _REDUCE(32)
-                  if (_block_stride <= 16) {
-                    _REDUCE(16)
-                    if (_block_stride <= 8) {
-                      _REDUCE(8)
-                      if (_block_stride <= 4) {
-                        _REDUCE(4)
-                        if (_block_stride <= 2) {
-                          _REDUCE(2)
-                          if (_block_stride <= 1) {
-                            _REDUCE(1)
+                if (_block_stride <= 64) {
+                  _REDUCE(_sdata, _tid, 64);
+                  __syncthreads();
+                  if (_block_stride <= 32) {
+                    _REDUCE(_sdata, _tid, 32);
+                    if (_block_stride <= 16) {
+                      _REDUCE(_sdata, _tid, 16);
+                      if (_block_stride <= 8) {
+                        _REDUCE(_sdata, _tid, 8);
+                        if (_block_stride <= 4) {
+                          _REDUCE(_sdata, _tid, 4);
+                          if (_block_stride <= 2) {
+                            _REDUCE(_sdata, _tid, 2);
+                            if (_block_stride <= 1) {
+                              _REDUCE(_sdata, _tid, 1);
+                            }
                           }
                         }
                       }
@@ -82,21 +96,73 @@ cpdef _get_simple_reduction_kernel(
                 }
               }
             }
+            _s = _sdata[_tid];
+            __syncthreads();
           }
-          _s = _sdata[_tid];
-          __syncthreads();
-        }
-        if (_J_offset == 0 && _i < _out_ind.size()) {
-          _out_ind.set(_i);
-          ${output_expr}
-          POST_MAP(_s);
+          if (_J_offset == 0 && _i < _out_ind.size()) {
+            _out_ind.set(_i);
+            ${output_expr};
+            {
+              _type_reduce a = _s;  // referred in 'post_map_expr'
+              ${post_map_expr};
+            }
+          }
         }
       }
-    }''').substitute(
+    };
+
+''').substitute(
         name=name,
+        params_decl=params_decl,
         block_size=block_size,
         reduce_type=reduce_type,
-        params=params,
+        identity=identity,
+        reduce_expr=reduce_expr,
+        pre_map_expr=pre_map_expr,
+        post_map_expr=post_map_expr,
+        type_preamble=type_preamble,
+        input_expr=input_expr,
+        output_expr=output_expr)
+    return module_code
+
+
+cpdef function.Function _get_simple_reduction_kernel(
+        str kernel_name, int block_size, str reduce_type,
+        ParameterList param_list, object identity,
+        str pre_map_expr, str reduce_expr, str post_map_expr,
+        str type_preamble, str input_expr, str output_expr, str preamble,
+        tuple options):
+
+    if identity is None:
+        identity = ''
+    kernel_params_decl = param_list.get_kernel_params_decl()
+    reduction_params_list = param_list.get_reduction_function_param_list()
+    class_name = kernel_name + '__impl'
+
+    class_def = _generate_reduction_class_def(
+        class_name, block_size, reduce_type, param_list, identity,
+        pre_map_expr, reduce_expr, post_map_expr, type_preamble, input_expr,
+        output_expr)
+
+    module_code = <str>string.Template('''
+    ${type_preamble}
+    ${preamble}
+
+    // Reduction function class
+    ${class_def}
+
+    // Kernel function
+    extern "C" __global__ void ${kernel_name}(${kernel_params_decl}) {
+        ${class_name}().compute(${reduction_params_list});
+    }
+''').substitute(
+        kernel_name=kernel_name,
+        class_name=class_name,
+        class_def=class_def,
+        reduction_params_list=reduction_params_list,
+        block_size=block_size,
+        reduce_type=reduce_type,
+        kernel_params_decl=kernel_params_decl,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -105,8 +171,8 @@ cpdef _get_simple_reduction_kernel(
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
-    module = compile_with_cache(module_code, options)
-    return module.get_function(name)
+    module = <function.Module>compile_with_cache(module_code, options)
+    return module.get_function(kernel_name)
 
 
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
@@ -167,7 +233,7 @@ cpdef list _get_inout_args(
 
 @util.memoize(for_each_device=True)
 def _get_simple_reduction_function(
-        routine, params, args_info, in_arg_dtype, out_arg_dtype, out_types,
+        routine, param_list, in_arg_dtype, out_arg_dtype, out_types,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options):
     reduce_type = routine[3]
@@ -177,9 +243,8 @@ def _get_simple_reduction_function(
     t = (_get_typename(in_arg_dtype), _get_typename(out_arg_dtype))
     type_preamble = 'typedef %s type_in0_raw; typedef %s type_out0_raw;' % t
 
-    params = _get_kernel_params(params, args_info)
     return _get_simple_reduction_kernel(
-        name, block_size, reduce_type, params, identity,
+        name, block_size, reduce_type, param_list, identity,
         routine[0], routine[1], routine[2],
         type_preamble, input_expr, output_expr, _preamble, options)
 
@@ -249,10 +314,10 @@ class simple_reduction_function(object):
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
             self._params, True)
-        args_info = _get_args_info(inout_args)
+        param_list = ParameterList(self._params, inout_args)
 
         kern = _get_simple_reduction_function(
-            routine, self._params, args_info,
+            routine, param_list,
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
@@ -271,12 +336,10 @@ class simple_reduction_function(object):
 
 @util.memoize(for_each_device=True)
 def _get_reduction_kernel(
-        params, args_info, types,
+        ParameterList param_list, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
-    kernel_params = _get_kernel_params(params, args_info)
-    arrays = [p for p, a in six_zip(params, args_info)
-              if not p.raw and a[0] is ndarray]
+    arrays = param_list.get_arrays()
     type_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
@@ -288,7 +351,7 @@ def _get_reduction_kernel(
          for p in arrays if not p.is_const])
 
     return _get_simple_reduction_kernel(
-        name, block_size, reduce_type, kernel_params, identity,
+        name, block_size, reduce_type, param_list, identity,
         map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options)
 
@@ -429,10 +492,10 @@ class ReductionKernel(object):
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
             self.params, self.reduce_dims)
-        args_info = _get_args_info(inout_args)
+        param_list = ParameterList(self.params, inout_args)
 
         kern = _get_reduction_kernel(
-            self.params, args_info, types,
+            param_list, types,
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
