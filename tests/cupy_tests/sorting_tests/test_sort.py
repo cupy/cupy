@@ -287,7 +287,6 @@ class TestPartition(unittest.TestCase):
 
     # Test base cases
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_raises()
     def test_partition_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -341,8 +340,8 @@ class TestPartition(unittest.TestCase):
         return x[kth[0]], x[kth[1]]
 
     @testing.numpy_cupy_equal()
-    def test_partition_negative_kth(self):
-        a = testing.shaped_random((10,), cupy)
+    def test_partition_negative_kth(self, xp):
+        a = testing.shaped_random((10,), xp)
         kth = -3
         x = self.partition(a, kth)
         return x[kth]
