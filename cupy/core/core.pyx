@@ -439,7 +439,7 @@ cdef class ndarray:
         if strides.size() == shape.size():
             newarray = self.view()
         else:
-            newarray = ascontiguousarray(self)
+            newarray = self.copy()
             strides = _get_strides_for_nocopy_reshape(newarray, shape)
 
         if shape.size() != strides.size():
@@ -2621,7 +2621,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
         if li is not None and ri is not None and li == ri:
             a = rollaxis(a, li)
         if out is None:
-            return ascontiguousarray(a[indices])
+            return a[indices].copy()
         else:
             if out.dtype != a.dtype:
                 raise TypeError('Output dtype mismatch')
@@ -3387,14 +3387,14 @@ cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
             lda = a._shape[0]
         return a, trans, lda
     if not a._c_contiguous:
-        a = ascontiguousarray(a)
+        a = a.copy()
     return a, 1 - trans, a._strides[0] // a.itemsize
 
 
 @cython.profile(False)
 cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
     if a._strides[rundim] < 0:
-        return ascontiguousarray(a), 1
+        return a.copy(), 1
     else:
         return a, a._strides[rundim] // a.itemsize
 
