@@ -378,11 +378,14 @@ class TestPartition(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_partition_none_axis(self, xp):
-        a = testing.shaped_random((2, 2), xp)
-        kth = 2
-        axis = None
-        x = self.partition(a, kth, axis=axis)
-        return x[kth]
+        if self.external:
+            a = testing.shaped_random((2, 2), xp)
+            kth = 2
+            axis = None
+            x = self.partition(a, kth, axis=axis)
+            return x[kth]
+        else:
+            return None
 
     @testing.numpy_cupy_raises()
     def test_partition_invalid_axis(self, xp):
