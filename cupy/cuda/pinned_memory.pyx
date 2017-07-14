@@ -4,8 +4,6 @@ import collections
 import threading
 import weakref
 
-import six
-
 from cupy.cuda import runtime
 
 from cupy.cuda cimport runtime
@@ -321,6 +319,6 @@ cdef class PinnedMemoryPool:
             int: The total number of free blocks.
         """
         cdef Py_ssize_t n = 0
-        for v in six.itervalues(self._free):
+        for v in self._free.itervalues():
             n += len(v)
         return n

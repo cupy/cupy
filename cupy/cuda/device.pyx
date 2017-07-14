@@ -203,7 +203,7 @@ def from_pointer(ptr):
 def destroy_cublas_handles():
     """Destroys the cuBLAS handles for all devices."""
     global _cublas_handles
-    for handle in six.itervalues(_cublas_handles):
+    for handle in _cublas_handles.itervalues():
         cublas.destroy(handle)
     _cublas_handles = {}
 

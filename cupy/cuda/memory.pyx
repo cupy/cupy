@@ -6,8 +6,6 @@ import gc
 import warnings
 import weakref
 
-import six
-
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
