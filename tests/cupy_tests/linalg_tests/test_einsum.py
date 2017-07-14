@@ -128,9 +128,9 @@ class TestEinSum(unittest.TestCase):
                                           cupy.einsum("i->", cupy.asarray(a)))
 
         # trace(a)
-        # a = numpy.arange(n*n, dtype=dtype).reshape(n, n)
-        # testing.assert_array_almost_equal(numpy.einsum("ii", a),
-        #                                   cupy.einsum("ii", cupy.asarray(a)))
+        a = numpy.arange(n*n, dtype=dtype).reshape(n, n)
+        testing.assert_array_almost_equal(numpy.einsum("ii", a),
+                                          cupy.einsum("ii", cupy.asarray(a)))
 
         # outer(a,b)
         a = numpy.arange(3, dtype=dtype) + 1

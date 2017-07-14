@@ -70,6 +70,13 @@ def einsum(subscripts, *inputs):
         if input_count > 2 and a not in output_axis_labels:
             return _exponential_space_einsum(subscripts, *inputs)
 
+    # trace
+    diagonal_combs = []
+    for char in set(input_axis_labels):
+        if input_axis_labels.count(char) > 1:
+            diagonal_combs.append()
+
+
     temp = inputs[0]
     temp_axis_labels = input_axis_labels[0]
     for i in range(1, len(inputs)):
