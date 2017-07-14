@@ -822,6 +822,11 @@ cdef class ndarray:
             :meth:`numpy.ndarray.partition`
 
         """
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
         len = self.shape[axis]
         if kth < 0:
             kth += len
