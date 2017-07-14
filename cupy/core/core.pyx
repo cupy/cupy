@@ -822,6 +822,7 @@ cdef class ndarray:
             :meth:`numpy.ndarray.partition`
 
         """
+        ndim = self.ndim
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
