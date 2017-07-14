@@ -319,6 +319,6 @@ cdef class PinnedMemoryPool:
             int: The total number of free blocks.
         """
         cdef Py_ssize_t n = 0
-        for v in self._free.itervalues():
+        for v in (<dict>self._free).itervalues():
             n += len(v)
         return n
