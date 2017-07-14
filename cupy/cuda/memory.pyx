@@ -6,12 +6,9 @@ import gc
 import warnings
 import weakref
 
-import six
-
 from cupy.cuda import runtime
-from cupy.cuda import stream
 
-from cupy.cuda cimport device as device_mod
+from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
@@ -35,7 +32,7 @@ cdef class Memory:
         self.device = None
         self.ptr = 0
         if size > 0:
-            self.device = device_mod.Device()
+            self.device = device.Device()
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
@@ -65,7 +62,7 @@ cdef class ManagedMemory(Memory):
         self.device = None
         self.ptr = 0
         if size > 0:
-            self.device = device_mod.Device()
+            self.device = device.Device()
             self.ptr = runtime.mallocManaged(size)
 
     cpdef prefetch(self, stream):
@@ -77,7 +74,7 @@ cdef class ManagedMemory(Memory):
         runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
                                  stream.ptr)
 
-    cpdef advise(self, int advise, device_mod.Device device):
+    cpdef advise(self, int advise, device.Device device):
         """ Advise about the usage of this memory.
 
         Args:
