@@ -95,8 +95,8 @@ def draw(X, n_clusters, centers, pred, output):
     plt.savefig(output)
 
 
-def run(gpuid, n_clusters, max_iter, use_custom_kernel, output):
-    samples = np.random.randn(5000000, 2).astype(np.float32)
+def run(gpuid, n_clusters, num, max_iter, use_custom_kernel, output):
+    samples = np.random.randn(num, 2).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
@@ -122,6 +122,8 @@ if __name__ == '__main__':
                         help='ID of GPU.')
     parser.add_argument('--n-clusters', '-n', default=2, type=int,
                         help='number of clusters')
+    parser.add_argument('--num', default=5000000, type=int,
+                        help='number of samples')
     parser.add_argument('--max-iter', '-m', default=10, type=int,
                         help='number of iterations')
     parser.add_argument('--use-custom-kernel', action='store_true',
@@ -129,5 +131,5 @@ if __name__ == '__main__':
     parser.add_argument('--output-image', '-o', default=None, type=str,
                         help='output image file name')
     args = parser.parse_args()
-    run(args.gpu_id, args.n_clusters, args.max_iter, args.use_custom_kernel,
-        args.output_image)
+    run(args.gpu_id, args.n_clusters, args.num, args.max_iter,
+        args.use_custom_kernel, args.output_image)
