@@ -161,7 +161,6 @@ def run(gpuid, num, dim, max_iter, tol, output):
                          max_iter, tol, means, covariances)
         if output is not None:
             draw(X_test_gpu, y_test_pred, means, cov, output)
-    print()
 
 
 if __name__ == '__main__':
