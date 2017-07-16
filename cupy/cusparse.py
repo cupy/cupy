@@ -159,11 +159,12 @@ def csr2coo(x, data, indices):
         cupy.sparse.coo_matrix: Returns a converted matrix.
 
     """
+    handle = device.get_cusparse_handle()
     m = x.shape[0]
     nnz = len(x.data)
     row = cupy.empty(nnz, 'i')
     cusparse.xcsr2coo(
-        get_handle(), x.indptr.data.ptr, nnz, m, row.data.ptr,
+        handle, x.indptr.data.ptr, nnz, m, row.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
     # data and indices did not need to be copied already
     return cupy.sparse.coo_matrix(
