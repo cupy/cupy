@@ -2,8 +2,8 @@
 Sparse matrix
 -------------
 
-
-https://developer.nvidia.com/cusparse
+CuPy supports sparse matrix using `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
+These matrices have the same interfaces of `SciPy's sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
 
 .. autosummary::
    :toctree: generated/
