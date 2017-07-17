@@ -175,7 +175,12 @@ class spmatrix(object):
             return getattr(self, 'to' + format)()
 
     def asfptype(self):
-        """Upcast matrix to a floating point format (if necessary)"""
+        """Upcasts matrix to a floating point format if necessary.
+
+        Returns:
+            Returns a copy of the array with a given type if nessessary.
+
+        """
         if self.dtype.kind == 'f':
             return self
         else:
@@ -183,6 +188,15 @@ class spmatrix(object):
             return self.astype(typ)
 
     def astype(self, t):
+        """Casts the array to given data type.
+
+        Args:
+            dtype: Type specifier.
+
+        Returns:
+            Returns a copy of the array with a given type.
+
+        """
         return self.tocsr().astype(t).asformat(self.format)
 
     def conj(self):
