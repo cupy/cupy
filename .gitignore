@@ -12,5 +12,6 @@ build
 _readthedocs_build
 cupy.egg-info/
 dist/
+docs/source/reference/generated
 htmlcov/
 .idea/
