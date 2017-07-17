@@ -111,6 +111,16 @@ cdef extern from "cupy_cusparse.h":
         Handle handle, const int *cooRowInd, int nnz, int m, int *csrRowPtr,
         IndexBase idxBase)
 
+    Status cusparseScsc2dense(
+        Handle handle, int m, int n, const MatDescr descrA,  
+        const float *cscSortedValA, const int *cscSortedRowIndA, 
+        const int *cscSortedColPtrA, float *A, int lda);
+
+    Status cusparseDcsc2dense(
+        Handle handle, int m, int n, const MatDescr descrA,
+        const double *cscSortedValA, const int *cscSortedRowIndA,
+        const int *cscSortedColPtrA, double *A, int lda)
+
     Status cusparseXcsr2coo(
         Handle handle, const int *csrRowPtr, int nnz, int m, int *cooRowInd,
         IndexBase idxBase)
@@ -442,6 +452,28 @@ cpdef xcoo2csr(
     status = cusparseXcoo2csr(
         <Handle>handle, <const int *>cooRowInd, nnz, m, <int *>csrRowPtr,
         <IndexBase>idxBase)
+    check_status(status)
+
+
+cpdef scsc2dense(
+        size_t handle, int m, int n, size_t descrA,
+        size_t cscSortedValA, size_t cscSortedRowIndA,
+        size_t cscSortedColPtrA, size_t A, int lda):
+    status = cusparseScsc2dense(
+        <Handle>handle, m, n, <MatDescr>descrA,
+        <const float *>cscSortedValA, <const int *>cscSortedRowIndA,
+        <const int *>cscSortedColPtrA, <float *>A, lda)
+    check_status(status)
+
+
+cpdef dcsc2dense(
+        size_t handle, int m, int n, size_t descrA,
+        size_t cscSortedValA, size_t cscSortedRowIndA,
+        size_t cscSortedColPtrA, size_t A, int lda):
+    status = cusparseDcsc2dense(
+        <Handle>handle, m, n, <MatDescr>descrA,
+        <const double *>cscSortedValA, <const int *>cscSortedRowIndA,
+        <const int *>cscSortedColPtrA, <double *>A, lda)
     check_status(status)
 
 

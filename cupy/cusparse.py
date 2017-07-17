@@ -65,6 +65,35 @@ def csr2dense(x, out=None):
     return out
 
 
+def csc2dense(x, out=None):
+    """Converts CSC-matrix to a dense matrix.
+
+    Args:
+        x (cupy.sparse.csc_matrix): A sparse matrix to convert.
+        out (cupy.ndarray or None): A dense metrix to store the result.
+            It must be F-contiguous.
+
+    Returns:
+        cupy.ndarray: Converted result.
+
+    """
+    dtype = x.dtype
+    assert dtype == 'f' or dtype == 'd'
+    if out is None:
+        out = cupy.empty(x.shape, dtype=dtype, order='F')
+    else:
+        assert out.flags.f_contiguous
+
+    handle = device.get_cusparse_handle()
+    _call_cusparse(
+        'csc2dense', x.dtype,
+        handle, x.shape[0], x.shape[1], x._descr.descriptor,
+        x.data.data.ptr, x.indices.data.ptr, x.indptr.data.ptr,
+        out.data.ptr, x.shape[0])
+
+    return out
+
+
 def csrsort(x):
     """Sorts indices of CSR-matrix in place.
 
