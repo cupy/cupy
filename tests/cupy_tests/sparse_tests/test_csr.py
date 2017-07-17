@@ -311,6 +311,64 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return m.tocsr().toarray()
 
+    # dot
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_vector(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_dot_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_dot_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.dot(None)
+
     # __add__
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_zero(self, xp, sp):
