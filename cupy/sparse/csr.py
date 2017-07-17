@@ -98,14 +98,14 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tobsr
 
     def tocoo(self, copy=False):
-        """Convert the matrix to COOdinate format.
+        """Converts the matrix to COOdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
                 possible.
 
         Returns:
-            cupy.sparse.coo_matrix: Converte matrix.
+            cupy.sparse.coo_matrix: Converted matrix.
 
         """
         if copy:
