@@ -786,7 +786,6 @@ cdef class ndarray:
         thrust.argsort(
             self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
 
-
         return idx_array
 
     # TODO(okuta): Implement partition
