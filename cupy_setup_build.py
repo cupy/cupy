@@ -416,7 +416,10 @@ def _nvcc_gencode_options(cuda_version):
             options.append('--generate-code=arch={},code={}'.format(
                 arch, arch))
 
-    return options
+    if sys.argv == ['setup.py', 'develop']:
+        return []
+    else:
+        return options
 
 
 class _UnixCCompiler(unixccompiler.UnixCCompiler):
