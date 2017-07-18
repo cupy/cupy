@@ -109,43 +109,37 @@ template void cupy::thrust::_lexsort<cpy_double>(size_t *, void *, size_t, size_
  */
 
 template <typename T>
-void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *buff_start, size_t num) {
+void cupy::thrust::_argsort(size_t *idx_start, void *data_start, size_t num) {
     /* idx_start is the beggining of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
 
-    device_ptr<T> dp_data_first, dp_data_last, dp_buff_first, dp_buff_last;
+    device_ptr<T> dp_data_first, dp_data_last;
     device_ptr<size_t> dp_idx_first, dp_idx_last;
 
-    // Make a buffer vector object.
-    dp_buff_first = device_pointer_cast(static_cast<T*>(buff_start));
-    dp_buff_last  = device_pointer_cast(static_cast<T*>(buff_start) + num);
-    device_vector<T> d_buff(dp_buff_first, dp_buff_last);
-
-    // Copy to the buffer vector to keep the original data as it is.
+    // Cast device pointers of data.
     dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
     dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + num);
-    d_buff.assign(dp_data_first, dp_data_last);
 
     // Generate an index sequence.
     dp_idx_first = device_pointer_cast(static_cast<size_t*>(idx_start));
     dp_idx_last  = device_pointer_cast(static_cast<size_t*>(idx_start) + num);
     sequence(dp_idx_first, dp_idx_last);
 
-    // Sort the index sequence by the values.
-    stable_sort_by_key(d_buff.begin(),
-                       d_buff.end(),
+    // Sort the index sequence by data.
+    stable_sort_by_key(dp_data_first,
+                       dp_data_last,
                        dp_idx_first,
                        less<T>());
 }
 
-template void cupy::thrust::_argsort<cpy_byte>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_ubyte>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_short>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_ushort>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_int>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_uint>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_long>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_ulong>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_float>(size_t *, void *, void *, size_t);
-template void cupy::thrust::_argsort<cpy_double>(size_t *, void *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_byte>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_ubyte>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_short>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_ushort>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_int>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_uint>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_long>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_ulong>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_float>(size_t *, void *, size_t);
+template void cupy::thrust::_argsort<cpy_double>(size_t *, void *, size_t);
