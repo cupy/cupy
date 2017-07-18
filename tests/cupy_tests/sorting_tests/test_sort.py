@@ -123,6 +123,16 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         xp.sort(a, axis=3)
 
+    @testing.numpy_cupy_raises()
+    def test_sort_invalid_negative_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        a.sort(axis=-4)
+
+    @testing.numpy_cupy_raises()
+    def test_external_sort_invalid_negative_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        xp.sort(a, axis=-4)
+
 
 @testing.gpu
 class TestLexsort(unittest.TestCase):
