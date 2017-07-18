@@ -829,10 +829,12 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         len = self.shape[axis]
-        if kth < 0:
-            kth += len
-        if not (0 <= kth < len):
-            raise ValueError('kth(={}) out of bounds {}'.format(kth, len))
+        kth = tuple(kth) if not isinstance(kth, int) else kth
+        for k in kth:
+            if k < 0:
+                k += len
+            if not (0 <= k < len):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, len))
 
         # kth is ignored.
         self.sort(axis=axis)
