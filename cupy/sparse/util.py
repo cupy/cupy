@@ -3,6 +3,10 @@ import cupy.sparse.base
 
 
 _preamble_atomic_add = '''
+template<typename U>
+__device__ U atomicAdd(U* address, U val) {
+    return ::atomicAdd(address, val);
+}
 #if __CUDA_ARCH__ < 600
 __device__ double atomicAdd(double* address, double val) {
     unsigned long long* address_as_ull =

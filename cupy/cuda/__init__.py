@@ -13,6 +13,7 @@ from cupy.cuda import stream  # NOQA
 
 
 _available = None
+_runtime_version = None
 
 
 try:
@@ -45,6 +46,13 @@ def is_available():
                     'cudaErrorNoDevice: no CUDA-capable device is detected'):
                 raise
     return _available
+
+
+def get_runtime_version():
+    global _runtime_version
+    if _runtime_version is None:
+        _runtime_version = runtime.runtimeGetVersion()
+    return _runtime_version
 
 
 # import class and function
