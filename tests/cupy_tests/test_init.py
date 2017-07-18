@@ -6,7 +6,9 @@ import sys
 import tempfile
 import unittest
 
+import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -78,6 +80,12 @@ class TestNotAvailable(unittest.TestCase):
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
         available = _test_cupy_available(self)
         self.assertFalse(available)
+
+
+class TestNumpyShortcuts(unittest.TestCase):
+
+    def test_nan(self):
+        self.assertIs(cupy.nan, numpy.nan)
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in
