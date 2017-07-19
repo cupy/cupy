@@ -1,4 +1,14 @@
 from cupy.cuda import runtime
+import threading
+
+
+thread_local = threading.local()
+
+
+def get_current_stream():
+    if not hasattr(thread_local, 'current_stream'):
+        thread_local.current_stream = Stream.null
+    return thread_local.current_stream
 
 
 class Event(object):
@@ -112,6 +122,24 @@ class Stream(object):
     def __del__(self):
         if self.ptr:
             runtime.streamDestroy(self.ptr)
+
+    def __enter__(self):
+        if not hasattr(thread_local, 'prev_stream_stack'):
+            thread_local.prev_stream_stack = []
+        thread_local.prev_stream_stack.append(get_current_stream())
+        thread_local.current_stream = self
+        return self
+
+    def __exit__(self, *args):
+        thread_local.current_stream = thread_local.prev_stream_stack.pop()
+
+    def use(self):
+        """Makes this stream current.
+
+        If you want to switch a stream temporarily, use the *with* statement.
+        """
+        thread_local.current_stream = self
+        return self
 
     @property
     def done(self):
