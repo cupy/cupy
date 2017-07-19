@@ -829,7 +829,7 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         len = self.shape[axis]
-        kth = tuple(kth) if isinstance(kth, int) else kth
+        kth = (kth,) if isinstance(kth, int) else kth
         for k in kth:
             if k < 0:
                 k += len
