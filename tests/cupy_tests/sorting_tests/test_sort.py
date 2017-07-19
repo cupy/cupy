@@ -325,10 +325,13 @@ class TestPartition(unittest.TestCase):
     # Test non-contiguous array
 
     def test_partition_non_contiguous(self):
-        a = testing.shaped_random((10,), cupy)[::2]
-        kth = 2
-        with self.assertRaises(NotImplementedError):
-            return self.partition(a, kth)
+        if not self.external:
+            a = testing.shaped_random((10,), cupy)[::2]
+            kth = 2
+            with self.assertRaises(NotImplementedError):
+                return self.partition(a, kth)
+        else:
+            pass
 
     # Test kth
 
