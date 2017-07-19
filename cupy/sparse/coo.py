@@ -1,3 +1,4 @@
+import numpy
 try:
     import scipy.sparse
     _scipy_available = True
@@ -63,16 +64,18 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only (data, (row, col)) format is supported')
 
-        if copy:
-            data = data.copy()
-            row = row.copy()
-            col = col.copy()
 
         if dtype is None:
             dtype = data.dtype
+        else:
+            dtype = numpy.dtype(dtype)
 
         if dtype != 'f' and dtype != 'd':
             raise ValueError('Only float32 and float64 are supported')
+
+        data = data.astype(dtype, copy=copy)
+        row = row.astype('i', copy=copy)
+        col = col.astype('i', copy=copy)
 
         if shape is None:
             if len(row) == 0 or len(col) == 0:
