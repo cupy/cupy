@@ -710,14 +710,17 @@ cdef class ndarray:
 
         return out
 
-    def sort(self):
+    def sort(self, axis=-1):
         """Sort an array, in-place with a stable sorting algorithm.
+
+        Args:
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their own data, and does not support ``axis``,
-           ``kind`` and ``order`` parameters that ``numpy.ndarray.sort``
-           does support.
+           only arrays with their own data, and does not support ``kind`` and
+           ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
@@ -725,15 +728,16 @@ cdef class ndarray:
 
         """
 
-        # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
+
+        cdef Py_ssize_t ndim = self.ndim
 
         if not cupy.cuda.thrust_enabled:
             raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                                'install CUDA Toolkit with Thrust then '
                                'reinstall CuPy after uninstalling it.')
 
-        if self.ndim == 0:
+        if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.sort() raises
 
@@ -742,7 +746,18 @@ cdef class ndarray:
             raise NotImplementedError('Sorting non-contiguous array is not '
                                       'supported.')
 
-        thrust.sort(self.dtype, self.data.ptr, self._shape)
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
+        if axis == ndim - 1:
+            thrust.sort(self.dtype, self.data.ptr, self._shape)
+        else:
+            x = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
+            thrust.sort(self.dtype, x.data.ptr, x._shape)
+            y = cupy.rollaxis(x, -1, axis)
+            elementwise_copy(y, self)
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
