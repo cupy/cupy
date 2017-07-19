@@ -10,8 +10,8 @@ build
 .coverage
 .eggs/
 _readthedocs_build
+/docs/source/reference/**/generated
 cupy.egg-info/
 dist/
-docs/source/reference/generated
 htmlcov/
 .idea/
