@@ -107,7 +107,7 @@ python setup.py develop
 Run all tests as:
 
 ```
-python -m unittest discover test "test_*.py"
+nosetests --processes=4 --process-timeout=10000 --stop -a '!slow'
 ```
 
 Run a specific test file, or a specific test method respectively:
@@ -115,6 +115,12 @@ Run a specific test file, or a specific test method respectively:
 ```
 python -m unittest tests/cupy_tests/cuda_tests/test_memory.py
 python -m unittest tests.cupy_tests.cuda_tests.test_memory.TestMemoryPointer.test_int
+```
+
+Run doctest as:
+
+```
+( cd docs && make doctest )
 ```
 
 ### Rebuild pxd files
