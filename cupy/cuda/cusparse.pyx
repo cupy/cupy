@@ -112,9 +112,9 @@ cdef extern from "cupy_cusparse.h":
         IndexBase idxBase)
 
     Status cusparseScsc2dense(
-        Handle handle, int m, int n, const MatDescr descrA,  
-        const float *cscSortedValA, const int *cscSortedRowIndA, 
-        const int *cscSortedColPtrA, float *A, int lda);
+        Handle handle, int m, int n, const MatDescr descrA,
+        const float *cscSortedValA, const int *cscSortedRowIndA,
+        const int *cscSortedColPtrA, float *A, int lda)
 
     Status cusparseDcsc2dense(
         Handle handle, int m, int n, const MatDescr descrA,
