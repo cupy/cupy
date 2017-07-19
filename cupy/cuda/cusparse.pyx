@@ -145,6 +145,18 @@ cdef extern from "cupy_cusparse.h":
         const double *csrSortedValA, const int *csrSortedRowPtrA,
         const int *csrSortedColIndA, double *A, int lda)
 
+    Status cusparseScsr2csr_compress(
+        Handle handle, int m, int n, const MatDescr descrA,
+        const float *inVal, const int *inColInd, const int *inRowPtr, 
+        int inNnz, int *nnzPerRow, float *outVal, int *outColInd,
+        int *outRowPtr, float tol);
+
+    Status cusparseDcsr2csr_compress(
+        Handle handle, int m, int n, const MatDescr descrA,
+        const double *inVal, const int *inColInd, const int *inRowPtr, 
+        int inNnz, int *nnzPerRow, double *outVal, int *outColInd,
+        int *outRowPtr, double tol);
+
     Status cusparseSdense2csc(
         Handle handle, int m, int n, const MatDescr descrA, const float *A,
         int lda, const int *nnzPerCol, float *cscValA, int *cscRowIndA,
@@ -558,6 +570,32 @@ cpdef dcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>csrSortedValA, <const int *>csrSortedRowPtrA,
         <const int *>csrSortedColIndA, <double *>A, lda)
+    check_status(status)
+
+
+cpdef scsr2csr_compress(
+        size_t handle, int m, int n, size_t descrA,
+        size_t inVal, size_t inColInd, size_t inRowPtr, 
+        int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
+        size_t outRowPtr, float tol):
+    status = cusparseScsr2csr_compress(
+        <Handle>handle, m, n, <MatDescr>descrA,
+        <const float *>inVal, <const int *>inColInd, <const int *>inRowPtr, 
+        inNnz, <int *>nnzPerRow, <float *>outVal, <int *>outColInd,
+        <int *>outRowPtr, tol)
+    check_status(status)
+
+
+cpdef dcsr2csr_compress(
+        size_t handle, int m, int n, size_t descrA,
+        size_t inVal, size_t inColInd, size_t inRowPtr, 
+        int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
+        size_t outRowPtr, float tol):
+    status = cusparseDcsr2csr_compress(
+        <Handle>handle, m, n, <MatDescr>descrA,
+        <const double *>inVal, <const int *>inColInd, <const int *>inRowPtr, 
+        inNnz, <int *>nnzPerRow, <double *>outVal, <int *>outColInd,
+        <int *>outRowPtr, tol)
     check_status(status)
 
 

@@ -576,3 +576,28 @@ def dense2csr(x):
         data.data.ptr, indptr.data.ptr, indices.data.ptr)
     # Note that a desciptor is recreated
     return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+
+
+def csr2csr_compress(x, tol):
+    assert x.dtype == 'f' or x.dtype == 'd'
+
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+
+    nnz_per_row = cupy.empty(m, 'i')
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(m + 1, 'i')
+    indices = cupy.zeros(nnz, 'i')
+    _call_cusparse(
+        'csr2csr_compress', x.dtype,
+        handle, m, n, x._descr.descriptor,
+        x.data.data.ptr, x.indices.data.ptr, x.indptr.data.ptr,
+        nnz, nnz_per_row.data.ptr, data.data.ptr, indices.data.ptr,
+        indptr.data.ptr, tol)
+    size = int(nnz_per_row.sum())
+    data = data[:size]
+    indptr = indptr[:size]
+    indices = indices[:size]
+
+    return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
