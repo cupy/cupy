@@ -64,7 +64,6 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only (data, (row, col)) format is supported')
 
-
         if dtype is None:
             dtype = data.dtype
         else:
