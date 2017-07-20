@@ -762,29 +762,30 @@ cdef class ndarray:
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
+        cdef Py_ssize_t ndim = self.ndim
+
         if not cupy.cuda.thrust_enabled:
             raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                                'install CUDA Toolkit with Thrust then '
                                'reinstall CuPy after uninstalling it.')
 
-        if self.ndim == 0:
+        if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
 
-        # TODO(takagi): Support ranks of two or more
-        if self.ndim > 1:
-            raise NotImplementedError('Sorting arrays with the rank of two or '
-                                      'more is not supported')
-
         data = self.copy()
 
-        # Assuming that Py_ssize_t can be represented with numpy.int64.
-        assert cython.sizeof(Py_ssize_t) == 8
+        idx_array = ndarray(self.shape, dtype=numpy.intp)
 
-        idx_array = ndarray(self.shape, dtype=numpy.int64)
-
-        thrust.argsort(
-            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
+        if ndim == 1:
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0, 0,
+                           self._shape)
+        else:
+            keys_array = ndarray(self.shape, dtype=numpy.intp)
+            buff_array = ndarray(self.shape, dtype=self.dtype)
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
+                           keys_array.data.ptr, buff_array.data.ptr,
+                           self._shape)
 
         return idx_array
 

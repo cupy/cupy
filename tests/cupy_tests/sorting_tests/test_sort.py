@@ -136,12 +136,12 @@ class TestArgsort(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    def argsort(self, a):
+    def argsort(self, a, axis=-1):
         if self.external:
             xp = cupy.get_array_module(a)
-            return xp.argsort(a)
+            return xp.argsort(a, axis=axis)
         else:
-            return a.argsort()
+            return a.argsort(axis=axis)
 
     # Test base cases
 
@@ -158,10 +158,10 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    def test_argsort_multi_dim(self, dtype):
-        a = testing.shaped_random((2, 3), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            return self.argsort(a)
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_multi_dim(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 3), xp, dtype)
+        return self.argsort(a)
 
     @testing.numpy_cupy_array_equal()
     def test_argsort_non_contiguous(self, xp):
@@ -176,10 +176,43 @@ class TestArgsort(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             return self.argsort(a)
 
+    # Test axis
+
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_negative_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_none_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=None)
+
+    @testing.numpy_cupy_raises()
+    def test_argsort_invalid_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=3)
+
+    @testing.numpy_cupy_raises()
+    def test_argsort_invalid_negative_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=-4)
+
     # Misc tests
 
-    def test_argsort_original_array_not_modified(self):
+    def test_argsort_original_array_not_modified_one_dim(self):
         a = testing.shaped_random((10,), cupy)
+        b = cupy.array(a)
+        self.argsort(a)
+        testing.assert_allclose(a, b)
+
+    def test_argsort_original_array_not_modified_multi_dim(self):
+        a = testing.shaped_random((2, 3, 3), cupy)
         b = cupy.array(a)
         self.argsort(a)
         testing.assert_allclose(a, b)
