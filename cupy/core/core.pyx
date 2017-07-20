@@ -772,15 +772,21 @@ cdef class ndarray:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
 
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
+
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            data = self.copy(order='C')
+            data = data.copy(order='C')
         else:
-            data = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
+            data = cupy.ascontiguousarray(cupy.rollaxis(data, axis, ndim))
 
         idx_array = ndarray(data.shape, dtype=numpy.intp)
 
