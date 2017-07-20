@@ -745,13 +745,15 @@ cdef class ndarray:
         thrust.sort(self.dtype, self.data.ptr, self._shape)
 
     def argsort(self, axis=-1):
-        """Return the indices that would sort an array with stable sorting
+        """Returns the indices that would sort an array with stable sorting
 
-        .. note::
-            For its implementation reason, ``ndarray.argsort`` currently
-            supports only arrays with their rank of one, and does not support
-            ``axis``, ``kind`` and ``order`` parameters that
-            ``numpy.ndarray.argsort`` supports.
+        Args:
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of indices that sort the array.
 
         .. seealso::
             :func:`cupy.argsort` for full documentation,
