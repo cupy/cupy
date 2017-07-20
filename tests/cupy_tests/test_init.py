@@ -6,7 +6,9 @@ import sys
 import tempfile
 import unittest
 
+import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -79,6 +81,18 @@ class TestNotAvailable(unittest.TestCase):
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
+
+class TestNumpyShortcuts(unittest.TestCase):
+
+    def test_nan(self):
+        self.assertIs(cupy.nan, numpy.nan)
+
+    def test_check_nan_with_isnan(self):
+        nan_array = cupy.full((3,), cupy.nan)
+        self.assertTrue(cupy.isnan(nan_array).all())
+
+    def test_check_nan_with_isnan_2(self):
+        self.assertTrue(cupy.isnan(cupy.nan).all())
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
