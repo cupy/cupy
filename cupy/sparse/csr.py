@@ -83,7 +83,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Returns a dense matrix representing the same value.
 
         Args:
-            order (str): Not supported.
+            order ({'C', 'F', None}): Whether to store data in C (row-major)
+                order or F (column-major) order. Default is C-order.
             out: Not supported.
 
         Returns:
@@ -92,9 +93,17 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
         """
+        if order is None:
+            order = 'C'
+
         # csr2dense returns F-contiguous array.
-        # To return C-contiguous array, it uses transpose.
-        return cusparse.csc2dense(self.T).T
+        if order == 'C':
+            # To return C-contiguous array, it uses transpose.
+            return cusparse.csc2dense(self.T).T
+        elif order == 'F':
+            return cusparse.csr2dense(self)
+        else:
+            raise TypeError('order not understood')
 
     # TODO(unno): Implement tobsr
 
