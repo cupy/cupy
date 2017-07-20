@@ -324,14 +324,17 @@ class TestPartition(unittest.TestCase):
 
     # Test non-contiguous array
 
-    def test_partition_non_contiguous(self):
+    @testing.numpy_cupy_array_equal()
+    def test_partition_non_contiguous(self, xp):
+        a = testing.shaped_random((10,), xp)[::2]
+        kth = 2
         if not self.external:
-            a = testing.shaped_random((10,), cupy)[::2]
-            kth = 2
-            with self.assertRaises(NotImplementedError):
-                return self.partition(a, kth)
+            if xp is cupy:
+                with self.assertRaises(NotImplementedError):
+                    return self.partition(a, kth)
+            return xp.array([])  # dummy
         else:
-            pass
+            return self.partition(a, kth)
 
     # Test kth
 
