@@ -7,9 +7,10 @@ from cupy.sparse.csc import csc_matrix  # NOQA
 from cupy.sparse.csc import isspmatrix_csc  # NOQA
 from cupy.sparse.csr import csr_matrix  # NOQA
 from cupy.sparse.csr import isspmatrix_csr  # NOQA
+from cupy.sparse.dia import dia_matrix  # NOQA
+from cupy.sparse.dia import isspmatrix_dia  # NOQA
 
 # TODO(unno): implement bsr_matrix
-# TODO(unno): implement dia_matrix
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
 
@@ -36,4 +37,3 @@ from cupy.sparse.csr import isspmatrix_csr  # NOQA
 # TODO(unno): implement isspmatrix_bsr(x)
 # TODO(unno): implement isspmatrix_lil(x)
 # TODO(unno): implement isspmatrix_dok(x)
-# TODO(unno): implement isspmatrix_dia(x)
