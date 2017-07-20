@@ -1680,6 +1680,7 @@ cdef class ndarray:
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1692,7 +1693,8 @@ cdef class ndarray:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
-        if stream is None:
+        stream = cuda.get_current_stream() if stream is None else stream
+        if stream == cuda.Stream.null:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1705,6 +1707,7 @@ cdef class ndarray:
             arr (numpy.ndarray): The source array on the host memory.
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         """
         if not isinstance(arr, numpy.ndarray):
@@ -1724,7 +1727,8 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.get_as_parameter()
-        if stream is None:
+        stream = cuda.get_current_stream() if stream is None else stream
+        if stream == cuda.Stream.null:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
