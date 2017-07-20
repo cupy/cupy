@@ -12,6 +12,13 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
+cdef class OutOfMemoryError(Exception):
+
+    def __init__(self, size, total):
+        msg = 'out of memory to allocate %d bytes ' \
+              '(total %d bytes)' % (size, total)
+        super(OutOfMemoryError, self).__init__(msg)
+
 cdef class Memory:
 
     """Memory allocation on a CUDA device.
@@ -475,7 +482,14 @@ cdef class SingleDeviceMemoryPool:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
                     gc.collect()
-                    mem = self._alloc(size).mem
+                    try:
+                        mem = self._alloc(size).mem
+                    except runtime.CUDARuntimeError as e:
+                        if e.status != runtime.errorMemoryAllocation:
+                            raise
+                        else:
+                            total = size + self.total_bytes()
+                            raise OutOfMemoryError(size, total)
             chunk = Chunk(mem, 0, size)
 
         chunk.in_use = True
