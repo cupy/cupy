@@ -92,6 +92,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csc_array.toarray`
 
         """
+        # csc2dense returns F-contiguous array.
+        # To return C-contiguous array, it uses transpose.
         return cusparse.csr2dense(self.T).T
 
     # TODO(unno): Implement tobsr

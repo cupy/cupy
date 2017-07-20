@@ -4,7 +4,6 @@ try:
 except ImportError:
     _scipy_available = False
 
-import cupy
 from cupy import cusparse
 from cupy.sparse import compressed
 from cupy.sparse import csc
@@ -93,7 +92,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
         """
-        return cupy.ascontiguousarray(cusparse.csr2dense(self))
+        # csr2dense returns F-contiguous array.
+        # To return C-contiguous array, it uses transpose.
+        return cusparse.csc2dense(self.T).T
 
     # TODO(unno): Implement tobsr
     # TODO(unno): Implement tocoo
