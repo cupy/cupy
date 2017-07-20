@@ -17,7 +17,7 @@ class TestEigenvalue(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigh(self, xp, dtype):
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
@@ -47,7 +47,7 @@ class TestEigenvalue(unittest.TestCase):
         testing.assert_allclose(w, nw, rtol=1e-3, atol=1e-4)
         testing.assert_allclose(v, nv, rtol=1e-3, atol=1e-4)
 
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigvalsh(self, xp, dtype):
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)

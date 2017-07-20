@@ -647,7 +647,7 @@ class TestFusionUfunc(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
     @testing.for_all_dtypes_combination(
-        names=['src_dtype', 'dst_dtype'], full=True)
+        names=['src_dtype', 'dst_dtype'], full=True, no_complex=True)
     def test_out_arg(self, src_dtype, dst_dtype):
 
         def func(x, y, z):
