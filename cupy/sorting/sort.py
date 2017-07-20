@@ -74,7 +74,7 @@ def lexsort(keys):
     return idx_array
 
 
-def argsort(a):
+def argsort(a, axis=-1):
     """Return the indices that would sort an array with a stable sorting.
 
     Args:
@@ -91,7 +91,7 @@ def argsort(a):
     .. seealso:: :func:`numpy.argsort`
 
     """
-    return a.argsort()
+    return a.argsort(axis=axis)
 
 
 def msort(a):

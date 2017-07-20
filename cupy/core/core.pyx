@@ -744,7 +744,7 @@ cdef class ndarray:
 
         thrust.sort(self.dtype, self.data.ptr, self._shape)
 
-    def argsort(self):
+    def argsort(self, axis=-1):
         """Return the indices that would sort an array with stable sorting
 
         .. note::
@@ -759,7 +759,6 @@ cdef class ndarray:
 
         """
 
-        # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
 
         cdef Py_ssize_t ndim = self.ndim
@@ -773,21 +772,32 @@ cdef class ndarray:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
 
-        data = self.copy()
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
 
-        idx_array = ndarray(self.shape, dtype=numpy.intp)
+        if axis == ndim - 1:
+            data = self.copy(order='C')
+        else:
+            data = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
+
+        idx_array = ndarray(data.shape, dtype=numpy.intp)
 
         if ndim == 1:
             thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0, 0,
-                           self._shape)
+                           data._shape)
         else:
-            keys_array = ndarray(self.shape, dtype=numpy.intp)
-            buff_array = ndarray(self.shape, dtype=self.dtype)
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            buff_array = ndarray(data._shape, dtype=self.dtype)
             thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
                            keys_array.data.ptr, buff_array.data.ptr,
-                           self._shape)
+                           data._shape)
 
-        return idx_array
+        if axis == ndim - 1:
+            return idx_array
+        else:
+            return cupy.ascontiguousarray(cupy.rollaxis(idx_array, -1, axis))
 
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
