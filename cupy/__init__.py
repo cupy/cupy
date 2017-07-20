@@ -117,7 +117,7 @@ from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
 
-from numpy import nan
+from numpy import nan  # NOQA
 
 # =============================================================================
 # Routines
