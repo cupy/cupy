@@ -1570,8 +1570,9 @@ cdef class ndarray:
             raise TypeError('{} array cannot be set to {} array'.format(
                 arr.dtype, self.dtype))
         if self.shape != arr.shape:
-            raise ValueError('Shape mismatch. Old shape: {}, new shape: {}'
-                             ''.format(self.shape, arr.shape))
+            raise ValueError(
+                'Shape mismatch. Old shape: {}, new shape: {}'.format(
+                    self.shape, arr.shape))
         if not self._c_contiguous:
             raise RuntimeError('Cannot set to non-contiguous array')
 
@@ -3594,7 +3595,7 @@ conj = create_ufunc(
     'cupy_conj',
     ('F->F', 'D->D'),
     'out0 = conj(in0)',
-    doc='''Return the complex conjugate, element-wise.
+    doc='''Returns the complex conjugate, element-wise.
 
     .. seealso:: :data:`numpy.conj`
 
@@ -3605,7 +3606,7 @@ angle = create_ufunc(
     'cupy_angle',
     ('F->f', 'D->d'),
     'out0 = arg(in0)',
-    doc='''Return the angle of the complex argument.
+    doc='''Returns the angle of the complex argument.
 
     .. seealso:: :data:`numpy.angle`
 
@@ -3616,7 +3617,7 @@ real = create_ufunc(
     'cupy_real',
     ('F->f', 'D->d'),
     'out0 = in0.real()',
-    doc='''Return the real part of the elements of the array.
+    doc='''Returns the real part of the elements of the array.
 
     .. seealso:: :data:`numpy.real`
 
@@ -3635,7 +3636,7 @@ imag = create_ufunc(
     'cupy_imag',
     ('F->f', 'D->d'),
     'out0 = in0.imag()',
-    doc='''Return the imaginary part of the elements of the array.
+    doc='''Returns the imaginary part of the elements of the array.
 
     .. seealso:: :data:`numpy.imag`
 
@@ -3646,7 +3647,7 @@ _imag_setter = create_ufunc(
     'cupy_imag_setter',
     ('f->F', 'd->D'),
     'out0.imag(in0)',
-    doc='''Sets the imag part of the elements of the array.
+    doc='''Sets the imaginary part of the elements of the array.
     ''')
 
 
@@ -3845,10 +3846,14 @@ cdef _mean = create_reduction_func(
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d',
-     ('F->F', ('in0', 'a + b',
-               'out0 = a / float(_in_ind.size() / _out_ind.size())', None)),
-     ('D->D', ('in0', 'a + b',
-               'out0 = a / double(_in_ind.size() / _out_ind.size())', None))),
+     ('F->F', (
+         'in0', 'a + b',
+         'out0 = a / static_cast<float>(_in_ind.size() / _out_ind.size())',
+         None)),
+     ('D->D', (
+         'in0', 'a + b',
+         'out0 = a / static_cast<double>(_in_ind.size() / _out_ind.size())',
+         None))),
     ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
 
 

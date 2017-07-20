@@ -503,28 +503,20 @@ _dtypes = _float_dtypes + _int_bool_dtypes
 
 
 def _make_all_dtypes(no_float16, no_bool, no_complex):
-    if no_complex:
-        if no_float16:
-            if no_bool:
-                return _regular_float_dtypes + _int_dtypes
-            else:
-                return _regular_dtypes
-        else:
-            if no_bool:
-                return _float_dtypes + _int_dtypes
-            else:
-                return _dtypes
+    if no_float16:
+        dtypes = _regular_float_dtypes
     else:
-        if no_float16:
-            if no_bool:
-                return _regular_float_dtypes + _int_dtypes + _complex_dtypes
-            else:
-                return _regular_dtypes + _complex_dtypes
-        else:
-            if no_bool:
-                return _float_dtypes + _int_dtypes + _complex_dtypes
-            else:
-                return _dtypes + _complex_dtypes
+        dtypes = _float_dtypes
+
+    if no_bool:
+        dtypes += _int_dtypes
+    else:
+        dtypes += _int_bool_dtypes
+
+    if not no_complex:
+        dtypes += _complex_dtypes
+
+    return dtypes
 
 
 def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,

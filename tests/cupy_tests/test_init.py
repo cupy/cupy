@@ -33,7 +33,8 @@ def _test_cupy_available(self):
 import cupy
 print(cupy.is_available())''')
     self.assertEqual(returncode, 0, 'stderr: {!r}'.format(stderrdata))
-    self.assertIn(stdoutdata, (b'True\n', b'True\r\n', b'False\n', b'False\r\n'))
+    self.assertIn(stdoutdata,
+                  (b'True\n', b'True\r\n', b'False\n', b'False\r\n'))
     return stdoutdata == b'True\n' or stdoutdata == b'True\r\n'
 
 
