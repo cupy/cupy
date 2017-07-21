@@ -131,4 +131,26 @@ def msort(a):
 
 
 def argpartition(a, kth, axis=-1):
+    """Returns the indices that would partially sort an array.
+
+    Args:
+        a (cupy.ndarray): Array to be sorted.
+        kth (int or sequence of ints): Element index to partition by. If
+            supplied with a sequence of k-th it will partition all elements
+            indexed by k-th of them into their sorted position at once.
+        axis (int or None): Axis along which to sort. Default is -1, which
+            means sort along the last axis. If None is supplied, the array is
+            flattened before sorting.
+
+    Returns:
+        cupy.ndarray: Array of the same type and shape as ``a``.
+
+    .. note::
+        For its implementation reason, `cupy.argpartition` fully sorts the
+        given array as `cupy.argsort` does. It also does not support ``kind``
+        and ``order`` parameters that ``numpy.argpartition`` supports.
+
+    .. seealso:: :func:`numpy.argpartition`
+
+    """
     return a.argpartition(kth, axis=axis)

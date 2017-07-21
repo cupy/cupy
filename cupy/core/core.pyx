@@ -810,6 +810,24 @@ cdef class ndarray:
     # TODO(okuta): Implement partition
 
     def argpartition(self, kth, axis=-1):
+        """Returns the indices that would partially sort an array.
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of the same type and shape as ``a``.
+
+        .. seealso::
+            :func:`cupy.argpartition` for full documentation,
+            :meth:`numpy.ndarray.argpartition`
+
+        """
         if axis is None:
             data = self.reshape(self.size)
             axis = -1
