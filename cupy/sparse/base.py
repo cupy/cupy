@@ -257,7 +257,7 @@ class spmatrix(object):
 
     def toarray(self, order=None, out=None):
         """Return a dense ndarray representation of this matrix."""
-        raise self.tocsr().tocarray(order=order, out=out)
+        return self.tocsr().toarray(order=order, out=out)
 
     def tobsr(self, blocksize=None, copy=False):
         """Convert this matrix to Block Sparse Row format."""
