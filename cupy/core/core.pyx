@@ -786,7 +786,7 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            data = data.copy(order='C')
+            data = data.copy()
         else:
             data = cupy.ascontiguousarray(cupy.rollaxis(data, axis, ndim))
 
