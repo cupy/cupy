@@ -805,7 +805,7 @@ cdef class ndarray:
         if axis == ndim - 1:
             return idx_array
         else:
-            return cupy.ascontiguousarray(cupy.rollaxis(idx_array, -1, axis))
+            return cupy.rollaxis(idx_array, -1, axis)
 
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
