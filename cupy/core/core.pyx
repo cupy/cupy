@@ -788,7 +788,7 @@ cdef class ndarray:
         if axis == ndim - 1:
             data = data.copy()
         else:
-            data = cupy.ascontiguousarray(cupy.rollaxis(data, axis, ndim))
+            data = cupy.rollaxis(data, axis, ndim).copy()
 
         idx_array = ndarray(data.shape, dtype=numpy.intp)
 
