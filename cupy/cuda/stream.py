@@ -62,7 +62,7 @@ class Event(object):
 
         """
         if stream is None:
-            stream = Stream.null
+            stream = get_current_stream()
         runtime.eventRecord(self.ptr, stream.ptr)
 
     def synchronize(self):
