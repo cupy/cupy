@@ -7,6 +7,10 @@ from cupy.testing import attr
 
 class TestStream(unittest.TestCase):
 
+    def test_init(self):
+        with self.assertRaises(ValueError):
+            cuda.Stream(null=True)
+
     @attr.gpu
     def test_get_and_add_callback(self):
         N = 100

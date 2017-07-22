@@ -443,7 +443,7 @@ cdef class ndarray:
             value = value.item()
 
         if value == 0 and self._c_contiguous:
-            self.data.memset_async(0, self.nbytes, stream.Stream(True))
+            self.data.memset_async(0, self.nbytes, stream.Stream.null)
         else:
             elementwise_copy(value, self, dtype=self.dtype)
 

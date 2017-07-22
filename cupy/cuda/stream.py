@@ -99,7 +99,8 @@ class Stream(object):
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Otherwise, a plain new
-            stream is created.
+            stream is created. Users must not use this parameter, instead, use
+            ``Stream.null`` object to use the default stream.
         non_blocking (bool): If ``True``, the stream does not synchronize with
             the NULL stream.
 
@@ -112,6 +113,10 @@ class Stream(object):
     null = None
 
     def __init__(self, null=False, non_blocking=False):
+        if null and Stream.null:
+            self.ptr = 0  # to avoid AttributeError on __del__
+            raise ValueError('Use cupy.cuda.Stream.null instead of creating '
+                             'a new cupy.cuda.Stream(null=True) object')
         if null:
             self.ptr = 0
         elif non_blocking:
