@@ -8,7 +8,13 @@ thread_local = threading.local()
 def get_current_stream():
     if not hasattr(thread_local, 'current_stream'):
         thread_local.current_stream = Stream.null
-    return thread_local.current_stream
+    stream = thread_local.current_stream
+    device = runtime.getDevice()
+    if stream != Stream.null and stream.device != device:
+        raise ValueError('Current stream device (%d) is different '
+                         'with the current device (%d)' %
+                         (stream.device, device))
+    return stream
 
 
 class Event(object):

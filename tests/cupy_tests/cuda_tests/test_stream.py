@@ -50,3 +50,16 @@ class TestStream(unittest.TestCase):
         self.assertEqual(stream1, cuda.get_current_stream())
         cuda.Stream.null.use()
         self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
+
+    @testing.multi_gpu(2)
+    def test_get_current_stream_on_another_device(self):
+        with cuda.Device(0):
+            stream0 = cuda.Stream()
+            stream0.use()
+        with self.assertRaises(ValueError):
+            with cuda.Device(1):
+                cuda.get_current_stream()
+        # Stream.null is available on all devices
+        cuda.Stream.null.use()
+        with cuda.Device(1):
+            cuda.get_current_stream()
