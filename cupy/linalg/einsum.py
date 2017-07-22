@@ -1,366 +1,176 @@
-import re
-import string
+import collections
 
-import cupy
-
-
-def einsum(subscripts, *inputs):
-    """Returns a product of two arrays.
-    For arrays with more than one axis, it computes the dot product along the
-    last axis of ``a`` and the second-to-last axis of ``b``. This is just a
-    matrix product if the both arrays are 2-D. For 1-D arrays, it uses their
-    unique axis as an axis to take dot product over.
-    Args:
-        subscripts (str): Specifies the subscripts for summation.
-        inputs (cupy.ndarray): These are the arrays for the operation.
-    Returns:
-        cupy.ndarray: The calculation based on the Einstein summation convention.
-    .. seealso:: :func:`numpy.einsum`
-    """
-    #TODO(fukatani): Support out option.
-    #TODO(fukatani): Support dtype option.
-    #TODO(fukatani): Support order option.
-    #TODO(fukatani): Support casting option.
-    #TODO(fukatani): Support optimize option.
-    #TODO(fukatani): Support '...' ellipses.
-
-    if '...' in subscripts:
-        raise ValueError('Subscripts with ellipses are not yet supported.')
-
-    subscripts = subscripts.replace(" ", "")
-    match = re.match('([a-z,]+)(->[a-z]*)?', subscripts)
-    if not match:
-        raise ValueError('Indices have incorrect format: %s' % subscripts)
-
-    for char in set(subscripts):
-        if char in string.ascii_lowercase:
-            continue
-        if char in string.digits:
-            continue
-        if char in '.,-> ':
-            continue
-        raise ValueError("invalid subscript '{}' in einstein sum subscripts "
-                         "string, subscripts must be letters".format(char))
-
-    inputs = list(inputs)
-    input_axis_labels = match.group(1).split(',')
-
-    if len(inputs) != len(input_axis_labels):
-        raise ValueError('Got %d arguments for equation "%s", expecting %d' % (
-            len(inputs), subscripts, len(input_axis_labels)))
-
-    axis_labels = set(''.join(input_axis_labels))
-    if match.group(2):
-        output_axis_labels = match.group(2)[2:]
-    else:
-        # infer the output subscripts if not given, assume alphabetical order
-        indices = ''.join(sorted(axis_labels))
-        counts = {ax: 0 for ax in indices}
-        for axes_ in input_axis_labels:
-            for ax in axes_:
-                counts[ax] += 1
-
-        output_axis_labels = ''.join(sorted(
-            ax for ax in indices
-            if counts[ax] == 1
-        ))
-
-    for a in axis_labels:
-        input_count = len([s for s in input_axis_labels if a in s])
-        if input_count > 2 and a not in output_axis_labels:
-            return _exponential_space_einsum(subscripts, *inputs)
-
-    # trace
-    diagonal_combs = []
-    for char in set(input_axis_labels):
-        if input_axis_labels.count(char) > 1:
-            diagonal_combs.append()
+import numpy
 
 
-    temp = inputs[0]
-    temp_axis_labels = input_axis_labels[0]
-    for i in range(1, len(inputs)):
-        axes_to_sum = (set(temp_axis_labels) & set(input_axis_labels[i])
-                       - set(output_axis_labels))
-        temp, temp_axis_labels = _einsum_reduction(temp,
-                                                   temp_axis_labels,
-                                                   inputs[i],
-                                                   input_axis_labels[i],
-                                                   axes_to_sum)
+class SingleViewCalculator(object):
+    def __init__(self, ioperand, subscript):
+        self.subscript = subscript
+        self.ioperand = ioperand
+        self.labels = set(self.subscript)
+        self.label_to_axis = collections.defaultdict(list)
+        for i, label in enumerate(subscript):
+            self.label_to_axis[label].append(i)
 
-    missing_indices = set(temp_axis_labels) - set(output_axis_labels)
-    if missing_indices:
-        reduction_indices = [i for i, a in enumerate(temp_axis_labels)
-                             if a not in output_axis_labels]
-        temp = cupy.sum(temp, axis=reduction_indices)
-        temp_axis_labels = ''.join(a for a in temp_axis_labels
-                                   if a in output_axis_labels)
+    def __call__(self):
+        self.result = self.ioperand
+        count_dict = collections.Counter(self.subscript)
+        for label in set(self.subscript):
+            if count_dict[label] == 1:
+                continue
+            axes_to_diag = []
+            for i, char in enumerate(self.subscript):
+                if char == label:
+                    axes_to_diag.append(i)
+            for axis in reversed(axes_to_diag[1:]):
+                self.result = self.result.diagonal(0, axis, axes_to_diag[0])
+                self.result = numpy.rollaxis(self.result, -1, axes_to_diag[0])
+                self.subscript = self.subscript[:axis] + \
+                                 self.subscript[axis+1:]
 
-    if sorted(temp_axis_labels) != sorted(output_axis_labels):
-        raise ValueError('Invalid equation: %s' % subscripts)
 
-    perm = [temp_axis_labels.index(a) for a in output_axis_labels]
-    return _transpose_if_necessary(temp, perm)
+class SummedViewCalculator(object):
+    def __init__(self, ioperand, input_subscript, output_subscript):
+        self.ioperand = ioperand
+        self.subscript = input_subscript
+        self.label_to_summed = set(input_subscript) - set(output_subscript)
+        self.axes_to_summed = []
+        for i, label in enumerate(input_subscript):
+            if label in self.label_to_summed:
+                self.axes_to_summed.append(i)
 
-
-def _einsum_reduction(t0, t0_axis_labels, t1, t1_axis_labels, axes_to_sum):
-    """Helper for einsum() that computes the result of a two-argument einsum().
-    Args:
-      t0 (cupy.ndarray): The left argument.
-      t0_axis_labels (str): a string of axis labels.  This string's length must equal
-        the rank of t0.
-      t1 (cupy.ndarray): The right argument.
-      t1_axis_labels (str): a string to axis labels.  This string's length must equal
-        the rank of t1.
-      axes_to_sum: set of labels of axes to be summed over
-    Returns:
-      cupy.ndarray: A `cupy.ndarray` whose elements are obtained by summing,
-      over all axes in `axes_to_sum`, the corresponding elements of `t0` and
-      `t1`. For example, if t0_axis_labels == 'abijk', t1_axis_labels == 'acjkl',
-      and axes_to_sum == {j,k}, this will return a tensor x where
-        out[a,b,c,i,l] = sum_j sum_k t0[a,b,i,j,k] * t1[a,c,j,k,l]
-    Raises:
-      ValueError: if the rank of `t0` does not match the length of
-        `t0_axis_labels`, or that of `t1` does not match the length of
-        `t1_axis_labels`.
-    """
-    if len(t0_axis_labels) != t0.ndim:
-        raise ValueError()
-    if len(t1_axis_labels) != t1.ndim:
-        raise ValueError()
-
-    # This function computes the result of a two-argument einsum() using batch
-    # matrix multiplication.  This involves
-    # 1. transposing t0 and t1 so that axes are in the correct order for
-    #    batch matrix multiplication, and
-    # 2. reshaping t0 and t1 so that they are both of rank 3.
-
-    # First, we divide axes into three groups:
-    #  * "preserved" axes are present in both inputs and the output
-    #  * "summed" axes are present in both inputs but not the output
-    #  * "broadcast" axes are present in exactly one input and the output
-    #
-    # As an example, if the einsum is abijk,acjkl->abcil, then "a" is a
-    # preserved axis, "b" and "c" are broadcast axes, and "j" and "k" are
-    # summed axes.
-    assert all(a in t0_axis_labels and a in t1_axis_labels for a in axes_to_sum)
-    preserved_axes = (set(t0_axis_labels) & set(t1_axis_labels)) - axes_to_sum
-    broadcast_axes = {}
-    for i, sym_list in enumerate([t0_axis_labels, t1_axis_labels]):
-        broadcast_axes[i] = set(sym_list) - preserved_axes - axes_to_sum
-
-    # Reorder the axes so that:
-    # 1. preserved axes come first in both inputs
-    # 2. in input 0, broadcast axes come next, followed by summed axes
-    # 3. in input 1, summed axes come next, followed by broadcast axes
-    def sort_key(input_index, a):
-        if a in preserved_axes:
-            return -1, a
-        elif ((input_index == 0 and a in broadcast_axes[0]) or
-              (input_index == 1 and a in axes_to_sum)):
-            return 0, a
+    def __call__(self):
+        if self.axes_to_summed:
+            self.result = numpy.sum(self.ioperand,
+                                    axis=tuple(self.axes_to_summed))
         else:
-            return 1, a
+            self.result = self.ioperand
+        for label in self.label_to_summed:
+            self.subscript = self.subscript.replace(label, '')
 
-    axis_labels = [t0_axis_labels, t1_axis_labels]
-    sorted_axes = [sorted(sym_list, key=lambda a: sort_key(i, a))
-                   for i, sym_list in enumerate(axis_labels)]
-    inputs = [t0, t1]
-    for i, axes_str in enumerate(axis_labels):
-        perm = [axes_str.find(a) for a in sorted_axes[i]]
-        inputs[i] = _transpose_if_necessary(inputs[i], perm)
-    t0, t1 = inputs
+class TransposedViewCalculator(object):
+    def __init__(self, ioperand, input_subscript, output_subscript):
+        assert len(input_subscript) == len(output_subscript)
+        assert set(input_subscript) == set(output_subscript)
+        self.ioperand = ioperand
+        self.input_subscript = input_subscript
+        self.output_subscript = output_subscript
 
-    if not axes_to_sum:
-        # In the special case where there are no axes to sum over,
-        # reduce to mul() rather than to batch matrix multiplication.
-        for _ in broadcast_axes[1]:
-            t0 = cupy.expand_dims(t0, -1)
-        for _ in broadcast_axes[0]:
-            t1 = cupy.expand_dims(t1, len(preserved_axes))
-        product = t0 * t1
-        product_axes = sorted_axes[0] + sorted_axes[1][len(preserved_axes):]
-        return product, ''.join(product_axes)
+    def __call__(self):
+        transpose_orders = []
+        for label in self.input_subscript:
+            transpose_orders.append(self.output_subscript.find(label))
+        if transpose_orders == sorted(transpose_orders):
+            self.result = self.ioperand
+        else:
+            self.result = self.ioperand.transpose(transpose_orders)
+
+
+class CombinedViewCalculator(object):
+    def __init__(self, subscripts, ioperands):
+        self.subscripts = subscripts
+        self.ioperands = ioperands
+
+    def __call__(self):
+        self.result = self.ioperands[0]
+        for ioperand in self.ioperands[1:]:
+            self.result = numpy.tensordot(self.result, ioperand, axes=0)
+        self.subscript = ''.join(self.subscripts)
+
+
+def get_dummy_labels(label_list):
+    dummy_label_set = set([])
+    count_dict = collections.Counter(label_list)
+    for label, count in count_dict.items():
+        if count >= 2:
+            dummy_label_set.add(label)
+    return dummy_label_set
+
+
+def my_einsum(subscripts, *inputs):
+    subscripts = subscripts.replace(' ', '')
+    arrow_pos = subscripts.find('->')
+    if arrow_pos == -1:
+        input_subscripts = subscripts
+        label_list = list(input_subscripts.replace(',', ''))
+        out_label_set = set(label_list) - get_dummy_labels(label_list)
+        output_subscript = ''.join(sorted(list(out_label_set)))
     else:
-        # Reduce to matmul().
+        input_subscripts = subscripts[:arrow_pos]
+        output_subscript = subscripts[arrow_pos+2:]
 
-        # Reshape both inputs so as to combine multiple broadcast axes
-        # into a single axis, and combine multiple summed axes into a
-        # single axis.
+    input_subscripts_list = input_subscripts.split(',')
+    i_parsers = []
+    for subscript, ioperand in zip(input_subscripts_list, inputs):
+        calc = SingleViewCalculator(ioperand, subscript)
+        calc()
+        i_parsers.append(calc)
 
-        t0_shape = list(t0.shape)
-        num_broadcast_elements_t0 = _total_size(
-            t0_shape[len(preserved_axes): -len(axes_to_sum)])
-        num_summed_elements = _total_size(t0_shape[-len(axes_to_sum):])
-        new_shape = (t0_shape[:len(preserved_axes)]
-                     + [num_broadcast_elements_t0, num_summed_elements])
-        t0 = _reshape_if_necessary(t0, new_shape)
-
-        t1_shape = list(t1.shape)
-        num_broadcast_elements_t1 = _total_size(
-            t1_shape[len(preserved_axes) + len(axes_to_sum):])
-        new_shape = (t1_shape[:len(preserved_axes)]
-                     + [num_summed_elements, num_broadcast_elements_t1])
-        t1 = _reshape_if_necessary(t1, new_shape)
-
-        product = cupy.matmul(t0, t1)
-
-        # Undo compaction of broadcast axes
-        uncompacted_shape = (
-            t0_shape[:len(preserved_axes) + len(broadcast_axes[0])]
-            + t1_shape[len(t1_shape) - len(broadcast_axes[1]):]
-        )
-        product = _reshape_if_necessary(product, uncompacted_shape)
-
-        product_axes = (
-            sorted_axes[0][:len(preserved_axes) + len(broadcast_axes[0])] +
-            sorted_axes[1][len(sorted_axes[1]) - len(broadcast_axes[1]):]
-        )
-
-        return product, ''.join(product_axes)
-
-
-def _transpose_if_necessary(a, perm):
-    """Like transpose(), but avoids creating a new tensor if possible."""
-
-    # For compatibility with numpy.
-    # numpy einsum is acceptable with scalar value.
-    a = cupy.asarray(a)
-
-    # TODO(fukatani): Error message is slightly different with numpy.
-    if a.ndim < len(perm):
-        raise ValueError("einstein sum subscripts string contains too "
-                         "many subscripts for operand.")
-    elif a.ndim > len(perm):
-        raise ValueError("operand has more dimensions than subscripts given "
-                         "in einstein sum, but no '...' ellipsis provided to "
-                         "broadcast the extra dimensions.")
-    if perm != range(len(perm)):
-        return cupy.transpose(a, perm)
+    if len(inputs) >= 2:
+        i_subscripts = [i_parser.subscript for i_parser in i_parsers]
+        i_results = [i_parser.result for i_parser in i_parsers]
+        calc = CombinedViewCalculator(i_subscripts, i_results)
+        calc()
+        calc = SingleViewCalculator(calc.result, calc.subscript)
+        calc()
     else:
-        return a
+        calc = i_parsers[0]
 
+    calc = SummedViewCalculator(calc.result, calc.subscript,
+                                output_subscript)
+    calc()
+    calc = TransposedViewCalculator(calc.result, calc.subscript,
+                                    output_subscript)
+    calc()
+    return calc.result
 
-def _reshape_if_necessary(a, new_shape):
-    """Like reshape(), but avoids creating a new array if possible."""
-    # Accept None as an alias for -1 in new_shape.
-    new_shape = tuple(-1 if x is None else x for x in new_shape)
-    cur_shape = a.shape
-    if (len(new_shape) == len(cur_shape) and
-            all(d0 == d1 or d1 == -1 for d0, d1 in zip(cur_shape, new_shape))):
-        return a
-    else:
-        return cupy.reshape(a, new_shape)
-
-
-def _total_size(shape_values):
-    """Given list of array shape values, returns total size.
-    If shape_values contains ndarray values (which are results of
-    ndarray.shape), then it returns a scalar ndarray.
-    If not, it returns an integer."""
-
-    result = 1
-    for val in shape_values:
-        result *= val
-    return result
-
-
-def _exponential_space_einsum(equation, *inputs):
-    """Fallback implementation that supports summing an index over > 2 inputs.
-    """
-
-    match = re.match('([a-z,]+)(->[a-z]*)?', equation)
-    if not match:
-        raise ValueError('Indices have incorrect format: %s' % equation)
-
-    inputs = list(inputs)
-    idx_in = match.group(1).split(',')
-    idx_all = set(''.join(idx_in))
-    indices = ''.join(sorted(idx_all))
-
-    if match.group(2):
-        idx_out = match.group(2)[2:]
-    else:
-        # infer the output subscripts if not given, assume alphabetical order
-        counts = {ax: 0 for ax in indices}
-        for axes_ in idx_in:
-            for ax in axes_:
-                counts[ax] += 1
-
-        idx_out = ''.join(sorted(ax for ax in indices if counts[ax] == 1))
-
-    if len(idx_in) != len(inputs):
-        raise ValueError(
-            'Expected %d inputs but got %d' % (len(idx_in), len(inputs)))
-
-    missing_idx = set(idx_out).difference(idx_all)
-    if missing_idx:
-        raise ValueError('Unknown output axes: %s' % missing_idx)
-
-    axis_order = {}
-    for ax in indices:
-        if ax not in idx_out:
-            axis_order[ax] = len(axis_order)
-    for ax in idx_out:
-        axis_order[ax] = len(axis_order)
-
-    # transpose inputs so axes are in order
-    for i, (input_, axes_) in enumerate(zip(inputs, idx_in)):
-        if input_.ndim != len(axes_):
-            raise ValueError(
-                'Input %d with axes %s has incorrect'
-                ' number of dimensions (expected %d, got %d)' % (
-                    i, axes_, len(axes_), input_.ndim))
-
-        sorted_idx = sorted(axes_, key=axis_order.get)
-
-        if len(set(axes_)) != len(axes_):
-            raise ValueError(
-                'Subscript not supported: an axis appears more than once: %s'
-                % axes_)
-
-        if list(axes_) != sorted_idx:
-            permuted = [axes_.find(ax) for ax in sorted_idx]
-            inputs[i] = cupy.transpose(input_, permuted)
-            idx_in[i] = sorted_idx
-
-    reduction_idx = []
-    shapes = [[dim if dim else -1 for dim in a.shape] for a in inputs]
-
-    # validate shapes for broadcasting
-    for j, ax in enumerate(sorted(idx_all, key=axis_order.get)):
-        dims = []
-        for i, idx in enumerate(idx_in):
-            if ax not in idx:
-                shapes[i].insert(j, 1)
-            else:
-                dim = shapes[i][j]
-                if isinstance(dim, int) and dim > 1:
-                    dims.append(dim)
-
-        if len(set(dims)) > 1:
-            raise ValueError('Dimension mismatch on axis: %s' % ax)
-
-        if ax not in idx_out:
-            reduction_idx.append(j)
-
-    # reshape, multiply
-    expanded_inputs = [cupy.reshape(input_, shape)
-                       for input_, shape in zip(inputs, shapes)]
-    expanded_output = 1
-    for input_ in expanded_inputs:
-        expanded_output *= input_
-
-    # contract
-    return cupy.sum(expanded_output, reduction_idx)
-
+#TODO add up at tensordot
 
 if __name__ == '__main__':
-    m0 = cupy.random.uniform(-1, 1, (3, 3))
-    m1 = cupy.random.uniform(-1, 1, (3, 3))
-    print(einsum('ij,jk->ik', m0, m1))
-    print(einsum('ij,jk,kl->il', m0, m1, m1))
-    print(cupy.dot(m0, m1))
-    print(einsum('ii', m0))
-    print(einsum('ji', m0))
-    print(einsum('ii->i', m0))  # Not work
+    A = numpy.arange(8).reshape(2, 2, 2)
+    assert (my_einsum('ijk', A) == numpy.einsum('ijk', A)).all()
+    assert (my_einsum('iii', A) == numpy.einsum('iii', A)).all()
+    assert (my_einsum('iij', A) == numpy.einsum('iij', A)).all()
+    assert (my_einsum('iji', A) == numpy.einsum('iji', A)).all()
+    assert (my_einsum('iii->i', A) == numpy.einsum('iii->i', A)).all()
+    assert (my_einsum('ijj->ij', A) == numpy.einsum('ijj->ij', A)).all()
+    assert (my_einsum('iij->ij', A) == numpy.einsum('iij->ij', A)).all()
+    assert (my_einsum('iji->ij', A) == numpy.einsum('iji->ij', A)).all()
+
+    assert (my_einsum('ijk->ikj', A) == numpy.einsum('ijk->ikj', A)).all()
+    assert (my_einsum('ijk->jik', A) == numpy.einsum('ijk->jik', A)).all()
+
+    A = numpy.arange(16).reshape(2, 2, 2, 2)
+    assert (my_einsum('iijk->ijk', A) == numpy.einsum('iijk->ijk', A)).all()
+    assert (my_einsum('ijkj->ijk', A) == numpy.einsum('ijkj->ijk', A)).all()
+    print(my_einsum('ijkj->kij', A))
+    print(numpy.einsum('ijkj->kij', A))
+    assert (my_einsum('ijkj->kij', A) == numpy.einsum('ijkj->kij', A)).all()
+
+    assert (my_einsum('iiij->ij', A) == numpy.einsum('iiij->ij', A)).all()
+    assert (my_einsum('iiji->ij', A) == numpy.einsum('iiji->ij', A)).all()
+    assert (my_einsum('iijj->ij', A) == numpy.einsum('iijj->ij', A)).all()
+    assert (my_einsum('ijij->ij', A) == numpy.einsum('ijij->ij', A)).all()
+    assert (my_einsum('jiji->ji', A) == numpy.einsum('jiji->ji', A)).all()
+
+    assert (my_einsum('iiij->j', A) == numpy.einsum('iiij->j', A)).all()
+    assert (my_einsum('iiij->i', A) == numpy.einsum('iiij->i', A)).all()
+    assert (my_einsum('ijii->j', A) == numpy.einsum('ijii->j', A)).all()
+    assert (my_einsum('ijii->i', A) == numpy.einsum('ijii->i', A)).all()
+    assert (my_einsum('ijij', A) == numpy.einsum('ijij', A)).all()
+
+    A = numpy.arange(3)
+    B = numpy.arange(4)
+    C = numpy.arange(2)
+    assert (my_einsum('i,j', A, B) == numpy.einsum('i,j', A, B)).all()
+    assert (my_einsum('i,j,k', A, B, C) == numpy.einsum('i,j,k', A, B, C)).all()
+
+    A = numpy.arange(4).reshape(2, 2)
+    B = numpy.arange(4).reshape(2, 2)
+    C = numpy.arange(2)
+    assert (my_einsum('ij,kl->ijkl', A, B) == numpy.einsum('ij,kl->ijkl', A, B)).all()
+    assert (my_einsum('ij,kl,m->ijklm', A, B, C) == numpy.einsum('ij,kl,m->ijklm', A, B, C)).all()
+
+    assert (my_einsum('ij,ij->ij', A, B) == numpy.einsum('ij,ij->ij', A, B)).all()
+    assert (my_einsum('ij,ji->ij', A, B) == numpy.einsum('ij,ji->ij', A, B)).all()
+
