@@ -48,6 +48,7 @@ class SummedViewCalculator(object):
         for label in self.label_to_summed:
             self.subscript = self.subscript.replace(label, '')
 
+
 class TransposedViewCalculator(object):
     def __init__(self, ioperand, input_subscript, output_subscript):
         assert len(input_subscript) == len(output_subscript)
@@ -58,8 +59,8 @@ class TransposedViewCalculator(object):
 
     def __call__(self):
         transpose_orders = []
-        for label in self.input_subscript:
-            transpose_orders.append(self.output_subscript.find(label))
+        for label in self.output_subscript:
+            transpose_orders.append(self.input_subscript.find(label))
         if transpose_orders == sorted(transpose_orders):
             self.result = self.ioperand
         else:
@@ -124,7 +125,7 @@ def my_einsum(subscripts, *inputs):
     calc()
     return calc.result
 
-#TODO add up at tensordot
+#TODO(fukatani): add up at tensordot if enable.
 
 if __name__ == '__main__':
     A = numpy.arange(8).reshape(2, 2, 2)
@@ -139,12 +140,11 @@ if __name__ == '__main__':
 
     assert (my_einsum('ijk->ikj', A) == numpy.einsum('ijk->ikj', A)).all()
     assert (my_einsum('ijk->jik', A) == numpy.einsum('ijk->jik', A)).all()
+    assert (my_einsum('kji->ikj', A) == numpy.einsum('kji->ikj', A)).all()
 
     A = numpy.arange(16).reshape(2, 2, 2, 2)
     assert (my_einsum('iijk->ijk', A) == numpy.einsum('iijk->ijk', A)).all()
     assert (my_einsum('ijkj->ijk', A) == numpy.einsum('ijkj->ijk', A)).all()
-    print(my_einsum('ijkj->kij', A))
-    print(numpy.einsum('ijkj->kij', A))
     assert (my_einsum('ijkj->kij', A) == numpy.einsum('ijkj->kij', A)).all()
 
     assert (my_einsum('iiij->ij', A) == numpy.einsum('iiij->ij', A)).all()
