@@ -16,7 +16,8 @@ cdef extern from "cupy_cusparse.h":
 
     # Stream
     Status cusparseSetStream(Handle handle, driver.Stream streamId)
-    Status cusparseGetStream(Handle handle, driver.Stream* streamId)
+    # cusparseGetStream is only available from CUDA 8.0
+    # Status cusparseGetStream(Handle handle, driver.Stream* streamId)
 
     # cuSPARSE Level1 Function
     Status cusparseSgthr(
@@ -285,11 +286,12 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
-    cdef driver.Stream stream
-    status = cusparseGetStream(<Handle>handle, &stream)
-    check_status(status)
-    return <size_t>stream
+# cusparseGetStream is only available from CUDA 8.0
+# cpdef size_t getStream(size_t handle) except *:
+#     cdef driver.Stream stream
+#     status = cusparseGetStream(<Handle>handle, &stream)
+#     check_status(status)
+#     return <size_t>stream
 
 
 ########################################
