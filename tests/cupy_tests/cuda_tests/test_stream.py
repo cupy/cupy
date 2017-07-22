@@ -11,6 +11,11 @@ class TestStream(unittest.TestCase):
         with self.assertRaises(ValueError):
             cuda.Stream(null=True)
 
+        self.assertEqual(None, cuda.Stream.null.device)
+        with cuda.Device():
+            stream = cuda.Stream()
+            self.assertEqual(0, stream.device)
+
     @attr.gpu
     def test_get_and_add_callback(self):
         N = 100

@@ -107,6 +107,7 @@ class Stream(object):
     Attributes:
         ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
             the CUDA Runtime API via ctypes.
+        device (int): CUDA Device ID
 
     """
 
@@ -119,10 +120,13 @@ class Stream(object):
                              'a new cupy.cuda.Stream(null=True) object')
         if null:
             self.ptr = 0
+            self.device = None  # any devices
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
+            self.device = runtime.getDevice()
         else:
             self.ptr = runtime.streamCreate()
+            self.device = runtime.getDevice()
 
     def __del__(self):
         if self.ptr:
