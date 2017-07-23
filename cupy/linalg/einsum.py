@@ -29,7 +29,7 @@ class SingleViewCalculator(object):
                 self.result = self.result.diagonal(0, axis, axes_to_diag[0])
                 self.result = cupy.rollaxis(self.result, -1, axes_to_diag[0])
                 self.subscript = self.subscript[:axis] + \
-                                 self.subscript[axis+1:]
+                    self.subscript[axis+1:]
 
 
 class SummedViewCalculator(object):

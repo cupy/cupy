@@ -56,13 +56,14 @@ class TestEinSumError(unittest.TestCase):
         # dimensions much match when being collapsed
         with self.assertRaises(ValueError):
             numpy.einsum("ii", cupy.arange(6).reshape(2, 3))
-            # cupy.einsum("ii", cupy.array([[0, 1, 2], [0, 3, 0]]))
+
         with self.assertRaises(ValueError):
             numpy.einsum("ii->", cupy.arange(6).reshape(2, 3))
 
         # broadcasting to new dimensions must be enabled explicitly
         with self.assertRaises(ValueError):
             cupy.einsum("i->i", cupy.arange(6).reshape(2, 3))
+
 
 class TestEinSum(unittest.TestCase):
     # Avoid overflow
@@ -150,7 +151,7 @@ class TestEinSum(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_dot_matvec_1(self, xp, dtype_a, dtype_b):
-        shape_a = (2,3)
+        shape_a = (2, 3)
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         shape_b = (3,)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
@@ -190,8 +191,7 @@ class TestEinSum(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_tensordot(self, xp, dtype_a, dtype_b):
-        if (dtype_a  in self.skip_dtypes or
-                    dtype_b in self.skip_dtypes):
+        if dtype_a in self.skip_dtypes or dtype_b in self.skip_dtypes:
             return xp.array([])
         shape_a = (3, 4, 2)
         a = testing.shaped_arange(shape_a, xp, dtype_a)
