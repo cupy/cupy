@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 
 # Setup for optimize einsum
@@ -211,14 +210,14 @@ class TestEinSum(unittest.TestCase):
     def test_scalar_1(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.einsum(",i->", 3, a),
+        return xp.asarray(xp.einsum(",i->", 3, a).astype(numpy.float32))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_scalar_2(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.einsum("i,->", a, 4),
+        return xp.asarray(xp.einsum("i,->", a, 4).astype(numpy.float32))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
