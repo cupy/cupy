@@ -177,6 +177,37 @@ class TestCooMatrixInvalidInit(unittest.TestCase):
         sp.coo_matrix(
             (self.data(xp), (self.row(xp), col(xp))), shape=self.shape)
 
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_fail_to_infer_shape(self, xp, sp):
+        data = xp.array([], dtype=self.dtype)
+        row = xp.array([], dtype='i')
+        col = xp.array([], dtype='i')
+        sp.coo_matrix((data, (row, col)), shape=None)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_row_too_large(self, xp, sp):
+        row = xp.array([0, 0, 1, 3], 'i')
+        sp.coo_matrix(
+            (self.data(xp), (row, self.col(xp))), shape=self.shape)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_row_too_small(self, xp, sp):
+        row = xp.array([0, -1, 1, 2], 'i')
+        sp.coo_matrix(
+            (self.data(xp), (row, self.col(xp))), shape=self.shape)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_col_too_large(self, xp, sp):
+        col = xp.array([0, 1, 4, 2], 'i')
+        sp.coo_matrix(
+            (self.data(xp), (self.row(xp), col)), shape=self.shape)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_col_too_small(self, xp, sp):
+        col = xp.array([0, -1, 3, 2], 'i')
+        sp.coo_matrix(
+            (self.data(xp), (self.row(xp), col)), shape=self.shape)
+
     def test_unsupported_dtype(self):
         with self.assertRaises(ValueError):
             cupy.sparse.coo_matrix(
