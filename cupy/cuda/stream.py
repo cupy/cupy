@@ -1,14 +1,22 @@
 from cupy.cuda import runtime
 import threading
+import weakref
 
 
 thread_local = threading.local()
 
 
 def get_current_stream():
-    if not hasattr(thread_local, 'current_stream'):
-        thread_local.current_stream = Stream.null
-    stream = thread_local.current_stream
+    """Gets current CUDA stream.
+
+    Returns:
+        cupy.cuda.Stream: The current CUDA stream.
+    """
+    if not hasattr(thread_local, 'current_stream_ref'):
+        thread_local.current_stream_ref = weakref.ref(Stream.null)
+    stream = thread_local.current_stream_ref()
+    if stream is None:
+        stream = Stream.null
     device = runtime.getDevice()
     if stream != Stream.null and stream.device != device:
         raise ValueError('Current stream device (%d) is different '
@@ -111,7 +119,7 @@ class Stream(object):
             the NULL stream.
 
     Attributes:
-        ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
+        ptr (size_t): Raw stream handle. It can be passed to
             the CUDA Runtime API via ctypes.
         device (int): CUDA Device ID
 
@@ -136,26 +144,28 @@ class Stream(object):
 
     def __del__(self):
         if self.ptr:
-            # https://stackoverflow.com/questions/8590238/unable-to-reference-an-imported-module-in-del
-            if runtime:
-                runtime.streamDestroy(self.ptr)
+            runtime.streamDestroy(self.ptr)
+        # Note that we can not release memory pool of the stream held in CPU
+        # because the memory would still be used in kernels executed in GPU.
 
     def __enter__(self):
-        if not hasattr(thread_local, 'prev_stream_stack'):
-            thread_local.prev_stream_stack = []
-        thread_local.prev_stream_stack.append(get_current_stream())
-        thread_local.current_stream = self
+        if not hasattr(thread_local, 'prev_stream_ref_stack'):
+            thread_local.prev_stream_ref_stack = []
+        prev_stream_ref = weakref.ref(get_current_stream())
+        thread_local.prev_stream_ref_stack.append(prev_stream_ref)
+        thread_local.current_stream_ref = weakref.ref(self)
         return self
 
     def __exit__(self, *args):
-        thread_local.current_stream = thread_local.prev_stream_stack.pop()
+        prev_stream_ref = thread_local.prev_stream_ref_stack.pop()
+        thread_local.current_stream_ref = prev_stream_ref
 
     def use(self):
         """Makes this stream current.
 
         If you want to switch a stream temporarily, use the *with* statement.
         """
-        thread_local.current_stream = self
+        thread_local.current_stream_ref = weakref.ref(self)
         return self
 
     @property
