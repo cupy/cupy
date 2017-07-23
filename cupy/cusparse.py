@@ -148,15 +148,15 @@ def coo2csr(x):
 
 
 def csr2coo(x, data, indices):
-    """Convert a CSR-matrix to COO format.
+    """Converts a CSR-matrix to COO format.
 
     Args:
         x (cupy.sparse.csr_matrix): A matrix to be converted.
         data (cupy.ndarray): A data array for converted data.
-        indices (cupy.ndarray): A index array for converted data.
+        indices (cupy.ndarray): An index array for converted data.
 
     Returns:
-        cupy.sparse.coo_matrix: Returns a converted matrix.
+        cupy.sparse.coo_matrix: A converted matrix.
 
     """
     handle = device.get_cusparse_handle()
