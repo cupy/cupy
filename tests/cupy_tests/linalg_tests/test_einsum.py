@@ -135,14 +135,14 @@ class TestEinSum(unittest.TestCase):
     def test_sum(self, xp, dtype):
         shape_a = (3,)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.einsum("i->", a).astype(dtype)
+        return xp.einsum("i->", a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_trace(self, xp, dtype):
         shape_a = (3, 3)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.einsum("ii", a).astype(dtype)
+        return xp.einsum("ii", a)
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
@@ -160,7 +160,7 @@ class TestEinSum(unittest.TestCase):
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         shape_b = (3,)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.einsum("ij,j", a, b).astype(numpy.float32)
+        return xp.einsum("ij,j", a, b)
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
@@ -169,7 +169,7 @@ class TestEinSum(unittest.TestCase):
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         shape_b = (2,)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.einsum("ji,j", a, b).astype(numpy.float32)
+        return xp.einsum("ji,j", a, b)
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
@@ -178,7 +178,7 @@ class TestEinSum(unittest.TestCase):
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         shape_b = (3, 4)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.einsum("ij,jk", a, b).astype(numpy.float32)
+        return xp.einsum("ij,jk", a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -199,25 +199,25 @@ class TestEinSum(unittest.TestCase):
         if (dtype_a  in self.skip_dtypes or
                     dtype_b in self.skip_dtypes):
             return xp.array([])
-        shape_a = (3, 4, 5)
+        shape_a = (3, 4, 2)
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         shape_b = (4, 3, 2)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.einsum("ijk, jil -> kl", a, b).astype(numpy.float32)
+        return xp.einsum("ijk, jil -> kl", a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_scalar_1(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.asarray(xp.einsum(",i->", 3, a).astype(numpy.float32))
+        return xp.asarray(xp.einsum(",i->", 3, a))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_scalar_2(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
-        return xp.asarray(xp.einsum("i,->", a, 4).astype(numpy.float32))
+        return xp.asarray(xp.einsum("i,->", a, 4))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -235,7 +235,7 @@ class TestEinSum(unittest.TestCase):
         a = testing.shaped_arange(shape_a, xp, dtype)
         shape_b = (3, 2, 2)
         b = testing.shaped_arange(shape_b, xp, dtype)
-        return xp.einsum('ijil,jkk->kj', a, b).astype(numpy.float32)
+        return xp.einsum('ijil,jkk->kj', a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -292,4 +292,4 @@ class TestEinSum(unittest.TestCase):
         b = testing.shaped_arange(shape_b, xp, dtype)
         shape_c = (2,)
         c = testing.shaped_arange(shape_c, xp, dtype)
-        return xp.einsum('ij,ki,i->jk', a, b, c).astype(numpy.float32)
+        return xp.einsum('ij,ki,i->jk', a, b, c)

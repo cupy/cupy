@@ -1,5 +1,7 @@
 import collections
 
+import numpy
+
 import cupy
 
 
@@ -41,8 +43,8 @@ class SummedViewCalculator(object):
 
     def __call__(self):
         if self.axes_to_summed:
-            self.result = cupy.sum(self.ioperand,
-                                   axis=tuple(self.axes_to_summed))
+            self.result = self.ioperand.sum(axis=tuple(self.axes_to_summed)). \
+                astype(self.ioperand)
         else:
             self.result = self.ioperand
         for label in self.label_to_summed:
@@ -95,8 +97,14 @@ def einsum(subscripts, *inputs):
     # TODO(fukatani): Support optimization.
 
     subscripts = subscripts.replace(' ', '')
-    inputs = [a if isinstance(a, cupy.ndarray) else cupy.asarray(a)
-              for a in inputs]
+
+    converted_inputs = []
+    dtype = numpy.result_type(*inputs)
+    for a in inputs:
+        if isinstance(a, cupy.ndarray):
+            converted_inputs.append(a.astype(dtype))
+        else:
+            converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
     arrow_pos = subscripts.find('->')
     if arrow_pos == -1:
@@ -110,12 +118,12 @@ def einsum(subscripts, *inputs):
 
     input_subscripts_list = input_subscripts.split(',')
     i_parsers = []
-    for subscript, ioperand in zip(input_subscripts_list, inputs):
+    for subscript, ioperand in zip(input_subscripts_list, converted_inputs):
         calc = SingleViewCalculator(ioperand, subscript)
         calc()
         i_parsers.append(calc)
 
-    if len(inputs) >= 2:
+    if len(converted_inputs) >= 2:
         i_subscripts = [i_parser.subscript for i_parser in i_parsers]
         i_results = [i_parser.result for i_parser in i_parsers]
         calc = CombinedViewCalculator(i_subscripts, i_results)
