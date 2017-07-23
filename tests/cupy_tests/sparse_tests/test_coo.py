@@ -96,6 +96,53 @@ class TestCooMatrix(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'dtype': [None, numpy.float32, numpy.float64],
+    'copy': [True, False],
+    'shape': [None, (4, 5)]
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCooMatrixInit(unittest.TestCase):
+
+    def setUp(self):
+        self.shape = (3, 4)
+
+    def data(self, xp):
+        return xp.array([0, 1, 2, 3], 'f')
+
+    def row(self, xp):
+        return xp.array([0, 0, 1, 2], 'i')
+
+    def col(self, xp):
+        return xp.array([0, 1, 3, 2], 'i')
+
+    def test_init(self):
+        data = self.data(cupy)
+        row = self.row(cupy)
+        col = self.col(cupy)
+        m = cupy.sparse.coo_matrix(
+            (data, (row, col)), shape=self.shape, copy=self.copy,
+            dtype=self.dtype)
+
+        if self.shape is None:
+            # When shape=None is given, the maximum values of row and col are
+            # used
+            self.assertEqual(m.shape, (3, 4))
+        else:
+            self.assertEqual(m.shape, self.shape)
+
+        if self.copy:
+            self.assertIsNot(m.data, data)
+            self.assertIsNot(m.row, row)
+            self.assertIsNot(m.col, col)
+
+        if self.dtype is None:
+            # When dtype=None is given, the original dtype is used
+            self.assertEqual(m.dtype, 'f')
+        else:
+            self.assertEqual(m.dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
