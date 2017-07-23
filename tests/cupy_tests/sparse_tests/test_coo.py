@@ -40,6 +40,24 @@ class TestCooMatrix(unittest.TestCase):
     def setUp(self):
         self.m = _make(cupy, cupy.sparse, self.dtype)
 
+    def test_dtype(self):
+        self.assertEqual(self.m.dtype, self.dtype)
+
+    def test_data(self):
+        self.assertEqual(self.m.data.dtype, self.dtype)
+        testing.assert_array_equal(
+            self.m.data, cupy.array([0, 1, 2, 3], self.dtype))
+
+    def test_row(self):
+        self.assertEqual(self.m.row.dtype, numpy.int32)
+        testing.assert_array_equal(
+            self.m.row, cupy.array([0, 0, 1, 2], self.dtype))
+
+    def test_col(self):
+        self.assertEqual(self.m.col.dtype, numpy.int32)
+        testing.assert_array_equal(
+            self.m.col, cupy.array([0, 1, 3, 2], self.dtype))
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 
