@@ -158,7 +158,7 @@ class coo_matrix(sparse_data._data_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.coo_matrix: Converte matrix.
+            cupy.sparse.coo_matrix: Converted matrix.
 
         """
         if copy:
@@ -175,7 +175,7 @@ class coo_matrix(sparse_data._data_matrix):
                 arrays in a matrix cannot be shared in coo to csc conversion.
 
         Returns:
-            cupy.sparse.csc_matrix: Converte matrix.
+            cupy.sparse.csc_matrix: Converted matrix.
 
         """
         return self.T.tocsr().T
@@ -189,7 +189,7 @@ class coo_matrix(sparse_data._data_matrix):
                 arrays in a matrix cannot be shared in coo to csr conversion.
 
         Returns:
-            cupy.sparse.csr_matrix: Converte matrix.
+            cupy.sparse.csr_matrix: Converted matrix.
 
         """
         # copy is ignored because coosort method breaks an original.
@@ -205,6 +205,9 @@ class coo_matrix(sparse_data._data_matrix):
             copy (bool): If ``True``, a returned matrix shares no data.
                 Otherwise, it shared data arrays as much as possible.
 
+        Returns:
+            cupy.sparse.spmatrix: Transpose matrix.
+
         """
         if axes is not None:
             raise ValueError(
@@ -216,7 +219,7 @@ class coo_matrix(sparse_data._data_matrix):
 
 
 def isspmatrix_coo(x):
-    """Checks if a given matrix is COO format.
+    """Checks if a given matrix is of COO format.
 
     Returns:
         bool: Returns if ``x`` is :class:`cupy.sparse.coo_matrix`.
