@@ -15,7 +15,7 @@ for size, char in zip(sizes, chars):
 
 
 class TestEinSum(unittest.TestCase):
-    def test_einsum_errors(self):
+    def einsum_errors(self):
         # Need enough arguments
         # TODO(fukatani): Numpy raises ValueError, buy cupy raises TypeError.
         # with self.assertRaises(ValueError):
@@ -72,191 +72,225 @@ class TestEinSum(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.einsum("i->i", numpy.arange(6).reshape(2, 3))
 
-    def test_einsum_views(self):
-        a = numpy.arange(6)
-        a.shape = (2, 3)
+    # Avoid overflow
+    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-        b = numpy.einsum("ij", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, a)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_do_nothing(self, xp, dtype):
+        shape_a = (2, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ij", a)
 
-        # transpose
-        a = numpy.arange(6)
-        a.shape = (2, 3)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_transpose(self, xp, dtype):
+        shape_a = (2, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ji", a)
 
-        b = numpy.einsum("ji", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, a.T)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diagonal(self, xp, dtype):
+        shape_a = (3, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ii->i", a)
 
-        # diagonal
-        a = numpy.arange(9)
-        a.shape = (3, 3)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diagonal_3d_1(self, xp, dtype):
+        shape_a = (3, 3, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("jii->ij", a)
 
-        b = numpy.einsum("ii->i", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, [a[i, i] for i in range(3)])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diagonal_3d_2(self, xp, dtype):
+        shape_a = (3, 3, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("iji->ij", a)
 
-        # diagonal with various ways of broadcasting an additional dimension
-        a = numpy.arange(27)
-        a.shape = (3, 3, 3)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diagonal_3d_3(self, xp, dtype):
+        shape_a = (3, 3, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("iii->i", a)
 
-        b = numpy.einsum("jii->ij", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, [a[:, i, i] for i in range(3)])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_swap_axes_1(self, xp, dtype):
+        shape_a = (2, 3, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ijk->jik", a)
 
-        # triple diagonal
-        a = numpy.arange(27)
-        a.shape = (3, 3, 3)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_swap_axes_2(self, xp, dtype):
+        shape_a = (2, 3, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ijk->kij", a)
 
-        b = numpy.einsum("iii->i", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, [a[i, i, i] for i in range(3)])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum(self, xp, dtype):
+        shape_a = (3,)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("i->", a).astype(dtype)
 
-        # swap axes
-        a = numpy.arange(24)
-        a.shape = (2, 3, 4)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trace(self, xp, dtype):
+        shape_a = (3, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("ii", a).astype(dtype)
 
-        b = numpy.einsum("ijk->jik", a)
-        self.assertTrue(b.base is a)
-        testing.assert_array_equal(b, a.swapaxes(0, 1))
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_outer(self, xp, dtype_a, dtype_b):
+        shape_a = (2,)
+        a = testing.shaped_arange(shape_a, xp, dtype_a) + 1
+        shape_b = (3,)
+        b = testing.shaped_arange(shape_b, xp, dtype_b) + 1
+        return xp.einsum("i,j", a, b)
 
-    def check_einsum_sums(self, dtype):
-        n = 5
-        # sum(a, axis=-1)
-        a = numpy.arange(n, dtype=dtype)
-        testing.assert_array_almost_equal(numpy.einsum("i->", a),
-                                          cupy.einsum("i->", cupy.asarray(a)))
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_dot_matvec_1(self, xp, dtype_a, dtype_b):
+        shape_a = (2,3)
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        shape_b = (3,)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.einsum("ij,j", a, b).astype(numpy.float32)
 
-        # trace(a)
-        a = numpy.arange(n*n, dtype=dtype).reshape(n, n)
-        testing.assert_array_almost_equal(numpy.einsum("ii", a),
-                                          cupy.einsum("ii", cupy.asarray(a)))
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_dot_matvec_2(self, xp, dtype_a, dtype_b):
+        shape_a = (2, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        shape_b = (2,)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.einsum("ji,j", a, b).astype(numpy.float32)
 
-        # outer(a,b)
-        a = numpy.arange(3, dtype=dtype) + 1
-        b = numpy.arange(n, dtype=dtype) + 1
-        testing.assert_array_almost_equal(numpy.einsum("i,j", a, b),
-                                          cupy.einsum("i,j", cupy.asarray(a), cupy.asarray(b)))
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_dot_matmat(self, xp, dtype_a, dtype_b):
+        shape_a = (2, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        shape_b = (3, 4)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.einsum("ij,jk", a, b).astype(numpy.float32)
 
-        # matvec(a,b) / a.dot(b) where a is matrix, b is vector
-        a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
-        b = numpy.arange(n, dtype=dtype)
-        testing.assert_array_almost_equal(numpy.einsum("ij, j", a, b),
-                                   cupy.einsum("ij, j", cupy.asarray(a),
-                                               cupy.asarray(b)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot_matmatmat(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
+        shape_a = (2, 3)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        shape_b = (3, 4)
+        b = testing.shaped_arange(shape_b, xp, dtype)
+        shape_c = (4, 5)
+        c = testing.shaped_arange(shape_c, xp, dtype)
+        return xp.einsum("ij,jk,kl", a, b, c).astype(numpy.float32)
 
-        a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
-        b = numpy.arange(n, dtype=dtype)
-        testing.assert_array_almost_equal(numpy.einsum("ji,j", a.T, b.T),
-                                   cupy.einsum("ji,j", cupy.asarray(a).T,
-                                               cupy.asarray(b).T))
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_tensordot(self, xp, dtype_a, dtype_b):
+        if (dtype_a  in self.skip_dtypes or
+                    dtype_b in self.skip_dtypes):
+            return xp.array([])
+        shape_a = (3, 4, 5)
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        shape_b = (4, 3, 2)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.einsum("ijk, jil -> kl", a, b).astype(numpy.float32)
 
-        # matmat(a,b) / a.dot(b) where a is matrix, b is matrix
-        a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
-        b = numpy.arange(n*6, dtype=dtype).reshape(n, 6)
-        testing.assert_array_equal(numpy.einsum("ij,jk", a, b),
-                                   cupy.einsum("ij,jk", cupy.asarray(a),
-                                               cupy.asarray(b)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_1(self, xp, dtype):
+        shape_a = (2,)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum(",i->", 3, a),
 
-        a = numpy.arange(4*n, dtype=dtype).reshape(4, n)
-        b = numpy.arange(n*6, dtype=dtype).reshape(n, 6)
-        testing.assert_array_equal(numpy.einsum("ij,jk", a, b),
-                                   cupy.einsum("ij,jk", cupy.asarray(a),
-                                               cupy.asarray(b)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_2(self, xp, dtype):
+        shape_a = (2,)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum("i,->", a, 4),
 
-        # matrix triple product (note this is not currently an efficient
-        # way to multiply 3 matrices)
-        a = numpy.arange(12, dtype=dtype).reshape(3, 4)
-        b = numpy.arange(20, dtype=dtype).reshape(4, 5)
-        c = numpy.arange(30, dtype=dtype).reshape(5, 6)
-        if dtype != 'f2' and dtype != 'i2':
-            testing.assert_array_equal(numpy.einsum("ij,jk,kl", a, b, c),
-                                       cupy.einsum("ij,jk,kl", cupy.asarray(a),
-                                                   cupy.asarray(b),
-                                                   cupy.asarray(c)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_transpose_and_diagonal(self, xp, dtype):
+        shape_a = (2, 2, 2, 2)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('ijkj->kij', a)
 
-        # tensordot(a, b)
-        if numpy.dtype(dtype) != numpy.dtype('f2'):
-            a = numpy.arange(60, dtype=dtype).reshape(3, 4, 5)
-            b = numpy.arange(24, dtype=dtype).reshape(4, 3, 2)
-            testing.assert_array_equal(numpy.einsum("ijk, jil -> kl", a, b),
-                                       cupy.einsum("ijk, jil -> kl", cupy.asarray(a), cupy.asarray(b)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trase_and_tensordot_and_diagobal(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
+        shape_a = (2, 3, 2, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        shape_b = (3, 2, 2)
+        b = testing.shaped_arange(shape_b, xp, dtype)
+        return xp.einsum('ijil,jkk->kj', a, b).astype(numpy.float32)
 
-        a = numpy.arange(9, dtype=dtype)
-        testing.assert_array_equal(numpy.einsum(",i->", 3, a),
-                                   cupy.einsum(",i->", cupy.asarray(3),
-                                               cupy.asarray(a)),)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trase_4d_1(self, xp, dtype):
+        shape_a = (2, 2, 2, 2)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('ijij->ij', a)
 
-        # Various stride0, contiguous, and SSE aligned variants
-        a = numpy.arange(n, dtype=dtype)
-        if numpy.dtype(dtype).itemsize > 1:
-            testing.assert_array_equal(numpy.einsum("i,i", a, a),
-                                       cupy.einsum("i,i", cupy.asarray(a),
-                                                   cupy.asarray(a)))
-            testing.assert_array_equal(numpy.einsum("i,->i", a, 2),
-                                       cupy.einsum("i,->i", cupy.asarray(a),
-                                                   cupy.asarray(2)))
-            testing.assert_array_equal(numpy.einsum(",i->i", 2, a),
-                                       cupy.einsum(",i->i", cupy.asarray(2),
-                                                   cupy.asarray(a)))
-            testing.assert_array_equal(numpy.einsum("i,->", a, 2),
-                                       cupy.einsum("i,->", cupy.asarray(a),
-                                                   cupy.asarray(2)))
-            testing.assert_array_equal(numpy.einsum(",i->", 2, a),
-                                       cupy.einsum(",i->", cupy.asarray(2),
-                                                   cupy.asarray(a)))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trase_4d_2(self, xp, dtype):
+        shape_a = (2, 2, 2, 2)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('jiji->ji', a)
 
-            testing.assert_array_equal(numpy.einsum("i,i", a[1:], a[:-1]),
-                                       cupy.einsum("i,i", cupy.asarray(a[1:]),
-                                                   cupy.asarray(a[:-1])))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_transpose_3d_1(self, xp, dtype):
+        shape_a = (2, 3, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('ijk->ikj', a)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_transpose_3d_2(self, xp, dtype):
+        shape_a = (2, 3, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('ijk->jik', a)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_transpose_3d_3(self, xp, dtype):
+        shape_a = (2, 3, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        return xp.einsum('kji->ikj', a)
 
-            testing.assert_array_equal(numpy.einsum("i,->i", a[1:], 2),
-                                       cupy.einsum("i,->i", cupy.asarray(a[1:]), cupy.asarray(2)))
-            testing.assert_array_equal(numpy.einsum(",i->i", 2, a[1:]),
-                                       cupy.einsum(",i->i", cupy.asarray(2), cupy.asarray(a[1:])))
-            testing.assert_array_equal(numpy.einsum("i,->", a[1:], 2),
-                                       cupy.einsum("i,->", cupy.asarray(a[1:]), cupy.asarray(2)))
-            testing.assert_array_equal(numpy.einsum(",i->", 2, a[1:]),
-                                       cupy.einsum(",i->", cupy.asarray(2), cupy.asarray(a[1:])))
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_triple_product_1(self, xp, dtype):
+        shape_a = (2, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        shape_b = (2, 3)
+        b = testing.shaped_arange(shape_b, xp, dtype)
+        shape_c = (2,)
+        c = testing.shaped_arange(shape_c, xp, dtype)
+        return xp.einsum('ij,ik,i->ijk', a, b, c)
 
-    def test_einsum_sums_int8(self):
-        self.check_einsum_sums('i1')
-
-    def test_einsum_sums_uint8(self):
-        self.check_einsum_sums('u1')
-
-    def test_einsum_sums_int16(self):
-        self.check_einsum_sums('i2')
-
-    def test_einsum_sums_uint16(self):
-        self.check_einsum_sums('u2')
-
-    def test_einsum_sums_int32(self):
-        self.check_einsum_sums('i4')
-
-    def test_einsum_sums_uint32(self):
-        self.check_einsum_sums('u4')
-
-    def test_einsum_sums_int64(self):
-        self.check_einsum_sums('i8')
-
-    def test_einsum_sums_uint64(self):
-        self.check_einsum_sums('u8')
-
-    def test_einsum_sums_float16(self):
-        self.check_einsum_sums('f2')
-
-    def test_einsum_sums_float32(self):
-        self.check_einsum_sums('f4')
-
-    def test_einsum_sums_float64(self):
-        self.check_einsum_sums('f8')
-
-    def test_einsum_broadcast(self):
-        dims = [2, 3, 4, 5]
-        a = numpy.arange(numpy.prod(dims)).reshape(dims)
-        v = numpy.arange(dims[2])
-        ref = numpy.einsum('ijkl,k->ijl', a, v)
-        testing.assert_array_equal(numpy.einsum('ijkl,k', a, v), ref)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_triple_product_2(self, xp, dtype):
+        shape_a = (2, 4)
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        shape_b = (3, 2)
+        b = testing.shaped_arange(shape_b, xp, dtype)
+        shape_c = (2,)
+        c = testing.shaped_arange(shape_c, xp, dtype)
+        return xp.einsum('ij,ki,i->jk', a, b, c).astype(numpy.float32)
