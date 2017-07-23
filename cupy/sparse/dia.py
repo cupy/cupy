@@ -5,6 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy import core
 from cupy.sparse import data
 
 
@@ -92,6 +93,26 @@ class dia_matrix(data._data_matrix):
         """
         return self._shape
 
+    def getnnz(self, axis=None):
+        """Returns the number of stored values, including explicit zeros.
+
+        Args:
+            axis: Not supported yet.
+
+        Returns:
+            int: The number of stored values.
+
+        """
+        if axis is not None:
+            raise NotImplementedError(
+                'getnnz over an axis is not implemented for DIA format')
+
+        m, n = self.shape
+        nnz = core.ReductionKernel(
+            'int32 offsets, int32 m, int32 n', 'int32 nnz',
+            'offsets > 0 ? min(m, n - offsets) : min(m + offsets, n)',
+            'a + b', 'nnz = a', '0', 'dia_nnz')(self.offsets, m, n)
+        return int(nnz)
 
 def isspmatrix_dia(x):
     """Checks if a given matrix is of DIA format.

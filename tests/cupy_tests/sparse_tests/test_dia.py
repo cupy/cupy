@@ -49,6 +49,9 @@ class TestDiaMatrix(unittest.TestCase):
     def test_ndim(self):
         self.assertEqual(self.m.ndim, 2)
 
+    def test_nnz(self):
+        self.assertEqual(self.m.nnz, 5)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
