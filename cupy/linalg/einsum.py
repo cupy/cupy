@@ -15,6 +15,7 @@ class SingleViewCalculator(object):
             Specifies the subscripts. If the same label appears
             more than once, calculate diagonal for those axes.
     """
+
     def __init__(self, ioperand, subscript):
         self.subscript = subscript
         self.ioperand = ioperand
@@ -37,7 +38,7 @@ class SingleViewCalculator(object):
                 self.result = self.result.diagonal(0, axis, axes_to_diag[0])
                 self.result = cupy.rollaxis(self.result, -1, axes_to_diag[0])
                 self.subscript = self.subscript[:axis] + \
-                    self.subscript[axis+1:]
+                    self.subscript[axis + 1:]
 
 
 class SummedViewCalculator(object):
@@ -51,6 +52,7 @@ class SummedViewCalculator(object):
             input_subscript but not in output_subscript, this label will be
             summed.
     """
+
     def __init__(self, ioperand, input_subscript, output_subscript):
         self.ioperand = ioperand
         self.subscript = input_subscript
@@ -80,6 +82,7 @@ class TransposedViewCalculator(object):
             Specifies the subscripts for output arrays. If input does not
             match output, ``operand`` is transposed so that it matches.
     """
+
     def __init__(self, ioperand, input_subscript, output_subscript):
         assert len(input_subscript) == len(output_subscript)
         assert set(input_subscript) == set(output_subscript)
@@ -104,6 +107,7 @@ class CombinedViewCalculator(object):
         ioperands (sequence of arrays): Arrays to be combined.
         subscripts (sequence of str): Specifies the subscripts.
     """
+
     def __init__(self, ioperands, subscripts):
         self.ioperands = ioperands
         self.subscripts = subscripts
@@ -188,7 +192,7 @@ def einsum(*operands):
         output_subscript = ''.join(sorted(list(out_label_set)))
     else:
         input_subscripts = subscripts[:arrow_pos]
-        output_subscript = subscripts[arrow_pos+2:]
+        output_subscript = subscripts[arrow_pos + 2:]
 
         irregular_chars = set(output_subscript) - set(input_subscripts)
         if irregular_chars:
