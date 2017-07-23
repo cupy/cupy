@@ -5,20 +5,13 @@ import numpy
 import cupy
 from cupy import testing
 
-# Setup for optimize einsum
-chars = 'abcdefghij'
-sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
-global_size_dict = {}
-for size, char in zip(sizes, chars):
-    global_size_dict[char] = size
 
-
-class TestEinSum(unittest.TestCase):
-    def einsum_errors(self):
+class TestEinSumError(unittest.TestCase):
+    def test_einsum_errors(self):
         # Need enough arguments
-        # TODO(fukatani): Numpy raises ValueError, buy cupy raises TypeError.
-        # with self.assertRaises(ValueError):
-        #     cupy.einsum()
+        with self.assertRaises(ValueError):
+            cupy.einsum()
+
         with self.assertRaises(ValueError):
             cupy.einsum("")
 
@@ -35,7 +28,7 @@ class TestEinSum(unittest.TestCase):
             cupy.einsum("", 0, 0)
 
         with self.assertRaises(ValueError):
-            cupy.einsum(",", [0])
+            cupy.einsum(",", 0)
 
         # can't have more subscripts than dimensions in the operand
         with self.assertRaises(ValueError):
@@ -46,15 +39,15 @@ class TestEinSum(unittest.TestCase):
 
         # invalid subscript character
         with self.assertRaises(ValueError):
-            cupy.einsum("i%", [0, 0])
+            cupy.einsum("i%", cupy.array([0, 0]))
         with self.assertRaises(ValueError):
-            cupy.einsum("j$", [0, 0])
+            cupy.einsum("j$", cupy.array([0, 0]))
         with self.assertRaises(ValueError):
-            cupy.einsum("i->&", [0, 0])
+            cupy.einsum("i->&", cupy.array([0, 0]))
 
         # output subscripts must appear in inumpy.t
         with self.assertRaises(ValueError):
-            cupy.einsum("i->ij", [0, 0])
+            cupy.einsum("i->ij", cupy.array([0, 0]))
 
         # output subscripts may only be specified once
         with self.assertRaises(ValueError):
@@ -62,15 +55,16 @@ class TestEinSum(unittest.TestCase):
 
         # dimensions much match when being collapsed
         with self.assertRaises(ValueError):
-            numpy.einsum("ii", numpy.arange(6).reshape(2, 3))
+            numpy.einsum("ii", cupy.arange(6).reshape(2, 3))
             # cupy.einsum("ii", cupy.array([[0, 1, 2], [0, 3, 0]]))
         with self.assertRaises(ValueError):
-            numpy.einsum("ii->", numpy.arange(6).reshape(2, 3))
+            numpy.einsum("ii->", cupy.arange(6).reshape(2, 3))
 
         # broadcasting to new dimensions must be enabled explicitly
         with self.assertRaises(ValueError):
-            cupy.einsum("i->i", numpy.arange(6).reshape(2, 3))
+            cupy.einsum("i->i", cupy.arange(6).reshape(2, 3))
 
+class TestEinSum(unittest.TestCase):
     # Avoid overflow
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 

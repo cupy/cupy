@@ -1,4 +1,5 @@
 import collections
+import string
 
 import numpy
 
@@ -91,16 +92,35 @@ def get_dummy_labels(label_list):
     return dummy_label_set
 
 
-def einsum(subscripts, *inputs):
-    # TODO(fukatani): raise Exception.
-    # TODO(fukatani): Support '...'
+def einsum(*operands):
     # TODO(fukatani): Support optimization.
+    # TODO(fukatani): Support tuple input.
+
+    if not operands:
+        raise ValueError("must specify the einstein sum subscripts string and "
+                         "at least one operand, or at least one operand and "
+                         "its corresponding subscripts list")
+
+    subscripts = operands[0]
+    ioperands = operands[1:]
+
+    if not isinstance(subscripts, str):
+        raise TypeError("Current cupy einsum support only string subscripts")
+
+    # TODO(fukatani): Support '...'
+    if '.' in subscripts:
+        raise TypeError("Current cupy einsum does not support '...' ellipsis")
 
     subscripts = subscripts.replace(' ', '')
+    irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,')
+    if irregular_chars:
+        pickup = list(irregular_chars)[0]
+        raise ValueError("invalid subscript '{}' in einstein sum subscripts "
+                         "string, subscripts must be letters".format(pickup))
 
     converted_inputs = []
-    dtype = numpy.result_type(*inputs)
-    for a in inputs:
+    dtype = numpy.result_type(*ioperands)
+    for a in ioperands:
         if isinstance(a, cupy.ndarray):
             converted_inputs.append(a.astype(dtype))
         else:
@@ -116,12 +136,44 @@ def einsum(subscripts, *inputs):
         input_subscripts = subscripts[:arrow_pos]
         output_subscript = subscripts[arrow_pos+2:]
 
+        irregular_chars = set(output_subscript) - set(input_subscripts)
+        if irregular_chars:
+            pickup = list(irregular_chars)[0]
+            raise ValueError("einstein sum subscripts string included output "
+                             "subscript '{}' which never appeared in an input".
+                             format(pickup))
+
+        count_dict = collections.Counter(output_subscript)
+        for key in count_dict:
+            if count_dict[key] == 1:
+                continue
+            raise ValueError("einstein sum subscripts string includes output "
+                             "subscript '{}' multiple times".format(key))
+
     input_subscripts_list = input_subscripts.split(',')
+    if len(input_subscripts_list) < len(converted_inputs):
+        raise ValueError("fewer operands provided to einstein sum function "
+                         "than specified in the subscripts string")
+    if len(input_subscripts_list) > len(converted_inputs):
+        raise ValueError("more operands provided to einstein sum function "
+                         "than specified in the subscripts string")
+
     i_parsers = []
-    for subscript, ioperand in zip(input_subscripts_list, converted_inputs):
+    for i in range(len(input_subscripts_list)):
+        subscript = input_subscripts_list[i]
+        ioperand = converted_inputs[i]
+        if len(subscript) > ioperand.ndim:
+            raise ValueError("einstein sum subscripts string contains too "
+                             "many subscripts for operand {}".format(i))
+        if len(subscript) < ioperand.ndim:
+            raise ValueError("operand has more dimensions than subscripts"
+                             " given in einstein sum, but no '...' ellipsis"
+                             " provided to broadcast the extra dimensions.")
+
         calc = SingleViewCalculator(ioperand, subscript)
         calc()
         i_parsers.append(calc)
+        i += 1
 
     if len(converted_inputs) >= 2:
         i_subscripts = [i_parser.subscript for i_parser in i_parsers]
