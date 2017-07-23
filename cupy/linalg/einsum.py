@@ -11,7 +11,9 @@ class SingleViewCalculator(object):
 
     Args:
         ioperand (cupy.ndarray): Array to be calculated diagonal.
-        subscript (str): Specifies the subscripts.
+        subscript (str):
+            Specifies the subscripts. If the same label appears
+            more than once, calculate diagonal for those axes.
     """
     def __init__(self, ioperand, subscript):
         self.subscript = subscript
@@ -43,7 +45,11 @@ class SummedViewCalculator(object):
 
     Args:
         ioperand (cupy.ndarray): Array to be summed.
-        subscript (str): Specifies the subscripts.
+        input_subscript (str): Specifies the subscripts for input array.
+        output_subscript (str):
+            Specifies the subscripts for output array. If one label exists in
+            input_subscript but not in output_subscript, this label will be
+            summed.
     """
     def __init__(self, ioperand, input_subscript, output_subscript):
         self.ioperand = ioperand
@@ -69,7 +75,10 @@ class TransposedViewCalculator(object):
 
     Args:
         ioperand (cupy.ndarray): Array to be transpose.
-        subscript (str): Specifies the subscripts.
+        input_subscript (str): Specifies the subscripts for input arrays.
+        output_subscript (str):
+            Specifies the subscripts for output arrays. If input does not
+            match output, ``operand`` is transposed so that it matches.
     """
     def __init__(self, ioperand, input_subscript, output_subscript):
         assert len(input_subscript) == len(output_subscript)
@@ -95,9 +104,9 @@ class CombinedViewCalculator(object):
         ioperands (sequence of arrays): Arrays to be combined.
         subscripts (sequence of str): Specifies the subscripts.
     """
-    def __init__(self, subscripts, ioperands):
-        self.subscripts = subscripts
+    def __init__(self, ioperands, subscripts):
         self.ioperands = ioperands
+        self.subscripts = subscripts
 
     def __call__(self):
         self.result = self.ioperands[0]
@@ -223,7 +232,7 @@ def einsum(*operands):
     if len(converted_inputs) >= 2:
         i_subscripts = [i_parser.subscript for i_parser in i_parsers]
         i_results = [i_parser.result for i_parser in i_parsers]
-        calc = CombinedViewCalculator(i_subscripts, i_results)
+        calc = CombinedViewCalculator(i_results, i_subscripts)
         calc()
         calc = SingleViewCalculator(calc.result, calc.subscript)
         calc()
