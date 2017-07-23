@@ -273,6 +273,8 @@ from numpy import base_repr  # NOQA
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
+from cupy.linalg.einsum import einsum  # NOQA
+
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
 from cupy.linalg.product import matmul  # NOQA
@@ -281,7 +283,6 @@ from cupy.linalg.product import tensordot  # NOQA
 from cupy.linalg.product import vdot  # NOQA
 
 from cupy.linalg.norms import trace  # NOQA
-from cupy.linalg.einsum import einsum  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
