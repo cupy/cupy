@@ -7,6 +7,12 @@ import cupy
 
 
 class SingleViewCalculator(object):
+    """Calculate 'ii->i' by cupy.diagonal if needed.
+
+    Args:
+        ioperand (cupy.ndarray): Array to be calculated diagonal.
+        subscript (str): Specifies the subscripts.
+    """
     def __init__(self, ioperand, subscript):
         self.subscript = subscript
         self.ioperand = ioperand
@@ -33,6 +39,12 @@ class SingleViewCalculator(object):
 
 
 class SummedViewCalculator(object):
+    """Calculate 'i->' by cupy.sum if needed.
+
+    Args:
+        ioperand (cupy.ndarray): Array to be summed.
+        subscript (str): Specifies the subscripts.
+    """
     def __init__(self, ioperand, input_subscript, output_subscript):
         self.ioperand = ioperand
         self.subscript = input_subscript
@@ -53,6 +65,12 @@ class SummedViewCalculator(object):
 
 
 class TransposedViewCalculator(object):
+    """Calculate 'ij->ji' by cupy.transpose if needed.
+
+    Args:
+        ioperand (cupy.ndarray): Array to be transpose.
+        subscript (str): Specifies the subscripts.
+    """
     def __init__(self, ioperand, input_subscript, output_subscript):
         assert len(input_subscript) == len(output_subscript)
         assert set(input_subscript) == set(output_subscript)
@@ -71,6 +89,12 @@ class TransposedViewCalculator(object):
 
 
 class CombinedViewCalculator(object):
+    """Calculate 'i,j->ij' by cupy.tensordot.
+
+    Args:
+        ioperands (sequence of arrays): Arrays to be combined.
+        subscripts (sequence of str): Specifies the subscripts.
+    """
     def __init__(self, subscripts, ioperands):
         self.subscripts = subscripts
         self.ioperands = ioperands
@@ -105,7 +129,7 @@ def einsum(*operands):
 
     Returns:
         cupy.ndarray:
-        The calculation based on the Einstein summation convention.
+            The calculation based on the Einstein summation convention.
 
     .. seealso:: :func:`numpy.einsum`
     """
@@ -141,6 +165,11 @@ def einsum(*operands):
             converted_inputs.append(a.astype(dtype))
         else:
             converted_inputs.append(cupy.asarray(a, dtype=dtype))
+
+    pos = subscripts.find('-')
+    if pos != -1 and subscripts[pos + 1] != '>':
+        raise ValueError("einstein sum subscript string does not contain "
+                         "proper '->' output specified")
 
     arrow_pos = subscripts.find('->')
     if arrow_pos == -1:

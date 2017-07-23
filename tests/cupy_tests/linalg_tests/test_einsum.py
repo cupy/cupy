@@ -64,6 +64,16 @@ class TestEinSumError(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.einsum("i->i", cupy.arange(6).reshape(2, 3))
 
+        # invalid -> operator
+        with self.assertRaises(ValueError):
+            cupy.einsum("i-i", cupy.array([0, 0]))
+
+        with self.assertRaises(ValueError):
+            cupy.einsum("i>i", cupy.array([0, 0]))
+
+        with self.assertRaises(ValueError):
+            cupy.einsum("i->->i", cupy.array([0, 0]))
+
 
 class TestEinSum(unittest.TestCase):
     # Avoid overflow
