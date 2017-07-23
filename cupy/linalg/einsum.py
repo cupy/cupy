@@ -231,7 +231,6 @@ def einsum(*operands):
         calc = SingleViewCalculator(ioperand, subscript)
         calc()
         i_parsers.append(calc)
-        i += 1
 
     if len(converted_inputs) >= 2:
         i_subscripts = [i_parser.subscript for i_parser in i_parsers]
