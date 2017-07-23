@@ -136,7 +136,9 @@ class Stream(object):
 
     def __del__(self):
         if self.ptr:
-            runtime.streamDestroy(self.ptr)
+            # https://stackoverflow.com/questions/8590238/unable-to-reference-an-imported-module-in-del
+            if runtime:
+                runtime.streamDestroy(self.ptr)
 
     def __enter__(self):
         if not hasattr(thread_local, 'prev_stream_stack'):
