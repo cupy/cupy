@@ -229,7 +229,7 @@ def kron(a, b):
 
     axis = ndim - 1
     out = core.tensordot_core(a, b, None, a.size, b.size, 1, a_shape + b_shape)
-    for _ in range(ndim):
+    for _ in six.moves.range(ndim):
         out = core.concatenate_method(out, axis=axis)
 
     return out
