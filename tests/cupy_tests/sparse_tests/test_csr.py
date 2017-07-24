@@ -286,7 +286,6 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_add_coo(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype).tocoo()
-        print(m.shape, n.shape)
         return (m + n).toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -333,7 +332,6 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_sub_coo(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype).tocoo()
-        print(m.shape, n.shape)
         return (m - n).toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
