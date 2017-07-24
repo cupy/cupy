@@ -176,6 +176,30 @@ def coo2csr(x):
         (x.data, x.col, indptr), shape=x.shape)
 
 
+def csr2coo(x, data, indices):
+    """Converts a CSR-matrix to COO format.
+
+    Args:
+        x (cupy.sparse.csr_matrix): A matrix to be converted.
+        data (cupy.ndarray): A data array for converted data.
+        indices (cupy.ndarray): An index array for converted data.
+
+    Returns:
+        cupy.sparse.coo_matrix: A converted matrix.
+
+    """
+    handle = device.get_cusparse_handle()
+    m = x.shape[0]
+    nnz = len(x.data)
+    row = cupy.empty(nnz, 'i')
+    cusparse.xcsr2coo(
+        handle, x.indptr.data.ptr, nnz, m, row.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    # data and indices did not need to be copied already
+    return cupy.sparse.coo_matrix(
+        (data, (row, indices)), shape=x.shape)
+
+
 def csr2csc(x):
     handle = device.get_cusparse_handle()
     m, n = x.shape
