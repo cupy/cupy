@@ -57,6 +57,7 @@ class TestCscMatrix(unittest.TestCase):
 
     def test_init_copy(self):
         n = cupy.sparse.csc_matrix(self.m)
+        self.assertIsNot(n, self.m)
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
@@ -72,6 +73,10 @@ class TestCscMatrix(unittest.TestCase):
     def test_copy(self):
         n = self.m.copy()
         self.assertIsInstance(n, cupy.sparse.csc_matrix)
+        self.assertIsNot(n, self.m)
+        self.assertIsNot(n.data, self.m.data)
+        self.assertIsNot(n.indices, self.m.indices)
+        self.assertIsNot(n.indptr, self.m.indptr)
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
