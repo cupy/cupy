@@ -157,18 +157,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
         if len(slices) == 2:
             row, col = slices
+        elif len(slices) == 1:
+            row, col = slices[0], slice(None)
         else:
             raise IndexError('invalid number of indices')
 
-        if numpy.isscalar(row):
-            i = int(row)
-            if numpy.isscalar(col):
-                j = int(col)
-                return self._get_single(*self._swap(i, j))
-            else:
-                raise ValueError('unsupported indexing')
-        else:
-            raise ValueError('unsupported indexing')
+        major, minor = self._swap(row, col)
+        if numpy.isscalar(major):
+            i = int(major)
+            if numpy.isscalar(minor):
+                j = int(minor)
+                return self._get_single(i, j)
+            elif minor == slice(None):
+                return self._get_major_slice(slice(i, i + 1))
+        elif isinstance(major, slice):
+            if minor == slice(None):
+                return self._get_major_slice(major)
+
+        raise ValueError('unsupported indexing')
 
     def _get_single(self, major, minor):
         major_size, minor_size = self._swap(*self._shape)
@@ -203,6 +209,25 @@ __device__ double atomicAdd(double* address, double val) {
             'compress_getitem', preamble=preamble)
         kern(self.data[start:end], self.indices[start:end], minor, answer)
         return answer[()]
+
+    def _get_major_slice(self, major):
+        major_start, major_stop, major_step = major.indices(
+            self._swap(*self.shape)[0])
+
+        if major_step != 1:
+            raise ValueError('unsupported indexing')
+
+        start = self.indptr[major_start]
+        stop = self.indptr[major_stop]
+        data = self.data[start:stop]
+        indptr = self.indptr[major_start:major_stop + 1] - start
+        indices = self.indices[start:stop]
+
+        major_size = len(indptr) - 1
+        minor_size = self._swap(*self.shape)[1]
+        shape = self._swap(major_size, minor_size)
+        return self.__class__(
+            (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
     def get_shape(self):
         """Returns the shape of the matrix.

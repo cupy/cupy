@@ -748,3 +748,11 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
     def test_getitem_int_int_too_large_col(self, xp, sp):
         _make(xp, sp, self.dtype)[0, 4]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, 1].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, 1:3].toarray()
