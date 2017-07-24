@@ -32,6 +32,17 @@ def _make2(xp, sp, dtype):
     return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make3(xp, sp, dtype):
+    data = xp.array([1, 4, 3, 2, 5], dtype)
+    indices = xp.array([0, 3, 1, 1, 3], 'i')
+    indptr = xp.array([0, 2, 3, 5], 'i')
+    # 1, 0, 0
+    # 0, 3, 2
+    # 0, 0, 0
+    # 4, 0, 5
+    return sp.csc_matrix((data, indices, indptr), shape=(4, 3))
+
+
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -348,6 +359,64 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         n = xp.arange(12).reshape(3, 4)
         return n - m
+
+    # __mul__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m * 2.0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m * numpy.dtype(self.dtype).type(2.0)).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        return m * x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+        return (m * x)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_mul_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        m * x
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_mul_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m * None
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
