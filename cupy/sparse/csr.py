@@ -5,7 +5,6 @@ except ImportError:
     _scipy_available = False
 
 from cupy import cusparse
-from cupy.sparse import base
 from cupy.sparse import compressed
 from cupy.sparse import csc
 
