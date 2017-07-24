@@ -3,7 +3,6 @@
 import collections
 import ctypes
 import gc
-import six
 import warnings
 import weakref
 
@@ -455,13 +454,13 @@ cdef class SingleDeviceMemoryPool:
         hooks = memory_hook.get_memory_hooks()
         if hooks:
             device_id = self._device_id
-            # Note Ordereddict.itervalues() is not available even in cython
-            for hook in six.itervalues(hooks):
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
                 hook.alloc_preprocess(device_id, rounded_size)
             try:
                 memptr = self._allocator(rounded_size)
             finally:
-                for hook in six.itervalues(hooks):
+                for hook in hooks_values:
                     hook.alloc_postprocess(device_id, rounded_size)
             return memptr
         else:
@@ -472,13 +471,13 @@ cdef class SingleDeviceMemoryPool:
         hooks = memory_hook.get_memory_hooks()
         if hooks:
             device_id = self._device_id
-            # Note Ordereddict.itervalues() is not available even in cython
-            for hook in six.itervalues(hooks):
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
                 hook.malloc_preprocess(device_id, size, rounded_size)
             try:
                 memptr = self._malloc(rounded_size)
             finally:
-                for hook in six.itervalues(hooks):
+                for hook in hooks_values:
                     hook.malloc_postprocess(device_id, size, rounded_size)
             return memptr
         else:
