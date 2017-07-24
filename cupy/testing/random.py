@@ -8,13 +8,43 @@ import unittest
 import cupy
 
 
+_old_numpy_random_state = None
+_old_cupy_random_states = None
+
+
+def do_setup(deterministic=True):
+    global _old_numpy_random_state
+    global _old_cupy_random_states
+    _old_numpy_random_state = numpy.random.get_state()
+    _old_cupy_random_states = cupy.random.generator._random_states
+    cupy.random.reset_states()
+    # Check that _random_state has been recreated in
+    # cupy.random.reset_states(). Otherwise the contents of
+    # _old_cupy_random_states would be overwritten.
+    assert (cupy.random.generator._random_states is not
+            _old_cupy_random_states)
+
+    if not deterministic:
+        numpy.random.seed()
+        cupy.random.seed()
+    else:
+        numpy.random.seed(100)
+        cupy.random.seed(101)
+
+
+def do_teardown():
+    global _old_numpy_random_state
+    global _old_cupy_random_states
+    numpy.random.set_state(_old_numpy_random_state)
+    cupy.random.generator._random_states = _old_cupy_random_states
+    _old_numpy_random_state = None
+    _old_cupy_random_states = None
+
+
 # In some tests (which utilize condition.repeat or condition.retry),
 # setUp/tearDown is nested. _setup_random() and _teardown_random() do their
 # work only in the outermost setUp/tearDown pair.
 _nest_count = 0
-
-_old_numpy_random_state = None
-_old_cupy_random_states = None
 
 
 @atexit.register
@@ -28,26 +58,10 @@ def _setup_random():
 
     """
     global _nest_count
-    global _old_numpy_random_state
-    global _old_cupy_random_states
     if _nest_count == 0:
-        _old_numpy_random_state = numpy.random.get_state()
-        _old_cupy_random_states = cupy.random.generator._random_states
-        cupy.random.reset_states()
-        # Check that _random_state has been recreated in
-        # cupy.random.reset_states(). Otherwise the contents of
-        # _old_cupy_random_states would be overwritten.
-        assert (cupy.random.generator._random_states is not
-                _old_cupy_random_states)
-
         nondeterministic = bool(int(os.environ.get(
             'CUPY_TEST_RANDOM_NONDETERMINISTIC', '0')))
-        if nondeterministic:
-            numpy.random.seed()
-            cupy.random.seed()
-        else:
-            numpy.random.seed(100)
-            cupy.random.seed(101)
+        do_setup(not nondeterministic)
     _nest_count += 1
 
 
@@ -56,15 +70,10 @@ def _teardown_random():
 
     """
     global _nest_count
-    global _old_numpy_random_state
-    global _old_cupy_random_states
     assert _nest_count > 0, '_setup_random has not been called'
     _nest_count -= 1
     if _nest_count == 0:
-        numpy.random.set_state(_old_numpy_random_state)
-        cupy.random.generator._random_states = _old_cupy_random_states
-        _old_numpy_random_state = None
-        _old_cupy_random_states = None
+        do_teardown()
 
 
 def generate_seed():

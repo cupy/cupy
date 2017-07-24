@@ -211,14 +211,6 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
-    if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
-        # clang does not have this option.
-        args = settings.setdefault('extra_link_args', [])
-        args.append('-fopenmp')
-    elif compiler.compiler_type == 'msvc':
-        args = settings.setdefault('extra_link_args', [])
-        args.append('/openmp')
-
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
     # with GCC 5's new ABI.
@@ -278,13 +270,15 @@ def make_extensions(options, compiler, use_cython):
             s['libraries'] = module['libraries']
 
         if module['name'] == 'cusolver':
-            args = s.setdefault('extra_link_args', [])
+            compile_args = s.setdefault('extra_compile_args', [])
+            link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
             if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
                 # In mac environment, openmp is not required.
-                args.append('-fopenmp')
+                compile_args.append('-fopenmp')
+                link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
-                args.append('/openmp')
+                compile_args.append('/openmp')
 
         if not no_cuda and module['name'] == 'thrust':
             if build.get_nvcc_path() is None:
@@ -474,6 +468,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        postargs += ['-Xcompiler', '/MD']
         print('NVCC options:', postargs)
 
         for obj in objects:

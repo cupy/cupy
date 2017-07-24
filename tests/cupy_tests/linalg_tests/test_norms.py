@@ -127,7 +127,8 @@ class TestSlogdet(unittest.TestCase):
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.numpy_cupy_raises(numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
     def test_slogdet_one_dim(self, xp, dtype):
         a = testing.shaped_arange((2,), xp, dtype)
         xp.linalg.slogdet(a)

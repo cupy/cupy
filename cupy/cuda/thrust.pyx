@@ -14,9 +14,9 @@ from cupy.cuda cimport common
 ###############################################################################
 
 cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
-    void _sort[T](void *start, const vector.vector[ptrdiff_t]&)
-    void _lexsort[T](size_t *idx_start, void *keys_start, size_t k, size_t n)
-    void _argsort[T](size_t *idx_start, void *data_start, size_t num)
+    void _sort[T](void *, const vector.vector[ptrdiff_t]&)
+    void _lexsort[T](size_t *, void *, size_t, size_t)
+    void _argsort[T](size_t *, void *, size_t)
 
 
 ###############################################################################
@@ -116,5 +116,5 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t num):
     elif dtype == numpy.float64:
         _argsort[common.cpy_double](idx_ptr, data_ptr, n)
     else:
-        msg = "Sorting arrays with dtype '{}' is not supported"
-        raise TypeError(msg.format(dtype))
+        raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
+                                  'supported'.format(dtype))

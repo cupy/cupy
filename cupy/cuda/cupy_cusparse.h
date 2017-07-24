@@ -35,6 +35,10 @@ cusparseStatus_t cusparseDestroy(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseDestroyMatDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSetMatIndexBase(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -113,6 +117,14 @@ cusparseStatus_t cusparseDcsrgemm(...) {
 
 // cuSPARSE Format Convrsion
 cusparseStatus_t cusparseXcoo2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsc2dense(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
