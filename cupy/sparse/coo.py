@@ -69,6 +69,8 @@ class coo_matrix(sparse_data._data_matrix):
                 raise ValueError(
                     'row, column, and data array must all be the same length')
 
+            has_canonical_format = False
+
         elif isspmatrix_coo(arg1):
             data = arg1.data
             row = arg1.row
@@ -76,6 +78,8 @@ class coo_matrix(sparse_data._data_matrix):
 
             if shape is None:
                 shape = arg1.shape
+
+            has_canonical_format = arg1.has_canonical_format
 
         else:
             raise ValueError(
@@ -113,6 +117,7 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = row
         self.col = col
         self._shape = shape
+        self.has_canonical_format = has_canonical_format
 
     def _with_data(self, data):
         return coo_matrix(
@@ -152,6 +157,48 @@ class coo_matrix(sparse_data._data_matrix):
         col = self.col.get(stream)
         return scipy.sparse.coo_matrix(
             (data, (row, col)), shape=self.shape)
+
+    def sum_duplicates(self):
+        if self.has_canonical_format:
+            return
+        keys = cupy.stack([self.row, self.col])
+        order = cupy.lexsort(keys)
+        src_data = self.data[order]
+        src_row = self.row[order]
+        src_col = self.col[order]
+        diff = cupy.ElementwiseKernel(
+            'raw int32 row, raw int32 col',
+            'int32 diff',
+            '''
+            int index;
+            if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
+              diff = 0;
+            } else {
+              diff = 1;
+            }
+            ''',
+            'sum_duplicates_diff'
+        )(src_row, src_col, size=self.row.size)
+        index = cupy.cumsum(diff, dtype='i')
+        size = int(index[-1]) + 1
+        data = cupy.zeros(size, dtype=self.data.dtype)
+        row = cupy.empty(size, dtype='i')
+        col = cupy.empty(size, dtype='i')
+        cupy.ElementwiseKernel(
+            'T src_data, int32 src_row, int32 src_col, int32 index',
+            'raw T data, raw int32 row, raw int32 col',
+            '''
+            atomicAdd(&data[index], src_data);
+            row[index] = src_row;
+            col[index] = src_col;
+            ''',
+            'sum_duplicates_assign'
+        )(src_data, src_row, src_col, index, data, row, col)
+
+        self.data = data
+        self.row = row
+        self.col = col
+        self.has_canonical_format = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
