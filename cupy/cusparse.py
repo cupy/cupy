@@ -57,7 +57,10 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
 
     .. math::
 
-       y = \\alpha * op(A) x + \\beta y,
+       y = \\alpha * o_a(A) x + \\beta y,
+
+    where :math:`o_a` is a transpose function when ``transa`` is ``True`` and
+    is an identity function otherwise.
 
     Args:
         a (cupy.cusparse.csr_matrix): Matrix A.
@@ -95,17 +98,20 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     return y
 
 
-def csrmm(a, b, c, alpha=1, beta=0, transa=False):
-    """Matrix-matrix product for CSR-matrixes.
+def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
+    """Matrix-matrix product for a CSR-matrix and a dense matrix.
 
     .. math::
 
-       C = \\alpha o_a(A) B + \\beta C
+       C = \\alpha o_a(A) B + \\beta C,
+
+    where :math:`o_a` is a transpose function when ``transa`` is ``True`` and
+    is an identity function otherwise.
 
     Args:
         a (cupy.sparse.csr): Sparse matrix A.
-        b (cupy.ndarray): Dense matrix B.
-        c (cupy.ndarray): Dense matrix C.
+        b (cupy.ndarray): Dense matrix B. It must be F-contiguous.
+        c (cupy.ndarray or None): Dense matrix C. It must be F-contiguous.
         alpha (float): Coefficient for AB.
         beta (float): Coefficient for C.
         transa (bool): If ``True``, transpose of A is used.
@@ -143,17 +149,21 @@ def csrmm(a, b, c, alpha=1, beta=0, transa=False):
     return c
 
 
-def csrmm2(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
-    """Matrix-matrix product for CSR-matrixes.
+def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
+    """Matrix-matrix product for a CSR-matrix and a dense matrix.
 
     .. math::
 
-       C = \\alpha o_a(A) o_b(B) + \\beta C
+       C = \\alpha o_a(A) o_b(B) + \\beta C,
+
+    where :math:`o_a` and :math:`o_b` are transpose functions when ``transa``
+    and ``tranb`` are ``True`` respectively. And they are identity functions
+    otherwise.
 
     Args:
         a (cupy.sparse.csr): Sparse matrix A.
-        b (cupy.ndarray): Dense matrix B.
-        c (cupy.ndarray or None): Dense matrix C.
+        b (cupy.ndarray): Dense matrix B. It must be F-contiguous.
+        c (cupy.ndarray or None): Dense matrix C. It must be F-contiguous.
         alpha (float): Coefficient for AB.
         beta (float): Coefficient for C.
         transa (bool): If ``True``, transpose of A is used.
