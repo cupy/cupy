@@ -58,6 +58,33 @@ class TestCsrMatrix(unittest.TestCase):
         testing.assert_array_equal(
             self.m.indptr, cupy.array([0, 2, 3, 4], self.dtype))
 
+    def test_init_copy(self):
+        n = cupy.sparse.csr_matrix(self.m)
+        self.assertIsNot(n, self.m)
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
+    def test_init_copy_other_sparse(self):
+        n = cupy.sparse.csr_matrix(self.m.tocsc())
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
+    def test_copy(self):
+        n = self.m.copy()
+        self.assertIsInstance(n, cupy.sparse.csr_matrix)
+        self.assertIsNot(n, self.m)
+        self.assertIsNot(n.data, self.m.data)
+        self.assertIsNot(n.indices, self.m.indices)
+        self.assertIsNot(n.indptr, self.m.indptr)
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 

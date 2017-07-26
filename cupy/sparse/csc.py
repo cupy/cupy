@@ -13,8 +13,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
-    Now it has only one initializer format below:
+    Now it has only part of initializer formats:
 
+    ``csc_matrix(S)``
+        ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
