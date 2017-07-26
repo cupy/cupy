@@ -591,7 +591,7 @@ def _get_ufunc_kernel(
         types.append('typedef %s in%d_type;' % (_get_typename(x), i))
         if args_info[i][0] is ndarray:
             op.append(
-                'const in{0}_type in{0} = in{0}_type(_raw_in{0}[_ind.get()]);'
+                'const in{0}_type in{0}(_raw_in{0}[_ind.get()]);'
                 .format(i))
 
     for i, x in enumerate(out_types):
