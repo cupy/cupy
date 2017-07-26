@@ -142,6 +142,27 @@ Please note the followings when writing the document.
   the document.
 
 
+Building Guidelines
+-------------------
+
+In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
+
+  $ python setup.py develop
+
+Please note that when you modify ``*.pxd`` files, you must clean ``*.cpp`` and ``*.so`` files once with::
+  
+  $ git clean -fdx
+
+before running ``python setup.py develop`` because currently, we have problems that Cython does not automatically rebuild modified pxd files well.
+
+We do not officially support, but some of the core developer members use `ccache <https://ccache.samba.org/>`_ to boost compilation time.
+For example, on Ubuntu, set up as followings::
+
+  $ sudo apt-get install ccache
+  $ export PATH=/usr/lib/ccache:$PATH
+
+See `ccache <https://ccache.samba.org/>`_ for details.
+
 Testing Guidelines
 ------------------
 
@@ -151,11 +172,7 @@ Note that we are using the nose package and the mock package for testing, so ins
 
   $ pip install nose mock
 
-In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
-
-  $ python setup.py develop
-
-Once the Cython modules are built, you can run unit tests simply by running ``nosetests`` command at the repository root::
+Once the Cython modules are built by ``python setup.py develop``, you can run unit tests simply by running ``nosetests`` command at the repository root::
 
   $ nosetests
 
@@ -238,3 +255,8 @@ Note that reviewers will test your code without the option to check CUDA-related
 .. note::
    Some of numerically unstable tests might cause errors irrelevant to your changes.
    In such a case, we ignore the failures and go on to the review process, so do not worry about it.
+
+We leverage doctest also, you can run doctest by typing ``make doctest`` at the ``docs`` directory::
+
+  $ cd docs
+  $ make doctest
