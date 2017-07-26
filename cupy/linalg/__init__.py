@@ -5,6 +5,7 @@
 from cupy.linalg import decomposition  # NOQA
 from cupy.linalg import eigenvalue  # NOQA
 from cupy.linalg import norms  # NOQA
+from cupy.linalg.norms import det  # NOQA
 from cupy.linalg.norms import matrix_rank  # NOQA
 from cupy.linalg.norms import norm  # NOQA
 from cupy.linalg.norms import slogdet  # NOQA

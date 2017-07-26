@@ -4,7 +4,6 @@ try:
 except ImportError:
     _scipy_available = False
 
-import cupy
 from cupy import cusparse
 from cupy.sparse import compressed
 from cupy.sparse import csc
@@ -14,8 +13,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Row matrix.
 
-    Now it has only one initializer format below:
+    Now it has only part of initializer formats:
 
+    ``csr_matrix(S)``
+        ``S`` is another sparse matrix. It is equivalent to ``S.tocsr()``.
     ``csr_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -59,6 +60,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     # TODO(unno): Implement __getitem__
 
+    def _add_sparse(self, other, alpha, beta):
+        return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
+
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
@@ -93,10 +97,31 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
         """
-        return cupy.ascontiguousarray(cusparse.csr2dense(self))
+        # csr2dense returns F-contiguous array.
+        # To return C-contiguous array, it uses transpose.
+        return cusparse.csc2dense(self.T).T
 
     # TODO(unno): Implement tobsr
-    # TODO(unno): Implement tocoo
+
+    def tocoo(self, copy=False):
+        """Converts the matrix to COOdinate format.
+
+        Args:
+            copy (bool): If ``False``, it shares data arrays as much as
+                possible.
+
+        Returns:
+            cupy.sparse.coo_matrix: Converted matrix.
+
+        """
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+        else:
+            data = self.data
+            indices = self.indices
+
+        return cusparse.csr2coo(self, data, indices)
 
     def tocsc(self, copy=False):
         """Converts the matrix to Compressed Sparse Column format.

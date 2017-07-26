@@ -688,6 +688,13 @@ int nvtxRangePop() {
     return 0;
 }
 
+uint64_t nvtxRangeStartEx(...) {
+    return 0;
+}
+
+void nvtxRangeEnd(...) {
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
