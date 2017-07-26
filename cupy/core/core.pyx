@@ -301,7 +301,7 @@ cdef class ndarray:
             raise TypeError('order not understood')
 
         dtype = numpy.dtype(dtype)
-        if dtype.type == self.dtype.type:
+        if dtype == self.dtype:
             if not copy and (
                     order == 'K' or
                     order == 'A' and (self._c_contiguous or
