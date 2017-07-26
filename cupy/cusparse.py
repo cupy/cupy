@@ -71,7 +71,8 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated ``y``.
 
     """
-    assert a.shape[1] == len(x)
+    if a.shape[1] != len(x):
+        raise ValueError('dimension mismatch')
     a_shape = a.shape if not transa else a.shape[::-1]
 
     handle = device.get_cusparse_handle()
@@ -115,7 +116,8 @@ def csrmm(a, b, c, alpha=1, beta=0, transa=False):
     """
     assert a.ndim == b.ndim == 2
     a_shape = a.shape if not transa else a.shape[::-1]
-    assert a_shape[1] == b.shape[0]
+    if a_shape[1] != b.shape[0]:
+        raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
     m, k = a_shape
@@ -164,7 +166,8 @@ def csrmm2(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     assert a.ndim == b.ndim == 2
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
-    assert a_shape[1] == b_shape[0]
+    if a_shape[1] != b.shape[0]:
+        raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
     m, k = a_shape
@@ -262,7 +265,8 @@ def csrgemm(a, b, transa=False, transb=False):
     assert a.ndim == b.ndim == 2
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
-    assert a_shape[1] == b_shape[0]
+    if a_shape[1] != b_shape[0]:
+        raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
     m, k = a_shape
