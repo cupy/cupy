@@ -22,6 +22,16 @@ def _make(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make2(xp, sp, dtype):
+    data = xp.array([1, 2, 3, 4], dtype)
+    indices = xp.array([2, 1, 2, 2], 'i')
+    indptr = xp.array([0, 1, 3, 4], 'i')
+    # 0, 0, 1, 0
+    # 0, 2, 3, 0
+    # 0, 0, 4, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -254,6 +264,98 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    # __add__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m + 0).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_add_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m + 1
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype)
+        return (m + n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_coo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype).tocoo()
+        return (m + n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return m + n
+
+    # __radd__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (0 + m).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_radd_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        1 + m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return n + m
+
+    # __sub__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m - 0).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_sub_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m - 1
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype)
+        return (m - n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_coo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype).tocoo()
+        return (m - n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return m - n
+
+    # __rsub__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rsub_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (0 - m).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rsub_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        1 - m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rsub_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return n - m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):

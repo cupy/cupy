@@ -1,5 +1,6 @@
 import numpy
 
+import cupy
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import data as sparse_data
@@ -71,6 +72,50 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
     def _swap(self, x, y):
         raise NotImplementedError
+
+    def _add_sparse(self, other, alpha, beta):
+        raise NotImplementedError
+
+    def _add(self, other, lhs_negative, rhs_negative):
+        if cupy.isscalar(other):
+            if other == 0:
+                if lhs_negative:
+                    return -self
+                else:
+                    return self.copy()
+            else:
+                raise NotImplementedError(
+                    'adding a nonzero scalar to a sparse matrix is not '
+                    'supported')
+        elif base.isspmatrix(other):
+            alpha = -1 if lhs_negative else 1
+            beta = -1 if rhs_negative else 1
+            return self._add_sparse(other, alpha, beta)
+        elif base.isdense(other):
+            if lhs_negative:
+                if rhs_negative:
+                    return -self.todense() - other
+                else:
+                    return other - self.todense()
+            else:
+                if rhs_negative:
+                    return self.todense() - other
+                else:
+                    return self.todense() + other
+        else:
+            return NotImplemented
+
+    def __add__(self, other):
+        return self._add(other, False, False)
+
+    def __radd__(self, other):
+        return self._add(other, False, False)
+
+    def __sub__(self, other):
+        return self._add(other, False, True)
+
+    def __rsub__(self, other):
+        return self._add(other, True, False)
 
     def get_shape(self):
         """Returns the shape of the matrix.
