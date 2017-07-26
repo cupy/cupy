@@ -42,6 +42,16 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
+def _get_bool_env_variable(name, default):
+    val = os.environ.get(name)
+    if val is None or len(val) == 0:
+        return default
+    try:
+        return int(val) == 1
+    except ValueError:
+        return False
+
+
 def compile_using_nvrtc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
@@ -59,8 +69,8 @@ def compile_using_nvrtc(source, options=(), arch=None):
         try:
             ptx = prog.compile(options)
         except CompileException as e:
-            dump = bool(int(
-                os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
+            dump = _get_bool_env_variable(
+                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
             if dump:
                 e.dump(sys.stderr)
             raise
@@ -73,7 +83,8 @@ def preprocess(source, options=()):
     try:
         pp_src = prog.compile(options)
     except CompileException as e:
-        dump = bool(int(os.environ.get('CUPY_DUMP_CUDA_SOURCE_ON_ERROR', 0)))
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
             e.dump(sys.stderr)
         raise
