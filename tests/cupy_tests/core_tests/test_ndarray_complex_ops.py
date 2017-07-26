@@ -14,8 +14,6 @@ class TestConj(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal()
     def test_conj(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_reverse_arange((2, 3), xp, dtype)
         return x.conj()
 
 
@@ -28,8 +26,6 @@ class TestAngle(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal()
     def test_conj(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_reverse_arange((2, 3), xp, dtype)
         return xp.angle(x)
 
 
@@ -42,24 +38,18 @@ class TestRealImag(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
     def test_real(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_reverse_arange((2, 3), xp, dtype)
         return x.real
 
     @testing.for_dtypes('fdFD', name='dtype')
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
     def test_imag(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_reverse_arange((2, 3), xp, dtype)
         return x.imag
 
     @testing.for_dtypes('fdFD', name='dtype')
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
     def test_real_setter(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_arange((2, 3), xp, dtype)
         x.real = testing.shaped_reverse_arange(
             (2, 3), xp, numpy.dtype(dtype).char.lower())
         return x
@@ -68,8 +58,6 @@ class TestRealImag(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
     def test_imag_setter(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_arange((2, 3), xp, dtype)
         x.imag = testing.shaped_reverse_arange(
             (2, 3), xp, numpy.dtype(dtype).char.lower())
         return x
@@ -78,8 +66,6 @@ class TestRealImag(unittest.TestCase):
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_imag_setter_raise(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
-        if numpy.dtype(dtype).kind == 'c':
-            x += 1j * testing.shaped_arange((2, 3), xp, dtype)
         x.imag = testing.shaped_reverse_arange(
             (2, 3), xp, numpy.dtype(dtype).char.lower())
         return x

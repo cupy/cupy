@@ -879,11 +879,11 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
          ``True`` (resp. ``False``).
 
     """
-    dtype = numpy.dtype(dtype).type
+    dtype = numpy.dtype(dtype)
     a = numpy.arange(1, internal.prod(shape) + 1, 1)
-    if dtype == numpy.bool_:
+    if dtype.type == numpy.bool_:
         a = a % 2 == 0
-    elif dtype == numpy.complex64 or dtype == numpy.complex128:
+    elif dtype.kind == 'c':
         a = a + ([0, 1j, -1j] * (len(a) // 3 + 1))[0:len(a)]
     return xp.asarray(a.reshape(shape), dtype=dtype)
 
@@ -904,12 +904,12 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
          ``True`` (resp. ``False``).
     """
-    dtype = numpy.dtype(dtype).type
+    dtype = numpy.dtype(dtype)
     size = internal.prod(shape)
-    a = xp.arange(size, 0, -1)
-    if dtype == numpy.bool_:
+    a = numpy.arange(size, 0, -1)
+    if dtype.type == numpy.bool_:
         a = a % 2 == 0
-    elif dtype == numpy.complex64 or dtype == numpy.complex128:
+    elif dtype.kind == 'c':
         a = a + ([0, 1j, -1j] * (len(a) // 3 + 1))[0:len(a)]
     return xp.asarray(a.reshape(shape), dtype=dtype)
 
