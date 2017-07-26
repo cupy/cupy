@@ -16,13 +16,11 @@ extern "C" {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct cuComplex{
-    float real;
-    float imag;
+    float x, y;
 };
 
 struct cuDoubleComplex{
-    double real;
-    double imag;
+    double x, y;
 };
 
 } // extern "C"

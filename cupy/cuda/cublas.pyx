@@ -12,14 +12,11 @@ from cupy.cuda cimport runtime
 ###############################################################################
 
 cdef extern from "cupy_cuComplex.h":
-    ctypedef void* cuComplexPtr 'cuComplex*'
-    ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
-    ctypedef const void* constCuComplexPtr 'const cuComplex*'
-    ctypedef const void* constCuDoubleComplexPtr 'const cuDoubleComplex*'
-    ctypedef void** cuComplexPtrPtr 'cuComplex**'
-    ctypedef void** cuDoubleComplexPtrPtr 'cuDoubleComplex**'
-    ctypedef const void** constCuComplexPtrPtr 'const cuComplex**'
-    ctypedef const void** constCuDoubleComplexPtrPtr 'const cuDoubleComplex**'
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
 
 cdef extern from 'cupy_cuda.h':
     # Context
@@ -48,16 +45,16 @@ cdef extern from 'cupy_cuda.h':
                    float* y, int incy, float* result) nogil
     int cublasDdot(Handle handle, int n, double* x, int incx,
                    double* y, int incy, double* result) nogil
-    int cublasCdotu(Handle handle, int n, cuComplexPtr x, int incx,
-                    cuComplexPtr y, int incy, cuComplexPtr result) nogil
-    int cublasCdotc(Handle handle, int n, cuComplexPtr x, int incx,
-                    cuComplexPtr y, int incy, cuComplexPtr result) nogil
-    int cublasZdotu(Handle handle, int n, cuDoubleComplexPtr x, int incx,
-                    cuDoubleComplexPtr y, int incy,
-                    cuDoubleComplexPtr result) nogil
-    int cublasZdotc(Handle handle, int n, cuDoubleComplexPtr x, int incx,
-                    cuDoubleComplexPtr y, int incy,
-                    cuDoubleComplexPtr result) nogil
+    int cublasCdotu(Handle handle, int n, cuComplex* x, int incx,
+                    cuComplex* y, int incy, cuComplex* result) nogil
+    int cublasCdotc(Handle handle, int n, cuComplex* x, int incx,
+                    cuComplex* y, int incy, cuComplex* result) nogil
+    int cublasZdotu(Handle handle, int n, cuDoubleComplex* x, int incx,
+                    cuDoubleComplex* y, int incy,
+                    cuDoubleComplex* result) nogil
+    int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
+                    cuDoubleComplex* y, int incy,
+                    cuDoubleComplex* result) nogil
     int cublasSnrm2(Handle handle, int n, float* x, int incx,
                     float* result) nogil
     int cublasSscal(Handle handle, int n, float* alpha, float* x,
@@ -73,13 +70,13 @@ cdef extern from 'cupy_cuda.h':
         double* A, int lda, double* x, int incx, double* beta,
         double* y, int incy) nogil
     int cublasCgemv(
-        Handle handle, Operation trans, int m, int n, cuComplexPtr alpha,
-        cuComplexPtr A, int lda, cuComplexPtr x, int incx, cuComplexPtr beta,
-        cuComplexPtr y, int incy) nogil
+        Handle handle, Operation trans, int m, int n, cuComplex* alpha,
+        cuComplex* A, int lda, cuComplex* x, int incx, cuComplex* beta,
+        cuComplex* y, int incy) nogil
     int cublasZgemv(
-        Handle handle, Operation trans, int m, int n, cuDoubleComplexPtr alpha,
-        cuDoubleComplexPtr A, int lda, cuDoubleComplexPtr x, int incx,
-        cuDoubleComplexPtr beta, cuDoubleComplexPtr y, int incy) nogil
+        Handle handle, Operation trans, int m, int n, cuDoubleComplex* alpha,
+        cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
+        cuDoubleComplex* beta, cuDoubleComplex* y, int incy) nogil
     int cublasSger(
         Handle handle, int m, int n, float* alpha, float* x, int incx,
         float* y, int incy, float* A, int lda) nogil
@@ -87,19 +84,19 @@ cdef extern from 'cupy_cuda.h':
         Handle handle, int m, int n, double* alpha, double* x,
         int incx, double* y, int incy, double* A, int lda) nogil
     int cublasCgeru(
-        Handle handle, int m, int n, cuComplexPtr alpha, cuComplexPtr x,
-        int incx, cuComplexPtr y, int incy, cuComplexPtr A, int lda) nogil
+        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
+        int incx, cuComplex* y, int incy, cuComplex* A, int lda) nogil
     int cublasCgerc(
-        Handle handle, int m, int n, cuComplexPtr alpha, cuComplexPtr x,
-        int incx, cuComplexPtr y, int incy, cuComplexPtr A, int lda) nogil
+        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
+        int incx, cuComplex* y, int incy, cuComplex* A, int lda) nogil
     int cublasZgeru(
-        Handle handle, int m, int n, cuDoubleComplexPtr alpha,
-        cuDoubleComplexPtr x, int incx, cuDoubleComplexPtr y, int incy,
-        cuDoubleComplexPtr A, int lda) nogil
+        Handle handle, int m, int n, cuDoubleComplex* alpha,
+        cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+        cuDoubleComplex* A, int lda) nogil
     int cublasZgerc(
-        Handle handle, int m, int n, cuDoubleComplexPtr alpha,
-        cuDoubleComplexPtr x, int incx, cuDoubleComplexPtr y, int incy,
-        cuDoubleComplexPtr A, int lda) nogil
+        Handle handle, int m, int n, cuDoubleComplex* alpha,
+        cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+        cuDoubleComplex* A, int lda) nogil
 
     # BLAS Level 3
     int cublasSgemm(
@@ -112,14 +109,14 @@ cdef extern from 'cupy_cuda.h':
         int ldb, double* beta, double* C, int ldc) nogil
     int cublasCgemm(
         Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, cuComplexPtr alpha, cuComplexPtr A, int lda,
-        cuComplexPtr B, int ldb, cuComplexPtr beta, cuComplexPtr C,
+        int n, int k, cuComplex* alpha, cuComplex* A, int lda,
+        cuComplex* B, int ldb, cuComplex* beta, cuComplex* C,
         int ldc) nogil
     int cublasZgemm(
         Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, cuDoubleComplexPtr alpha, cuDoubleComplexPtr A, int lda,
-        cuDoubleComplexPtr B, int ldb, cuDoubleComplexPtr beta,
-        cuDoubleComplexPtr C, int ldc) nogil
+        int n, int k, cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
+        cuDoubleComplex* B, int ldb, cuDoubleComplex* beta,
+        cuDoubleComplex* C, int ldc) nogil
     int cublasSgemmBatched(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, const float* alpha, const float** Aarray,
@@ -132,15 +129,15 @@ cdef extern from 'cupy_cuda.h':
         double** Carray, int ldc, int batchCount) nogil
     int cublasCgemmBatched(
         Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, constCuComplexPtr alpha, constCuComplexPtrPtr Aarray,
-        int lda, constCuComplexPtrPtr Barray, int ldb, constCuComplexPtr beta,
-        cuComplexPtrPtr Carray, int ldc, int batchCount) nogil
+        int n, int k, const cuComplex* alpha, const cuComplex** Aarray,
+        int lda, const cuComplex** Barray, int ldb, const cuComplex* beta,
+        cuComplex** Carray, int ldc, int batchCount) nogil
     int cublasZgemmBatched(
         Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, constCuDoubleComplexPtr alpha,
-        constCuDoubleComplexPtrPtr Aarray, int lda,
-        constCuDoubleComplexPtrPtr Barray, int ldb,
-        constCuDoubleComplexPtr beta, cuDoubleComplexPtrPtr Carray, int ldc,
+        int n, int k, const cuDoubleComplex* alpha,
+        const cuDoubleComplex** Aarray, int lda,
+        const cuDoubleComplex** Barray, int ldb,
+        const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
         int batchCount) nogil
 
     # BLAS extension
@@ -170,6 +167,24 @@ cdef extern from 'cupy_cuda.h':
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
         int batchSize) nogil
+
+
+###############################################################################
+# Util
+###############################################################################
+
+cdef cuComplex get_cu_complex(float complex a):
+    cdef cuComplex ret
+    ret.x = a.real
+    ret.y = a.imag
+    return ret
+
+
+cdef cuDoubleComplex get_cu_double_complex(double complex a):
+    cdef cuDoubleComplex ret
+    ret.x = a.real
+    ret.y = a.imag
+    return ret
 
 
 ###############################################################################
@@ -330,8 +345,8 @@ cpdef cdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
         status = cublasCdotu(
-            <Handle>handle, n, <cuComplexPtr>x, incx, <cuComplexPtr>y, incy,
-            <cuComplexPtr>result)
+            <Handle>handle, n, <cuComplex*>x, incx, <cuComplex*>y, incy,
+            <cuComplex*>result)
     check_status(status)
 
 
@@ -339,8 +354,8 @@ cpdef cdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
         status = cublasCdotc(
-            <Handle>handle, n, <cuComplexPtr>x, incx, <cuComplexPtr>y, incy,
-            <cuComplexPtr>result)
+            <Handle>handle, n, <cuComplex*>x, incx, <cuComplex*>y, incy,
+            <cuComplex*>result)
     check_status(status)
 
 
@@ -348,8 +363,8 @@ cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
         status = cublasZdotu(
-            <Handle>handle, n, <cuDoubleComplexPtr>x, incx,
-            <cuDoubleComplexPtr>y, incy, <cuDoubleComplexPtr>result)
+            <Handle>handle, n, <cuDoubleComplex*>x, incx,
+            <cuDoubleComplex*>y, incy, <cuDoubleComplex*>result)
     check_status(status)
 
 
@@ -357,8 +372,8 @@ cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
         status = cublasZdotc(
-            <Handle>handle, n, <cuDoubleComplexPtr>x, incx,
-            <cuDoubleComplexPtr>y, incy, <cuDoubleComplexPtr>result)
+            <Handle>handle, n, <cuDoubleComplex*>x, incx,
+            <cuDoubleComplex*>y, incy, <cuDoubleComplex*>result)
     check_status(status)
 
 
@@ -401,22 +416,24 @@ cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
 cpdef cgemv(size_t handle, int trans, int m, int n, float complex alpha,
             size_t A, int lda, size_t x, int incx, float complex beta,
             size_t y, int incy):
+    cdef cuComplex a = get_cu_complex(alpha)
+    cdef cuComplex b = get_cu_complex(beta)
     with nogil:
         status = cublasCgemv(
-            <Handle>handle, <Operation>trans, m, n, <cuComplexPtr>&alpha,
-            <cuComplexPtr>A, lda, <cuComplexPtr>x, incx, <cuComplexPtr>&beta,
-            <cuComplexPtr>y, incy)
+            <Handle>handle, <Operation>trans, m, n, &a, <cuComplex*>A, lda,
+            <cuComplex*>x, incx, &b, <cuComplex*>y, incy)
     check_status(status)
 
 
 cpdef zgemv(size_t handle, int trans, int m, int n, double complex alpha,
             size_t A, int lda, size_t x, int incx, double complex beta,
             size_t y, int incy):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+    cdef cuDoubleComplex b = get_cu_double_complex(beta)
     with nogil:
         status = cublasZgemv(
-            <Handle>handle, <Operation>trans, m, n, <cuDoubleComplexPtr>&alpha,
-            <cuDoubleComplexPtr>A, lda, <cuDoubleComplexPtr>x, incx,
-            <cuDoubleComplexPtr>&beta, <cuDoubleComplexPtr>y, incy)
+            <Handle>handle, <Operation>trans, m, n, &a, <cuDoubleComplex*>A,
+            lda, <cuDoubleComplex*>x, incx, &b, <cuDoubleComplex*>y, incy)
     check_status(status)
 
 
@@ -440,39 +457,43 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
 
 cpdef cgeru(size_t handle, int m, int n, float complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
+    cdef cuComplex a = get_cu_complex(alpha)
     with nogil:
         status = cublasCgeru(
-            <Handle>handle, m, n, <cuComplexPtr>&alpha, <cuComplexPtr>x, incx,
-            <cuComplexPtr>y, incy, <cuComplexPtr>A, lda)
+            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
 cpdef cgerc(size_t handle, int m, int n, float complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
+    cdef cuComplex a = get_cu_complex(alpha)
     with nogil:
         status = cublasCgerc(
-            <Handle>handle, m, n, <cuComplexPtr>&alpha, <cuComplexPtr>x, incx,
-            <cuComplexPtr>y, incy, <cuComplexPtr>A, lda)
+            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
 cpdef zgeru(size_t handle, int m, int n, double complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
     with nogil:
         status = cublasZgeru(
-            <Handle>handle, m, n, <cuDoubleComplexPtr>&alpha,
-            <cuDoubleComplexPtr>x, incx, <cuDoubleComplexPtr>y, incy,
-            <cuDoubleComplexPtr>A, lda)
+            <Handle>handle, m, n, &a,
+            <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
+            <cuDoubleComplex*>A, lda)
     check_status(status)
 
 
 cpdef zgerc(size_t handle, int m, int n, double complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
     with nogil:
         status = cublasZgerc(
-            <Handle>handle, m, n, <cuDoubleComplexPtr>&alpha,
-            <cuDoubleComplexPtr>x, incx, <cuDoubleComplexPtr>y, incy,
-            <cuDoubleComplexPtr>A, lda)
+            <Handle>handle, m, n, &a,
+            <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
+            <cuDoubleComplex*>A, lda)
     check_status(status)
 
 
@@ -503,23 +524,27 @@ cpdef dgemm(size_t handle, int transa, int transb,
 cpdef cgemm(size_t handle, int transa, int transb,
             int m, int n, int k, float complex alpha, size_t A, int lda,
             size_t B, int ldb, float complex beta, size_t C, int ldc):
+    cdef cuComplex a = get_cu_complex(alpha)
+    cdef cuComplex b = get_cu_complex(beta)
     with nogil:
         status = cublasCgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <cuComplexPtr>&alpha, <cuComplexPtr>A, lda, <cuComplexPtr>B, ldb,
-            <cuComplexPtr>&beta, <cuComplexPtr>C, ldc)
+            &a, <cuComplex*>A, lda, <cuComplex*>B, ldb,
+            &b, <cuComplex*>C, ldc)
     check_status(status)
 
 
 cpdef zgemm(size_t handle, int transa, int transb,
             int m, int n, int k, double complex alpha, size_t A, int lda,
             size_t B, int ldb, double complex beta, size_t C, int ldc):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+    cdef cuDoubleComplex b = get_cu_double_complex(beta)
     with nogil:
         status = cublasZgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <cuDoubleComplexPtr>&alpha, <cuDoubleComplexPtr>A, lda,
-            <cuDoubleComplexPtr>B, ldb, <cuDoubleComplexPtr>&beta,
-            <cuDoubleComplexPtr>C, ldc)
+            &a, <cuDoubleComplex*>A, lda,
+            <cuDoubleComplex*>B, ldb, &b,
+            <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
@@ -551,12 +576,13 @@ cpdef cgemmBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         float complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         float complex beta, size_t Carray, int ldc, int batchCount):
+    cdef cuComplex a = get_cu_complex(alpha)
+    cdef cuComplex b = get_cu_complex(beta)
     with nogil:
         status = cublasCgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <constCuComplexPtr>&alpha, <constCuComplexPtrPtr>Aarray, lda,
-            <constCuComplexPtrPtr>Barray, ldb, <constCuComplexPtr>&beta,
-            <cuComplexPtrPtr>Carray, ldc, batchCount)
+            &a, <const cuComplex**>Aarray, lda, <const cuComplex**>Barray, ldb,
+            &b, <cuComplex**>Carray, ldc, batchCount)
     check_status(status)
 
 
@@ -564,14 +590,14 @@ cpdef zgemmBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         double complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         double complex beta, size_t Carray, int ldc, int batchCount):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+    cdef cuDoubleComplex b = get_cu_double_complex(beta)
     with nogil:
         status = cublasZgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <constCuDoubleComplexPtr>&alpha,
-            <constCuDoubleComplexPtrPtr>Aarray, lda,
-            <constCuDoubleComplexPtrPtr>Barray, ldb,
-            <constCuDoubleComplexPtr>&beta, <cuDoubleComplexPtrPtr>Carray, ldc,
-            batchCount)
+            &a, <const cuDoubleComplex**>Aarray, lda,
+            <const cuDoubleComplex**>Barray, ldb, &b,
+            <cuDoubleComplex**>Carray, ldc, batchCount)
     check_status(status)
 
 
