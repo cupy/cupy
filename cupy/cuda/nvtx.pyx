@@ -43,11 +43,14 @@ cdef extern from "cupy_cuda.h":
         int32_t    messageType
         message_t  message
     ctypedef nvtxEventAttributes_v1 nvtxEventAttributes_t
+    ctypedef unsigned long long range_id_t
     void nvtxMarkA(const char *message) nogil
     void nvtxMarkEx(const nvtxEventAttributes_t *eventAttrib) nogil
     int nvtxRangePushA(const char *message) nogil
     int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib) nogil
     int nvtxRangePop() nogil
+    range_id_t nvtxRangeStartEx(const nvtxEventAttributes_t *eventAttrib) nogil
+    void nvtxRangeEnd(range_id_t) nogil
 
 cdef int num_colors = 10
 cdef uint32_t colors[10]
@@ -61,6 +64,30 @@ colors[6] = 0xFF0000FF
 colors[7] = 0xFFFF007F
 colors[8] = 0xFFFF7F00
 colors[9] = 0xFF7F7F7F
+
+
+cdef nvtxEventAttributes_t make_event_attributes(str message, color):
+    cdef bytes b_message
+    cdef nvtxEventAttributes_t attrib
+
+    string.memset(&attrib, 0, sizeof(attrib))
+    attrib.version = NVTX_VERSION
+    attrib.size = sizeof(attrib)
+
+    if color is None:
+        attrib.colorType = NVTX_COLOR_UNKNOWN
+    else:
+        attrib.color = color
+        attrib.colorType = NVTX_COLOR_ARGB
+
+    if message is None:
+        attrib.messageType = NVTX_MESSAGE_UNKNOWN
+    else:
+        attrib.messageType = NVTX_MESSAGE_TYPE_ASCII
+        b_message = message.encode()
+        attrib.message.ascii = b_message
+
+    return attrib
 
 
 cpdef void MarkC(str message, uint32_t color=0) except *:
@@ -170,3 +197,12 @@ cpdef void RangePop() except *:
     pair of ``RangePush*()`` to ``RangePop()`` calls.
     """
     nvtxRangePop()
+
+
+cpdef unsigned long long RangeStart(str message, color) except *:
+    cdef nvtxEventAttributes_t attrib = make_event_attributes(message, color)
+    return nvtxRangeStartEx(&attrib)
+
+
+cpdef void RangeEnd(unsigned long long range_id) except *:
+    nvtxRangeEnd(range_id)

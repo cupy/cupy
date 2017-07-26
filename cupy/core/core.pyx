@@ -791,13 +791,15 @@ cdef class ndarray:
             raise NotImplementedError('Sorting arrays with the rank of two or '
                                       'more is not supported')
 
+        data = self.copy()
+
         # Assuming that Py_ssize_t can be represented with numpy.int64.
         assert cython.sizeof(Py_ssize_t) == 8
 
         idx_array = ndarray(self.shape, dtype=numpy.int64)
 
         thrust.argsort(
-            self.dtype, idx_array.data.ptr, self.data.ptr, self._shape[0])
+            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
 
         return idx_array
 
@@ -876,7 +878,7 @@ cdef class ndarray:
                                (self.ravel(), Indexer(self.shape),
                                 scan_index, dst))
             return tuple([dst[i::self.ndim]
-                          for i in six.moves.range(self.ndim)])
+                          for i in range(self.ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -2946,7 +2948,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     else:
         min_axis, max_axis = axis2, axis1
 
-    tr = list(six.moves.range(a.ndim))
+    tr = list(range(a.ndim))
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:

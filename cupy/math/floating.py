@@ -24,7 +24,7 @@ copysign = ufunc.create_math_ufunc(
 
 ldexp = core.create_ufunc(
     'cupy_ldexp',
-    ('ei->e', 'fi->f', 'el->e', 'fl->f', 'di->d', 'dl->d'),
+    ('ei->e', 'fi->f', 'el->e', 'fl->f', 'di->d', 'dq->d'),
     'out0 = ldexp(in0, in1)',
     doc='''Computes ``x1 * 2 ** x2`` elementwise.
 
