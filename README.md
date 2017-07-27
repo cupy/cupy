@@ -98,7 +98,7 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 
 ## Development
 
-Please see the [For CuPy Developers](https://docs-cupy.chainer.org/en/stable/developers.html) document.
+Please see [the documentation for developers](https://docs-cupy.chainer.org/en/stable/developers.html).
 
 ## More information
 

@@ -149,19 +149,21 @@ In order to run unit tests at the repository root, you first have to build Cytho
 
   $ python setup.py develop
 
-Please note that when you modify ``*.pxd`` files, you must clean ``*.cpp`` and ``*.so`` files once with::
+.. note::
+
+  When you modify ``*.pxd`` files, before running ``python setup.py develop``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
+    
+    $ git clean -fdx
+
+.. note::
+
+  It's not officially supported, but you can use `ccache <https://ccache.samba.org/>`_ to reduce compilation time.
+  On Ubuntu 16.04, you can set up as follows::
   
-  $ git clean -fdx
-
-before running ``python setup.py develop`` because currently, we have problems that Cython does not automatically rebuild modified pxd files well.
-
-We do not officially support, but some of the core developer members use `ccache <https://ccache.samba.org/>`_ to boost compilation time.
-For example, on Ubuntu, set up as followings::
-
-  $ sudo apt-get install ccache
-  $ export PATH=/usr/lib/ccache:$PATH
-
-See `ccache <https://ccache.samba.org/>`_ for details.
+    $ sudo apt-get install ccache
+    $ export PATH=/usr/lib/ccache:$PATH
+  
+  See `ccache <https://ccache.samba.org/>`_ for details.
 
 Testing Guidelines
 ------------------
@@ -256,7 +258,7 @@ Note that reviewers will test your code without the option to check CUDA-related
    Some of numerically unstable tests might cause errors irrelevant to your changes.
    In such a case, we ignore the failures and go on to the review process, so do not worry about it.
 
-We leverage doctest also, you can run doctest by typing ``make doctest`` at the ``docs`` directory::
+We leverage doctest as well, you can run doctest by typing ``make doctest`` at the ``docs`` directory::
 
   $ cd docs
   $ make doctest
