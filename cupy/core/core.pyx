@@ -443,7 +443,8 @@ cdef class ndarray:
             value = value.item()
 
         if value == 0 and self._c_contiguous:
-            self.data.memset_async(0, self.nbytes, stream.Stream.null)
+            stream = cuda.get_current_stream()
+            self.data.memset_async(0, self.nbytes, stream)
         else:
             elementwise_copy(value, self, dtype=self.dtype)
 
@@ -3423,7 +3424,8 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     b = view
 
     out = ndarray(out_shape, dtype=dtype)
-    out.data.memset(0, out.nbytes)
+    stream = cuda.get_current_stream()
+    out.data.memset_async(0, out.nbytes, stream)
 
     out_view = out.view()
     out_view_shape = out.shape
