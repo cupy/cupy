@@ -155,6 +155,22 @@ In order to run unit tests at the repository root, you first have to build Cytho
 
   $ python setup.py develop
 
+.. note::
+
+  When you modify ``*.pxd`` files, before running ``python setup.py develop``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
+
+    $ git clean -fdx
+
+.. note::
+
+  It's not officially supported, but you can use `ccache <https://ccache.samba.org/>`_ to reduce compilation time.
+  On Ubuntu 16.04, you can set up as follows::
+
+    $ sudo apt-get install ccache
+    $ export PATH=/usr/lib/ccache:$PATH
+
+  See `ccache <https://ccache.samba.org/>`_ for details.
+
 Once the Cython modules are built, you can run unit tests simply by running ``nosetests`` command at the repository root::
 
   $ nosetests
@@ -238,3 +254,8 @@ Note that reviewers will test your code without the option to check CUDA-related
 .. note::
    Some of numerically unstable tests might cause errors irrelevant to your changes.
    In such a case, we ignore the failures and go on to the review process, so do not worry about it.
+
+We leverage doctest as well. You can run doctest by typing ``make doctest`` at the ``docs`` directory::
+
+  $ cd docs
+  $ make doctest
