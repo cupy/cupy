@@ -163,6 +163,12 @@ class coo_matrix(sparse_data._data_matrix):
             (data, (row, col)), shape=self.shape)
 
     def sum_duplicates(self):
+        """Eliminate duplicate matrix entries by adding them together.
+
+        .. see::
+           :func:`scipy.sparse.coo_matrix.sum_duplicates`
+
+        """
         if self._has_canonical_format:
             return
         keys = cupy.stack([self.row, self.col])
