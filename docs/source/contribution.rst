@@ -255,7 +255,7 @@ Note that reviewers will test your code without the option to check CUDA-related
    Some of numerically unstable tests might cause errors irrelevant to your changes.
    In such a case, we ignore the failures and go on to the review process, so do not worry about it.
 
-We leverage doctest as well, you can run doctest by typing ``make doctest`` at the ``docs`` directory::
+We leverage doctest as well. You can run doctest by typing ``make doctest`` at the ``docs`` directory::
 
   $ cd docs
   $ make doctest
