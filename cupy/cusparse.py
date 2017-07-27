@@ -427,9 +427,11 @@ def cscsort(x):
 
 
 def coosort(x):
+    nnz = x.nnz
+    if nnz == 0:
+        return
     handle = device.get_cusparse_handle()
     m, n = x.shape
-    nnz = x.nnz
 
     buffer_size = cusparse.xcoosort_bufferSizeExt(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)

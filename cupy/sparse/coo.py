@@ -82,14 +82,15 @@ class coo_matrix(sparse_data._data_matrix):
                     'cannot infer dimensions from zero sized index arrays')
             shape = (int(row.max()) + 1, int(col.max()) + 1)
 
-        if row.max() >= shape[0]:
-            raise ValueError('row index exceeds matrix dimensions')
-        if col.max() >= shape[1]:
-            raise ValueError('column index exceeds matrix dimensions')
-        if row.min() < 0:
-            raise ValueError('negative row index found')
-        if col.min() < 0:
-            raise ValueError('negative column index found')
+        if len(data) > 0:
+            if row.max() >= shape[0]:
+                raise ValueError('row index exceeds matrix dimensions')
+            if col.max() >= shape[1]:
+                raise ValueError('column index exceeds matrix dimensions')
+            if row.min() < 0:
+                raise ValueError('negative row index found')
+            if col.min() < 0:
+                raise ValueError('negative column index found')
 
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
