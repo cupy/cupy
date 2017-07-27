@@ -32,6 +32,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make_duplicate(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3, 4, 5], dtype)
+    row = xp.array([1, 1, 1, 1, 0, 1], 'i')
+    col = xp.array([0, 0, 2, 0, 0, 2], 'i')
+    # 4, 0, 0, 0
+    # 4, 0, 7, 0
+    # 0, 0, 0, 0
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
 def _make_empty(xp, sp, dtype):
     data = xp.array([], dtype)
     row = xp.array([], 'i')
@@ -77,6 +87,9 @@ class TestCooMatrix(unittest.TestCase):
 
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 4)
+
+    def test_has_canonical_format(self):
+        self.assertFalse(self.m.has_canonical_format)
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
@@ -290,6 +303,37 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates(self, xp, sp):
+        m = _make_duplicate(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        self.assertEqual(m.nnz, 3)
+
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_canonical(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        self.assertEqual(m.nnz, 4)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_empty(self, xp, sp):
+        m = _make_empty(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        self.assertEqual(m.nnz, 0)
+        a = m.toarray()
+        return a
 
 
 @testing.parameterize(*testing.product({
