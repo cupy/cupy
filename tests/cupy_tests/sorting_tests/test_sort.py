@@ -239,7 +239,7 @@ class TestMsort(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    # Test ranks
+    # Test base cases
 
     @testing.numpy_cupy_raises()
     def test_msort_zero_dim(self, xp):
@@ -248,17 +248,17 @@ class TestMsort(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_array_equal()
+    def test_msort_one_dim(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return xp.msort(a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
     def test_msort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.msort(a)
 
-    # Test dtypes
-
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose()
-    def test_msort_dtype(self, xp, dtype):
-        a = testing.shaped_random((10,), xp, dtype)
-        return xp.msort(a)
+    # Test unsupported dtype
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_msort_unsupported_dtype(self, dtype):
