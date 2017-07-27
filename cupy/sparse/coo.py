@@ -189,21 +189,28 @@ class coo_matrix(sparse_data._data_matrix):
             ''',
             'sum_duplicates_diff'
         )(src_row, src_col, size=self.row.size)
-        index = cupy.cumsum(diff, dtype='i')
-        size = int(index[-1]) + 1
-        data = cupy.zeros(size, dtype=self.data.dtype)
-        row = cupy.empty(size, dtype='i')
-        col = cupy.empty(size, dtype='i')
-        cupy.ElementwiseKernel(
-            'T src_data, int32 src_row, int32 src_col, int32 index',
-            'raw T data, raw int32 row, raw int32 col',
-            '''
-            atomicAdd(&data[index], src_data);
-            row[index] = src_row;
-            col[index] = src_col;
-            ''',
-            'sum_duplicates_assign'
-        )(src_data, src_row, src_col, index, data, row, col)
+
+        if diff[1:].all():
+            # All elements have different indices.
+            data = src_data
+            row = src_row
+            col = src_col
+        else:
+            index = cupy.cumsum(diff, dtype='i')
+            size = int(index[-1]) + 1
+            data = cupy.zeros(size, dtype=self.data.dtype)
+            row = cupy.empty(size, dtype='i')
+            col = cupy.empty(size, dtype='i')
+            cupy.ElementwiseKernel(
+                'T src_data, int32 src_row, int32 src_col, int32 index',
+                'raw T data, raw int32 row, raw int32 col',
+                '''
+                atomicAdd(&data[index], src_data);
+                row[index] = src_row;
+                col[index] = src_col;
+                ''',
+                'sum_duplicates_assign'
+            )(src_data, src_row, src_col, index, data, row, col)
 
         self.data = data
         self.row = row
