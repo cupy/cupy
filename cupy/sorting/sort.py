@@ -112,21 +112,14 @@ def msort(a):
 
     .. note:
         ``cupy.msort(a)``, the CuPy counterpart of ``numpy.msort(a)``, is
-        equivalent to ``cupy.sort(a, axis=0)``. For its implementation reason,
-        ``cupy.sort`` currently supports only sorting an array with its rank of
-        one, so ``cupy.msort(a)`` is actually the same as ``cupy.sort(a)`` for
-        now.
+        equivalent to ``cupy.sort(a, axis=0)``.
 
     .. seealso:: :func:`numpy.msort`
 
     """
 
-    if a.ndim > 1:
-        raise ValueError('Sorting arrays with the rank of two or more is not '
-                         'Supported')
-
     # TODO(takagi): Support float16 and bool.
-    return sort(a)
+    return sort(a, axis=0)
 
 
 # TODO(okuta): Implement sort_complex

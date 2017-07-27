@@ -246,10 +246,11 @@ class TestMsort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         return xp.msort(a)
 
-    def test_msort_two_or_more_dim(self):
-        a = testing.shaped_random((2, 3), cupy)
-        with self.assertRaises(ValueError):
-            return cupy.msort(a)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_msort_multi_dim(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.msort(a)
 
     # Test dtypes
 
