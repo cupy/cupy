@@ -21,6 +21,7 @@ typedef enum {} cusparseMatrixType_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
+typedef enum {} cusparseDirection_t;
 
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(...) {
@@ -145,6 +146,22 @@ cusparseStatus_t cusparseScsr2dense(...) {
 }
 
 cusparseStatus_t cusparseDcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSnnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDnnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
