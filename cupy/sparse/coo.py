@@ -117,11 +117,15 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = row
         self.col = col
         self._shape = shape
-        self.has_canonical_format = has_canonical_format
+        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data):
         return coo_matrix(
             (data, (self.row.copy(), self.col.copy())), shape=self.shape)
+
+    @property
+    def has_canonical_format(self):
+        return self._has_canonical_format
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -159,7 +163,7 @@ class coo_matrix(sparse_data._data_matrix):
             (data, (row, col)), shape=self.shape)
 
     def sum_duplicates(self):
-        if self.has_canonical_format:
+        if self._has_canonical_format:
             return
         keys = cupy.stack([self.row, self.col])
         order = cupy.lexsort(keys)
@@ -198,7 +202,7 @@ class coo_matrix(sparse_data._data_matrix):
         self.data = data
         self.row = row
         self.col = col
-        self.has_canonical_format = True
+        self._has_canonical_format = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
