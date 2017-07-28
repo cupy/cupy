@@ -793,7 +793,7 @@ cdef class ndarray:
         idx_array = ndarray(data.shape, dtype=numpy.intp)
 
         if ndim == 1:
-            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0, 0,
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
                            data._shape)
         else:
             keys_array = ndarray(data._shape, dtype=numpy.intp)
