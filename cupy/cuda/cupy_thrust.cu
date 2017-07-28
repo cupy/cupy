@@ -159,16 +159,12 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_star
                   dp_keys_first,
                   divides<size_t>());
 
-        // Copy data to the buffer.
-        dp_buff_first = device_pointer_cast(static_cast<T*>(buff_start));
-        dp_buff_last  = device_pointer_cast(static_cast<T*>(buff_start) + size);
-        copy(dp_data_first, dp_data_last, dp_buff_first);
-
         // Sorting with back-to-back approach.
 
         stable_sort_by_key(dp_data_first,
                            dp_data_last,
-                           make_zip_iterator(make_tuple(dp_idx_first, dp_keys_first)),
+                           make_zip_iterator(make_tuple(dp_idx_first,
+                                                        dp_keys_first)),
                            less<T>());
 
         stable_sort_by_key(dp_keys_first,
