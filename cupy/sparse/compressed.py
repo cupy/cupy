@@ -65,6 +65,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
+        elif base.isdense(arg1) and arg1.ndim == 2:
+            if self.format == 'csc':
+                m = cusparse.dense2csc(arg1)
+                self.__init__(m, shape=shape, dtype=dtype)
+                return
+            else:
+                m = cusparse.dense2csr(arg1)
+                self.__init__(m, shape=shape, dtype=dtype)
+                return
+
         else:
             raise ValueError(
                 'Unsupported initializer format')
