@@ -149,6 +149,14 @@ cusparseStatus_t cusparseDcsr2dense(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseSdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSdense2csr(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }

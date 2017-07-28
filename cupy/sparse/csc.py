@@ -15,6 +15,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     Now it has only part of initializer formats:
 
+    ``csc_matrix(D)``
+        ``D`` is a rank-2 :class:`cupy.ndarray`.
     ``csc_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
     ``csc_matrix((M, N), [dtype])``

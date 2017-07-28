@@ -145,6 +145,16 @@ cdef extern from "cupy_cusparse.h":
         const double *csrSortedValA, const int *csrSortedRowPtrA,
         const int *csrSortedColIndA, double *A, int lda)
 
+    Status cusparseSdense2csc(
+        Handle handle, int m, int n, const MatDescr descrA, const float *A,
+        int lda, const int *nnzPerCol, float *cscValA, int *cscRowIndA,
+        int *cscColPtrA)
+
+    Status cusparseDdense2csc(
+        Handle handle, int m, int n, const MatDescr descrA, const double *A,
+        int lda, const int *nnzPerCol, double *cscValA, int *cscRowIndA,
+        int *cscColPtrA)
+
     Status cusparseSdense2csr(
         Handle handle, int m, int n, const MatDescr descrA,
         const float *A, int lda, const int *nnzPerRow, float *csrValA,
@@ -547,6 +557,28 @@ cpdef dcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>csrSortedValA, <const int *>csrSortedRowPtrA,
         <const int *>csrSortedColIndA, <double *>A, lda)
+    check_status(status)
+
+
+cpdef sdense2csc(
+        size_t handle, int m, int n, size_t descrA, size_t A,
+        int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
+        size_t cscColPtrA):
+    status = cusparseSdense2csc(
+        <Handle>handle, m, n, <const MatDescr>descrA, <const float *>A,
+        lda, <const int *>nnzPerCol, <float *>cscValA, <int *>cscRowIndA,
+        <int *>cscColPtrA)
+    check_status(status)
+
+
+cpdef ddense2csc(
+        size_t handle, int m, int n, size_t descrA, size_t A,
+        int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
+        size_t cscColPtrA):
+    status = cusparseDdense2csc(
+        <Handle>handle, m, n, <const MatDescr>descrA, <const double *>A,
+        lda, <const int *>nnzPerCol, <double *>cscValA, <int *>cscRowIndA,
+        <int *>cscColPtrA)
     check_status(status)
 
 

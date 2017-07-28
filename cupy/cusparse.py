@@ -498,6 +498,44 @@ def csr2csc(x):
     return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
 
 
+def dense2csc(x):
+    """Converts a dense matrix in CSC format.
+
+    Args:
+        x (cupy.ndarray): A matrix to be converted.
+
+    Returns:
+        cupy.sparse.csc_matrix: A converted matrix.
+
+    """
+    assert x.ndim == 2
+    x = cupy.asfortranarray(x)
+    nnz = numpy.empty((), dtype='i')
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+
+    descr = MatDescriptor.create()
+    nnz_per_col = cupy.empty(m, 'i')
+    _call_cusparse(
+        'nnz', x.dtype,
+        handle, cusparse.CUSPARSE_DIRECTION_COLUMN, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_col.data.ptr, nnz.ctypes.data)
+
+    nnz = int(nnz)
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(n + 1, 'i')
+    indices = cupy.empty(nnz, 'i')
+
+    _call_cusparse(
+        'dense2csc', x.dtype,
+        handle, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_col.data.ptr,
+        data.data.ptr, indices.data.ptr, indptr.data.ptr)
+    # Note that a desciptor is recreated
+    y = cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    return y
+
+
 def dense2csr(x):
     """Converts a dense matrix in CSR format.
 
