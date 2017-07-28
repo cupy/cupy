@@ -171,7 +171,8 @@ cdef extern from "cupy_cusparse.h":
 
     Status cusparseDnnz(
         Handle handle, Direction dirA, int m, int n, const MatDescr descrA,
-        const double *A, int lda, int *nnzPerRowColumn, int *nnzTotalDevHostPtr)
+        const double *A, int lda, int *nnzPerRowColumn,
+        int *nnzTotalDevHostPtr)
 
     Status cusparseCreateIdentityPermutation(
         Handle handle, int n, int *p)
@@ -590,7 +591,7 @@ cpdef sdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>A, lda, <const int *>nnzPerRow, <float *>csrValA,
         <int *>csrRowPtrA, <int *>csrColIndA)
-    check_status(status)    
+    check_status(status)
 
 
 cpdef ddense2csr(

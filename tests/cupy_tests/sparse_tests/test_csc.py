@@ -118,7 +118,7 @@ class TestCscMatrix(unittest.TestCase):
     def test_init_dense(self):
         m = cupy.array([[0, 1, 0, 2],
                         [0, 0, 0, 0],
-                        [0, 0, 0, 3], ], dtype=self.dtype)
+                        [0, 0, 0, 3]], dtype=self.dtype)
         n = cupy.sparse.csc_matrix(m)
         self.assertEqual(n.nnz, 3)
         self.assertEqual(n.shape, (3, 4))
@@ -129,7 +129,7 @@ class TestCscMatrix(unittest.TestCase):
     def test_init_dense_empty(self):
         m = cupy.array([[0, 0, 0, 0],
                         [0, 0, 0, 0],
-                        [0, 0, 0, 0], ], dtype=self.dtype)
+                        [0, 0, 0, 0]], dtype=self.dtype)
         n = cupy.sparse.csc_matrix(m)
         self.assertEqual(n.nnz, 0)
         self.assertEqual(n.shape, (3, 4))
