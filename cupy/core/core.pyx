@@ -752,13 +752,22 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            thrust.sort(self.dtype, self.data.ptr, 0, self._shape)
+            data = self
         else:
-            x = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
-            keys_array = ndarray(x._shape, dtype=numpy.intp)
-            thrust.sort(self.dtype, x.data.ptr, keys_array.data.ptr, x._shape)
-            y = cupy.rollaxis(x, -1, axis)
-            elementwise_copy(y, self)
+            data = cupy.rollaxis(self, axis, ndim).copy()
+
+        if ndim == 1:
+            thrust.sort(self.dtype, data.data.ptr, 0, self._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.sort(
+                self.dtype, data.data.ptr, keys_array.data.ptr, data._shape)
+
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
 
     def argsort(self):
         """Return the indices that would sort an array with stable sorting
