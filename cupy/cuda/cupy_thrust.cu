@@ -26,8 +26,8 @@ void cupy::thrust::_sort(void *data_start, void *keys_start, const std::vector<p
         size *= shape[i];
     }
 
-    dp_data_first = device_pointer_cast(static_cast<T*>(start));
-    dp_data_last  = device_pointer_cast(static_cast<T*>(start) + size);
+    dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
+    dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + size);
 
     if (ndim == 1) {
         stable_sort(dp_data_first, dp_data_last);
