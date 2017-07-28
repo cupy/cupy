@@ -143,6 +143,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             raise ValueError('unsupported indexing')
 
     def _get_single(self, major, minor):
+        major_size, minor_size = self._swap(*self._shape)
+        if major < 0:
+            major += major_size
+        if minor < 0:
+            minor += minor_size
+        if not (0 <= major < major_size and 0 <= minor < minor_size):
+            raise IndexError('index out of bounds')
         start = self.indptr[major]
         end = self.indptr[major + 1]
         answer = cupy.zeros((), self.dtype)
