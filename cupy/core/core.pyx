@@ -797,10 +797,8 @@ cdef class ndarray:
                            data._shape)
         else:
             keys_array = ndarray(data._shape, dtype=numpy.intp)
-            buff_array = ndarray(data._shape, dtype=self.dtype)
             thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
-                           keys_array.data.ptr, buff_array.data.ptr,
-                           data._shape)
+                           keys_array.data.ptr, data._shape)
 
         if axis == ndim - 1:
             return idx_array
