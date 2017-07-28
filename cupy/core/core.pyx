@@ -443,8 +443,7 @@ cdef class ndarray:
             value = value.item()
 
         if value == 0 and self._c_contiguous:
-            stream = cuda.get_current_stream()
-            self.data.memset_async(0, self.nbytes, stream)
+            self.data.memset_async(0, self.nbytes)
         else:
             elementwise_copy(value, self, dtype=self.dtype)
 
@@ -1694,7 +1693,8 @@ cdef class ndarray:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
-        stream = cuda.get_current_stream() if stream is None else stream
+        if stream is None:
+            stream = cuda.get_current_stream()
         if stream == cuda.Stream.null:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
@@ -1728,7 +1728,8 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.get_as_parameter()
-        stream = cuda.get_current_stream() if stream is None else stream
+        if stream is None:
+            stream = cuda.get_current_stream()
         if stream == cuda.Stream.null:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
@@ -3424,8 +3425,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     b = view
 
     out = ndarray(out_shape, dtype=dtype)
-    stream = cuda.get_current_stream()
-    out.data.memset_async(0, out.nbytes, stream)
+    out.data.memset_async(0, out.nbytes)
 
     out_view = out.view()
     out_view_shape = out.shape
