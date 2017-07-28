@@ -26,7 +26,7 @@ For detailed instructions on installing CuPy, see [the installation guide](https
 You can install CuPy using `pip`:
 
 ```sh
-pip install cupy
+$ pip install cupy
 ```
 
 Note that if you want to enable CUDA, cuDNN, and/or NCCL, they need to be set up before installation of CuPy.
