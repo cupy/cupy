@@ -1,9 +1,9 @@
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
+#include <thrust/iterator/zip_iterator.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
-#include <thrust/zip_iterator.h>
 #include "cupy_common.h"
 #include "cupy_thrust.h"
 
