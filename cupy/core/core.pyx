@@ -752,10 +752,11 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            thrust.sort(self.dtype, self.data.ptr, self._shape)
+            thrust.sort(self.dtype, self.data.ptr, 0, self._shape)
         else:
             x = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
-            thrust.sort(self.dtype, x.data.ptr, x._shape)
+            keys_array = ndarray(x._shape, dtype=numpy.intp)
+            thrust.sort(self.dtype, x.data.ptr, keys_array.data.ptr, x._shape)
             y = cupy.rollaxis(x, -1, axis)
             elementwise_copy(y, self)
 
