@@ -91,7 +91,14 @@ class TestHistogram(unittest.TestCase):
         return xp.bincount(x)
 
     @for_all_dtypes_bincount()
-    @testing.numpy_cupy_raises()
-    def test_bincount_zero_minlength(self, xp, dtype):
+    @testing.with_requires('numpy>=1.13')
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_bincount_zero(self, xp, dtype):
         x = testing.shaped_arange((3,), xp, dtype)
         return xp.bincount(x, minlength=0)
+
+    @for_all_dtypes_bincount()
+    @testing.numpy_cupy_raises()
+    def test_bincount_too_small_minlength(self, xp, dtype):
+        x = testing.shaped_arange((3,), xp, dtype)
+        return xp.bincount(x, minlength=-1)
