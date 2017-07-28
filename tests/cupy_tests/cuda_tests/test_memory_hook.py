@@ -17,29 +17,29 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.free_preprocess_history = []
         self.free_postprocess_history = []
 
-    def alloc_preprocess(self, device_id, rounded_size):
+    def alloc_preprocess(self, device_id, mem_size):
         self.alloc_preprocess_history.append(
-            (device_id, rounded_size))
+            (device_id, mem_size))
 
-    def alloc_postprocess(self, device_id, rounded_size, ptr):
+    def alloc_postprocess(self, device_id, mem_size, mem_ptr):
         self.alloc_postprocess_history.append(
-            (device_id, rounded_size, ptr))
+            (device_id, mem_size, mem_ptr))
 
-    def malloc_preprocess(self, device_id, size, rounded_size):
+    def malloc_preprocess(self, device_id, size, mem_size):
         self.malloc_preprocess_history.append(
-            (device_id, size, rounded_size))
+            (device_id, size, mem_size))
 
-    def malloc_postprocess(self, device_id, size, rounded_size, ptr):
+    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr):
         self.malloc_postprocess_history.append(
-            (device_id, size, rounded_size, ptr))
+            (device_id, size, mem_size, mem_ptr))
 
-    def free_preprocess(self, device_id, ptr, size):
+    def free_preprocess(self, device_id, mem_size, mem_ptr):
         self.free_preprocess_history.append(
-            (device_id, ptr, size))
+            (device_id, mem_size, mem_ptr))
 
-    def free_postprocess(self, device_id, ptr, size):
+    def free_postprocess(self, device_id, mem_size, mem_ptr):
         self.free_postprocess_history.append(
-            (device_id, ptr, size))
+            (device_id, mem_size, mem_ptr))
 
 
 @testing.gpu
@@ -73,11 +73,11 @@ class TestMemoryHook(unittest.TestCase):
                          hook.malloc_preprocess_history[1])
         self.assertEqual((0, 1, self.unit, ptr2),
                          hook.malloc_postprocess_history[1])
-        self.assertEqual((0, ptr1, self.unit),
+        self.assertEqual((0, self.unit, ptr1),
                          hook.free_preprocess_history[0])
-        self.assertEqual((0, ptr1, self.unit),
+        self.assertEqual((0, self.unit, ptr1),
                          hook.free_postprocess_history[0])
-        self.assertEqual((0, ptr2, self.unit),
+        self.assertEqual((0, self.unit, ptr2),
                          hook.free_preprocess_history[1])
-        self.assertEqual((0, ptr2, self.unit),
+        self.assertEqual((0, self.unit, ptr2),
                          hook.free_postprocess_history[1])

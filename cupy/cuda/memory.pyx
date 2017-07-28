@@ -399,7 +399,7 @@ cdef class SingleDeviceMemoryPool:
         return (((size + unit - 1) // unit) * unit)
 
     cpdef Py_ssize_t _bin_index_from_size(self, Py_ssize_t size):
-        """Get appropriate bins (_free) index from the memory size"""
+        """Get appropriate _free_bins index from the memory size"""
         unit = self._allocation_unit_size
         return (size - 1) // unit
 
@@ -453,12 +453,12 @@ cdef class SingleDeviceMemoryPool:
     cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         hooks = memory_hook.get_memory_hooks()
         if hooks:
+            memptr = None
             device_id = self._device_id
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
                 hook.alloc_preprocess(device_id, rounded_size)
             try:
-                memptr = None
                 memptr = self._allocator(rounded_size)
             finally:
                 for hook in hooks_values:
@@ -472,17 +472,18 @@ cdef class SingleDeviceMemoryPool:
         rounded_size = self._round_size(size)
         hooks = memory_hook.get_memory_hooks()
         if hooks:
+            memptr = None
             device_id = self._device_id
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
                 hook.malloc_preprocess(device_id, size, rounded_size)
             try:
-                memptr = None
                 memptr = self._malloc(rounded_size)
             finally:
                 for hook in hooks_values:
                     mem_ptr = memptr.ptr if memptr is not None else 0
-                    hook.malloc_postprocess(device_id, size, rounded_size, mem_ptr)
+                    hook.malloc_postprocess(device_id, size,
+                                            rounded_size, mem_ptr)
             return memptr
         else:
             return self._malloc(rounded_size)
@@ -493,12 +494,12 @@ cdef class SingleDeviceMemoryPool:
             device_id = self._device_id
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
-                hook.free_preprocess(device_id, ptr, size)
+                hook.free_preprocess(device_id, size, ptr)
             try:
                 self._free(ptr, size)
             finally:
                 for hook in hooks_values:
-                    hook.free_postprocess(device_id, ptr, size)
+                    hook.free_postprocess(device_id, size, ptr)
         else:
             return self._free(ptr, size)
 

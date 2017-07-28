@@ -69,62 +69,64 @@ class MemoryHook(object):
     def __exit__(self, *_):
         del get_memory_hooks()[self.name]
 
-    def malloc_preprocess(self, device_id, size, rounded_size):
+    def malloc_preprocess(self, device_id, size, mem_size):
         """Callback function invoked before retrieving memory from memory pool.
 
         Args:
             device_id(int): CUDA device ID
-            size(int): bytesize requested by users
-            rounded_size(int): rounded bytesize to manage in a memory pool
+            size(int): Requested memory bytesize to allocate
+            mem_size(int): Rounded memory bytesize to be allocated
         """
         pass
 
-    def malloc_postprocess(self, device_id, size, rounded_size, mem_ptr):
+    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr):
         """Callback function invoked after retrieving memory from memory pool.
 
         Args:
             device_id(int): CUDA device ID
-            size(int): bytesize requested by users
-            rounded_size(int): rounded bytesize to manage in a memory pool
-            mem_ptr(int): obtained memory pointer. 0 if error occurred in ``malloc``.
+            size(int): Requested memory bytesize to allocate
+            mem_size(int): Rounded memory bytesize allocated
+            mem_ptr(int): Obtained memory pointer.
+               0 if an error occurred in ``malloc``.
         """
         pass
 
-    def alloc_preprocess(self, device_id, rounded_size):
+    def alloc_preprocess(self, device_id, mem_size):
         """Callback function invoked before allocating memory from GPU device.
 
         Args:
             device_id(int): CUDA device ID
-            rounded_size(int): rounded bytesize
+            mem_size(int): Rounded memory bytesize to be allocated
         """
         pass
 
-    def alloc_postprocess(self, device_id, rounded_size, mem_ptr):
+    def alloc_postprocess(self, device_id, mem_size, mem_ptr):
         """Callback function invoked after allocating memory from GPU device.
 
         Args:
             device_id(int): CUDA device ID
-            rounded_size(int): rounded bytesize
-            mem_ptr(int): obtained memory pointer. 0 if error occurred in allocation.
+            mem_size(int): Rounded memory bytesize allocated
+            mem_ptr(int): Obtained memory pointer.
+                0 if an error occurred in allocation.
         """
         pass
 
-    def free_preprocess(self, device_id, mem_ptr, mem_size):
+    def free_preprocess(self, device_id, mem_size, mem_ptr):
         """Callback function invoked before releasing memory to memory pool.
 
         Args:
             device_id(int): CUDA device ID
-            mem_ptr(int): memory pointer to free
-            mem_size(int): memory bytesize
+            mem_size(int): Memory bytesize
+            mem_ptr(int): Memory pointer to free
         """
         pass
 
-    def free_postprocess(self, device_id, mem_ptr, mem_size):
+    def free_postprocess(self, device_id, mem_size, mem_ptr):
         """Callback function invoked after releasing memory to memory pool.
 
         Args:
             device_id(int): CUDA device ID
-            mem_ptr(int): memory pointer to free
-            mem_size(int): memory bytesize
+            mem_size(int): Memory bytesize
+            mem_ptr(int): Memory pointer to free
         """
         pass
