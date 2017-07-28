@@ -11,7 +11,7 @@ Here are the environment variables CuPy uses.
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_DUMP_CUDA_SOURCE_ON_ERROR`` | If set to 1, when CUDA kernel compilation fails,   |
 |                                    | CuPy dumps CUDA kernel code to standard error.     |
-|                                    | It's disabled by default.                          |
+|                                    | It is disabled by default.                         |
 +------------------------------------+----------------------------------------------------+
 
 
