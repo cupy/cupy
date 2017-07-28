@@ -65,7 +65,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     Args:
         a (cupy.cusparse.csr_matrix): Matrix A.
         x (cupy.ndarray): Vector x.
-        y (cupy.ndarray or None): Vector y.
+        y (cupy.ndarray or None): Vector y. It must be contiguous.
         alpha (float): Coefficient for x.
         beta (float): Coefficient for y.
         transa (bool): If ``True``, transpose of ``A`` is used.
@@ -76,6 +76,8 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """
     if a.shape[1] != len(x):
         raise ValueError('dimension mismatch')
+    assert y is None or y.flags.f_contiguous
+
     a_shape = a.shape if not transa else a.shape[::-1]
 
     handle = device.get_cusparse_handle()
@@ -84,8 +86,6 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     dtype = a.dtype
     if y is None:
         y = cupy.zeros(m, dtype)
-    else:
-        y = cupy.asfortranarray(y)
     alpha = numpy.array(alpha, dtype).ctypes
     beta = numpy.array(beta, dtype).ctypes
     _call_cusparse(
@@ -121,6 +121,9 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
 
     """
     assert a.ndim == b.ndim == 2
+    assert b.flags.f_contiguous
+    assert c is None or c.flags.f_contiguous
+
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != b.shape[0]:
         raise ValueError('dimension mismatch')
@@ -133,8 +136,6 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     if c is None:
         c = cupy.zeros((m, n), a.dtype, 'F')
 
-    b = cupy.asfortranarray(b)
-    c = cupy.asfortranarray(c)
     ldb = k
     ldc = m
 
@@ -174,6 +175,9 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
 
     """
     assert a.ndim == b.ndim == 2
+    assert b.flags.f_contiguous
+    assert c is None or c.flags.f_contiguous
+
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
     if a_shape[1] != b.shape[0]:
@@ -187,8 +191,6 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     if c is None:
         c = cupy.zeros((m, n), a.dtype, 'F')
 
-    b = cupy.asfortranarray(b)
-    c = cupy.asfortranarray(c)
     ldb = b.shape[0]
     ldc = c.shape[0]
     op_a = _transpose_flag(transa)

@@ -78,9 +78,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             if other.ndim == 0:
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
-                return cusparse.csrmv(self, other)
+                return cusparse.csrmv(self, cupy.asfortranarray(other))
             elif other.ndim == 2:
-                return cusparse.csrmm2(self, other)
+                return cusparse.csrmm2(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
         else:
