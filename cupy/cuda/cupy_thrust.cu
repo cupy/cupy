@@ -2,6 +2,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+#include <thrust/tuple.h>
+#include <thrust/zip_iterator.h>
 #include "cupy_common.h"
 #include "cupy_thrust.h"
 
@@ -164,14 +166,9 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_star
 
         // Sorting with back-to-back approach.
 
-        stable_sort_by_key(dp_buff_first,
-                           dp_buff_last,
-                           dp_keys_first,
-                           less<T>());
-
         stable_sort_by_key(dp_data_first,
                            dp_data_last,
-                           dp_idx_first,
+                           make_zip_iterator(make_tuple(dp_idx_first, dp_keys_first)),
                            less<T>());
 
         stable_sort_by_key(dp_keys_first,
