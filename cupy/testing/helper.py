@@ -881,10 +881,10 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
     """
     dtype = numpy.dtype(dtype)
     a = numpy.arange(1, internal.prod(shape) + 1, 1)
-    if dtype.type == numpy.bool_:
+    if dtype == '?':
         a = a % 2 == 0
     elif dtype.kind == 'c':
-        a = a + ([0, 1j, -1j] * (len(a) // 3 + 1))[0:len(a)]
+        a = a + a * 1j
     return xp.asarray(a.reshape(shape), dtype=dtype)
 
 
@@ -907,10 +907,10 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     dtype = numpy.dtype(dtype)
     size = internal.prod(shape)
     a = numpy.arange(size, 0, -1)
-    if dtype.type == numpy.bool_:
+    if dtype == '?':
         a = a % 2 == 0
     elif dtype.kind == 'c':
-        a = a + ([0, 1j, -1j] * (len(a) // 3 + 1))[0:len(a)]
+        a = a + a * 1j
     return xp.asarray(a.reshape(shape), dtype=dtype)
 
 
