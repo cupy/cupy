@@ -8,6 +8,7 @@ import weakref
 
 from cupy.cuda import memory_hook
 from cupy.cuda import runtime
+
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 

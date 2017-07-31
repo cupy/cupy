@@ -62,27 +62,27 @@ class TestMemoryHook(unittest.TestCase):
         self.assertEqual({'device_id': 0, 'mem_size': self.unit},
                          hook.alloc_preprocess_history[0])
         self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                         'mem_ptr': ptr1},
+                          'mem_ptr': ptr1},
                          hook.alloc_postprocess_history[0])
         self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
                          hook.malloc_preprocess_history[0])
         self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
-                         'mem_ptr': ptr1, 'pmem_id': pmem1},
+                          'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.malloc_postprocess_history[0])
         self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
                          hook.malloc_preprocess_history[1])
         self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
-                         'mem_ptr': ptr2, 'pmem_id': pmem2},
+                          'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.malloc_postprocess_history[1])
         self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                         'mem_ptr': ptr1, 'pmem_id': pmem1},
+                          'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.free_preprocess_history[0])
         self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                         'mem_ptr': ptr1, 'pmem_id': pmem1},
+                          'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.free_postprocess_history[0])
         self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                         'mem_ptr': ptr2, 'pmem_id': pmem2},
+                          'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.free_preprocess_history[1])
         self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                         'mem_ptr': ptr2, 'pmem_id': pmem2},
+                          'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.free_postprocess_history[1])

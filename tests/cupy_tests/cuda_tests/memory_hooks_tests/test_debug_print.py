@@ -23,10 +23,10 @@ class TestDebugPrintHook(unittest.TestCase):
         with cupy.cuda.Device(device_id):
             with self.hook:
                 mem = self.pool.malloc(size)
-                ptr1, pmem1 = (mem.ptr, id(mem.mem))
+                ptr1, pmem1 = mem.ptr, id(mem.mem)
                 del mem
                 mem = self.pool.malloc(size)
-                ptr2, pmem2 = (mem.ptr, id(mem.mem))
+                ptr2, pmem2 = mem.ptr, id(mem.mem)
                 del mem
         actual_lines = self.io.getvalue().splitlines()
 
