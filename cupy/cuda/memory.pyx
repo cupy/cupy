@@ -372,12 +372,18 @@ cdef class PooledMemory(Memory):
                 ptr = self.ptr
                 hooks_values = hooks.values()  # avoid six for performance
                 for hook in hooks_values:
-                    hook.free_preprocess(device_id, size, ptr, pmem_id)
+                    hook.free_preprocess(device_id=device_id,
+                                         mem_size=size,
+                                         mem_ptr=ptr,
+                                         pmem_id=pmem_id)
                 try:
                     pool.free(ptr, size)
                 finally:
                     for hook in hooks_values:
-                        hook.free_postprocess(device_id, size, ptr, pmem_id)
+                        hook.free_postprocess(device_id=device_id,
+                                              mem_size=size,
+                                              mem_ptr=ptr,
+                                              pmem_id=pmem_id)
             else:
                 pool.free(self.ptr, self.size)
         self.ptr = 0
@@ -471,13 +477,16 @@ cdef class SingleDeviceMemoryPool:
             device_id = self._device_id
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
-                hook.alloc_preprocess(device_id, rounded_size)
+                hook.alloc_preprocess(device_id=device_id,
+                                      mem_size=rounded_size)
             try:
                 memptr = self._allocator(rounded_size)
             finally:
                 for hook in hooks_values:
                     mem_ptr = memptr.ptr if memptr is not None else 0
-                    hook.alloc_postprocess(device_id, rounded_size, mem_ptr)
+                    hook.alloc_postprocess(device_id=device_id,
+                                           mem_size=rounded_size,
+                                           mem_ptr=mem_ptr)
             return memptr
         else:
             return self._allocator(rounded_size)
@@ -490,7 +499,9 @@ cdef class SingleDeviceMemoryPool:
             device_id = self._device_id
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
-                hook.malloc_preprocess(device_id, size, rounded_size)
+                hook.malloc_preprocess(device_id=device_id,
+                                       size=size,
+                                       mem_size=rounded_size)
             try:
                 memptr = self._malloc(rounded_size)
             finally:
@@ -501,8 +512,11 @@ cdef class SingleDeviceMemoryPool:
                     mem_ptr = memptr.ptr
                     pmem_id = id(memptr.mem)
                 for hook in hooks_values:
-                    hook.malloc_postprocess(device_id, size, rounded_size,
-                                            mem_ptr, pmem_id)
+                    hook.malloc_postprocess(device_id=device_id,
+                                            size=size,
+                                            mem_size=rounded_size,
+                                            mem_ptr=mem_ptr,
+                                            pmem_id=pmem_id)
             return memptr
         else:
             return self._malloc(rounded_size)

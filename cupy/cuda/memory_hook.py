@@ -69,20 +69,20 @@ class MemoryHook(object):
     def __exit__(self, *_):
         del get_memory_hooks()[self.name]
 
-    def malloc_preprocess(self, device_id, size, mem_size):
+    def malloc_preprocess(self, **kwargs):
         """Callback function invoked before retrieving memory from memory pool.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             size(int): Requested memory bytesize to allocate
             mem_size(int): Rounded memory bytesize to be allocated
         """
         pass
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
+    def malloc_postprocess(self, **kwargs):
         """Callback function invoked after retrieving memory from memory pool.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             size(int): Requested memory bytesize to allocate
             mem_size(int): Rounded memory bytesize allocated
@@ -93,19 +93,19 @@ class MemoryHook(object):
         """
         pass
 
-    def alloc_preprocess(self, device_id, mem_size):
+    def alloc_preprocess(self, **kwargs):
         """Callback function invoked before allocating memory from GPU device.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             mem_size(int): Rounded memory bytesize to be allocated
         """
         pass
 
-    def alloc_postprocess(self, device_id, mem_size, mem_ptr):
+    def alloc_postprocess(self, **kwargs):
         """Callback function invoked after allocating memory from GPU device.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             mem_size(int): Rounded memory bytesize allocated
             mem_ptr(int): Obtained memory pointer.
@@ -113,10 +113,10 @@ class MemoryHook(object):
         """
         pass
 
-    def free_preprocess(self, device_id, mem_size, mem_ptr, pmem):
+    def free_preprocess(self, **kwargs):
         """Callback function invoked before releasing memory to memory pool.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free
@@ -124,10 +124,10 @@ class MemoryHook(object):
         """
         pass
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem):
+    def free_postprocess(self, **kwargs):
         """Callback function invoked after releasing memory to memory pool.
 
-        Args:
+        Keyword Args:
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free

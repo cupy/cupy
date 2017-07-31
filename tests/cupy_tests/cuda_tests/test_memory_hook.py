@@ -17,29 +17,23 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.free_preprocess_history = []
         self.free_postprocess_history = []
 
-    def alloc_preprocess(self, device_id, mem_size):
-        self.alloc_preprocess_history.append(
-            (device_id, mem_size))
+    def alloc_preprocess(self, **kwargs):
+        self.alloc_preprocess_history.append(kwargs)
 
-    def alloc_postprocess(self, device_id, mem_size, mem_ptr):
-        self.alloc_postprocess_history.append(
-            (device_id, mem_size, mem_ptr))
+    def alloc_postprocess(self, **kwargs):
+        self.alloc_postprocess_history.append(kwargs)
 
-    def malloc_preprocess(self, device_id, size, mem_size):
-        self.malloc_preprocess_history.append(
-            (device_id, size, mem_size))
+    def malloc_preprocess(self, **kwargs):
+        self.malloc_preprocess_history.append(kwargs)
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
-        self.malloc_postprocess_history.append(
-            (device_id, size, mem_size, mem_ptr, pmem_id))
+    def malloc_postprocess(self, **kwargs):
+        self.malloc_postprocess_history.append(kwargs)
 
-    def free_preprocess(self, device_id, mem_size, mem_ptr, pmem_id):
-        self.free_preprocess_history.append(
-            (device_id, mem_size, mem_ptr, pmem_id))
+    def free_preprocess(self, **kwargs):
+        self.free_preprocess_history.append(kwargs)
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem_id):
-        self.free_postprocess_history.append(
-            (device_id, mem_size, mem_ptr, pmem_id))
+    def free_postprocess(self, **kwargs):
+        self.free_postprocess_history.append(kwargs)
 
 
 @testing.gpu
@@ -65,23 +59,30 @@ class TestMemoryHook(unittest.TestCase):
         self.assertEqual(2, len(hook.malloc_postprocess_history))
         self.assertEqual(2, len(hook.free_preprocess_history))
         self.assertEqual(2, len(hook.free_postprocess_history))
-        self.assertEqual((0, self.unit),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit},
                          hook.alloc_preprocess_history[0])
-        self.assertEqual((0, self.unit, ptr1),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
+                         'mem_ptr': ptr1},
                          hook.alloc_postprocess_history[0])
-        self.assertEqual((0, 1, self.unit),
+        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
                          hook.malloc_preprocess_history[0])
-        self.assertEqual((0, 1, self.unit, ptr1, pmem1),
+        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
+                         'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.malloc_postprocess_history[0])
-        self.assertEqual((0, 1, self.unit),
+        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
                          hook.malloc_preprocess_history[1])
-        self.assertEqual((0, 1, self.unit, ptr2, pmem2),
+        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
+                         'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.malloc_postprocess_history[1])
-        self.assertEqual((0, self.unit, ptr1, pmem1),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
+                         'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.free_preprocess_history[0])
-        self.assertEqual((0, self.unit, ptr1, pmem1),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
+                         'mem_ptr': ptr1, 'pmem_id': pmem1},
                          hook.free_postprocess_history[0])
-        self.assertEqual((0, self.unit, ptr2, pmem2),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
+                         'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.free_preprocess_history[1])
-        self.assertEqual((0, self.unit, ptr2, pmem2),
+        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
+                         'mem_ptr': ptr2, 'pmem_id': pmem2},
                          hook.free_postprocess_history[1])

@@ -56,20 +56,23 @@ class DebugPrintHook(memory_hook.MemoryHook):
         if self.flush:
             self.file.flush()
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
-        msg = '{"hook":"%s","device_id":%d,' \
-              '"size":%d,"mem_size":%d,"mem_ptr":%d,"pmem_id":"%s"}'
-        msg %= ('malloc', device_id, size, mem_size, mem_ptr, hex(pmem_id))
+    def malloc_postprocess(self, **kwargs):
+        msg = '{"hook":"%s","device_id":%d,"size":%d,' \
+              '"mem_size":%d,"mem_ptr":%d,"pmem_id":"%s"}'
+        msg %= ('malloc', kwargs['device_id'], kwargs['size'],
+                kwargs['mem_size'], kwargs['mem_ptr'], hex(kwargs['pmem_id']))
         self._print(msg)
 
-    def alloc_postprocess(self, device_id, mem_size, mem_ptr):
+    def alloc_postprocess(self, **kwargs):
         msg = '{"hook":"%s","device_id":%d,' \
               '"mem_size":%d,"mem_ptr":%d}'
-        msg %= ('alloc', device_id, mem_size, mem_ptr)
+        msg %= ('alloc', kwargs['device_id'],
+                kwargs['mem_size'], kwargs['mem_ptr'])
         self._print(msg)
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem_id):
+    def free_postprocess(self, **kwargs):
         msg = '{"hook":"%s","device_id":%d,' \
               '"mem_size":%d,"mem_ptr":%d,"pmem_id":"%s"}'
-        msg %= ('free', device_id, mem_size, mem_ptr, hex(pmem_id))
+        msg %= ('free', kwargs['device_id'],
+                kwargs['mem_size'], kwargs['mem_ptr'], hex(kwargs['pmem_id']))
         self._print(msg)
