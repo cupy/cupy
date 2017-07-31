@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -59,16 +60,28 @@ class TestRoll(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_roll_invalid_axis(self, xp, dtype):
+    def test_roll_invalid_axis1(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, 1, axis=2)
 
     @testing.for_all_dtypes()
+    def test_roll_invalid_axis2(self, dtype):
+        x = testing.shaped_arange((5, 2), cupy, dtype)
+        with self.assertRaises(cupy.core.AxisError):
+            return cupy.roll(x, 1, axis=2)
+
+    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_roll_invalid_negative_axis(self, xp, dtype):
+    def test_roll_invalid_negative_axis1(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, 1, axis=-3)
+
+    @testing.for_all_dtypes()
+    def test_roll_invalid_negative_axis2(self, dtype):
+        x = testing.shaped_arange((5, 2), cupy, dtype)
+        with self.assertRaises(cupy.core.AxisError):
+            return cupy.roll(x, 1, axis=-3)
 
 
 @testing.gpu
