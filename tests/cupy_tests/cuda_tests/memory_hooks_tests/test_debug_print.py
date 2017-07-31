@@ -22,26 +22,30 @@ class TestDebugPrintHook(unittest.TestCase):
         unit = 512
         with cupy.cuda.Device(device_id):
             with self.hook:
-                ptr1 = self.pool.malloc(size).mem.ptr
-                ptr2 = self.pool.malloc(size).mem.ptr
+                mem = self.pool.malloc(size)
+                ptr1, pmem1 = (mem.ptr, id(mem.mem))
+                del mem
+                mem = self.pool.malloc(size)
+                ptr2, pmem2 = (mem.ptr, id(mem.mem))
+                del mem
         actual_lines = self.io.getvalue().splitlines()
 
         expect = {'hook': 'alloc', 'device_id': device_id,
                   'mem_size': unit, 'mem_ptr': ptr1}
         self.assertEqual(expect, json.loads(actual_lines[0]))
 
-        expect = {'hook': 'malloc', 'device_id': device_id,
-                  'size': size, 'mem_size': unit, 'mem_ptr': ptr1}
+        expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
+                  'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
         self.assertEqual(expect, json.loads(actual_lines[1]))
 
         expect = {'hook': 'free', 'device_id': device_id,
-                  'mem_size': unit, 'mem_ptr': ptr1}
+                  'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
         self.assertEqual(expect, json.loads(actual_lines[2]))
 
-        expect = {'hook': 'malloc', 'device_id': device_id,
-                  'size': size, 'mem_size': unit, 'mem_ptr': ptr2}
+        expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
+                  'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
         self.assertEqual(expect, json.loads(actual_lines[3]))
 
         expect = {'hook': 'free', 'device_id': device_id,
-                  'mem_size': unit, 'mem_ptr': ptr2}
+                  'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
         self.assertEqual(expect, json.loads(actual_lines[4]))

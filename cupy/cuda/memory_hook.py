@@ -79,7 +79,7 @@ class MemoryHook(object):
         """
         pass
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr):
+    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
         """Callback function invoked after retrieving memory from memory pool.
 
         Args:
@@ -87,6 +87,8 @@ class MemoryHook(object):
             size(int): Requested memory bytesize to allocate
             mem_size(int): Rounded memory bytesize allocated
             mem_ptr(int): Obtained memory pointer.
+               0 if an error occurred in ``malloc``.
+            pmem_id(int)): PooledMemory object ID.
                0 if an error occurred in ``malloc``.
         """
         pass
@@ -111,22 +113,24 @@ class MemoryHook(object):
         """
         pass
 
-    def free_preprocess(self, device_id, mem_size, mem_ptr):
+    def free_preprocess(self, device_id, mem_size, mem_ptr, pmem):
         """Callback function invoked before releasing memory to memory pool.
 
         Args:
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free
+            pmem_id(int)): PooledMemory object ID.
         """
         pass
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr):
+    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem):
         """Callback function invoked after releasing memory to memory pool.
 
         Args:
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free
+            pmem_id(int)): PooledMemory object ID.
         """
         pass

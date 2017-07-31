@@ -26,15 +26,16 @@ class DebugPrintHook(memory_hook.MemoryHook):
         Output example::
 
             {"hook":"alloc","device_id":0,"mem_size":512,"mem_ptr":150496608256}
-            {"hook":"malloc","device_id":0,"size":24,"mem_size":512,"mem_ptr":150496608256}
-            {"hook":"free","device_id":0,"mem_size":512,"mem_ptr":150496608256}
+            {"hook":"malloc","device_id":0,"size":24,"mem_size":512,"mem_ptr":150496608256,"pmem_id":"0x7f39200c5278"}
+            {"hook":"free","device_id":0,"mem_size":512,"mem_ptr":150496608256,"pmem_id":"0x7f39200c5278"}
 
         where the output format is JSONL (JSON Lines) and
         ``hook`` is the name of hook point, and
         ``device_id`` is the CUDA Device ID, and
         ``size`` is the requested memory size to allocate, and
         ``mem_size`` is the rounded memory size to be allocated, and
-        ``mem_ptr`` is the memory pointer.
+        ``mem_ptr`` is the memory pointer, and
+        ``pmem_id`` is cupy.cuda.memory.PooledMemory object ID.
 
     Attributes:
         file: Output file_like object that that redirect to.
@@ -55,10 +56,10 @@ class DebugPrintHook(memory_hook.MemoryHook):
         if self.flush:
             self.file.flush()
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr):
+    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
         msg = '{"hook":"%s","device_id":%d,' \
-              '"size":%d,"mem_size":%d,"mem_ptr":%d}'
-        msg %= ('malloc', device_id, size, mem_size, mem_ptr)
+              '"size":%d,"mem_size":%d,"mem_ptr":%d,"pmem_id":"%s"}'
+        msg %= ('malloc', device_id, size, mem_size, mem_ptr, hex(pmem_id))
         self._print(msg)
 
     def alloc_postprocess(self, device_id, mem_size, mem_ptr):
@@ -67,8 +68,8 @@ class DebugPrintHook(memory_hook.MemoryHook):
         msg %= ('alloc', device_id, mem_size, mem_ptr)
         self._print(msg)
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr):
+    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem_id):
         msg = '{"hook":"%s","device_id":%d,' \
-              '"mem_size":%d,"mem_ptr":%d}'
-        msg %= ('free', device_id, mem_size, mem_ptr)
+              '"mem_size":%d,"mem_ptr":%d,"pmem_id":"%s"}'
+        msg %= ('free', device_id, mem_size, mem_ptr, hex(pmem_id))
         self._print(msg)

@@ -29,17 +29,17 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.malloc_preprocess_history.append(
             (device_id, size, mem_size))
 
-    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr):
+    def malloc_postprocess(self, device_id, size, mem_size, mem_ptr, pmem_id):
         self.malloc_postprocess_history.append(
-            (device_id, size, mem_size, mem_ptr))
+            (device_id, size, mem_size, mem_ptr, pmem_id))
 
-    def free_preprocess(self, device_id, mem_size, mem_ptr):
+    def free_preprocess(self, device_id, mem_size, mem_ptr, pmem_id):
         self.free_preprocess_history.append(
-            (device_id, mem_size, mem_ptr))
+            (device_id, mem_size, mem_ptr, pmem_id))
 
-    def free_postprocess(self, device_id, mem_size, mem_ptr):
+    def free_postprocess(self, device_id, mem_size, mem_ptr, pmem_id):
         self.free_postprocess_history.append(
-            (device_id, mem_size, mem_ptr))
+            (device_id, mem_size, mem_ptr, pmem_id))
 
 
 @testing.gpu
@@ -53,8 +53,12 @@ class TestMemoryHook(unittest.TestCase):
         hook = SimpleMemoryHook()
         with cupy.cuda.Device(0):
             with hook:
-                ptr1 = self.pool.malloc(1).mem.ptr
-                ptr2 = self.pool.malloc(1).mem.ptr
+                mem = self.pool.malloc(1)
+                ptr1, pmem1 = (mem.ptr, id(mem.mem))
+                del mem
+                mem = self.pool.malloc(1)
+                ptr2, pmem2 = (mem.ptr, id(mem.mem))
+                del mem
         self.assertEqual(1, len(hook.alloc_preprocess_history))
         self.assertEqual(1, len(hook.alloc_postprocess_history))
         self.assertEqual(2, len(hook.malloc_preprocess_history))
@@ -67,17 +71,17 @@ class TestMemoryHook(unittest.TestCase):
                          hook.alloc_postprocess_history[0])
         self.assertEqual((0, 1, self.unit),
                          hook.malloc_preprocess_history[0])
-        self.assertEqual((0, 1, self.unit, ptr1),
+        self.assertEqual((0, 1, self.unit, ptr1, pmem1),
                          hook.malloc_postprocess_history[0])
         self.assertEqual((0, 1, self.unit),
                          hook.malloc_preprocess_history[1])
-        self.assertEqual((0, 1, self.unit, ptr2),
+        self.assertEqual((0, 1, self.unit, ptr2, pmem2),
                          hook.malloc_postprocess_history[1])
-        self.assertEqual((0, self.unit, ptr1),
+        self.assertEqual((0, self.unit, ptr1, pmem1),
                          hook.free_preprocess_history[0])
-        self.assertEqual((0, self.unit, ptr1),
+        self.assertEqual((0, self.unit, ptr1, pmem1),
                          hook.free_postprocess_history[0])
-        self.assertEqual((0, self.unit, ptr2),
+        self.assertEqual((0, self.unit, ptr2, pmem2),
                          hook.free_preprocess_history[1])
-        self.assertEqual((0, self.unit, ptr2),
+        self.assertEqual((0, self.unit, ptr2, pmem2),
                          hook.free_postprocess_history[1])

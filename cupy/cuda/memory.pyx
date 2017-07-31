@@ -8,7 +8,6 @@ import weakref
 
 from cupy.cuda import memory_hook
 from cupy.cuda import runtime
-
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
@@ -365,7 +364,22 @@ cdef class PooledMemory(Memory):
         """
         pool = self.pool()
         if pool and self.ptr != 0:
-            pool.free(self.ptr, self.size)
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                device_id = self.device.id
+                pmem_id = id(self)
+                size = self.size
+                ptr = self.ptr
+                hooks_values = hooks.values()  # avoid six for performance
+                for hook in hooks_values:
+                    hook.free_preprocess(device_id, size, ptr, pmem_id)
+                try:
+                    pool.free(ptr, size)
+                finally:
+                    for hook in hooks_values:
+                        hook.free_postprocess(device_id, size, ptr, pmem_id)
+            else:
+                pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
         self.device = None
@@ -388,7 +402,7 @@ cdef class SingleDeviceMemoryPool:
         self._allocation_unit_size = 512
         self._initial_bins_size = 1024
         self._in_use = {}
-        self._free_bins = [[] for i in range(self._initial_bins_size)]
+        self._free = [[] for i in range(self._initial_bins_size)]
         self._allocator = allocator
         self._weakref = weakref.ref(self)
         self._device_id = device.get_device_id()
@@ -399,18 +413,18 @@ cdef class SingleDeviceMemoryPool:
         return (((size + unit - 1) // unit) * unit)
 
     cpdef Py_ssize_t _bin_index_from_size(self, Py_ssize_t size):
-        """Get appropriate _free_bins index from the memory size"""
+        """Get appropriate bins (_free) index from the memory size"""
         unit = self._allocation_unit_size
         return (size - 1) // unit
 
     cpdef void _grow_free_if_necessary(self, Py_ssize_t size):
         """Extend bins (_free) size if necessary"""
-        current_size = len(self._free_bins)
+        current_size = len(self._free)
         if current_size >= size:
             return
         growth_size = size - current_size
         growth = [[] for i in range(growth_size)]
-        self._free_bins.extend(growth)
+        self._free.extend(growth)
 
     cpdef tuple _split(self, Chunk chunk, Py_ssize_t size):
         """Split contiguous block of a larger allocation"""
@@ -432,7 +446,7 @@ cdef class SingleDeviceMemoryPool:
         head.next = remaining
         remaining.prev = head
         index = self._bin_index_from_size(remaining.size)
-        self._free_bins[index].append(remaining)
+        self._free[index].append(remaining)
         return (head, remaining)
 
     cpdef Chunk _merge(self, Chunk head, Chunk remaining):
@@ -480,28 +494,18 @@ cdef class SingleDeviceMemoryPool:
             try:
                 memptr = self._malloc(rounded_size)
             finally:
+                if memptr is None:
+                    mem_ptr = 0
+                    pmem_id = 0
+                else:
+                    mem_ptr = memptr.ptr
+                    pmem_id = id(memptr.mem)
                 for hook in hooks_values:
-                    mem_ptr = memptr.ptr if memptr is not None else 0
-                    hook.malloc_postprocess(device_id, size,
-                                            rounded_size, mem_ptr)
+                    hook.malloc_postprocess(device_id, size, rounded_size,
+                                            mem_ptr, pmem_id)
             return memptr
         else:
             return self._malloc(rounded_size)
-
-    cpdef free(self, size_t ptr, Py_ssize_t size):
-        hooks = memory_hook.get_memory_hooks()
-        if hooks:
-            device_id = self._device_id
-            hooks_values = hooks.values()  # avoid six for performance
-            for hook in hooks_values:
-                hook.free_preprocess(device_id, size, ptr)
-            try:
-                self._free(ptr, size)
-            finally:
-                for hook in hooks_values:
-                    hook.free_postprocess(device_id, size, ptr)
-        else:
-            return self._free(ptr, size)
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef list free_list = None
@@ -514,9 +518,9 @@ cdef class SingleDeviceMemoryPool:
 
         index = self._bin_index_from_size(size)
         # find best-fit, or a smallest larger allocation
-        length = len(self._free_bins)
+        length = len(self._free)
         for i in range(index, length):
-            free_list = self._free_bins[i]
+            free_list = self._free[i]
             if free_list:
                 chunk = free_list.pop()
                 chunk, _remaining = self._split(chunk, size)
@@ -551,7 +555,7 @@ cdef class SingleDeviceMemoryPool:
         pmem = PooledMemory(chunk, self._weakref)
         return MemoryPointer(pmem, 0)
 
-    cpdef _free(self, size_t ptr, Py_ssize_t size):
+    cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef Chunk chunk
         cdef int index
 
@@ -562,23 +566,23 @@ cdef class SingleDeviceMemoryPool:
         chunk.in_use = False
         if chunk.next and not chunk.next.in_use:
             index = self._bin_index_from_size(chunk.next.size)
-            self._free_bins[index].remove(chunk.next)
+            self._free[index].remove(chunk.next)
             chunk = self._merge(chunk, chunk.next)
 
         if chunk.prev and not chunk.prev.in_use:
             index = self._bin_index_from_size(chunk.prev.size)
-            self._free_bins[index].remove(chunk.prev)
+            self._free[index].remove(chunk.prev)
             chunk = self._merge(chunk.prev, chunk)
 
         index = self._bin_index_from_size(chunk.size)
         self._grow_free_if_necessary(index + 1)
-        self._free_bins[index].append(chunk)
+        self._free[index].append(chunk)
 
     cpdef free_all_blocks(self):
         # Free all **non-split** chunks
         cdef list free_list
         cdef Chunk chunk
-        for free_list in self._free_bins:
+        for free_list in self._free:
             for chunk in free_list:
                 if not chunk.prev and not chunk.next:
                     free_list.remove(chunk)
@@ -591,7 +595,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
-        for v in self._free_bins:
+        for v in self._free:
             n += len(v)
         return n
 
@@ -603,7 +607,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free_bytes(self):
         cdef Py_ssize_t size = 0
-        for free_list in self._free_bins:
+        for free_list in self._free:
             for chunk in free_list:
                 size += chunk.size
         return size
