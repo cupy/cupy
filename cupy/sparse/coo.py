@@ -279,6 +279,7 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.nnz == 0:
             return csr.csr_matrix(self.shape, dtype=self.dtype)
+        self.sum_duplicates()
         # copy is ignored because coosort method breaks an original.
         x = self.copy()
         cusparse.coosort(x)

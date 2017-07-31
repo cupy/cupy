@@ -264,7 +264,9 @@ class TestCooMatrixInit(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'make_method': ['_make', '_make_unordered', '_make_empty', '_make_shape'],
+    'make_method': [
+        '_make', '_make_unordered', '_make_empty', '_make_duplicate',
+        '_make_shape'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -303,6 +305,13 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCooMatrixSumDuplicates(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
