@@ -65,7 +65,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     Args:
         a (cupy.cusparse.csr_matrix): Matrix A.
         x (cupy.ndarray): Vector x.
-        y (cupy.ndarray or None): Vector y. It must be contiguous.
+        y (cupy.ndarray or None): Vector y. It must be F-contiguous.
         alpha (float): Coefficient for x.
         beta (float): Coefficient for y.
         transa (bool): If ``True``, transpose of ``A`` is used.
