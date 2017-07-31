@@ -25,7 +25,7 @@ CuPy is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use CuPy, thou
 
 Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+
-- NumPy 1.9, 1.10, 1.11, 1.12
+- NumPy 1.9, 1.10, 1.11, 1.12, 1.13
 - Six 1.9
 
 Requirements for some features:
@@ -98,49 +98,7 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 
 ## Development
 
-Build CuPy from the source code as:
-
-```
-python setup.py develop
-```
-
-Run all tests as:
-
-```
-python -m unittest discover test "test_*.py"
-```
-
-Run a specific test file, or a specific test method respectively:
-
-```
-python -m unittest tests/cupy_tests/cuda_tests/test_memory.py
-python -m unittest tests.cupy_tests.cuda_tests.test_memory.TestMemoryPointer.test_int
-```
-
-### Rebuild pxd files
-
-Currently, we have problems that cython does not rebuild pxd files well with `python setup.py develop`.
-
-Clean `*.cpp` and `*.so` files once with:
-
-```
-git clean -fdx
-```
-
-Then, run `python setup.py develop` again.
-
-### ccache
-
-We do not officially support, but some of the developer members use [ccache](https://ccache.samba.org/) to boost compilation time.
-
-For example, on Ubuntu, set up as followings:
-
-```
-sudo apt-get install ccache
-export PATH=/usr/lib/ccache:$PATH
-```
-
-See [ccache](https://ccache.samba.org/) for details.
+Please see [the documentation for developers](https://docs-cupy.chainer.org/en/stable/developers.html).
 
 ## More information
 

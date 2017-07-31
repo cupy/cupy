@@ -114,19 +114,19 @@ class spmatrix(object):
         return -self.tocsr()
 
     def __iadd__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __isub__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __imul__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __idiv__(self, other):
         return self.__itruediv__(other)
 
     def __itruediv__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __pow__(self, other):
         return self.tocsr().__pow__(other)
