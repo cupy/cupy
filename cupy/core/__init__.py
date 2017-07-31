@@ -9,6 +9,7 @@ from cupy.core.core import array  # NOQA
 from cupy.core.core import array_split  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
 from cupy.core.core import asfortranarray  # NOQA
+from cupy.core.core import AxisError  # NOQA
 from cupy.core.core import bitwise_and  # NOQA
 from cupy.core.core import bitwise_or  # NOQA
 from cupy.core.core import bitwise_xor  # NOQA
