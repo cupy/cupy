@@ -33,6 +33,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if shape is None:
                 shape = arg1.shape
 
+            has_canonical_format = x.has_canonical_format
         elif util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
@@ -42,6 +43,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
+            has_canonical_format = True
 
         elif scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupy.sparse
@@ -65,6 +67,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
+            has_canonical_format = False
+
         elif base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
@@ -76,6 +80,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             copy = False
             if shape is None:
                 shape = arg1.shape
+
+            has_canonical_format = True
 
         else:
             raise ValueError(
@@ -105,6 +111,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
+        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data):
         return self.__class__(
@@ -274,6 +281,10 @@ __device__ double atomicAdd(double* address, double val) {
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
+    @property
+    def has_canonical_format(self):
+        return self._has_canonical_format
+
     def get_shape(self):
         """Returns the shape of the matrix.
 
@@ -298,3 +309,14 @@ __device__ double atomicAdd(double* address, double val) {
             raise ValueError
 
     # TODO(unno): Implement sorted_indices
+
+    def sum_duplicates(self):
+        if self._has_canonical_format:
+            return
+        if self.data.size == 0:
+            self._has_canonical_format = True
+            return
+        coo = self.tocoo()
+        coo.sum_duplicates()
+        self.__init__(coo.asformat(self.format))
+        self._has_canonical_format = True

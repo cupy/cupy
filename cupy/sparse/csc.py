@@ -87,8 +87,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """Sorts the indices of the matrix in place."""
         cusparse.cscsort(self)
 
-    # TODO(unno): Implement sum_duplicates
-
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
 
@@ -106,6 +104,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         if order is None:
             order = 'C'
 
+        if self.nnz == 0:
+            return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
+        
+        self.sum_duplicates()
         # csc2dense and csr2dense returns F-contiguous array.
         if order == 'C':
             # To return C-contiguous array, it uses transpose.
@@ -116,6 +118,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             raise TypeError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
+        self.sum_duplicates()
+        other.sum_duplicates()
         return cusparse.csrgeam(self.T, other.tocsc().T, alpha, beta).T
 
     # TODO(unno): Implement tobsr
