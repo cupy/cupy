@@ -1,4 +1,5 @@
 import collections
+import re
 import string
 
 import numpy
@@ -181,23 +182,14 @@ def einsum(*operands):
         else:
             converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
-    pos = subscripts.find('-')
-    if pos == len(subscripts) - 1:
-        raise ValueError('einstein sum subscript string does not contain '
-                         'proper \'->\' output specified')
-    if pos != -1 and subscripts[pos + 1] != '>':
+    match = re.fullmatch('([a-zA-Z,]+)(->[a-zA-Z]*)?', subscripts)
+    if not match:
         raise ValueError('einstein sum subscript string does not contain '
                          'proper \'->\' output specified')
 
-    arrow_pos = subscripts.find('->')
-    if arrow_pos == -1:
-        input_subscripts = subscripts
-        label_list = list(input_subscripts.replace(',', ''))
-        out_label_set = set(label_list) - get_dummy_labels(label_list)
-        output_subscript = ''.join(sorted(list(out_label_set)))
-    else:
-        input_subscripts = subscripts[:arrow_pos]
-        output_subscript = subscripts[arrow_pos + 2:]
+    input_subscripts = match.group(1)
+    if match.group(2):
+        output_subscript = match.group(2)[2:]
 
         irregular_chars = set(output_subscript) - set(input_subscripts)
         if irregular_chars:
@@ -212,6 +204,10 @@ def einsum(*operands):
                 continue
             raise ValueError('einstein sum subscripts string includes output '
                              'subscript \'{}\' multiple times'.format(key))
+    else:
+        label_list = list(input_subscripts.replace(',', ''))
+        out_label_set = set(label_list) - get_dummy_labels(label_list)
+        output_subscript = ''.join(sorted(list(out_label_set)))
 
     input_subscripts_list = input_subscripts.split(',')
     if len(input_subscripts_list) < len(converted_inputs):
