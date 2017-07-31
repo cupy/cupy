@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+from cupy import core
 
 
 def flip(a, axis):
@@ -102,7 +101,7 @@ def roll(a, shift, axis=None):
         if axis < 0:
             axis += a.ndim
         if not 0 <= axis < a.ndim:
-            raise numpy.AxisError(
+            raise core.AxisError(
                 'axis must be >= %d and < %d' % (-a.ndim, a.ndim))
         size = a.shape[axis]
         if size == 0:
