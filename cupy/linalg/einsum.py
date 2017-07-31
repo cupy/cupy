@@ -2,6 +2,7 @@ import collections
 import string
 
 import numpy
+import six
 
 import cupy
 
@@ -27,7 +28,7 @@ class SingleViewCalculator(object):
     def __call__(self):
         self.result = self.ioperand
         count_dict = collections.Counter(self.subscript)
-        for label in set(self.subscript):
+        for label in self.labels:
             if count_dict[label] == 1:
                 continue
             axes_to_diag = []
@@ -133,7 +134,7 @@ def einsum(*operands):
     """Evaluates the Einstein summation convention on the operands.
 
     Using the Einstein summation convention, many common multi-dimensional
-    array operations can be represented in a simple fashion.  This function
+    array operations can be represented in a simple fashion. This function
     provides a way to compute such summations.
 
     Args:
@@ -150,26 +151,27 @@ def einsum(*operands):
     # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting', 'optimize'
 
     if not operands:
-        raise ValueError("must specify the einstein sum subscripts string and "
-                         "at least one operand, or at least one operand and "
-                         "its corresponding subscripts list")
+        raise ValueError('must specify the einstein sum subscripts string and '
+                         'at least one operand, or at least one operand and '
+                         'its corresponding subscripts list')
 
     subscripts = operands[0]
     ioperands = operands[1:]
 
     if not isinstance(subscripts, str):
-        raise TypeError("Current cupy einsum support only string subscripts")
+        raise TypeError('Current cupy einsum support only string subscripts')
 
     # TODO(fukatani): Support '...'
     if '.' in subscripts:
-        raise TypeError("Current cupy einsum does not support '...' ellipsis")
+        raise TypeError('Current cupy einsum does not support \'...\' '
+                        'ellipsis')
 
     subscripts = subscripts.replace(' ', '')
     irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,')
     if irregular_chars:
         pickup = list(irregular_chars)[0]
-        raise ValueError("invalid subscript '{}' in einstein sum subscripts "
-                         "string, subscripts must be letters".format(pickup))
+        raise ValueError('invalid subscript \'{}\' in einstein sum subscripts '
+                         'string, subscripts must be letters'.format(pickup))
 
     converted_inputs = []
     dtype = numpy.result_type(*ioperands)
@@ -180,9 +182,12 @@ def einsum(*operands):
             converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
     pos = subscripts.find('-')
+    if pos == len(subscripts) - 1:
+        raise ValueError('einstein sum subscript string does not contain '
+                         'proper \'->\' output specified')
     if pos != -1 and subscripts[pos + 1] != '>':
-        raise ValueError("einstein sum subscript string does not contain "
-                         "proper '->' output specified")
+        raise ValueError('einstein sum subscript string does not contain '
+                         'proper \'->\' output specified')
 
     arrow_pos = subscripts.find('->')
     if arrow_pos == -1:
@@ -197,36 +202,36 @@ def einsum(*operands):
         irregular_chars = set(output_subscript) - set(input_subscripts)
         if irregular_chars:
             pickup = list(irregular_chars)[0]
-            raise ValueError("einstein sum subscripts string included output "
-                             "subscript '{}' which never appeared in an input".
-                             format(pickup))
+            raise ValueError('einstein sum subscripts string included output '
+                             'subscript \'{}\' which never appeared in an '
+                             'input'.format(pickup))
 
         count_dict = collections.Counter(output_subscript)
         for key in count_dict:
             if count_dict[key] == 1:
                 continue
-            raise ValueError("einstein sum subscripts string includes output "
-                             "subscript '{}' multiple times".format(key))
+            raise ValueError('einstein sum subscripts string includes output '
+                             'subscript \'{}\' multiple times'.format(key))
 
     input_subscripts_list = input_subscripts.split(',')
     if len(input_subscripts_list) < len(converted_inputs):
-        raise ValueError("fewer operands provided to einstein sum function "
-                         "than specified in the subscripts string")
+        raise ValueError('fewer operands provided to einstein sum function '
+                         'than specified in the subscripts string')
     if len(input_subscripts_list) > len(converted_inputs):
-        raise ValueError("more operands provided to einstein sum function "
-                         "than specified in the subscripts string")
+        raise ValueError('more operands provided to einstein sum function '
+                         'than specified in the subscripts string')
 
     i_parsers = []
-    for i in range(len(input_subscripts_list)):
+    for i in six.moves.range(len(input_subscripts_list)):
         subscript = input_subscripts_list[i]
         ioperand = converted_inputs[i]
         if len(subscript) > ioperand.ndim:
-            raise ValueError("einstein sum subscripts string contains too "
-                             "many subscripts for operand {}".format(i))
+            raise ValueError('einstein sum subscripts string contains too '
+                             'many subscripts for operand {}'.format(i))
         if len(subscript) < ioperand.ndim:
-            raise ValueError("operand has more dimensions than subscripts"
-                             " given in einstein sum, but no '...' ellipsis"
-                             " provided to broadcast the extra dimensions.")
+            raise ValueError('operand has more dimensions than subscripts'
+                             ' given in einstein sum, but no \'...\' ellipsis'
+                             ' provided to broadcast the extra dimensions.')
 
         calc = SingleViewCalculator(ioperand, subscript)
         calc()
