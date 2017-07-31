@@ -224,7 +224,6 @@ __device__ double atomicAdd(double* address, double val) {
             major_stop = major_size
         if major_step is None:
             major_step = 1
-        print(major_start, major_stop, major_size)
         if major_start < 0:
             major_start += major_size
         if major_stop < 0:
