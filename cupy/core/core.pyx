@@ -805,7 +805,44 @@ cdef class ndarray:
 
         return idx_array
 
-    # TODO(okuta): Implement partition
+    def partition(self, kth, axis=-1):
+        """Partially sorts an array
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
+
+        .. note::
+           For its implementation reason, `cupy.ndarray.partition` fully sorts
+           the given array as `cupy.ndarray.sort` does. It also does not
+           support ``kind`` and ``order`` parameters that ``numpy.partition``
+           supports.
+
+        .. seealso::
+            :func: `cupy.partition` for full documentation,
+            :meth:`numpy.ndarray.partition`
+
+        """
+        ndim = self.ndim
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
+        len = self.shape[axis]
+        kth = (kth,) if isinstance(kth, int) else kth
+        for k in kth:
+            if k < 0:
+                k += len
+            if not (0 <= k < len):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, len))
+
+        # kth is ignored.
+        self.sort(axis=axis)
+
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
 
