@@ -556,12 +556,7 @@ cdef class ndarray:
 
         """
         # TODO(beam2d): Support ordering option
-        if self._c_contiguous:
-            newarray = self.copy()
-        else:
-            newarray = ndarray(self.shape, self.dtype)
-            elementwise_copy(self, newarray)
-
+        newarray = self.copy(order='C')
         newarray._shape.assign(<Py_ssize_t>1, self.size)
         newarray._strides.assign(<Py_ssize_t>1,
                                  <Py_ssize_t>self.itemsize)
