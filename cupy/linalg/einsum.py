@@ -8,7 +8,7 @@ import six
 import cupy
 
 
-class SingleViewCalculator(object):
+def calc_single_view(ioperand, subscript):
     """Calculate 'ii->i' by cupy.diagonal if needed.
 
     Args:
@@ -18,32 +18,28 @@ class SingleViewCalculator(object):
             more than once, calculate diagonal for those axes.
     """
 
-    def __init__(self, ioperand, subscript):
-        self.subscript = subscript
-        self.ioperand = ioperand
-        self.labels = set(self.subscript)
-        self.label_to_axis = collections.defaultdict(list)
-        for i, label in enumerate(subscript):
-            self.label_to_axis[label].append(i)
+    labels = set(subscript)
+    label_to_axis = collections.defaultdict(list)
+    for i, label in enumerate(subscript):
+        label_to_axis[label].append(i)
 
-    def __call__(self):
-        self.result = self.ioperand
-        count_dict = collections.Counter(self.subscript)
-        for label in self.labels:
-            if count_dict[label] == 1:
-                continue
-            axes_to_diag = []
-            for i, char in enumerate(self.subscript):
-                if char == label:
-                    axes_to_diag.append(i)
-            for axis in reversed(axes_to_diag[1:]):
-                self.result = self.result.diagonal(0, axis, axes_to_diag[0])
-                self.result = cupy.rollaxis(self.result, -1, axes_to_diag[0])
-                self.subscript = self.subscript[:axis] + \
-                    self.subscript[axis + 1:]
+    result = ioperand
+    count_dict = collections.Counter(subscript)
+    for label in labels:
+        if count_dict[label] == 1:
+            continue
+        axes_to_diag = []
+        for i, char in enumerate(subscript):
+            if char == label:
+                axes_to_diag.append(i)
+        for axis in reversed(axes_to_diag[1:]):
+            result = result.diagonal(0, axis, axes_to_diag[0])
+            result = cupy.rollaxis(result, -1, axes_to_diag[0])
+            subscript = subscript[:axis] + subscript[axis + 1:]
+    return result, subscript
 
 
-class SummedViewCalculator(object):
+def calc_summed_view(ioperand, input_subscript, output_subscript):
     """Calculate 'i->' by cupy.sum if needed.
 
     Args:
@@ -55,26 +51,25 @@ class SummedViewCalculator(object):
             summed.
     """
 
-    def __init__(self, ioperand, input_subscript, output_subscript):
-        self.ioperand = ioperand
-        self.subscript = input_subscript
-        self.label_to_summed = set(input_subscript) - set(output_subscript)
-        self.axes_to_summed = []
-        for i, label in enumerate(input_subscript):
-            if label in self.label_to_summed:
-                self.axes_to_summed.append(i)
+    subscript = input_subscript
+    label_to_summed = set(input_subscript) - set(output_subscript)
+    axes_to_summed = []
+    for i, label in enumerate(input_subscript):
+        if label in label_to_summed:
+            axes_to_summed.append(i)
 
-    def __call__(self):
-        if self.axes_to_summed:
-            self.result = self.ioperand.sum(axis=tuple(self.axes_to_summed)). \
-                astype(self.ioperand)
-        else:
-            self.result = self.ioperand
-        for label in self.label_to_summed:
-            self.subscript = self.subscript.replace(label, '')
+    if axes_to_summed:
+        result = ioperand.sum(axis=tuple(axes_to_summed)). \
+            astype(ioperand)
+    else:
+        result = ioperand
+    for label in label_to_summed:
+        subscript = subscript.replace(label, '')
+
+    return result, subscript
 
 
-class TransposedViewCalculator(object):
+def calc_transposed_view(ioperand, input_subscript, output_subscript):
     """Calculate 'ij->ji' by cupy.transpose if needed.
 
     Args:
@@ -85,24 +80,19 @@ class TransposedViewCalculator(object):
             match output, ``operand`` is transposed so that it matches.
     """
 
-    def __init__(self, ioperand, input_subscript, output_subscript):
-        assert len(input_subscript) == len(output_subscript)
-        assert set(input_subscript) == set(output_subscript)
-        self.ioperand = ioperand
-        self.input_subscript = input_subscript
-        self.output_subscript = output_subscript
+    assert len(input_subscript) == len(output_subscript)
+    assert set(input_subscript) == set(output_subscript)
 
-    def __call__(self):
-        transpose_orders = []
-        for label in self.output_subscript:
-            transpose_orders.append(self.input_subscript.find(label))
-        if transpose_orders == sorted(transpose_orders):
-            self.result = self.ioperand
-        else:
-            self.result = self.ioperand.transpose(transpose_orders)
+    transpose_orders = []
+    for label in output_subscript:
+        transpose_orders.append(input_subscript.find(label))
+    if transpose_orders == sorted(transpose_orders):
+        return ioperand
+    else:
+        return ioperand.transpose(transpose_orders)
 
 
-class CombinedViewCalculator(object):
+def calc_combined_view(ioperands, subscripts):
     """Calculate 'i,j->ij' by cupy.tensordot.
 
     Args:
@@ -110,16 +100,11 @@ class CombinedViewCalculator(object):
         subscripts (sequence of str): Specifies the subscripts.
     """
 
-    def __init__(self, ioperands, subscripts):
-        self.ioperands = ioperands
-        self.subscripts = subscripts
-
-    def __call__(self):
-        self.result = self.ioperands[0]
-        for ioperand in self.ioperands[1:]:
-            # TODO(fukatani): add up at here if enable.
-            self.result = cupy.tensordot(self.result, ioperand, axes=0)
-        self.subscript = ''.join(self.subscripts)
+    result = ioperands[0]
+    for ioperand in ioperands[1:]:
+        # TODO(fukatani): add up at here if enable.
+        result = cupy.tensordot(result, ioperand, axes=0)
+    return result, ''.join(subscripts)
 
 
 def get_dummy_labels(label_list):
@@ -217,7 +202,7 @@ def einsum(*operands):
         raise ValueError('more operands provided to einstein sum function '
                          'than specified in the subscripts string')
 
-    i_parsers = []
+    single_views = []
     for i in six.moves.range(len(input_subscripts_list)):
         subscript = input_subscripts_list[i]
         ioperand = converted_inputs[i]
@@ -229,24 +214,16 @@ def einsum(*operands):
                              ' given in einstein sum, but no \'...\' ellipsis'
                              ' provided to broadcast the extra dimensions.')
 
-        calc = SingleViewCalculator(ioperand, subscript)
-        calc()
-        i_parsers.append(calc)
+        result, subscript = calc_single_view(ioperand, subscript)
+        single_views.append((result, subscript))
 
     if len(converted_inputs) >= 2:
-        i_subscripts = [i_parser.subscript for i_parser in i_parsers]
-        i_results = [i_parser.result for i_parser in i_parsers]
-        calc = CombinedViewCalculator(i_results, i_subscripts)
-        calc()
-        calc = SingleViewCalculator(calc.result, calc.subscript)
-        calc()
+        results = [view[0] for view in single_views]
+        subscripts = [view[1] for view in single_views]
+        result, subscript = calc_combined_view(results, subscripts)
+        result, subscript = calc_single_view(result, subscript)
     else:
-        calc = i_parsers[0]
+        result, subscript = single_views[0]
 
-    calc = SummedViewCalculator(calc.result, calc.subscript,
-                                output_subscript)
-    calc()
-    calc = TransposedViewCalculator(calc.result, calc.subscript,
-                                    output_subscript)
-    calc()
-    return calc.result
+    result, subscript = calc_summed_view(result, subscript, output_subscript)
+    return calc_transposed_view(result, subscript, output_subscript)
