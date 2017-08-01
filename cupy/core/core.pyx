@@ -556,12 +556,7 @@ cdef class ndarray:
 
         """
         # TODO(beam2d): Support ordering option
-        if self._c_contiguous:
-            newarray = self.copy()
-        else:
-            newarray = ndarray(self.shape, self.dtype)
-            elementwise_copy(self, newarray)
-
+        newarray = self.copy(order='C')
         newarray._shape.assign(<Py_ssize_t>1, self.size)
         newarray._strides.assign(<Py_ssize_t>1,
                                  <Py_ssize_t>self.itemsize)
@@ -611,9 +606,8 @@ cdef class ndarray:
                 if _axis < 0:
                     _axis += ndim
                 if _axis < 0 or _axis >= ndim:
-                    raise numpy.AxisError(
-                        "'axis' entry %d is out of bounds [-%d, %d)" %
-                        (axis_orig, ndim, ndim))
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
                 if axis_flags[_axis] == 1:
                     raise ValueError("duplicate value in 'axis'")
                 axis_flags[_axis] = 1
@@ -628,9 +622,8 @@ cdef class ndarray:
                 pass
             else:
                 if _axis < 0 or _axis >= ndim:
-                    raise numpy.AxisError(
-                        "'axis' entry %d is out of bounds [-%d, %d)" %
-                        (axis_orig, ndim, ndim))
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
                 axis_flags[_axis] = 1
 
         # Verify that the axes requested are all of size one
@@ -2294,7 +2287,7 @@ cpdef ndarray concatenate_method(tup, int axis):
             if axis < 0:
                 axis += ndim
             if axis < 0 or axis >= ndim:
-                raise numpy.AxisError(
+                raise IndexError(
                     'axis {} out of bounds [0, {})'.format(axis, ndim))
             dtype = a.dtype
             continue
@@ -2670,7 +2663,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
         index_range = a.size
     else:
         if not (-a.ndim <= li < a.ndim and -a.ndim <= ri < a.ndim):
-            raise numpy.AxisError('Axis overrun')
+            raise ValueError('Axis overrun')
         if a.ndim != 0:
             li %= a.ndim
             ri %= a.ndim
