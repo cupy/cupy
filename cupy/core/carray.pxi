@@ -77,7 +77,6 @@ cpdef str _get_header_source():
             'complex/clog.h',
             'complex/clogf.h',
             'complex/cpow.h',
-            'complex/cpowf.h',
             'complex/ccosh.h',
             'complex/ccoshf.h',
             'complex/csinh.h',

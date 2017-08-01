@@ -387,7 +387,6 @@ __device__ complex<T> pow(const complex<T>& x, const T& y);
 template <typename T>
 __device__ complex<T> pow(const T& x, const complex<T>& y);
 
-#if !defined _MSC_VER
 /*! Returns a \p complex number raised to another. The types of the two \p
  * complex should be compatible
  * and the type of the returned \p complex is the promoted type of the two
@@ -423,8 +422,6 @@ __device__ complex<typename _select_greater_type<T, U>::type> pow(
 template <typename T, typename U>
 __device__ complex<typename _select_greater_type<T, U>::type> pow(
     const T& x, const complex<U>& y);
-
-#endif  // !defined _MSC_VER
 
 /*! Returns the complex square root of a \p complex number.
  *
