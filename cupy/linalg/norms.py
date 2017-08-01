@@ -5,6 +5,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import device
 from cupy.linalg import decomposition
+from cupy.linalg import util
 
 
 if cuda.cusolver_enabled:
@@ -197,8 +198,8 @@ def slogdet(a):
 
 
 def _slogdet_one(a):
-    decomposition._assert_rank2(a)
-    decomposition._assert_nd_squareness(a)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
     dtype = a.dtype
 
     handle = device.get_cusolver_handle()
