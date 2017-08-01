@@ -3550,7 +3550,7 @@ _all = create_reduction_func(
 _any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?',  'D->?'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
     ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'),
     'false', '')
 
