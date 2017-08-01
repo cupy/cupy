@@ -34,9 +34,14 @@ class TestArithmetic(unittest.TestCase):
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-4)
-    def check_binary_negative(self, name, xp, dtype, no_complex=False):
-        if no_complex and numpy.dtype(dtype).kind == 'c':
-            return dtype(True)
+    def check_binary_negative(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+        return getattr(xp, name)(a, b)
+
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-4)
+    def check_binary_negative_no_complex(self, name, xp, dtype):
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
         return getattr(xp, name)(a, b)
@@ -108,7 +113,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_floor_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('floor_divide', no_complex=True)
+            self.check_binary_negative_no_complex('floor_divide')
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
@@ -117,7 +122,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_fmod_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('fmod', no_complex=True)
+            self.check_binary_negative_no_complex('fmod')
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -136,4 +141,4 @@ class TestArithmetic(unittest.TestCase):
 
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('remainder', no_complex=True)
+            self.check_binary_negative_no_complex('remainder')
