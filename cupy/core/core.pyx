@@ -3549,20 +3549,16 @@ not_equal = create_comparison(
 _all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?',
-     ('F->?', ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool')),
-     ('D->?', ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'))),
-    ('in0', 'a & b', 'out0 = a', 'bool'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
+    ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'),
     'true', '')
 
 
 _any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?',
-     ('F->?', ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool')),
-     ('D->?', ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'))),
-    ('in0', 'a | b', 'out0 = a', 'bool'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?',  'D->?'),
+    ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'),
     'false', '')
 
 
@@ -3576,7 +3572,7 @@ _sum = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = a', None), 0)
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _prod = create_reduction_func(
@@ -3585,7 +3581,7 @@ _prod = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'],
-    ('in0', 'a * b', 'out0 = a', None), 1)
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
 cdef create_arithmetic(name, op, boolop, doc):
@@ -3862,16 +3858,9 @@ cdef _mean = create_reduction_func(
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d',
-     ('F->F', (
-         'in0', 'a + b',
-         'out0 = a / static_cast<float>(_in_ind.size() / _out_ind.size())',
-         None)),
-     ('D->D', (
-         'in0', 'a + b',
-         'out0 = a / static_cast<double>(_in_ind.size() / _out_ind.size())',
-         None))),
-    ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b',
+     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 
 # -----------------------------------------------------------------------------

@@ -13,22 +13,16 @@ class TestContent(unittest.TestCase):
     @testing.for_dtypes('efFdD')
     @testing.numpy_cupy_array_equal()
     def check_unary_inf(self, name, xp, dtype):
-        a = xp.array([-3, dtype(numpy.inf), -1, -dtype(numpy.inf), 0, 1, 2],
+        a = xp.array([-3, numpy.inf, -1, -numpy.inf, 0, 1, 2],
                      dtype=dtype)
         return getattr(xp, name)(a)
 
     @testing.for_dtypes('efFdD')
     @testing.numpy_cupy_array_equal()
     def check_unary_nan(self, name, xp, dtype):
-        if numpy.dtype(dtype).kind == 'c':
-            a = xp.array(
-                [-3. + 1j, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN,
-                 dtype(numpy.inf)],
-                dtype=dtype)
-        else:
-            a = xp.array(
-                [-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, dtype('inf')],
-                dtype=dtype)
+        a = xp.array(
+            [-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, numpy.inf],
+            dtype=dtype)
         return getattr(xp, name)(a)
 
     def test_isfinite(self):

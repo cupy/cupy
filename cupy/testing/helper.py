@@ -481,7 +481,7 @@ def for_dtypes(dtypes, name='dtype'):
         def test_func(self, *args, **kw):
             for dtype in dtypes:
                 try:
-                    kw[name] = dtype
+                    kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', dtype)
