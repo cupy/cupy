@@ -40,8 +40,10 @@ class TestEinSumError(unittest.TestCase):
         # invalid subscript character
         with self.assertRaises(ValueError):
             cupy.einsum('i%', cupy.array([0, 0]))
+
         with self.assertRaises(ValueError):
             cupy.einsum('j$', cupy.array([0, 0]))
+
         with self.assertRaises(ValueError):
             cupy.einsum('i->&', cupy.array([0, 0]))
 
@@ -52,6 +54,9 @@ class TestEinSumError(unittest.TestCase):
         # output subscripts may only be specified once
         with self.assertRaises(ValueError):
             cupy.einsum('ij->jij', cupy.array([[0, 0], [0, 0]]))
+
+        with self.assertRaises(ValueError):
+            cupy.einsum('ij->i,j', cupy.array([[0, 0], [0, 0]]))
 
         # dimensions much match when being collapsed
         with self.assertRaises(ValueError):
