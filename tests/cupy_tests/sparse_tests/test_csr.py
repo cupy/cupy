@@ -140,6 +140,7 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [])
         cupy.testing.assert_array_equal(n.indptr, [0, 0, 0, 0])
 
+    @unittest.skipUnless(scipy_available, 'requires scipy')
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_init_dense_invalid_ndim(self):
         m = cupy.zeros((1, 1, 1), dtype=self.dtype)
