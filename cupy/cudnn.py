@@ -137,7 +137,8 @@ def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
 
 def create_convolution_descriptor(pad, stride, dtype,
                                   mode=cudnn.CUDNN_CROSS_CORRELATION,
-                                  dilation=(1, 1)):
+                                  dilation=(1, 1),
+                                  use_tensor_core=False):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       cudnn.destroyConvolutionDescriptor)
     ndim = len(pad)
@@ -149,14 +150,23 @@ def create_convolution_descriptor(pad, stride, dtype,
             if dilation[0] != 1 or dilation[1] != 1:
                 raise ValueError('dilation must be one when cudnn < 6.0')
         if _cudnn_version >= 5000:
-            data_type = get_data_type(dtype)
+            compute_type = get_data_type(dtype)
             # TODO(takagi) Temporarily use computing precision of FP32 for
             #     storing precision of FP16.
             if dtype == numpy.float16:
-                data_type = cudnn.CUDNN_DATA_FLOAT
+                compute_type = cudnn.CUDNN_DATA_FLOAT
             cudnn.setConvolution2dDescriptor_v5(
                 desc.value, pad[0], pad[1], stride[0], stride[1],
-                dilation[0], dilation[1], mode, data_type)
+                dilation[0], dilation[1], mode, compute_type)
+
+            if _cudnn_version >= 7000:
+                math_type = cudnn.CUDNN_DEFAULT_MATH
+                if use_tensor_core:
+                    math_type = cudnn.CUDNN_TENSOR_OP_MATH
+                    cudnn.setConvolutionMathType(desc.value, math_type)
+                # _type = cudnn.getConvolutionMathType(desc.value)
+                # print('# cudnn.py:180, math_type: {} {}'.
+                #       format(math_type, _type))
         else:
             cudnn.setConvolution2dDescriptor_v4(
                 desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
@@ -164,14 +174,14 @@ def create_convolution_descriptor(pad, stride, dtype,
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
         c_dilation = _to_ctypes_array((1,) * ndim)
-        data_type = get_data_type(dtype)
+        compute_type = get_data_type(dtype)
         # TODO(takagi) Temporarily use computing precision of FP32 for
         #     storing precision of FP16.
         if dtype == numpy.float16:
-            data_type = cudnn.CUDNN_DATA_FLOAT
+            compute_type = cudnn.CUDNN_DATA_FLOAT
         cudnn.setConvolutionNdDescriptor_v3(
             desc.value, ndim, c_pad.data, c_stride.data, c_dilation.data,
-            mode, data_type)
+            mode, compute_type)
 
     return desc
 
@@ -265,7 +275,7 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),
                       cudnn.destroyRNNDescriptor)
-    cudnn.setRNNDescriptor(
+    cudnn.setRNNDescriptor_v5(
         desc.value, hidden_size, num_layers, dropout_desc.value,
         input_mode, direction, mode, data_type)
     return desc

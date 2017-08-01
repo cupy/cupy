@@ -79,6 +79,10 @@ cudnnStatus_t cudnnSetTensor4dDescriptorEx(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
+cudnnStatus_t cudnnGetTensor4dDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
 cudnnStatus_t cudnnSetTensorNdDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -286,6 +290,16 @@ cudnnStatus_t cudnnActivationBackward_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+typedef enum {} cudnnMathType_t;
+
+cudnnStatus_t cudnnSetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
@@ -470,6 +484,28 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
 #define cudnnActivationBackward_v4 cudnnActivationBackward
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 6000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+#define cudnnSetConvolution2dDescriptor_v5 cudnnSetConvolution2dDescriptor
+
+#else // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+typedef enum {} cudnnMathType_t;
+
+cudnnStatus_t cudnnSetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
 } // extern "C"

@@ -33,11 +33,13 @@ cdef extern from *:
         size_t memory
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
+    ctypedef int MathType 'cudnnMathType_t'
     ctypedef int DirectionMode 'cudnnDirectionMode_t'
     ctypedef int NanPropagation 'cudnnNanPropagation_t'
     ctypedef int PoolingMode 'cudnnPoolingMode_t'
     ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
     ctypedef int RNNMode 'cudnnRNNMode_t'
+    ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
     ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
@@ -64,6 +66,9 @@ cpdef enum:
     CUDNN_DATA_FLOAT = 0
     CUDNN_DATA_DOUBLE = 1
     CUDNN_DATA_HALF = 2
+
+    CUDNN_DEFAULT_MATH = 0
+    CUDNN_TENSOR_OP_MATH = 1
 
     CUDNN_NOT_PROPAGATE_NAN = 0
     CUDNN_PROPAGATE_NAN = 1
@@ -173,6 +178,7 @@ cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
                               int n, int c, int h, int w, int nStride,
                               int cStride, int hStride, int wStride)
+cpdef getTensor4dDescriptor(size_t tensorDesc)
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
@@ -197,6 +203,9 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 ###############################################################################
 
 cpdef size_t createConvolutionDescriptor() except *
+cpdef setConvolutionMathType(
+    size_t convDesc, size_t mathType)
+cpdef size_t getConvolutionMathType(size_t convDesc) except *
 cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode)
