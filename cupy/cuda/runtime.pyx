@@ -33,6 +33,7 @@ cdef class PointerAttributes:
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DeviceAttr 'enum cudaDeviceAttr'
+    ctypedef int MemoryAdvise 'enum cudaMemoryAdvise'
     ctypedef int MemoryKind 'enum cudaMemcpyKind'
 
     ctypedef void StreamCallbackDef(
@@ -70,6 +71,7 @@ cdef extern from "cupy_cuda.h":
 
     # Memory management
     int cudaMalloc(void** devPtr, size_t size) nogil
+    int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags) nogil
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags) nogil
     int cudaFree(void* devPtr) nogil
     int cudaFreeHost(void* ptr) nogil
@@ -86,6 +88,10 @@ cdef extern from "cupy_cuda.h":
     int cudaMemset(void* devPtr, int value, size_t count) nogil
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream) nogil
+    int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
+                             driver.Stream stream)
+    int cudaMemAdvise(const void *devPtr, size_t count,
+                      MemoryAdvise advice, int device)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr) nogil
 
@@ -208,6 +214,15 @@ cpdef size_t malloc(size_t size) except *:
     return <size_t>ptr
 
 
+cpdef size_t mallocManaged(size_t size,
+                           unsigned int flags=cudaMemAttachGlobal) except *:
+    cdef void* ptr
+    with nogil:
+        status = cudaMallocManaged(&ptr, size, flags)
+    check_status(status)
+    return <size_t>ptr
+
+
 cpdef size_t hostAlloc(size_t size, unsigned int flags) except *:
     cdef void* ptr
     with nogil:
@@ -276,6 +291,16 @@ cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
     with nogil:
         status = cudaMemsetAsync(<void*>ptr, value, size,
                                  <driver.Stream> stream)
+    check_status(status)
+
+cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
+                       size_t stream):
+    status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
+                                  <driver.Stream> stream)
+    check_status(status)
+
+cpdef memAdvise(size_t devPtr, int count, int advice, int device):
+    status = cudaMemAdvise(<void*>devPtr, count, <MemoryAdvise>advice, device)
     check_status(status)
 
 
