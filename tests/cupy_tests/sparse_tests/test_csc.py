@@ -418,6 +418,58 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         m * None
 
+    # __rmul__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (2.0 * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (numpy.dtype(self.dtype).type(2.0) * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(12).reshape(4, 3).astype(self.dtype)
+        return x * m
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rmul_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        x * m
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rmul_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        None * m
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
