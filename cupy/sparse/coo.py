@@ -7,6 +7,7 @@ except ImportError:
 
 from cupy import cusparse
 from cupy.sparse import base
+from cupy.sparse import csr
 from cupy.sparse import data as sparse_data
 
 
@@ -193,6 +194,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupy.sparse.csr_matrix: Converted matrix.
 
         """
+        if self.nnz == 0:
+            return csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is ignored because coosort method breaks an original.
         x = self.copy()
         cusparse.coosort(x)
