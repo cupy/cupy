@@ -1,4 +1,5 @@
 import functools
+import os
 import unittest
 
 import six
@@ -78,7 +79,7 @@ def repeat_with_success_at_least(times, min_success):
     return _repeat_with_success_at_least
 
 
-def repeat(times):
+def repeat(times, intensive_times=None):
     """Decorator that imposes the test to be successful in a row.
 
     Decorated test case is launched multiple times.
@@ -90,9 +91,16 @@ def repeat(times):
         failure information of each trial.
 
     Args:
-        times(int): The number of trials.
+        times(int): The number of trials in casual test.
+        intensive_times(int or None): The number of trials in more intensive
+            test. If ``None``, the same number as `times` is used.
     """
-    return repeat_with_success_at_least(times, times)
+    if intensive_times is None:
+        return repeat_with_success_at_least(times, times)
+
+    casual_test = bool(int(os.environ.get('CUPY_TEST_CASUAL', '0')))
+    times_ = times if casual_test else intensive_times
+    return repeat_with_success_at_least(times_, times_)
 
 
 def retry(times):

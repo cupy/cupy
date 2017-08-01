@@ -2,6 +2,7 @@ from __future__ import division
 
 import argparse
 import math
+import os
 
 import cupy as cp
 import numpy as np
@@ -11,7 +12,7 @@ from utils import load_kernel
 from utils import read_code
 
 
-sgemm_file = 'sgemm.cu'
+sgemm_file = os.path.join(os.path.dirname(__file__), 'sgemm.cu')
 
 
 def sgemm(A, B,
@@ -38,7 +39,7 @@ def sgemm(A, B,
     code = read_code(sgemm_file, params=config)
     kern = load_kernel('sgemm', code)
 
-    grid = (math.ceil(m / blk_m), math.ceil(n / blk_n), 1)
+    grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
     args = (m, n, k, A, B, C)
     shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
@@ -52,11 +53,11 @@ def main():
     parser.add_argument('--gpu', '-g', default=0, type=int,
                         help='ID of GPU.')
     parser.add_argument(
-        '--m', type=int, default=np.random.randint(5000, 12000))
+        '--m', type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--n', type=int, default=np.random.randint(5000, 12000))
+        '--n', type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--k', type=int, default=np.random.randint(500, 5000))
+        '--k', type=int, default=np.random.randint(500, 3000))
     args = parser.parse_args()
 
     print('m={} n={} k={}'.format(args.m, args.n, args.k))

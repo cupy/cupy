@@ -1,8 +1,10 @@
+import copy
 import unittest
 
 import numpy
 
 from cupy import core
+from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
 
@@ -68,6 +70,36 @@ class TestNdarrayInitRaise(unittest.TestCase):
         arr = numpy.ndarray((2, 3), dtype=object)
         with self.assertRaises(ValueError):
             core.array(arr)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(), (0,), (1,), (0, 0, 2), (2, 3)],
+    })
+)
+@testing.gpu
+class TestNdarrayCopy(unittest.TestCase):
+
+    def _check_deepcopy(self, arr, arr2):
+        self.assertIsNot(arr.data, arr2.data)
+        self.assertEqual(arr.shape, arr2.shape)
+        self.assertEqual(arr.size, arr2.size)
+        self.assertEqual(arr.dtype, arr2.dtype)
+        self.assertEqual(arr.strides, arr2.strides)
+        testing.assert_array_equal(arr, arr2)
+
+    def test_deepcopy(self):
+        arr = core.ndarray(self.shape)
+        arr2 = copy.deepcopy(arr)
+        self._check_deepcopy(arr, arr2)
+
+    @testing.multi_gpu(2)
+    def test_deepcopy_multi_device(self):
+        arr = core.ndarray(self.shape)
+        with cuda.Device(1):
+            arr2 = copy.deepcopy(arr)
+        self._check_deepcopy(arr, arr2)
+        self.assertEqual(arr2.device, arr.device)
 
 
 @testing.gpu

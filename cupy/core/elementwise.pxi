@@ -117,7 +117,7 @@ cpdef tuple _get_args_info(list args):
     ret = []
     for a in args:
         t = type(a)
-        if t == Indexer:
+        if t is Indexer:
             dtype = None
         else:
             dtype = a.dtype.type
@@ -268,7 +268,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     type_dict = {}
     if out_args_dtype:
         assert len(out_params) == len(out_args_dtype)
-        for p, a in six.moves.zip(out_params, out_args_dtype):
+        for p, a in zip(out_params, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
@@ -286,7 +286,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
     assert len(in_params) == len(in_args_dtype)
     unknown_ctype = []
-    for p, a in six.moves.zip(in_params, in_args_dtype):
+    for p, a in zip(in_params, in_args_dtype):
         if a is None:
             if p.dtype is None:
                 unknown_ctype.append(p.ctype)
@@ -398,7 +398,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     preamble = types_preamble + '\n' + preamble
 
     op = []
-    for p, a in six.moves.zip(params, args_info):
+    for p, a in zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
@@ -451,9 +451,9 @@ cdef class ElementwiseKernel:
     cdef:
         readonly tuple in_params
         readonly tuple out_params
-        readonly int nin
-        readonly int nout
-        readonly int nargs
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
         readonly tuple params
         readonly str operation
         readonly str name

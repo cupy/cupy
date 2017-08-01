@@ -18,7 +18,7 @@ cdef class CArray(CPointer):
 
     def __init__(self, ndarray arr):
         cdef Py_ssize_t i
-        cdef int ndim = arr.ndim
+        cdef int ndim = arr._shape.size()
         self.val.data = <void*>arr.data.ptr
         self.val.size = arr.size
         for i in range(ndim):
@@ -44,11 +44,6 @@ cdef class CIndexer(CPointer):
         self.ptr = <void*>&self.val
 
 
-@cython.profile(False)
-cpdef inline CIndexer to_cindexer(Py_ssize_t size, tuple shape):
-    return CIndexer(size, shape)
-
-
 cdef class Indexer:
     def __init__(self, tuple shape):
         cdef Py_ssize_t size = 1
@@ -61,12 +56,8 @@ cdef class Indexer:
     def ndim(self):
         return len(self.shape)
 
-    @property
-    def cstruct(self):
-        return to_cindexer(self.size, self.shape)
-
     cdef CPointer get_pointer(self):
-        return to_cindexer(self.size, self.shape)
+        return CIndexer(self.size, self.shape)
 
 
 cdef str _header_source = None

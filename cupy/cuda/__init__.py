@@ -6,7 +6,12 @@ from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
+from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
+
+
+_available = None
+
 
 try:
     from cupy.cuda import cusolver  # NOQA
@@ -19,6 +24,25 @@ try:
     nvtx_enabled = True
 except ImportError:
     nvtx_enabled = False
+
+try:
+    from cupy.cuda import thrust  # NOQA
+    thrust_enabled = True
+except ImportError:
+    thrust_enabled = False
+
+
+def is_available():
+    global _available
+    if _available is None:
+        _available = False
+        try:
+            _available = runtime.getDeviceCount() > 0
+        except Exception as e:
+            if (e.args[0] !=
+                    'cudaErrorNoDevice: no CUDA-capable device is detected'):
+                raise
+    return _available
 
 
 # import class and function

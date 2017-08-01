@@ -96,9 +96,9 @@ cdef inline size_t _get_stream(strm) except *:
     return 0 if strm is None else strm.ptr
 
 
-cdef void _launch(size_t func, int grid0, int grid1, int grid2,
-                  int block0, int block1, int block2,
-                  args, int shared_mem, size_t stream) except *:
+cdef void _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
+                  Py_ssize_t block0, int block1, int block2,
+                  args, Py_ssize_t shared_mem, size_t stream) except *:
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
@@ -109,8 +109,8 @@ cdef void _launch(size_t func, int grid0, int grid1, int grid2,
         kargs.push_back(cp.ptr)
 
     driver.launchKernel(
-        func, grid0, grid1, grid2, block0, block1, block2,
-        shared_mem, stream, <size_t>&(kargs[0]), <size_t>0)
+        func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+        <int>shared_mem, stream, <size_t>&(kargs[0]), <size_t>0)
 
 
 cdef class Function:

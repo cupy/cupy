@@ -15,10 +15,10 @@ Matrix and vector products
    cupy.matmul
    cupy.tensordot
    cupy.einsum
-
+   cupy.kron
 
 Decompositions
---------------------------
+--------------
 
 .. autosummary::
    :toctree: generated/
@@ -28,6 +28,11 @@ Decompositions
    cupy.linalg.qr
    cupy.linalg.svd
 
+Matrix eigenvalues
+------------------
+
+.. autofunction:: cupy.linalg.eigh
+.. autofunction:: cupy.linalg.eigvalsh
 
 Norms etc.
 ----------
@@ -36,6 +41,7 @@ Norms etc.
    :toctree: generated/
    :nosignatures:
 
+   cupy.linalg.det
    cupy.linalg.norm
    cupy.linalg.matrix_rank
    cupy.linalg.slogdet

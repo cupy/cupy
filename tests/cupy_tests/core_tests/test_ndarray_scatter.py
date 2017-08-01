@@ -95,7 +95,7 @@ from cupy import testing
     {'shape': (2, 3, 4),
      'slices': (slice(None), numpy.array([], dtype=numpy.bool)),
      'value': 1},
-    {'shape': (2, 3, 4), 'slices': numpy.array([[]], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'slices': numpy.array([[], []], dtype=numpy.bool),
      'value': numpy.random.uniform(size=(4,))},
     # list indexes
     {'shape': (2, 3, 4), 'slices': [1], 'value': 1},

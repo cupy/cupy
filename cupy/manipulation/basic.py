@@ -47,7 +47,11 @@ def copyto(dst, src, casting='same_kind', where=None):
         if _can_memcpy(dst, src):
             dst.data.copy_from(src.data, src.nbytes)
         else:
-            core.elementwise_copy(src, dst)
+            device = dst.device
+            with device:
+                if src.device != device:
+                    src = src.copy()
+                core.elementwise_copy(src, dst)
     else:
         core.elementwise_copy_where(src, where, dst)
 

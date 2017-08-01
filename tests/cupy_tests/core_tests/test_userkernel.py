@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 
@@ -29,3 +31,38 @@ class TestUserkernel(unittest.TestCase):
         out2 = uesr_kernel_2(in1, in2, size=n)
 
         testing.assert_array_equal(out1, out2)
+
+    def test_python_scalar(self):
+        for typ in (int, float, bool):
+            dtype = numpy.dtype(typ).type
+            in1_cpu = numpy.random.randint(0, 1, (4, 5)).astype(dtype)
+            in1 = cupy.array(in1_cpu)
+            scalar_value = typ(2)
+            uesr_kernel_1 = cupy.ElementwiseKernel(
+                'T x, T y',
+                'T z',
+                '''
+                    z = x + y;
+                ''',
+                'uesr_kernel_1')
+            out1 = uesr_kernel_1(in1, scalar_value)
+
+            expected = in1_cpu + dtype(2)
+            testing.assert_array_equal(out1, expected)
+
+    @testing.for_all_dtypes()
+    def test_numpy_scalar(self, dtype):
+        in1_cpu = numpy.random.randint(0, 1, (4, 5)).astype(dtype)
+        in1 = cupy.array(in1_cpu)
+        scalar_value = dtype(2)
+        uesr_kernel_1 = cupy.ElementwiseKernel(
+            'T x, T y',
+            'T z',
+            '''
+                z = x + y;
+            ''',
+            'uesr_kernel_1')
+        out1 = uesr_kernel_1(in1, scalar_value)
+
+        expected = in1_cpu + dtype(2)
+        testing.assert_array_equal(out1, expected)

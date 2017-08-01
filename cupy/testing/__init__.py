@@ -1,52 +1,47 @@
-from cupy.testing import array
-from cupy.testing import attr
-from cupy.testing import helper
-from cupy.testing import parameterized
+from cupy.testing import array  # NOQA
+from cupy.testing import attr  # NOQA
+from cupy.testing import helper  # NOQA
+from cupy.testing import parameterized  # NOQA
+from cupy.testing import random  # NOQA
 
-assert_allclose = array.assert_allclose
-assert_array_almost_equal = array.assert_array_almost_equal
-assert_array_almost_equal_nulp = array.assert_array_almost_equal_nulp
-assert_array_max_ulp = array.assert_array_max_ulp
-assert_array_equal = array.assert_array_equal
-assert_array_list_equal = array.assert_array_list_equal
-assert_array_less = array.assert_array_less
-
-numpy_cupy_allclose = helper.numpy_cupy_allclose
-numpy_cupy_array_almost_equal = helper.numpy_cupy_array_almost_equal
-numpy_cupy_array_almost_equal_nulp = \
-    helper.numpy_cupy_array_almost_equal_nulp
-numpy_cupy_array_max_ulp = helper.numpy_cupy_array_max_ulp
-numpy_cupy_array_equal = helper.numpy_cupy_array_equal
-numpy_cupy_array_list_equal = helper.numpy_cupy_array_list_equal
-numpy_cupy_array_less = helper.numpy_cupy_array_less
-numpy_cupy_equal = helper.numpy_cupy_equal
-numpy_cupy_raises = helper.numpy_cupy_raises
-for_dtypes = helper.for_dtypes
-for_all_dtypes = helper.for_all_dtypes
-for_float_dtypes = helper.for_float_dtypes
-for_signed_dtypes = helper.for_signed_dtypes
-for_unsigned_dtypes = helper.for_unsigned_dtypes
-for_int_dtypes = helper.for_int_dtypes
-for_dtypes_combination = helper.for_dtypes_combination
-for_all_dtypes_combination = helper.for_all_dtypes_combination
-for_signed_dtypes_combination = helper.for_signed_dtypes_combination
-for_unsigned_dtypes_combination = helper.for_unsigned_dtypes_combination
-for_int_dtypes_combination = helper.for_int_dtypes_combination
-for_orders = helper.for_orders
-for_CF_orders = helper.for_CF_orders
-
-with_requires = helper.with_requires
-
-parameterize = parameterized.parameterize
-product = parameterized.product
-
-shaped_arange = helper.shaped_arange
-shaped_reverse_arange = helper.shaped_reverse_arange
-
-shaped_random = helper.shaped_random
-
-NumpyError = helper.NumpyError
-
-gpu = attr.gpu
-multi_gpu = attr.multi_gpu
-slow = attr.slow
+from cupy.testing.array import assert_allclose  # NOQA
+from cupy.testing.array import assert_array_almost_equal  # NOQA
+from cupy.testing.array import assert_array_almost_equal_nulp  # NOQA
+from cupy.testing.array import assert_array_equal  # NOQA
+from cupy.testing.array import assert_array_less  # NOQA
+from cupy.testing.array import assert_array_list_equal  # NOQA
+from cupy.testing.array import assert_array_max_ulp  # NOQA
+from cupy.testing.attr import gpu  # NOQA
+from cupy.testing.attr import multi_gpu  # NOQA
+from cupy.testing.attr import slow  # NOQA
+from cupy.testing.helper import for_all_dtypes  # NOQA
+from cupy.testing.helper import for_all_dtypes_combination  # NOQA
+from cupy.testing.helper import for_CF_orders  # NOQA
+from cupy.testing.helper import for_dtypes  # NOQA
+from cupy.testing.helper import for_dtypes_combination  # NOQA
+from cupy.testing.helper import for_float_dtypes  # NOQA
+from cupy.testing.helper import for_int_dtypes  # NOQA
+from cupy.testing.helper import for_int_dtypes_combination  # NOQA
+from cupy.testing.helper import for_orders  # NOQA
+from cupy.testing.helper import for_signed_dtypes  # NOQA
+from cupy.testing.helper import for_signed_dtypes_combination  # NOQA
+from cupy.testing.helper import for_unsigned_dtypes  # NOQA
+from cupy.testing.helper import for_unsigned_dtypes_combination  # NOQA
+from cupy.testing.helper import numpy_cupy_allclose  # NOQA
+from cupy.testing.helper import numpy_cupy_array_almost_equal  # NOQA
+from cupy.testing.helper import numpy_cupy_array_almost_equal_nulp  # NOQA
+from cupy.testing.helper import numpy_cupy_array_equal  # NOQA
+from cupy.testing.helper import numpy_cupy_array_less  # NOQA
+from cupy.testing.helper import numpy_cupy_array_list_equal  # NOQA
+from cupy.testing.helper import numpy_cupy_array_max_ulp  # NOQA
+from cupy.testing.helper import numpy_cupy_equal  # NOQA
+from cupy.testing.helper import numpy_cupy_raises  # NOQA
+from cupy.testing.helper import NumpyError  # NOQA
+from cupy.testing.helper import shaped_arange  # NOQA
+from cupy.testing.helper import shaped_random  # NOQA
+from cupy.testing.helper import shaped_reverse_arange  # NOQA
+from cupy.testing.helper import with_requires  # NOQA
+from cupy.testing.parameterized import parameterize  # NOQA
+from cupy.testing.parameterized import product  # NOQA
+from cupy.testing.random import fix_random  # NOQA
+from cupy.testing.random import generate_seed  # NOQA

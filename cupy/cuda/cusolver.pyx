@@ -115,6 +115,20 @@ cdef extern from 'cupy_cusolver.h':
                          double* VT, int ldvt, double* Work, int lwork,
                          double* rwork, int* devInfo) nogil
 
+    int cusolverDnSsyevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n, const float* A,
+        int lda, const float* W, int* lwork) nogil
+    int cusolverDnDsyevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n, const double* A,
+        int lda, const double* W, int* lwork) nogil
+    int cusolverDnSsyevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, float* A, int lda,
+        float* W, float* work, int lwork, int* info) nogil
+    int cusolverDnDsyevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
+        double* W, double* work, int lwork, int* info) nogil
+
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -448,4 +462,42 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <Handle>handle, jobu, jobvt, m, n, <double*>A,
             lda, <double*>S, <double*>U, ldu, <double*>VT, ldvt,
             <double*>Work, lwork, <double*>rwork, <int*>devInfo)
+    check_status(status)
+
+cpdef int ssyevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    with nogil:
+        status = cusolverDnSsyevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const float*>A,
+            lda, <const float*>W, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int dsyevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    with nogil:
+        status = cusolverDnDsyevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const double*>A,
+            lda, <const double*>W, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef ssyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    with nogil:
+        status = cusolverDnSsyevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <float*>A, lda,
+            <float*>W, <float*>work, lwork, <int*>info)
+    check_status(status)
+
+cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    with nogil:
+        status = cusolverDnDsyevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <double*>A, lda,
+            <double*>W, <double*>work, lwork, <int*>info)
     check_status(status)

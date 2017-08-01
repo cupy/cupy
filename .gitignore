@@ -10,6 +10,9 @@ build
 .coverage
 .eggs/
 _readthedocs_build
+/TAGS
+/docs/source/reference/**/generated
+/tags
 cupy.egg-info/
 dist/
 htmlcov/

@@ -14,6 +14,21 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int FillMode 'cublasFillMode_t'
 
+    ctypedef int EigMode 'cusolverEigType_t'
+    ctypedef int EigMode 'cusolverEigMode_t'
+
+###############################################################################
+# Enum
+###############################################################################
+
+cpdef enum:
+    CUSOLVER_EIG_TYPE_1 = 1
+    CUSOLVER_EIG_TYPE_2 = 2
+    CUSOLVER_EIG_TYPE_3 = 3
+
+    CUSOLVER_EIG_MODE_NOVECTOR = 0
+    CUSOLVER_EIG_MODE_VECTOR = 1
+
 ###############################################################################
 # Context
 ###############################################################################

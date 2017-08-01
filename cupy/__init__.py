@@ -19,6 +19,14 @@ except ImportError:
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
+
+from cupy import cuda
+
+
+def is_available():
+    return cuda.is_available()
+
+
 __version__ = pkg_resources.get_distribution('cupy').version
 
 
@@ -277,6 +285,7 @@ from cupy.linalg.einsum import einsum  # NOQA
 
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
+from cupy.linalg.product import kron  # NOQA
 from cupy.linalg.product import matmul  # NOQA
 from cupy.linalg.product import outer  # NOQA
 from cupy.linalg.product import tensordot  # NOQA
@@ -401,6 +410,8 @@ from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
 from cupy.sorting.sort import argsort  # NOQA
+from cupy.sorting.sort import lexsort  # NOQA
+from cupy.sorting.sort import msort  # NOQA
 from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
