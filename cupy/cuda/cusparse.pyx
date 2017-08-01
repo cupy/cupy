@@ -145,6 +145,16 @@ cdef extern from "cupy_cusparse.h":
         const double *csrSortedValA, const int *csrSortedRowPtrA,
         const int *csrSortedColIndA, double *A, int lda)
 
+    Status cusparseSnnz_compress(
+        Handle handle, int m, const MatDescr descr,
+        const float *values, const int *rowPtr, int *nnzPerRow, 
+        int *nnzTotal, float tol)
+
+    Status cusparseDnnz_compress(
+        Handle handle, int m, const MatDescr descr,
+        const double *values, const int *rowPtr, int *nnzPerRow, 
+        int *nnzTotal, double tol);
+
     Status cusparseScsr2csr_compress(
         Handle handle, int m, int n, const MatDescr descrA,
         const float *inVal, const int *inColInd, const int *inRowPtr, 
@@ -570,6 +580,28 @@ cpdef dcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>csrSortedValA, <const int *>csrSortedRowPtrA,
         <const int *>csrSortedColIndA, <double *>A, lda)
+    check_status(status)
+
+
+cpdef snnz_compress(
+        size_t handle, int m, size_t descr,
+        size_t values, size_t rowPtr, size_t nnzPerRow, 
+        size_t nnzTotal, float tol):
+    status = cusparseSnnz_compress(
+        <Handle>handle, m, <const MatDescr>descr,
+        <const float *>values, <const int *>rowPtr, <int *>nnzPerRow, 
+        <int *>nnzTotal, tol)
+    check_status(status)
+
+
+cpdef dnnz_compress(
+        size_t handle, int m, size_t descr,
+        size_t values, size_t rowPtr, size_t nnzPerRow, 
+        size_t nnzTotal, double tol):
+    status = cusparseDnnz_compress(
+        <Handle>handle, m, <const MatDescr>descr,
+        <const double *>values, <const int *>rowPtr, <int *>nnzPerRow, 
+        <int *>nnzTotal, tol)
     check_status(status)
 
 

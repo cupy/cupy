@@ -583,21 +583,23 @@ def csr2csr_compress(x, tol):
 
     handle = device.get_cusparse_handle()
     m, n = x.shape
-    nnz = x.nnz
 
     nnz_per_row = cupy.empty(m, 'i')
-    data = cupy.empty(nnz, x.dtype)
+    nnz_total = numpy.empty((), 'i')
+    _call_cusparse(
+        'nnz_compress', x.dtype,
+        handle, m, x._descr.descriptor,
+        x.data.data.ptr, x.indptr.data.ptr, nnz_per_row.data.ptr,
+        nnz_total.ctypes.data, tol)
+    nnz = int(nnz_total[()])
+    data = cupy.zeros(nnz, x.dtype)
     indptr = cupy.empty(m + 1, 'i')
     indices = cupy.zeros(nnz, 'i')
     _call_cusparse(
         'csr2csr_compress', x.dtype,
         handle, m, n, x._descr.descriptor,
         x.data.data.ptr, x.indices.data.ptr, x.indptr.data.ptr,
-        nnz, nnz_per_row.data.ptr, data.data.ptr, indices.data.ptr,
+        x.nnz, nnz_per_row.data.ptr, data.data.ptr, indices.data.ptr,
         indptr.data.ptr, tol)
-    size = int(nnz_per_row.sum())
-    data = data[:size]
-    indptr = indptr[:size]
-    indices = indices[:size]
 
     return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
