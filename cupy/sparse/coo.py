@@ -212,7 +212,8 @@ class coo_matrix(sparse_data._data_matrix):
                 row[index] = src_row;
                 col[index] = src_col;
                 ''',
-                'sum_duplicates_assign'
+                'sum_duplicates_assign',
+                preamble=util._preamble_atomic_add
             )(src_data, src_row, src_col, index, data, row, col)
 
         self.data = data
