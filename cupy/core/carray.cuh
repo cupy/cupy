@@ -3,8 +3,6 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-// #if CUDA_VERSION < 9000
-// #if __CUDACC_VER__ < 9000
 #if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
 
 // float16
