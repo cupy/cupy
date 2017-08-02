@@ -35,3 +35,17 @@ class TestIdentity(unittest.TestCase):
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
         return x.toarray()
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@testing.with_requires('scipy')
+class TestSpdiags(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_spdiags(self, xp, sp):
+        data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        diags = xp.array([0, -1, 2], dtype='i')
+        x = sp.spdiags(data, diags, 3, 4)
+        return x.toarray()
