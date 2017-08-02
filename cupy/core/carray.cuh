@@ -3,7 +3,9 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#if CUDA_VERSION < 9000
+// #if CUDA_VERSION < 9000
+// #if __CUDACC_VER__ < 9000
+#if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
 
 // float16
 class float16
@@ -121,9 +123,9 @@ private:
   }
 };
 
-#else  // if CUDA_VERSION < 9000
+#else  // #if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
 
-#include <cuda_fp16.hpp>
+#include <cuda_fp16.h>
 
 // float16
 class float16
@@ -260,7 +262,7 @@ private:
   }
 };
 
-#endif  // if CUDA_VERSION < 9000
+#endif  // #if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
 
 __device__ float16 min(float16 x, float16 y) {
   return float16(min(static_cast<float>(x), static_cast<float>(y)));
