@@ -64,7 +64,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
     # TODO(unno): Implement diagonal
-    # TODO(unno): Implement dot
     # TODO(unno): Implement eliminate_zeros
 
     # TODO(unno): Implement max
