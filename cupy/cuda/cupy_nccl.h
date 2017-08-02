@@ -42,4 +42,12 @@ ncclResult_t  ncclBcast(...);
 
 #endif // #ifndef CUPY_NO_CUDA
 
+#ifndef NCCL_MAJOR
+#define NCCL_MAJOR 1
+#define NCCL_MINOR 0
+#define NCCL_PATCH 0
+#endif
+
+#define NCCL_VERSION  (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+
 #endif // #ifndef INCLUDE_GUARD_CUPY_NCCL_H
