@@ -269,15 +269,15 @@ class spmatrix(object):
 
     def tobsr(self, blocksize=None, copy=False):
         """Convert this matrix to Block Sparse Row format."""
-        self.tocsr(copy=copy).tobsr(copy=False)
+        return self.tocsr(copy=copy).tobsr(copy=False)
 
     def tocoo(self, copy=False):
         """Convert this matrix to COOrdinate format."""
-        self.tocsr(copy=copy).tocoo(copy=False)
+        return self.tocsr(copy=copy).tocoo(copy=False)
 
     def tocsc(self, copy=False):
         """Convert this matrix to Compressed Sparse Column format."""
-        self.tocsr(copy=copy).tocsc(copy=False)
+        return self.tocsr(copy=copy).tocsc(copy=False)
 
     def tocsr(self, copy=False):
         """Convert this matrix to Compressed Sparse Row format."""
@@ -289,19 +289,19 @@ class spmatrix(object):
 
     def todia(self, copy=False):
         """Convert this matrix to sparse DIAgonal format."""
-        self.tocsr(copy=copy).todia(copy=False)
+        return self.tocsr(copy=copy).todia(copy=False)
 
     def todok(self, copy=False):
         """Convert this matrix to Dictionary Of Keys format."""
-        self.tocsr(copy=copy).todok(copy=False)
+        return self.tocsr(copy=copy).todok(copy=False)
 
     def tolil(self, copy=False):
         """Convert this matrix to LInked List format."""
-        self.tocsr(copy=copy).tolil(copy=False)
+        return self.tocsr(copy=copy).tolil(copy=False)
 
     def transpose(self, axes=None, copy=False):
         """Reverses the dimensions of the sparse matrix."""
-        self.tocsr(copy=copy).transpopse(axes=None, copy=False)
+        return self.tocsr(copy=copy).transpose(axes=axes, copy=False)
 
 
 def issparse(x):
