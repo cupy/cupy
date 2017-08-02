@@ -111,3 +111,23 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_nnz_axis_not_none(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.getnnz(axis=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_toarray(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocsc().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_transpose(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.transpose().toarray()
