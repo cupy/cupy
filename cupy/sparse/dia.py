@@ -149,7 +149,6 @@ class dia_matrix(data._data_matrix):
             ''',
             'dia_tocsc')(offset_len, self.offsets[:, None], num_rows,
                          num_cols, self.data)
-
         indptr = cupy.zeros(num_cols + 1, dtype='i')
         indptr[1: offset_len + 1] = cupy.cumsum(mask.sum(axis=0))
         indptr[offset_len + 1:] = indptr[offset_len]
