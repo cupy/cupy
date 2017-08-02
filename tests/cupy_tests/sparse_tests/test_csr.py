@@ -328,6 +328,12 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return m.dot(x).toarray()
 
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_csr_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = sp.csr_matrix((5, 3), dtype=self.dtype)
+        m.dot(x)
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -352,13 +358,25 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m.dot(x)
 
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_vector_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(5).astype(self.dtype)
+        m.dot(x)
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_matrix_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_dot_dense_ndim3(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
