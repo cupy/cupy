@@ -1,4 +1,5 @@
 from __future__ import division
+import inspect
 import pkg_resources
 import sys
 
@@ -28,6 +29,21 @@ def is_available():
 
 
 __version__ = pkg_resources.get_distribution('cupy').version
+
+
+def _numpy_alias(func):
+    """Creates an alias function to NumPy counterpart."""
+
+    # functools.wraps cannot be used because it would also transfer the code
+    # metadata (e.g. line number)
+
+    numpy_func = getattr(numpy, func.__name__)
+
+    # Check argument list
+    assert inspect.getargspec(func) == inspect.getargspec(numpy_func)
+
+    func.__doc__ = numpy_func.__doc__
+    return func
 
 
 from cupy import binary  # NOQA
@@ -300,7 +316,11 @@ from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
-from numpy import isscalar  # NOQA
+
+@_numpy_alias
+def isscalar(num):
+    return numpy.isscalar(num)
+
 
 from cupy.core.fusion import logical_and  # NOQA
 from cupy.core.fusion import logical_not  # NOQA
