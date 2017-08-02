@@ -71,14 +71,14 @@ def spdiags(data, diags, m, n, format=None):
     """Creates a sparse matrix from diagonals.
 
     Args:
-        data (cupy.ndarray):
-        diags (cupy.ndarray):
-        m (int):
-        n (int):
-        format (str or None):
+        data (cupy.ndarray): Matrix diagonas stored row-wise.
+        diags (cupy.ndarray): Diagonals to set.
+        m (int): Number of rows.
+        n (int): Number of cols.
+        format (str or None): Sparse format, e.g. ``format="csr"``.
 
     Returns:
-        cupy.sparse.spmatrix:
+        cupy.sparse.spmatrix: Created sparse matrix.
 
     .. seealso:: :func:`scipy.sparse.spdiags`
 
