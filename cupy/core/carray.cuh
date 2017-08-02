@@ -3,6 +3,8 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
+#include <cuda_fp16.h>
+
 #if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
 
 // float16
@@ -122,8 +124,6 @@ private:
 };
 
 #else  // #if !defined(__CUDACC_VER_MAJOR__) || (__CUDACC_VER_MAJOR__ < 9)
-
-#include <cuda_fp16.h>
 
 // float16
 class float16
