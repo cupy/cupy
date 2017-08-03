@@ -3703,8 +3703,8 @@ power = create_ufunc(
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
-     ('FF->F', 'out0 = thrust::pow(in0, in1)'),
-     ('DD->D', 'out0 = thrust::pow(in0, in1)')),
+     ('FF->F', 'out0 = pow(in0, in1)'),
+     ('DD->D', 'out0 = pow(in0, in1)')),
     'out0 = rint(pow((double)in0, (double)in1))',
     doc='''Computes ``x1 ** x2`` elementwise.
 
@@ -3774,8 +3774,8 @@ absolute = create_ufunc(
      ('e->e', 'out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
      ('d->d', 'out0 = fabs(in0)'),
-     ('F->f', 'out0 = thrust::abs(in0)'),
-     ('D->d', 'out0 = thrust::abs(in0)')),
+     ('F->f', 'out0 = abs(in0)'),
+     ('D->d', 'out0 = abs(in0)')),
     'out0 = in0 > 0 ? in0 : -in0',
     doc='''Elementwise absolute value function.
 
@@ -3786,9 +3786,7 @@ absolute = create_ufunc(
 
 sqrt = create_ufunc(
     'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d',
-     ('F->F', 'out0 = thrust::sqrt(in0)'),
-     ('D->D', 'out0 = thrust::sqrt(in0)')),
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = sqrt(in0)')
 
 
