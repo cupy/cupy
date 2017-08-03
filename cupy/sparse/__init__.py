@@ -8,12 +8,13 @@ from cupy.sparse.csc import isspmatrix_csc  # NOQA
 from cupy.sparse.csr import csr_matrix  # NOQA
 from cupy.sparse.csr import isspmatrix_csr  # NOQA
 
+from cupy.sparse.construct import eye  # NOQA
+
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dia_matrix
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
 
-# TODO(unno): implement eye
 # TODO(unno): implement identity
 # TODO(unno): implement kron
 # TODO(unno): implement kronsum
