@@ -40,7 +40,7 @@ cdef extern from *:
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
-cdef extern from "cupy_cuda.h":
+cdef extern from "cupy_cuda.h" nogil:
     # Types
     struct _PointerAttributes 'cudaPointerAttributes':
         int device
@@ -50,64 +50,64 @@ cdef extern from "cupy_cuda.h":
         int memoryType
 
     # Error handling
-    const char* cudaGetErrorName(Error error) nogil
-    const char* cudaGetErrorString(Error error) nogil
+    const char* cudaGetErrorName(Error error)
+    const char* cudaGetErrorString(Error error)
 
     # Initialization
-    int cudaDriverGetVersion(int* driverVersion) nogil
-    int cudaRuntimeGetVersion(int* runtimeVersion) nogil
+    int cudaDriverGetVersion(int* driverVersion)
+    int cudaRuntimeGetVersion(int* runtimeVersion)
 
     # Device operations
-    int cudaGetDevice(int* device) nogil
-    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device) nogil
-    int cudaGetDeviceCount(int* count) nogil
-    int cudaSetDevice(int device) nogil
-    int cudaDeviceSynchronize() nogil
+    int cudaGetDevice(int* device)
+    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
+    int cudaGetDeviceCount(int* count)
+    int cudaSetDevice(int device)
+    int cudaDeviceSynchronize()
 
     int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
-                                int peerDevice) nogil
-    int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags) nogil
+                                int peerDevice)
+    int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
 
     # Memory management
-    int cudaMalloc(void** devPtr, size_t size) nogil
-    int cudaHostAlloc(void** ptr, size_t size, unsigned int flags) nogil
-    int cudaFree(void* devPtr) nogil
-    int cudaFreeHost(void* ptr) nogil
-    int cudaMemGetInfo(size_t* free, size_t* total) nogil
+    int cudaMalloc(void** devPtr, size_t size)
+    int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
+    int cudaFree(void* devPtr)
+    int cudaFreeHost(void* ptr)
+    int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
-                   MemoryKind kind) nogil
+                   MemoryKind kind)
     int cudaMemcpyAsync(void* dst, const void* src, size_t count,
-                        MemoryKind kind, driver.Stream stream) nogil
+                        MemoryKind kind, driver.Stream stream)
     int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count) nogil
+                       int srcDevice, size_t count)
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                             int srcDevice, size_t count,
-                            driver.Stream stream) nogil
-    int cudaMemset(void* devPtr, int value, size_t count) nogil
+                            driver.Stream stream)
+    int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
-                        driver.Stream stream) nogil
+                        driver.Stream stream)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
-                                 const void* ptr) nogil
+                                 const void* ptr)
 
     # Stream and Event
-    int cudaStreamCreate(driver.Stream* pStream) nogil
+    int cudaStreamCreate(driver.Stream* pStream)
     int cudaStreamCreateWithFlags(driver.Stream* pStream,
-                                  unsigned int flags) nogil
-    int cudaStreamDestroy(driver.Stream stream) nogil
-    int cudaStreamSynchronize(driver.Stream stream) nogil
+                                  unsigned int flags)
+    int cudaStreamDestroy(driver.Stream stream)
+    int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
-                              void* userData, unsigned int flags) nogil
-    int cudaStreamQuery(driver.Stream stream) nogil
+                              void* userData, unsigned int flags)
+    int cudaStreamQuery(driver.Stream stream)
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
-                            unsigned int flags) nogil
-    int cudaEventCreate(driver.Event* event) nogil
-    int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags) nogil
-    int cudaEventDestroy(driver.Event event) nogil
+                            unsigned int flags)
+    int cudaEventCreate(driver.Event* event)
+    int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
+    int cudaEventDestroy(driver.Event event)
     int cudaEventElapsedTime(float* ms, driver.Event start,
-                             driver.Event end) nogil
-    int cudaEventQuery(driver.Event event) nogil
-    int cudaEventRecord(driver.Event event, driver.Stream stream) nogil
-    int cudaEventSynchronize(driver.Event event) nogil
+                             driver.Event end)
+    int cudaEventQuery(driver.Event event)
+    int cudaEventRecord(driver.Event event, driver.Stream stream)
+    int cudaEventSynchronize(driver.Event event)
 
 
 ###############################################################################

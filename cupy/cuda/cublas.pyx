@@ -11,101 +11,101 @@ from cupy.cuda cimport runtime
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cuda.h':
+cdef extern from 'cupy_cuda.h' nogil:
     # Context
-    int cublasCreate(Handle* handle) nogil
-    int cublasDestroy(Handle handle) nogil
-    int cublasGetVersion(Handle handle, int* version) nogil
-    int cublasGetPointerMode(Handle handle, PointerMode* mode) nogil
-    int cublasSetPointerMode(Handle handle, PointerMode mode) nogil
+    int cublasCreate(Handle* handle)
+    int cublasDestroy(Handle handle)
+    int cublasGetVersion(Handle handle, int* version)
+    int cublasGetPointerMode(Handle handle, PointerMode* mode)
+    int cublasSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    int cublasSetStream(Handle handle, driver.Stream streamId) nogil
-    int cublasGetStream(Handle handle, driver.Stream* streamId) nogil
+    int cublasSetStream(Handle handle, driver.Stream streamId)
+    int cublasGetStream(Handle handle, driver.Stream* streamId)
 
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx,
-                     int* result) nogil
+                     int* result)
     int cublasIsamin(Handle handle, int n, float* x, int incx,
-                     int* result) nogil
+                     int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx,
-                    float* result) nogil
+                    float* result)
     int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
-                    int incx, float* y, int incy) nogil
+                    int incx, float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
-                    int incx, double* y, int incy) nogil
+                    int incx, double* y, int incy)
     int cublasSdot(Handle handle, int n, float* x, int incx,
-                   float* y, int incy, float* result) nogil
+                   float* y, int incy, float* result)
     int cublasDdot(Handle handle, int n, double* x, int incx,
-                   double* y, int incy, double* result) nogil
+                   double* y, int incy, double* result)
     int cublasSnrm2(Handle handle, int n, float* x, int incx,
-                    float* result) nogil
+                    float* result)
     int cublasSscal(Handle handle, int n, float* alpha, float* x,
-                    int incx) nogil
+                    int incx)
 
     # BLAS Level 2
     int cublasSgemv(
         Handle handle, Operation trans, int m, int n, float* alpha,
         float* A, int lda, float* x, int incx, float* beta,
-        float* y, int incy) nogil
+        float* y, int incy)
     int cublasDgemv(
         Handle handle, Operation trans, int m, int n, double* alpha,
         double* A, int lda, double* x, int incx, double* beta,
-        double* y, int incy) nogil
+        double* y, int incy)
     int cublasSger(
         Handle handle, int m, int n, float* alpha, float* x, int incx,
-        float* y, int incy, float* A, int lda) nogil
+        float* y, int incy, float* A, int lda)
     int cublasDger(
         Handle handle, int m, int n, double* alpha, double* x,
-        int incx, double* y, int incy, double* A, int lda) nogil
+        int incx, double* y, int incy, double* A, int lda)
 
     # BLAS Level 3
     int cublasSgemm(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, float* alpha, float* A, int lda, float* B,
-        int ldb, float* beta, float* C, int ldc) nogil
+        int ldb, float* beta, float* C, int ldc)
     int cublasDgemm(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, double* alpha, double* A, int lda, double* B,
-        int ldb, double* beta, double* C, int ldc) nogil
+        int ldb, double* beta, double* C, int ldc)
     int cublasSgemmBatched(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, const float* alpha, const float** Aarray,
         int lda, const float** Barray, int ldb, const float* beta,
-        float** Carray, int ldc, int batchCount) nogil
+        float** Carray, int ldc, int batchCount)
     int cublasDgemmBatched(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, const double* alpha, const double** Aarray,
         int lda, const double** Barray, int ldb, const double* beta,
-        double** Carray, int ldc, int batchCount) nogil
+        double** Carray, int ldc, int batchCount)
 
     # BLAS extension
     int cublasSgeam(
         Handle handle, Operation transa, Operation transb, int m, int n,
         const float* alpha, const float* A, int lda,
         const float* beta, const float* B, int ldb,
-        float* C, int ldc) nogil
+        float* C, int ldc)
     int cublasDgeam(
         Handle handle, Operation transa, Operation transb, int m, int n,
         const double* alpha, const double* A, int lda,
         const double* beta, const double* B, int ldb,
-        double* C, int ldc) nogil
+        double* C, int ldc)
     int cublasSdgmm(
         Handle handle, SideMode mode, int m, int n, float* A, int lda,
-        float* x, int incx, float* C, int ldc) nogil
+        float* x, int incx, float* C, int ldc)
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
         const float *alpha, const void *A, runtime.DataType Atype,
         int lda, const void *B, runtime.DataType Btype, int ldb,
-        const float *beta, void *C, runtime.DataType Ctype, int ldc) nogil
+        const float *beta, void *C, runtime.DataType Ctype, int ldc)
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
-        int *PivotArray, int *infoArray, int batchSize) nogil
+        int *PivotArray, int *infoArray, int batchSize)
     int cublasSgetriBatched(
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
-        int batchSize) nogil
+        int batchSize)
 
 
 ###############################################################################
