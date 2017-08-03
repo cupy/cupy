@@ -16,9 +16,9 @@ class MemoryHook(object):
     :class:`~cupy.cuda.MemoryHook` is an callback object
     that is registered to :class:`~cupy.cuda.SingleDeviceMemoryPool`.
     Registered memory hooks are invoked before and after
-    memory allocation from GPU device is invoked, and
-    memory retrieval from memory pool, that is,
-    :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` is invoked.
+    memory is allocated from GPU device, and
+    memory is retrieved from memory pool, and
+    memory is released to memory pool.
 
     Memory hooks that derive :class:`MemoryHook` are required
     to implement six methods:
@@ -33,19 +33,41 @@ class MemoryHook(object):
     Specifically, :meth:`~cupy.cuda.MemoryHook.alloc_preprocess`
     (resp. :meth:`~cupy.cuda.MemoryHook.alloc_postprocess`)
     of all memory hooks registered are called before (resp. after)
-    memory allocation from GPU device is invoked.
+    memory is allocated from GPU device.
 
     Likewise, :meth:`~cupy.cuda.MemoryHook.malloc_preprocess`
     (resp. :meth:`~cupy.cuda.MemoryHook.malloc_postprocess`)
     of all memory hooks registered are called before (resp. after)
-    memory retrieval from memory pool, that is,
+    memory is retrieved from memory pool, that is,
     :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` is invoked.
+
+    Below is the pseudo code to descirbe how
+    :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` and hooks work.
+    Please note that ``alloc_preprocess`` and ``alloc_postprocess``
+    are not invoked if a cached free chunk is found.
+
+        def malloc(size):
+            Call malloc_preprocess of all memory hooks
+            Try to find a cached free chunk from memory pool
+            if chunk is not found:
+                Call alloc_preprocess for all memory hooks
+                Invoke actual memory allocation to get a new chunk
+                Call alloc_postprocess for all memory hooks
+            Call malloc_postprocess for all memory hooks
 
     Moreover, :meth:`~cupy.cuda.MemoryHook.free_preprocess`
     (resp. :meth:`~cupy.cuda.MemoryHook.free_postprocess`)
     of all memory hooks registered are called before (resp. after)
     memory is released to memory pool, that is,
     :meth:`~cupy.cuda.memory.PooledMemory.free` is invoked.
+
+    Below is the pseudo code to descirbe how
+    :meth:`~cupy.cuda.memory.PooledMemory.free` and hooks work:
+
+        def free(ptr):
+            Call free_preprocess of all memory hooks
+            Push a memory chunk of a given pointer back to memory pool
+            Call free_postprocess for all memory hooks
 
     To register a memory hook, use ``with`` statement. Memory hooks
     are registered to all method calls within ``with`` statement
