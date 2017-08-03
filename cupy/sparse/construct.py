@@ -45,3 +45,23 @@ def eye(m, n=None, k=0, dtype='d', format=None):
 
     raise ValueError(
         'only supports identity matries of csr, csc and coo format')
+
+
+def identity(n, dtype='d', format=None):
+    """Creates an identity matrix in sparse format.
+
+    .. note::
+       Currently it only supports csr, csc and coo formats.
+
+    Args:
+        n (int): Number of rows and columns.
+        dtype: Type of a matrix to create.
+        format (str or None): Format of the result, e.g. ``format="csr"``.
+
+    Returns:
+        cupy.sparse.spmatrix: Created identity matrix.
+
+    .. seealso:: :func:`scipy.sparse.identity`
+
+    """
+    return eye(n, n, dtype=dtype, format=format)
