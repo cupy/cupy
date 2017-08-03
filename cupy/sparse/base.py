@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import cupy
 from cupy.core import core
 
 
@@ -96,7 +97,14 @@ class spmatrix(object):
         return self.tocsr().__mul__(other)
 
     def __rmul__(self, other):
-        return self.tocsr().__rmul__(other)
+        if cupy.isscalar(other) or isdense(other) and other.ndim == 0:
+            return self * other
+        else:
+            try:
+                tr = other.T
+            except AttributeError:
+                return NotImplemented
+            return (self.T * tr).T
 
     def __div__(self, other):
         return self.tocsr().__div__(other)
@@ -114,19 +122,19 @@ class spmatrix(object):
         return -self.tocsr()
 
     def __iadd__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __isub__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __imul__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __idiv__(self, other):
         return self.__itruediv__(other)
 
     def __itruediv__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __pow__(self, other):
         return self.tocsr().__pow__(other)
@@ -257,7 +265,7 @@ class spmatrix(object):
 
     def toarray(self, order=None, out=None):
         """Return a dense ndarray representation of this matrix."""
-        raise self.tocsr().tocarray(order=order, out=out)
+        return self.tocsr().toarray(order=order, out=out)
 
     def tobsr(self, blocksize=None, copy=False):
         """Convert this matrix to Block Sparse Row format."""

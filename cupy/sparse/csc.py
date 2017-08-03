@@ -13,8 +13,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
-    Now it has only one initializer format below:
+    Now it has only part of initializer formats:
 
+    ``csc_matrix(S)``
+        ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -92,7 +94,12 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csc_array.toarray`
 
         """
+        # csc2dense returns F-contiguous array.
+        # To return C-contiguous array, it uses transpose.
         return cusparse.csr2dense(self.T).T
+
+    def _add_sparse(self, other, alpha, beta):
+        return cusparse.csrgeam(self.T, other.tocsc().T, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 

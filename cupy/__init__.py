@@ -19,6 +19,14 @@ except ImportError:
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
+
+from cupy import cuda
+
+
+def is_available():
+    return cuda.is_available()
+
+
 __version__ = pkg_resources.get_distribution('cupy').version
 
 
@@ -275,6 +283,7 @@ from numpy import base_repr  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
+from cupy.linalg.product import kron  # NOQA
 from cupy.linalg.product import matmul  # NOQA
 from cupy.linalg.product import outer  # NOQA
 from cupy.linalg.product import tensordot  # NOQA
