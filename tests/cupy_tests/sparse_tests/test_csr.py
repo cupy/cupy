@@ -53,6 +53,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_square(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    indices = xp.array([0, 1, 0, 2], 'i')
+    indptr = xp.array([0, 2, 3, 4], 'i')
+    # 0, 1, 0
+    # 2, 0, 0
+    # 0, 0, 3
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -630,6 +640,32 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_rmul_unsupported(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         None * m
+
+    # __pow__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_0(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_1(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 1).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_2(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 2).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_3(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 3).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_pow_neg(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** -1
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
