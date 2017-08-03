@@ -35,10 +35,6 @@ cdef extern from "cupy_cudnn.h":
         TensorDescriptor tensorDesc, DataType dataType,
         int n, int c, int h, int w,
         int nStride, int cStride, int hStride, int wStride) nogil
-    int cudnnGetTensor4dDescriptor(
-        TensorDescriptor tensorDesc, DataType* dataType,
-        int* n, int* c, int* h, int* w,
-        int* nStride, int* cStride, int* hStride, int* wStride) nogil
     int cudnnSetTensorNdDescriptor(
         TensorDescriptor tensorDesc, DataType dataType, int nbDims,
         int* dimA, int* strideA) nogil
