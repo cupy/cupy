@@ -1167,42 +1167,39 @@ cdef class ndarray:
     def __ixor__(self, other):
         return bitwise_xor(self, other, self)
 
-    def conj(self):
+    cpdef ndarray conj(self):
         if self.dtype.kind == 'c':
             return conj(self)
         else:
             return self
 
-    property real:
+    @property
+    def real(self):
+        if self.dtype.kind == 'c':
+            return real(self)
+        return self
 
-        def __get__(self):
-            if self.dtype.kind == 'c':
-                return real(self)
-            else:
-                return self
+    @real.setter
+    def real(self, value):
+        if self.dtype.kind == 'c':
+            _real_setter(value, self)
+        else:
+            elementwise_copy(value, self)
 
-        def __set__(self, value):
-            if self.dtype.kind == 'c':
-                _real_setter(value, self)
-            else:
-                elementwise_copy(value, self)
+    @property
+    def imag(self):
+        if self.dtype.kind == 'c':
+            return imag(self)
+        new_array = ndarray(self.shape, dtype=self.dtype)
+        new_array.fill(0)
+        return new_array
 
-    property imag:
-
-        def __get__(self):
-            if self.dtype.kind == 'c':
-                return imag(self)
-            else:
-                new_array = ndarray(self.shape, dtype=self.dtype)
-                new_array.fill(0)
-                return new_array
-
-        def __set__(self, value):
-            if self.dtype.kind == 'c':
-                _imag_setter(value, self)
-            else:
-                raise TypeError('cupy.ndarray '
-                                'does not have imaginary part to set')
+    @imag.setter
+    def imag(self, value):
+        if self.dtype.kind == 'c':
+            _imag_setter(value, self)
+        else:
+            raise TypeError('cupy.ndarray does not have imaginary part to set')
 
     # -------------------------------------------------------------------------
     # Special methods
@@ -3599,8 +3596,11 @@ add = create_arithmetic(
 
 conj = create_ufunc(
     'cupy_conj',
-    ('F->F', 'D->D'),
-    'out0 = conj(in0)',
+    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
+     'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->F', 'out0 = conj(in0)'),
+     ('D->D', 'out0 = conj(in0)')),
+    'out0 = in0',
     doc='''Returns the complex conjugate, element-wise.
 
     .. seealso:: :data:`numpy.conj`
@@ -3610,8 +3610,10 @@ conj = create_ufunc(
 
 angle = create_ufunc(
     'cupy_angle',
-    ('F->f', 'D->d'),
-    'out0 = arg(in0)',
+    ('?->d', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0)'),
+     ('D->d', 'out0 = arg(in0)')),
+    'out0 = in0 >= 0 ? 0 : M_PI',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :data:`numpy.angle`
@@ -3621,8 +3623,11 @@ angle = create_ufunc(
 
 real = create_ufunc(
     'cupy_real',
-    ('F->f', 'D->d'),
-    'out0 = in0.real()',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.real()'),
+     ('D->d', 'out0 = in0.real()')),
+    'out0 = in0',
     doc='''Returns the real part of the elements of the array.
 
     .. seealso:: :data:`numpy.real`
@@ -3640,8 +3645,11 @@ _real_setter = create_ufunc(
 
 imag = create_ufunc(
     'cupy_imag',
-    ('F->f', 'D->d'),
-    'out0 = in0.imag()',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.imag()'),
+     ('D->d', 'out0 = in0.imag()')),
+    'out0 = 0',
     doc='''Returns the imaginary part of the elements of the array.
 
     .. seealso:: :data:`numpy.imag`

@@ -142,3 +142,20 @@ class TestArithmetic(unittest.TestCase):
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
             self.check_binary_negative_no_complex('remainder')
+
+    def test_conj(self):
+        self.check_unary('conj')
+        self.check_raises_with_numpy_input(1, 'conj')
+
+    def test_angle(self):
+        self.check_unary('angle')
+        self.check_unary_negative('angle')
+        self.check_raises_with_numpy_input(1, 'angle')
+
+    def test_real(self):
+        self.check_unary('real')
+        self.check_raises_with_numpy_input(1, 'real')
+
+    def test_imag(self):
+        self.check_unary('imag')
+        self.check_raises_with_numpy_input(1, 'imag')

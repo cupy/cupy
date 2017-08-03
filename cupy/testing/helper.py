@@ -529,8 +529,12 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
              omitted from candidate dtypes.
          no_bool(bool): If, True, ``numpy.bool_`` is
              omitted from candidate dtypes.
+         no_complex(bool): If, True, ``numpy.complex64`` and
+             ``numpy.complex128`` are omitted from candidate dtypes.
 
-    dtypes to be tested: ``numpy.float16`` (optional), ``numpy.float32``,
+    dtypes to be tested: ``numpy.complex64`` (optional),
+    ``numpy.complex128`` (optional),
+    ``numpy.float16`` (optional), ``numpy.float32``,
     ``numpy.float64``, ``numpy.dtype('b')``, ``numpy.dtype('h')``,
     ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``,
     ``numpy.dtype('B')``, ``numpy.dtype('H')``, ``numpy.dtype('I')``,
@@ -722,8 +726,8 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
 
 def for_all_dtypes_combination(names=('dtyes',),
-                               no_float16=False, no_bool=False,
-                               no_complex=False, full=None):
+                               no_float16=False, no_bool=False, full=None,
+                               no_complex=False):
     """Decorator that checks the fixture with a product set of all dtypes.
 
     Args:
@@ -736,6 +740,8 @@ def for_all_dtypes_combination(names=('dtyes',),
              will be tested.
              Otherwise, the subset of combinations will be tested
              (see description in :func:`cupy.testing.for_dtypes_combination`).
+         no_complex(bool): If, True, ``numpy.complex64`` and
+             ``numpy.complex128`` are omitted from candidate dtypes.
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
     """
@@ -885,7 +891,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
         a = a % 2 == 0
     elif dtype.kind == 'c':
         a = a + a * 1j
-    return xp.asarray(a.reshape(shape), dtype=dtype)
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
@@ -911,7 +917,7 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
         a = a % 2 == 0
     elif dtype.kind == 'c':
         a = a + a * 1j
-    return xp.asarray(a.reshape(shape), dtype=dtype)
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
