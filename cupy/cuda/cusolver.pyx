@@ -9,124 +9,124 @@ from cupy.cuda cimport runtime
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cusolver.h':
+cdef extern from 'cupy_cusolver.h' nogil:
     # Context
-    int cusolverDnCreate(Handle* handle) nogil
-    int cusolverDnDestroy(Handle handle) nogil
+    int cusolverDnCreate(Handle* handle)
+    int cusolverDnDestroy(Handle handle)
 
     # Stream
-    int cusolverDnGetStream(Handle handle, driver.Stream* streamId) nogil
-    int cusolverDnSetStream(Handle handle, driver.Stream streamId) nogil
+    int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
+    int cusolverDnSetStream(Handle handle, driver.Stream streamId)
 
     # Linear Equations
     int cusolverDnSpotrf_bufferSize(Handle handle, FillMode uplo, int n,
-                                    float* A, int lda, int* lwork) nogil
+                                    float* A, int lda, int* lwork)
     int cusolverDnDpotrf_bufferSize(Handle handle, FillMode uplo, int n,
-                                    double* A, int lda, int* lwork) nogil
+                                    double* A, int lda, int* lwork)
     int cusolverDnSpotrf(Handle handle, FillMode uplo, int n, float* A,
-                         int lda, float* work, int lwork, int* devInfo) nogil
+                         int lda, float* work, int lwork, int* devInfo)
     int cusolverDnDpotrf(Handle handle, FillMode uplo, int n, double *A,
-                         int lda, double* work, int lwork, int* devInfo) nogil
+                         int lda, double* work, int lwork, int* devInfo)
 
     int cusolverDnSpotrs(Handle handle, FillMode uplo, int n, int nrhs,
                          const float* A, int lda, float* B, int ldb,
-                         int* devInfo) nogil
+                         int* devInfo)
     int cusolverDnDpotrs(Handle handle, FillMode uplo, int n, int nrhs,
                          const double* A, int lda, double* B, int ldb,
-                         int *devInfo) nogil
+                         int *devInfo)
 
     int cusolverDnSgetrf(Handle handle, int m, int n, float* A, int lda,
-                         float* work, int* devIpiv, int* devInfo) nogil
+                         float* work, int* devIpiv, int* devInfo)
     int cusolverDnDgetrf(Handle handle, int m, int n, double* A, int lda,
-                         double* work, int* devIpiv, int* devInfo) nogil
+                         double* work, int* devIpiv, int* devInfo)
 
     int cusolverDnSgetrs(Handle handle, Operation trans,
                          int n, int nrhs, const float* A, int lda,
                          const int* devIpiv, float* B, int ldb,
-                         int* devInfo) nogil
+                         int* devInfo)
     int cusolverDnDgetrs(Handle handle, Operation trans,
                          int n, int nrhs, const double* A, int lda,
                          const int* devIpiv, double* B, int ldb,
-                         int* devInfo) nogil
+                         int* devInfo)
 
     int cusolverDnSgetrf_bufferSize(Handle handle, int m, int n,
-                                    float *A, int lda, int* lwork) nogil
+                                    float *A, int lda, int* lwork)
     int cusolverDnDgetrf_bufferSize(Handle handle, int m, int n,
-                                    double *A, int lda, int* lwork) nogil
+                                    double *A, int lda, int* lwork)
     int cusolverDnSgeqrf_bufferSize(Handle handle, int m, int n,
-                                    float* A, int lda, int* lwork) nogil
+                                    float* A, int lda, int* lwork)
     int cusolverDnDgeqrf_bufferSize(Handle handle, int m, int n,
-                                    double* A, int lda, int* lwork) nogil
+                                    double* A, int lda, int* lwork)
     int cusolverDnSgeqrf(Handle handle, int m, int n, float* A, int lda,
                          float* tau, float* work, int lwork,
-                         int* devInfo) nogil
+                         int* devInfo)
     int cusolverDnDgeqrf(Handle handle, int m, int n, double* A, int lda,
                          double* tau, double* work, int lwork,
-                         int* devInfo) nogil
+                         int* devInfo)
 
     # The actual definition of cusolverDn(S|D)orgqr_bufferSize
     # is different from the reference
     int cusolverDnSorgqr_bufferSize(Handle handle, int m, int n, int k,
                                     const float* A, int lda,
-                                    const float* tau, int* lwork) nogil
+                                    const float* tau, int* lwork)
     int cusolverDnDorgqr_bufferSize(Handle handle, int m, int n, int k,
                                     const double* A, int lda,
-                                    const double* tau, int* lwork) nogil
+                                    const double* tau, int* lwork)
     int cusolverDnSorgqr(Handle handle, int m, int n, int k,
                          float* A, int lda, const float* tau,
-                         float* work, int lwork, int* devInfo) nogil
+                         float* work, int lwork, int* devInfo)
     int cusolverDnDorgqr(Handle handle, int m, int n, int k,
                          double* A, int lda, const double* tau,
-                         double* work, int lwork, int* devInfo) nogil
+                         double* work, int lwork, int* devInfo)
 
     int cusolverDnSormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const float* A, int lda,
                          const float* tau, float* C, int ldc, float* work,
-                         int lwork, int* devInfo) nogil
+                         int lwork, int* devInfo)
     int cusolverDnDormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const double* A, int lda,
                          const double* tau, double* C, int ldc, double* work,
-                         int lwork, int* devInfo) nogil
+                         int lwork, int* devInfo)
 
     int cusolverDnSsytrf(Handle handle, FillMode uplo, int n, float* A,
                          int lda, int* ipiv, float* work, int lwork,
-                         int* devInfo) nogil
+                         int* devInfo)
     int cusolverDnDsytrf(Handle handle, FillMode uplo, int n, double* A,
                          int lda, int* ipiv, double* work, int lwork,
-                         int* devInfo) nogil
+                         int* devInfo)
 
     int cusolverDnSgebrd(Handle handle, int m, int n, float* A, int lda,
                          float* D, float* E, float* tauQ, float* tauP,
-                         float* Work, int lwork, int* devInfo) nogil
+                         float* Work, int lwork, int* devInfo)
     int cusolverDnDgebrd(Handle handle, int m, int n, double* A, int lda,
                          double* D, double* E, double* tauQ, double* tauP,
-                         double* Work, int lwork, int* devInfo) nogil
+                         double* Work, int lwork, int* devInfo)
 
     int cusolverDnSgesvd_bufferSize(Handle handle, int m, int n,
-                                    int* lwork) nogil
+                                    int* lwork)
     int cusolverDnDgesvd_bufferSize(Handle handle, int m, int n,
-                                    int* lwork) nogil
+                                    int* lwork)
     int cusolverDnSgesvd(Handle handle, char jobu, char jobvt, int m, int n,
                          float* A, int lda, float* S, float* U, int ldu,
                          float* VT, int ldvt, float* Work, int lwork,
-                         float* rwork, int* devInfo) nogil
+                         float* rwork, int* devInfo)
     int cusolverDnDgesvd(Handle handle, char jobu, char jobvt, int m, int n,
                          double* A, int lda, double* S, double* U, int ldu,
                          double* VT, int ldvt, double* Work, int lwork,
-                         double* rwork, int* devInfo) nogil
+                         double* rwork, int* devInfo)
 
     int cusolverDnSsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const float* A,
-        int lda, const float* W, int* lwork) nogil
+        int lda, const float* W, int* lwork)
     int cusolverDnDsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const double* A,
-        int lda, const double* W, int* lwork) nogil
+        int lda, const double* W, int* lwork)
     int cusolverDnSsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, float* A, int lda,
-        float* W, float* work, int lwork, int* info) nogil
+        float* W, float* work, int lwork, int* info)
     int cusolverDnDsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
-        double* W, double* work, int lwork, int* info) nogil
+        double* W, double* work, int lwork, int* info)
 
 
 ###############################################################################

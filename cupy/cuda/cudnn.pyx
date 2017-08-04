@@ -13,186 +13,186 @@ from cupy.cuda cimport driver
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cudnn.h":
+cdef extern from "cupy_cudnn.h" nogil:
     # Error handling
-    const char* cudnnGetErrorString(Status status) nogil
+    const char* cudnnGetErrorString(Status status)
 
     # Version
-    size_t cudnnGetVersion() nogil
+    size_t cudnnGetVersion()
 
     # Initialization and CUDA cooperation
-    int cudnnCreate(Handle* handle) nogil
-    int cudnnDestroy(Handle handle) nogil
-    int cudnnSetStream(Handle handle, driver.Stream stream) nogil
-    int cudnnGetStream(Handle handle, driver.Stream* stream) nogil
+    int cudnnCreate(Handle* handle)
+    int cudnnDestroy(Handle handle)
+    int cudnnSetStream(Handle handle, driver.Stream stream)
+    int cudnnGetStream(Handle handle, driver.Stream* stream)
 
     # Tensor manipulation
-    int cudnnCreateTensorDescriptor(TensorDescriptor* descriptor) nogil
+    int cudnnCreateTensorDescriptor(TensorDescriptor* descriptor)
     int cudnnSetTensor4dDescriptor(
         TensorDescriptor tensorDesc, TensorFormat format,
-        DataType dataType, int n, int c, int h, int w) nogil
+        DataType dataType, int n, int c, int h, int w)
     int cudnnSetTensor4dDescriptorEx(
         TensorDescriptor tensorDesc, DataType dataType,
         int n, int c, int h, int w,
-        int nStride, int cStride, int hStride, int wStride) nogil
+        int nStride, int cStride, int hStride, int wStride)
     int cudnnGetTensor4dDescriptor(
         TensorDescriptor tensorDesc, DataType* dataType,
         int* n, int* c, int* h, int* w,
         int* nStride, int* cStride, int* hStride, int* wStride) nogil
     int cudnnSetTensorNdDescriptor(
         TensorDescriptor tensorDesc, DataType dataType, int nbDims,
-        int* dimA, int* strideA) nogil
-    int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc) nogil
+        int* dimA, int* strideA)
+    int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc)
     int cudnnAddTensor_v3(
         Handle handle, void* alpha, TensorDescriptor bDesc,
-        void* b, void* beta, TensorDescriptor yDesc, void* y) nogil
+        void* b, void* beta, TensorDescriptor yDesc, void* y)
 
     # Filter manipulation
-    int cudnnCreateFilterDescriptor(FilterDescriptor* filterDesc) nogil
+    int cudnnCreateFilterDescriptor(FilterDescriptor* filterDesc)
     int cudnnSetFilter4dDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
-        TensorFormat format, int k, int c, int h, int w) nogil
+        TensorFormat format, int k, int c, int h, int w)
     int cudnnSetFilterNdDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
-        TensorFormat format, int nbDims, const int filterDimA[]) nogil
+        TensorFormat format, int nbDims, const int filterDimA[])
     int cudnnGetFilterNdDescriptor_v4(
         FilterDescriptor wDesc, int nbDimsRequested, DataType* dataType,
-        TensorFormat* format, int* nbDims, int filterDimA[]) nogil
-    int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc) nogil
+        TensorFormat* format, int* nbDims, int filterDimA[])
+    int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc)
 
     # Convolution
-    int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc) nogil
+    int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc)
     int cudnnSetConvolutionMathType(
         ConvolutionDescriptor convDesc, MathType mathType) nogil
     int cudnnGetConvolutionMathType(
         ConvolutionDescriptor convDesc, MathType *mathType) nogil
     int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
-        int v, int dilation_h, int dilation_w, ConvolutionMode mode) nogil
+        int v, int dilation_h, int dilation_w, ConvolutionMode mode)
     int cudnnSetConvolution2dDescriptor_v5(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int dilation_h, int dilation_w, ConvolutionMode mode,
-        DataType computeType) nogil
+        DataType computeType)
     int cudnnSetConvolutionNdDescriptor_v3(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* dilationA, ConvolutionMode mode,
-        DataType dataType) nogil
-    int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) nogil
+        DataType dataType)
+    int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc)
     int cudnnFindConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor xDesc, FilterDescriptor wDesc,
         ConvolutionDescriptor convDesc, TensorDescriptor yDesc,
         int requestedAlgoCount, int* returnedAlgoCount,
-        ConvolutionFwdAlgoPerf* perfResults) nogil
+        ConvolutionFwdAlgoPerf* perfResults)
     int cudnnFindConvolutionForwardAlgorithmEx(
         Handle handle, TensorDescriptor xDesc, void* x,
         FilterDescriptor wDesc, void* w, ConvolutionDescriptor convDesc,
         TensorDescriptor yDesc, void* y, int requestedAlgoCount,
         int* returnedAlgoCount, ConvolutionFwdAlgoPerf* perfResults,
-        void* workSpace, size_t workSpaceSizeInBytes) nogil
+        void* workSpace, size_t workSpaceSizeInBytes)
     int cudnnGetConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
         TensorDescriptor destDesc, ConvolutionFwdPreference preference,
-        size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo) nogil
+        size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo)
     int cudnnGetConvolutionForwardWorkspaceSize(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
         TensorDescriptor destDesc, ConvolutionFwdAlgo algo,
-        size_t* sizeInBytes) nogil
+        size_t* sizeInBytes)
     int cudnnConvolutionForward(
         Handle handle, void* alpha, TensorDescriptor srcDesc,
         void* srcData, FilterDescriptor filterDesc, void* filterData,
         ConvolutionDescriptor convDesc, ConvolutionFwdAlgo algo,
         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        TensorDescriptor destDesc, void* destData) nogil
+        TensorDescriptor destDesc, void* destData)
     int cudnnConvolutionBackwardBias(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
-        TensorDescriptor destDesc, void* destData) nogil
+        TensorDescriptor destDesc, void* destData)
     int cudnnFindConvolutionBackwardFilterAlgorithm(
         Handle handle, TensorDescriptor xDesc, TensorDescriptor dyDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor dwDesc,
         int requestedAlgoCount, int* returnedAlgoCount,
-        ConvolutionBwdFilterAlgoPerf* perfResults) nogil
+        ConvolutionBwdFilterAlgoPerf* perfResults)
     int cudnnFindConvolutionBackwardFilterAlgorithmEx(
         Handle handle, TensorDescriptor xDesc, void* x,
         TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
         FilterDescriptor dwDesc, void* dw, int requestedAlgoCount,
         int* returnedAlgoCount, ConvolutionBwdFilterAlgoPerf* perfResults,
-        void* workSpace, size_t workSpaceSizeInBytes) nogil
+        void* workSpace, size_t workSpaceSizeInBytes)
     int cudnnGetConvolutionBackwardFilterAlgorithm(
         Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
         ConvolutionBwdFilterPreference preference,
-        size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo) nogil
+        size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo)
     int cudnnGetConvolutionBackwardFilterWorkspaceSize(
         Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
-        ConvolutionBwdFilterAlgo algo, size_t* sizeInBytes) nogil
+        ConvolutionBwdFilterAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardFilter_v3(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
         ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        FilterDescriptor gradDesc, void* gradData) nogil
+        FilterDescriptor gradDesc, void* gradData)
     int cudnnGetConvolutionBackwardDataAlgorithm(
         Handle handle, FilterDescriptor filterDesc,
         TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
         ConvolutionBwdDataPreference preference,
-        size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo) nogil
+        size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo)
     int cudnnFindConvolutionBackwardDataAlgorithm(
         Handle handle, TensorDescriptor wDesc, TensorDescriptor dyDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor dxDesc,
         int requestedAlgoCount, int* returnedAlgoCount,
-        ConvolutionBwdDataAlgoPerf* perfResults) nogil
+        ConvolutionBwdDataAlgoPerf* perfResults)
     int cudnnFindConvolutionBackwardDataAlgorithmEx(
         Handle handle, FilterDescriptor wDesc, void* w,
         TensorDescriptor dyDesc, void* dy, ConvolutionDescriptor convDesc,
         TensorDescriptor dxDesc, void* dx, int requestedAlgoCount,
         int* returnedAlgoCount, ConvolutionBwdDataAlgoPerf* perfResults,
-        void* workSpace, size_t workSpaceSizeInBytes) nogil
+        void* workSpace, size_t workSpaceSizeInBytes)
     int cudnnGetConvolutionBackwardDataWorkspaceSize(
         Handle handle, FilterDescriptor filterDesc,
         TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
-        ConvolutionBwdDataAlgo algo, size_t* sizeInBytes) nogil
+        ConvolutionBwdDataAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardData_v3(
         Handle handle, void* alpha,
         FilterDescriptor filterDesc, void* filterData,
         TensorDescriptor diffDesc, void* diffData,
         ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        TensorDescriptor gradDesc, void* gradData) nogil
+        TensorDescriptor gradDesc, void* gradData)
 
     # Pooling
-    int cudnnCreatePoolingDescriptor(PoolingDescriptor* desc) nogil
+    int cudnnCreatePoolingDescriptor(PoolingDescriptor* desc)
     int cudnnSetPooling2dDescriptor_v4(
         PoolingDescriptor poolingDesc, PoolingMode mode,
         NanPropagation maxpoolingNanOpt, int windowHeight, int windowWidth,
         int verticalPadding, int horizontalPadding, int verticalStride,
-        int horizontalStride) nogil
+        int horizontalStride)
     int cudnnSetPoolingNdDescriptor_v4(
         PoolingDescriptor poolingDesc, PoolingMode mode,
         NanPropagation maxpoolingNanOpt, int nbDims,
-        int* windowDimA, int* paddingA, int* strideA) nogil
-    int cudnnDestroyPoolingDescriptor(PoolingDescriptor poolingDesc) nogil
+        int* windowDimA, int* paddingA, int* strideA)
+    int cudnnDestroyPoolingDescriptor(PoolingDescriptor poolingDesc)
     int cudnnPoolingForward(
         Handle handle, PoolingDescriptor poolingDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
-        TensorDescriptor dstDesc, void* dstData) nogil
+        TensorDescriptor dstDesc, void* dstData)
     int cudnnPoolingBackward(
         Handle handle, PoolingDescriptor poolingDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor srcDiffDesc, void* srcDiffData,
         TensorDescriptor destDesc, void* destData, void* beta,
-        TensorDescriptor destDiffDesc, void* destDiffData) nogil
+        TensorDescriptor destDiffDesc, void* destDiffData)
 
     # Batch Normalization
     int cudnnDeriveBNTensorDescriptor(
         TensorDescriptor derivedBnDesc, TensorDescriptor xDesc,
-        BatchNormMode mode) nogil
+        BatchNormMode mode)
     int cudnnBatchNormalizationForwardTraining(
         Handle handle, BatchNormMode mode,
         void* alpha, void* beta, TensorDescriptor xDesc,
@@ -201,14 +201,14 @@ cdef extern from "cupy_cudnn.h":
         void* bnBias, double exponentialAverageFactor,
         void* resultRunningMean, void* resultRunningVariance,
         double epsilon, void* resultSaveMean,
-        void* resultSaveInvVariance) nogil
+        void* resultSaveInvVariance)
     int cudnnBatchNormalizationForwardInference(
         Handle handle, BatchNormMode mode,
         void* alpha, void* beta, TensorDescriptor xDesc,
         void* x, TensorDescriptor yDesc, void* y,
         TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
         void* bnBias, void* estimatedMean, void* estimatedVariance,
-        double epsilon) nogil
+        double epsilon)
     int cudnnBatchNormalizationBackward(
         Handle handle, BatchNormMode mode,
         void* alphaDataDiff, void* betaDataDiff,
@@ -218,53 +218,53 @@ cdef extern from "cupy_cudnn.h":
         TensorDescriptor dxDesc, void* dx,
         TensorDescriptor dBnScaleBiasDesc, void* bnScale,
         void* dBnScaleResult, void* dBnBiasResult,
-        double epsilon, void* savedMean, void* savedInvVariance) nogil
+        double epsilon, void* savedMean, void* savedInvVariance)
 
     # Activation
     int cudnnCreateActivationDescriptor(
-        ActivationDescriptor* activationDesc) nogil
+        ActivationDescriptor* activationDesc)
     int cudnnSetActivationDescriptor(
         ActivationDescriptor activationDesc, ActivationMode mode,
-        NanPropagation reluNanOpt, double reluCeiling) nogil
+        NanPropagation reluNanOpt, double reluCeiling)
     int cudnnDestroyActivationDescriptor(
-        ActivationDescriptor activationDesc) nogil
+        ActivationDescriptor activationDesc)
     int cudnnSoftmaxForward(
         Handle handle, SoftmaxAlgorithm algorithm, SoftmaxMode mode,
         void* alpha, TensorDescriptor srcDesc, void* srcData,
-        void* beta, TensorDescriptor dstDesc, void* dstData) nogil
+        void* beta, TensorDescriptor dstDesc, void* dstData)
     int cudnnSoftmaxBackward(
         Handle handle, SoftmaxAlgorithm algorithm, SoftmaxMode mode,
         void* alpha, TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor srcDiffDesc, void* srcDiffData, void* beta,
-        TensorDescriptor destDiffDesc, void* destDiffData) nogil
+        TensorDescriptor destDiffDesc, void* destDiffData)
     int cudnnActivationForward_v4(
         Handle handle, ActivationDescriptor activationDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData, void* beta,
-        TensorDescriptor dstDesc, void* dstData) nogil
+        TensorDescriptor dstDesc, void* dstData)
     int cudnnActivationBackward_v4(
         Handle handle, ActivationDescriptor activationDesc, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor srcDiffDesc, void* srcDiffData,
         TensorDescriptor destDesc, void* destData, void* beta,
-        TensorDescriptor destDiffDesc, void* destDiffData) nogil
+        TensorDescriptor destDiffDesc, void* destDiffData)
 
     # Dropout
-    int cudnnCreateDropoutDescriptor(DropoutDescriptor* desc) nogil
-    int cudnnDestroyDropoutDescriptor(DropoutDescriptor dropoutDesc) nogil
-    int cudnnDropoutGetStatesSize(Handle handle, size_t* sizeInBytes) nogil
+    int cudnnCreateDropoutDescriptor(DropoutDescriptor* desc)
+    int cudnnDestroyDropoutDescriptor(DropoutDescriptor dropoutDesc)
+    int cudnnDropoutGetStatesSize(Handle handle, size_t* sizeInBytes)
     int cudnnDropoutGetReserveSpaceSize(
-        TensorDescriptor xDesc, size_t* sizeInBytes) nogil
+        TensorDescriptor xDesc, size_t* sizeInBytes)
     int cudnnSetDropoutDescriptor(
         DropoutDescriptor dropoutDesc, Handle handle, float dropout,
-        void* states, size_t stateSizeInBytes, unsigned long long seed) nogil
+        void* states, size_t stateSizeInBytes, unsigned long long seed)
     int cudnnDropoutBackward(
         Handle handle, DropoutDescriptor dropoutDesc,
         TensorDescriptor dydesc, void* dy, TensorDescriptor dxdesc,
-        void* dx, void* reserveSpace, size_t reserveSpaceSizeInBytes) nogil
+        void* dx, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
     # RNN
-    int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc) nogil
-    int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc) nogil
+    int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
+    int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
     int cudnnSetRNNDescriptor_v5(
         RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
@@ -275,30 +275,30 @@ cdef extern from "cupy_cudnn.h":
         DirectionMode direction, RNNMode mode, RNNAlgo algo, DataType dataType) nogil
     int cudnnGetRNNWorkspaceSize(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
-        TensorDescriptor* xDesc, size_t* sizeInBytes) nogil
+        TensorDescriptor* xDesc, size_t* sizeInBytes)
     int cudnnGetRNNTrainingReserveSize(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
-        TensorDescriptor* xDesc, size_t* sizeInBytes) nogil
+        TensorDescriptor* xDesc, size_t* sizeInBytes)
     int cudnnGetRNNParamsSize(
         Handle handle, RNNDescriptor rnnDesc, TensorDescriptor xDesc,
-        size_t* sizeInBytes, DataType dataType) nogil
+        size_t* sizeInBytes, DataType dataType)
     int cudnnGetRNNLinLayerMatrixParams(
         Handle handle, RNNDescriptor rnnDesc, int layer,
         TensorDescriptor xDesc, FilterDescriptor wDesc, void* w,
         int linLayerID, FilterDescriptor linLayerMatDesc,
-        void** linLayerMat) nogil
+        void** linLayerMat)
     int cudnnGetRNNLinLayerBiasParams(
         Handle handle, RNNDescriptor rnnDesc, int layer,
         TensorDescriptor xDesc, FilterDescriptor wDesc, void* w,
         int linLayerID, FilterDescriptor linLayerBiasDesc,
-        void** linLayerBias) nogil
+        void** linLayerBias)
     int cudnnRNNForwardInference(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc,
         void* x, TensorDescriptor hxDesc, void* hx, TensorDescriptor cxDesc,
         void* cx, FilterDescriptor wDesc, void* w, TensorDescriptor* yDesc,
         void* y, TensorDescriptor hyDesc, void* hy, TensorDescriptor cyDesc,
-        void* cy, void* workspace, size_t workSpaceSizeInBytes) nogil
+        void* cy, void* workspace, size_t workSpaceSizeInBytes)
     int cudnnRNNForwardTraining(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc, void* x,
@@ -306,7 +306,7 @@ cdef extern from "cupy_cudnn.h":
         FilterDescriptor wDesc, void* w, TensorDescriptor* yDesc, void* y,
         TensorDescriptor hyDesc, void* hy, TensorDescriptor cyDesc, void* cy,
         void* workspace, size_t workSpaceSizeInBytes, void* reserveSpace,
-        size_t reserveSpaceSizeInBytes) nogil
+        size_t reserveSpaceSizeInBytes)
     int cudnnRNNBackwardData(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* yDesc, void* y,
@@ -320,38 +320,38 @@ cdef extern from "cupy_cudnn.h":
         TensorDescriptor dhxDesc, void* dhx,
         TensorDescriptor dcxDesc, void* dcx, void* workspace,
         size_t workSpaceSizeInBytes, void* reserveSpace,
-        size_t reserveSpaceSizeInBytes) nogil
+        size_t reserveSpaceSizeInBytes)
     int cudnnRNNBackwardWeights(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc, void* x, TensorDescriptor hxDesc, void* hx,
         TensorDescriptor* yDesc, void* y,
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
-        void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes) nogil
+        void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
     # Spatial Transformer
     int cudnnCreateSpatialTransformerDescriptor(
-        SpatialTransformerDescriptor* stDesc) nogil
+        SpatialTransformerDescriptor* stDesc)
     int cudnnDestroySpatialTransformerDescriptor(
-        SpatialTransformerDescriptor stDesc) nogil
+        SpatialTransformerDescriptor stDesc)
     int cudnnSetSpatialTransformerNdDescriptor(
         SpatialTransformerDescriptor stDesc, SamplerType samplerType,
-        DataType dataType, int nbDims, int dimA[]) nogil
+        DataType dataType, int nbDims, int dimA[])
     int cudnnSpatialTfGridGeneratorForward(
         Handle handle, SpatialTransformerDescriptor stDesc,
-        void* theta, void* grid) nogil
+        void* theta, void* grid)
     int cudnnSpatialTfGridGeneratorBackward(
         Handle handle, SpatialTransformerDescriptor stDesc,
-        void* dgrid, void* dtheta) nogil
+        void* dgrid, void* dtheta)
     int cudnnSpatialTfSamplerForward(
         Handle handle, SpatialTransformerDescriptor stDesc,
         void* alpha, TensorDescriptor xDesc, void* x,
-        void* grid, void* beta, TensorDescriptor yDesc, void* y) nogil
+        void* grid, void* beta, TensorDescriptor yDesc, void* y)
     int cudnnSpatialTfSamplerBackward(
         Handle handle, SpatialTransformerDescriptor stDesc,
         void* alpha, TensorDescriptor xDesc, void* x, void* beta,
         TensorDescriptor dxDesc, void* dx, void* alphaDgrid,
         TensorDescriptor dyDesc, void* dy, void* grid,
-        void* betaDgrid, void* dgrid) nogil
+        void* betaDgrid, void* dgrid)
 
 ###############################################################################
 # Error handling

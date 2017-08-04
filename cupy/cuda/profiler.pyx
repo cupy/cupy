@@ -4,12 +4,12 @@
 from cupy.cuda cimport runtime
 
 
-cdef extern from "cupy_cuda.h":
+cdef extern from "cupy_cuda.h" nogil:
     runtime.Error cudaProfilerInitialize(const char *configFile,
                                          const char *outputFile,
-                                         int outputMode) nogil
-    runtime.Error cudaProfilerStart() nogil
-    runtime.Error cudaProfilerStop() nogil
+                                         int outputMode)
+    runtime.Error cudaProfilerStart()
+    runtime.Error cudaProfilerStop()
 
 
 cpdef void initialize(str config_file,

@@ -4,7 +4,9 @@ try:
 except ImportError:
     _scipy_available = False
 
+import cupy
 from cupy import cusparse
+from cupy.sparse import base
 from cupy.sparse import compressed
 from cupy.sparse import csc
 
@@ -62,6 +64,27 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def _add_sparse(self, other, alpha, beta):
         return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
+
+    def __mul__(self, other):
+        if cupy.isscalar(other):
+            return self._with_data(self.data * other)
+        elif isspmatrix_csr(other):
+            return cusparse.csrgemm(self, other)
+        elif csc.isspmatrix_csc(other):
+            return cusparse.csrgemm(self, other.T, transb=True)
+        elif base.isspmatrix(other):
+            return cusparse.csrgemm(self, other.tocsr())
+        elif base.isdense(other):
+            if other.ndim == 0:
+                return self._with_data(self.data * other)
+            elif other.ndim == 1:
+                return cusparse.csrmv(self, cupy.asfortranarray(other))
+            elif other.ndim == 2:
+                return cusparse.csrmm2(self, cupy.asfortranarray(other))
+            else:
+                raise ValueError('could not interpret dimensions')
+        else:
+            return NotImplemented
 
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
