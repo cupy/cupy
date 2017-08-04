@@ -29,7 +29,8 @@ cdef extern from "cupy_nccl.h":
     void ncclCommDestroy(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
     ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
-    ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
+    ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff,
+                               size_t count,
                                ncclDataType_t datatype, ncclRedOp_t op,
                                ncclComm_t comm, driver.Stream stream)
     ncclResult_t  ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
@@ -155,12 +156,12 @@ cdef class NcclCommunicator:
                size_t count, int datatype, int op, int root, size_t stream):
         if NCCL_VERSION >= 2000:
             status = ncclReduce(<void*> sendbuf, <void*> recvbuf, count,
-                                <ncclDataType_t> datatype, <ncclRedOp_t> op, root,
-                                self._comm, <driver.Stream> stream)
+                                <ncclDataType_t> datatype, <ncclRedOp_t> op,
+                                root, self._comm, <driver.Stream> stream)
         else:
             status = ncclReduce(<void*> sendbuf, <void*> recvbuf, <int> count,
-                                <ncclDataType_t> datatype, <ncclRedOp_t> op, root,
-                                self._comm, <driver.Stream> stream)
+                                <ncclDataType_t> datatype, <ncclRedOp_t> op,
+                                root, self._comm, <driver.Stream> stream)
         check_status(status)
 
     def bcast(self, size_t buff, int count, int datatype,
