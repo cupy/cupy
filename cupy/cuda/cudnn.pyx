@@ -38,7 +38,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnGetTensor4dDescriptor(
         TensorDescriptor tensorDesc, DataType* dataType,
         int* n, int* c, int* h, int* w,
-        int* nStride, int* cStride, int* hStride, int* wStride) nogil
+        int* nStride, int* cStride, int* hStride, int* wStride)
     int cudnnSetTensorNdDescriptor(
         TensorDescriptor tensorDesc, DataType dataType, int nbDims,
         int* dimA, int* strideA)
@@ -63,9 +63,9 @@ cdef extern from "cupy_cudnn.h" nogil:
     # Convolution
     int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc)
     int cudnnSetConvolutionMathType(
-        ConvolutionDescriptor convDesc, MathType mathType) nogil
+        ConvolutionDescriptor convDesc, MathType mathType)
     int cudnnGetConvolutionMathType(
-        ConvolutionDescriptor convDesc, MathType *mathType) nogil
+        ConvolutionDescriptor convDesc, MathType *mathType)
     int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int dilation_h, int dilation_w, ConvolutionMode mode)
@@ -268,11 +268,11 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnSetRNNDescriptor_v5(
         RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
-        DirectionMode direction, RNNMode mode, DataType dataType) nogil
+        DirectionMode direction, RNNMode mode, DataType dataType)
     int cudnnSetRNNDescriptor_v6(
         Handle handle, RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
-        DirectionMode direction, RNNMode mode, RNNAlgo algo, DataType dataType) nogil
+        DirectionMode direction, RNNMode mode, RNNAlgo algo, DataType dataType)
     int cudnnGetRNNWorkspaceSize(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc, size_t* sizeInBytes)
