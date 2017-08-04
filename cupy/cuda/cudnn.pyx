@@ -452,23 +452,6 @@ cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
     check_status(status)
 
 
-cpdef getTensor4dDescriptor(size_t tensorDesc):
-    cdef DataType dataType
-    cdef int n
-    cdef int c
-    cdef int h
-    cdef int w
-    cdef int nStride
-    cdef int cStride
-    cdef int hStride
-    cdef int wStride
-    status = cudnnGetTensor4dDescriptor(
-        <TensorDescriptor>tensorDesc, &dataType,
-        &n, &c, &h, &w, &nStride, &cStride, &hStride, &wStride)
-    check_status(status)
-    return(dataType, n, c, h, w, nStride, cStride, hStride, wStride)
-
-
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA):
     status = cudnnSetTensorNdDescriptor(
