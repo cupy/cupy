@@ -369,6 +369,10 @@ cudnnStatus_t cudnnSetRNNDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnSetRNNDescriptor_v5(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 cudnnStatus_t cudnnGetRNNWorkspaceSize(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -482,14 +486,15 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 6000)
 
 
-#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+#if !defined(CUPY_NO_CUDA)
+#if (CUDNN_VERSION >= 7000)
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 #define cudnnSetConvolution2dDescriptor_v5 cudnnSetConvolution2dDescriptor
 
-#else // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+#else // #if (CUDNN_VERSION >= 7000)
 
 typedef enum {} cudnnMathType_t;
 
@@ -501,7 +506,8 @@ cudnnStatus_t cudnnGetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+#endif // #if (CUDNN_VERSION >= 7000)
+#endif // #if !defined(CUPY_NO_CUDA)
 
 
 } // extern "C"
