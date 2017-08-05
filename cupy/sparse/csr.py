@@ -19,6 +19,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     ``csr_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsr()``.
+    ``csr_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is flat64.
     ``csr_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -111,7 +114,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Returns a dense matrix representing the same value.
 
         Args:
-            order (str): Not supported.
+            order ({'C', 'F', None}): Whether to store data in C (row-major)
+                order or F (column-major) order. Default is C-order.
             out: Not supported.
 
         Returns:
@@ -120,9 +124,17 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
         """
+        if order is None:
+            order = 'C'
+
         # csr2dense returns F-contiguous array.
-        # To return C-contiguous array, it uses transpose.
-        return cusparse.csc2dense(self.T).T
+        if order == 'C':
+            # To return C-contiguous array, it uses transpose.
+            return cusparse.csc2dense(self.T).T
+        elif order == 'F':
+            return cusparse.csr2dense(self)
+        else:
+            raise TypeError('order not understood')
 
     # TODO(unno): Implement tobsr
 

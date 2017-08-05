@@ -60,47 +60,62 @@ cdef class Indexer:
         return CIndexer(self.size, self.shape)
 
 
-cdef str _header_source = None
+cdef list _header_list = [
+    'cupy/complex/complex.h',
+    'cupy/complex/math_private.h',
+    'cupy/complex/complex_inl.h',
+    'cupy/complex/arithmetic.h',
+    'cupy/complex/cproj.h',
+    'cupy/complex/cexp.h',
+    'cupy/complex/cexpf.h',
+    'cupy/complex/clog.h',
+    'cupy/complex/clogf.h',
+    'cupy/complex/cpow.h',
+    'cupy/complex/ccosh.h',
+    'cupy/complex/ccoshf.h',
+    'cupy/complex/csinh.h',
+    'cupy/complex/csinhf.h',
+    'cupy/complex/ctanh.h',
+    'cupy/complex/ctanhf.h',
+    'cupy/complex/csqrt.h',
+    'cupy/complex/csqrtf.h',
+    'cupy/complex/catrig.h',
+    'cupy/complex/catrigf.h',
+    'cupy/complex.cuh',
+    'cupy/carray.cuh',
+]
+cdef str _header = """
+#include <cupy/carray.cuh>
+"""
+
+cdef str _header_path_cache = None
+cdef str _header_cache = None
+
+
+cpdef str _get_header_dir_path():
+    global _header_path_cache
+    if _header_path_cache is None:
+        _header_path_cache = os.path.abspath(os.path.dirname(__file__))
+    return _header_path_cache
 
 
 cpdef str _get_header_source():
-    global _header_source
-    if _header_source is None:
-        files = [
-            'complex/complex.h',
-            'complex/math_private.h',
-            'complex/complex_inl.h',
-            'complex/arithmetic.h',
-            'complex/cproj.h',
-            'complex/cexp.h',
-            'complex/cexpf.h',
-            'complex/clog.h',
-            'complex/clogf.h',
-            'complex/cpow.h',
-            'complex/ccosh.h',
-            'complex/ccoshf.h',
-            'complex/csinh.h',
-            'complex/csinhf.h',
-            'complex/ctanh.h',
-            'complex/ctanhf.h',
-            'complex/csqrt.h',
-            'complex/csqrtf.h',
-            'complex/catrig.h',
-            'complex/catrigf.h',
-            'complex.cuh',
-            'carray.cuh',
-        ]
-        dirname = os.path.dirname(__file__)
+    global _header_cache
+    if _header_cache is None:
         source = []
-        for file_path in files:
-            header_path = os.path.join(dirname, file_path)
+        base_path = _get_header_dir_path()
+        for file_path in _header_list:
+            header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())
-            _header_source = '\n'.join(source)
-    return _header_source
+        _header_cache = '\n'.join(source)
+    return _header_cache
 
 
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
-    source = _get_header_source() + source
-    return cuda.compile_with_cache(source, options, arch, cachd_dir)
+    source = _header + source
+    extra_source = _get_header_source()
+    options += ('-I%s' % _get_header_dir_path(),)
+    return cuda.compile_with_cache(source, options, arch, cachd_dir,
+                                   extra_source)

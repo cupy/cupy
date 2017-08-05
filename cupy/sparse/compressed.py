@@ -1,9 +1,11 @@
 import numpy
 
 import cupy
+from cupy.creation import basic
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import data as sparse_data
+from cupy.sparse import util
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix):
@@ -25,6 +27,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
             if shape is None:
                 shape = arg1.shape
+
+        elif util.isshape(arg1):
+            m, n = arg1
+            m, n = int(m), int(n)
+            data = basic.zeros(0, dtype if dtype else 'd')
+            indices = basic.zeros(0, 'i')
+            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype='i')
+            # shape and copy argument is ignored
+            shape = (m, n)
+            copy = False
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
