@@ -45,7 +45,11 @@
  *    lib/msun/src/s_ccoshf.c
  */
 
+
 #pragma once
+
+#include <cupy/complex/complex.h>
+#include <cupy/complex/math_private.h>
 
 namespace thrust {
 namespace detail {

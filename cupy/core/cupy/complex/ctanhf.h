@@ -50,6 +50,11 @@
  * Hyperbolic tangent of a complex argument z.  See ctanh.c for details.
  */
 
+#pragma once
+
+#include <cupy/complex/complex.h>
+#include <cupy/complex/math_private.h>
+
 namespace thrust {
 namespace detail {
 namespace complex {

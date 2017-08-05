@@ -595,3 +595,5 @@ template <typename T>
 __device__ inline bool operator!=(const complex<T>& lhs, const T& rhs);
 
 }  // end namespace thrust
+
+#include <cupy/complex/complex_inl.h>

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cupy/complex/complex.h>
+
 namespace thrust {
 
 template <typename T>

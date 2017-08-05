@@ -30,6 +30,8 @@
  *    lib/msun/src/math_private.h
  */
 
+#pragma once
+
 namespace thrust {
 
 const float FLT_MIN = 1.17549435e-38F;

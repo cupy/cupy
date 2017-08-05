@@ -15,6 +15,10 @@
  *  limitations under the License.
  */
 
+#pragma once
+
+#include <cupy/complex/complex.h>
+
 namespace thrust {
 
 /* --- Constructors --- */
@@ -105,3 +109,22 @@ __device__ inline bool operator!=(const complex<T>& lhs, const T& rhs) {
   return !(lhs == rhs);
 }
 }
+
+
+#include <cupy/complex/arithmetic.h>
+#include <cupy/complex/cproj.h>
+#include <cupy/complex/cexp.h>
+#include <cupy/complex/cexpf.h>
+#include <cupy/complex/clog.h>
+#include <cupy/complex/clogf.h>
+#include <cupy/complex/cpow.h>
+#include <cupy/complex/ccosh.h>
+#include <cupy/complex/ccoshf.h>
+#include <cupy/complex/csinh.h>
+#include <cupy/complex/csinhf.h>
+#include <cupy/complex/ctanh.h>
+#include <cupy/complex/ctanhf.h>
+#include <cupy/complex/csqrt.h>
+#include <cupy/complex/csqrtf.h>
+#include <cupy/complex/catrig.h>
+#include <cupy/complex/catrigf.h>

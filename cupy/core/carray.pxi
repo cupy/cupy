@@ -85,6 +85,7 @@ cdef list _header_list = [
     'cupy/carray.cuh',
 ]
 cdef str _header = """
+#include <cupy/complex.cuh>
 #include <cupy/carray.cuh>
 """
 
