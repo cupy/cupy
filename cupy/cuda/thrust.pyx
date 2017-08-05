@@ -14,7 +14,7 @@ from cupy.cuda cimport common
 ###############################################################################
 
 cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
-    void _sort[T](void *, void *, const vector.vector[ptrdiff_t]&)
+    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&)
     void _lexsort[T](size_t *, void *, size_t, size_t)
     void _argsort[T](size_t *, void *, size_t)
 
