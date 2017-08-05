@@ -1,7 +1,6 @@
 import hashlib
 import math
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -81,7 +80,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
 def _preprocess(source, options=()):
     prog = _NVRTCProgram(source, '')
     try:
-        pp_src = prog.compile(options)
+        result = prog.compile(options)
     except CompileException as e:
         dump = _get_bool_env_variable(
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -89,8 +88,8 @@ def _preprocess(source, options=()):
             e.dump(sys.stderr)
         raise
 
-    assert isinstance(pp_src, six.text_type)
-    return re.sub('(?m)^#.*$', '', pp_src)
+    assert isinstance(result, six.text_type)
+    return result
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
@@ -103,7 +102,8 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(source, options=(), arch=None, cache_dir=None):
+def compile_with_cache(source, options=(), arch=None, cache_dir=None,
+                       extra_source=None):
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -113,16 +113,13 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     options += ('-ftz=true',)
 
     env = (arch, options, _get_nvrtc_version())
-    if '#include' in source:
-        pp_src = '%s %s' % (env, _preprocess(source, options))
-    else:
-        base = _empty_file_preprocess_cache.get(env, None)
-        if base is None:
-            base = _empty_file_preprocess_cache[env] = _preprocess('', options)
-        pp_src = '%s %s %s' % (env, base, source)
+    base = _empty_file_preprocess_cache.get(env, None)
+    if base is None:
+        base = _empty_file_preprocess_cache[env] = _preprocess('', options)
+    key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
-    pp_src = pp_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(pp_src).hexdigest()
+    key_src = key_src.encode('utf-8')
+    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
     if not os.path.isdir(cache_dir):
         try:
