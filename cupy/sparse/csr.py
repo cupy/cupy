@@ -19,6 +19,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     ``csr_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsr()``.
+    ``csr_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is flat64.
     ``csr_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.

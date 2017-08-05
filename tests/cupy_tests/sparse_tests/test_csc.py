@@ -183,6 +183,22 @@ class TestCscMatrixInit(unittest.TestCase):
         self.assertIsNot(indices, x.indices)
         self.assertIsNot(indptr, x.indptr)
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_init_with_shape(self, xp, sp):
+        s = sp.csc_matrix(self.shape)
+        self.assertEqual(s.shape, self.shape)
+        self.assertEqual(s.dtype, 'd')
+        self.assertEqual(s.size, 0)
+        return s.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_init_with_shape_and_dtype(self, xp, sp):
+        s = sp.csc_matrix(self.shape, dtype=self.dtype)
+        self.assertEqual(s.shape, self.shape)
+        self.assertEqual(s.dtype, self.dtype)
+        self.assertEqual(s.size, 0)
+        return s.toarray()
+
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):
         sp.csc_matrix(
