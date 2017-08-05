@@ -168,8 +168,6 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_star
                   dp_keys_first,
                   divides<size_t>());
 
-        // Sorting with back-to-back approach.
-
         stable_sort_by_key(
             make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
             make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
