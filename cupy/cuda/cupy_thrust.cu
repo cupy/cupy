@@ -14,12 +14,23 @@ using namespace thrust;
  * sort
  */
 
+template <typename T0, typename T1>
+class tuple_less {
+public:
+    __device__ bool operator()(tuple<T0, T1> i, tuple<T0, T1> j) {
+        T0 i0 = get<0>(i), j0 = get<0>(j);
+        T1 i1 = get<1>(i), j1 = get<1>(j);
+        return i0 < j0 || i0 == j0 && i1 < j1;
+    }
+};
+
 template <typename T>
-void cupy::thrust::_sort(void *start, const std::vector<ptrdiff_t>& shape) {
+void cupy::thrust::_sort(void *data_start, size_t *keys_start, const std::vector<ptrdiff_t>& shape) {
 
     size_t ndim = shape.size();
     ptrdiff_t size;
-    device_ptr<T> dp_first, dp_last;
+    device_ptr<T> dp_data_first, dp_data_last;
+    device_ptr<size_t> dp_keys_first, dp_keys_last;
 
     // Compute the total size of the array.
     size = shape[0];
@@ -27,44 +38,38 @@ void cupy::thrust::_sort(void *start, const std::vector<ptrdiff_t>& shape) {
         size *= shape[i];
     }
 
-    dp_first = device_pointer_cast(static_cast<T*>(start));
-    dp_last  = device_pointer_cast(static_cast<T*>(start) + size);
+    dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
+    dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + size);
 
     if (ndim == 1) {
-        stable_sort(dp_first, dp_last);
+        stable_sort(dp_data_first, dp_data_last);
     } else {
-        device_vector<size_t> d_keys(size);
-
         // Generate key indices.
+        dp_keys_first = device_pointer_cast(keys_start);
+        dp_keys_last  = device_pointer_cast(keys_start + size);
         transform(make_counting_iterator<size_t>(0),
                   make_counting_iterator<size_t>(size),
                   make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-                  d_keys.begin(),
+                  dp_keys_first,
                   divides<size_t>());
 
-        // Sorting with back-to-back approach.
-        stable_sort_by_key(dp_first,
-                           dp_last,
-                           d_keys.begin(),
-                           less<T>());
-
-        stable_sort_by_key(d_keys.begin(),
-                           d_keys.end(),
-                           dp_first,
-                           less<size_t>());
+        stable_sort(
+            make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
+            make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
+            tuple_less<size_t, T>());
     }
 }
 
-template void cupy::thrust::_sort<cpy_byte>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ubyte>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_short>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ushort>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_int>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_uint>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_long>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ulong>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_float>(void *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_double>(void *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_byte>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ubyte>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_short>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ushort>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_int>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_uint>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_long>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_ulong>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_float>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_double>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 
 
 /*
