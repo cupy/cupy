@@ -65,6 +65,24 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def _add_sparse(self, other, alpha, beta):
         return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
 
+    def __eq__(self, other):
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        raise NotImplementedError
+
+    def __lt__(self, other):
+        raise NotImplementedError
+
+    def __gt__(self, other):
+        raise NotImplementedError
+
+    def __le__(self, other):
+        raise NotImplementedError
+
+    def __ge__(self, other):
+        raise NotImplementedError
+
     def __mul__(self, other):
         if cupy.isscalar(other):
             return self._with_data(self.data * other)
@@ -86,18 +104,45 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             return NotImplemented
 
+    def __div__(self, other):
+        raise NotImplementedError
+
+    def __rdiv__(self, other):
+        raise NotImplementedError
+
+    def __truediv__(self, other):
+        raise NotImplementedError
+
+    def __rtruediv__(self, other):
+        raise NotImplementedError
+
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
-    # TODO(unno): Implement diagonal
+
+    def diagonal(self):
+        # TODO(unno): Implement diagonal
+        raise NotImplementedError
+
     # TODO(unno): Implement dot
     # TODO(unno): Implement eliminate_zeros
 
     # TODO(unno): Implement max
-    # TODO(unno): Implement maximum
+
+    def maximum(self, other):
+        # TODO(unno): Implement maximum
+        raise NotImplementedError
+
     # TODO(unno): Implement min
-    # TODO(unno): Implement minimum
-    # TODO(unno): Implement multiply
+
+    def minimum(self, other):
+        # TODO(unno): Implement minimum
+        raise NotImplementedError
+
+    def multiply(self, other):
+        # TODO(unno): Implement multiply
+        raise NotImplementedError
+
     # TODO(unno): Implement prune
     # TODO(unno): Implement reshape
 
@@ -124,7 +169,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # To return C-contiguous array, it uses transpose.
         return cusparse.csc2dense(self.T).T
 
-    # TODO(unno): Implement tobsr
+    def tobsr(self, blocksize=None, copy=False):
+        # TODO(unno): Implement tobsr
+        raise NotImplementedError
 
     def tocoo(self, copy=False):
         """Converts the matrix to COOdinate format.
@@ -173,9 +220,17 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         return self
 
-    # TODO(unno): Implement todia
-    # TODO(unno): Implement todok
-    # TODO(unno): Implement tolil
+    def todia(self, copy=False):
+        # TODO(unno): Implement todia
+        raise NotImplementedError
+
+    def todok(self, copy=False):
+        # TODO(unno): Implement todok
+        raise NotImplementedError
+
+    def tolil(self, copy=False):
+        # TODO(unno): Implement tolil
+        raise NotImplementedError
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.
