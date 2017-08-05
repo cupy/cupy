@@ -118,7 +118,7 @@ public:
         T1 i1 = get<1>(i), j1 = get<1>(j);
         return i0 < j0 || i0 == j0 && i1 < j1;
     }
-}
+};
 
 template <typename T>
 void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_start, const std::vector<ptrdiff_t>& shape) {
