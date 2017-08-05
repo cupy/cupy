@@ -278,6 +278,25 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_toarray_c_order(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        a = m.toarray(order='C')
+        self.assertTrue(a.flags.c_contiguous)
+        return a
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_toarray_f_order(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        a = m.toarray(order='F')
+        self.assertTrue(a.flags.f_contiguous)
+        return a
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_toarray_unknown_order(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.toarray(order='unknown')
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocoo().toarray()
