@@ -60,15 +60,15 @@ cdef class Indexer:
         return CIndexer(self.size, self.shape)
 
 
-cdef list _header_list = [
+cdef list _cupy_header_list = [
     'cupy/carray.cuh',
 ]
-cdef str _header = """
+cdef str _cupy_header = """
 #include <cupy/carray.cuh>
 """
 
 cdef str _header_path_cache = None
-cdef str _header_cache = None
+cdef str _header_source = None
 
 
 cpdef str _get_header_dir_path():
@@ -79,21 +79,20 @@ cpdef str _get_header_dir_path():
 
 
 cpdef str _get_header_source():
-    global _header_cache
-    if _header_cache is None:
+    global _header_source
+    if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _header_list:
+        for file_path in _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())
-        _header_cache = '\n'.join(source)
-    return _header_cache
-
+        _header_source = '\n'.join(source)
+    return _header_source
 
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
-    source = _header + source
+    source = _cupy_header + source
     extra_source = _get_header_source()
     options += ('-I%s' % _get_header_dir_path(),)
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
