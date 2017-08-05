@@ -115,16 +115,6 @@ template void cupy::thrust::_lexsort<cpy_double>(size_t *, void *, size_t, size_
  * argsort
  */
 
-template <typename T0, typename T1>
-class tuple_less {
-public:
-    __device__ bool operator()(tuple<T0, T1> i, tuple<T0, T1> j) {
-        T0 i0 = get<0>(i), j0 = get<0>(j);
-        T1 i1 = get<1>(i), j1 = get<1>(j);
-        return i0 < j0 || i0 == j0 && i1 < j1;
-    }
-};
-
 template <typename T>
 void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_start, const std::vector<ptrdiff_t>& shape) {
     /* idx_start is the beggining of the output array where the indexes that
