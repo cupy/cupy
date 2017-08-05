@@ -58,7 +58,7 @@ setup(
               'cupy.testing'],
     package_data={
         'cupy': [
-            'core/carray.cuh',
+            'core/cupy/carray.cuh',
             'cuda/cupy_thrust.cu',
         ],
     },
