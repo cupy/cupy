@@ -1,4 +1,9 @@
 import numpy
+try:
+    import scipy.sparse
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
 from cupy.creation import basic
@@ -37,6 +42,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
+
+        elif scipy_available and scipy.sparse.issparse(arg1):
+            # Convert scipy.sparse to cupy.sparse
+            x = arg1.asformat(self.format)
+            data = cupy.array(x.data)
+            indices = cupy.array(x.indices, dtype='i')
+            indptr = cupy.array(x.indptr, dtype='i')
+            copy = False
+
+            if shape is None:
+                shape = arg1.shape
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
