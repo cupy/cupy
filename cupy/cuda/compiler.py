@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 import tempfile
+import warnings
 
 import six
 
@@ -111,8 +112,12 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    cuda_path = os.getenv('CUDA_PATH', '/usr/local/cuda')
-    options += ('-I ' + cuda_path + '/include',)
+    cuda_path = os.getenv('CUDA_PATH', None)
+    if cuda_path is None:
+        warnings.warn('Please set the CUDA path ' +
+                      'to environment variable `CUDA_PATH`')
+    else:
+        options += ('-I ' + cuda_path + '/include',)
 
     options += ('-ftz=true',)
 
