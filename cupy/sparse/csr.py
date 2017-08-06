@@ -127,7 +127,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
 
-    # TODO(unno): Implement dot
     # TODO(unno): Implement eliminate_zeros
 
     # TODO(unno): Implement max
