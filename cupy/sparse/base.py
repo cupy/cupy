@@ -183,7 +183,15 @@ class spmatrix(object):
             return getattr(self, 'to' + format)()
 
     def asfptype(self):
-        """Upcast matrix to a floating point format (if necessary)"""
+        """Upcasts matrix to a floating point format.
+
+        When the matrix has floating point type, the method returns itself.
+        Otherwise it makes a copy with floating point type and the same format.
+
+        Returns:
+            cupy.sparse.spmatrix: A matrix with float type.
+
+        """
         if self.dtype.kind == 'f':
             return self
         else:
@@ -191,6 +199,16 @@ class spmatrix(object):
             return self.astype(typ)
 
     def astype(self, t):
+        """Casts the array to given data type.
+
+        Args:
+            t: Type specifier.
+
+        Returns:
+            cupy.sparse.spmatrix:
+                A copy of the array with the given type and the same format.
+
+        """
         return self.tocsr().astype(t).asformat(self.format)
 
     def conj(self):
