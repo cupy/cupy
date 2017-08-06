@@ -39,7 +39,7 @@ def solve(a, b):
         raise linalg.LinAlgError(
             '{}-dimensional array given. Array must be '
             'one or two-dimensional'.format(b.ndim))
-    if a.shape[0] != b.shape[0]:
+    if len(a) != len(b):
         raise linalg.LinAlgError(
             'The number of rows of array a must be '
             'the same as that of array b')
