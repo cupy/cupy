@@ -14,16 +14,6 @@ using namespace thrust;
  * sort
  */
 
-template <typename T0, typename T1>
-class tuple_less {
-public:
-    __device__ bool operator()(tuple<T0, T1> i, tuple<T0, T1> j) {
-        T0 i0 = get<0>(i), j0 = get<0>(j);
-        T1 i1 = get<1>(i), j1 = get<1>(j);
-        return i0 < j0 || i0 == j0 && i1 < j1;
-    }
-};
-
 template <typename T>
 void cupy::thrust::_sort(void *data_start, size_t *keys_start, const std::vector<ptrdiff_t>& shape) {
 
@@ -55,8 +45,7 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start, const std::vector
 
         stable_sort(
             make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
-            make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
-            tuple_less<size_t, T>());
+            make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)));
     }
 }
 
@@ -151,8 +140,7 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_star
         // Sort the index sequence by data.
         stable_sort_by_key(dp_data_first,
                            dp_data_last,
-                           dp_idx_first,
-                           less<T>());
+                           dp_idx_first);
     } else {
         // Generate key indices.
         dp_keys_first = device_pointer_cast(static_cast<size_t*>(keys_start));
@@ -166,8 +154,7 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start, void *keys_star
         stable_sort_by_key(
             make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
             make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
-            dp_idx_first,
-            tuple_less<size_t, T>());
+            dp_idx_first);
     }
 }
 
