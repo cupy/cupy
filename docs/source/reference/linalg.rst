@@ -56,3 +56,4 @@ Solving linear equations
    :nosignatures:
 
    cupy.linalg.solve
+   cupy.linalg.tensorsolve
