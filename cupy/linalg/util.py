@@ -26,18 +26,16 @@ def _assert_nd_squareness(*arrays):
 
 
 def _tril(x, k=0):
-    m, n = x.shape
-    u = cupy.arange(m).reshape(m, 1)
-    v = cupy.arange(n).reshape(1, n)
-    mask = v - u <= k
-    x *= mask
+    cupy.ElementwiseKernel(
+        'int64 k', 'S x',
+        'x = (_ind.get()[1] - _ind.get()[0] <= k) ? x : 0',
+        reduce_dims=False)(k, x)
     return x
 
 
 def _triu(x, k=0):
-    m, n = x.shape
-    u = cupy.arange(m).reshape(m, 1)
-    v = cupy.arange(n).reshape(1, n)
-    mask = v - u >= k
-    x *= mask
+    cupy.ElementwiseKernel(
+        'int64 k', 'S x',
+        'x = (_ind.get()[1] - _ind.get()[0] >= k) ? x : 0',
+        reduce_dims=False)(k, x)
     return x
