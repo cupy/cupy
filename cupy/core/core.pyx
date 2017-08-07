@@ -42,9 +42,9 @@ class IndexOrValueError(IndexError, ValueError):
         super(IndexOrValueError, self).__init__(*args, **kwargs)
 
 try:
-    AxisError = numpy.AxisError
+    _AxisError = numpy.AxisError
 except AttributeError:
-    AxisError = IndexOrValueError
+    _AxisError = IndexOrValueError
 
 
 cdef class ndarray:
@@ -616,7 +616,7 @@ cdef class ndarray:
                 if _axis < 0:
                     _axis += ndim
                 if _axis < 0 or _axis >= ndim:
-                    raise AxisError(
+                    raise _AxisError(
                         "'axis' entry %d is out of bounds [-%d, %d)" %
                         (axis_orig, ndim, ndim))
                 if axis_flags[_axis] == 1:
@@ -633,7 +633,7 @@ cdef class ndarray:
                 pass
             else:
                 if _axis < 0 or _axis >= ndim:
-                    raise AxisError(
+                    raise _AxisError(
                         "'axis' entry %d is out of bounds [-%d, %d)" %
                         (axis_orig, ndim, ndim))
                 axis_flags[_axis] = 1
@@ -2286,7 +2286,7 @@ cpdef ndarray concatenate_method(tup, int axis):
             if axis < 0:
                 axis += ndim
             if axis < 0 or axis >= ndim:
-                raise AxisError(
+                raise _AxisError(
                     'axis {} out of bounds [0, {})'.format(axis, ndim))
             dtype = a.dtype
             continue
@@ -2662,7 +2662,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
         index_range = a.size
     else:
         if not (-a.ndim <= li < a.ndim and -a.ndim <= ri < a.ndim):
-            raise AxisError('Axis overrun')
+            raise _AxisError('Axis overrun')
         if a.ndim != 0:
             li %= a.ndim
             ri %= a.ndim

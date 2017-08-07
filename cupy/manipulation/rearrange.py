@@ -101,7 +101,7 @@ def roll(a, shift, axis=None):
         if axis < 0:
             axis += a.ndim
         if not 0 <= axis < a.ndim:
-            raise core.AxisError(
+            raise core._AxisError(
                 'axis must be >= %d and < %d' % (-a.ndim, a.ndim))
         size = a.shape[axis]
         if size == 0:

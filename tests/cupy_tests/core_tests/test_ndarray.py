@@ -227,7 +227,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_axis_overrun2(self, dtype):
         a = testing.shaped_arange(self.shape, cupy, dtype)
-        with self.assertRaises(core.AxisError):
+        with self.assertRaises(core._AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
 
