@@ -47,7 +47,6 @@ cdef class ndarray:
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        strides (tuple of ints): The strides for axes.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
