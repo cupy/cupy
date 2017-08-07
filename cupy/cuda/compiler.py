@@ -94,7 +94,7 @@ def preprocess(source, options=()):
         pp_src = _run_nvcc(cmd, root_dir)
 
         if isinstance(pp_src, six.binary_type):
-            pp_src = pp_src.decode('utf-8')
+            pp_src = pp_src.decode(sys.getdefaultencoding())
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
