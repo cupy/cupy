@@ -63,8 +63,8 @@ cdef class Indexer:
 cdef list _cupy_header_list = [
     'cupy/carray.cuh',
 ]
-cdef str _cupy_header = '\n'.join(
-    ['#include <%s>' % i for i in _cupy_header_list])
+cdef str _cupy_header = ''.join(
+    ['#include <%s>\n' % i for i in _cupy_header_list])
 
 cdef str _header_path_cache = None
 cdef str _header_source = None
