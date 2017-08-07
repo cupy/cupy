@@ -120,7 +120,7 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_copy(self, xp, dtype, order):
         a = xp.zeros((2, 3, 4), dtype=dtype)
-        b = a.copy(order=order)
+        b = xp.copy(a, order=order)
         a[1] = 1
         return b
 
@@ -131,8 +131,15 @@ class TestFromData(unittest.TestCase):
         with cuda.Device(0):
             src = cupy.random.uniform(-1, 1, (2, 3)).astype(dtype)
         with cuda.Device(1):
-            dst = src.copy(order)
+            dst = cupy.copy(src, order)
         testing.assert_allclose(src, dst, rtol=0, atol=0)
+
+    @testing.for_CF_orders()
+    @testing.numpy_cupy_equal()
+    def test_copy_order(self, xp, order):
+        a = xp.zeros((2, 3, 4), order=order)
+        b = xp.copy(a)
+        return (b.flags.c_contiguous, b.flags.f_contiguous)
 
 
 @testing.parameterize(

@@ -31,7 +31,7 @@ build_ext = cupy_setup_build.custom_build_ext
 
 setup(
     name='cupy',
-    version='2.0.0a1',
+    version='2.0.0b1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',

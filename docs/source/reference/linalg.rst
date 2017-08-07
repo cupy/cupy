@@ -14,6 +14,7 @@ Matrix and vector products
    cupy.outer
    cupy.matmul
    cupy.tensordot
+   cupy.kron
 
 
 Decompositions
@@ -40,7 +41,18 @@ Norms etc.
    :toctree: generated/
    :nosignatures:
 
+   cupy.linalg.det
    cupy.linalg.norm
    cupy.linalg.matrix_rank
    cupy.linalg.slogdet
    cupy.trace
+
+
+Solving linear equations
+--------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.linalg.solve

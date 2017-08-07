@@ -156,10 +156,11 @@ def _get_compiler_base_options():
     nvcc_path = get_nvcc_path()
     with _tempdir() as temp_dir:
         test_cu_path = os.path.join(temp_dir, 'test.cu')
+        test_out_path = os.path.join(temp_dir, 'test.out')
         with open(test_cu_path, 'w') as f:
             f.write('int main() { return 0; }')
         proc = subprocess.Popen(
-            [nvcc_path, test_cu_path],
+            [nvcc_path, '-o', test_out_path, test_cu_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()

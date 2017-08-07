@@ -18,33 +18,32 @@ cimport cython
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuda.h":
+cdef extern from "cupy_cuda.h" nogil:
     # Error handling
-    int cuGetErrorName(Result error, const char** pStr) nogil
-    int cuGetErrorString(Result error, const char** pStr) nogil
+    int cuGetErrorName(Result error, const char** pStr)
+    int cuGetErrorString(Result error, const char** pStr)
 
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
-                     void** optionValues, LinkState* stateOut) nogil
+                     void** optionValues, LinkState* stateOut)
     int cuLinkAddData(LinkState state, CUjitInputType type, void* data,
                       size_t size, const char* name, unsigned int  numOptions,
-                      CUjit_option* options, void** optionValues) nogil
-    int cuLinkComplete(LinkState state, void** cubinOut,
-                       size_t* sizeOut) nogil
-    int cuLinkDestroy(LinkState state) nogil
-    int cuModuleLoad(Module* module, char* fname) nogil
-    int cuModuleLoadData(Module* module, void* image) nogil
-    int cuModuleUnload(Module hmod) nogil
+                      CUjit_option* options, void** optionValues)
+    int cuLinkComplete(LinkState state, void** cubinOut, size_t* sizeOut)
+    int cuLinkDestroy(LinkState state)
+    int cuModuleLoad(Module* module, char* fname)
+    int cuModuleLoadData(Module* module, void* image)
+    int cuModuleUnload(Module hmod)
     int cuModuleGetFunction(Function* hfunc, Module hmod,
-                            char* name) nogil
+                            char* name)
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
-                          char* name) nogil
+                          char* name)
     int cuLaunchKernel(
         Function f, unsigned int gridDimX, unsigned int gridDimY,
         unsigned int gridDimZ, unsigned int blockDimX,
         unsigned int blockDimY, unsigned int blockDimZ,
         unsigned int sharedMemBytes, Stream hStream,
-        void** kernelParams, void** extra) nogil
+        void** kernelParams, void** extra)
 
 
 ###############################################################################

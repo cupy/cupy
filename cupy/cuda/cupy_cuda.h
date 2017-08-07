@@ -323,6 +323,7 @@ cudaError_t cudaEventSynchronize(...) {
 
 typedef void* cublasHandle_t;
 
+typedef enum {} cublasDiagType_t;
 typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
@@ -435,6 +436,14 @@ cublasStatus_t cublasDgemmBatched(...) {
 }
 
 cublasStatus_t cublasSgemmEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasStrsm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -623,6 +632,13 @@ int nvtxRangePushEx(...) {
 
 int nvtxRangePop() {
     return 0;
+}
+
+uint64_t nvtxRangeStartEx(...) {
+    return 0;
+}
+
+void nvtxRangeEnd(...) {
 }
 
 } // extern "C"

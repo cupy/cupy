@@ -48,7 +48,6 @@ cdef class ndarray:
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        strides (tuple of ints): The strides for axes.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -556,12 +555,7 @@ cdef class ndarray:
 
         """
         # TODO(beam2d): Support ordering option
-        if self._c_contiguous:
-            newarray = self.copy()
-        else:
-            newarray = ndarray(self.shape, self.dtype)
-            elementwise_copy(self, newarray)
-
+        newarray = self.copy(order='C')
         newarray._shape.assign(<Py_ssize_t>1, self.size)
         newarray._strides.assign(<Py_ssize_t>1,
                                  <Py_ssize_t>self.itemsize)
@@ -710,14 +704,17 @@ cdef class ndarray:
 
         return out
 
-    def sort(self):
+    def sort(self, axis=-1):
         """Sort an array, in-place with a stable sorting algorithm.
+
+        Args:
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their own data, and does not support ``axis``,
-           ``kind`` and ``order`` parameters that ``numpy.ndarray.sort``
-           does support.
+           only arrays with their own data, and does not support ``kind`` and
+           ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
@@ -725,15 +722,16 @@ cdef class ndarray:
 
         """
 
-        # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
+
+        cdef Py_ssize_t ndim = self.ndim
 
         if not cupy.cuda.thrust_enabled:
             raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                                'install CUDA Toolkit with Thrust then '
                                'reinstall CuPy after uninstalling it.')
 
-        if self.ndim == 0:
+        if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.sort() raises
 
@@ -742,7 +740,28 @@ cdef class ndarray:
             raise NotImplementedError('Sorting non-contiguous array is not '
                                       'supported.')
 
-        thrust.sort(self.dtype, self.data.ptr, self._shape)
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
+        if axis == ndim - 1:
+            data = self
+        else:
+            data = cupy.rollaxis(self, axis, ndim).copy()
+
+        if ndim == 1:
+            thrust.sort(self.dtype, data.data.ptr, 0, self._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.sort(
+                self.dtype, data.data.ptr, keys_array.data.ptr, data._shape)
+
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
 
     def argsort(self, axis=-1):
         """Returns the indices that would sort an array with stable sorting
@@ -786,26 +805,24 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            data = data.copy(order='C')
+            data = data.copy()
         else:
-            data = cupy.ascontiguousarray(cupy.rollaxis(data, axis, ndim))
+            data = cupy.rollaxis(data, axis, ndim).copy()
 
         idx_array = ndarray(data.shape, dtype=numpy.intp)
 
         if ndim == 1:
-            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0, 0,
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
                            data._shape)
         else:
             keys_array = ndarray(data._shape, dtype=numpy.intp)
-            buff_array = ndarray(data._shape, dtype=self.dtype)
             thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
-                           keys_array.data.ptr, buff_array.data.ptr,
-                           data._shape)
+                           keys_array.data.ptr, data._shape)
 
         if axis == ndim - 1:
             return idx_array
         else:
-            return cupy.ascontiguousarray(cupy.rollaxis(idx_array, -1, axis))
+            return cupy.rollaxis(idx_array, -1, axis)
 
     # TODO(okuta): Implement partition
 
@@ -887,7 +904,7 @@ cdef class ndarray:
                                (self.ravel(), Indexer(self.shape),
                                 scan_index, dst))
             return tuple([dst[i::self.ndim]
-                          for i in six.moves.range(self.ndim)])
+                          for i in range(self.ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -2957,7 +2974,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     else:
         min_axis, max_axis = axis2, axis1
 
-    tr = list(six.moves.range(a.ndim))
+    tr = list(range(a.ndim))
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:

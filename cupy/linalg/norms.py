@@ -5,6 +5,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import device
 from cupy.linalg import decomposition
+from cupy.linalg import util
 
 
 if cuda.cusolver_enabled:
@@ -125,7 +126,19 @@ def norm(x, ord=None, axis=None, keepdims=False):
 # TODO(okuta): Implement cond
 
 
-# TODO(okuta): Implement det
+def det(a):
+    """Retruns the deteminant of an array.
+
+    Args:
+        a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
+
+    Returns:
+        cupy.ndarray: Determinant of ``a``. Its shape is ``a.shape[:-2]``.
+
+    .. seealso:: :func:`numpy.linalg.det`
+    """
+    sign, logdet = slogdet(a)
+    return sign * cupy.exp(logdet)
 
 
 def matrix_rank(M, tol=None):
@@ -197,8 +210,8 @@ def slogdet(a):
 
 
 def _slogdet_one(a):
-    decomposition._assert_rank2(a)
-    decomposition._assert_nd_squareness(a)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
     dtype = a.dtype
 
     handle = device.get_cusolver_handle()

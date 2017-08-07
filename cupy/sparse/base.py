@@ -1,7 +1,9 @@
 import numpy
 import six
 
+import cupy
 from cupy.core import core
+from cupy.sparse import util
 
 
 class spmatrix(object):
@@ -42,6 +44,8 @@ class spmatrix(object):
                         'use getnnz() or shape[0]')
 
     def __str__(self):
+        # TODO(unno): Do not use get method which is only available when scipy
+        # is installed.
         return str(self.get())
 
     def __iter__(self):
@@ -94,7 +98,14 @@ class spmatrix(object):
         return self.tocsr().__mul__(other)
 
     def __rmul__(self, other):
-        return self.tocsr().__rmul__(other)
+        if cupy.isscalar(other) or isdense(other) and other.ndim == 0:
+            return self * other
+        else:
+            try:
+                tr = other.T
+            except AttributeError:
+                return NotImplemented
+            return (self.T * tr).T
 
     def __div__(self, other):
         return self.tocsr().__div__(other)
@@ -112,22 +123,57 @@ class spmatrix(object):
         return -self.tocsr()
 
     def __iadd__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __isub__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __imul__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __idiv__(self, other):
         return self.__itruediv__(other)
 
     def __itruediv__(self, other):
-        return NotImplementedError
+        return NotImplemented
 
     def __pow__(self, other):
-        return self.tocsr().__pow__(other)
+        """Calculates n-th power of the matrix.
+
+        This method calculates n-th power of a given matrix. The matrix must
+        be a squared matrix, and a given exponent must be an integer.
+
+        Args:
+            other (int): Exponent.
+
+        Returns:
+            cupy.sparse.spmatrix: A sparse matrix representing n-th power of
+                this matrix.
+
+        """
+        m, n = self.shape
+        if m != n:
+            raise TypeError('matrix is not square')
+
+        if util.isintlike(other):
+            other = int(other)
+            if other < 0:
+                raise ValueError('exponent must be >= 0')
+
+            if other == 0:
+                return cupy.sparse.identity(m, dtype=self.dtype, format='csr')
+            elif other == 1:
+                return self.copy()
+            else:
+                tmp = self.__pow__(other // 2)
+                if other % 2:
+                    return self * tmp * tmp
+                else:
+                    return tmp * tmp
+        elif util.isscalarlike(other):
+            raise ValueError('exponent must be an integer')
+        else:
+            return NotImplemented
 
     @property
     def A(self):
@@ -173,7 +219,15 @@ class spmatrix(object):
             return getattr(self, 'to' + format)()
 
     def asfptype(self):
-        """Upcast matrix to a floating point format (if necessary)"""
+        """Upcasts matrix to a floating point format.
+
+        When the matrix has floating point type, the method returns itself.
+        Otherwise it makes a copy with floating point type and the same format.
+
+        Returns:
+            cupy.sparse.spmatrix: A matrix with float type.
+
+        """
         if self.dtype.kind == 'f':
             return self
         else:
@@ -181,6 +235,16 @@ class spmatrix(object):
             return self.astype(typ)
 
     def astype(self, t):
+        """Casts the array to given data type.
+
+        Args:
+            t: Type specifier.
+
+        Returns:
+            cupy.sparse.spmatrix:
+                A copy of the array with the given type and the same format.
+
+        """
         return self.tocsr().astype(t).asformat(self.format)
 
     def conj(self):
@@ -255,19 +319,19 @@ class spmatrix(object):
 
     def toarray(self, order=None, out=None):
         """Return a dense ndarray representation of this matrix."""
-        raise self.tocsr().tocarray(order=order, out=out)
+        return self.tocsr().toarray(order=order, out=out)
 
     def tobsr(self, blocksize=None, copy=False):
         """Convert this matrix to Block Sparse Row format."""
-        self.tocsr(copy=copy).tobsr(copy=False)
+        return self.tocsr(copy=copy).tobsr(copy=False)
 
     def tocoo(self, copy=False):
         """Convert this matrix to COOrdinate format."""
-        self.tocsr(copy=copy).tocoo(copy=False)
+        return self.tocsr(copy=copy).tocoo(copy=False)
 
     def tocsc(self, copy=False):
         """Convert this matrix to Compressed Sparse Column format."""
-        self.tocsr(copy=copy).tocsc(copy=False)
+        return self.tocsr(copy=copy).tocsc(copy=False)
 
     def tocsr(self, copy=False):
         """Convert this matrix to Compressed Sparse Row format."""
@@ -279,19 +343,19 @@ class spmatrix(object):
 
     def todia(self, copy=False):
         """Convert this matrix to sparse DIAgonal format."""
-        self.tocsr(copy=copy).todia(copy=False)
+        return self.tocsr(copy=copy).todia(copy=False)
 
     def todok(self, copy=False):
         """Convert this matrix to Dictionary Of Keys format."""
-        self.tocsr(copy=copy).todok(copy=False)
+        return self.tocsr(copy=copy).todok(copy=False)
 
     def tolil(self, copy=False):
         """Convert this matrix to LInked List format."""
-        self.tocsr(copy=copy).tolil(copy=False)
+        return self.tocsr(copy=copy).tolil(copy=False)
 
     def transpose(self, axes=None, copy=False):
         """Reverses the dimensions of the sparse matrix."""
-        self.tocsr(copy=copy).transpopse(axes=None, copy=False)
+        return self.tocsr(copy=copy).transpose(axes=axes, copy=False)
 
 
 def issparse(x):
