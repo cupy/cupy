@@ -33,3 +33,7 @@ cpdef enum:
     CUSPARSE_OPERATION_NON_TRANSPOSE = 0
     CUSPARSE_OPERATION_TRANSPOSE = 1
     CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE = 2
+
+
+cpdef size_t create() except *
+cpdef void destroy(size_t handle)

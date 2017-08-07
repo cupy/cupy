@@ -80,7 +80,7 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-def copy(a, order='C'):
+def copy(a, order='K'):
     """Creates a copy of a given array on the current device.
 
     This function allocates the new array on the current device. If the given

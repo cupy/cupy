@@ -16,6 +16,7 @@ install:
   - pip install autopep8 hacking
 
 script:
+  - flake8
   - flake8 --config=.flake8.cython
   - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
   - test ! -s check_autopep8

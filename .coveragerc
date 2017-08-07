@@ -1,5 +1,6 @@
 [run]
 plugins = Cython.Coverage
+include = cupy/*,examples/*
 
 [report]
 exclude_lines =
