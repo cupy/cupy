@@ -145,6 +145,65 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
     def __rsub__(self, other):
         return self._add(other, True, False)
 
+    def __getitem__(self, slices):
+        if isinstance(slices, tuple):
+            slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
+
+        if len(slices) == 2:
+            row, col = slices
+        else:
+            raise IndexError('invalid number of indices')
+
+        if numpy.isscalar(row):
+            i = int(row)
+            if numpy.isscalar(col):
+                j = int(col)
+                return self._get_single(*self._swap(i, j))
+            else:
+                raise ValueError('unsupported indexing')
+        else:
+            raise ValueError('unsupported indexing')
+
+    def _get_single(self, major, minor):
+        major_size, minor_size = self._swap(*self._shape)
+        if major < 0:
+            major += major_size
+        if minor < 0:
+            minor += minor_size
+        if not (0 <= major < major_size and 0 <= minor < minor_size):
+            raise IndexError('index out of bounds')
+        start = self.indptr[major]
+        end = self.indptr[major + 1]
+        answer = cupy.zeros((), self.dtype)
+        preamble = '''
+#if __CUDA_ARCH__ < 600
+__device__ double atomicAdd(double* address, double val) {
+    unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                        __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+#endif
+'''
+        kern = cupy.ElementwiseKernel(
+            'T d, S ind, int32 minor', 'raw T answer',
+            'if (ind == minor) atomicAdd(&answer[0], d);',
+            'compress_getitem', preamble=preamble)
+        kern(self.data[start:end], self.indices[start:end], minor, answer)
+        return answer[()]
+
     def get_shape(self):
         """Returns the shape of the matrix.
 

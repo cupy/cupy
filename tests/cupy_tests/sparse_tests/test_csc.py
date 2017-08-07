@@ -713,3 +713,38 @@ class TestIsspmatrixCsc(unittest.TestCase):
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
         self.assertTrue(cupy.sparse.isspmatrix_csc(x))
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCsrMatrixGetitem(unittest.TestCase):
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[0, 1], 1)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int_not_found(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[1, 1], 0)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int_negative(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[-1, -2], 3)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_small_row(self, xp, sp):
+        _make(xp, sp, self.dtype)[-4, 0]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_large_row(self, xp, sp):
+        _make(xp, sp, self.dtype)[3, 0]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_small_col(self, xp, sp):
+        _make(xp, sp, self.dtype)[0, -5]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_large_col(self, xp, sp):
+        _make(xp, sp, self.dtype)[0, 4]
