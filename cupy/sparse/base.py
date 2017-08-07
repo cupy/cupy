@@ -3,6 +3,7 @@ import six
 
 import cupy
 from cupy.core import core
+from cupy.sparse import util
 
 
 class spmatrix(object):
@@ -137,7 +138,42 @@ class spmatrix(object):
         return NotImplemented
 
     def __pow__(self, other):
-        return self.tocsr().__pow__(other)
+        """Calculates n-th power of the matrix.
+
+        This method calculates n-th power of a given matrix. The matrix must
+        be a squared matrix, and a given exponent must be an integer.
+
+        Args:
+            other (int): Exponent.
+
+        Returns:
+            cupy.sparse.spmatrix: A sparse matrix representing n-th power of
+                this matrix.
+
+        """
+        m, n = self.shape
+        if m != n:
+            raise TypeError('matrix is not square')
+
+        if util.isintlike(other):
+            other = int(other)
+            if other < 0:
+                raise ValueError('exponent must be >= 0')
+
+            if other == 0:
+                return cupy.sparse.identity(m, dtype=self.dtype, format='csr')
+            elif other == 1:
+                return self.copy()
+            else:
+                tmp = self.__pow__(other // 2)
+                if other % 2:
+                    return self * tmp * tmp
+                else:
+                    return tmp * tmp
+        elif util.isscalarlike(other):
+            raise ValueError('exponent must be an integer')
+        else:
+            return NotImplemented
 
     @property
     def A(self):
