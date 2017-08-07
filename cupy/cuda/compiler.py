@@ -52,7 +52,9 @@ def _run_nvcc(cmd, cwd):
                'command: {0}\n'
                'return-code: {1}\n'
                'stdout/stderr: \n'
-               '{2}'.format(e.cmd, e.returncode, e.output))
+               '{2}'.format(e.cmd,
+                            e.returncode,
+                            e.output.decode(encoding='UTF-8')))
         raise RuntimeError(msg)
     except OSError as e:
         msg = 'Failed to run `nvcc` command. ' \
