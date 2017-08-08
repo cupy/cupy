@@ -41,7 +41,7 @@ def bincount(x, weights=None, minlength=None):
     if minlength is not None:
         minlength = int(minlength)
         if minlength < 0:
-            raise ValueError('minlength must be positive')
+            raise ValueError('minlength must be non-negative')
 
     size = int(cupy.max(x)) + 1
     if minlength is not None:
