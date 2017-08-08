@@ -94,3 +94,20 @@ class TestDiaMatrixInit(unittest.TestCase):
         offsets = xp.array([1, 1], 'i')
         sp.dia_matrix(
             (self.data(xp), offsets))
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestDiaMatrixScipyComparison(unittest.TestCase):
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_nnz_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.nnz
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
+    def test_nnz_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.getnnz(axis=0)
