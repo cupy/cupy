@@ -37,7 +37,7 @@ class dia_matrix(data._data_matrix):
 
         else:
             raise ValueError(
-                'unrecognized form for dia_matrix constructo')
+                'unrecognized form for dia_matrix constructor')
 
         data = cupy.array(data, dtype=dtype, copy=copy)
         data = cupy.atleast_2d(data)
