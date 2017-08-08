@@ -12,7 +12,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
-cdef class OutOfMemoryError(Exception):
+class OutOfMemoryError(MemoryError):
 
     def __init__(self, size, total):
         msg = 'out of memory to allocate %d bytes ' \

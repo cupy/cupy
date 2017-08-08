@@ -1,9 +1,5 @@
 from cupy.cuda cimport device
 
-
-cdef class OutOfMemoryError(Exception):
-    pass
-
 cdef class Memory:
 
     cdef:
