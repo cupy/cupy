@@ -93,9 +93,8 @@ def preprocess(source, options=()):
         cmd.append(cu_path)
         pp_src = _run_nvcc(cmd, root_dir)
 
-        if isinstance(pp_src, six.binary_type):
-            pp_src = pp_src.decode('utf-8')
-        return re.sub('(?m)^#.*$', '', pp_src)
+        assert isinstance(pp_src, six.binary_type)
+        return re.sub(b'(?m)^#.*$', b'', pp_src)
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
