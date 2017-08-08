@@ -114,6 +114,7 @@ class dia_matrix(data._data_matrix):
             'a + b', 'nnz = a', '0', 'dia_nnz')(self.offsets, m, n)
         return int(nnz)
 
+
 def isspmatrix_dia(x):
     """Checks if a given matrix is of DIA format.
 
