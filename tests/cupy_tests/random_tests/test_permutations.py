@@ -63,4 +63,3 @@ class TestShuffle(unittest.TestCase):
         cupy.random.seed(0)
         cupy.random.shuffle(a)
         testing.assert_allclose(a, b)
->>>>>>> 58ee0cd... implement shuffle with random

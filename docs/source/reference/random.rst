@@ -46,13 +46,10 @@ Distributions
 Random number generator
 -----------------------
 
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.random.seed
-   cupy.random.get_random_state
-   cupy.random.RandomState
+.. autofunction:: cupy.random.seed
+.. autofunction:: cupy.random.get_random_state
+.. autoclass:: cupy.random.RandomState
+   :members:
 
 
 Permutations
