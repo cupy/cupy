@@ -78,7 +78,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
         return ptx
 
 
-def preprocess(source, options=()):
+def _preprocess(source, options=()):
     prog = _NVRTCProgram(source, '')
     try:
         pp_src = prog.compile(options)
@@ -89,8 +89,7 @@ def preprocess(source, options=()):
             e.dump(sys.stderr)
         raise
 
-    if isinstance(pp_src, six.binary_type):
-        pp_src = pp_src.decode('utf-8')
+    assert isinstance(pp_src, six.text_type)
     return re.sub('(?m)^#.*$', '', pp_src)
 
 
@@ -115,15 +114,14 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
 
     env = (arch, options, _get_nvrtc_version())
     if '#include' in source:
-        pp_src = '%s %s' % (env, preprocess(source, options))
+        pp_src = '%s %s' % (env, _preprocess(source, options))
     else:
         base = _empty_file_preprocess_cache.get(env, None)
         if base is None:
-            base = _empty_file_preprocess_cache[env] = preprocess('', options)
+            base = _empty_file_preprocess_cache[env] = _preprocess('', options)
         pp_src = '%s %s %s' % (env, base, source)
 
-    if isinstance(pp_src, six.text_type):
-        pp_src = pp_src.encode('utf-8')
+    pp_src = pp_src.encode('utf-8')
     name = '%s_2.cubin' % hashlib.md5(pp_src).hexdigest()
 
     if not os.path.isdir(cache_dir):
