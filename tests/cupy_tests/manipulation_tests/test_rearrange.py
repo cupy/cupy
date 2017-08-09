@@ -67,7 +67,7 @@ class TestRoll(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_roll_invalid_axis2(self, dtype):
         x = testing.shaped_arange((5, 2), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(cupy.core.core._AxisError):
             return cupy.roll(x, 1, axis=2)
 
     @testing.for_all_dtypes()
@@ -80,7 +80,7 @@ class TestRoll(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_roll_invalid_negative_axis2(self, dtype):
         x = testing.shaped_arange((5, 2), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(cupy.core.core._AxisError):
             return cupy.roll(x, 1, axis=-3)
 
 

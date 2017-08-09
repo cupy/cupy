@@ -214,5 +214,5 @@ class TestJoin(unittest.TestCase):
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(cupy.core.core._AxisError):
             return cupy.stack([a, a], axis=3)

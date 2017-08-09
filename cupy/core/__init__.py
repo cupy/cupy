@@ -3,7 +3,6 @@ from cupy.core import internal  # NOQA
 
 
 # import class and function
-from cupy.core.core import _AxisError  # NOQA
 from cupy.core.core import absolute  # NOQA
 from cupy.core.core import add  # NOQA
 from cupy.core.core import array  # NOQA
