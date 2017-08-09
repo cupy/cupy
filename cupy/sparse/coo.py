@@ -7,6 +7,7 @@ except ImportError:
 
 from cupy import cusparse
 from cupy.sparse import base
+from cupy.sparse import csr
 from cupy.sparse import data as sparse_data
 
 
@@ -82,14 +83,15 @@ class coo_matrix(sparse_data._data_matrix):
                     'cannot infer dimensions from zero sized index arrays')
             shape = (int(row.max()) + 1, int(col.max()) + 1)
 
-        if row.max() >= shape[0]:
-            raise ValueError('row index exceeds matrix dimensions')
-        if col.max() >= shape[1]:
-            raise ValueError('column index exceeds matrix dimensions')
-        if row.min() < 0:
-            raise ValueError('negative row index found')
-        if col.min() < 0:
-            raise ValueError('negative column index found')
+        if len(data) > 0:
+            if row.max() >= shape[0]:
+                raise ValueError('row index exceeds matrix dimensions')
+            if col.max() >= shape[1]:
+                raise ValueError('column index exceeds matrix dimensions')
+            if row.min() < 0:
+                raise ValueError('negative row index found')
+            if col.min() < 0:
+                raise ValueError('negative column index found')
 
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
@@ -192,6 +194,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupy.sparse.csr_matrix: Converted matrix.
 
         """
+        if self.nnz == 0:
+            return csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is ignored because coosort method breaks an original.
         x = self.copy()
         cusparse.coosort(x)

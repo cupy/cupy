@@ -32,6 +32,13 @@ def _make_unordered(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make_empty(xp, sp, dtype):
+    data = xp.array([], dtype)
+    row = xp.array([], 'i')
+    col = xp.array([], 'i')
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -240,34 +247,39 @@ class TestCooMatrixInit(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'make_method': ['_make', '_make_unordered', '_make_empty'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCooMatrixScipyComparison(unittest.TestCase):
 
+    @property
+    def make(self):
+        return globals()[self.make_method]
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_nnz(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.getnnz()
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        return m.tocsr().toarray()
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_tocsr_unordered(self, xp, sp):
-        m = _make_unordered(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.tocsr().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
 
 
