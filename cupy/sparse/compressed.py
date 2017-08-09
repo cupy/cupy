@@ -55,6 +55,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
             if shape is None:
                 shape = arg1.shape
+            has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
