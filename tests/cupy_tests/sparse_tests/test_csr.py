@@ -499,7 +499,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(5).astype(self.dtype)
         m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -667,7 +667,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(5).astype(self.dtype)
         m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -725,7 +725,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.array(2, dtype=self.dtype)
         return (x * m).toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
