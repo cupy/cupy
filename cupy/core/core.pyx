@@ -3164,7 +3164,9 @@ cpdef ndarray matmul(ndarray a, ndarray b):
     Args:
         a (cupy.ndarray): The left argument.
         b (cupy.ndarray): The right argument.
-        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: Output array.
 
     .. seealso:: :func:`numpy.matmul`
 
