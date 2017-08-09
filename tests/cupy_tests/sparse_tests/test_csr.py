@@ -869,3 +869,11 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_step_2(self):
         with self.assertRaises(ValueError):
             _make(cupy, cupy.sparse, self.dtype)[0::2]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_ellipsis(self, xp, sp):
+        return _make(xp, sp, self.dtype)[...].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int_ellipsis(self, xp, sp):
+        return _make(xp, sp, self.dtype)[1, ...].toarray()

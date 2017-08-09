@@ -155,6 +155,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         else:
             slices = [slices]
 
+        ellipsis = -1
+        n_ellipsis = 0
+        for i, s in enumerate(slices):
+            if s is None:
+                raise IndexError('newaxis is not supported')
+            elif s is Ellipsis:
+                ellipsis = i
+                n_ellipsis += 1
+        if n_ellipsis > 0:
+            ellipsis_size = self.ndim - (len(slices) - 1)
+            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+
         if len(slices) == 2:
             row, col = slices
         elif len(slices) == 1:
