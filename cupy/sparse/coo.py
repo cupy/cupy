@@ -54,6 +54,7 @@ class coo_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
+            has_canonical_format = True
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
