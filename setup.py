@@ -24,6 +24,7 @@ install_requires = [
     'nose',
     'numpy>=1.9.0',
     'six>=1.9.0',
+    'fastrlock>=0.2',
 ]
 
 ext_modules = cupy_setup_build.get_ext_modules()

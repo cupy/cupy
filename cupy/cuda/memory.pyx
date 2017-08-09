@@ -3,9 +3,9 @@
 import collections
 import ctypes
 import gc
-import threading
 import warnings
 import weakref
+from fastrlock import rlock
 
 from cupy.cuda import runtime
 
@@ -390,8 +390,8 @@ cdef class SingleDeviceMemoryPool:
         self._free = [set() for i in range(self._initial_bins_size)]
         self._alloc = allocator
         self._weakref = weakref.ref(self)
-        self._free_lock = threading.Lock()
-        self._in_use_lock = threading.Lock()
+        self._free_lock = rlock.FastRLock()
+        self._in_use_lock = rlock.FastRLock()
 
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
         """Round up the memory size to fit memory alignment of cudaMalloc."""
