@@ -62,6 +62,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return scipy.sparse.csr_matrix(
             (data, indices, indptr), shape=self._shape)
 
+    def _convert_dense(self, x):
+        m = cusparse.dense2csr(x)
+        return m.data, m.indices, m.indptr
+
     def _swap(self, x, y):
         return (x, y)
 

@@ -66,14 +66,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
                 raise ValueError('indices and data should have the same size')
 
         elif base.isdense(arg1) and arg1.ndim == 2:
-            if self.format == 'csc':
-                m = cusparse.dense2csc(arg1)
-                self.__init__(m, shape=shape, dtype=dtype)
-                return
-            else:
-                m = cusparse.dense2csr(arg1)
-                self.__init__(m, shape=shape, dtype=dtype)
-                return
+            data, indices, indptr = self._convert_dense(arg1)
+            copy = False
+            if shape is None:
+                shape = arg1.shape
 
         else:
             raise ValueError(
@@ -107,6 +103,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
     def _with_data(self, data):
         return self.__class__(
             (data, self.indices.copy(), self.indptr.copy()), shape=self.shape)
+
+    def _convert_dense(self, x):
+        raise NotImplementedError
 
     def _swap(self, x, y):
         raise NotImplementedError
