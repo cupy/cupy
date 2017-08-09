@@ -46,3 +46,14 @@ Norms etc.
    cupy.linalg.matrix_rank
    cupy.linalg.slogdet
    cupy.trace
+
+
+Solving linear equations
+--------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.linalg.solve
+   cupy.linalg.tensorsolve

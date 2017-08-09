@@ -53,6 +53,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_square(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    indices = xp.array([0, 1, 0, 2], 'i')
+    indptr = xp.array([0, 2, 3, 4], 'i')
+    # 0, 1, 0
+    # 2, 0, 0
+    # 0, 0, 3
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -93,6 +103,30 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         self.assertEqual(n.shape, self.m.shape)
+
+    @unittest.skipUnless(scipy_available, 'requires scipy')
+    def test_init_copy_scipy_sparse(self):
+        m = _make(numpy, scipy.sparse, self.dtype)
+        n = cupy.sparse.csr_matrix(m)
+        self.assertIsInstance(n.data, cupy.ndarray)
+        self.assertIsInstance(n.indices, cupy.ndarray)
+        self.assertIsInstance(n.indptr, cupy.ndarray)
+        cupy.testing.assert_array_equal(n.data, m.data)
+        cupy.testing.assert_array_equal(n.indices, m.indices)
+        cupy.testing.assert_array_equal(n.indptr, m.indptr)
+        self.assertEqual(n.shape, m.shape)
+
+    @unittest.skipUnless(scipy_available, 'requires scipy')
+    def test_init_copy_other_scipy_sparse(self):
+        m = _make(numpy, scipy.sparse, self.dtype)
+        n = cupy.sparse.csr_matrix(m.tocsc())
+        self.assertIsInstance(n.data, cupy.ndarray)
+        self.assertIsInstance(n.indices, cupy.ndarray)
+        self.assertIsInstance(n.indptr, cupy.ndarray)
+        cupy.testing.assert_array_equal(n.data, m.data)
+        cupy.testing.assert_array_equal(n.indices, m.indices)
+        cupy.testing.assert_array_equal(n.indptr, m.indptr)
+        self.assertEqual(n.shape, m.shape)
 
     def test_copy(self):
         n = self.m.copy()
@@ -310,6 +344,82 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    # dot
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_csr_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = sp.csr_matrix((5, 3), dtype=self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_vector(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_vector_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(5).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_matrix_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_dot_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.dot(None)
 
     # __add__
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -531,6 +641,32 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         None * m
 
+    # __pow__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_0(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_1(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 1).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_2(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 2).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_3(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 3).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_pow_neg(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** -1
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
@@ -634,3 +770,110 @@ class TestIsspmatrixCsr(unittest.TestCase):
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
         self.assertFalse(cupy.sparse.isspmatrix_csc(x))
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCsrMatrixGetitem(unittest.TestCase):
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[0, 1], 1)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int_not_found(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[1, 1], 0)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_getitem_int_int_negative(self, xp, sp):
+        self.assertEqual(_make(xp, sp, self.dtype)[-1, -2], 3)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_small_row(self, xp, sp):
+        _make(xp, sp, self.dtype)[-4, 0]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_large_row(self, xp, sp):
+        _make(xp, sp, self.dtype)[3, 0]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_small_col(self, xp, sp):
+        _make(xp, sp, self.dtype)[0, -5]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_int_too_large_col(self, xp, sp):
+        _make(xp, sp, self.dtype)[0, 4]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int(self, xp, sp):
+        return _make(xp, sp, self.dtype)[1].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int_negative(self, xp, sp):
+        return _make(xp, sp, self.dtype)[-1].toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_to_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[-4]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_to_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[3]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int_none_slice(self, xp, sp):
+        return _make(xp, sp, self.dtype)[1, :].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_negative_int_none_slice(self, xp, sp):
+        return _make(xp, sp, self.dtype)[-1, :].toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_too_small_none_slice(self, xp, sp):
+        _make(xp, sp, self.dtype)[-4, :]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_too_large_none_slice(self, xp, sp):
+        _make(xp, sp, self.dtype)[3, :]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice(self, xp, sp):
+        return _make(xp, sp, self.dtype)[1:3].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_negative(self, xp, sp):
+        return _make(xp, sp, self.dtype)[-2:-1].toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_too_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[-4:None]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_too_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[4:None]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_stop_too_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[None:-4]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_stop_too_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[None:4]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_larger_than_stop(self, xp, sp):
+        _make(xp, sp, self.dtype)[3:2]
+
+    def test_getitem_slice_step_2(self):
+        with self.assertRaises(ValueError):
+            _make(cupy, cupy.sparse, self.dtype)[0::2]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_ellipsis(self, xp, sp):
+        return _make(xp, sp, self.dtype)[...].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int_ellipsis(self, xp, sp):
+        return _make(xp, sp, self.dtype)[1, ...].toarray()

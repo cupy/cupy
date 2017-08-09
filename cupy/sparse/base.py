@@ -3,6 +3,7 @@ import six
 
 import cupy
 from cupy.core import core
+from cupy.sparse import util
 
 
 class spmatrix(object):
@@ -137,7 +138,42 @@ class spmatrix(object):
         return NotImplemented
 
     def __pow__(self, other):
-        return self.tocsr().__pow__(other)
+        """Calculates n-th power of the matrix.
+
+        This method calculates n-th power of a given matrix. The matrix must
+        be a squared matrix, and a given exponent must be an integer.
+
+        Args:
+            other (int): Exponent.
+
+        Returns:
+            cupy.sparse.spmatrix: A sparse matrix representing n-th power of
+                this matrix.
+
+        """
+        m, n = self.shape
+        if m != n:
+            raise TypeError('matrix is not square')
+
+        if util.isintlike(other):
+            other = int(other)
+            if other < 0:
+                raise ValueError('exponent must be >= 0')
+
+            if other == 0:
+                return cupy.sparse.identity(m, dtype=self.dtype, format='csr')
+            elif other == 1:
+                return self.copy()
+            else:
+                tmp = self.__pow__(other // 2)
+                if other % 2:
+                    return self * tmp * tmp
+                else:
+                    return tmp * tmp
+        elif util.isscalarlike(other):
+            raise ValueError('exponent must be an integer')
+        else:
+            return NotImplemented
 
     @property
     def A(self):
@@ -183,7 +219,15 @@ class spmatrix(object):
             return getattr(self, 'to' + format)()
 
     def asfptype(self):
-        """Upcast matrix to a floating point format (if necessary)"""
+        """Upcasts matrix to a floating point format.
+
+        When the matrix has floating point type, the method returns itself.
+        Otherwise it makes a copy with floating point type and the same format.
+
+        Returns:
+            cupy.sparse.spmatrix: A matrix with float type.
+
+        """
         if self.dtype.kind == 'f':
             return self
         else:
@@ -191,6 +235,16 @@ class spmatrix(object):
             return self.astype(typ)
 
     def astype(self, t):
+        """Casts the array to given data type.
+
+        Args:
+            t: Type specifier.
+
+        Returns:
+            cupy.sparse.spmatrix:
+                A copy of the array with the given type and the same format.
+
+        """
         return self.tocsr().astype(t).asformat(self.format)
 
     def conj(self):

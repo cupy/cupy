@@ -746,21 +746,33 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            thrust.sort(self.dtype, self.data.ptr, self._shape)
+            data = self
         else:
-            x = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
-            thrust.sort(self.dtype, x.data.ptr, x._shape)
-            y = cupy.rollaxis(x, -1, axis)
-            elementwise_copy(y, self)
+            data = cupy.rollaxis(self, axis, ndim).copy()
 
-    def argsort(self):
-        """Return the indices that would sort an array with stable sorting
+        if ndim == 1:
+            thrust.sort(self.dtype, data.data.ptr, 0, self._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.sort(
+                self.dtype, data.data.ptr, keys_array.data.ptr, data._shape)
 
-        .. note::
-            For its implementation reason, ``ndarray.argsort`` currently
-            supports only arrays with their rank of one, and does not support
-            ``axis``, ``kind`` and ``order`` parameters that
-            ``numpy.ndarray.argsort`` supports.
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
+
+    def argsort(self, axis=-1):
+        """Returns the indices that would sort an array with stable sorting
+
+        Args:
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of indices that sort the array.
 
         .. seealso::
             :func:`cupy.argsort` for full documentation,
@@ -768,34 +780,49 @@ cdef class ndarray:
 
         """
 
-        # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
+
+        cdef Py_ssize_t ndim = self.ndim
 
         if not cupy.cuda.thrust_enabled:
             raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                                'install CUDA Toolkit with Thrust then '
                                'reinstall CuPy after uninstalling it.')
 
-        if self.ndim == 0:
+        if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
 
-        # TODO(takagi): Support ranks of two or more
-        if self.ndim > 1:
-            raise NotImplementedError('Sorting arrays with the rank of two or '
-                                      'more is not supported')
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
 
-        data = self.copy()
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
 
-        # Assuming that Py_ssize_t can be represented with numpy.int64.
-        assert cython.sizeof(Py_ssize_t) == 8
+        if axis == ndim - 1:
+            data = data.copy()
+        else:
+            data = cupy.rollaxis(data, axis, ndim).copy()
 
-        idx_array = ndarray(self.shape, dtype=numpy.int64)
+        idx_array = ndarray(data.shape, dtype=numpy.intp)
 
-        thrust.argsort(
-            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
+        if ndim == 1:
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
+                           data._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
+                           keys_array.data.ptr, data._shape)
 
-        return idx_array
+        if axis == ndim - 1:
+            return idx_array
+        else:
+            return cupy.rollaxis(idx_array, -1, axis)
 
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition

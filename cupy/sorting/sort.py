@@ -81,24 +81,26 @@ def lexsort(keys):
     return idx_array
 
 
-def argsort(a):
-    """Return the indices that would sort an array with a stable sorting.
+def argsort(a, axis=-1):
+    """Returns the indices that would sort an array with a stable sorting.
 
     Args:
         a (cupy.ndarray): Array to sort.
+        axis (int or None): Axis along which to sort. Default is -1, which
+            means sort along the last axis. If None is supplied, the array is
+            flattened before sorting.
 
     Returns:
         cupy.ndarray: Array of indices that sort ``a``.
 
     .. note::
-       For its implementation reason, ``cupy.argsort`` currently supports only
-       arrays with their rank of one and does not support ``axis``, ``kind``
-       and ``order`` parameters that ``numpy.argsort`` supports.
+        For its implementation reason, ``cupy.argsort`` does not support
+        ``kind`` and ``order`` parameters.
 
     .. seealso:: :func:`numpy.argsort`
 
     """
-    return a.argsort()
+    return a.argsort(axis=axis)
 
 
 def msort(a):

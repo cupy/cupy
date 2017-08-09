@@ -394,6 +394,13 @@ def linkcode_resolve(domain, info):
     # Import the object from module path
     obj = _import_object_from_name(info['module'], info['fullname'])
 
+    # If it's not defined in the internal module, return None.
+    mod = inspect.getmodule(obj)
+    if mod is None:
+        return None
+    if not (mod.__name__ == 'cupy' or mod.__name__.startswith('cupy.')):
+        return None
+
     # Get the source file name and line number at which obj is defined.
     try:
         filename = inspect.getsourcefile(obj)
