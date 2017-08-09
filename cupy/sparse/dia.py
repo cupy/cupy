@@ -116,7 +116,7 @@ class dia_matrix(data._data_matrix):
         return int(nnz)
 
     def toarray(self, order=None, out=None):
-        """Return a dense ndarray representation of this matrix."""
+        """Returns a dense matrix representing the same value."""
         return self.tocsc().toarray(order=order, out=out)
 
     def tocsc(self, copy=False):
