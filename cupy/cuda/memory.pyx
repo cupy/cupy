@@ -414,7 +414,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef tuple _split(self, Chunk chunk, Py_ssize_t size):
         """Split contiguous block of a larger allocation"""
-        assert chunk.ptr not in self._in_use
         assert chunk.size >= size
         if chunk.size == size:
             return (chunk, None)
@@ -434,8 +433,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef Chunk _merge(self, Chunk head, Chunk remaining):
         """Merge previously splitted block (chunk)"""
-        assert head.ptr not in self._in_use
-        assert remaining.ptr not in self._in_use
         cdef Chunk merged
         size = head.size + remaining.size
         merged = Chunk(head.mem, head.offset, size)
