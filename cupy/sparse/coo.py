@@ -5,10 +5,12 @@ try:
 except ImportError:
     _scipy_available = False
 
+import cupy
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import csr
 from cupy.sparse import data as sparse_data
+from cupy.sparse import util
 
 
 class coo_matrix(sparse_data._data_matrix):
@@ -16,6 +18,10 @@ class coo_matrix(sparse_data._data_matrix):
     """COOrdinate format sparse matrix.
 
     Now it has only one initializer format below:
+
+    ``coo_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is float64.
 
     ``coo_matrix((data, (row, col))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
@@ -39,7 +45,17 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
 
-        if isinstance(arg1, tuple) and len(arg1) == 2:
+        if util.isshape(arg1):
+            m, n = arg1
+            m, n = int(m), int(n)
+            data = cupy.zeros(0, dtype if dtype else 'd')
+            row = cupy.zeros(0, dtype='i')
+            col = cupy.zeros(0, dtype='i')
+            # shape and copy argument is ignored
+            shape = (m, n)
+            copy = False
+
+        elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
                 data, (row, col) = arg1
             except (TypeError, ValueError):

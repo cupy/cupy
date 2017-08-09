@@ -39,6 +39,10 @@ def _make_empty(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make_shape(xp, sp, dtype):
+    return sp.coo_matrix((3, 4))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -247,7 +251,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'make_method': ['_make', '_make_unordered', '_make_empty'],
+    'make_method': ['_make', '_make_unordered', '_make_empty', '_make_shape'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -256,6 +260,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     @property
     def make(self):
         return globals()[self.make_method]
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_dtype(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.dtype
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz(self, xp, sp):
