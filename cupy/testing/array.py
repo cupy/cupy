@@ -91,12 +91,12 @@ def assert_array_equal(x, y, err_msg='', verbose=True):
         verbose=verbose)
     if (isinstance(x, (numpy.ndarray, cupy.ndarray)) and
             isinstance(y, (numpy.ndarray, cupy.ndarray))):
-        if x.flags.c_contiguous != x.flags.c_contiguous:
+        if x.flags.c_contiguous != y.flags.c_contiguous:
             raise AssertionError(
                 'The state of c_contiguous flag is different. '
                 '(x:{} y:{})'.format(x.flags.c_contiguous,
                                      y.flags.c_contiguous))
-        if x.flags.c_contiguous != x.flags.c_contiguous:
+        if x.flags.f_contiguous != y.flags.f_contiguous:
             raise AssertionError(
                 'The state of f_contiguous flag is different. '
                 '(x:{} y:{})'.format(x.flags.f_contiguous,
