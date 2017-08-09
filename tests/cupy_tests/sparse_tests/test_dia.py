@@ -108,6 +108,6 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         return m.nnz
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
-    def test_nnz_axis(self, xp, sp):
+    def test_nnz_axis_not_none(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.getnnz(axis=0)
