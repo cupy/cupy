@@ -1,4 +1,16 @@
 import cupy
+from cupy import core
+
+
+_packbits_kernel = core.ElementwiseKernel(
+    'raw T myarray, raw int32 myarray_size', 'uint8 packed',
+    '''for (int j = 0; j < 8; ++j) {
+        int k = i * 8 + j;
+        int bit = k < myarray_size && myarray[k] != 0;
+        packed |= bit << (7 - j);
+    }''',
+    'packbits_kernel'
+)
 
 
 def packbits(myarray):
@@ -27,18 +39,14 @@ def packbits(myarray):
     myarray = myarray.ravel()
     packed_size = (myarray.size + 7) // 8
     packed = cupy.zeros((packed_size,), dtype=cupy.uint8)
+    return _packbits_kernel(myarray, myarray.size, packed)
 
-    cupy.ElementwiseKernel(
-        'raw T myarray, raw int32 myarray_size', 'uint8 packed',
-        '''for (int j = 0; j < 8; ++j) {
-            int k = i * 8 + j;
-            int bit = k < myarray_size && myarray[k] != 0;
-            packed |= bit << (7 - j);
-        }''',
-        'packbits_kernel'
-    )(myarray, myarray.size, packed)
 
-    return packed
+_unpackbits_kernel = core.ElementwiseKernel(
+    'raw uint8 myarray', 'T unpacked',
+    'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
+    'unpackbits_kernel'
+)
 
 
 def unpackbits(myarray):
@@ -58,11 +66,4 @@ def unpackbits(myarray):
         raise TypeError('Expected an input array of unsigned byte data type')
 
     unpacked = cupy.ndarray((myarray.size * 8), dtype=cupy.uint8)
-
-    cupy.ElementwiseKernel(
-        'raw uint8 myarray', 'T unpacked',
-        'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
-        'unpackbits_kernel'
-    )(myarray, unpacked)
-
-    return unpacked
+    return _unpackbits_kernel(myarray, unpacked)
