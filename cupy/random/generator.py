@@ -308,10 +308,9 @@ class RandomState(object):
             :meth:`numpy.random.shuffle`
 
         """
-        int_max = numpy.iinfo(numpy.int32).max
-        int_min = numpy.iinfo(numpy.int32).min
-        a[:] = a[cupy.argsort(cupy.random.randint(int_min, int_max,
-                                                  size=len(a)))]
+        sample = cupy.zeros((len(a)), dtype=numpy.int32)
+        curand.generate(self._generator, sample.data.ptr, sample.size)
+        a[:] = a[cupy.argsort(sample)]
 
 
 def seed(seed=None):
