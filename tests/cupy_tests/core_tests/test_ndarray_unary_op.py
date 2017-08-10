@@ -51,8 +51,11 @@ class TestArrayUnaryOp(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return op(a)
 
-    def test_neg_array(self):
-        self.check_array_op(operator.neg)
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_neg_array(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return operator.neg(a)
 
     def test_pos_array(self):
         self.check_array_op(operator.pos)
@@ -66,8 +69,11 @@ class TestArrayUnaryOp(unittest.TestCase):
         a = xp.array(-2, dtype)
         return op(a)
 
-    def test_neg_zerodim(self):
-        self.check_zerodim_op(operator.neg)
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_neg_zerodim(self, xp, dtype):
+        a = xp.array(-2, dtype)
+        return operator.neg(a)
 
     def test_pos_zerodim(self):
         self.check_zerodim_op(operator.pos)

@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import core
 from cupy import cuda
 from cupy import get_array_module
@@ -217,10 +218,17 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_axis_overrun(self, xp, dtype):
+    def test_axis_overrun1(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         wrap_take(a, self.indices, axis=self.axis)
+
+    @testing.for_all_dtypes()
+    def test_axis_overrun2(self, dtype):
+        a = testing.shaped_arange(self.shape, cupy, dtype)
+        with self.assertRaises(core.core._AxisError):
+            wrap_take(a, self.indices, axis=self.axis)
 
 
 @testing.parameterize(
