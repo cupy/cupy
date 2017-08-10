@@ -1,4 +1,5 @@
 import cupy
+from cupy import core
 
 
 def flip(a, axis):
@@ -23,7 +24,8 @@ def flip(a, axis):
 
     axis = int(axis)
     if not -a_ndim <= axis < a_ndim:
-        raise ValueError('axis must be >= %d and < %d' % (-a_ndim, a_ndim))
+        raise ValueError(
+            'axis must be >= %d and < %d' % (-a_ndim, a_ndim))
 
     return _flip(a, axis)
 
@@ -99,7 +101,8 @@ def roll(a, shift, axis=None):
         if axis < 0:
             axis += a.ndim
         if not 0 <= axis < a.ndim:
-            raise ValueError('axis must be >= %d and < %d' % (-a.ndim, a.ndim))
+            raise core.core._AxisError(
+                'axis must be >= %d and < %d' % (-a.ndim, a.ndim))
         size = a.shape[axis]
         if size == 0:
             return a
