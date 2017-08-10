@@ -308,6 +308,12 @@ class RandomState(object):
             :meth:`numpy.random.shuffle`
 
         """
+        if not isinstance(a, cupy.ndarray):
+            raise TypeError('The array must be cupy.ndarray')
+
+        if a.ndim == 0:
+            raise TypeError('An array whose ndim is 0 is not supported')
+
         sample = cupy.zeros((len(a)), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, sample.size)
         a[:] = a[cupy.argsort(sample)]
