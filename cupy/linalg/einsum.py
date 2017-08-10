@@ -9,7 +9,7 @@ import cupy
 
 
 def calc_single_view(ioperand, subscript):
-    """Calculate 'ii->i' by cupy.diagonal if needed.
+    """Calculates 'ii->i' by cupy.diagonal if needed.
 
     Args:
         ioperand (cupy.ndarray): Array to be calculated diagonal.
@@ -17,6 +17,8 @@ def calc_single_view(ioperand, subscript):
             Specifies the subscripts. If the same label appears
             more than once, calculate diagonal for those axes.
     """
+
+    assert ioperand.ndim == len(subscript)
 
     labels = set(subscript)
     label_to_axis = collections.defaultdict(list)
@@ -33,6 +35,13 @@ def calc_single_view(ioperand, subscript):
             if char == label:
                 axes_to_diag.append(i)
         for axis in reversed(axes_to_diag[1:]):
+            shape_a = result.shape[axis]
+            shape_b = result.shape[axes_to_diag[0]]
+            if shape_a != shape_b:
+                raise ValueError('dimensions in operand 0 for collapsing'
+                                 ' index \'{0}\' don\'t match'
+                                 ' ({1} != {2})'.format(label, shape_a,
+                                                        shape_b))
             result = result.diagonal(0, axis, axes_to_diag[0])
             result = cupy.rollaxis(result, -1, axes_to_diag[0])
             subscript = subscript[:axis] + subscript[axis + 1:]
@@ -40,7 +49,7 @@ def calc_single_view(ioperand, subscript):
 
 
 def calc_summed_view(ioperand, input_subscript, output_subscript):
-    """Calculate 'i->' by cupy.sum if needed.
+    """Calculates 'i->' by cupy.sum if needed.
 
     Args:
         ioperand (cupy.ndarray): Array to be summed.
@@ -50,6 +59,10 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
             input_subscript but not in output_subscript, this label will be
             summed.
     """
+
+    assert len(set(input_subscript)) == len(input_subscript)
+    assert len(set(output_subscript)) == len(output_subscript)
+    assert set(output_subscript).issubset(set(input_subscript))
 
     subscript = input_subscript
     label_to_summed = set(input_subscript) - set(output_subscript)
@@ -70,7 +83,7 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 
 
 def calc_transposed_view(ioperand, input_subscript, output_subscript):
-    """Calculate 'ij->ji' by cupy.transpose if needed.
+    """Calculates 'ij->ji' by cupy.transpose if needed.
 
     Args:
         ioperand (cupy.ndarray): Array to be transpose.
@@ -80,7 +93,7 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
             match output, ``operand`` is transposed so that it matches.
     """
 
-    assert len(input_subscript) == len(output_subscript)
+    assert len(set(output_subscript)) == len(output_subscript)
     assert set(input_subscript) == set(output_subscript)
 
     transpose_orders = []
@@ -93,7 +106,7 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
 
 
 def calc_combined_view(ioperands, subscripts):
-    """Calculate 'i,j->ij' by cupy.tensordot.
+    """Calculates 'i,j->ij' by cupy.tensordot.
 
     Args:
         ioperands (sequence of arrays): Arrays to be combined.
@@ -108,9 +121,9 @@ def calc_combined_view(ioperands, subscripts):
 
 
 def get_dummy_labels(label_list):
-    dummy_label_set = set([])
+    dummy_label_set = set()
     count_dict = collections.Counter(label_list)
-    for label, count in count_dict.items():
+    for label, count in six.iteritems(count_dict):
         if count >= 2:
             dummy_label_set.add(label)
     return dummy_label_set
