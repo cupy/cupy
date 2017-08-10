@@ -136,7 +136,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def eliminate_zeros(self):
-        """Removes zero entroies in place."""
+        """Removes zero entories in place."""
         compress = cusparse.csr2csr_compress(self, 0)
         self.data = compress.data
         self.indices = compress.indices
