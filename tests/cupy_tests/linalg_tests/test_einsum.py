@@ -2,85 +2,99 @@ import unittest
 
 import numpy
 
-import cupy
 from cupy import testing
 
 
 class TestEinSumError(unittest.TestCase):
-    def test_einsum_errors(self):
-        # Need enough arguments
-        with self.assertRaises(ValueError):
-            cupy.einsum()
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('')
+    @testing.numpy_cupy_raises()
+    def test_no_arguments(self, xp):
+        xp.einsum()
 
-        # subscripts must be a string
-        with self.assertRaises(TypeError):
-            cupy.einsum(0, 0)
+    @testing.numpy_cupy_raises()
+    def test_one_argument(self, xp):
+        xp.einsum('')
 
-        # other keyword arguments are rejected
-        with self.assertRaises(TypeError):
-            cupy.einsum('', 0, bad_arg=0)
+    @testing.numpy_cupy_raises()
+    def test_not_string_subject(self, xp):
+        xp.einsum(0, 0)
 
-        # number of operands must match count in subscripts string
-        with self.assertRaises(ValueError):
-            cupy.einsum('', 0, 0)
+    @testing.numpy_cupy_raises()
+    def test_bad_argument(self, xp):
+        xp.einsum('', 0, bad_arg=0)
 
-        with self.assertRaises(ValueError):
-            cupy.einsum(',', 0)
+    @testing.numpy_cupy_raises()
+    def test_too_many_operands(self, xp):
+        xp.einsum('', 0, 0)
 
-        # can't have more subscripts than dimensions in the operand
-        with self.assertRaises(ValueError):
-            cupy.einsum('i', 0)
+    @testing.numpy_cupy_raises()
+    def test_too_few_operands(self, xp):
+        xp.einsum(',', 0)
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('ij', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_many_dimension1(self, xp):
+        xp.einsum('i', 0)
 
-        # invalid subscript character
-        with self.assertRaises(ValueError):
-            cupy.einsum('i%', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_many_dimension2(self, xp):
+        xp.einsum('ij', xp.array([0, 0]))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('j$', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_too_few_dimension(self, xp):
+        xp.einsum('i->i', xp.arange(6).reshape(2, 3))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('i->&', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_char1(self, xp):
+        xp.einsum('i%', xp.array([0, 0]))
 
-        # output subscripts must appear in inumpy.t
-        with self.assertRaises(ValueError):
-            cupy.einsum('i->ij', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_char2(self, xp):
+        xp.einsum('j$', xp.array([0, 0]))
 
-        # output subscripts may only be specified once
-        with self.assertRaises(ValueError):
-            cupy.einsum('ij->jij', cupy.array([[0, 0], [0, 0]]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_char3(self, xp):
+        xp.einsum('i->&', xp.array([0, 0]))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('ij->i,j', cupy.array([[0, 0], [0, 0]]))
+    # output subscripts must appear in inumpy.t
+    @testing.numpy_cupy_raises()
+    def test_invalid_output_subscripts1(self, xp):
+        xp.einsum('i->ij', xp.array([0, 0]))
 
-        # dimensions much match when being collapsed
-        with self.assertRaises(ValueError):
-            numpy.einsum('ii', cupy.arange(6).reshape(2, 3))
+    # output subscripts may only be specified once
+    @testing.numpy_cupy_raises()
+    def test_invalid_output_subscripts2(self, xp):
+        xp.einsum('ij->jij', xp.array([[0, 0], [0, 0]]))
 
-        with self.assertRaises(ValueError):
-            numpy.einsum('ii->', cupy.arange(6).reshape(2, 3))
+    # output subscripts must not incrudes comma
+    @testing.numpy_cupy_raises()
+    def test_invalid_output_subscripts3(self, xp):
+        xp.einsum('ij->i,j', xp.array([[0, 0], [0, 0]]))
 
-        # broadcasting to new dimensions must be enabled explicitly
-        with self.assertRaises(ValueError):
-            cupy.einsum('i->i', cupy.arange(6).reshape(2, 3))
+    # dimensions much match when being collapsed
+    @testing.numpy_cupy_raises()
+    def test_invalid_diagonal1(self, xp):
+        xp.einsum('ii', xp.arange(6).reshape(2, 3))
 
-        # invalid -> operator
-        with self.assertRaises(ValueError):
-            cupy.einsum('i-i', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_diagonal2(self, xp):
+        xp.einsum('ii->', xp.arange(6).reshape(2, 3))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('i>i', cupy.array([0, 0]))
+    # invalid -> operator
+    @testing.numpy_cupy_raises()
+    def test_invalid_arrow1(self, xp):
+        xp.einsum('i-i', xp.array([0, 0]))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('i->->i', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_arrow2(self, xp):
+        xp.einsum('i>i', xp.array([0, 0]))
 
-        with self.assertRaises(ValueError):
-            cupy.einsum('i-', cupy.array([0, 0]))
+    @testing.numpy_cupy_raises()
+    def test_invalid_arrow3(self, xp):
+        xp.einsum('i->->i', xp.array([0, 0]))
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_arrow4(self, xp):
+        xp.einsum('i-', xp.array([0, 0]))
 
 
 class TestEinSum(unittest.TestCase):
