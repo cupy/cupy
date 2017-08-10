@@ -41,10 +41,10 @@ class MemoryHook(object):
     memory is retrieved from memory pool, that is,
     :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` is invoked.
 
-    Below is the pseudo code to descirbe how
+    Below is a pseudo code to descirbe how
     :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` and hooks work.
     Please note that ``alloc_preprocess`` and ``alloc_postprocess``
-    are not invoked if a cached free chunk is found.
+    are not invoked if a cached free chunk is found::
 
         def malloc(size):
             Call malloc_preprocess of all memory hooks
@@ -61,8 +61,8 @@ class MemoryHook(object):
     memory is released to memory pool, that is,
     :meth:`~cupy.cuda.memory.PooledMemory.free` is invoked.
 
-    Below is the pseudo code to descirbe how
-    :meth:`~cupy.cuda.memory.PooledMemory.free` and hooks work:
+    Below is a pseudo code to descirbe how
+    :meth:`~cupy.cuda.memory.PooledMemory.free` and hooks work::
 
         def free(ptr):
             Call free_preprocess of all memory hooks

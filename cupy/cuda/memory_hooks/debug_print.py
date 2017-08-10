@@ -8,12 +8,12 @@ class DebugPrintHook(memory_hook.MemoryHook):
 
     This memory hook outputs the debug information of input arguments of
     ``malloc`` and ``free`` methods involved in the hooked functions
-    at preprocessing time (that is, just before each method is called).
+    at postprocessing time (that is, just after each method is called).
 
     Example:
-        Code example::
+        The basic usage is to use it with ``with`` statement.
 
-            The basic usage is to use it with ``with`` statement.
+        Code example::
 
             >>> import cupy
             >>> from cupy.cuda import memory_hooks
