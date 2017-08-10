@@ -300,6 +300,19 @@ class RandomState(object):
 
         return a[index]
 
+    def shuffle(self, a):
+        """Returns a shuffled array.
+
+        .. seealso::
+            :func:`cupy.random.shuffle` for full document,
+            :meth:`numpy.random.shuffle`
+
+        """
+        int_max = numpy.iinfo(numpy.int32).max
+        int_min = numpy.iinfo(numpy.int32).min
+        a[:] = a[cupy.argsort(cupy.random.randint(int_min, int_max,
+                                                  size=len(a)))]
+
 
 def seed(seed=None):
     """Resets the state of the random number generator with a seed.

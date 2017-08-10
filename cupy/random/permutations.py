@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+from cupy.random import generator
 
 # TODO(okuta): Implement permutation
 
@@ -15,13 +14,10 @@ def shuffle(a):
 
     """
     if not isinstance(a, cupy.ndarray):
-        msg = 'a must be cupy.ndarray'
-        raise TypeError(msg)
+        raise TypeError('The array must be cupy.ndarray')
 
     if a.ndim == 0:
-        msg = 'An array whose ndim is 0 is not supported'
-        raise TypeError(msg)
+        raise TypeError('An array whose ndim is 0 is not supported')
 
-    int_max = numpy.iinfo(numpy.int32).max
-    int_min = numpy.iinfo(numpy.int32).min
-    a[:] = a[cupy.argsort(cupy.random.randint(int_min, int_max, size=len(a)))]
+    rs = generator.get_random_state()
+    return rs.shuffle(a)
