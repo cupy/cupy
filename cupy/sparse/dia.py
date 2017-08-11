@@ -6,6 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import core
+from cupy.sparse import csc
 from cupy.sparse import data
 
 
@@ -113,6 +114,62 @@ class dia_matrix(data._data_matrix):
             'offsets > 0 ? min(m, n - offsets) : min(m + offsets, n)',
             'a + b', 'nnz = a', '0', 'dia_nnz')(self.offsets, m, n)
         return int(nnz)
+
+    def toarray(self, order=None, out=None):
+        """Returns a dense matrix representing the same value."""
+        return self.tocsc().toarray(order=order, out=out)
+
+    def tocsc(self, copy=False):
+        """Converts the matrix to Compressed Sparse Column format.
+
+        Args:
+            copy (bool): If ``False``, it shares data arrays as much as
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in dia to csc conversion.
+
+        Returns:
+            cupy.sparse.csc_matrix: Converted matrix.
+
+        """
+        if self.nnz == 0:
+            return csc.csc_matrix(self.shape, dtype=self.dtype)
+
+        num_rows, num_cols = self.shape
+        num_offsets, offset_len = self.data.shape
+
+        row, mask = core.ElementwiseKernel(
+            'int32 offset_len, int32 offsets, int32 num_rows, '
+            'int32 num_cols, T data',
+            'int32 row, bool mask',
+            '''
+            int offset_inds = i % offset_len;
+            row = offset_inds - offsets;
+            mask = (row >= 0 && row < num_rows && offset_inds < num_cols
+                    && data != 0);
+            ''',
+            'dia_tocsc')(offset_len, self.offsets[:, None], num_rows,
+                         num_cols, self.data)
+        indptr = cupy.zeros(num_cols + 1, dtype='i')
+        indptr[1: offset_len + 1] = cupy.cumsum(mask.sum(axis=0))
+        indptr[offset_len + 1:] = indptr[offset_len]
+        indices = row.T[mask.T].astype('i', copy=False)
+        data = self.data.T[mask.T]
+        return csc.csc_matrix(
+            (data, indices, indptr), shape=self.shape, dtype=self.dtype)
+
+    def tocsr(self, copy=False):
+        """Converts the matrix to Compressed Sparse Row format.
+
+        Args:
+            copy (bool): If ``False``, it shares data arrays as much as
+                possible. Actually this option is ignored because all
+                arrays in a matrix cannot be shared in dia to csr conversion.
+
+        Returns:
+            cupy.sparse.csc_matrix: Converted matrix.
+
+        """
+        return self.tocsc().tocsr()
 
 
 def isspmatrix_dia(x):
