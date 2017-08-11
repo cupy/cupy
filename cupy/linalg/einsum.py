@@ -180,7 +180,7 @@ def einsum(*operands):
         else:
             converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
-    match = re.fullmatch('([a-zA-Z,]+)(->[a-zA-Z]*)?', subscripts)
+    match = re.match('^([a-zA-Z,]+)(->[a-zA-Z]*)?$', subscripts)
     if not match:
         raise ValueError('einstein sum subscript string does not contain '
                          'proper \'->\' output specified')
