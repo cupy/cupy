@@ -173,6 +173,22 @@ cusparseStatus_t cusparseDnnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseSnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseCreateIdentityPermutation(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
