@@ -59,7 +59,7 @@ class TestShuffle(unittest.TestCase):
             b = cupy.array([True, True, True, False, True, False])
         else:
             a = cupy.arange(10, dtype=dtype)
-            b = cupy.array([2, 7, 5, 8, 9, 6, 0, 1, 4, 3], dtype=dtype)
+            b = cupy.array([9, 6, 0, 1, 4, 3, 2, 7, 5, 8], dtype=dtype)
         cupy.random.seed(0)
         cupy.random.shuffle(a)
         testing.assert_allclose(a, b)
