@@ -149,7 +149,7 @@ def partition(a, kth, axis=-1):
 
     .. note::
        For its implementation reason, `cupy.partition` fully sorts the given
-       array as `cupy.sort` does. It also does not support ``kind`` and
+       array as :func:`cupy.sort` does. It also does not support ``kind`` and
        ``order`` parameters that ``numpy.partition`` supports.
 
     .. seealso:: :func:`numpy.partition`
