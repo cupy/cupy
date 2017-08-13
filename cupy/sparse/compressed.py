@@ -65,7 +65,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
-        elif base.isdense(arg1) and arg1.ndim == 2:
+        elif base.isdense(arg1):
+            if arg1.ndim > 2:
+                raise TypeError('expected dimension <= 2 array or matrix')
+            elif arg1.ndim == 1:
+                arg1 = arg1[None]
+            elif arg1.ndim == 0:
+                arg1 = arg1[None, None]
             data, indices, indptr = self._convert_dense(arg1)
             copy = False
             if shape is None:

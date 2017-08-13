@@ -137,11 +137,29 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [])
         cupy.testing.assert_array_equal(n.indptr, [0, 0, 0, 0, 0])
 
+    def test_init_dense_one_dim(self):
+        m = cupy.array([0, 1, 0, 2], dtype=self.dtype)
+        n = cupy.sparse.csc_matrix(m)
+        self.assertEqual(n.nnz, 2)
+        self.assertEqual(n.shape, (1, 4))
+        cupy.testing.assert_array_equal(n.data, [1, 2])
+        cupy.testing.assert_array_equal(n.indices, [0, 0])
+        cupy.testing.assert_array_equal(n.indptr, [0, 0, 1, 1, 2])
+
+    def test_init_dense_zero_dim(self):
+        m = cupy.array(1, dtype=self.dtype)
+        n = cupy.sparse.csc_matrix(m)
+        self.assertEqual(n.nnz, 1)
+        self.assertEqual(n.shape, (1, 1))
+        cupy.testing.assert_array_equal(n.data, [1])
+        cupy.testing.assert_array_equal(n.indices, [0])
+        cupy.testing.assert_array_equal(n.indptr, [0, 1])
+
     @unittest.skipUnless(scipy_available, 'requires scipy')
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_init_dense_invalid_ndim(self):
-        m = cupy.zeros((1, 1, 1), dtype=self.dtype)
-        cupy.sparse.csc_matrix(m)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_init_dense_invalid_ndim(self, xp, sp):
+        m = xp.zeros((1, 1, 1), dtype=self.dtype)
+        sp.csc_matrix(m)
 
     def test_copy(self):
         n = self.m.copy()
