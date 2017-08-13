@@ -129,7 +129,7 @@ def get_dummy_labels(label_list):
     return dummy_label_set
 
 
-def einsum(*operands):
+def einsum(*operands, **kwargs):
     """Evaluates the Einstein summation convention on the operands.
 
     Using the Einstein summation convention, many common multi-dimensional
@@ -139,6 +139,12 @@ def einsum(*operands):
     Args:
         subscripts (str): Specifies the subscripts for summation.
         operands (sequence of arrays): These are the arrays for the operation.
+        optimize (boolean or 'greedy' or 'optimal'):
+            Controls if intermediate optimization should occur. No optimization
+            will occur if `False` and `True` will default to the 'greedy'
+            algorithm. Also accepts an explicit contraction list from the
+            `numpy.einsum_path` function. See ``np.einsum_path`` for more
+            details. Default is True.
 
     Returns:
         cupy.ndarray:
@@ -147,8 +153,59 @@ def einsum(*operands):
     .. seealso:: :func:`numpy.einsum`
     """
 
-    # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting', 'optimize'
+    optimize_arg = kwargs.pop('optimize', False)
 
+    # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting',
+    if kwargs:
+        raise TypeError("Did not support the following kwargs: {}"
+                        .format(unknown_kwargs))
+
+    if not optimize_arg:
+        einsum_core(*operands)
+
+    # Build the contraction list and operand
+    operands, contraction_list = numpy.einsum_path(*operands,
+                                                   optimize=optimize_arg,
+                                                   einsum_call=True)
+
+    # Start contraction loop
+    for num, contraction in enumerate(contraction_list):
+        inds, idx_rm, einsum_str, remaining, blas = contraction
+        tmp_operands = []
+        for x in inds:
+            tmp_operands.append(operands.pop(x))
+
+        # Checks have already been handled
+        input_str, results_index = einsum_str.split('->')
+        input_left, input_right = input_str.split(',')
+
+        tensor_result = input_left + input_right
+        for s in idx_rm:
+            tensor_result = tensor_result.replace(s, "")
+
+        # Find indices to contract over
+        left_pos, right_pos = [], []
+        for s in idx_rm:
+            left_pos.append(input_left.find(s))
+            right_pos.append(input_right.find(s))
+
+        # Contract!
+        new_view = cupy.tensordot(*tmp_operands,
+                                  axes=(tuple(left_pos), tuple(right_pos)))
+
+        # Build a new view if needed
+        if (tensor_result != results_index):
+            new_view = einsum_core(tensor_result + '->' + results_index,
+                                   new_view)
+
+        # Append new items and derefernce what we can
+        operands.append(new_view)
+        del tmp_operands, new_view
+
+    return operands[0]
+
+
+def einsum_core(*operands):
     if not operands:
         raise ValueError('must specify the einstein sum subscripts string and '
                          'at least one operand, or at least one operand and '
