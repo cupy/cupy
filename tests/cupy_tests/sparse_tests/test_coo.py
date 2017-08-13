@@ -341,8 +341,7 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
         self.assertEqual(m.nnz, 0)
-        a = m.toarray()
-        return a
+        return m.toarray()
 
 
 @testing.parameterize(*testing.product({
