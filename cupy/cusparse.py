@@ -532,8 +532,7 @@ def dense2csc(x):
         x.data.ptr, m, nnz_per_col.data.ptr,
         data.data.ptr, indices.data.ptr, indptr.data.ptr)
     # Note that a desciptor is recreated
-    y = cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
-    return y
+    return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
 
 
 def dense2csr(x):
@@ -570,5 +569,4 @@ def dense2csr(x):
         x.data.ptr, m, nnz_per_row.data.ptr,
         data.data.ptr, indptr.data.ptr, indices.data.ptr)
     # Note that a desciptor is recreated
-    y = cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
-    return y
+    return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
