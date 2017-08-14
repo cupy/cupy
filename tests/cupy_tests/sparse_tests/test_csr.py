@@ -387,14 +387,39 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.tocoo().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocoo_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocoo(copy=True)
+        self.assertIsNot(m.data, n.data)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsc_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsc(copy=True)
+        self.assertIsNot(m.data, n.data)
+        self.assertIsNot(m.indices, n.indices)
+        self.assertIsNot(m.indptr, n.indptr)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsr(copy=True)
+        self.assertIsNot(m.data, n.data)
+        self.assertIsNot(m.indices, n.indices)
+        self.assertIsNot(m.indptr, n.indptr)
+        return n.toarray()
 
     # dot
     @testing.numpy_cupy_allclose(sp_name='sp')
