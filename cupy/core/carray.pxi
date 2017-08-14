@@ -73,6 +73,7 @@ cdef str _header_source = None
 cpdef str _get_header_dir_path():
     global _header_path_cache
     if _header_path_cache is None:
+        # Cython cannot use __file__ in global scope
         _header_path_cache = os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
     return _header_path_cache

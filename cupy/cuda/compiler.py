@@ -115,6 +115,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     env = (arch, options, _get_nvrtc_version())
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
+        # This is checking of nvrtc compiler internal version
         base = _empty_file_preprocess_cache[env] = _preprocess('', options)
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
