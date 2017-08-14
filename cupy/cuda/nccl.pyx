@@ -70,31 +70,23 @@ cdef dict ERROR2 = {
 }
 
 
-class Nccl1Error(RuntimeError):
+class NcclError(RuntimeError):
 
     def __init__(self, int status):
         self.status = status
         cdef msg = ncclGetErrorString(<ncclResult_t>status)
-        super(Nccl1Error, self).__init__(
-            '%s: %s' % (ERROR1[status], msg.decode()))
-
-
-class Nccl2Error(RuntimeError):
-
-    def __init__(self, int status):
-        self.status = status
-        cdef msg = ncclGetErrorString(<ncclResult_t>status)
-        super(Nccl2Error, self).__init__(
-            '%s: %s' % (ERROR2[status], msg.decode()))
+        if NCCL_VERSION < 2000:
+            s = ERROR1[status]
+        else:
+            s = ERROR2[status]
+        super(NcclError, self).__init__(
+            '%s: %s' % (s, msg.decode()))
 
 
 @cython.profile(False)
 cpdef inline check_status(ncclResult_t status):
     if status != ncclSuccess:
-        if NCCL_VERSION < 2000:
-            raise Nccl1Error(status)
-        else:
-            raise Nccl2Error(status)
+        raise NcclError(status)
 
 
 def get_version():
