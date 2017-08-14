@@ -160,13 +160,9 @@ def create_convolution_descriptor(pad, stride, dtype,
                 dilation[0], dilation[1], mode, compute_type)
 
             if _cudnn_version >= 7000:
-                math_type = cudnn.CUDNN_DEFAULT_MATH
                 if use_tensor_core:
                     math_type = cudnn.CUDNN_TENSOR_OP_MATH
                     cudnn.setConvolutionMathType(desc.value, math_type)
-                # _type = cudnn.getConvolutionMathType(desc.value)
-                # print('# cudnn.py:180, math_type: {} {}'.
-                #       format(math_type, _type))
         else:
             cudnn.setConvolution2dDescriptor_v4(
                 desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
