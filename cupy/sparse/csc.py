@@ -106,7 +106,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
-        
+
         self.sum_duplicates()
         # csc2dense and csr2dense returns F-contiguous array.
         if order == 'C':
