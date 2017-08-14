@@ -104,6 +104,7 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(source, options=(), arch=None, cache_dir=None,
                        extra_source=None):
+    # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -115,7 +116,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     env = (arch, options, _get_nvrtc_version())
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of nvrtc compiler internal version
+        # This is checking of NVRTC compiler internal version
         base = _empty_file_preprocess_cache[env] = _preprocess('', options)
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
