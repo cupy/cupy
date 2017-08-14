@@ -28,7 +28,7 @@ test_accuracy : [0-9\.]+
         dir_path = tempfile.mkdtemp()
         try:
             image_path = os.path.join(dir_path, 'gmm.png')
-            output = example_test.run_example(
+            example_test.run_example(
                 'gmm/gmm.py', '--num', '10', '-o', image_path)
             self.assertTrue(os.path.exists(image_path))
         finally:
