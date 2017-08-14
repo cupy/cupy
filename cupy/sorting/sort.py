@@ -148,9 +148,9 @@ def partition(a, kth, axis=-1):
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
-       For its implementation reason, `cupy.partition` fully sorts the given
-       array as :func:`cupy.sort` does. It also does not support ``kind`` and
-       ``order`` parameters that ``numpy.partition`` supports.
+       For its implementation reason, :func:`cupy.partition` fully sorts the
+       given array as :func:`cupy.sort` does. It also does not support
+       ``kind`` and ``order`` parameters that :func:`numpy.partition` supports.
 
     .. seealso:: :func:`numpy.partition`
 

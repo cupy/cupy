@@ -836,9 +836,9 @@ cdef class ndarray:
 
         .. note::
            For its implementation reason, :func:`cupy.ndarray.partition` fully
-           sorts the given array as `cupy.ndarray.sort` does. It also does not
-           support ``kind`` and ``order`` parameters that ``numpy.partition``
-           supports.
+           sorts the given array as :meth:`cupy.ndarray.sort` does. It also
+           does not support ``kind`` and ``order`` parameters that
+           :func:`numpy.partition` supports.
 
         .. seealso::
             :func:`cupy.partition` for full documentation,
