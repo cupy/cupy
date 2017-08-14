@@ -19,8 +19,10 @@ def timer(message):
 
 
 def fit(A, b, tol, max_iter):
+    # Note that this function works even tensors 'A' and 'b' are NumPy or CuPy
+    # arrays.
     xp = cupy.get_array_module(A)
-    x = xp.zeros(len(b), dtype=np.float64)
+    x = xp.zeros_like(b, dtype=np.float64)
     r0 = b - xp.dot(A, x)
     p = r0
     for i in six.moves.range(max_iter):
@@ -41,9 +43,9 @@ def run(gpu_id, tol, max_iter):
 
     Solve simultaneous linear equations, Ax = b.
     'A' and 'x' are created randomly and 'b' is computed by 'Ax' at first.
-    'x' is the answer and computed in two ways. To check whether the computed
-    'x' is correct, the euclidean distance between the answer 'x' and the
-    computed 'x' is printed.
+    Then, 'x' is computed from 'A' and 'b' in two ways, namely with CPU and
+    GPU. To evaluate the accuracy of computation, the Euclidean distances
+    between the answer 'x' and the reconstructed 'x' are computed.
 
     '''
     for repeat in range(3):
