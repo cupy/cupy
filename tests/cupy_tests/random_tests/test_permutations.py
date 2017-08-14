@@ -51,15 +51,3 @@ class TestShuffle(unittest.TestCase):
         cupy.random.seed(0)
         cupy.random.shuffle(b)
         testing.assert_allclose(a, b)
-
-    @testing.for_all_dtypes()
-    def test_shuffle_seed2(self, dtype):
-        if dtype == numpy.bool_:
-            a = cupy.array([True, False, True, False, True, True])
-            b = cupy.array([True, True, True, False, True, False])
-        else:
-            a = cupy.arange(10, dtype=dtype)
-            b = cupy.array([9, 6, 0, 1, 4, 3, 2, 7, 5, 8], dtype=dtype)
-        cupy.random.seed(0)
-        cupy.random.shuffle(a)
-        testing.assert_allclose(a, b)
