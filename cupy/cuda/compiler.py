@@ -117,7 +117,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         warnings.warn('Please set the CUDA path ' +
                       'to environment variable `CUDA_PATH`')
     else:
-        options += ('-I ' + cuda_path + '/include',)
+        path = os.path.join(cuda_path, 'include')
+        options += ('-I ' + path,)
 
     options += ('-ftz=true',)
 
