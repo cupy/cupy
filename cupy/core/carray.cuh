@@ -3,8 +3,6 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#include <cuda_fp16.h>
-
 // float16
 class float16
 {

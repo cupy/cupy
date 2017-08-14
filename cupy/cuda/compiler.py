@@ -111,9 +111,6 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if arch is None:
         arch = _get_arch()
 
-    cuda_path = os.getenv('CUDA_PATH', '/usr/local/cuda')
-    options += ('-I ' + cuda_path + '/include',)
-
     options += ('-ftz=true',)
 
     env = (arch, options, _get_nvrtc_version())
