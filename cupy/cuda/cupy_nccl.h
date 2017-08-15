@@ -26,7 +26,15 @@ typedef enum {
 
 typedef enum {} ncclRedOp_t;
 
-typedef enum {} ncclDataType_t;
+typedef enum {
+    ncclChar       = 0,
+    ncclInt        = 1,
+    ncclHalf       = 2,
+    ncclFloat      = 3,
+    ncclDouble     = 4,
+    ncclInt64      = 5,
+    ncclUint64     = 6,
+    nccl_NUM_TYPES = 7 } ncclDataType_t;
 
 const char* ncclGetErrorString(...);
 ncclResult_t ncclGetUniqueId(...);
@@ -40,15 +48,7 @@ ncclResult_t ncclBcast(...);
 ncclResult_t ncclReduceScatter(...);
 ncclResult_t ncclAllGather(...);
 
-typedef enum {
-    ncclChar       = 0,
-    ncclInt        = 1,
-    ncclHalf       = 2,
-    ncclFloat      = 3,
-    ncclDouble     = 4,
-    ncclInt64      = 5,
-    ncclUint64     = 6,
-    nccl_NUM_TYPES = 7 } ncclDataType_t;
+typedef struct CUstream_st *cudaStream_t;
 
 }
 
