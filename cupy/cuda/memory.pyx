@@ -563,7 +563,6 @@ cdef class SingleDeviceMemoryPool:
                 for chunk in self._free[i]:
                     if chunk.prev or chunk.next:
                         keep_list.add(chunk)
-                self._free[i].clear()
                 self._free[i] = keep_list
         finally:
             rlock.unlock_fastrlock(self._free_lock)

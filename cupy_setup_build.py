@@ -527,7 +527,7 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        use_cython = check_cython_version()
-        extensions = get_ext_modules(use_cython)
-        check_extensions(extensions)
+        if check_cython_version():
+            get_ext_modules(True)  # convert Cython files to cpp files
+        check_extensions(self.extensions)
         build_ext.build_ext.run(self)
