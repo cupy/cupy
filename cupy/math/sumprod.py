@@ -105,20 +105,20 @@ def _cum_core(a, axis, dtype, out, kern, batch_kern):
 
 
 _cumsum_batch_kern = core.ElementwiseKernel(
-    'int32 pos, int32 batch', 'raw T x',
+    'int64 pos, int64 batch', 'raw T x',
     '''
-    int b = i % batch;
-    int j = i / batch;
+    ptrdiff_t b = i % batch;
+    ptrdiff_t j = i / batch;
     if (j & pos) {
-      const int dst_index[] = {j, b};
-      const int src_index[] = {j ^ pos | (pos - 1), b};
+      const ptrdiff_t dst_index[] = {j, b};
+      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
       x[dst_index] += x[src_index];
     }
     ''',
     'cumsum_batch_kernel'
 )
 _cumsum_kern = core.ElementwiseKernel(
-    'int32 pos', 'raw T x',
+    'int64 pos', 'raw T x',
     '''
     if (i & pos) {
       x[i] += x[i ^ pos | (pos - 1)];
@@ -150,11 +150,11 @@ def cumsum(a, axis=None, dtype=None, out=None):
 _cumprod_batch_kern = core.ElementwiseKernel(
     'int64 pos, int64 batch', 'raw T x',
     '''
-    int b = i % batch;
-    int j = i / batch;
+    ptrdiff_t b = i % batch;
+    ptrdiff_t j = i / batch;
     if (j & pos) {
-      const int dst_index[] = {j, b};
-      const int src_index[] = {j ^ pos | (pos - 1), b};
+      const ptrdiff_t dst_index[] = {j, b};
+      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
       x[dst_index] *= x[src_index];
     }
     ''',

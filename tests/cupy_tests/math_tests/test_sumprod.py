@@ -238,10 +238,12 @@ class TestCumprod(unittest.TestCase):
         return xp.cumprod(a, axis=1)
 
     @testing.slow
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_huge_array(self, xp):
-        a = xp.ones(2 ** 32, 'b')
-        return xp.cumprod(a)
+    def test_cumprod_huge_array(self):
+        size = 2 ** 32
+        a = cupy.ones(size, 'b')
+        result = cupy.cumprod(a, dtype='b')
+        del a
+        self.assertTrue((result == 1).all())
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
