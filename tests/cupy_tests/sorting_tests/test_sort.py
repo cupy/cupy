@@ -207,12 +207,6 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    def test_argsort_multi_dim(self, dtype):
-        a = testing.shaped_random((2, 3), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            return self.argsort(a)
-
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_argsort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3, 3), xp, dtype)

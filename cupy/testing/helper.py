@@ -38,7 +38,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         accept_error = Exception
     elif not accept_error:
         accept_error = ()
-    # ToDo: expected_regexp like numpy.testing.assert_raises_regex
+    # TODO(oktua): expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -122,7 +122,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None):
                 check_func(cupy_result, numpy_result)
             if type_check:
                 self.assertEqual(cupy_result.dtype, numpy_result.dtype,
-                                 'cupy dtype unequal numpy dtype')
+                                 'cupy dtype is not equal to numpy dtype')
         return test_func
     return decorator
 

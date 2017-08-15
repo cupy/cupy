@@ -1,3 +1,3 @@
-These files is copied from thrust project and modified it.
+These files are copied from thrust project and are modified.
 
-    https:  // github.com/thrust/thrust
+    http://thrust.github.io/

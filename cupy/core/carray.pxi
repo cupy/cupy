@@ -66,6 +66,9 @@ cdef list _cupy_header_list = [
 ]
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
+
+# This is indirect include header list.
+# These header files are subject to a hash key.
 cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',
