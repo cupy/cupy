@@ -128,7 +128,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -195,7 +195,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_einsum_ternary(self, xp, dtype):
         if self.skip_overflow and dtype in self.skip_dtypes:

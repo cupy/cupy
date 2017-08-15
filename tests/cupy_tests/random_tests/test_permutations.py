@@ -24,14 +24,14 @@ class TestShuffle(unittest.TestCase):
 
     # Test same values
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_shuffle_sort_1dim(self, dtype):
         a = cupy.arange(10, dtype=dtype)
         b = cupy.copy(a)
         cupy.random.shuffle(a)
         testing.assert_allclose(cupy.sort(a), b)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_shuffle_sort_ndim(self, dtype):
         a = cupy.arange(15, dtype=dtype).reshape(5, 3)
         b = cupy.copy(a)

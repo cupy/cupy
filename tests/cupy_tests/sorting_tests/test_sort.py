@@ -212,7 +212,7 @@ class TestArgsort(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_argsort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3, 3), xp, dtype)
@@ -330,7 +330,7 @@ class TestPartition(unittest.TestCase):
         kth = 2
         return self.partition(a, kth)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_equal()
     def test_partition_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -340,7 +340,7 @@ class TestPartition(unittest.TestCase):
         self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
         return x[kth]
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_partition_multi_dim(self, xp, dtype):
         a = testing.shaped_random((10, 10, 10), xp, dtype)
