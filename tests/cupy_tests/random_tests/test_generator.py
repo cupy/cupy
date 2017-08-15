@@ -169,6 +169,8 @@ class TestRandomState8(TestRandomState):
 
 
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
@@ -197,6 +199,8 @@ class TestRandAndRandN(unittest.TestCase):
 
 
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
@@ -266,6 +270,8 @@ class TestInterval(unittest.TestCase):
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestChoice(unittest.TestCase):
 
@@ -298,6 +304,8 @@ class TestChoice(unittest.TestCase):
 
 
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
@@ -349,6 +357,8 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
