@@ -37,6 +37,8 @@ ncclResult_t ncclCommUserRank(...);
 ncclResult_t ncclAllReduce(...);
 ncclResult_t ncclReduce(...);
 ncclResult_t ncclBcast(...);
+ncclResult_t ncclReduceScatter(...);
+ncclResult_t ncclAllGather(...);
 
 }
 
@@ -107,6 +109,22 @@ ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype, int r
 			ncclComm_t comm, cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclBcast(buff, count, _datatype, root, comm,  stream);
+}
+
+
+ncclResult_t _ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recvcount,
+				ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
+				cudaStream_t stream) {
+    ncclDataType_t _datatype = _get_proper_datatype(datatype);
+    return ncclReduceScatter(sendbuff, recvbuff, recvcount, _datatype, op, comm, stream);
+}
+
+
+ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcount,
+			    ncclDataType_t datatype, ncclComm_t comm,
+			    cudaStream_t stream) {
+    ncclDataType_t _datatype = _get_proper_datatype(datatype);
+    return ncclAllGather(sendbuff, recvbuff, sendcount, _datatype, comm, stream);
 }
 
 

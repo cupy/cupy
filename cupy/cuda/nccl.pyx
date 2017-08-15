@@ -39,6 +39,14 @@ cdef extern from "cupy_nccl.h":
     ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
                             int root, ncclComm_t comm,
                             driver.Stream stream) nogil
+    ncclResult_t _ncclReduceScatter(const void* sendbuff,
+                                    void* recvbuff, size_t recvcount,
+                                    ncclDataType_t datatype, ncclRedOp_t op,
+                                    ncclComm_t comm,
+                                    driver.Stream stream) nogil
+    ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff,
+                                size_t count, ncclDataType_t datatype,
+                                ncclComm_t comm, driver.Stream stream) nogil
 
     int NCCL_VERSION
 
@@ -157,4 +165,21 @@ cdef class NcclCommunicator:
             status = _ncclBcast(<void*>buff, count,
                                 <ncclDataType_t>datatype, root,
                                 self._comm, <driver.Stream>stream)
+        check_status(status)
+
+    def reduceScatter(self, size_t sendbuf, size_t recvbuf,
+                      size_t recvcount, int datatype, int op, size_t stream):
+        with nogil:
+            status = _ncclReduceScatter(<void*>sendbuf, <void*>recvbuf,
+                                        recvcount, <ncclDataType_t>datatype,
+                                        <ncclRedOp_t>op, self._comm,
+                                        <driver.Stream>stream)
+        check_status(status)
+
+    def allGather(self, size_t sendbuf, size_t count, int datatype,
+                  size_t recvbuf, size_t stream):
+        with nogil:
+            status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
+                                    count, <ncclDataType_t>datatype,
+                                    self._comm, <driver.Stream>stream)
         check_status(status)
