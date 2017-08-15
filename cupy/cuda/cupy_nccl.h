@@ -134,7 +134,11 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
 			    ncclDataType_t datatype, ncclComm_t comm,
 			    cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
+#if (NCCL_VERSION >= 2000)
     return ncclAllGather(sendbuff, recvbuff, sendcount, _datatype, comm, stream);
+#else
+    return ncclAllGather(sendbuff, sendcount, _datatype, recvbuff, comm, stream);
+#endif // #if (NCCL_VERSION < 2000)
 }
 
 
