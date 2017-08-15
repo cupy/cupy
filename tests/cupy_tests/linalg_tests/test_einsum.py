@@ -8,10 +8,21 @@ from cupy import testing
 
 class TestEinSumError(unittest.TestCase):
 
-    # '...' ellipsis is not supported.
-    def test_not_supported_ellipsis(self):
-        with self.assertRaises(TypeError):
-            cupy.einsum('...', 0)
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis1(self):
+        xp.einsum('..', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis2(self):
+        xp.einsum('...i...', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis3(self):
+        xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis4(self):
+        xp.einsum('...->', xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_raises()
     def test_no_arguments(self, xp):
@@ -48,6 +59,10 @@ class TestEinSumError(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_many_dimension2(self, xp):
         xp.einsum('ij', xp.array([0, 0]))
+
+    @testing.numpy_cupy_raises()
+    def test_many_dimension3(self, xp):
+        xp.einsum('i...', xp.array([0, 0]))
 
     @testing.numpy_cupy_raises()
     def test_too_few_dimension(self, xp):
@@ -111,6 +126,9 @@ class TestEinSumError(unittest.TestCase):
     'shape_a': (2, 3), 'subscripts': 'ij',  # do nothing
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
+    'shape_a': (2, 3), 'subscripts': '...',  # do nothing
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
     'shape_a': (2, 3), 'subscripts': 'ji',  # transpose
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
@@ -121,6 +139,9 @@ class TestEinSumError(unittest.TestCase):
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
     'shape_a': (3, 3, 3), 'subscripts': 'iji->ij',  # partial diagonal 3d
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    'shape_a': (3, 3, 3), 'subscripts': '...ii->...i',  # partial diagonal 3d
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
     'shape_a': (3, 3, 3), 'subscripts': 'iii->i',  # diagonal 3d
@@ -138,6 +159,9 @@ class TestEinSumError(unittest.TestCase):
     'shape_a': (2, 3, 4), 'subscripts': 'kji->ikj',  # swap axes
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
+    'shape_a': (2, 3, 4), 'subscripts': 'j...i->i...j',  # swap axes
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
     'shape_a': (3,), 'subscripts': 'i->',  # sum
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
@@ -151,6 +175,15 @@ class TestEinSumError(unittest.TestCase):
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
     'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij',  # trace
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...',  # trace
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...',  # trace
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...',  # trace
     'optimize': [True, False, 'greedy', 'optimal']
 }))
 class TestEinSumUnaryOperation(unittest.TestCase):
@@ -190,9 +223,24 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     'subscripts': ['ijk, jil -> kl'], 'skip_overflow': [True],
     'optimize': [True, False, 'greedy', 'optimal']
 }) + testing.product({
+    # tensordot
+    'shape_a': [(3, 4, 2)], 'shape_b': [(4, 3, 2)],
+    'subscripts': ['i..., ...k -> ki...'], 'skip_overflow': [True],
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    # tensordot
+    'shape_a': [(3, 4, 2)], 'shape_b': [(4, 3, 2)],
+    'subscripts': ['ij..., ji... -> i...'], 'skip_overflow': [True],
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
     # trace and tensordot and diagonal
     'shape_a': [(2, 3, 2, 4)], 'shape_b': [(3, 2, 2)],
     'subscripts': ['ijil,jkk->kj'], 'skip_overflow': [True],
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    # trace and tensordot and diagonal
+    'shape_a': [(2, 3, 2, 4)], 'shape_b': [(4, 2, 2)],
+    'subscripts': ['i...ij,ji...->...j'], 'skip_overflow': [True],
     'optimize': [True, False, 'greedy', 'optimal']
 }))
 class TestEinSumBinaryOperation(unittest.TestCase):
@@ -236,6 +284,10 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 }) + testing.product({
     'shape_a': [(2, 4)], 'shape_b': [(3, 2)], 'shape_c': [(2,)],
     'subscripts': ['ij,ki,i->jk'], 'skip_overflow': [False],
+    'optimize': [True, False, 'greedy', 'optimal']
+}) + testing.product({
+    'shape_a': [(2, 3, 4)], 'shape_b': [(2,)], 'shape_c': [(4, 3, 2)],
+    'subscripts': ['i...,i,...i->...i'], 'skip_overflow': [True],
     'optimize': [True, False, 'greedy', 'optimal']
 }))
 class TestEinSumTernaryOperation(unittest.TestCase):
