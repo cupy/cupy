@@ -323,6 +323,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_A(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.A
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsc().toarray()
