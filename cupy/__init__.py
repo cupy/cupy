@@ -281,6 +281,8 @@ from numpy import base_repr  # NOQA
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
+from cupy.linalg.einsum import einsum  # NOQA
+
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
 from cupy.linalg.product import kron  # NOQA
@@ -416,6 +418,7 @@ from cupy.sorting.search import argmin  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import lexsort  # NOQA
 from cupy.sorting.sort import msort  # NOQA
+from cupy.sorting.sort import partition  # NOQA
 from cupy.sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------

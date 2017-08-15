@@ -286,6 +286,16 @@ cudnnStatus_t cudnnActivationBackward_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+typedef enum {} cudnnMathType_t;
+
+cudnnStatus_t cudnnSetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
@@ -355,7 +365,7 @@ cudnnStatus_t cudnnDestroyRNNDescriptor(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnSetRNNDescriptor(...) {
+cudnnStatus_t cudnnSetRNNDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -438,6 +448,15 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
+
+cudnnStatus_t cudnnSetRNNDescriptor_v6(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
+
+
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
 // Some functions are renamed in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
@@ -471,6 +490,39 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 6000)
 
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+#if (CUDNN_VERSION >= 5000)
+
+#define cudnnSetRNNDescriptor_v5 cudnnSetRNNDescriptor
+
+#endif // #if (CUDNN_VERSION >= 5000)
+
+
+typedef enum {} cudnnMathType_t;
+
+cudnnStatus_t cudnnSetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+#define cudnnSetConvolution2dDescriptor_v5 cudnnSetConvolution2dDescriptor
+
+cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 } // extern "C"
 

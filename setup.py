@@ -80,7 +80,6 @@ setup(
             'core/include/cupy/complex/math_private.h',
             'core/include/cupy/carray.cuh',
             'core/include/cupy/complex.cuh',
-            'core/include/cupy/carray.cuh',
             'cuda/cupy_thrust.cu',
         ],
     },

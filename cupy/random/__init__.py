@@ -2,6 +2,7 @@ from numpy.random import bytes   # NOQA
 
 from cupy.random import distributions  # NOQA
 from cupy.random import generator  # NOQA
+from cupy.random import permutations  # NOQA
 from cupy.random import sample as sample_  # NOQA
 
 
@@ -15,6 +16,7 @@ from cupy.random.generator import get_random_state  # NOQA
 from cupy.random.generator import RandomState  # NOQA
 from cupy.random.generator import reset_states  # NOQA
 from cupy.random.generator import seed  # NOQA
+from cupy.random.permutations import shuffle  # NOQA
 from cupy.random.sample import choice  # NOQA
 from cupy.random.sample import multinomial  # NOQA
 from cupy.random.sample import rand  # NOQA

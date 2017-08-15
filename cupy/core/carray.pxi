@@ -61,6 +61,12 @@ cdef class Indexer:
 
 
 cdef list _cupy_header_list = [
+    'cupy/complex.cuh',
+    'cupy/carray.cuh',
+]
+cdef str _cupy_header = ''.join(
+    ['#include <%s>\n' % i for i in _cupy_header_list])
+cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',
     'cupy/complex/complex_inl.h',
@@ -81,13 +87,7 @@ cdef list _cupy_header_list = [
     'cupy/complex/csqrtf.h',
     'cupy/complex/catrig.h',
     'cupy/complex/catrigf.h',
-    'cupy/complex.cuh',
-    'cupy/carray.cuh',
 ]
-cdef str _cupy_header = """
-#include <cupy/complex.cuh>
-#include <cupy/carray.cuh>
-"""
 
 cdef str _header_path_cache = None
 cdef str _header_source = None
@@ -96,6 +96,7 @@ cdef str _header_source = None
 cpdef str _get_header_dir_path():
     global _header_path_cache
     if _header_path_cache is None:
+        # Cython cannot use __file__ in global scope
         _header_path_cache = os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
     return _header_path_cache
@@ -106,7 +107,7 @@ cpdef str _get_header_source():
     if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list:
+        for file_path in _cupy_header_list + _cupy_extra_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())

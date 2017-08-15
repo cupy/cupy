@@ -77,7 +77,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
         return ptx
 
 
-def preprocess(source, options=()):
+def _preprocess(source, options=()):
     prog = _NVRTCProgram(source, '')
     try:
         result = prog.compile(options)
@@ -88,8 +88,7 @@ def preprocess(source, options=()):
             e.dump(sys.stderr)
         raise
 
-    if isinstance(result, six.binary_type):
-        result = result.decode('utf-8')
+    assert isinstance(result, six.text_type)
     return result
 
 
@@ -105,6 +104,7 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(source, options=(), arch=None, cache_dir=None,
                        extra_source=None):
+    # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -116,11 +116,11 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     env = (arch, options, _get_nvrtc_version())
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        base = _empty_file_preprocess_cache[env] = preprocess('', options)
+        # This is checking of NVRTC compiler internal version
+        base = _empty_file_preprocess_cache[env] = _preprocess('', options)
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
-    if isinstance(key_src, six.text_type):
-        key_src = key_src.encode('utf-8')
+    key_src = key_src.encode('utf-8')
     name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
     if not os.path.isdir(cache_dir):

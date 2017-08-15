@@ -44,7 +44,7 @@ Before installing CuPy, we recommend to upgrade ``setuptools`` if you are using 
 The following Python packages are required to install CuPy.
 The latest version of each package will automatically be installed if missing.
 
-* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12, 1.13
 * `Six <https://pythonhosted.org/six/>`_ 1.9+
 
 CUDA support

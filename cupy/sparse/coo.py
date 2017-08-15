@@ -5,10 +5,12 @@ try:
 except ImportError:
     _scipy_available = False
 
+import cupy
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import csr
 from cupy.sparse import data as sparse_data
+from cupy.sparse import util
 
 
 class coo_matrix(sparse_data._data_matrix):
@@ -16,6 +18,10 @@ class coo_matrix(sparse_data._data_matrix):
     """COOrdinate format sparse matrix.
 
     Now it has only one initializer format below:
+
+    ``coo_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is float64.
 
     ``coo_matrix((data, (row, col))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
@@ -39,7 +45,18 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
 
-        if isinstance(arg1, tuple) and len(arg1) == 2:
+        if util.isshape(arg1):
+            m, n = arg1
+            m, n = int(m), int(n)
+            data = cupy.zeros(0, dtype if dtype else 'd')
+            row = cupy.zeros(0, dtype='i')
+            col = cupy.zeros(0, dtype='i')
+            # shape and copy argument is ignored
+            shape = (m, n)
+            copy = False
+            has_canonical_format = True
+
+        elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
                 data, (row, col) = arg1
             except (TypeError, ValueError):
@@ -53,6 +70,8 @@ class coo_matrix(sparse_data._data_matrix):
                 raise ValueError(
                     'row, column, and data array must all be the same length')
 
+            has_canonical_format = False
+
         elif isspmatrix_coo(arg1):
             data = arg1.data
             row = arg1.row
@@ -60,6 +79,8 @@ class coo_matrix(sparse_data._data_matrix):
 
             if shape is None:
                 shape = arg1.shape
+
+            has_canonical_format = arg1.has_canonical_format
 
         else:
             raise ValueError(
@@ -97,10 +118,15 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = row
         self.col = col
         self._shape = shape
+        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data):
         return coo_matrix(
             (data, (self.row.copy(), self.col.copy())), shape=self.shape)
+
+    @property
+    def has_canonical_format(self):
+        return self._has_canonical_format
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -136,6 +162,65 @@ class coo_matrix(sparse_data._data_matrix):
         col = self.col.get(stream)
         return scipy.sparse.coo_matrix(
             (data, (row, col)), shape=self.shape)
+
+    def sum_duplicates(self):
+        """Eliminate duplicate matrix entries by adding them together.
+
+        .. see::
+           :func:`scipy.sparse.coo_matrix.sum_duplicates`
+
+        """
+        if self._has_canonical_format:
+            return
+        if self.data.size == 0:
+            self._has_canonical_format = True
+            return
+        keys = cupy.stack([self.row, self.col])
+        order = cupy.lexsort(keys)
+        src_data = self.data[order]
+        src_row = self.row[order]
+        src_col = self.col[order]
+        diff = cupy.ElementwiseKernel(
+            'raw int32 row, raw int32 col',
+            'int32 diff',
+            '''
+            int index;
+            if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
+              diff = 0;
+            } else {
+              diff = 1;
+            }
+            ''',
+            'sum_duplicates_diff'
+        )(src_row, src_col, size=self.row.size)
+
+        if diff[1:].all():
+            # All elements have different indices.
+            data = src_data
+            row = src_row
+            col = src_col
+        else:
+            index = cupy.cumsum(diff, dtype='i')
+            size = int(index[-1]) + 1
+            data = cupy.zeros(size, dtype=self.data.dtype)
+            row = cupy.empty(size, dtype='i')
+            col = cupy.empty(size, dtype='i')
+            cupy.ElementwiseKernel(
+                'T src_data, int32 src_row, int32 src_col, int32 index',
+                'raw T data, raw int32 row, raw int32 col',
+                '''
+                atomicAdd(&data[index], src_data);
+                row[index] = src_row;
+                col[index] = src_col;
+                ''',
+                'sum_duplicates_assign',
+                preamble=util._preamble_atomic_add
+            )(src_data, src_row, src_col, index, data, row, col)
+
+        self.data = data
+        self.row = row
+        self.col = col
+        self._has_canonical_format = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -196,6 +281,7 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.nnz == 0:
             return csr.csr_matrix(self.shape, dtype=self.dtype)
+        self.sum_duplicates()
         # copy is ignored because coosort method breaks an original.
         x = self.copy()
         cusparse.coosort(x)
