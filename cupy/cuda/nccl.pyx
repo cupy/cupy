@@ -29,14 +29,14 @@ cdef extern from "cupy_nccl.h":
     void ncclCommDestroy(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
     ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
-    ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff,
-                               size_t count,
-                               ncclDataType_t datatype, ncclRedOp_t op,
-                               ncclComm_t comm, driver.Stream stream) nogil
-    ncclResult_t  ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
+    ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
+                                size_t count,
+                                ncclDataType_t datatype, ncclRedOp_t op,
+                                ncclComm_t comm, driver.Stream stream) nogil
+    ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op, int root,
                              ncclComm_t comm, driver.Stream stream) nogil
-    ncclResult_t  ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
+    ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
                             int root, ncclComm_t comm,
                             driver.Stream stream) nogil
 
@@ -136,42 +136,25 @@ cdef class NcclCommunicator:
     def allReduce(self, size_t sendbuf, size_t recvbuf,
                   size_t count, int datatype, int op, size_t stream):
         with nogil:
-            if NCCL_VERSION >= 2000:
-                status = ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
-                                       count, <ncclDataType_t>datatype,
-                                       <ncclRedOp_t>op, self._comm,
-                                       <driver.Stream>stream)
-            else:
-                status = ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
-                                       <int>count, <ncclDataType_t>datatype,
-                                       <ncclRedOp_t>op, self._comm,
-                                       <driver.Stream>stream)
+            status = _ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
+                                    count, <ncclDataType_t>datatype,
+                                    <ncclRedOp_t>op, self._comm,
+                                    <driver.Stream>stream)
         check_status(status)
 
     def reduce(self, size_t sendbuf, size_t recvbuf,
                size_t count, int datatype, int op, int root, size_t stream):
         with nogil:
-            if NCCL_VERSION >= 2000:
-                status = ncclReduce(<void*>sendbuf, <void*>recvbuf,
-                                    count, <ncclDataType_t>datatype,
-                                    <ncclRedOp_t>op, root, self._comm,
-                                    <driver.Stream>stream)
-            else:
-                status = ncclReduce(<void*>sendbuf, <void*>recvbuf,
-                                    <int>count, <ncclDataType_t>datatype,
-                                    <ncclRedOp_t>op, root, self._comm,
-                                    <driver.Stream> stream)
+            status = _ncclReduce(<void*>sendbuf, <void*>recvbuf,
+                                 count, <ncclDataType_t>datatype,
+                                 <ncclRedOp_t>op, root, self._comm,
+                                 <driver.Stream>stream)
         check_status(status)
 
     def bcast(self, size_t buff, int count, int datatype,
               int root, size_t stream):
         with nogil:
-            if NCCL_VERSION >= 2000:
-                status = ncclBcast(<void*>buff, count,
-                                   <ncclDataType_t>datatype, root,
-                                   self._comm, <driver.Stream>stream)
-            else:
-                status = ncclBcast(<void*>buff, <int>count,
-                                   <ncclDataType_t>datatype, root,
-                                   self._comm, <driver.Stream>stream)
+            status = _ncclBcast(<void*>buff, count,
+                                <ncclDataType_t>datatype, root,
+                                self._comm, <driver.Stream>stream)
         check_status(status)
