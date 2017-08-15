@@ -53,3 +53,13 @@ Random number generator
    cupy.random.seed
    cupy.random.get_random_state
    cupy.random.RandomState
+
+
+Permutations
+------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.random.shuffle
