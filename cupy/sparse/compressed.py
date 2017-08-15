@@ -1,9 +1,16 @@
 import numpy
+try:
+    import scipy.sparse
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
+from cupy.creation import basic
 from cupy import cusparse
 from cupy.sparse import base
 from cupy.sparse import data as sparse_data
+from cupy.sparse import util
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix):
@@ -22,6 +29,27 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if arg1.format != self.format:
                 # When formats are differnent, all arrays are already copied
                 copy = False
+
+            if shape is None:
+                shape = arg1.shape
+
+        elif util.isshape(arg1):
+            m, n = arg1
+            m, n = int(m), int(n)
+            data = basic.zeros(0, dtype if dtype else 'd')
+            indices = basic.zeros(0, 'i')
+            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype='i')
+            # shape and copy argument is ignored
+            shape = (m, n)
+            copy = False
+
+        elif scipy_available and scipy.sparse.issparse(arg1):
+            # Convert scipy.sparse to cupy.sparse
+            x = arg1.asformat(self.format)
+            data = cupy.array(x.data)
+            indices = cupy.array(x.indices, dtype='i')
+            indptr = cupy.array(x.indptr, dtype='i')
+            copy = False
 
             if shape is None:
                 shape = arg1.shape
@@ -116,6 +144,120 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
     def __rsub__(self, other):
         return self._add(other, True, False)
+
+    def __getitem__(self, slices):
+        if isinstance(slices, tuple):
+            slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
+
+        ellipsis = -1
+        n_ellipsis = 0
+        for i, s in enumerate(slices):
+            if s is None:
+                raise IndexError('newaxis is not supported')
+            elif s is Ellipsis:
+                ellipsis = i
+                n_ellipsis += 1
+        if n_ellipsis > 0:
+            ellipsis_size = self.ndim - (len(slices) - 1)
+            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+
+        if len(slices) == 2:
+            row, col = slices
+        elif len(slices) == 1:
+            row, col = slices[0], slice(None)
+        else:
+            raise IndexError('invalid number of indices')
+
+        major, minor = self._swap(row, col)
+        major_size, minor_size = self._swap(*self._shape)
+        if numpy.isscalar(major):
+            i = int(major)
+            if i < 0:
+                i += major_size
+            if not (0 <= i < major_size):
+                raise IndexError('index out of bounds')
+            if numpy.isscalar(minor):
+                j = int(minor)
+                if j < 0:
+                    j += minor_size
+                if not (0 <= j < minor_size):
+                    raise IndexError('index out of bounds')
+                return self._get_single(i, j)
+            elif minor == slice(None):
+                return self._get_major_slice(slice(i, i + 1))
+        elif isinstance(major, slice):
+            if minor == slice(None):
+                return self._get_major_slice(major)
+
+        raise ValueError('unsupported indexing')
+
+    def _get_single(self, major, minor):
+        start = self.indptr[major]
+        end = self.indptr[major + 1]
+        answer = cupy.zeros((), self.dtype)
+        preamble = '''
+#if __CUDA_ARCH__ < 600
+__device__ double atomicAdd(double* address, double val) {
+    unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                        __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+#endif
+'''
+        kern = cupy.ElementwiseKernel(
+            'T d, S ind, int32 minor', 'raw T answer',
+            'if (ind == minor) atomicAdd(&answer[0], d);',
+            'compress_getitem', preamble=preamble)
+        kern(self.data[start:end], self.indices[start:end], minor, answer)
+        return answer[()]
+
+    def _get_major_slice(self, major):
+        major_size, minor_size = self._swap(*self._shape)
+        # major.indices cannot be used because scipy.sparse behaves differently
+        major_start = major.start
+        major_stop = major.stop
+        major_step = major.step
+        if major_start is None:
+            major_start = 0
+        if major_stop is None:
+            major_stop = major_size
+        if major_step is None:
+            major_step = 1
+        if major_start < 0:
+            major_start += major_size
+        if major_stop < 0:
+            major_stop += major_size
+
+        if major_step != 1:
+            raise ValueError('slicing with step != 1 not supported')
+
+        if not (0 <= major_start <= major_size and
+                0 <= major_stop <= major_size and
+                major_start <= major_stop):
+            raise IndexError('index out of bounds')
+
+        start = self.indptr[major_start]
+        stop = self.indptr[major_stop]
+        data = self.data[start:stop]
+        indptr = self.indptr[major_start:major_stop + 1] - start
+        indices = self.indices[start:stop]
+
+        shape = self._swap(len(indptr) - 1, minor_size)
+        return self.__class__(
+            (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
     def get_shape(self):
         """Returns the shape of the matrix.

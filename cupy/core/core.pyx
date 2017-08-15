@@ -36,6 +36,17 @@ cdef inline _should_use_rop(x, y):
     return xp < yp and not isinstance(y, ndarray)
 
 
+try:
+    _AxisError = numpy.AxisError
+except AttributeError:
+    class IndexOrValueError(IndexError, ValueError):
+
+        def __init__(self, *args, **kwargs):
+            super(IndexOrValueError, self).__init__(*args, **kwargs)
+
+    _AxisError = IndexOrValueError
+
+
 cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
@@ -48,7 +59,6 @@ cdef class ndarray:
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        strides (tuple of ints): The strides for axes.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -556,12 +566,7 @@ cdef class ndarray:
 
         """
         # TODO(beam2d): Support ordering option
-        if self._c_contiguous:
-            newarray = self.copy()
-        else:
-            newarray = ndarray(self.shape, self.dtype)
-            elementwise_copy(self, newarray)
-
+        newarray = self.copy(order='C')
         newarray._shape.assign(<Py_ssize_t>1, self.size)
         newarray._strides.assign(<Py_ssize_t>1,
                                  <Py_ssize_t>self.itemsize)
@@ -611,8 +616,9 @@ cdef class ndarray:
                 if _axis < 0:
                     _axis += ndim
                 if _axis < 0 or _axis >= ndim:
-                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
-                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                    raise _AxisError(
+                        "'axis' entry %d is out of bounds [-%d, %d)" %
+                        (axis_orig, ndim, ndim))
                 if axis_flags[_axis] == 1:
                     raise ValueError("duplicate value in 'axis'")
                 axis_flags[_axis] = 1
@@ -627,8 +633,9 @@ cdef class ndarray:
                 pass
             else:
                 if _axis < 0 or _axis >= ndim:
-                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
-                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                    raise _AxisError(
+                        "'axis' entry %d is out of bounds [-%d, %d)" %
+                        (axis_orig, ndim, ndim))
                 axis_flags[_axis] = 1
 
         # Verify that the axes requested are all of size one
@@ -752,21 +759,33 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         if axis == ndim - 1:
-            thrust.sort(self.dtype, self.data.ptr, self._shape)
+            data = self
         else:
-            x = cupy.ascontiguousarray(cupy.rollaxis(self, axis, ndim))
-            thrust.sort(self.dtype, x.data.ptr, x._shape)
-            y = cupy.rollaxis(x, -1, axis)
-            elementwise_copy(y, self)
+            data = cupy.rollaxis(self, axis, ndim).copy()
 
-    def argsort(self):
-        """Return the indices that would sort an array with stable sorting
+        if ndim == 1:
+            thrust.sort(self.dtype, data.data.ptr, 0, self._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.sort(
+                self.dtype, data.data.ptr, keys_array.data.ptr, data._shape)
 
-        .. note::
-            For its implementation reason, ``ndarray.argsort`` currently
-            supports only arrays with their rank of one, and does not support
-            ``axis``, ``kind`` and ``order`` parameters that
-            ``numpy.ndarray.argsort`` supports.
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
+
+    def argsort(self, axis=-1):
+        """Returns the indices that would sort an array with stable sorting
+
+        Args:
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of indices that sort the array.
 
         .. seealso::
             :func:`cupy.argsort` for full documentation,
@@ -774,36 +793,89 @@ cdef class ndarray:
 
         """
 
-        # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
+
+        cdef Py_ssize_t ndim = self.ndim
 
         if not cupy.cuda.thrust_enabled:
             raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                                'install CUDA Toolkit with Thrust then '
                                'reinstall CuPy after uninstalling it.')
 
-        if self.ndim == 0:
+        if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')  # as numpy.argsort() raises
 
-        # TODO(takagi): Support ranks of two or more
-        if self.ndim > 1:
-            raise NotImplementedError('Sorting arrays with the rank of two or '
-                                      'more is not supported')
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
 
-        data = self.copy()
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
 
-        # Assuming that Py_ssize_t can be represented with numpy.int64.
-        assert cython.sizeof(Py_ssize_t) == 8
+        if axis == ndim - 1:
+            data = data.copy()
+        else:
+            data = cupy.rollaxis(data, axis, ndim).copy()
 
-        idx_array = ndarray(self.shape, dtype=numpy.int64)
+        idx_array = ndarray(data.shape, dtype=numpy.intp)
 
-        thrust.argsort(
-            self.dtype, idx_array.data.ptr, data.data.ptr, self._shape[0])
+        if ndim == 1:
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
+                           data._shape)
+        else:
+            keys_array = ndarray(data._shape, dtype=numpy.intp)
+            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
+                           keys_array.data.ptr, data._shape)
 
-        return idx_array
+        if axis == ndim - 1:
+            return idx_array
+        else:
+            return cupy.rollaxis(idx_array, -1, axis)
 
-    # TODO(okuta): Implement partition
+    def partition(self, kth, axis=-1):
+        """Partially sorts an array.
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
+
+        .. note::
+           For its implementation reason, :func:`cupy.ndarray.partition` fully
+           sorts the given array as :meth:`cupy.ndarray.sort` does. It also
+           does not support ``kind`` and ``order`` parameters that
+           :func:`numpy.partition` supports.
+
+        .. seealso::
+            :func:`cupy.partition` for full documentation,
+            :meth:`numpy.ndarray.partition`
+
+        """
+        ndim = self.ndim
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise ValueError('Axis out of range')
+
+        length = self.shape[axis]
+        if isinstance(kth, int):
+            kth = kth,
+        for k in kth:
+            if k < 0:
+                k += length
+            if not (0 <= k < length):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+
+        # kth is ignored.
+        self.sort(axis=axis)
+
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
 
@@ -2252,7 +2324,7 @@ cpdef ndarray concatenate_method(tup, int axis):
             if axis < 0:
                 axis += ndim
             if axis < 0 or axis >= ndim:
-                raise IndexError(
+                raise _AxisError(
                     'axis {} out of bounds [0, {})'.format(axis, ndim))
             dtype = a.dtype
             continue
@@ -2628,7 +2700,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
         index_range = a.size
     else:
         if not (-a.ndim <= li < a.ndim and -a.ndim <= ri < a.ndim):
-            raise ValueError('Axis overrun')
+            raise _AxisError('Axis overrun')
         if a.ndim != 0:
             li %= a.ndim
             ri %= a.ndim

@@ -4,7 +4,9 @@ try:
 except ImportError:
     _scipy_available = False
 
+import cupy
 from cupy import cusparse
+from cupy.sparse import base
 from cupy.sparse import compressed
 from cupy.sparse import csc
 
@@ -17,6 +19,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     ``csr_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsr()``.
+    ``csr_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is flat64.
     ``csr_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -63,18 +68,83 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def _add_sparse(self, other, alpha, beta):
         return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
 
+    def __eq__(self, other):
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        raise NotImplementedError
+
+    def __lt__(self, other):
+        raise NotImplementedError
+
+    def __gt__(self, other):
+        raise NotImplementedError
+
+    def __le__(self, other):
+        raise NotImplementedError
+
+    def __ge__(self, other):
+        raise NotImplementedError
+
+    def __mul__(self, other):
+        if cupy.isscalar(other):
+            return self._with_data(self.data * other)
+        elif isspmatrix_csr(other):
+            return cusparse.csrgemm(self, other)
+        elif csc.isspmatrix_csc(other):
+            return cusparse.csrgemm(self, other.T, transb=True)
+        elif base.isspmatrix(other):
+            return cusparse.csrgemm(self, other.tocsr())
+        elif base.isdense(other):
+            if other.ndim == 0:
+                return self._with_data(self.data * other)
+            elif other.ndim == 1:
+                return cusparse.csrmv(self, cupy.asfortranarray(other))
+            elif other.ndim == 2:
+                return cusparse.csrmm2(self, cupy.asfortranarray(other))
+            else:
+                raise ValueError('could not interpret dimensions')
+        else:
+            return NotImplemented
+
+    def __div__(self, other):
+        raise NotImplementedError
+
+    def __rdiv__(self, other):
+        raise NotImplementedError
+
+    def __truediv__(self, other):
+        raise NotImplementedError
+
+    def __rtruediv__(self, other):
+        raise NotImplementedError
+
     # TODO(unno): Implement argmax
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
-    # TODO(unno): Implement diagonal
-    # TODO(unno): Implement dot
+
+    def diagonal(self):
+        # TODO(unno): Implement diagonal
+        raise NotImplementedError
+
     # TODO(unno): Implement eliminate_zeros
 
     # TODO(unno): Implement max
-    # TODO(unno): Implement maximum
+
+    def maximum(self, other):
+        # TODO(unno): Implement maximum
+        raise NotImplementedError
+
     # TODO(unno): Implement min
-    # TODO(unno): Implement minimum
-    # TODO(unno): Implement multiply
+
+    def minimum(self, other):
+        # TODO(unno): Implement minimum
+        raise NotImplementedError
+
+    def multiply(self, other):
+        # TODO(unno): Implement multiply
+        raise NotImplementedError
+
     # TODO(unno): Implement prune
     # TODO(unno): Implement reshape
 
@@ -88,7 +158,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Returns a dense matrix representing the same value.
 
         Args:
-            order (str): Not supported.
+            order ({'C', 'F', None}): Whether to store data in C (row-major)
+                order or F (column-major) order. Default is C-order.
             out: Not supported.
 
         Returns:
@@ -97,11 +168,24 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csr_array.toarray`
 
         """
-        # csr2dense returns F-contiguous array.
-        # To return C-contiguous array, it uses transpose.
-        return cusparse.csc2dense(self.T).T
+        if order is None:
+            order = 'C'
 
-    # TODO(unno): Implement tobsr
+        if self.nnz == 0:
+            return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
+
+        # csr2dense returns F-contiguous array.
+        if order == 'C':
+            # To return C-contiguous array, it uses transpose.
+            return cusparse.csc2dense(self.T).T
+        elif order == 'F':
+            return cusparse.csr2dense(self)
+        else:
+            raise TypeError('order not understood')
+
+    def tobsr(self, blocksize=None, copy=False):
+        # TODO(unno): Implement tobsr
+        raise NotImplementedError
 
     def tocoo(self, copy=False):
         """Converts the matrix to COOdinate format.
@@ -150,9 +234,17 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         return self
 
-    # TODO(unno): Implement todia
-    # TODO(unno): Implement todok
-    # TODO(unno): Implement tolil
+    def todia(self, copy=False):
+        # TODO(unno): Implement todia
+        raise NotImplementedError
+
+    def todok(self, copy=False):
+        # TODO(unno): Implement todok
+        raise NotImplementedError
+
+    def tolil(self, copy=False):
+        # TODO(unno): Implement tolil
+        raise NotImplementedError
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.

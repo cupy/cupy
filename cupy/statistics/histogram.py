@@ -40,8 +40,8 @@ def bincount(x, weights=None, minlength=None):
         raise ValueError('The weights and list don\'t have the same length.')
     if minlength is not None:
         minlength = int(minlength)
-        if minlength <= 0:
-            raise ValueError('minlength must be positive')
+        if minlength < 0:
+            raise ValueError('minlength must be non-negative')
 
     size = int(cupy.max(x)) + 1
     if minlength is not None:

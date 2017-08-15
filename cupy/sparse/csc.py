@@ -17,6 +17,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     ``csc_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
+    ``csc_matrix((M, N), [dtype])``
+        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+        is flat64.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -64,7 +67,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
     # TODO(unno): Implement diagonal
-    # TODO(unno): Implement dot
     # TODO(unno): Implement eliminate_zeros
 
     # TODO(unno): Implement max
@@ -85,7 +87,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """Returns a dense matrix representing the same value.
 
         Args:
-            order: Not supported.
+            order ({'C', 'F', None}): Whether to store data in C (row-major)
+                order or F (column-major) order. Default is C-order.
             out: Not supported.
 
         Returns:
@@ -94,9 +97,17 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :func:`cupy.sparse.csc_array.toarray`
 
         """
-        # csc2dense returns F-contiguous array.
-        # To return C-contiguous array, it uses transpose.
-        return cusparse.csr2dense(self.T).T
+        if order is None:
+            order = 'C'
+
+        # csc2dense and csr2dense returns F-contiguous array.
+        if order == 'C':
+            # To return C-contiguous array, it uses transpose.
+            return cusparse.csr2dense(self.T).T
+        elif order == 'F':
+            return cusparse.csc2dense(self)
+        else:
+            raise TypeError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
         return cusparse.csrgeam(self.T, other.tocsc().T, alpha, beta).T
