@@ -31,6 +31,8 @@ class FunctionSwitcher(object):
 
 
 @testing.fix_random()
+@unittest.skipUnless(
+    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 

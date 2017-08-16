@@ -311,7 +311,7 @@ cdef class ndarray:
             raise TypeError('order not understood')
 
         dtype = numpy.dtype(dtype)
-        if dtype.type == self.dtype.type:
+        if dtype == self.dtype:
             if not copy and (
                     order == 'K' or
                     order == 'A' and (self._c_contiguous or
@@ -1244,6 +1244,40 @@ cdef class ndarray:
     def __ixor__(self, other):
         return bitwise_xor(self, other, self)
 
+    cpdef ndarray conj(self):
+        if self.dtype.kind == 'c':
+            return conj(self)
+        else:
+            return self
+
+    @property
+    def real(self):
+        if self.dtype.kind == 'c':
+            return real(self)
+        return self
+
+    @real.setter
+    def real(self, value):
+        if self.dtype.kind == 'c':
+            _real_setter(value, self)
+        else:
+            elementwise_copy(value, self)
+
+    @property
+    def imag(self):
+        if self.dtype.kind == 'c':
+            return imag(self)
+        new_array = ndarray(self.shape, dtype=self.dtype)
+        new_array.fill(0)
+        return new_array
+
+    @imag.setter
+    def imag(self, value):
+        if self.dtype.kind == 'c':
+            _imag_setter(value, self)
+        else:
+            raise TypeError('cupy.ndarray does not have imaginary part to set')
+
     # -------------------------------------------------------------------------
     # Special methods
     # -------------------------------------------------------------------------
@@ -1620,7 +1654,9 @@ cdef class ndarray:
             raise TypeError('{} array cannot be set to {} array'.format(
                 arr.dtype, self.dtype))
         if self.shape != arr.shape:
-            raise ValueError('Shape mismatch')
+            raise ValueError(
+                'Shape mismatch. Old shape: {}, new shape: {}'.format(
+                    self.shape, arr.shape))
         if not self._c_contiguous:
             raise RuntimeError('Cannot set to non-contiguous array')
 
@@ -1755,8 +1791,9 @@ cdef _id = 'out0 = in0'
 _elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    _id)
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = out0_type(in0)')
+# complex numbers requires out0 = complex<T>(in0)
 
 
 def elementwise_copy(*args, **kwargs):
@@ -1767,7 +1804,7 @@ def elementwise_copy(*args, **kwargs):
 _elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
-     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d'),
+     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
     'if (in1) out0 = in0')
 
 
@@ -1987,7 +2024,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
                             ndmin=ndmin)
         a_dtype = a_cpu.dtype
-        if a_dtype.char not in '?bhilqBHILQefd':
+        if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
         a = ndarray(a_cpu.shape, dtype=a_dtype)
         if a_cpu.ndim == 0:
@@ -3408,7 +3445,7 @@ cpdef ndarray tensordot_core(
                    a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
 
-    if use_sgemmEx or ret_dtype == 'f' or ret_dtype == 'd':
+    if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
@@ -3471,6 +3508,16 @@ cpdef ndarray tensordot_core(
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
             b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+    elif dtype == 'F':
+        cublas.cgemm(
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+    elif dtype == 'D':
+        cublas.zgemm(
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+    else:
+        raise ValueError('Invalid dtype: %s' % str(dtype))
 
     if out is not ret:
         elementwise_copy(out, ret)
@@ -3502,11 +3549,18 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 # Logic functions
 # -----------------------------------------------------------------------------
 
-cpdef create_comparison(name, op, doc=''):
+cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
+
+    if require_sortable_dtype:
+        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
+               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
+    else:
+        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
+               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'FF->?',
+               'dd->?', 'DD->?')
     return create_ufunc(
         'cupy_' + name,
-        ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-         'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?'),
+        ops,
         'out0 = in0 %s in1' % op,
         doc=doc)
 
@@ -3553,7 +3607,7 @@ equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''')
+    ''', False)
 
 
 not_equal = create_comparison(
@@ -3562,22 +3616,22 @@ not_equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''')
+    ''', False)
 
 
 _all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
-    ('in0', 'a & b', 'out0 = a', 'bool'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
+    ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'),
     'true', '')
 
 
 _any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
-    ('in0', 'a | b', 'out0 = a', 'bool'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
+    ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'),
     'false', '')
 
 
@@ -3590,8 +3644,8 @@ _sum = create_reduction_func(
     ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
-    ('in0', 'a + b', 'out0 = a', None), 0)
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _prod = create_reduction_func(
@@ -3599,8 +3653,8 @@ _prod = create_reduction_func(
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'],
-    ('in0', 'a * b', 'out0 = a', None), 1)
+     'f->f', 'd->d', 'F->F', 'D->D'],
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
 cdef create_arithmetic(name, op, boolop, doc):
@@ -3608,7 +3662,8 @@ cdef create_arithmetic(name, op, boolop, doc):
         'cupy_' + name,
         (('??->?', 'out0 = in0 %s in1' % boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
+         'DD->D'),
         'out0 = in0 %s in1' % op,
         doc=doc)
 
@@ -3622,11 +3677,82 @@ add = create_arithmetic(
     ''')
 
 
+conj = create_ufunc(
+    'cupy_conj',
+    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
+     'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->F', 'out0 = conj(in0)'),
+     ('D->D', 'out0 = conj(in0)')),
+    'out0 = in0',
+    doc='''Returns the complex conjugate, element-wise.
+
+    .. seealso:: :data:`numpy.conj`
+
+    ''')
+
+
+angle = create_ufunc(
+    'cupy_angle',
+    ('?->d', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0)'),
+     ('D->d', 'out0 = arg(in0)')),
+    'out0 = in0 >= 0 ? 0 : M_PI',
+    doc='''Returns the angle of the complex argument.
+
+    .. seealso:: :data:`numpy.angle`
+
+    ''')
+
+
+real = create_ufunc(
+    'cupy_real',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.real()'),
+     ('D->d', 'out0 = in0.real()')),
+    'out0 = in0',
+    doc='''Returns the real part of the elements of the array.
+
+    .. seealso:: :data:`numpy.real`
+
+    ''')
+
+
+_real_setter = create_ufunc(
+    'cupy_real_setter',
+    ('f->F', 'd->D'),
+    'out0.real(in0)',
+    doc='''Sets the real part of the elements of the array.
+    ''')
+
+
+imag = create_ufunc(
+    'cupy_imag',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.imag()'),
+     ('D->d', 'out0 = in0.imag()')),
+    'out0 = 0',
+    doc='''Returns the imaginary part of the elements of the array.
+
+    .. seealso:: :data:`numpy.imag`
+
+    ''')
+
+
+_imag_setter = create_ufunc(
+    'cupy_imag_setter',
+    ('f->F', 'd->D'),
+    'out0.imag(in0)',
+    doc='''Sets the imaginary part of the elements of the array.
+    ''')
+
+
 negative = create_ufunc(
     'cupy_negative',
     (('?->?', 'out0 = !in0'),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
     doc='''Takes numerical negative elementwise.
 
@@ -3650,7 +3776,9 @@ divide = create_ufunc(
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = in0 / in1'),
      ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1')),
+     ('dd->d', 'out0 = in0 / in1'),
+     ('FF->F', 'out0 = in0 / in1'),
+     ('DD->D', 'out0 = in0 / in1')),
     'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
     doc='''Divides arguments elementwise.
 
@@ -3665,7 +3793,9 @@ power = create_ufunc(
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
-     ('dd->d', 'out0 = pow(in0, in1)')),
+     ('dd->d', 'out0 = pow(in0, in1)'),
+     ('FF->F', 'out0 = pow(in0, in1)'),
+     ('DD->D', 'out0 = pow(in0, in1)')),
     'out0 = rint(pow((double)in0, (double)in1))',
     doc='''Computes ``x1 ** x2`` elementwise.
 
@@ -3686,7 +3816,7 @@ subtract = create_arithmetic(
 true_divide = create_ufunc(
     'cupy_true_divide',
     ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d'),
+     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = (out0_type)in0 / (out0_type)in1',
     doc='''Elementwise true division (i.e. division as floating values).
 
@@ -3734,7 +3864,9 @@ absolute = create_ufunc(
      'q->q', ('Q->Q', 'out0 = in0'),
      ('e->e', 'out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
-     ('d->d', 'out0 = fabs(in0)')),
+     ('d->d', 'out0 = fabs(in0)'),
+     ('F->f', 'out0 = abs(in0)'),
+     ('D->d', 'out0 = abs(in0)')),
     'out0 = in0 > 0 ? in0 : -in0',
     doc='''Elementwise absolute value function.
 
@@ -3745,7 +3877,7 @@ absolute = create_ufunc(
 
 sqrt = create_ufunc(
     'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = sqrt(in0)')
 
 
@@ -3762,6 +3894,9 @@ _clip = create_ufunc(
 
 cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
                    keepdims=False):
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
@@ -3805,8 +3940,9 @@ cdef _mean = create_reduction_func(
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
-    ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b',
+     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 
 # -----------------------------------------------------------------------------

@@ -5,6 +5,7 @@ from cupy.core import internal  # NOQA
 # import class and function
 from cupy.core.core import absolute  # NOQA
 from cupy.core.core import add  # NOQA
+from cupy.core.core import angle  # NOQA
 from cupy.core.core import array  # NOQA
 from cupy.core.core import array_split  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
@@ -16,6 +17,7 @@ from cupy.core.core import broadcast  # NOQA
 from cupy.core.core import broadcast_to  # NOQA
 from cupy.core.core import concatenate  # NOQA
 from cupy.core.core import concatenate_method  # NOQA
+from cupy.core.core import conj  # NOQA
 from cupy.core.core import create_comparison  # NOQA
 from cupy.core.core import create_reduction_func  # NOQA
 from cupy.core.core import create_ufunc  # NOQA
@@ -29,6 +31,7 @@ from cupy.core.core import equal  # NOQA
 from cupy.core.core import floor_divide  # NOQA
 from cupy.core.core import greater  # NOQA
 from cupy.core.core import greater_equal  # NOQA
+from cupy.core.core import imag  # NOQA
 from cupy.core.core import invert  # NOQA
 from cupy.core.core import left_shift  # NOQA
 from cupy.core.core import less  # NOQA
@@ -41,6 +44,7 @@ from cupy.core.core import ndarray  # NOQA
 from cupy.core.core import negative  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import power  # NOQA
+from cupy.core.core import real  # NOQA
 from cupy.core.core import ReductionKernel  # NOQA
 from cupy.core.core import remainder  # NOQA
 from cupy.core.core import right_shift  # NOQA
