@@ -1,5 +1,4 @@
 import os
-import warnings
 
 from cupy import cuda
 
@@ -109,8 +108,8 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version >= 9000:
         cuda_path = os.getenv('CUDA_PATH', None)
         if cuda_path is None:
-            warnings.warn('Please set the CUDA path ' +
-                          'to environment variable `CUDA_PATH`')
+            raise ValueError('Please set the CUDA path ' +
+                             'to environment variable `CUDA_PATH`')
         else:
             path = os.path.join(cuda_path, 'include')
             options += ('-I ' + path,)
