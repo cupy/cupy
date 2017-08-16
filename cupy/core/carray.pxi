@@ -1,8 +1,10 @@
 import os
+import warnings
 
 from cupy import cuda
 
 from cupy.cuda cimport function
+from cupy.cuda cimport runtime
 
 
 cdef struct _CArray:
@@ -91,10 +93,27 @@ cpdef str _get_header_source():
         _header_source = '\n'.join(source)
     return _header_source
 
+
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
     source = _cupy_header + source
     extra_source = _get_header_source()
     options += ('-I%s' % _get_header_dir_path(),)
+
+    # The variable _cuda_runtime_version is declared in cupy/core/core.pyx,
+    # but it might not have been set appropriately before coming here.
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    if _cuda_runtime_version >= 9000:
+        cuda_path = os.getenv('CUDA_PATH', None)
+        if cuda_path is None:
+            warnings.warn('Please set the CUDA path ' +
+                          'to environment variable `CUDA_PATH`')
+        else:
+            path = os.path.join(cuda_path, 'include')
+            options += ('-I ' + path,)
+
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
                                    extra_source)
