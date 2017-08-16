@@ -17,11 +17,6 @@ def get_current_stream():
     stream = thread_local.current_stream_ref()
     if stream is None:
         stream = Stream.null
-    device = runtime.getDevice()
-    if stream != Stream.null and stream.device != device:
-        raise ValueError('Current stream device (%d) is different '
-                         'with the current device (%d)' %
-                         (stream.device, device))
     return stream
 
 
