@@ -14,7 +14,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
-cdef class Memory:
+class Memory(object):
 
     """Memory allocation on a CUDA device.
 
@@ -34,7 +34,7 @@ cdef class Memory:
             self.device = device.Device()
             self.ptr = runtime.malloc(size)
 
-    def __dealloc__(self):
+    def __del__(self):
         if self.ptr:
             runtime.free(self.ptr)
 
@@ -297,7 +297,7 @@ cpdef set_allocator(allocator=_malloc):
     _current_allocator = allocator
 
 
-cdef class PooledMemory(Memory):
+class PooledMemory(Memory):
 
     """Memory allocation for a memory pool.
 
@@ -306,17 +306,17 @@ cdef class PooledMemory(Memory):
 
     """
 
-    def __init__(self, Memory mem, pool):
+    def __init__(self, mem, pool):
         self.ptr = mem.ptr
         self.size = mem.size
         self.device = mem.device
         self.pool = pool
 
-    def __dealloc__(self):
+    def __del__(self):
         if self.ptr != 0:
             self.free()
 
-    cpdef free(self):
+    def free(self):
         """Frees the memory buffer and returns it to the memory pool.
 
         This function actually does not free the buffer. It just returns the
@@ -346,7 +346,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
-        cdef Memory mem
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
@@ -378,7 +377,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef list free
-        cdef Memory mem
         mem = self._in_use.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
