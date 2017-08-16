@@ -39,7 +39,7 @@ def calc_single_view(ioperand, subscript):
         axes_to_diag = []
         for i, char in enumerate(subscripts_excluded_at):
             if char == label:
-                if ellipsis_pos != -1 or i < ellipsis_pos:
+                if ellipsis_pos == -1 or i < ellipsis_pos:
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
@@ -80,20 +80,20 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
     ellipsis_pos = input_subscript.find('@')
     for i, label in enumerate(input_subscript_excluded_at):
         if label in label_to_summed:
-            if ellipsis_pos != -1 or i < ellipsis_pos:
+            if ellipsis_pos == -1 or i < ellipsis_pos:
                 axes_to_summed.append(i)
             else:
-                axes_to_diag.append(i - len(input_subscript_excluded_at))
+                axes_to_summed.append(i - len(input_subscript_excluded_at))
 
     if axes_to_summed:
         result = ioperand.sum(axis=tuple(axes_to_summed)). \
-            astype(ioperand)
+            astype(ioperand.dtype)
     else:
         result = ioperand
     for label in label_to_summed:
-        subscript = subscript.replace(label, '')
+        input_subscript = input_subscript.replace(label, '')
 
-    return result, subscript
+    return result, input_subscript
 
 
 # TODO(fukatani): Implement as cupy.moveaxis
@@ -104,8 +104,8 @@ def _moveaxis(a, source, destination):
     .. seealso:: :func:`numpy.moveaxis`
     """
 
-    source = numpy.normalize_axis_tuple(source, a.ndim, 'source')
-    destination = normalize_axis_tuple(destination, a.ndim, 'destination')
+    source = numpy.core.numeric.normalize_axis_tuple(source, a.ndim, 'source')
+    destination = numpy.core.numeric.normalize_axis_tuple(destination, a.ndim, 'destination')
     if len(source) != len(destination):
         raise ValueError('`source` and `destination` arguments must have '
                          'the same number of elements')
@@ -145,12 +145,12 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
             continue
         moveaxis_sources.append(label_pos_output)
         label_pos_input = input_subscript.find(label)
-        if ellipsis_pos != -1 or label_pos_input < ellipsis_pos:
+        if ellipsis_pos == -1 or label_pos_input < ellipsis_pos:
             moveaxis_destinations.append(label_pos_input)
         else:
             moveaxis_destinations.append(label_pos_input - len(input_subscript))
 
-    return _moveaxis(ioperand. moveaxis_sources, moveaxis_destinations)
+    return _moveaxis(ioperand, moveaxis_sources, moveaxis_destinations)
 
 
 def calc_combined_view(ioperands, subscripts):
@@ -225,7 +225,7 @@ def einsum(*operands):
 
     # Start contraction loop
     for num, contraction in enumerate(contraction_list):
-        inds, idx_rm, einsum_str, remaining, blas = contraction
+        inds, idx_rm, einsum_str, remaining = contraction
         tmp_operands = []
         for x in inds:
             tmp_operands.append(operands.pop(x))
@@ -273,7 +273,7 @@ def einsum_core(*operands):
         raise TypeError('Current cupy einsum support only string subscripts')
 
     subscripts = subscripts.replace(' ', '')
-    irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,')
+    irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,.')
     if irregular_chars:
         pickup = list(irregular_chars)[0]
         raise ValueError('invalid subscript \'{}\' in einstein sum subscripts '
@@ -343,7 +343,7 @@ def einsum_core(*operands):
         if len(subscript) > ioperand.ndim:
             raise ValueError('einstein sum subscripts string contains too '
                              'many subscripts for operand {}'.format(i))
-        if len(subscript) < ioperand.ndim:
+        if '@' not in subscript and len(subscript) < ioperand.ndim:
             raise ValueError('operand has more dimensions than subscripts'
                              ' given in einstein sum, but no \'...\' ellipsis'
                              ' provided to broadcast the extra dimensions.')
