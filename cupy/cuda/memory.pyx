@@ -458,14 +458,15 @@ cdef class SingleDeviceMemoryPool:
         # find best-fit, or a smallest larger allocation
         length = len(self._free)
         for i in range(index, length):
-            try:
-                rlock.lock_fastrlock(self._free_lock, -1, True)
-                free_list = self._free[i]
-                if free_list:
-                    chunk = free_list.pop()
-                    break
-            finally:
-                rlock.unlock_fastrlock(self._free_lock)
+            if self._free[i]:
+                try:
+                    rlock.lock_fastrlock(self._free_lock, -1, True)
+                    free_list = self._free[i]
+                    if free_list:
+                        chunk = free_list.pop()
+                        break
+                finally:
+                    rlock.unlock_fastrlock(self._free_lock)
 
         if chunk:
             chunk, remaining = self._split(chunk, size)
