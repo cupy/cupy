@@ -21,6 +21,29 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
+_fit_calc_distances = cupy.ElementwiseKernel(
+    'S data, raw S centers, int32 n_clusters, int32 dim', 'raw S dist',
+    '''
+    for (int j = 0; j < n_clusters; j++){
+        int cent_ind[] = {j, i % dim};
+        int dist_ind[] = {i / dim, j};
+        double diff = centers[cent_ind] - data;
+        atomicAdd(&dist[dist_ind], diff * diff);
+    }
+    ''',
+    'calc_distances'
+)
+_fit_calc_center = cupy.ElementwiseKernel(
+    'S data, T label, int32 dim', 'raw S centers, raw S group',
+    '''
+    int cent_ind[] = {label, i % dim};
+    atomicAdd(&centers[cent_ind], data);
+    atomicAdd(&group[label], 1);
+    ''',
+    'calc_center'
+)
+
+
 def fit(X, n_clusters, max_iter, use_custom_kernel):
     assert X.ndim == 2
     xp = cupy.get_array_module(X)
@@ -38,19 +61,7 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
                                        axis=2)
         else:
             distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
-            cupy.ElementwiseKernel(
-                'S data, raw S centers, int32 n_clusters, int32 dim',
-                'raw S dist',
-                '''
-                for (int j = 0; j < n_clusters; j++){
-                    int cent_ind[] = {j, i % dim};
-                    int dist_ind[] = {i / dim, j};
-                    double diff = centers[cent_ind] - data;
-                    atomicAdd(&dist[dist_ind], diff * diff);
-                }
-                ''',
-                'calc_distances'
-            )(X, centers, n_clusters, data_dim, distances)
+            _fit_calc_distances(X, centers, n_clusters, data_dim, distances)
 
         new_pred = xp.argmin(distances, axis=1).astype(np.int32)
         if xp.all(new_pred == pred):
@@ -66,15 +77,7 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
                                dtype=np.float32)
             group = xp.zeros(n_clusters, dtype=np.float32)
             label = pred[:, None]
-            cupy.ElementwiseKernel(
-                'S data, T label, int32 dim', 'raw S centers, raw S group',
-                '''
-                int cent_ind[] = {label, i % dim};
-                atomicAdd(&centers[cent_ind], data);
-                atomicAdd(&group[label], 1);
-                ''',
-                'calc_center'
-            )(X, label, data_dim, centers, group)
+            _fit_calc_center(X, label, data_dim, centers, group)
             group /= data_dim
             centers /= group[:, None]
 
