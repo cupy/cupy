@@ -19,11 +19,14 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
         sys.exit(1)
 
 
-setup_requires = []
+setup_requires = [
+    'fastrlock>=0.3',
+]
 install_requires = [
     'nose',
     'numpy>=1.9.0',
     'six>=1.9.0',
+    'fastrlock>=0.3',
 ]
 
 ext_modules = cupy_setup_build.get_ext_modules()

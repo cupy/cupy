@@ -6,6 +6,8 @@ import gc
 import warnings
 import weakref
 
+from fastrlock cimport rlock
+
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
@@ -90,7 +92,6 @@ cdef class Chunk:
         size (int): Chunk size in bytes.
         prev (Chunk): prev memory pointer if split from a larger allocation
         next (Chunk): next memory pointer if split from a larger allocation
-        in_use (boolen): in_use flag
     """
 
     def __init__(self, mem, Py_ssize_t offset, Py_ssize_t size):
@@ -102,7 +103,6 @@ cdef class Chunk:
         self.size = size
         self.prev = None
         self.next = None
-        self.in_use = False
 
 cdef class MemoryPointer:
 
@@ -388,9 +388,11 @@ cdef class SingleDeviceMemoryPool:
         self._allocation_unit_size = 512
         self._initial_bins_size = 1024
         self._in_use = {}
-        self._free = [[] for i in range(self._initial_bins_size)]
+        self._free = [set() for i in range(self._initial_bins_size)]
         self._alloc = allocator
         self._weakref = weakref.ref(self)
+        self._free_lock = rlock.create_fastrlock()
+        self._in_use_lock = rlock.create_fastrlock()
 
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
         """Round up the memory size to fit memory alignment of cudaMalloc."""
@@ -408,18 +410,16 @@ cdef class SingleDeviceMemoryPool:
         if current_size >= size:
             return
         growth_size = size - current_size
-        growth = [[] for i in range(growth_size)]
+        growth = [set() for i in range(growth_size)]
         self._free.extend(growth)
 
     cpdef tuple _split(self, Chunk chunk, Py_ssize_t size):
         """Split contiguous block of a larger allocation"""
-        assert not chunk.in_use
         assert chunk.size >= size
         if chunk.size == size:
             return (chunk, None)
         cdef Chunk head
         cdef Chunk remaining
-        cdef int index
         head = Chunk(chunk.mem, chunk.offset, size)
         remaining = Chunk(chunk.mem, chunk.offset + size, chunk.size - size)
         if chunk.prev is not None:
@@ -430,14 +430,10 @@ cdef class SingleDeviceMemoryPool:
             chunk.next.prev = remaining
         head.next = remaining
         remaining.prev = head
-        index = self._bin_index_from_size(remaining.size)
-        self._free[index].append(remaining)
         return (head, remaining)
 
     cpdef Chunk _merge(self, Chunk head, Chunk remaining):
         """Merge previously splitted block (chunk)"""
-        assert not head.in_use
-        assert not remaining.in_use
         cdef Chunk merged
         size = head.size + remaining.size
         merged = Chunk(head.mem, head.offset, size)
@@ -450,9 +446,9 @@ cdef class SingleDeviceMemoryPool:
         return merged
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        cdef list free_list = None
+        cdef set free_list = None
         cdef Chunk chunk = None
-        cdef MemoryPointer memptr
+        cdef Chunk remaining = None
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
@@ -462,14 +458,20 @@ cdef class SingleDeviceMemoryPool:
         # find best-fit, or a smallest larger allocation
         length = len(self._free)
         for i in range(index, length):
-            free_list = self._free[i]
-            if free_list:
-                chunk = free_list.pop()
-                chunk, _remaining = self._split(chunk, size)
-                break
+            if self._free[i]:
+                try:
+                    rlock.lock_fastrlock(self._free_lock, -1, True)
+                    free_list = self._free[i]
+                    if free_list:
+                        chunk = free_list.pop()
+                        break
+                finally:
+                    rlock.unlock_fastrlock(self._free_lock)
 
-        # cudaMalloc if not found
-        if chunk is None:
+        if chunk:
+            chunk, remaining = self._split(chunk, size)
+        else:
+            # cudaMalloc if a cache is not found
             try:
                 mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
@@ -492,8 +494,18 @@ cdef class SingleDeviceMemoryPool:
                             raise OutOfMemoryError(size, total)
             chunk = Chunk(mem, 0, size)
 
-        chunk.in_use = True
-        self._in_use[chunk.ptr] = chunk
+        try:
+            rlock.lock_fastrlock(self._in_use_lock, -1, True)
+            self._in_use[chunk.ptr] = chunk
+        finally:
+            rlock.unlock_fastrlock(self._in_use_lock)
+        if remaining:
+            remaining_index = self._bin_index_from_size(remaining.size)
+            try:
+                rlock.lock_fastrlock(self._free_lock, -1, True)
+                self._free[remaining_index].add(remaining)
+            finally:
+                rlock.unlock_fastrlock(self._free_lock)
         pmem = PooledMemory(chunk, self._weakref)
         return MemoryPointer(pmem, 0)
 
@@ -501,33 +513,60 @@ cdef class SingleDeviceMemoryPool:
         cdef Chunk chunk
         cdef int index
 
-        chunk = self._in_use.pop(ptr, None)
+        try:
+            rlock.lock_fastrlock(self._in_use_lock, -1, True)
+            chunk = self._in_use.pop(ptr, None)
+        finally:
+            rlock.unlock_fastrlock(self._in_use_lock)
         if chunk is None:
             raise RuntimeError('Cannot free out-of-pool memory')
 
-        chunk.in_use = False
-        if chunk.next and not chunk.next.in_use:
+        if chunk.next:
+            chunk_next = None
             index = self._bin_index_from_size(chunk.next.size)
-            self._free[index].remove(chunk.next)
-            chunk = self._merge(chunk, chunk.next)
+            try:
+                rlock.lock_fastrlock(self._free_lock, -1, True)
+                if chunk.next in self._free[index]:
+                    self._free[index].remove(chunk.next)
+                    chunk_next = chunk.next
+            finally:
+                rlock.unlock_fastrlock(self._free_lock)
+            if chunk_next:
+                chunk = self._merge(chunk, chunk_next)
 
-        if chunk.prev and not chunk.prev.in_use:
+        if chunk.prev:
+            chunk_prev = None
             index = self._bin_index_from_size(chunk.prev.size)
-            self._free[index].remove(chunk.prev)
-            chunk = self._merge(chunk.prev, chunk)
+            try:
+                rlock.lock_fastrlock(self._free_lock, -1, True)
+                if chunk.prev in self._free[index]:
+                    self._free[index].remove(chunk.prev)
+                    chunk_prev = chunk.prev
+            finally:
+                rlock.unlock_fastrlock(self._free_lock)
+            if chunk_prev:
+                chunk = self._merge(chunk_prev, chunk)
 
         index = self._bin_index_from_size(chunk.size)
         self._grow_free_if_necessary(index + 1)
-        self._free[index].append(chunk)
+        try:
+            rlock.lock_fastrlock(self._free_lock, -1, True)
+            self._free[index].add(chunk)
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
 
     cpdef free_all_blocks(self):
         # Free all **non-split** chunks
-        cdef list free_list
-        cdef Chunk chunk
-        for free_list in self._free:
-            for chunk in free_list:
-                if not chunk.prev and not chunk.next:
-                    free_list.remove(chunk)
+        try:
+            rlock.lock_fastrlock(self._free_lock, -1, True)
+            for i in range(len(self._free)):
+                keep_list = set()
+                for chunk in self._free[i]:
+                    if chunk.prev or chunk.next:
+                        keep_list.add(chunk)
+                self._free[i] = keep_list
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
 
     cpdef free_all_free(self):
         warnings.warn(
@@ -537,21 +576,33 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
-        for v in self._free:
-            n += len(v)
+        try:
+            rlock.lock_fastrlock(self._free_lock, -1, True)
+            for v in self._free:
+                n += len(v)
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
         return n
 
     cpdef used_bytes(self):
         cdef Py_ssize_t size = 0
-        for chunk in self._in_use.itervalues():
-            size += chunk.size
+        try:
+            rlock.lock_fastrlock(self._in_use_lock, -1, True)
+            for chunk in self._in_use.itervalues():
+                size += chunk.size
+        finally:
+            rlock.unlock_fastrlock(self._in_use_lock)
         return size
 
     cpdef free_bytes(self):
         cdef Py_ssize_t size = 0
-        for free_list in self._free:
-            for chunk in free_list:
-                size += chunk.size
+        try:
+            rlock.lock_fastrlock(self._free_lock, -1, True)
+            for free_list in self._free:
+                for chunk in free_list:
+                    size += chunk.size
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
         return size
 
     cpdef total_bytes(self):
