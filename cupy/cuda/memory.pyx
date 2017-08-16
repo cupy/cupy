@@ -306,7 +306,7 @@ class PooledMemory(Memory):
 
     """
 
-    def __init__(self, Memory mem, pool):
+    def __init__(self, mem, pool):
         self.ptr = mem.ptr
         self.size = mem.size
         self.device = mem.device
@@ -346,7 +346,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
-        cdef Memory mem
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
@@ -378,7 +377,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef list free
-        cdef Memory mem
         mem = self._in_use.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
