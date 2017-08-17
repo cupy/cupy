@@ -43,6 +43,8 @@ def calc_single_view(ioperand, subscript):
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
+        axes_to_diag = numpy.core.numeric.normalize_axis_tuple(axes_to_diag,
+                                                               result.ndim)
         for axis in reversed(axes_to_diag[1:]):
             shape_a = result.shape[axis]
             shape_b = result.shape[axes_to_diag[0]]
@@ -104,8 +106,8 @@ def _moveaxis(a, source, destination):
     .. seealso:: :func:`numpy.moveaxis`
     """
 
-    source = numpy.core.numeric.normalize_axis_tuple(source, a.ndim, 'source')
-    destination = numpy.core.numeric.normalize_axis_tuple(destination, a.ndim, 'destination')
+    source = numpy.core.numeric.normalize_axis_tuple(source, a.ndim)
+    destination = numpy.core.numeric.normalize_axis_tuple(destination, a.ndim)
     if len(source) != len(destination):
         raise ValueError('`source` and `destination` arguments must have '
                          'the same number of elements')
@@ -153,6 +155,29 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
     return _moveaxis(ioperand, moveaxis_sources, moveaxis_destinations)
 
 
+def calc_broadcasted_view(ioperands, subscripts):
+    broadcasted_operands = []
+    broadcasted_subscripts = []
+    for operand, subscript in zip(ioperands, subscripts):
+        if '@' not in subscript:
+            broadcasted_operands.append(operand)
+            broadcasted_subscripts.append(subscript)
+        else:
+            ellipsis_pos = subscript.find('@')
+            source_axes = [range(ellipsis_pos)]
+            destination_axes = [i for i in range(ellipsis_pos + 1, len(subscripts))]
+            operand = _moveaxis(operand, source_axes, destination_axes)
+            subscript = '@' + subscript.replace('@', '')
+    return broadcasted_operands, broadcasted_subscripts
+
+
+def get_pi(num_lists):
+    result = 1
+    for num in num_lists:
+        result *= num
+    return result
+
+
 def calc_combined_view(ioperands, subscripts):
     """Calculates 'i,j->ij' by cupy.tensordot.
 
@@ -160,12 +185,36 @@ def calc_combined_view(ioperands, subscripts):
         ioperands (sequence of arrays): Arrays to be combined.
         subscripts (sequence of str): Specifies the subscripts.
     """
+    if len(ioperands) == 1:
+        return ioperands[0], subscripts[0]
 
-    result = ioperands[0]
-    for ioperand in ioperands[1:]:
-        # TODO(fukatani): add up at here if enable.
-        result = cupy.tensordot(result, ioperand, axes=0)
-    return result, ''.join(subscripts)
+    result = cupy.ones(1)
+    a_shape_stack = []
+    b_shape_stack = []
+    is_first_operand = True
+    for operand, subscript in zip(ioperands, subscripts):
+        if '@' == subscript[0]:
+            broadcasted_dims = operand.ndim - len(subscript) + 1
+            a_shape = get_pi(operand.shape[:broadcasted_dims])
+            if len(a_shape) > len(a_shape_stack):
+                a_shape_stack = a_shape
+            b_shape = get_pi(operand.shape[broadcasted_dims:])
+            b_shape_stack += operand.shape[broadcasted_dims:]
+            operand = operand.reshape(a_shape, 1, b_shape)
+        else:
+            b_shape_stack += operand.shape
+            operand = operand.reshape(1, 1, get_pi(operand.shape))
+        if is_first_operand:
+            result = operand
+            is_first_operand = False
+        else:
+            result = cupy.matmul(result, operand)
+        result = result.reshape(result.shape[0], result.shape[1] * result.shape[2], 1)
+
+    subscript = ''.join(subscripts)
+    if '@' in subscripts:
+        subscript = '@' + subscript.replace('@', '')
+    return result.reshape(a_shape_stack + b_shape_stack), subscript
 
 
 def get_dummy_labels(label_list):
@@ -216,7 +265,7 @@ def einsum(*operands):
                         .format(unknown_kwargs))
 
     if not optimize_arg:
-        einsum_core(*operands)
+        return einsum_core(*operands)
 
     # Build the contraction list and operand
     operands, contraction_list = numpy.einsum_path(*operands,
@@ -230,28 +279,8 @@ def einsum(*operands):
         for x in inds:
             tmp_operands.append(operands.pop(x))
 
-        # Checks have already been handled
-        input_str, results_index = einsum_str.split('->')
-        input_left, input_right = input_str.split(',')
-
-        tensor_result = input_left + input_right
-        for s in idx_rm:
-            tensor_result = tensor_result.replace(s, "")
-
-        # Find indices to contract over
-        left_pos, right_pos = [], []
-        for s in idx_rm:
-            left_pos.append(input_left.find(s))
-            right_pos.append(input_right.find(s))
-
-        # Contract!
-        new_view = cupy.tensordot(*tmp_operands,
-                                  axes=(tuple(left_pos), tuple(right_pos)))
-
-        # Build a new view if needed
-        if (tensor_result != results_index):
-            new_view = einsum_core(tensor_result + '->' + results_index,
-                                   new_view)
+        # Do the contraction
+        new_view = einsum_core(einsum_str, *tmp_operands, **kwargs)
 
         # Append new items and derefernce what we can
         operands.append(new_view)
