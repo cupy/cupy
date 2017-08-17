@@ -402,12 +402,23 @@ cdef class ndarray:
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef ndarray v
         v = ndarray.__new__(ndarray)
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
+
+        if dtype is None:
+            v.size = self.size
+            v._shape = self._shape
+            v._strides = self._strides
+        else:
+            shape = list(self._shape)
+            strides = list(self._strides)
+            shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
+            strides[-1] = strides[-1] * v.dtype.itemsize // self.dtype.itemsize
+            v._shape = shape
+            v._strides = strides
+            v.size = self.size * self.dtype.itemsize // v.dtype.itemsize
+
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
-        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         return v
