@@ -100,39 +100,39 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
 
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
-			    ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
-			    cudaStream_t stream) {
+                            ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
+                            cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclAllReduce(sendbuff, recvbuff, count, _datatype, op, comm, stream);
 }
 
 
 ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuff, size_t count,
-			 ncclDataType_t datatype, ncclRedOp_t op, int root, ncclComm_t comm,
-			 cudaStream_t stream) {
+                         ncclDataType_t datatype, ncclRedOp_t op, int root, ncclComm_t comm,
+                         cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclReduce(sendbuff, recvbuff, count, _datatype, op, root, comm, stream);
 }
 
 
 ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype, int root,
-			ncclComm_t comm, cudaStream_t stream) {
+                        ncclComm_t comm, cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclBcast(buff, count, _datatype, root, comm,  stream);
 }
 
 
 ncclResult_t _ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recvcount,
-				ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
-				cudaStream_t stream) {
+                                ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
+                                cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclReduceScatter(sendbuff, recvbuff, recvcount, _datatype, op, comm, stream);
 }
 
 
 ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcount,
-			    ncclDataType_t datatype, ncclComm_t comm,
-			    cudaStream_t stream) {
+                            ncclDataType_t datatype, ncclComm_t comm,
+                            cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
 #if (NCCL_VERSION >= 2000)
     return ncclAllGather(sendbuff, recvbuff, sendcount, _datatype, comm, stream);
