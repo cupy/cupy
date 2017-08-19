@@ -920,7 +920,8 @@ cdef class ndarray:
             raise ValueError('Axis out of range')
 
         length = data.shape[axis]
-        kth = (kth,) if isinstance(kth, int) else kth
+        if isinstance(kth, int):
+            kth = kth,
         for k in kth:
             if k < 0:
                 k += length
