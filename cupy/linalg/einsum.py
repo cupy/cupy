@@ -55,6 +55,8 @@ def calc_single_view(ioperand, subscript):
                                                         shape_b))
             result = result.diagonal(0, axis, axes_to_diag[0])
             result = cupy.rollaxis(result, -1, axes_to_diag[0])
+            if ellipsis_pos != -1 and axis > ellipsis_pos:
+                axis -=  result.ndim - len(subscript) + 1
             subscript = subscript[:axis] + subscript[axis + 1:]
     return result, subscript
 
@@ -159,15 +161,15 @@ def calc_broadcasted_view(ioperands, subscripts):
     broadcasted_operands = []
     broadcasted_subscripts = []
     for operand, subscript in zip(ioperands, subscripts):
-        if '@' not in subscript:
-            broadcasted_operands.append(operand)
-            broadcasted_subscripts.append(subscript)
-        else:
+        if '@' in subscript:
             ellipsis_pos = subscript.find('@')
-            source_axes = [range(ellipsis_pos)]
-            destination_axes = [i for i in range(ellipsis_pos + 1, len(subscripts))]
+            ellipsis_rpos = subscript.rfind('@') - 1
+            source_axes = range(ellipsis_pos)
+            destination_axes = [i - ellipsis_rpos for i in range(-ellipsis_pos, 0)]
             operand = _moveaxis(operand, source_axes, destination_axes)
             subscript = '@' + subscript.replace('@', '')
+        broadcasted_operands.append(operand)
+        broadcasted_subscripts.append(subscript)
     return broadcasted_operands, broadcasted_subscripts
 
 
@@ -196,8 +198,8 @@ def calc_combined_view(ioperands, subscripts):
         if '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
             a_shape = get_pi(operand.shape[:broadcasted_dims])
-            if len(a_shape) > len(a_shape_stack):
-                a_shape_stack = a_shape
+            if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
+                a_shape_stack = list(operand.shape[:broadcasted_dims])
             b_shape = get_pi(operand.shape[broadcasted_dims:])
             b_shape_stack += operand.shape[broadcasted_dims:]
             operand = operand.reshape(a_shape, 1, b_shape)
@@ -212,7 +214,7 @@ def calc_combined_view(ioperands, subscripts):
         result = result.reshape(result.shape[0], result.shape[1] * result.shape[2], 1)
 
     subscript = ''.join(subscripts)
-    if '@' in subscripts:
+    if '@' in subscript:
         subscript = '@' + subscript.replace('@', '')
     return result.reshape(a_shape_stack + b_shape_stack), subscript
 
@@ -221,7 +223,7 @@ def get_dummy_labels(label_list):
     dummy_label_set = set()
     count_dict = collections.Counter(label_list)
     for label, count in six.iteritems(count_dict):
-        if count >= 2:
+        if label != '@' and count >= 2:
             dummy_label_set.add(label)
     return dummy_label_set
 
@@ -353,8 +355,6 @@ def einsum_core(*operands):
         label_list = list(input_subscripts.replace(',', ''))
         out_label_set = set(label_list) - get_dummy_labels(label_list)
         out_label_list = sorted(list(out_label_set))
-        if out_label_list[0] == '@':
-            out_label_list = out_label_list[1:] + [out_label_list[0],]
         output_subscript = ''.join(out_label_list)
 
     input_subscripts_list = input_subscripts.split(',')
@@ -369,7 +369,7 @@ def einsum_core(*operands):
     for i in six.moves.range(len(input_subscripts_list)):
         subscript = input_subscripts_list[i]
         ioperand = converted_inputs[i]
-        if len(subscript) > ioperand.ndim:
+        if len(subscript.replace('@', '')) > ioperand.ndim:
             raise ValueError('einstein sum subscripts string contains too '
                              'many subscripts for operand {}'.format(i))
         if '@' not in subscript and len(subscript) < ioperand.ndim:
@@ -387,6 +387,7 @@ def einsum_core(*operands):
     if len(converted_inputs) >= 2:
         results = [view[0] for view in single_views]
         subscripts = [view[1] for view in single_views]
+        results, subscripts = calc_broadcasted_view(results, subscripts)
         result, subscript = calc_combined_view(results, subscripts)
         result, subscript = calc_single_view(result, subscript)
     else:
