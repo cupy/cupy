@@ -15,6 +15,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     Now it has only part of initializer formats:
 
+    ``csc_matrix(D)``
+        ``D`` is a rank-2 :class:`cupy.ndarray`.
     ``csc_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
     ``csc_matrix((M, N), [dtype])``
@@ -58,6 +60,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         indptr = self.indptr.get(stream)
         return scipy.sparse.csc_matrix(
             (data, indices, indptr), shape=self._shape)
+
+    def _convert_dense(self, x):
+        m = cusparse.dense2csc(x)
+        return m.data, m.indices, m.indptr
 
     def _swap(self, x, y):
         return (y, x)
