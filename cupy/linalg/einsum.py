@@ -5,7 +5,6 @@ import string
 import numpy
 import six
 
-# import numpy as cupy
 import cupy
 
 
@@ -57,7 +56,7 @@ def calc_single_view(ioperand, subscript):
             result = result.diagonal(0, axis, axes_to_diag[0])
             result = cupy.rollaxis(result, -1, axes_to_diag[0])
             if ellipsis_pos != -1 and axis > ellipsis_pos:
-                axis -=  result.ndim - len(subscript) + 1
+                axis -= result.ndim - len(subscript) + 1
             subscript = subscript[:axis] + subscript[axis + 1:]
             subscripts_excluded_at = subscript.replace('@', '')
     return result, subscript
@@ -105,7 +104,6 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 # TODO(fukatani): Implement as cupy.moveaxis
 def _moveaxis(a, source, destination):
     """Moves axes of an array to new positions.
-    Other axes remain in their original order.
 
     .. seealso:: :func:`numpy.moveaxis`
     """
@@ -170,7 +168,7 @@ def move_broadcast_axes_to_front(ioperands, subscripts):
         if '@' in subscript:
             ellipsis_pos = subscript.find('@')
             source_axes = list(range(ellipsis_pos))
-            destination_axes = [i - len(subscript) + 1 for i in source_axes]
+            destination_axes = [i - len(source_axes) for i in source_axes]
             operand = _moveaxis(operand, source_axes, destination_axes)
             subscript = subscript[ellipsis_pos:] + subscript[:ellipsis_pos]
         broadcasted_operands.append(operand)
@@ -195,10 +193,12 @@ def calc_combined_view(ioperands, subscripts):
     for operand, subscript in zip(ioperands, subscripts):
         if subscript and '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
-            a_shape = numpy.prod(operand.shape[:broadcasted_dims], dtype=numpy.int8)
+            a_shape = numpy.prod(operand.shape[:broadcasted_dims],
+                                 dtype=numpy.int8)
             if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
                 a_shape_stack = list(operand.shape[:broadcasted_dims])
-            b_shape = numpy.prod(operand.shape[broadcasted_dims:], dtype=numpy.int8)
+            b_shape = numpy.prod(operand.shape[broadcasted_dims:],
+                                 dtype=numpy.int8)
             b_shape_stack += operand.shape[broadcasted_dims:]
             operand = operand.reshape(a_shape, 1, b_shape)
         else:
@@ -209,7 +209,8 @@ def calc_combined_view(ioperands, subscripts):
             is_first_operand = False
         else:
             result = cupy.matmul(result, operand)
-        result = result.reshape(result.shape[0], result.shape[1] * result.shape[2], 1)
+        result = result.reshape(result.shape[0],
+                                result.shape[1] * result.shape[2], 1)
 
     subscript = ''.join(subscripts)
     if '@' in subscript:
@@ -330,16 +331,3 @@ def einsum(*operands):
 
     result, subscript = calc_summed_view(result, subscript, output_subscript)
     return calc_transposed_view(result, subscript, output_subscript)
-
-
-if __name__ == '__main__':
-    # a = numpy.arange(24).reshape(2, 3, 4)
-    # c = einsum('ijk->kij', a)
-    # ref = numpy.einsum('ijk->kij', a)
-    # print((c == ref).all())
-
-    a = numpy.arange(12).reshape(4, 3)
-    b = numpy.arange(6).reshape(3, 2)
-    c = einsum('ik...,k...->i...', a, b)
-    ref = numpy.einsum('ik...,k...->i...', a, b)
-    print((c == ref).all())
