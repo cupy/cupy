@@ -61,6 +61,7 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         return a.diagonal(0, -1, 1)
 
+
 @testing.gpu
 class TestChoose(unittest.TestCase):
 
