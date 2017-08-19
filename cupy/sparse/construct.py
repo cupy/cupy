@@ -71,7 +71,7 @@ def spdiags(data, diags, m, n, format=None):
     """Creates a sparse matrix from diagonals.
 
     Args:
-        data (cupy.ndarray): Matrix diagonas stored row-wise.
+        data (cupy.ndarray): Matrix diagonals stored row-wise.
         diags (cupy.ndarray): Diagonals to set.
         m (int): Number of rows.
         n (int): Number of cols.
