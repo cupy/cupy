@@ -124,20 +124,26 @@ class TestEinSumError(unittest.TestCase):
 
 @testing.parameterize(
     {'shape_a': (2, 3), 'subscripts': 'ij'},  # do nothing
-    {'shape_a': (2, 3), 'subscripts': 'ij'},  # transpose
+    {'shape_a': (2, 3), 'subscripts': '...'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ji'},  # transpose
     {'shape_a': (3, 3), 'subscripts': 'ii->i'},  # diagonal 2d
     {'shape_a': (3, 3, 3), 'subscripts': 'jii->ij'},  # partial diagonal 3d
     {'shape_a': (3, 3, 3), 'subscripts': 'iji->ij'},  # partial diagonal 3d
+    {'shape_a': (3, 3, 3), 'subscripts': '...ii->...i'},  # partial diagonal 3d
     {'shape_a': (3, 3, 3), 'subscripts': 'iii->i'},  # diagonal 3d
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->jik'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->kij'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->ikj'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'kji->ikj'},  # swap axes
+    {'shape_a': (2, 3, 4), 'subscripts': 'j...i->i...j'},  # swap axes
     {'shape_a': (3,), 'subscripts': 'i->'},  # sum
     {'shape_a': (3, 3), 'subscripts': 'ii'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...'},  # trace
+     {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
@@ -165,9 +171,15 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     # tensordot
     {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
      'subscripts': 'ijk, jil -> kl', 'skip_overflow': True},
+    {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
+     'subscripts': 'i..., ...k -> ki...', 'skip_overflow': True},
+    {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
+     'subscripts': 'ij..., ji... -> i...', 'skip_overflow': True},
     # trace and tensordot and diagonal
     {'shape_a': (2, 3, 2, 4), 'shape_b': (3, 2, 2),
      'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
+    {'shape_a': (2, 3, 2, 4), 'shape_b': (4, 2, 2),
+     'subscripts': 'i...ij,ji...->...j', 'skip_overflow': True},
 )
 class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
@@ -206,6 +218,8 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij,ik,i->ijk', 'skip_overflow': False},
     {'shape_a': (2, 4), 'shape_b': (3, 2), 'shape_c': (2,),
      'subscripts': 'ij,ki,i->jk', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
+     'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
 )
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
