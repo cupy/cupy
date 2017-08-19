@@ -155,29 +155,49 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         else:
             slices = [slices]
 
+        ellipsis = -1
+        n_ellipsis = 0
+        for i, s in enumerate(slices):
+            if s is None:
+                raise IndexError('newaxis is not supported')
+            elif s is Ellipsis:
+                ellipsis = i
+                n_ellipsis += 1
+        if n_ellipsis > 0:
+            ellipsis_size = self.ndim - (len(slices) - 1)
+            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+
         if len(slices) == 2:
             row, col = slices
+        elif len(slices) == 1:
+            row, col = slices[0], slice(None)
         else:
             raise IndexError('invalid number of indices')
 
-        if numpy.isscalar(row):
-            i = int(row)
-            if numpy.isscalar(col):
-                j = int(col)
-                return self._get_single(*self._swap(i, j))
-            else:
-                raise ValueError('unsupported indexing')
-        else:
-            raise ValueError('unsupported indexing')
+        major, minor = self._swap(row, col)
+        major_size, minor_size = self._swap(*self._shape)
+        if numpy.isscalar(major):
+            i = int(major)
+            if i < 0:
+                i += major_size
+            if not (0 <= i < major_size):
+                raise IndexError('index out of bounds')
+            if numpy.isscalar(minor):
+                j = int(minor)
+                if j < 0:
+                    j += minor_size
+                if not (0 <= j < minor_size):
+                    raise IndexError('index out of bounds')
+                return self._get_single(i, j)
+            elif minor == slice(None):
+                return self._get_major_slice(slice(i, i + 1))
+        elif isinstance(major, slice):
+            if minor == slice(None):
+                return self._get_major_slice(major)
+
+        raise ValueError('unsupported indexing')
 
     def _get_single(self, major, minor):
-        major_size, minor_size = self._swap(*self._shape)
-        if major < 0:
-            major += major_size
-        if minor < 0:
-            minor += minor_size
-        if not (0 <= major < major_size and 0 <= minor < minor_size):
-            raise IndexError('index out of bounds')
         start = self.indptr[major]
         end = self.indptr[major + 1]
         answer = cupy.zeros((), self.dtype)
@@ -203,6 +223,41 @@ __device__ double atomicAdd(double* address, double val) {
             'compress_getitem', preamble=preamble)
         kern(self.data[start:end], self.indices[start:end], minor, answer)
         return answer[()]
+
+    def _get_major_slice(self, major):
+        major_size, minor_size = self._swap(*self._shape)
+        # major.indices cannot be used because scipy.sparse behaves differently
+        major_start = major.start
+        major_stop = major.stop
+        major_step = major.step
+        if major_start is None:
+            major_start = 0
+        if major_stop is None:
+            major_stop = major_size
+        if major_step is None:
+            major_step = 1
+        if major_start < 0:
+            major_start += major_size
+        if major_stop < 0:
+            major_stop += major_size
+
+        if major_step != 1:
+            raise ValueError('slicing with step != 1 not supported')
+
+        if not (0 <= major_start <= major_size and
+                0 <= major_stop <= major_size and
+                major_start <= major_stop):
+            raise IndexError('index out of bounds')
+
+        start = self.indptr[major_start]
+        stop = self.indptr[major_stop]
+        data = self.data[start:stop]
+        indptr = self.indptr[major_start:major_stop + 1] - start
+        indices = self.indices[start:stop]
+
+        shape = self._swap(len(indptr) - 1, minor_size)
+        return self.__class__(
+            (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
     def get_shape(self):
         """Returns the shape of the matrix.

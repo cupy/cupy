@@ -1,5 +1,6 @@
 import numpy
 from numpy import linalg
+import six
 
 import cupy
 from cupy import cuda
@@ -97,7 +98,34 @@ def _check_status(dev_info):
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
 
 
-# TODO(okuta): Implement tensorsolve
+def tensorsolve(a, b, axes=None):
+    '''Solves tensor equations denoted by ``ax = b``.
+
+    Suppose that ``b`` is equivalent to ``cupy.tensordot(a, x)``.
+    This function computes tensor ``x`` from ``a`` and ``b``.
+
+    Args:
+        a (cupy.ndarray): The tensor with ``len(shape) >= 1``
+        b (cupy.ndarray): The tensor with ``len(shape) >= 1``
+        axes (tuple of ints): Axes in ``a`` to reorder to the right
+            before inversion.
+
+    .. seealso:: :func:`numpy.linalg.tensorsolve`
+    '''
+    if axes is not None:
+        allaxes = list(six.moves.range(a.ndim))
+        for k in axes:
+            allaxes.remove(k)
+            allaxes.insert(a.ndim, k)
+        a = a.transpose(allaxes)
+
+    oldshape = a.shape[-(a.ndim - b.ndim):]
+    prod = numpy.prod(oldshape)
+
+    a = a.reshape(-1, prod)
+    b = b.ravel()
+    result = solve(a, b)
+    return result.reshape(oldshape)
 
 
 # TODO(okuta): Implement lstsq

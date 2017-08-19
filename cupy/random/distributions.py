@@ -1,8 +1,15 @@
-import cupy
+from cupy import core
 from cupy.random import generator
 
 
 # TODO(beam2d): Implement many distributions
+
+
+_gumbel_kernel = core.ElementwiseKernel(
+    'T x, T loc, T scale', 'T y',
+    'y = loc - log(-log(1 - x)) * scale',
+    'gumbel_kernel'
+)
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -36,12 +43,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     rs = uniform(size=size, dtype=dtype)
     # We use `1 - x` as input of `log` method to prevent overflow.
     # It obeys numpy implementation.
-    return cupy.ElementwiseKernel(
-        'T x, T loc, T scale', 'T y',
-        'y = loc - log(-log(1 - x)) * scale',
-        'gumbel_kernel'
-    )(rs, loc, scale, rs)
-    return rs
+    return _gumbel_kernel(rs, loc, scale, rs)
 
 
 def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):

@@ -14,8 +14,8 @@ Matrix and vector products
    cupy.outer
    cupy.matmul
    cupy.tensordot
+   cupy.einsum
    cupy.kron
-
 
 Decompositions
 --------------
@@ -56,3 +56,4 @@ Solving linear equations
    :nosignatures:
 
    cupy.linalg.solve
+   cupy.linalg.tensorsolve

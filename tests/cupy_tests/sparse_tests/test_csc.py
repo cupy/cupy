@@ -318,6 +318,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m.toarray(order='unknown')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_A(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.A
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocoo().toarray()
@@ -748,3 +753,51 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
     def test_getitem_int_int_too_large_col(self, xp, sp):
         _make(xp, sp, self.dtype)[0, 4]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_int(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, 1].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_negative_int(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, -1].toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_too_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, -5]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_int_too_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, 4]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, 1:3].toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_negative(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, -2:-1].toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_too_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, -5:None]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_too_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, 5:None]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_stop_too_small(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, None:-5]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_stop_too_large(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, None:5]
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
+    def test_getitem_slice_start_larger_than_stop(self, xp, sp):
+        _make(xp, sp, self.dtype)[:, 3:2]
+
+    def test_getitem_slice_step_2(self):
+        with self.assertRaises(ValueError):
+            _make(cupy, cupy.sparse, self.dtype)[:, 0::2]

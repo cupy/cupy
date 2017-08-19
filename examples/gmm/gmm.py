@@ -114,7 +114,7 @@ def draw(X, pred, means, covariances, output):
                                   np.sqrt(covariances[i][1]),
                                   means[i][0], means[i][1])
         plt.contour(X, Y, Z)
-    plt.savefig(output + '.png')
+    plt.savefig(output)
 
 
 def run(gpuid, num, dim, max_iter, tol, output):
@@ -161,7 +161,6 @@ def run(gpuid, num, dim, max_iter, tol, output):
                          max_iter, tol, means, covariances)
         if output is not None:
             draw(X_test_gpu, y_test_pred, means, cov, output)
-    print()
 
 
 if __name__ == '__main__':

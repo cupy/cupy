@@ -21,6 +21,29 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
+_fit_calc_distances = cupy.ElementwiseKernel(
+    'S data, raw S centers, int32 n_clusters, int32 dim', 'raw S dist',
+    '''
+    for (int j = 0; j < n_clusters; j++){
+        int cent_ind[] = {j, i % dim};
+        int dist_ind[] = {i / dim, j};
+        double diff = centers[cent_ind] - data;
+        atomicAdd(&dist[dist_ind], diff * diff);
+    }
+    ''',
+    'calc_distances'
+)
+_fit_calc_center = cupy.ElementwiseKernel(
+    'S data, T label, int32 dim', 'raw S centers, raw S group',
+    '''
+    int cent_ind[] = {label, i % dim};
+    atomicAdd(&centers[cent_ind], data);
+    atomicAdd(&group[label], 1);
+    ''',
+    'calc_center'
+)
+
+
 def fit(X, n_clusters, max_iter, use_custom_kernel):
     assert X.ndim == 2
     xp = cupy.get_array_module(X)
@@ -38,19 +61,7 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
                                        axis=2)
         else:
             distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
-            cupy.ElementwiseKernel(
-                'S data, raw S centers, int32 n_clusters, int32 dim',
-                'raw S dist',
-                '''
-                for (int j = 0; j < n_clusters; j++){
-                    int cent_ind[] = {j, i % dim};
-                    int dist_ind[] = {i / dim, j};
-                    double diff = centers[cent_ind] - data;
-                    atomicAdd(&dist[dist_ind], diff * diff);
-                }
-                ''',
-                'calc_distances'
-            )(X, centers, n_clusters, data_dim, distances)
+            _fit_calc_distances(X, centers, n_clusters, data_dim, distances)
 
         new_pred = xp.argmin(distances, axis=1).astype(np.int32)
         if xp.all(new_pred == pred):
@@ -66,15 +77,7 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
                                dtype=np.float32)
             group = xp.zeros(n_clusters, dtype=np.float32)
             label = pred[:, None]
-            cupy.ElementwiseKernel(
-                'S data, T label, int32 dim', 'raw S centers, raw S group',
-                '''
-                int cent_ind[] = {label, i % dim};
-                atomicAdd(&centers[cent_ind], data);
-                atomicAdd(&group[label], 1);
-                ''',
-                'calc_center'
-            )(X, label, data_dim, centers, group)
+            _fit_calc_center(X, label, data_dim, centers, group)
             group /= data_dim
             centers /= group[:, None]
 
@@ -92,11 +95,11 @@ def draw(X, n_clusters, centers, pred, output):
         centers = centers.get()
     plt.scatter(centers[:, 0], centers[:, 1], s=120, marker='s',
                 facecolors='y', edgecolors='k')
-    plt.savefig(output + '.png')
+    plt.savefig(output)
 
 
-def run(gpuid, n_clusters, max_iter, use_custom_kernel, output):
-    samples = np.random.randn(5000000, 2).astype(np.float32)
+def run(gpuid, n_clusters, num, max_iter, use_custom_kernel, output):
+    samples = np.random.randn(num, 2).astype(np.float32)
     X_train = np.r_[samples + 1, samples - 1]
     repeat = 1
 
@@ -122,6 +125,8 @@ if __name__ == '__main__':
                         help='ID of GPU.')
     parser.add_argument('--n-clusters', '-n', default=2, type=int,
                         help='number of clusters')
+    parser.add_argument('--num', default=5000000, type=int,
+                        help='number of samples')
     parser.add_argument('--max-iter', '-m', default=10, type=int,
                         help='number of iterations')
     parser.add_argument('--use-custom-kernel', action='store_true',
@@ -129,5 +134,5 @@ if __name__ == '__main__':
     parser.add_argument('--output-image', '-o', default=None, type=str,
                         help='output image file name')
     args = parser.parse_args()
-    run(args.gpu_id, args.n_clusters, args.max_iter, args.use_custom_kernel,
-        args.output_image)
+    run(args.gpu_id, args.n_clusters, args.num, args.max_iter,
+        args.use_custom_kernel, args.output_image)

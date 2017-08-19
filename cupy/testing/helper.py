@@ -38,7 +38,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         accept_error = Exception
     elif not accept_error:
         accept_error = ()
-
+    # TODO(oktua): expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -121,7 +121,8 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None):
             if not skip:
                 check_func(cupy_result, numpy_result)
             if type_check:
-                self.assertEqual(cupy_result.dtype, numpy_result.dtype)
+                self.assertEqual(cupy_result.dtype, numpy_result.dtype,
+                                 'cupy dtype is not equal to numpy dtype')
         return test_func
     return decorator
 
@@ -480,7 +481,7 @@ def for_dtypes(dtypes, name='dtype'):
         def test_func(self, *args, **kw):
             for dtype in dtypes:
                 try:
-                    kw[name] = dtype
+                    kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', dtype)
@@ -490,6 +491,7 @@ def for_dtypes(dtypes, name='dtype'):
     return decorator
 
 
+_complex_dtypes = (numpy.complex64, numpy.complex128)
 _regular_float_dtypes = (numpy.float64, numpy.float32)
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
@@ -500,20 +502,25 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def _make_all_dtypes(no_float16, no_bool):
+def _make_all_dtypes(no_float16, no_bool, no_complex):
     if no_float16:
-        if no_bool:
-            return _regular_float_dtypes + _int_dtypes
-        else:
-            return _regular_dtypes
+        dtypes = _regular_float_dtypes
     else:
-        if no_bool:
-            return _float_dtypes + _int_dtypes
-        else:
-            return _dtypes
+        dtypes = _float_dtypes
+
+    if no_bool:
+        dtypes += _int_dtypes
+    else:
+        dtypes += _int_bool_dtypes
+
+    if not no_complex:
+        dtypes += _complex_dtypes
+
+    return dtypes
 
 
-def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
+def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
+                   no_complex=False):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
@@ -522,8 +529,12 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
              omitted from candidate dtypes.
          no_bool(bool): If, True, ``numpy.bool_`` is
              omitted from candidate dtypes.
+         no_complex(bool): If, True, ``numpy.complex64`` and
+             ``numpy.complex128`` are omitted from candidate dtypes.
 
-    dtypes to be tested: ``numpy.float16`` (optional), ``numpy.float32``,
+    dtypes to be tested: ``numpy.complex64`` (optional),
+    ``numpy.complex128`` (optional),
+    ``numpy.float16`` (optional), ``numpy.float32``,
     ``numpy.float64``, ``numpy.dtype('b')``, ``numpy.dtype('h')``,
     ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``,
     ``numpy.dtype('B')``, ``numpy.dtype('H')``, ``numpy.dtype('I')``,
@@ -564,7 +575,8 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
-    return for_dtypes(_make_all_dtypes(no_float16, no_bool), name=name)
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex),
+                      name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
@@ -714,7 +726,8 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
 
 def for_all_dtypes_combination(names=('dtyes',),
-                               no_float16=False, no_bool=False, full=None):
+                               no_float16=False, no_bool=False, full=None,
+                               no_complex=False):
     """Decorator that checks the fixture with a product set of all dtypes.
 
     Args:
@@ -727,10 +740,12 @@ def for_all_dtypes_combination(names=('dtyes',),
              will be tested.
              Otherwise, the subset of combinations will be tested
              (see description in :func:`cupy.testing.for_dtypes_combination`).
+         no_complex(bool): If, True, ``numpy.complex64`` and
+             ``numpy.complex128`` are omitted from candidate dtypes.
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
     """
-    types = _make_all_dtypes(no_float16, no_bool)
+    types = _make_all_dtypes(no_float16, no_bool, no_complex)
     return for_dtypes_combination(types, names, full)
 
 
@@ -870,11 +885,13 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
          ``True`` (resp. ``False``).
 
     """
+    dtype = numpy.dtype(dtype)
     a = numpy.arange(1, internal.prod(shape) + 1, 1)
-    if numpy.dtype(dtype).type == numpy.bool_:
-        return xp.array((a % 2 == 0).reshape(shape))
-    else:
-        return xp.array(a.astype(dtype).reshape(shape))
+    if dtype == '?':
+        a = a % 2 == 0
+    elif dtype.kind == 'c':
+        a = a + a * 1j
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
@@ -893,12 +910,14 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
          ``True`` (resp. ``False``).
     """
+    dtype = numpy.dtype(dtype)
     size = internal.prod(shape)
     a = numpy.arange(size, 0, -1)
-    if numpy.dtype(dtype).type == numpy.bool_:
-        return xp.array((a % 2 == 0).reshape(shape))
-    else:
-        return xp.array(a.astype(dtype).reshape(shape))
+    if dtype == '?':
+        a = a % 2 == 0
+    elif dtype.kind == 'c':
+        a = a + a * 1j
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):

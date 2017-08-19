@@ -307,7 +307,9 @@ ogrid = nd_grid(sparse=True)
 _arange_ufunc = core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d',
+     ('FF->F', 'out0 = in0 + float(i) * in1'),
+     ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
 
 

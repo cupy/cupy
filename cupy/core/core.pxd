@@ -53,6 +53,7 @@ cdef class ndarray:
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
+    cpdef ndarray conj(self)
     cpdef get(self, stream=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)

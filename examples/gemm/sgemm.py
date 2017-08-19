@@ -71,7 +71,8 @@ def main():
             low=-1., high=1., size=(args.k, args.n)).astype(cp.float32)
 
         # check correctness
-        cp.testing.assert_array_equal(sgemm(A, B), cp.dot(A, B))
+        cp.testing.assert_array_almost_equal(
+            sgemm(A, B), cp.dot(A, B), decimal=3)
 
         # dry run
         for _ in range(3):
