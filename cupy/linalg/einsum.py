@@ -5,7 +5,6 @@ import string
 import numpy
 import six
 
-# import numpy as cupy
 import cupy
 
 
@@ -44,6 +43,8 @@ def calc_single_view(ioperand, subscript):
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
+        # The reason why we use normalize is #427 issue.
+        # This computation is redundant primarily.
         axes_to_diag = numpy.core.numeric.normalize_axis_tuple(axes_to_diag,
                                                                result.ndim)
         for axis in reversed(axes_to_diag[1:]):
@@ -332,8 +333,3 @@ def einsum(*operands):
 
     result, subscript = calc_summed_view(result, subscript, output_subscript)
     return calc_transposed_view(result, subscript, output_subscript)
-
-
-if __name__ == '__main__':
-    a = numpy.arange(16).reshape(2, 2, 2, 2)
-    einsum('...ii->...i', a)
