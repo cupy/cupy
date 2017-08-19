@@ -229,69 +229,6 @@ def get_dummy_labels(label_list):
 
 
 def einsum(*operands):
-    """einsum(subscripts, *operands)
-
-    Evaluates the Einstein summation convention on the operands.
-
-    Using the Einstein summation convention, many common multi-dimensional
-    array operations can be represented in a simple fashion. This function
-    provides a way to compute such summations.
-
-    .. note::
-
-       ``out``, ``order``, ``dtype``, ``casting`` and ``optimize`` options
-       are not supported.
-
-    Args:
-        subscripts (str): Specifies the subscripts for summation.
-        operands (sequence of arrays): These are the arrays for the operation.
-        optimize (boolean or 'greedy' or 'optimal'):
-            Controls if intermediate optimization should occur. No optimization
-            will occur if `False` and `True` will default to the 'greedy'
-            algorithm. Also accepts an explicit contraction list from the
-            `numpy.einsum_path` function. See ``np.einsum_path`` for more
-            details. Default is True.
-
-    Returns:
-        cupy.ndarray:
-            The calculation based on the Einstein summation convention.
-
-    .. seealso:: :func:`numpy.einsum`
-    """
-
-    optimize_arg = kwargs.pop('optimize', False)
-
-    # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting',
-    if kwargs:
-        raise TypeError("Did not support the following kwargs: {}"
-                        .format(unknown_kwargs))
-
-    if not optimize_arg:
-        return einsum_core(*operands)
-
-    # Build the contraction list and operand
-    operands, contraction_list = numpy.einsum_path(*operands,
-                                                   optimize=optimize_arg,
-                                                   einsum_call=True)
-
-    # Start contraction loop
-    for num, contraction in enumerate(contraction_list):
-        inds, idx_rm, einsum_str, remaining = contraction
-        tmp_operands = []
-        for x in inds:
-            tmp_operands.append(operands.pop(x))
-
-        # Do the contraction
-        new_view = einsum_core(einsum_str, *tmp_operands, **kwargs)
-
-        # Append new items and derefernce what we can
-        operands.append(new_view)
-        del tmp_operands, new_view
-
-    return operands[0]
-
-
-def einsum_core(*operands):
     if not operands:
         raise ValueError('must specify the einstein sum subscripts string and '
                          'at least one operand, or at least one operand and '
