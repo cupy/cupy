@@ -73,7 +73,7 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 
     if axes_to_summed:
         result = ioperand.sum(axis=tuple(axes_to_summed)). \
-            astype(ioperand)
+            astype(ioperand.dtype)
     else:
         result = ioperand
     for label in label_to_summed:
@@ -158,7 +158,7 @@ def einsum(*operands, **kwargs):
     # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting',
     if kwargs:
         raise TypeError("Did not support the following kwargs: {}"
-                        .format(unknown_kwargs))
+                        .format(kwargs))
 
     if not optimize_arg:
         einsum_core(*operands)
@@ -170,33 +170,13 @@ def einsum(*operands, **kwargs):
 
     # Start contraction loop
     for num, contraction in enumerate(contraction_list):
-        inds, idx_rm, einsum_str, remaining, blas = contraction
+        inds, idx_rm, einsum_str, remaining = contraction
         tmp_operands = []
         for x in inds:
             tmp_operands.append(operands.pop(x))
 
-        # Checks have already been handled
-        input_str, results_index = einsum_str.split('->')
-        input_left, input_right = input_str.split(',')
-
-        tensor_result = input_left + input_right
-        for s in idx_rm:
-            tensor_result = tensor_result.replace(s, "")
-
-        # Find indices to contract over
-        left_pos, right_pos = [], []
-        for s in idx_rm:
-            left_pos.append(input_left.find(s))
-            right_pos.append(input_right.find(s))
-
-        # Contract!
-        new_view = cupy.tensordot(*tmp_operands,
-                                  axes=(tuple(left_pos), tuple(right_pos)))
-
-        # Build a new view if needed
-        if (tensor_result != results_index):
-            new_view = einsum_core(tensor_result + '->' + results_index,
-                                   new_view)
+        # Do the contraction
+        new_view = einsum_core(einsum_str, *tmp_operands, **kwargs)
 
         # Append new items and derefernce what we can
         operands.append(new_view)
