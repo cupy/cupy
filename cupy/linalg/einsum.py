@@ -58,6 +58,7 @@ def calc_single_view(ioperand, subscript):
             if ellipsis_pos != -1 and axis > ellipsis_pos:
                 axis -=  result.ndim - len(subscript) + 1
             subscript = subscript[:axis] + subscript[axis + 1:]
+            subscripts_excluded_at = subscript.replace('@', '')
     return result, subscript
 
 
@@ -173,13 +174,6 @@ def move_broadcast_axes_to_front(ioperands, subscripts):
     return broadcasted_operands, broadcasted_subscripts
 
 
-def get_pi(num_lists):
-    result = 1
-    for num in num_lists:
-        result *= num
-    return result
-
-
 def calc_combined_view(ioperands, subscripts):
     """Calculates 'i,j->ij' by cupy.tensordot.
 
@@ -197,15 +191,15 @@ def calc_combined_view(ioperands, subscripts):
     for operand, subscript in zip(ioperands, subscripts):
         if subscript and '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
-            a_shape = get_pi(operand.shape[:broadcasted_dims])
+            a_shape = numpy.prod(operand.shape[:broadcasted_dims])
             if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
                 a_shape_stack = list(operand.shape[:broadcasted_dims])
-            b_shape = get_pi(operand.shape[broadcasted_dims:])
+            b_shape = numpy.prod(operand.shape[broadcasted_dims:])
             b_shape_stack += operand.shape[broadcasted_dims:]
             operand = operand.reshape(a_shape, 1, b_shape)
         else:
             b_shape_stack += operand.shape
-            operand = operand.reshape(1, 1, get_pi(operand.shape))
+            operand = operand.reshape(1, 1, operand.size)
         if is_first_operand:
             result = operand
             is_first_operand = False
