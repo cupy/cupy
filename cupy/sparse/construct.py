@@ -65,3 +65,22 @@ def identity(n, dtype='d', format=None):
 
     """
     return eye(n, n, dtype=dtype, format=format)
+
+
+def spdiags(data, diags, m, n, format=None):
+    """Creates a sparse matrix from diagonals.
+
+    Args:
+        data (cupy.ndarray): Matrix diagonas stored row-wise.
+        diags (cupy.ndarray): Diagonals to set.
+        m (int): Number of rows.
+        n (int): Number of cols.
+        format (str or None): Sparse format, e.g. ``format="csr"``.
+
+    Returns:
+        cupy.sparse.spmatrix: Created sparse matrix.
+
+    .. seealso:: :func:`scipy.sparse.spdiags`
+
+    """
+    return cupy.sparse.dia_matrix((data, diags), shape=(m, n)).asformat(format)
