@@ -61,10 +61,6 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum('ij', xp.array([0, 0]))
 
     @testing.numpy_cupy_raises()
-    def test_many_dimension3(self, xp):
-        xp.einsum('i...', xp.array([0, 0]))
-
-    @testing.numpy_cupy_raises()
     def test_too_few_dimension(self, xp):
         xp.einsum('i->i', xp.arange(6).reshape(2, 3))
 
@@ -171,14 +167,14 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     # tensordot
     {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
      'subscripts': 'ijk, jil -> kl', 'skip_overflow': True},
+    {'shape_a': (3, 4, 2), 'shape_b': (4, 2, 3),
+     'subscripts': 'i...,...k->ki...', 'skip_overflow': True},
     {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
-     'subscripts': 'i..., ...k -> ki...', 'skip_overflow': True},
-    {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
-     'subscripts': 'ij..., ji... -> i...', 'skip_overflow': True},
+     'subscripts': 'ij...,ji...->i...', 'skip_overflow': True},
     # trace and tensordot and diagonal
     {'shape_a': (2, 3, 2, 4), 'shape_b': (3, 2, 2),
      'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
-    {'shape_a': (2, 3, 2, 4), 'shape_b': (4, 2, 2),
+    {'shape_a': (2, 4, 2, 3), 'shape_b': (3, 2, 4),
      'subscripts': 'i...ij,ji...->...j', 'skip_overflow': True},
 )
 class TestEinSumBinaryOperation(unittest.TestCase):

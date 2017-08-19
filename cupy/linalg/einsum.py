@@ -75,7 +75,7 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 
     assert len(set(input_subscript)) == len(input_subscript)
     assert len(set(output_subscript)) == len(output_subscript)
-    assert set(output_subscript).issubset(set(output_subscript))
+    assert set(output_subscript).issubset(set(input_subscript))
 
     input_subscript_excluded_at = input_subscript.replace('@', '')
 
@@ -147,17 +147,17 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
     for label_pos_output, label in enumerate(output_subscript):
         if label == '@':
             continue
-        moveaxis_sources.append(label_pos_output)
+        moveaxis_destinations.append(label_pos_output)
         label_pos_input = input_subscript.find(label)
         if ellipsis_pos == -1 or label_pos_input < ellipsis_pos:
-            moveaxis_destinations.append(label_pos_input)
+            moveaxis_sources.append(label_pos_input)
         else:
-            moveaxis_destinations.append(label_pos_input - len(input_subscript))
+            moveaxis_sources.append(label_pos_input - len(input_subscript))
 
     return _moveaxis(ioperand, moveaxis_sources, moveaxis_destinations)
 
 
-def calc_broadcasted_view(ioperands, subscripts):
+def move_broadcast_axes_to_front(ioperands, subscripts):
     broadcasted_operands = []
     broadcasted_subscripts = []
     for operand, subscript in zip(ioperands, subscripts):
@@ -195,7 +195,7 @@ def calc_combined_view(ioperands, subscripts):
     b_shape_stack = []
     is_first_operand = True
     for operand, subscript in zip(ioperands, subscripts):
-        if '@' == subscript[0]:
+        if subscript and '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
             a_shape = get_pi(operand.shape[:broadcasted_dims])
             if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
@@ -324,7 +324,7 @@ def einsum(*operands):
     if len(converted_inputs) >= 2:
         results = [view[0] for view in single_views]
         subscripts = [view[1] for view in single_views]
-        results, subscripts = calc_broadcasted_view(results, subscripts)
+        results, subscripts = move_broadcast_axes_to_front(results, subscripts)
         result, subscript = calc_combined_view(results, subscripts)
         result, subscript = calc_single_view(result, subscript)
     else:
@@ -332,3 +332,15 @@ def einsum(*operands):
 
     result, subscript = calc_summed_view(result, subscript, output_subscript)
     return calc_transposed_view(result, subscript, output_subscript)
+
+
+if __name__ == '__main__':
+    # a = numpy.arange(24).reshape(2, 3, 4)
+    # c = einsum('ijk->kij', a)
+    # ref = numpy.einsum('ijk->kij', a)
+    # print((c == ref).all())
+
+    a = numpy.arange(16).reshape(2, 2, 2, 2)
+    c = einsum('ijij->ij', a)
+    ref = numpy.einsum('ijij->ij', a)
+    print((c == ref).all())
