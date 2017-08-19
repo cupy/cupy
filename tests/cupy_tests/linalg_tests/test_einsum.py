@@ -60,6 +60,10 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum('ij', xp.array([0, 0]))
 
     @testing.numpy_cupy_raises()
+    def test_too_many_dimension3(self, xp):
+        xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3))
+
+    @testing.numpy_cupy_raises()
     def test_too_few_dimension(self, xp):
         xp.einsum('i->i', xp.arange(6).reshape(2, 3))
 
