@@ -5,6 +5,7 @@ import string
 import numpy
 import six
 
+# import numpy as cupy
 import cupy
 
 
@@ -312,9 +313,9 @@ def einsum(*operands):
             raise ValueError('operand has more dimensions than subscripts'
                              ' given in einstein sum, but no \'...\' ellipsis'
                              ' provided to broadcast the extra dimensions.')
-        if '@' in subscript and re.match('/^[a-zA-Z]*@[a-zA-Z]*?$/',
-                                         subscript):
-            raise ValueError('Two or more \'...\' ellipsis can\'t be used for'
+        if '@' in subscript and not re.match('^[a-zA-Z]*@[a-zA-Z]*?$',
+                                             subscript):
+            raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
                              'one operand')
 
         result, subscript = calc_single_view(ioperand, subscript)
@@ -331,3 +332,8 @@ def einsum(*operands):
 
     result, subscript = calc_summed_view(result, subscript, output_subscript)
     return calc_transposed_view(result, subscript, output_subscript)
+
+
+if __name__ == '__main__':
+    a = numpy.arange(16).reshape(2, 2, 2, 2)
+    einsum('...ii->...i', a)
