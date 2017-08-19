@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 
-import cupy
 from cupy import testing
 
 
@@ -139,7 +138,7 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...'},  # trace
-     {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
@@ -176,6 +175,32 @@ class TestEinSumUnaryOperation(unittest.TestCase):
      'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
     {'shape_a': (2, 4, 2, 3), 'shape_b': (3, 2, 4),
      'subscripts': 'i...ij,ji...->...j', 'skip_overflow': True},
+
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,j...->ij...', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,...j->ij...', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,j->ij...', 'skip_overflow': False},
+
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik...,k...->i...', 'skip_overflow': False},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik...,...kj->i...j', 'skip_overflow': False},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': '...k,kj', 'skip_overflow': False},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik,k...->i...', 'skip_overflow': False},
+
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': 'ijkl,k', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': '...kl,k', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': '...kl,k...', 'skip_overflow': False},
+
+    {'shape_a': (1, 1, 1, 2, 3, 4), 'shape_b': (2, 3, 4, 5),
+     'subscripts': '...lmn,lmno->...o', 'skip_overflow': False},
 )
 class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)

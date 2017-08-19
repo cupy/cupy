@@ -5,6 +5,7 @@ import string
 import numpy
 import six
 
+# import numpy as cupy
 import cupy
 
 
@@ -141,21 +142,25 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
     if input_subscript == output_subscript:
         return ioperand
 
-    moveaxis_sources = []
-    moveaxis_destinations = []
-    ellipsis_pos = input_subscript.find('@')
+    source_axes = []
+    destination_axes = []
+    ellipsis_pos_input = input_subscript.find('@')
+    ellipsis_pos_output = output_subscript.find('@')
 
     for label_pos_output, label in enumerate(output_subscript):
         if label == '@':
             continue
-        moveaxis_destinations.append(label_pos_output)
-        label_pos_input = input_subscript.find(label)
-        if ellipsis_pos == -1 or label_pos_input < ellipsis_pos:
-            moveaxis_sources.append(label_pos_input)
+        if ellipsis_pos_input == -1 or label_pos_output < ellipsis_pos_output:
+            destination_axes.append(label_pos_output)
         else:
-            moveaxis_sources.append(label_pos_input - len(input_subscript))
+            destination_axes.append(label_pos_output - len(output_subscript))
+        label_pos_input = input_subscript.find(label)
+        if ellipsis_pos_input == -1 or label_pos_input < ellipsis_pos_input:
+            source_axes.append(label_pos_input)
+        else:
+            source_axes.append(label_pos_input - len(input_subscript))
 
-    return _moveaxis(ioperand, moveaxis_sources, moveaxis_destinations)
+    return _moveaxis(ioperand, source_axes, destination_axes)
 
 
 def move_broadcast_axes_to_front(ioperands, subscripts):
@@ -164,11 +169,10 @@ def move_broadcast_axes_to_front(ioperands, subscripts):
     for operand, subscript in zip(ioperands, subscripts):
         if '@' in subscript:
             ellipsis_pos = subscript.find('@')
-            ellipsis_rpos = subscript.rfind('@') - 1
-            source_axes = range(ellipsis_pos)
-            destination_axes = [i - ellipsis_rpos for i in range(-ellipsis_pos, 0)]
+            source_axes = list(range(ellipsis_pos))
+            destination_axes = [i - len(subscript) + 1 for i in source_axes]
             operand = _moveaxis(operand, source_axes, destination_axes)
-            subscript = '@' + subscript.replace('@', '')
+            subscript = subscript[ellipsis_pos:] + subscript[:ellipsis_pos]
         broadcasted_operands.append(operand)
         broadcasted_subscripts.append(subscript)
     return broadcasted_operands, broadcasted_subscripts
@@ -191,10 +195,10 @@ def calc_combined_view(ioperands, subscripts):
     for operand, subscript in zip(ioperands, subscripts):
         if subscript and '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
-            a_shape = numpy.prod(operand.shape[:broadcasted_dims])
+            a_shape = numpy.prod(operand.shape[:broadcasted_dims], dtype=numpy.int8)
             if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
                 a_shape_stack = list(operand.shape[:broadcasted_dims])
-            b_shape = numpy.prod(operand.shape[broadcasted_dims:])
+            b_shape = numpy.prod(operand.shape[broadcasted_dims:], dtype=numpy.int8)
             b_shape_stack += operand.shape[broadcasted_dims:]
             operand = operand.reshape(a_shape, 1, b_shape)
         else:
@@ -334,7 +338,8 @@ if __name__ == '__main__':
     # ref = numpy.einsum('ijk->kij', a)
     # print((c == ref).all())
 
-    a = numpy.arange(16).reshape(2, 2, 2, 2)
-    c = einsum('ijij->ij', a)
-    ref = numpy.einsum('ijij->ij', a)
+    a = numpy.arange(12).reshape(4, 3)
+    b = numpy.arange(6).reshape(3, 2)
+    c = einsum('ik...,k...->i...', a, b)
+    ref = numpy.einsum('ik...,k...->i...', a, b)
     print((c == ref).all())
