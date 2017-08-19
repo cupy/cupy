@@ -4,9 +4,9 @@ import cupy
 _preamble_atomic_add = '''
 #if __CUDA_ARCH__ < 600
 __device__ double atomicAdd(double* address, double val) {
-    unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
+    unsigned long long* address_as_ull =
+                                          (unsigned long long*)address;
+    unsigned long long old = *address_as_ull, assumed;
     do {
         assumed = old;
         old = atomicCAS(address_as_ull, assumed,
