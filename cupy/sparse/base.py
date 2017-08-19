@@ -177,6 +177,12 @@ class spmatrix(object):
 
     @property
     def A(self):
+        """Dense ndarray representation of this matrix.
+
+        This property is equivalent to :meth:`~cupy.sparse.spmatrix.toarray`
+        method.
+
+        """
         return self.toarray()
 
     @property

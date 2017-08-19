@@ -22,6 +22,27 @@ def _make(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make2(xp, sp, dtype):
+    data = xp.array([1, 2, 3, 4], dtype)
+    row = xp.array([0, 1, 1, 2], 'i')
+    col = xp.array([2, 1, 2, 2], 'i')
+    # 0, 0, 1, 0
+    # 0, 2, 3, 0
+    # 0, 0, 4, 0
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
+def _make3(xp, sp, dtype):
+    data = xp.array([1, 2, 3, 4, 5], dtype)
+    row = xp.array([0, 1, 1, 3, 3], 'i')
+    col = xp.array([0, 2, 1, 0, 2], 'i')
+    # 1, 0, 0
+    # 0, 3, 2
+    # 0, 0, 0
+    # 4, 0, 5
+    return sp.coo_matrix((data, (row, col)), shape=(4, 3))
+
+
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 4, 3, 2], dtype)
     row = xp.array([0, 2, 1, 0], 'i')
@@ -47,6 +68,16 @@ def _make_empty(xp, sp, dtype):
     row = xp.array([], 'i')
     col = xp.array([], 'i')
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
+def _make_square(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    row = xp.array([0, 0, 1, 2], 'i')
+    col = xp.array([0, 2, 0, 2], 'i')
+    # 0, 1, 0
+    # 2, 0, 0
+    # 0, 0, 3
+    return sp.coo_matrix((data, (row, col)), shape=(3, 3))
 
 
 def _make_shape(xp, sp, dtype):
@@ -292,6 +323,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_A(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.A
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsc().toarray()
@@ -300,6 +336,328 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    # dot
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_csr_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = sp.csr_matrix((5, 3), dtype=self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_vector(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_vector_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(5).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+        return m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_matrix_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_dot_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        m.dot(x)
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_dot_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.dot(None)
+
+    # __add__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m + 0).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_add_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m + 1
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype)
+        return (m + n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_coo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype).tocoo()
+        return (m + n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_add_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return m + n
+
+    # __radd__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (0 + m).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_radd_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        1 + m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_radd_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return n + m
+
+    # __sub__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m - 0).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_sub_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m - 1
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype)
+        return (m - n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_coo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = _make2(xp, sp, self.dtype).tocoo()
+        return (m - n).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sub_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return m - n
+
+    # __rsub__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rsub_zero(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (0 - m).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rsub_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        1 - m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rsub_dense(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = xp.arange(12).reshape(3, 4)
+        return n - m
+
+    # __mul__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m * 2.0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (m * numpy.dtype(self.dtype).type(2.0)).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_mul_csr_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = sp.csr_matrix((5, 3), dtype=self.dtype)
+        m * x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return (m * x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        return m * x
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_mul_dense_vector_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(5).astype(self.dtype)
+        m * x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+        return (m * x)
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_mul_dense_matrix_invalid_shape(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+        m * x
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_mul_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        m * x
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_mul_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m * None
+
+    # __rmul__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (2.0 * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return (numpy.dtype(self.dtype).type(2.0) * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_csr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype)
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_csc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocsc()
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_sparse(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = _make3(xp, sp, self.dtype).tocoo()
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return (x * m).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_dense_matrix(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(12).reshape(4, 3).astype(self.dtype)
+        return x * m
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rmul_dense_ndim3(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        x * m
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_rmul_unsupported(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        None * m
+
+    # __pow__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_0(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 0).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_1(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 1).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_2(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 2).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_pow_3(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        return (m ** 3).toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_pow_neg(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** -1
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
@@ -341,8 +699,7 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
         self.assertEqual(m.nnz, 0)
-        a = m.toarray()
-        return a
+        return m.toarray()
 
 
 @testing.parameterize(*testing.product({

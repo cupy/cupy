@@ -52,6 +52,23 @@ class TestDiaMatrix(unittest.TestCase):
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 5)
 
+    @unittest.skipUnless(scipy_available, 'requires scipy')
+    def test_str(self):
+        self.assertEqual(str(self.m), '''  (1, 1)\t1.0
+  (2, 2)\t2.0
+  (1, 0)\t3.0
+  (2, 1)\t4.0''')
+
+    def test_toarray(self):
+        m = self.m.toarray()
+        expect = [
+            [0, 0, 0, 0],
+            [3, 1, 0, 0],
+            [0, 4, 2, 0]
+        ]
+        self.assertTrue(m.flags.c_contiguous)
+        cupy.testing.assert_allclose(m, expect)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
@@ -111,3 +128,28 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_nnz_axis_not_none(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.getnnz(axis=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_toarray(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_A(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.A
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsc(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocsc().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_transpose(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.transpose().toarray()

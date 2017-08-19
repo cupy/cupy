@@ -250,12 +250,15 @@ _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
+    'c': 3,
 }
 
 _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
+    numpy.dtype('complex128'): 'complex<double>',
+    numpy.dtype('complex64'): 'complex<float>',
     numpy.dtype('int64'): 'long long',
     numpy.dtype('int32'): 'int',
     numpy.dtype('int16'): 'short',
@@ -556,6 +559,8 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
         post_code += ''.join(_get_declaration_from_op(_) for _ in post_ops)
         post_code += '\n'.join(_get_operation_code(_) for _ in post_ops)
         post_code = _get_post_code(post_vars, post_code, post_out)
+        post_code += (
+            "typedef %s type_out0_raw;\n" % _dtype_to_ctype[reduce_type])
         post_code += _get_fix_code(post_type, reduce_type, reduce_op[2][2])
 
         submodules = _gather_submodules(op_list + post_ops)
