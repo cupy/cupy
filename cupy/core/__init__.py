@@ -37,11 +37,13 @@ from cupy.core.core import left_shift  # NOQA
 from cupy.core.core import less  # NOQA
 from cupy.core.core import less_equal  # NOQA
 from cupy.core.core import matmul  # NOQA
+from cupy.core.core import moveaxis  # NOQA
 from cupy.core.core import multiply  # NOQA
 from cupy.core.core import nanmax  # NOQA
 from cupy.core.core import nanmin  # NOQA
 from cupy.core.core import ndarray  # NOQA
 from cupy.core.core import negative  # NOQA
+from cupy.core.core import normalize_axis_tuple  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import power  # NOQA
 from cupy.core.core import real  # NOQA

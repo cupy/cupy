@@ -2166,6 +2166,48 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 
+def has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
+    for elem in source:
+        if elem == n:
+            return True
+    return False
+
+
+def normalize_axis_tuple(vector.vector[Py_ssize_t] axis, ndim):
+    """Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    """
+    for ax in axis:
+        if ax >= ndim or ax < -ndim:
+            raise numpy.AxisError('axis {} is out of bounds for array of '
+                                  'dimension {}'.format(ax, ndim))
+    return tuple((ax % ndim) for ax in axis)
+
+
+cpdef ndarray moveaxis(ndarray a, vector.vector[Py_ssize_t] source,
+                       vector.vector[Py_ssize_t] destination):
+
+    if len(source) != len(destination):
+        raise ValueError('`source` and `destination` arguments must have '
+                         'the same number of elements')
+
+    source = normalize_axis_tuple(source, a.ndim)
+    destination = normalize_axis_tuple(destination, a.ndim)
+
+    cdef vector.vector[Py_ssize_t] order
+    cdef Py_ssize_t n = 0
+    for i in range(a.ndim):
+        n = <Py_ssize_t>i
+        if not has_element(source, n):
+            order.push_back(n)
+
+    for i in range(len(source)):
+        n = <Py_ssize_t>i
+        order.insert(order.begin() + destination[n], source[n])
+
+    return a.transpose(order)
+
+
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=0):
     cdef Py_ssize_t i, ndim = a.ndim
     cdef vector.vector[Py_ssize_t] axes

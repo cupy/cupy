@@ -10,6 +10,11 @@ class TestTranspose(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.numpy_cupy_array_equal()
+    def test_moveaxis(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, [0, 1], [1, 2])
+
+    @testing.numpy_cupy_array_equal()
     def test_rollaxis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.rollaxis(a, 2)
