@@ -1,44 +1,48 @@
+from libcpp cimport vector
+
 import atexit
 import threading
 import warnings
 
 import numpy
-import six
+
+from cupy.core cimport core
+from cupy.cuda cimport cudnn
+from cupy.cuda cimport device
+from cupy.cuda cimport memory
 
 import cupy
 from cupy.core import internal
-from cupy import cuda
-from cupy.cuda import cudnn
-from cupy.cuda import device
-from cupy.cuda import memory
+from cupy.cuda import cudnn as py_cudnn
 
 
-_cudnn_version = cudnn.getVersion()
-_thread_local = threading.local()
+cdef int _cudnn_version = cudnn.getVersion()
+cdef _thread_local = threading.local()
 
-_handles = {}
+cdef vector.vector[size_t] _handle
 
 
-def get_handle():
-    dev = cuda.get_device_id()
-    if dev in _handles:
-        return _handles[dev]
-    handle = cudnn.create()
-    _handles[dev] = handle
-    return handle
+cpdef size_t get_handle() except *:
+    dev = device.get_device_id()
+    if _handle.size() <= dev:
+        _handle.resize(dev + 1, 0)
+    ret = _handle[dev]
+    if ret != 0:
+        return ret
+    ret = cudnn.create()
+    _handle[dev] = ret
+    return ret
 
 
 @atexit.register
 def reset_handles():
-    global _handles
-    handles = _handles
-    _handles = {}
-
-    for handle in six.itervalues(handles):
+    cdef list handles = _handle
+    _handle.clear()
+    for handle in handles:
         cudnn.destroy(handle)
 
 
-def _get_nd_tensor_cache():
+cpdef dict _get_nd_tensor_cache():
     if not hasattr(_thread_local, 'cudnn_nd_tensor_cache'):
         _thread_local.cudnn_nd_tensor_cache = {}
     return _thread_local.cudnn_nd_tensor_cache
@@ -56,35 +60,99 @@ class Descriptor(object):
             self.value = None
 
 
-def get_data_type(dtype):
-    if dtype.type == numpy.float32:
+cpdef get_data_type(dtype):
+    t = dtype.type
+    if t is numpy.float32:
         return cudnn.CUDNN_DATA_FLOAT
-    elif dtype.type == numpy.float64:
+    elif t is numpy.float64:
         return cudnn.CUDNN_DATA_DOUBLE
-    elif dtype.type == numpy.float16:
+    elif t is numpy.float16:
         return cudnn.CUDNN_DATA_HALF
     else:
         raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
 
 
-def _to_ctypes_array(tup, dtype=numpy.intc):
-    return numpy.array(tup, dtype=dtype).ctypes
+cpdef _create_tensor_nd_descriptor(
+        size_t desc, core.ndarray arr, int data_type):
+    cdef vector.vector[int] c_shape, c_strides
+    itemsize = arr.itemsize
+    for s in arr.strides:
+        c_strides.push_back(s // itemsize)
+    c_shape = arr.shape
+    cudnn.setTensorNdDescriptor(
+        desc, data_type, arr.ndim, <size_t>&c_shape[0], <size_t>&c_strides[0])
 
 
-def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
-    desc = Descriptor(cudnn.createTensorDescriptor(),
-                      cudnn.destroyTensorDescriptor)
+cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr, int format):
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
     if arr.ndim == 4:
-        cudnn.setTensor4dDescriptor(desc.value, format, data_type, *arr.shape)
+        n, c, h, w = arr.shape
+        cudnn.setTensor4dDescriptor(desc, format, data_type, n, c, h, w)
     else:
-        strides = [s // arr.itemsize for s in arr.strides]
-        c_shape = _to_ctypes_array(arr.shape)
-        c_strides = _to_ctypes_array(strides)
-        cudnn.setTensorNdDescriptor(desc.value, data_type, arr.ndim,
-                                    c_shape.data, c_strides.data)
+        _create_tensor_nd_descriptor(desc, arr, data_type)
+
+
+cpdef _create_filter_descriptor(
+        size_t desc, core.ndarray arr, int format=cudnn.CUDNN_TENSOR_NCHW):
+    cdef vector.vector[int] c_shape
+    data_type = get_data_type(arr.dtype)
+    if arr.ndim == 4:
+        n, c, h, w = arr.shape
+        cudnn.setFilter4dDescriptor_v4(
+            desc, data_type, format, n, c, h, w)
+    else:
+        c_shape = arr.shape
+        cudnn.setFilterNdDescriptor_v4(
+            desc, data_type, format, arr.ndim, <size_t>&c_shape[0])
+
+
+cpdef _create_convolution_descriptor(
+        desc, pad, stride, dtype, mode, dilation, int group,
+        bint use_tensor_core):
+    cdef int d0, d1, p0, p1, s0, s1
+    cdef vector.vector[int] c_pad, c_stride, c_dilation
+    ndim = len(pad)
+    if ndim != len(stride):
+        raise ValueError('pad and stride must be of same length')
+
+    compute_type = get_data_type(dtype)
+    # TODO(takagi) Temporarily use computing precision of FP32 for
+    #     storing precision of FP16.
+    if compute_type == cudnn.CUDNN_DATA_HALF:
+        compute_type = cudnn.CUDNN_DATA_FLOAT
+
+    if ndim != 2:
+        c_pad = pad
+        c_stride = stride
+        c_dilation.assign(ndim, 1)
+        cudnn.setConvolutionNdDescriptor_v3(
+            desc, ndim, <size_t>&c_pad[0], <size_t>&c_stride[0],
+            <size_t>&c_dilation[0], mode, compute_type)
+        return
+
+    d0, d1 = dilation
+    p0, p1 = pad
+    s0, s1 = stride
+    if _cudnn_version < 6000 and (d0 != 1 or d1 != 1):
+        raise ValueError('dilation must be one when cudnn < 6.0')
+    if _cudnn_version >= 5000:
+        cudnn.setConvolution2dDescriptor_v5(
+            desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
+        if _cudnn_version >= 7000 and use_tensor_core:
+            math_type = cudnn.CUDNN_TENSOR_OP_MATH
+            cudnn.setConvolutionMathType(desc, math_type)
+            if group > 1:
+                cudnn.setConvolutionGroupCount(desc.value, group)
+    else:
+        cudnn.setConvolution2dDescriptor_v4(desc, p0, p1, s0, s1, 1, 1, mode)
+
+
+def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
+    desc = Descriptor(cudnn.createTensorDescriptor(),
+                      py_cudnn.destroyTensorDescriptor)
+    _create_tensor_descriptor(desc.value, arr, format)
     return desc
 
 
@@ -94,14 +162,12 @@ def create_uninitialized_tensor_descriptor():
     Create a cudnnCreateTensorDescriptor_t that is not yet initialized.
     This is used by the batch normalization functions.
     """
-    desc = Descriptor(cudnn.createTensorDescriptor(),
-                      cudnn.destroyTensorDescriptor)
-    return desc
+    return Descriptor(cudnn.createTensorDescriptor(),
+                      py_cudnn.destroyTensorDescriptor)
 
 
-def create_tensor_nd_descriptor(arr):
-    desc = Descriptor(cudnn.createTensorDescriptor(),
-                      cudnn.destroyTensorDescriptor)
+def create_tensor_nd_descriptor(core.ndarray arr):
+    cdef dict cache
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
@@ -113,28 +179,17 @@ def create_tensor_nd_descriptor(arr):
 
     # numpy's stride is defined in bytes, but cudnn's stride is defined in
     # size of element
-    strides = [s // arr.itemsize for s in arr.strides]
-
-    c_shape = _to_ctypes_array(shape)
-    c_strides = _to_ctypes_array(strides)
-    cudnn.setTensorNdDescriptor(desc.value, data_type,
-                                arr.ndim, c_shape.data, c_strides.data)
-    cache = _get_nd_tensor_cache()
+    desc = Descriptor(cudnn.createTensorDescriptor(),
+                      py_cudnn.destroyTensorDescriptor)
+    _create_tensor_nd_descriptor(desc.value, arr, data_type)
     cache[key] = desc
     return desc
 
 
 def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createFilterDescriptor(),
-                      cudnn.destroyFilterDescriptor)
-    data_type = get_data_type(arr.dtype)
-    if arr.ndim == 4:
-        cudnn.setFilter4dDescriptor_v4(desc.value, data_type, format,
-                                       *arr.shape)
-    else:
-        c_shape = _to_ctypes_array(arr.shape)
-        cudnn.setFilterNdDescriptor_v4(desc.value, data_type, format,
-                                       arr.ndim, c_shape.data)
+                      py_cudnn.destroyFilterDescriptor)
+    _create_filter_descriptor(desc.value, arr, format)
     return desc
 
 
@@ -144,125 +199,109 @@ def create_convolution_descriptor(pad, stride, dtype,
                                   use_tensor_core=False,
                                   group=1):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
-                      cudnn.destroyConvolutionDescriptor)
-    ndim = len(pad)
-    if ndim != len(stride):
-        raise ValueError('pad and stride must be of same length')
-
-    if ndim == 2:
-        if _cudnn_version < 6000:
-            if dilation[0] != 1 or dilation[1] != 1:
-                raise ValueError('dilation must be one when cudnn < 6.0')
-        if _cudnn_version >= 5000:
-            compute_type = get_data_type(dtype)
-            # TODO(takagi) Temporarily use computing precision of FP32 for
-            #     storing precision of FP16.
-            if dtype == numpy.float16:
-                compute_type = cudnn.CUDNN_DATA_FLOAT
-            cudnn.setConvolution2dDescriptor_v5(
-                desc.value, pad[0], pad[1], stride[0], stride[1],
-                dilation[0], dilation[1], mode, compute_type)
-
-            if _cudnn_version >= 7000:
-                if use_tensor_core:
-                    math_type = cudnn.CUDNN_TENSOR_OP_MATH
-                    cudnn.setConvolutionMathType(desc.value, math_type)
-                if group > 1:
-                    cudnn.setConvolutionGroupCount(desc.value, group)
-        else:
-            cudnn.setConvolution2dDescriptor_v4(
-                desc.value, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
-    else:
-        c_pad = _to_ctypes_array(pad)
-        c_stride = _to_ctypes_array(stride)
-        c_dilation = _to_ctypes_array((1,) * ndim)
-        compute_type = get_data_type(dtype)
-        # TODO(takagi) Temporarily use computing precision of FP32 for
-        #     storing precision of FP16.
-        if dtype == numpy.float16:
-            compute_type = cudnn.CUDNN_DATA_FLOAT
-        cudnn.setConvolutionNdDescriptor_v3(
-            desc.value, ndim, c_pad.data, c_stride.data, c_dilation.data,
-            mode, compute_type)
-
+                      py_cudnn.destroyConvolutionDescriptor)
+    _create_convolution_descriptor(
+        desc.value, pad, stride, dtype, mode, dilation, group, use_tensor_core)
     return desc
 
 
 def create_pooling_descriptor(ksize, stride, pad, mode):
-    desc = Descriptor(cudnn.createPoolingDescriptor(),
-                      cudnn.destroyPoolingDescriptor)
+    cdef vector.vector[int] c_ksize, c_pad, c_stride
     ndim = len(ksize)
     if ndim != len(stride) or ndim != len(pad):
         raise ValueError('ksize, stride, and pad must be of same length')
-
+    desc = Descriptor(cudnn.createPoolingDescriptor(),
+                      py_cudnn.destroyPoolingDescriptor)
     if ndim == 2:
         cudnn.setPooling2dDescriptor_v4(
             desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ksize[0],
             ksize[1], pad[0], pad[1], stride[0], stride[1])
     else:
-        c_ksize = _to_ctypes_array(ksize)
-        c_pad = _to_ctypes_array(pad)
-        c_stride = _to_ctypes_array(stride)
+        c_ksize = ksize
+        c_pad = pad
+        c_stride = stride
         cudnn.setPoolingNdDescriptor_v4(
             desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
-            c_ksize.data, c_pad.data, c_stride.data)
+            <size_t>&c_ksize[0], <size_t>&c_pad[0], <size_t>&c_stride[0])
 
     return desc
 
 
-def _as4darray(arr):
+cpdef core.ndarray _as4darray(core.ndarray arr):
     if arr.ndim == 0:
         return arr.reshape(1, 1, 1, 1)
+    return arr.reshape(arr.shape[0], -1, 1, 1)
+
+
+def activation_forward(core.ndarray x, int mode):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    if x.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
     else:
-        return arr.reshape(arr.shape[0], -1, 1, 1)
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
 
-
-def activation_forward(x, mode):
-    x = cupy.ascontiguousarray(x)
+    x = core.ascontiguousarray(x)
     y = cupy.empty_like(x)
+    x = _as4darray(x)
 
-    dtype = 'd' if x.dtype == 'd' else 'f'
-    one = numpy.array(1, dtype=dtype).ctypes
-    zero = numpy.array(0, dtype=dtype).ctypes
     handle = get_handle()
-    x_mat = _as4darray(x)
-    desc = create_tensor_descriptor(x_mat)
-    act_desc = Descriptor(cudnn.createActivationDescriptor(),
-                          cudnn.destroyActivationDescriptor)
-    cudnn.setActivationDescriptor(
-        act_desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
-    cudnn.activationForward_v4(
-        handle, act_desc.value, one.data, desc.value, x_mat.data.ptr,
-        zero.data, desc.value, y.data.ptr)
+    desc = cudnn.createTensorDescriptor()
+    act_desc = cudnn.createActivationDescriptor()
+    try:
+        _create_tensor_descriptor(desc, x, cudnn.CUDNN_TENSOR_NCHW)
+        cudnn.setActivationDescriptor(
+            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+        cudnn.activationForward_v4(
+            handle, act_desc, one, desc, x.data.ptr,
+            zero, desc, y.data.ptr)
+    finally:
+        cudnn.destroyActivationDescriptor(act_desc)
+        cudnn.destroyTensorDescriptor(desc)
     return y
 
 
-def activation_backward(x, y, gy, mode):
-    x = cupy.ascontiguousarray(x)
-    gy = cupy.ascontiguousarray(gy)
+def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
+                        int mode):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    if x.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
+    else:
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
 
     gx = cupy.empty_like(x)
-    dtype = 'd' if x.dtype == 'd' else 'f'
-    one = numpy.array(1, dtype=dtype).ctypes
-    zero = numpy.array(0, dtype=dtype).ctypes
-    handle = get_handle()
+    x = core.ascontiguousarray(x)
+    gy = core.ascontiguousarray(gy)
     y_mat = _as4darray(y)
-    desc = create_tensor_descriptor(y_mat)
-    act_desc = Descriptor(cudnn.createActivationDescriptor(),
-                          cudnn.destroyActivationDescriptor)
-    cudnn.setActivationDescriptor(
-        act_desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
-    cudnn.activationBackward_v4(
-        handle, act_desc.value, one.data, desc.value, y.data.ptr,
-        desc.value, gy.data.ptr, desc.value, x.data.ptr,
-        zero.data, desc.value, gx.data.ptr)
+
+    handle = get_handle()
+    desc = cudnn.createTensorDescriptor()
+    act_desc = cudnn.createActivationDescriptor()
+    try:
+        _create_tensor_descriptor(desc, y_mat, cudnn.CUDNN_TENSOR_NCHW)
+        cudnn.setActivationDescriptor(
+            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+        cudnn.activationBackward_v4(
+            handle, act_desc, one, desc, y.data.ptr,
+            desc, gy.data.ptr, desc, x.data.ptr,
+            zero, desc, gx.data.ptr)
+    finally:
+        cudnn.destroyActivationDescriptor(act_desc)
+        cudnn.destroyTensorDescriptor(desc)
     return gx
 
 
 def create_dropout_descriptor(
         handle, dropout, states, state_size_in_bytes, seed):
     desc = Descriptor(cudnn.createDropoutDescriptor(),
-                      cudnn.destroyDropoutDescriptor)
+                      py_cudnn.destroyDropoutDescriptor)
     cudnn.setDropoutDescriptor(desc.value, handle, dropout,
                                states, state_size_in_bytes, seed)
     return desc
@@ -276,7 +315,7 @@ def set_dropout_descriptor(desc, handle, dropout):
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),
-                      cudnn.destroyRNNDescriptor)
+                      py_cudnn.destroyRNNDescriptor)
     if _cudnn_version >= 7000:
         _handle = get_handle()
         _algo = cudnn.CUDNN_RNN_ALGO_STANDARD
@@ -291,30 +330,35 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
 
 
 def get_rnn_lin_layer_matrix_params(
-        handle, rnn_desc, layer, x_desc, w_desc, w, lin_layer_id):
-    mat_desc = Descriptor(cudnn.createFilterDescriptor(),
-                          cudnn.destroyFilterDescriptor)
-    ptr = numpy.array(0, dtype=numpy.intp)
-    cudnn.getRNNLinLayerMatrixParams(
-        handle, rnn_desc.value, layer, x_desc.value, w_desc.value, w.data.ptr,
-        lin_layer_id, mat_desc.value, ptr.ctypes.data)
+        handle, rnn_desc, layer, x_desc, w_desc, core.ndarray w, lin_layer_id):
+    cdef size_t ptr = 0
+    w_data_ptr = w.data.ptr
+    mat_desc = cudnn.createFilterDescriptor()
+    try:
+        cudnn.getRNNLinLayerMatrixParams(
+            handle, rnn_desc.value, layer, x_desc.value, w_desc.value,
+            w.data.ptr, lin_layer_id, mat_desc, <size_t>&ptr)
+        _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc, 3)
+    finally:
+        cudnn.destroyFilterDescriptor(mat_desc)
     offset = (ptr - w.data.ptr) // 4
-    _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc.value, 3)
     size = internal.prod(dim)
     mat = w[offset: offset + size]
     return mat
 
 
 def get_rnn_lin_layer_bias_params(
-        handle, rnn_desc, layer, x_desc, w_desc, w, lin_layer_id):
-    bias_desc = Descriptor(cudnn.createFilterDescriptor(),
-                           cudnn.destroyFilterDescriptor)
-    ptr = numpy.array(0, dtype=numpy.intp)
-    cudnn.getRNNLinLayerBiasParams(
-        handle, rnn_desc.value, layer, x_desc.value, w_desc.value, w.data.ptr,
-        lin_layer_id, bias_desc.value, ptr.ctypes.data)
+        handle, rnn_desc, layer, x_desc, w_desc, core.ndarray w, lin_layer_id):
+    cdef size_t ptr = 0
+    bias_desc = cudnn.createFilterDescriptor()
+    try:
+        cudnn.getRNNLinLayerBiasParams(
+            handle, rnn_desc.value, layer, x_desc.value, w_desc.value,
+            w.data.ptr, lin_layer_id, bias_desc, <size_t>&ptr)
+        _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc, 3)
+    finally:
+        cudnn.destroyFilterDescriptor(bias_desc)
     offset = (ptr - w.data.ptr) // 4
-    _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc.value, 3)
     size = internal.prod(dim)
     bias = w[offset: offset + size]
     return bias
@@ -330,7 +374,7 @@ def create_dropout_states(handle):
 
 def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
     desc = Descriptor(cudnn.createSpatialTransformerDescriptor(),
-                      cudnn.destroySpatialTransformerDescriptor)
+                      py_cudnn.destroySpatialTransformerDescriptor)
     data_type = get_data_type(dtype)
 
     cudnn.setSpatialTransformerDescriptor(
