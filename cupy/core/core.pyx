@@ -3026,8 +3026,13 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                         Py_ssize_t axis2=1):
-    axis1 = axis1 % a.ndim
-    axis2 = axis2 % a.ndim
+    if (axis1 >= a.ndim or abs(axis2) >= a.ndim or
+            axis1 < - a.ndim or axis2 < - a.ndim):
+        raise ValueError('axis1(={0}) and axis2(={1}) must be within range '
+                         '(ndim={2})'.format(axis1, axis2, a.ndim))
+
+    axis1 %= a.ndim
+    axis2 %= a.ndim
     if axis1 < axis2:
         min_axis, max_axis = axis1, axis2
     else:
