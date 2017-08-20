@@ -317,6 +317,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.getnnz()
 
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_asfptype(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.asfptype().toarray()
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

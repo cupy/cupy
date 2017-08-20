@@ -337,6 +337,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         len(m)
 
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_asfptype(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.asfptype().toarray()
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = _make(xp, sp, self.dtype)
