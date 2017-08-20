@@ -3,6 +3,8 @@ import shutil
 import tempfile
 import unittest
 
+import six
+
 from cupy import testing
 
 import example_test
@@ -13,8 +15,8 @@ class TestGMM(unittest.TestCase):
 
     def test_gmm(self):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')
-        self.assertRegexpMatches(
-            output.decode('utf-8'), r'''Running CPU\.\.\.
+        six.assertRegex(
+            self, output.decode('utf-8'), r'''Running CPU\.\.\.
 train_accuracy : [0-9\.]+
 test_accuracy : [0-9\.]+
  CPU :  [0-9\.]+ sec
