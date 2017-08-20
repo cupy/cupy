@@ -171,9 +171,8 @@ def _get_compiler_base_options():
             matches = _match_output_lines(
                 stderrlines,
                 [
-                    b'^ERROR: No supported gcc/g\+\+ host compiler found, but '
-                    b'.* is available.$',
-
+                    b'^ERROR: No supported gcc/g\\+\\+ host compiler found, '
+                    b'but .* is available.$',
                     b'^ *Use \'nvcc (.*)\' to use that instead.$',
                 ])
             if matches is not None:
