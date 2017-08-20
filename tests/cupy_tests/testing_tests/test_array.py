@@ -41,7 +41,7 @@ def _convert_array(xs, array_module):
     elif array_module == 'all_cupy':
         return cupy.asarray(xs)
     else:
-        return [cupy.asarray(x) if numpy.random.random_integers(0, 1)
+        return [cupy.asarray(x) if numpy.random.randint(0, 2)
                 else x for x in xs]
 
 
