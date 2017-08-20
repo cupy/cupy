@@ -57,23 +57,23 @@ cpdef _get_simple_reduction_kernel(
             _REDUCE(256);
             __syncthreads();
             if (_block_stride <= 128) {
-              _REDUCE(128)
+              _REDUCE(128);
               __syncthreads();
               if (_block_stride <= 64) {
-                _REDUCE(64)
+                _REDUCE(64);
                 __syncthreads();
                 if (_block_stride <= 32) {
-                  _REDUCE(32)
+                  _REDUCE(32);
                   if (_block_stride <= 16) {
-                    _REDUCE(16)
+                    _REDUCE(16);
                     if (_block_stride <= 8) {
-                      _REDUCE(8)
+                      _REDUCE(8);
                       if (_block_stride <= 4) {
-                        _REDUCE(4)
+                        _REDUCE(4);
                         if (_block_stride <= 2) {
-                          _REDUCE(2)
+                          _REDUCE(2);
                           if (_block_stride <= 1) {
-                            _REDUCE(1)
+                            _REDUCE(1);
                           }
                         }
                       }
