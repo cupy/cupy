@@ -130,11 +130,18 @@ def get_dummy_labels(label_list):
 
 
 def einsum(*operands):
-    """Evaluates the Einstein summation convention on the operands.
+    """einsum(subscripts, *operands)
+
+    Evaluates the Einstein summation convention on the operands.
 
     Using the Einstein summation convention, many common multi-dimensional
     array operations can be represented in a simple fashion. This function
     provides a way to compute such summations.
+
+    .. note::
+
+       ``out``, ``order``, ``dtype``, ``casting`` and ``optimize`` options
+       are not supported.
 
     Args:
         subscripts (str): Specifies the subscripts for summation.
