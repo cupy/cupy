@@ -878,7 +878,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
 
     Returns:
          numpy.ndarray or cupy.ndarray:
-         The array filled with :math:`1, \cdots, N` with specified dtype
+         The array filled with :math:`1, \\cdots, N` with specified dtype
          with given shape, array module. Here, :math:`N` is
          the size of the returned array.
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
@@ -904,7 +904,7 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
 
     Returns:
          numpy.ndarray or cupy.ndarray:
-         The array filled with :math:`N, \cdots, 1` with specified dtype
+         The array filled with :math:`N, \\cdots, 1` with specified dtype
          with given shape, array module.
          Here, :math:`N` is the size of the returned array.
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
