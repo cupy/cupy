@@ -71,6 +71,7 @@ MODULES = [
         'name': 'cudnn',
         'file': [
             'cupy.cuda.cudnn',
+            'cupy.cudnn',
         ],
         'include': [
             'cudnn.h',
