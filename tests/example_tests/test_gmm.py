@@ -17,14 +17,14 @@ class TestGMM(unittest.TestCase):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')
         six.assertRegex(
             self, output.decode('utf-8'),
-                r'''Running CPU\.\.\.''' + os.linesep +
-                r'''train_accuracy : [0-9\.]+''' + os.linesep +
-                r'''test_accuracy : [0-9\.]+''' + os.linesep +
-                r''' CPU :  [0-9\.]+ sec''' + os.linesep +
-                r'''Running GPU\.\.\.''' + os.linesep +
-                r'''train_accuracy : [0-9\.]+''' + os.linesep +
-                r'''test_accuracy : [0-9\.]+''' + os.linesep +
-                r''' GPU :  [0-9\.]+ sec''' + os.linesep)
+            r'''Running CPU\.\.\.''' + os.linesep +
+            r'''train_accuracy : [0-9\.]+''' + os.linesep +
+            r'''test_accuracy : [0-9\.]+''' + os.linesep +
+            r''' CPU :  [0-9\.]+ sec''' + os.linesep +
+            r'''Running GPU\.\.\.''' + os.linesep +
+            r'''train_accuracy : [0-9\.]+''' + os.linesep +
+            r'''test_accuracy : [0-9\.]+''' + os.linesep +
+            r''' GPU :  [0-9\.]+ sec''' + os.linesep)
 
 
     def test_output_image(self):
