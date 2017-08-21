@@ -71,7 +71,7 @@ class TestNotAvailable(unittest.TestCase):
             os.environ['CUDA_VISIBLE_DEVICES'] = self.old
 
     def test_no_device_1(self):
-        os.environ['CUDA_VISIBLE_DEVICES'] = ''
+        os.environ['CUDA_VISIBLE_DEVICES'] = ' '
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
