@@ -26,6 +26,7 @@ class TestGMM(unittest.TestCase):
                 r'''test_accuracy : [0-9\.]+''' + os.linesep +
                 r''' GPU :  [0-9\.]+ sec''' + os.linesep)
 
+
     def test_output_image(self):
         dir_path = tempfile.mkdtemp()
         try:
