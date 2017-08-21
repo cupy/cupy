@@ -3,6 +3,8 @@ import shutil
 import tempfile
 import unittest
 
+import six
+
 from cupy import testing
 
 import example_test
@@ -14,8 +16,8 @@ class TestKmeans(unittest.TestCase):
     def test_default(self):
         output = example_test.run_example(
             'kmeans/kmeans.py', '-m', '1', '--num', '10')
-        self.assertRegexpMatches(
-            output.decode('utf-8'), r''' CPU :  [0-9\.]+ sec
+        six.assertRegex(
+            self, output.decode('utf-8'), r''' CPU :  [0-9\.]+ sec
  GPU :  [0-9\.]+ sec
 ''')
 
@@ -23,8 +25,8 @@ class TestKmeans(unittest.TestCase):
         output = example_test.run_example(
             'kmeans/kmeans.py', '-m', '1', '--num', '10',
             '--use-custom-kernel')
-        self.assertRegexpMatches(
-            output.decode('utf-8'), r''' CPU :  [0-9\.]+ sec
+        six.assertRegex(
+            self, output.decode('utf-8'), r''' CPU :  [0-9\.]+ sec
  GPU :  [0-9\.]+ sec
 ''')
 
