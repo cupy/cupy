@@ -18,13 +18,13 @@ class TestGMM(unittest.TestCase):
         six.assertRegex(
             self, output.decode('utf-8'),
                 r'''Running CPU\.\.\.''' + os.linesep +
-                '''train_accuracy : [0-9\.]+''' + os.linesep +
-                '''test_accuracy : [0-9\.]+''' + os.linesep +
-                ''' CPU :  [0-9\.]+ sec''' + os.linesep +
-                '''Running GPU\.\.\.''' + os.linesep +
-                '''train_accuracy : [0-9\.]+''' + os.linesep +
-                '''test_accuracy : [0-9\.]+''' + os.linesep +
-                ''' GPU :  [0-9\.]+ sec''' + os.linesep)
+                r'''train_accuracy : [0-9\.]+''' + os.linesep +
+                r'''test_accuracy : [0-9\.]+''' + os.linesep +
+                r''' CPU :  [0-9\.]+ sec''' + os.linesep +
+                r'''Running GPU\.\.\.''' + os.linesep +
+                r'''train_accuracy : [0-9\.]+''' + os.linesep +
+                r'''test_accuracy : [0-9\.]+''' + os.linesep +
+                r''' GPU :  [0-9\.]+ sec''' + os.linesep)
 
     def test_output_image(self):
         dir_path = tempfile.mkdtemp()
