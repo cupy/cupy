@@ -43,8 +43,6 @@ def calc_single_view(ioperand, subscript):
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
-        # The reason why we use normalize is #427 issue.
-        # This computation is redundant primarily.
         axes_to_diag = numpy.core.numeric.normalize_axis_tuple(axes_to_diag,
                                                                result.ndim)
         for axis in reversed(axes_to_diag[1:]):
