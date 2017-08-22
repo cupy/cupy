@@ -207,7 +207,8 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         if self.skip_overflow and (dtype_a in self.skip_dtypes or
@@ -219,14 +220,14 @@ class TestEinSumBinaryOperation(unittest.TestCase):
 
 
 class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_scalar_1(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
         return xp.asarray(xp.einsum(',i->', 3, a))
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_scalar_2(self, xp, dtype):
         shape_a = (2,)
