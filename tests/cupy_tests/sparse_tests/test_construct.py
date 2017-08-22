@@ -9,14 +9,16 @@ from cupy import testing
     'dtype': [numpy.float32, numpy.float64],
     'format': ['csr', 'csc', 'coo'],
     'm': [3],
-    'n': [None, 3],
+    'n': [None, 3, 2],
+    'k': [0, 1],
 }))
 @testing.with_requires('scipy')
 class TestEye(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eye(self, xp, sp):
-        x = sp.eye(self.m, n=self.n, dtype=self.dtype, format=self.format)
+        x = sp.eye(
+            self.m, n=self.n, k=self.k, dtype=self.dtype, format=self.format)
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
         return x.toarray()
