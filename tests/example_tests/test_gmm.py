@@ -17,10 +17,10 @@ class TestGMM(unittest.TestCase):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')
         six.assertRegex(
             self, output.decode('utf-8'),
-            '''Running CPU\\.\\.\\.\s+train_accuracy : [0-9\\.]+\s+''' +
-            '''test_accuracy : [0-9\\.]+\s+CPU :  [0-9\\.]+ sec\s+''' +
-            '''Running GPU\\.\\.\\.\s+train_accuracy : [0-9\\.]+\s+''' +
-            '''test_accuracy : [0-9\\.]+\s+GPU :  [0-9\\.]+ sec''')
+            'Running CPU\\.\\.\\.\s+train_accuracy : [0-9\\.]+\s+' +
+            'test_accuracy : [0-9\\.]+\s+CPU :  [0-9\\.]+ sec\s+' +
+            'Running GPU\\.\\.\\.\s+train_accuracy : [0-9\\.]+\s+' +
+            'test_accuracy : [0-9\\.]+\s+GPU :  [0-9\\.]+ sec')
 
     def test_output_image(self):
         dir_path = tempfile.mkdtemp()
