@@ -72,6 +72,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement __getitem__
 
     def _add_sparse(self, other, alpha, beta):
+        self.sum_duplicates()
+        other.sum_duplicates()
         return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
 
     def __eq__(self, other):
@@ -158,8 +160,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Sorts the indices of the matrix in place."""
         cusparse.csrsort(self)
 
-    # TODO(unno): Implement sum_duplicates
-
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
 
@@ -180,6 +180,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
+        self.sum_duplicates()
         # csr2dense returns F-contiguous array.
         if order == 'C':
             # To return C-contiguous array, it uses transpose.

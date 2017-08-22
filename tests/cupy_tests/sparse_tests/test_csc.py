@@ -50,6 +50,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_duplicate(xp, sp, dtype):
+    data = xp.array([1, 4, 3, 0, 2, 5], dtype)
+    indices = xp.array([0, 1, 0, 2, 1, 1], 'i')
+    indptr = xp.array([0, 3, 4, 6, 6], 'i')
+    # 4, 0, 0, 0
+    # 4, 0, 7, 0
+    # 0, 0, 0, 0
+    return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -665,6 +675,14 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
         m.sort_indices()
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates(self, xp, sp):
+        m = _make_duplicate(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')

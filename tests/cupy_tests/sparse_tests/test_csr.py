@@ -53,6 +53,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_duplicate(xp, sp, dtype):
+    data = xp.array([0, 1, 3, 2, 4, 5], dtype)
+    indices = xp.array([0, 0, 0, 2, 0, 2], 'i')
+    indptr = xp.array([0, 3, 6, 6], 'i')
+    # 4, 0, 0, 0
+    # 4, 0, 7, 0
+    # 0, 0, 0, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make_square(xp, sp, dtype):
     data = xp.array([0, 1, 2, 3], dtype)
     indices = xp.array([0, 1, 0, 2], 'i')
@@ -722,6 +732,14 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
         m.sort_indices()
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates(self, xp, sp):
+        m = _make_duplicate(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
