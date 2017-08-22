@@ -78,7 +78,7 @@ def _teardown_random():
 
 def generate_seed():
     assert _nest_count > 0, 'random is not set up'
-    return numpy.random.randint(0xffffffff)
+    return numpy.random.randint(0xffffffff, dtype=numpy.int64)
 
 
 def fix_random():
