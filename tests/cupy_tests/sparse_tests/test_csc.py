@@ -376,7 +376,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
     def test_toarray_unknown_order(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        m.toarray(order='unknown')
+        m.toarray(order='#')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
