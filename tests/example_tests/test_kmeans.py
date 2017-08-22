@@ -19,7 +19,7 @@ class TestKmeans(unittest.TestCase):
         six.assertRegex(
             self, output.decode('utf-8'),
             r''' CPU :  [0-9\.]+ sec''' + os.linesep +
-            r''' GPU :  [0-9\.]+ sec''' + os.linesep)
+            r''' GPU :  [0-9\.]+ sec''')
 
     def test_custom_kernel(self):
         output = example_test.run_example(
@@ -28,7 +28,7 @@ class TestKmeans(unittest.TestCase):
         six.assertRegex(
             self, output.decode('utf-8'),
             r''' CPU :  [0-9\.]+ sec''' + os.linesep +
-            r''' GPU :  [0-9\.]+ sec''' + os.linesep)
+            r''' GPU :  [0-9\.]+ sec''')
 
     def test_result_image(self):
         dir_path = tempfile.mkdtemp()
