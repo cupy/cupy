@@ -31,6 +31,7 @@ class FunctionSwitcher(object):
 
 
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -167,6 +168,7 @@ class TestRandomState8(TestRandomState):
 
 
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
@@ -195,6 +197,7 @@ class TestRandAndRandN(unittest.TestCase):
 
 
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
@@ -260,12 +263,48 @@ class TestInterval(unittest.TestCase):
     {'a': 3, 'size': (5, 5), 'p': [0.3, 0.3, 0.4]},
     {'a': 3, 'size': (5, 5), 'p': numpy.array([0.3, 0.3, 0.4])},
     {'a': 3, 'size': (), 'p': None},
-    {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
-class TestChoice(unittest.TestCase):
+class TestChoice1(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
+
+    def test_dtype_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, p=self.p)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int64'
+        self.assertEqual(v.dtype, expected_dtype)
+        self.assertEqual(v.shape, expected_shape)
+
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        vals = [self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+                for _ in range(20)]
+        size_ = self.size if isinstance(self.size, tuple) else (self.size,)
+        for val in vals:
+            self.assertEqual(val.shape, size_)
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 2)
+
+
+@testing.parameterize(
+    {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
+)
+@testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
+@testing.gpu
+class TestChoice2(unittest.TestCase):
 
     def setUp(self):
         self.rs = cupy.random.get_random_state()
@@ -296,6 +335,7 @@ class TestChoice(unittest.TestCase):
 
 
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
@@ -347,6 +387,7 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
 @testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
