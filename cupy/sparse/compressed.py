@@ -6,6 +6,7 @@ except ImportError:
     scipy_available = False
 
 import cupy
+from cupy import core
 from cupy.creation import basic
 from cupy import cusparse
 from cupy.sparse import base
@@ -15,7 +16,7 @@ from cupy.sparse import util
 
 class _compressed_sparse_matrix(sparse_data._data_matrix):
 
-    _compress_getitem_kern = cupy.ElementwiseKernel(
+    _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
         'if (ind == minor) atomicAdd(&answer[0], d);',
         'compress_getitem', preamble=util._preamble_atomic_add)
