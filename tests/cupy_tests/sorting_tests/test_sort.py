@@ -242,15 +242,27 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=None)
 
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_argsort_invalid_axis(self, xp):
+    def test_argsort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=3)
 
+    def test_argsort_invalid_axis2(self):
+        a = testing.shaped_random((2, 3, 3), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return self.argsort(a, axis=3)
+
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_argsort_invalid_negative_axis(self, xp):
+    def test_argsort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=-4)
+
+    def test_argsort_invalid_negative_axis2(self):
+        a = testing.shaped_random((2, 3, 3), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return self.argsort(a, axis=-4)
 
     # Misc tests
 

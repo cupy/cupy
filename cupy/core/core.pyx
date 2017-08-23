@@ -826,7 +826,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         if axis == ndim - 1:
             data = data.copy()
