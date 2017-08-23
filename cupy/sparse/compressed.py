@@ -6,6 +6,7 @@ except ImportError:
     scipy_available = False
 
 import cupy
+from cupy import core
 from cupy.creation import basic
 from cupy import cusparse
 from cupy.sparse import base
@@ -14,6 +15,11 @@ from cupy.sparse import util
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix):
+
+    _compress_getitem_kern = core.ElementwiseKernel(
+        'T d, S ind, int32 minor', 'raw T answer',
+        'if (ind == minor) atomicAdd(&answer[0], d);',
+        'compress_getitem', preamble=util._preamble_atomic_add)
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
@@ -224,27 +230,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         start = self.indptr[major]
         end = self.indptr[major + 1]
         answer = cupy.zeros((), self.dtype)
-        preamble = '''
-#if __CUDA_ARCH__ < 600
-__device__ double atomicAdd(double* address, double val) {
-    unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val +
-                        __longlong_as_double(assumed)));
-    } while (assumed != old);
-    return __longlong_as_double(old);
-}
-#endif
-'''
-        kern = cupy.ElementwiseKernel(
-            'T d, S ind, int32 minor', 'raw T answer',
-            'if (ind == minor) atomicAdd(&answer[0], d);',
-            'compress_getitem', preamble=preamble)
-        kern(self.data[start:end], self.indices[start:end], minor, answer)
+        self._compress_getitem_kern(
+            self.data[start:end], self.indices[start:end], minor, answer)
         return answer[()]
 
     def _get_major_slice(self, major):
