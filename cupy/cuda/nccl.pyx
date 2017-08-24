@@ -176,8 +176,8 @@ cdef class NcclCommunicator:
                                         <driver.Stream>stream)
         check_status(status)
 
-    def allGather(self, size_t sendbuf, size_t count, int datatype,
-                  size_t recvbuf, size_t stream):
+    def allGather(self, size_t sendbuf, size_t recvbuf, size_t count,
+                  int datatype, size_t stream):
         with nogil:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
