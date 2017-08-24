@@ -3054,7 +3054,7 @@ cdef ndarray _mat_ptrs(ndarray a):
         return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
 
 
-cpdef ndarray matmul(ndarray a, ndarray b):
+cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """ Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
 
@@ -3075,17 +3075,23 @@ cpdef ndarray matmul(ndarray a, ndarray b):
         b (cupy.ndarray): The right argument.
         out (cupy.ndarray): Output array.
 
+    Returns:
+        cupy.ndarray: Output array.
+
     .. seealso:: :func:`numpy.matmul`
 
     """
-    # ToDo: Argument out=None is missing
     # ToDo: remove python object .shape
     # ToDo: remove python object .strides
     # ToDo: remove python object out_shape
     # ToDo: remove python object .reshape
+    if out is not None:
+        raise NotImplementedError('The out array as input is currently not '
+                                  'supported')
+
     cdef Py_ssize_t i, n, m, ka, kb
     cdef int batchCount
-    cdef ndarray out, ap, bp, outp
+    cdef ndarray ap, bp, outp
 
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
     dtype = numpy.find_common_type((ret_dtype, 'f'), ())
