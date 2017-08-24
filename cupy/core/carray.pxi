@@ -5,6 +5,8 @@ from cupy import cuda
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
+import warnings
+
 
 cdef struct _CArray:
     void* data
@@ -133,8 +135,8 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version >= 9000:
         cuda_path = _get_cuda_path()
         if cuda_path is None:
-            raise ValueError('Please set the CUDA path ' +
-                             'to environment variable `CUDA_PATH`')
+            warnings.warn('Please set the CUDA path ' +
+                          'to environment variable `CUDA_PATH`')
         else:
             path = os.path.join(cuda_path, 'include')
             options += ('-I ' + path,)
