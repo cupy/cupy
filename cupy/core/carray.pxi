@@ -3,6 +3,9 @@ import os
 from cupy import cuda
 
 from cupy.cuda cimport function
+from cupy.cuda cimport runtime
+
+import warnings
 
 
 cdef struct _CArray:
@@ -117,10 +120,52 @@ cpdef str _get_header_source():
         _header_source = '\n'.join(source)
     return _header_source
 
+
+cdef str _cuda_path = None
+
+cpdef str _get_cuda_path():
+    global _cuda_path
+    if _cuda_path is None:
+        _cuda_path = os.getenv('CUDA_PATH', None)
+        if _cuda_path is not None:
+            return _cuda_path
+
+        for p in os.getenv('PATH', '').split(os.pathsep):
+            for cmd in ('nvcc', 'nvcc.exe'):
+                nvcc_path = os.path.join(p, cmd)
+                if not os.path.exists(nvcc_path):
+                    continue
+                nvcc_dir = os.path.dirname(
+                    os.path.abspath(nvcc_path))
+                _cuda_path = os.path.normpath(
+                    os.path.join(nvcc_dir, '..'))
+                return _cuda_path
+
+        if os.path.exists('/usr/local/cuda'):
+            _cuda_path = '/usr/local/cuda'
+
+    return _cuda_path
+
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
     source = _cupy_header + source
     extra_source = _get_header_source()
     options += ('-I%s' % _get_header_dir_path(),)
+
+    # The variable _cuda_runtime_version is declared in cupy/core/core.pyx,
+    # but it might not have been set appropriately before coming here.
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    if _cuda_runtime_version >= 9000:
+        cuda_path = _get_cuda_path()
+        if cuda_path is None:
+            warnings.warn('Please set the CUDA path ' +
+                          'to environment variable `CUDA_PATH`')
+        else:
+            path = os.path.join(cuda_path, 'include')
+            options += ('-I ' + path,)
+
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
                                    extra_source)
