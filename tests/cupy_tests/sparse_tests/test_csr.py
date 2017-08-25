@@ -752,6 +752,11 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return m.transpose().toarray()
 
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_transpose_axes_int(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.transpose(axes=0)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
