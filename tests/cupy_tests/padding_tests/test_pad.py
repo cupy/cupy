@@ -58,7 +58,7 @@ class TestPadNumpybug(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.with_requires('numpy>=1.11.2')
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_pad_highdim_default(self, xp, dtype):
         array = xp.arange(6, dtype=dtype).reshape([2, 3])

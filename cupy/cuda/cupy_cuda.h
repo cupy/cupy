@@ -316,6 +316,11 @@ cudaError_t cudaEventSynchronize(...) {
     return cudaSuccess;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// cuComplex.h
+///////////////////////////////////////////////////////////////////////////////
+
+#include "cupy_cuComplex.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // cublas_v2.h
@@ -323,6 +328,7 @@ cudaError_t cudaEventSynchronize(...) {
 
 typedef void* cublasHandle_t;
 
+typedef enum {} cublasDiagType_t;
 typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
@@ -391,6 +397,22 @@ cublasStatus_t cublasDdot(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasCdotu(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCdotc(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZdotc(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZdotu(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSnrm2(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
@@ -409,12 +431,37 @@ cublasStatus_t cublasDgemv(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+
+cublasStatus_t cublasCgemv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZgemv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSger(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
 cublasStatus_t cublasDger(...) {
     return CUBLAS_STATUS_SUCCESS;
+}
+
+int cublasCgeru(...) {
+    return 0;
+}
+
+int cublasCgerc(...) {
+    return 0;
+}
+
+int cublasZgeru(...) {
+    return 0;
+}
+
+int cublasZgerc(...) {
+    return 0;
 }
 
 // BLAS Level 3
@@ -426,6 +473,15 @@ cublasStatus_t cublasDgemm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+
+cublasStatus_t cublasCgemm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZgemm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgemmBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
@@ -434,7 +490,23 @@ cublasStatus_t cublasDgemmBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasCgemmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZgemmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgemmEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasStrsm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

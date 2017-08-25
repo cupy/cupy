@@ -204,7 +204,7 @@ if on_rtd:
 #html_split_index = False
 
 # If true, links to the reST sources are added to the pages.
-#html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True
@@ -345,6 +345,42 @@ def _import_object_from_name(module_name, fullname):
     return obj
 
 
+def _is_egg_directory(path):
+    return (path.endswith('.egg') and
+            os.path.isdir(os.path.join(path, 'EGG-INFO')))
+
+
+def _is_git_root(path):
+    return os.path.isdir(os.path.join(path, '.git'))
+
+
+_source_root = None
+
+
+def _find_source_root(source_abs_path):
+    # Note that READTHEDOCS* environment variable cannot be used, because they
+    # are not set under docker environment.
+    global _source_root
+    if _source_root is None:
+        dir = os.path.dirname(source_abs_path)
+        while True:
+            if _is_egg_directory(dir) or _is_git_root(dir):
+                # Reached the root directory
+                _source_root = dir
+                break
+
+            dir_ = os.path.dirname(dir)
+            if len(dir_) == len(dir):
+                raise RuntimeError('Couldn\'t parse root directory from '
+                                   'source file: {}'.format(source_abs_path))
+            dir = dir_
+    return _source_root
+
+
+def _get_source_relative_path(source_abs_path):
+    return os.path.relpath(source_abs_path, _find_source_root(source_abs_path))
+
+
 def linkcode_resolve(domain, info):
     if domain != 'py' or not info['module']:
         return None
@@ -354,10 +390,16 @@ def linkcode_resolve(domain, info):
         tag = 'master'
     else:
         tag = 'v{}'.format(__version__)
-    repo_root_dir = os.path.realpath('..')
 
     # Import the object from module path
     obj = _import_object_from_name(info['module'], info['fullname'])
+
+    # If it's not defined in the internal module, return None.
+    mod = inspect.getmodule(obj)
+    if mod is None:
+        return None
+    if not (mod.__name__ == 'cupy' or mod.__name__.startswith('cupy.')):
+        return None
 
     # Get the source file name and line number at which obj is defined.
     try:
@@ -375,9 +417,7 @@ def linkcode_resolve(domain, info):
     assert isinstance(linenum, six.integer_types)
 
     filename = os.path.realpath(filename)
-    if not filename.startswith(repo_root_dir):
-        return None
-    relpath = os.path.relpath(filename, repo_root_dir)
+    relpath = _get_source_relative_path(filename)
 
     return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)

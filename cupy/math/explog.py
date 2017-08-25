@@ -22,8 +22,8 @@ expm1 = ufunc.create_math_ufunc(
 
 exp2 = core.create_ufunc(
     'cupy_exp2',
-    ('e->e', 'f->f', ('d->d', 'out0 = pow(2., in0)')),
-    'out0 = powf(2.f, in0)',
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = pow(in0_type(2), in0)',
     doc='''Elementwise exponentiation with base 2.
 
     .. seealso:: :data:`numpy.exp2`

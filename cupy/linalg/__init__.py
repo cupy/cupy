@@ -4,6 +4,7 @@
 # "NOQA" to suppress flake8 warning
 from cupy.linalg import decomposition  # NOQA
 from cupy.linalg import eigenvalue  # NOQA
+from cupy.linalg import einsum  # NOQA
 from cupy.linalg import norms  # NOQA
 from cupy.linalg.norms import det  # NOQA
 from cupy.linalg.norms import matrix_rank  # NOQA
@@ -15,5 +16,9 @@ from cupy.linalg import solve  # NOQA
 from cupy.linalg.decomposition import cholesky  # NOQA
 from cupy.linalg.decomposition import qr  # NOQA
 from cupy.linalg.decomposition import svd  # NOQA
+
 from cupy.linalg.eigenvalue import eigh  # NOQA
 from cupy.linalg.eigenvalue import eigvalsh  # NOQA
+
+from cupy.linalg.solve import solve  # NOQA
+from cupy.linalg.solve import tensorsolve  # NOQA

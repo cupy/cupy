@@ -11,7 +11,7 @@ from install import utils
 
 minimum_cuda_version = 7000
 minimum_cudnn_version = 4000
-maximum_cudnn_version = 6999
+maximum_cudnn_version = 7999
 # Although cuda 7.0 includes cusolver,
 # we tentatively support cusolver in cuda 8.0 only because
 # provided functions are insufficient to implement cupy.linalg
@@ -171,9 +171,8 @@ def _get_compiler_base_options():
             matches = _match_output_lines(
                 stderrlines,
                 [
-                    b'^ERROR: No supported gcc/g\+\+ host compiler found, but '
-                    b'.* is available.$',
-
+                    b'^ERROR: No supported gcc/g\\+\\+ host compiler found, '
+                    b'but .* is available.$',
                     b'^ *Use \'nvcc (.*)\' to use that instead.$',
                 ])
             if matches is not None:
