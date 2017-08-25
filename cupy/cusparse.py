@@ -585,13 +585,10 @@ def csr2csr_compress(x, tol):
     m, n = x.shape
 
     nnz_per_row = cupy.empty(m, 'i')
-    nnz_total = numpy.empty((), 'i')
-    _call_cusparse(
+    nnz = _call_cusparse(
         'nnz_compress', x.dtype,
         handle, m, x._descr.descriptor,
-        x.data.data.ptr, x.indptr.data.ptr, nnz_per_row.data.ptr,
-        nnz_total.ctypes.data, tol)
-    nnz = int(nnz_total[()])
+        x.data.data.ptr, x.indptr.data.ptr, nnz_per_row.data.ptr, tol)
     data = cupy.zeros(nnz, x.dtype)
     indptr = cupy.empty(m + 1, 'i')
     indices = cupy.zeros(nnz, 'i')

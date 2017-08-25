@@ -586,23 +586,27 @@ cpdef dcsr2dense(
 cpdef snnz_compress(
         size_t handle, int m, size_t descr,
         size_t values, size_t rowPtr, size_t nnzPerRow,
-        size_t nnzTotal, float tol):
+        float tol):
+    cdef int nnz_total
     status = cusparseSnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const float *>values, <const int *>rowPtr, <int *>nnzPerRow,
-        <int *>nnzTotal, tol)
+        &nnz_total, tol)
     check_status(status)
+    return nnz_total
 
 
 cpdef dnnz_compress(
         size_t handle, int m, size_t descr,
         size_t values, size_t rowPtr, size_t nnzPerRow,
-        size_t nnzTotal, double tol):
+        double tol):
+    cdef int nnz_total
     status = cusparseDnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const double *>values, <const int *>rowPtr, <int *>nnzPerRow,
-        <int *>nnzTotal, tol)
+        &nnz_total, tol)
     check_status(status)
+    return nnz_total
 
 
 cpdef scsr2csr_compress(
