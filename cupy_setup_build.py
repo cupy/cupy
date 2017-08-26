@@ -11,6 +11,7 @@ import sys
 import pkg_resources
 import setuptools
 from setuptools.command import build_ext
+from setuptools.command import sdist
 
 from install import build
 from install import utils
@@ -503,6 +504,18 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
         # Return compiled object filenames.
         return other_objects + cu_objects
+
+
+class sdist_with_cython(sdist.sdist):
+
+    """Custom `sdist` command with cyhonizing."""
+
+    def cythonize(self):
+        if not check_cython_version():
+            raise RuntimeError('Cython is required to make sdist.')
+        get_ext_modules(True)  # convert Cython files to cpp files
+
+    sub_commands = sdist.sdist.sub_commands + [('cythonize', cythonize)]
 
 
 class custom_build_ext(build_ext.build_ext):
