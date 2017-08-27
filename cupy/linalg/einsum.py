@@ -229,6 +229,7 @@ def get_dummy_labels(label_list):
 
 def einsum(*operands):
     """einsum(subscripts, *operands)
+
     Evaluates the Einstein summation convention on the operands.
     Using the Einstein summation convention, many common multi-dimensional
     array operations can be represented in a simple fashion. This function
