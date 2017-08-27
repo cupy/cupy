@@ -56,7 +56,7 @@ class Memory(object):
 
 class ManagedMemory(Memory):
 
-    """Managed memory allocation on a CUDA device.
+    """Managed memory (Unified memory) allocation on a CUDA device.
 
     This class provides an RAII interface of the CUDA managed memory
     allocation.
@@ -76,7 +76,7 @@ class ManagedMemory(Memory):
             self.ptr = runtime.mallocManaged(size)
 
     def prefetch(self, stream):
-        """ Prefetch memory.
+        """(experimental) Prefetch memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream.
@@ -85,7 +85,7 @@ class ManagedMemory(Memory):
                                  stream.ptr)
 
     def advise(self, int advise, device.Device device):
-        """ Advise about the usage of this memory.
+        """(experimental) Advise about the usage of this memory.
 
         Args:
             advics (int): Advise to be applied for this memory.
@@ -350,7 +350,19 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
 
 
 cpdef MemoryPointer malloc_managed(Py_ssize_t size):
-    """Allocate managed memory.
+    """Allocate managed memory (unified memory).
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use a managed memory as the default allocator is the following code::
+
+        set_allocator(malloc_managed)
+
+    The advantage using managed memory in CuPy is that device memory
+    oversubscription is possible for GPUs that have a non-zero value for the
+    device attribute cudaDevAttrConcurrentManagedAccess.
+    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
+
+    Read more at: http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
 
     Args:
         size (int): Size of the memory allocation in bytes.
@@ -704,7 +716,12 @@ cdef class MemoryPool(object):
         This method can be used as a CuPy memory allocator. The simplest way to
         use a memory pool as the default allocator is the following code::
 
-           set_allocator(MemoryPool().malloc)
+            set_allocator(MemoryPool().malloc)
+
+        Also, the way to use a memory pool of Managed memory (Unified memory)
+        as the default allocator is the following code::
+
+            set_allocator(MemoryPool(malloc_managed).malloc)
 
         Args:
             size (int): Size of the memory buffer to allocate in bytes.

@@ -298,12 +298,13 @@ cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
                        size_t stream):
     with nogil:
         status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
-                                  <driver.Stream> stream)
+                                      <driver.Stream> stream)
     check_status(status)
 
 cpdef memAdvise(size_t devPtr, int count, int advice, int device):
     with nogil:
-        status = cudaMemAdvise(<void*>devPtr, count, <MemoryAdvise>advice, device)
+        status = cudaMemAdvise(<void*>devPtr, count,
+                               <MemoryAdvise>advice, device)
     check_status(status)
 
 
