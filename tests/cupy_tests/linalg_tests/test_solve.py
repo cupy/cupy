@@ -45,26 +45,29 @@ class TestSolve(unittest.TestCase):
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.parameterize(*testing.product({
+    'a_shape': [(2, 3, 6), (3, 4, 4, 3)],
+    'dtype': [numpy.float32, numpy.float64],
+    'axes': [None, (0, 2)],
+}))
+@testing.fix_random()
 @testing.gpu
 class TestTensorSolve(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_float_dtypes(no_float16=True)
-    def check_x(self, a_shape, b_shape, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
-        b_gpu = cupy.asarray(b_cpu)
-        result_cpu = numpy.linalg.tensorsolve(a_cpu, b_cpu)
-        result_gpu = cupy.linalg.tensorsolve(a_gpu, b_gpu)
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
-        cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
+    def setUp(self):
+        self.a = numpy.random.randint(
+            0, 10, size=self.a_shape).astype(self.dtype)
+        self.b = numpy.random.randint(
+            0, 10, size=self.a_shape[:2]).astype(self.dtype)
 
-    @condition.retry(10)
-    def test_solve(self):
-        self.check_x((2, 3, 6), (2, 3))
-        self.check_x((3, 4, 4, 3), (3, 4))
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=0.02)
+    def test_tensorsolve(self, xp, dtype):
+        a = xp.array(self.a)
+        b = xp.array(self.b)
+        return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
 @unittest.skipUnless(
