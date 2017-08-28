@@ -319,6 +319,9 @@ def parse_args():
     return arg_options
 
 
+cupy_setup_otions = parse_args()
+print('Options:', cupy_setup_options)
+
 def check_cython_version():
     try:
         import Cython
@@ -356,8 +359,7 @@ def check_extensions(extensions):
 
 
 def get_ext_modules(use_cython=False):
-    arg_options = parse_args()
-    print('Options:', arg_options)
+    arg_options = cupy_setup_options
 
     # We need to call get_config_vars to initialize _config_vars in distutils
     # see #1849
