@@ -361,6 +361,16 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         len(m)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_iter(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        rows = []
+        for r in m:
+            rows.append(r)
+            self.assertIsInstance(r, sp.spmatrix)
+        self.assertEqual(len(rows), 3)
+        return xp.concatenate([r.toarray() for r in rows])
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.asfptype().toarray()
