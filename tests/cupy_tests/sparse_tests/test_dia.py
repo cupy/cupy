@@ -22,6 +22,12 @@ def _make(xp, sp, dtype):
     return sp.dia_matrix((data, offsets), shape=(3, 4))
 
 
+def _make_empty(xp, sp, dtype):
+    data = xp.array([[]], 'f')
+    offsets = xp.array([0], 'i')
+    return sp.dia_matrix((data, offsets), shape=(3, 4))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
@@ -114,39 +120,44 @@ class TestDiaMatrixInit(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'make_method': ['_make', '_make_empty'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixScipyComparison(unittest.TestCase):
 
+    @property
+    def make(self):
+        return globals()[self.make_method]
+
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.nnz
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
     def test_nnz_axis_not_none(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.getnnz(axis=0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.A
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.tocoo().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
@@ -158,24 +169,24 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.tocsr().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
