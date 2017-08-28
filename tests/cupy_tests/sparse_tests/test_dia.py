@@ -179,3 +179,21 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+
+class TestIsspmatrixDia(unittest.TestCase):
+
+    def test_dia(self):
+        x = cupy.sparse.dia_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertTrue(cupy.sparse.isspmatrix_dia(x))
+
+    def test_csr(self):
+        x = cupy.sparse.csr_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([], 'i'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertFalse(cupy.sparse.isspmatrix_dia(x))
