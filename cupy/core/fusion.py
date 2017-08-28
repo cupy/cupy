@@ -577,9 +577,9 @@ class Fusion(object):
         post_map (function): Mapping function for reduced values.
     """
 
-    def __init__(self, func, input_num, reduce, post_map):
+    def __init__(self, func, input_num, reduce, post_map, name=None):
         self.func = func
-        self.name = func.__name__
+        self.name = name or func.__name__
         self.input_num = input_num
         self.reduce = reduce
         self.post_map = post_map
@@ -655,8 +655,10 @@ def fuse(*args, **kwargs):
     """
     util.experimental('cupy.core.fusion')
 
-    def wrapper(f, input_num=None, reduce=None, post_map=lambda x: x):
-        return Fusion(f, input_num, reduce, post_map)
+    def wrapper(
+            f, input_num=None, reduce=None, post_map=lambda x: x,
+            kernel_name=None):
+        return Fusion(f, input_num, reduce, post_map, kernel_name)
 
     if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
         return functools.update_wrapper(wrapper(args[0]), args[0])
