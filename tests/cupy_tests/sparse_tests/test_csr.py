@@ -733,6 +733,21 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make_square(xp, sp, self.dtype)
         m ** -1
 
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_pow_not_square(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m ** 2
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_pow_float(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** 1.5
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_pow_list(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** []
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
