@@ -14,9 +14,6 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
-_cuda_version = runtime.runtimeGetVersion()
-
-
 class OutOfMemoryError(MemoryError):
 
     def __init__(self, size, total):
