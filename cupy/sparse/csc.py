@@ -141,13 +141,17 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """Converts the matrix to Compressed Sparse Column format.
 
         Args:
-            copy: Not supported yet.
+            copy (bool): If ``False``, the method returns itself.
+                Otherwise it makes a copy of the matrix.
 
         Returns:
             cupy.sparse.csc_matrix: Converted matrix.
 
         """
-        return self
+        if copy:
+            return self.copy()
+        else:
+            return self
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
