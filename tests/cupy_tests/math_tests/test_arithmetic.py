@@ -19,20 +19,29 @@ class TestArithmetic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xp, dtype):
+    def check_binary(self, name, xp, dtype, no_complex=False):
+        if no_complex and numpy.dtype(dtype).kind == 'c':
+            return dtype(True)
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype):
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5)
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-4)
     def check_binary_negative(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+        return getattr(xp, name)(a, b)
+
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-4)
+    def check_binary_negative_no_complex(self, name, xp, dtype):
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
         return getattr(xp, name)(a, b)
@@ -99,21 +108,21 @@ class TestArithmetic(unittest.TestCase):
 
     def test_floor_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('floor_divide')
+            self.check_binary('floor_divide', no_complex=True)
         self.check_raises_with_numpy_input(2, 'floor_divide')
 
     def test_floor_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('floor_divide')
+            self.check_binary_negative_no_complex('floor_divide')
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('fmod')
+            self.check_binary('fmod', no_complex=True)
         self.check_raises_with_numpy_input(2, 'fmod')
 
     def test_fmod_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('fmod')
+            self.check_binary_negative_no_complex('fmod')
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -127,9 +136,26 @@ class TestArithmetic(unittest.TestCase):
 
     def test_remainder(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('remainder')
+            self.check_binary('remainder', no_complex=True)
         self.check_raises_with_numpy_input(2, 'remainder')
 
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('remainder')
+            self.check_binary_negative_no_complex('remainder')
+
+    def test_conj(self):
+        self.check_unary('conj')
+        self.check_raises_with_numpy_input(1, 'conj')
+
+    def test_angle(self):
+        self.check_unary('angle')
+        self.check_unary_negative('angle')
+        self.check_raises_with_numpy_input(1, 'angle')
+
+    def test_real(self):
+        self.check_unary('real')
+        self.check_raises_with_numpy_input(1, 'real')
+
+    def test_imag(self):
+        self.check_unary('imag')
+        self.check_raises_with_numpy_input(1, 'imag')

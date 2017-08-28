@@ -354,7 +354,7 @@ def check_extensions(extensions):
                 raise RuntimeError(msg)
 
 
-def get_ext_modules():
+def get_ext_modules(use_cython=False):
     arg_options = parse_args()
     print('Options:', arg_options)
 
@@ -364,13 +364,11 @@ def get_ext_modules():
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
 
-    use_cython = check_cython_version()
     extensions = make_extensions(arg_options, compiler, use_cython)
 
     if use_cython:
         extensions = cythonize(extensions, arg_options)
 
-    check_extensions(extensions)
     return extensions
 
 
@@ -529,4 +527,7 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
+        if check_cython_version():
+            get_ext_modules(True)  # convert Cython files to cpp files
+        check_extensions(self.extensions)
         build_ext.build_ext.run(self)

@@ -45,9 +45,31 @@ class TestIndexing(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_diagonal_negative(self, xp, dtype):
+    def test_diagonal_negative1(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_diagonal_negative2(self, xp, dtype):
+        a = testing.shaped_arange((3, 3, 3), xp, dtype)
+        return a.diagonal(0, -1, -2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_diagonal_negative3(self, xp, dtype):
+        a = testing.shaped_arange((3, 3, 3), xp, dtype)
+        return a.diagonal(0, -1, 1)
+
+    @testing.numpy_cupy_raises()
+    def test_diagonal_invalid1(self, xp):
+        a = testing.shaped_arange((3, 3, 3), xp)
+        a.diagonal(0, 1, 3)
+
+    @testing.numpy_cupy_raises()
+    def test_diagonal_invalid2(self, xp):
+        a = testing.shaped_arange((3, 3, 3), xp)
+        a.diagonal(0, 2, -4)
 
 
 @testing.gpu

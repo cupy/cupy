@@ -6,6 +6,8 @@ cdef extern from *:
 
     ctypedef void* MatDescr 'cusparseMatDescr_t'
 
+    ctypedef int Direction 'cusparseDirection_t'
+
     ctypedef int MatrixType 'cusparseMatrixType_t'
 
     ctypedef int Operation 'cusparseOperation_t'
@@ -33,6 +35,9 @@ cpdef enum:
     CUSPARSE_OPERATION_NON_TRANSPOSE = 0
     CUSPARSE_OPERATION_TRANSPOSE = 1
     CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE = 2
+
+    CUSPARSE_DIRECTION_ROW = 0
+    CUSPARSE_DIRECTION_COLUMN = 1
 
 
 cpdef size_t create() except *
