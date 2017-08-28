@@ -434,6 +434,8 @@ class TestChoiceReplaceFalse(unittest.TestCase):
         self.assertEqual(val.shape, size)
         self.assertTrue((0 <= val).all())
         self.assertTrue((val < 5).all())
+        val = numpy.asarray(val)
+        self.assertEqual(numpy.unique(val).size, val.size)
 
 
 @testing.parameterize(
