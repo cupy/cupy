@@ -559,6 +559,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
                                     reduce_code,
                                     'res = _post_map(_post_fix(a))',
                                     identity,
+                                    name=name,
                                     reduce_type=post_type,
                                     preamble=submodule_code)
 
