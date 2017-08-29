@@ -140,6 +140,9 @@ def inv(a):
     Args:
         a (cupy.ndarray): The regular matrix
 
+    Returns:
+        cupy.ndarray: The inverse of a matrix.
+
     .. seealso:: :func:`numpy.linalg.inv`
     '''
     if not cuda.cusolver_enabled:
