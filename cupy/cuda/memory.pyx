@@ -8,6 +8,7 @@ import weakref
 
 from fastrlock cimport rlock
 
+from cupy.cuda import memory_hook
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
@@ -365,7 +366,28 @@ class PooledMemory(Memory):
         """
         pool = self.pool()
         if pool and self.ptr != 0:
-            pool.free(self.ptr, self.size)
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                device_id = self.device.id
+                pmem_id = id(self)
+                size = self.size
+                ptr = self.ptr
+                hooks_values = hooks.values()  # avoid six for performance
+                for hook in hooks_values:
+                    hook.free_preprocess(device_id=device_id,
+                                         mem_size=size,
+                                         mem_ptr=ptr,
+                                         pmem_id=pmem_id)
+                try:
+                    pool.free(ptr, size)
+                finally:
+                    for hook in hooks_values:
+                        hook.free_postprocess(device_id=device_id,
+                                              mem_size=size,
+                                              mem_ptr=ptr,
+                                              pmem_id=pmem_id)
+            else:
+                pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
         self.device = None
@@ -389,8 +411,9 @@ cdef class SingleDeviceMemoryPool:
         self._initial_bins_size = 1024
         self._in_use = {}
         self._free = [set() for i in range(self._initial_bins_size)]
-        self._alloc = allocator
+        self._allocator = allocator
         self._weakref = weakref.ref(self)
+        self._device_id = device.get_device_id()
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
 
@@ -445,7 +468,58 @@ cdef class SingleDeviceMemoryPool:
             merged.next.prev = merged
         return merged
 
+    cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            memptr = None
+            device_id = self._device_id
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.alloc_preprocess(device_id=device_id,
+                                      mem_size=rounded_size)
+            try:
+                memptr = self._allocator(rounded_size)
+            finally:
+                for hook in hooks_values:
+                    mem_ptr = memptr.ptr if memptr is not None else 0
+                    hook.alloc_postprocess(device_id=device_id,
+                                           mem_size=rounded_size,
+                                           mem_ptr=mem_ptr)
+            return memptr
+        else:
+            return self._allocator(rounded_size)
+
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        rounded_size = self._round_size(size)
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            memptr = None
+            device_id = self._device_id
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.malloc_preprocess(device_id=device_id,
+                                       size=size,
+                                       mem_size=rounded_size)
+            try:
+                memptr = self._malloc(rounded_size)
+            finally:
+                if memptr is None:
+                    mem_ptr = 0
+                    pmem_id = 0
+                else:
+                    mem_ptr = memptr.ptr
+                    pmem_id = id(memptr.mem)
+                for hook in hooks_values:
+                    hook.malloc_postprocess(device_id=device_id,
+                                            size=size,
+                                            mem_size=rounded_size,
+                                            mem_ptr=mem_ptr,
+                                            pmem_id=pmem_id)
+            return memptr
+        else:
+            return self._malloc(rounded_size)
+
+    cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef set free_list = None
         cdef Chunk chunk = None
         cdef Chunk remaining = None
@@ -453,7 +527,6 @@ cdef class SingleDeviceMemoryPool:
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        size = self._round_size(size)
         index = self._bin_index_from_size(size)
         # find best-fit, or a smallest larger allocation
         length = len(self._free)

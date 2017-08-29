@@ -25,6 +25,16 @@ Memory management
    cupy.cuda.MemoryPool
 
 
+Memory hook
+-----------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.MemoryHook
+   cupy.cuda.memory_hooks.DebugPrintHook
+
 Streams and events
 ------------------
 
