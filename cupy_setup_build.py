@@ -319,7 +319,7 @@ def parse_args():
     return arg_options
 
 
-cupy_setup_otions = parse_args()
+cupy_setup_options = parse_args()
 print('Options:', cupy_setup_options)
 
 def check_cython_version():
