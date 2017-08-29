@@ -23,6 +23,10 @@ def solve(a, b):
         b (cupy.ndarray): The vector with ``M`` elements, or
             the matrix with dimension ``(M, K)``
 
+    Returns:
+        cupy.ndarray: The vector with ``M`` elements, or
+            the matrix with dimension ``(M, K)``.
+
     .. seealso:: :func:`numpy.linalg.solve`
     '''
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
@@ -109,6 +113,10 @@ def tensorsolve(a, b, axes=None):
         b (cupy.ndarray): The tensor with ``len(shape) >= 1``
         axes (tuple of ints): Axes in ``a`` to reorder to the right
             before inversion.
+
+    Returns:
+        cupy.ndarray: The tensor with shape ``Q`` such that
+            ``b.shape + Q == a.shape``.
 
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     '''

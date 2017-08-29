@@ -22,6 +22,9 @@ def cholesky(a):
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(N, N)``
 
+    Returns:
+        cupy.ndarray: The lower-triangular matrix.
+
     .. seealso:: :func:`numpy.linalg.cholesky`
     '''
     if not cuda.cusolver_enabled:
@@ -81,6 +84,12 @@ def qr(a, mode='reduced'):
             is 'reduced', and decompose a matrix ``A = (M, N)`` into ``Q``,
             ``R`` with dimensions ``(M, K)``, ``(K, N)``, where
             ``K = min(M, N)``.
+
+    Returns:
+        cupy.ndarray, or tuple of :class:`~cupy.ndarray`:
+            Although the type of returned objects depends on the mode,
+            it returns a tuple of ``(Q, R)`` by default.
+            For details, please see the document of ``numpy.linalg.qr``.
 
     .. seealso:: :func:`numpy.linalg.qr`
     '''
@@ -174,17 +183,21 @@ def qr(a, mode='reduced'):
 def svd(a, full_matrices=True, compute_uv=True):
     '''Singular Value Decomposition.
 
-    Factorizes the matrix ``a`` as ``u * np.diag(s) * v``, where ``u`` and
+    Factorizes the matrix ``a`` as ``U * np.diag(S) * v``, where ``u`` and
     ``v`` are unitary and ``s`` is an one-dimensional array of ``a``'s
     singular values.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(M, N)``.
-        full_matrices (bool): If True, it returns U and V with dimensions
-            ``(M, M)`` and ``(N, N)``. Otherwise, the dimensions of U and V
+        full_matrices (bool): If True, it returns u and v with dimensions
+            ``(M, M)`` and ``(N, N)``. Otherwise, the dimensions of u and v
             are respectively ``(M, K)`` and ``(K, N)``, where
             ``K = min(M, N)``.
         compute_uv (bool): If True, it only returns singular values.
+
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            A tuple of ``(u, s, v)`` such that ``a = u * np.diag(s) * v``.
 
     .. seealso:: :func:`numpy.linalg.svd`
     '''
