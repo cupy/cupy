@@ -42,7 +42,6 @@ def _numpy_alias(func):
     # Check argument list
     assert inspect.getargspec(func) == inspect.getargspec(numpy_func)
 
-    func.__doc__ = numpy_func.__doc__
     return func
 
 
@@ -229,7 +228,15 @@ from cupy.core.fusion import right_shift  # NOQA
 from cupy.binary.packing import packbits  # NOQA
 from cupy.binary.packing import unpackbits  # NOQA
 
-from numpy import binary_repr  # NOQA
+
+@_numpy_alias
+def binary_repr(num, width=None):
+    """Return the binary representation of the input number as a string.
+
+    .. seealso:: :func:`numpy.binary_repr`
+    """
+    return numpy.binary_repr(num, width)
+
 
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
@@ -292,7 +299,15 @@ from cupy.io.npz import savez_compressed  # NOQA
 from cupy.io.formatting import array_repr  # NOQA
 from cupy.io.formatting import array_str  # NOQA
 
-from numpy import base_repr  # NOQA
+
+@_numpy_alias
+def base_repr(number, base=2, padding=0):
+    """Return a string representation of a number in the given base system.
+
+    .. seealso:: :func:`numpy.base_repr`
+    """
+    return numpy.base_repr(number, base, padding)
+
 
 # -----------------------------------------------------------------------------
 # Linear algebra
@@ -319,6 +334,10 @@ from cupy.core.fusion import isnan  # NOQA
 
 @_numpy_alias
 def isscalar(num):
+    """Returns True if the type of num is a scalar type.
+
+    .. seealso:: :func:`numpy.isscalar`
+    """
     return numpy.isscalar(num)
 
 
