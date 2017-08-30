@@ -93,24 +93,24 @@ class TestDiaMatrixInit(unittest.TestCase):
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_large_rank_offset(self, xp, sp):
         sp.dia_matrix(
-            (self.data(xp), self.offsets(xp)[None]))
+            (self.data(xp), self.offsets(xp)[None]), shape=self.shape)
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_large_rank_data(self, xp, sp):
         sp.dia_matrix(
-            (self.data(xp)[None], self.offsets(xp)))
+            (self.data(xp)[None], self.offsets(xp)), shape=self.shape)
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_data_offsets_different_size(self, xp, sp):
         offsets = xp.array([0, -1, 1], 'i')
         sp.dia_matrix(
-            (self.data(xp), offsets))
+            (self.data(xp), offsets), shape=self.shape)
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_duplicated_offsets(self, xp, sp):
         offsets = xp.array([1, 1], 'i')
         sp.dia_matrix(
-            (self.data(xp), offsets))
+            (self.data(xp), offsets), shape=self.shape)
 
 
 @testing.parameterize(*testing.product({
@@ -179,3 +179,21 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+
+class TestIsspmatrixDia(unittest.TestCase):
+
+    def test_dia(self):
+        x = cupy.sparse.dia_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertTrue(cupy.sparse.isspmatrix_dia(x))
+
+    def test_csr(self):
+        x = cupy.sparse.csr_matrix(
+            (cupy.array([], 'f'),
+             cupy.array([], 'i'),
+             cupy.array([0], 'i')),
+            shape=(0, 0), dtype='f')
+        self.assertFalse(cupy.sparse.isspmatrix_dia(x))
