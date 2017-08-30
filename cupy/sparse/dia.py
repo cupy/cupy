@@ -131,7 +131,7 @@ class dia_matrix(data._data_matrix):
             cupy.sparse.csc_matrix: Converted matrix.
 
         """
-        if self.nnz == 0:
+        if self.data.size == 0:
             return csc.csc_matrix(self.shape, dtype=self.dtype)
 
         num_rows, num_cols = self.shape
