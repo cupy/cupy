@@ -43,8 +43,6 @@ class TestSolve(unittest.TestCase):
         self.check_shape((3, 3, 4), (3,))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.parameterize(*testing.product({
     'a_shape': [(2, 3, 6), (3, 4, 4, 3)],
     'dtype': [numpy.float32, numpy.float64],
@@ -52,6 +50,8 @@ class TestSolve(unittest.TestCase):
 }))
 @testing.fix_random()
 @testing.gpu
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestTensorSolve(unittest.TestCase):
 
     _multiprocess_can_split_ = True
