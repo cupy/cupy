@@ -81,15 +81,15 @@ def qr(a, mode='reduced'):
         a (cupy.ndarray): The input matrix.
         mode (str): The mode of decomposition. Currently 'reduced',
             'complete', 'r', and 'raw' modes are supported. The default mode
-            is 'reduced', and decompose a matrix ``A = (M, N)`` into ``Q``,
-            ``R`` with dimensions ``(M, K)``, ``(K, N)``, where
+            is 'reduced', in which matrix ``A = (M, N)`` is decomposed into
+            ``Q``, ``R`` with dimensions ``(M, K)``, ``(K, N)``, where
             ``K = min(M, N)``.
 
     Returns:
-        cupy.ndarray, or tuple of :class:`~cupy.ndarray`:
-            Although the type of returned objects depends on the mode,
+        cupy.ndarray, or tuple of ndarray:
+            Although the type of returned object depends on the mode,
             it returns a tuple of ``(Q, R)`` by default.
-            For details, please see the document of ``numpy.linalg.qr``.
+            For details, please see the document of :func:`numpy.linalg.qr`.
 
     .. seealso:: :func:`numpy.linalg.qr`
     '''
@@ -183,7 +183,7 @@ def qr(a, mode='reduced'):
 def svd(a, full_matrices=True, compute_uv=True):
     '''Singular Value Decomposition.
 
-    Factorizes the matrix ``a`` as ``U * np.diag(S) * v``, where ``u`` and
+    Factorizes the matrix ``a`` as ``u * np.diag(s) * v``, where ``u`` and
     ``v`` are unitary and ``s`` is an one-dimensional array of ``a``'s
     singular values.
 
@@ -196,7 +196,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         compute_uv (bool): If True, it only returns singular values.
 
     Returns:
-        tuple of :class:`~cupy.ndarray`:
+        tuple of :class:`cupy.ndarray`:
             A tuple of ``(u, s, v)`` such that ``a = u * np.diag(s) * v``.
 
     .. seealso:: :func:`numpy.linalg.svd`

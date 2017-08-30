@@ -24,8 +24,9 @@ def solve(a, b):
             the matrix with dimension ``(M, K)``
 
     Returns:
-        cupy.ndarray: The vector with ``M`` elements, or
-            the matrix with dimension ``(M, K)``.
+        cupy.ndarray:
+            The vector with ``M`` elements, or the matrix with dimension
+            ``(M, K)``.
 
     .. seealso:: :func:`numpy.linalg.solve`
     '''
@@ -115,8 +116,8 @@ def tensorsolve(a, b, axes=None):
             before inversion.
 
     Returns:
-        cupy.ndarray: The tensor with shape ``Q`` such that
-            ``b.shape + Q == a.shape``.
+        cupy.ndarray:
+            The tensor with shape ``Q`` such that ``b.shape + Q == a.shape``.
 
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     '''
