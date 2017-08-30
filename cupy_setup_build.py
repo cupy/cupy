@@ -512,12 +512,11 @@ class sdist_with_cython(sdist.sdist):
 
     """Custom `sdist` command with cyhonizing."""
 
-    def cythonize(self):
+    def __init__(self, *args, **kwargs):
         if not check_cython_version():
             raise RuntimeError('Cython is required to make sdist.')
         get_ext_modules(True)  # convert Cython files to cpp files
-
-    sub_commands = sdist.sdist.sub_commands + [('cythonize', cythonize)]
+        sdist.sdist.__init__(self, *args, **kwargs)
 
 
 class custom_build_ext(build_ext.build_ext):
