@@ -62,9 +62,8 @@ class TestTensorSolve(unittest.TestCase):
         self.b = numpy.random.randint(
             0, 10, size=self.a_shape[:2]).astype(self.dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=0.02)
-    def test_tensorsolve(self, xp, dtype):
+    def test_tensorsolve(self, xp):
         a = xp.array(self.a)
         b = xp.array(self.b)
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
