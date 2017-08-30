@@ -57,3 +57,4 @@ Solving linear equations
 
    cupy.linalg.solve
    cupy.linalg.tensorsolve
+   cupy.linalg.inv

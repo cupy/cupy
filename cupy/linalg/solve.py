@@ -140,7 +140,29 @@ def tensorsolve(a, b, axes=None):
 # TODO(okuta): Implement lstsq
 
 
-# TODO(okuta): Implement inv
+def inv(a):
+    '''Computes the inverse of a matrix.
+
+    This function computes matrix ``a_inv`` from n-dimensional regular matrix
+    ``a`` such that ``dot(a, a_inv) == eye(n)``.
+
+    Args:
+        a (cupy.ndarray): The regular matrix
+
+    Returns:
+        cupy.ndarray: The inverse of a matrix.
+
+    .. seealso:: :func:`numpy.linalg.inv`
+    '''
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
+
+    util._assert_cupy_array(a)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
+
+    b = cupy.eye(len(a), dtype=a.dtype)
+    return solve(a, b)
 
 
 # TODO(okuta): Implement pinv
