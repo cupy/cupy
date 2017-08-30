@@ -20,5 +20,6 @@ from cupy.linalg.decomposition import svd  # NOQA
 from cupy.linalg.eigenvalue import eigh  # NOQA
 from cupy.linalg.eigenvalue import eigvalsh  # NOQA
 
+from cupy.linalg.solve import pinv  # NOQA
 from cupy.linalg.solve import solve  # NOQA
 from cupy.linalg.solve import tensorsolve  # NOQA

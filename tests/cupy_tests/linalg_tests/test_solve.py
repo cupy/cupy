@@ -65,3 +65,42 @@ class TestTensorSolve(unittest.TestCase):
     def test_solve(self):
         self.check_x((2, 3, 6), (2, 3))
         self.check_x((3, 4, 4, 3), (3, 4))
+
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestPinv(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_float_dtypes(no_float16=True)
+    def check_x(self, a_shape, rcond, dtype):
+        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+        a_gpu = cupy.asarray(a_cpu)
+        result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
+        result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
+
+        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
+
+    def check_shape(self, a_shape, rcond):
+        a = cupy.random.rand(*a_shape)
+        with self.assertRaises(numpy.linalg.LinAlgError):
+            cupy.linalg.pinv(a)
+
+    @condition.retry(10)
+    def test_pinv(self):
+        self.check_x((3, 3), rcond=1e-15)
+        self.check_x((2, 4), rcond=1e-15)
+        self.check_x((3, 2), rcond=1e-15)
+
+        self.check_x((4, 4), rcond=0.3)
+        self.check_x((2, 5), rcond=0.5)
+        self.check_x((5, 3), rcond=0.6)
+
+    def test_invalid_shape(self):
+        self.check_shape((2, 3, 4), rcond=1e-15)
+        self.check_shape((2, 3, 4), rcond=0.5)
+        self.check_shape((4, 3, 2, 1), rcond=1e-14)
+        self.check_shape((4, 3, 2, 1), rcond=0.1)
