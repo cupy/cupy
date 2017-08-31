@@ -52,6 +52,47 @@ class Memory(object):
         return self.ptr
 
 
+class ManagedMemory(Memory):
+
+    """Managed memory (Unified memory) allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA managed memory
+    allocation.
+
+    Args:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        size (int): Size of the memory allocation in bytes.
+
+    """
+
+    def __init__(self, Py_ssize_t size):
+        self.size = size
+        self.device = None
+        self.ptr = 0
+        if size > 0:
+            self.device = device.Device()
+            self.ptr = runtime.mallocManaged(size)
+
+    def prefetch(self, stream):
+        """(experimental) Prefetch memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream.
+        """
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+                                 stream.ptr)
+
+    def advise(self, int advise, device.Device device):
+        """(experimental) Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            device (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        runtime.memAdvise(self.ptr, self.size, advise, device.id)
+
+
 cdef set _peer_access_checked = set()
 
 
@@ -303,6 +344,31 @@ cdef class MemoryPointer:
 
 cpdef MemoryPointer _malloc(Py_ssize_t size):
     mem = Memory(size)
+    return MemoryPointer(mem, 0)
+
+
+cpdef MemoryPointer malloc_managed(Py_ssize_t size):
+    """Allocate managed memory (unified memory).
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use a managed memory as the default allocator is the following code::
+
+        set_allocator(malloc_managed)
+
+    The advantage using managed memory in CuPy is that device memory
+    oversubscription is possible for GPUs that have a non-zero value for the
+    device attribute cudaDevAttrConcurrentManagedAccess.
+    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
+
+    Read more at: http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
+    mem = ManagedMemory(size)
     return MemoryPointer(mem, 0)
 
 
@@ -720,7 +786,12 @@ cdef class MemoryPool(object):
         This method can be used as a CuPy memory allocator. The simplest way to
         use a memory pool as the default allocator is the following code::
 
-           set_allocator(MemoryPool().malloc)
+            set_allocator(MemoryPool().malloc)
+
+        Also, the way to use a memory pool of Managed memory (Unified memory)
+        as the default allocator is the following code::
+
+            set_allocator(MemoryPool(malloc_managed).malloc)
 
         Args:
             size (int): Size of the memory buffer to allocate in bytes.
