@@ -69,10 +69,12 @@ class TestTensorSolve(unittest.TestCase):
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestInv(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.for_float_dtypes(no_float16=True)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -99,10 +101,12 @@ class TestInv(unittest.TestCase):
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestPinv(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.for_float_dtypes(no_float16=True)
     def check_x(self, a_shape, rcond, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
