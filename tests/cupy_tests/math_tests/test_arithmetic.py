@@ -18,7 +18,7 @@ class TestArithmetic(unittest.TestCase):
         return getattr(xp, name)(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5)
+    @testing.numpy_cupy_allclose(atol=1e-4)
     def check_binary(self, name, xp, dtype, no_complex=False):
         if no_complex and numpy.dtype(dtype).kind == 'c':
             return dtype(True)
