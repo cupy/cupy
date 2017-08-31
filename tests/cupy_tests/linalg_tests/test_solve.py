@@ -62,7 +62,7 @@ class TestTensorSolve(unittest.TestCase):
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     @condition.retry(10)
-    def test_solve(self):
+    def test_tensorsolve(self):
         self.check_x((2, 3, 6), (2, 3))
         self.check_x((3, 4, 4, 3), (3, 4))
 
@@ -89,7 +89,7 @@ class TestInv(unittest.TestCase):
             cupy.linalg.inv(a)
 
     @condition.retry(10)
-    def test_solve(self):
+    def test_inv(self):
         self.check_x((3, 3))
         self.check_x((4, 4))
         self.check_x((5, 5))
@@ -121,7 +121,7 @@ class TestTensorInv(unittest.TestCase):
             cupy.linalg.tensorinv(a, ind=ind)
 
     @condition.retry(10)
-    def test_solve(self):
+    def test_tensorinv(self):
         self.check_x((12, 3, 4), ind=1)
         self.check_x((3, 8, 24), ind=2)
         self.check_x((18, 3, 3, 2), ind=1)
