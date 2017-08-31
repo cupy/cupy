@@ -185,8 +185,6 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     '''
-    util._assert_rank2(a)
-
     u, s, vt = decomposition.svd(a, full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
