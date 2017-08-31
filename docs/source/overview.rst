@@ -1,7 +1,7 @@
 .. _overview:
 
-CuPy Overview
-=============
+Overview
+========
 
 .. module:: cupy
 

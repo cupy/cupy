@@ -10,8 +10,19 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    :maxdepth: 1
 
    overview
-   install
    tutorial/index
    reference/index
-   developers
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+
+   compatibility
+   contribution
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Misc Notes
+
+   install
    license
