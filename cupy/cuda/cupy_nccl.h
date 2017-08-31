@@ -7,6 +7,12 @@
 
 #include <nccl.h>
 
+#ifndef NCCL_MAJOR
+#ifndef CUDA_HAS_HALF
+#define ncclHalf ((ncclDataType_t)2)
+#endif
+#endif
+
 #else // #ifndef CUPY_NO_CUDA
 
 extern "C" {
