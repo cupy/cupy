@@ -1,5 +1,5 @@
-CuPy Tutorial
-================
+Tutorial
+========
 
 .. toctree::
    :maxdepth: 1

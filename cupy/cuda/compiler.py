@@ -160,6 +160,11 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
         temp_path = tf.name
     shutil.move(temp_path, path)
 
+    # Save .cu source file along with .cubin
+    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+        with open(path + '.cu', 'w') as f:
+            f.write(source)
+
     mod.load(cubin)
     return mod
 

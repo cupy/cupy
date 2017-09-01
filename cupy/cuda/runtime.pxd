@@ -30,10 +30,21 @@ cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 
+    cudaMemAttachGlobal = 1
+    cudaMemAttachHost = 2
+    cudaMemAttachSingle = 4
+
     hostAllocDefault = 0
     hostAllocPortable = 1
     hostAllocMapped = 2
     hostAllocWriteCombined = 4
+
+    cudaMemAdviseSetReadMostly = 1
+    cudaMemAdviseUnsetReadMostly = 2
+    cudaMemAdviseSetPreferredLocation = 3
+    cudaMemAdviseUnsetPreferredLocation = 4
+    cudaMemAdviseSetAccessedBy = 5
+    cudaMemAdviseUnsetAccessedBy = 6
 
     streamDefault = 0
     streamNonBlocking = 1
@@ -91,6 +102,7 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 ###############################################################################
 
 cpdef size_t malloc(size_t size) except *
+cpdef size_t mallocManaged(size_t size, unsigned int flags=*) except *
 cpdef size_t hostAlloc(size_t size, unsigned int flags) except *
 cpdef free(size_t ptr)
 cpdef freeHost(size_t ptr)
@@ -105,6 +117,9 @@ cpdef memcpyPeerAsync(size_t dst, int dstDevice,
                       size_t size, size_t stream)
 cpdef memset(size_t ptr, int value, size_t size)
 cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream)
+cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
+                       size_t stream)
+cpdef memAdvise(size_t devPtr, int count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(size_t ptr)
 
 

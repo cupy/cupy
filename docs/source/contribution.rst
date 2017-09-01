@@ -1,5 +1,5 @@
-CuPy Contribution Guide
-=======================
+Contribution Guide
+==================
 
 This is a guide for all contributions to CuPy.
 The development of CuPy is running on `the official repository at GitHub <https://github.com/cupy/cupy>`_.
