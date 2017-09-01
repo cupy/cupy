@@ -423,7 +423,7 @@ class TestChoiceReplaceFalse(unittest.TestCase):
         if isinstance(self.a, numpy.ndarray):
             expected_dtype = 'float'
         else:
-            expected_dtype = 'int64'
+            expected_dtype = 'int'
         self.assertEqual(v.dtype, expected_dtype)
         self.assertEqual(v.shape, expected_shape)
 
