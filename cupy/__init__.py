@@ -300,7 +300,7 @@ from cupy.io.formatting import array_repr  # NOQA
 from cupy.io.formatting import array_str  # NOQA
 
 
-@_numpy_alias
+@_numpy_alias  # NOQA (needed to avoid redefinition of `number`)
 def base_repr(number, base=2, padding=0):
     """Return a string representation of a number in the given base system.
 
