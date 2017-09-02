@@ -129,7 +129,7 @@ def tensorsolve(a, b, axes=None):
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = numpy.prod(oldshape)
+    prod = cupy.internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -194,7 +194,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = numpy.prod(oldshape[ind:])
+    prod = cupy.internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)
