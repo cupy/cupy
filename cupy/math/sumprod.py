@@ -73,13 +73,13 @@ def _proc_as_batch(proc, x, axis):
 
 def _cumsum_batch(out):
     kern = core.ElementwiseKernel(
-        'int32 pos, int32 batch', 'raw T x',
+        'int64 pos, int64 batch', 'raw T x',
         '''
-        int b = i % batch;
-        int j = i / batch;
+        ptrdiff_t b = i % batch;
+        ptrdiff_t j = i / batch;
         if (j & pos) {
-          const int dst_index[] = {b, j};
-          const int src_index[] = {b, j ^ pos | (pos - 1)};
+          const ptrdiff_t dst_index[] = {b, j};
+          const ptrdiff_t src_index[] = {b, j ^ pos | (pos - 1)};
           x[dst_index] += x[src_index];
         }
         ''',
@@ -133,7 +133,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
         return _proc_as_batch(_cumsum_batch, out, axis=axis)
 
     kern = core.ElementwiseKernel(
-        'int32 pos', 'raw T x',
+        'int64 pos', 'raw T x',
         '''
         if (i & pos) {
           x[i] += x[i ^ pos | (pos - 1)];
