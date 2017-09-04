@@ -1,5 +1,4 @@
 from __future__ import division
-import inspect
 import pkg_resources
 import sys
 
@@ -29,20 +28,6 @@ def is_available():
 
 
 __version__ = pkg_resources.get_distribution('cupy').version
-
-
-def _numpy_alias(func):
-    """Creates an alias function to NumPy counterpart."""
-
-    # functools.wraps cannot be used because it would also transfer the code
-    # metadata (e.g. line number)
-
-    numpy_func = getattr(numpy, func.__name__)
-
-    # Check argument list
-    assert inspect.getargspec(func) == inspect.getargspec(numpy_func)
-
-    return func
 
 
 from cupy import binary  # NOQA
@@ -229,7 +214,6 @@ from cupy.binary.packing import packbits  # NOQA
 from cupy.binary.packing import unpackbits  # NOQA
 
 
-@_numpy_alias
 def binary_repr(num, width=None):
     """Return the binary representation of the input number as a string.
 
@@ -300,8 +284,7 @@ from cupy.io.formatting import array_repr  # NOQA
 from cupy.io.formatting import array_str  # NOQA
 
 
-@_numpy_alias  # NOQA (needed to avoid redefinition of `number`)
-def base_repr(number, base=2, padding=0):
+def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
     """Return a string representation of a number in the given base system.
 
     .. seealso:: :func:`numpy.base_repr`
@@ -332,7 +315,6 @@ from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
 
-@_numpy_alias
 def isscalar(num):
     """Returns True if the type of num is a scalar type.
 
