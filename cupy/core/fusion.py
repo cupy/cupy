@@ -653,6 +653,8 @@ def fuse(*args, **kwargs):
             pre-mapping step. If not assigned, reduction step is skipped.
         post_map (function): Mapping function for reduced values.
             If not assigned, post_map step is skipped.
+        kernel_name (str): Name of the fused kernel function.
+            If omitted, the name of the decorated function is used.
     """
     util.experimental('cupy.core.fusion')
 
