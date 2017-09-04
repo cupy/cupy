@@ -468,6 +468,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype, 100)
         kth = 2
         idx = self.argpartition(a, kth)
+        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
+        self.assertTrue((a[idx[kth]] < a[idx[kth:]]).all())
         return idx[kth]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
@@ -476,6 +478,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((3, 3, 10), xp, dtype, 100)
         kth = 2
         idx = self.argpartition(a, kth)
+        self.assertTrue((a[idx[:, :, :kth]] < a[idx[:, :, kth]]).all())
+        self.assertTrue((a[idx[:, :, kth]] < a[idx[:, :, kth:]]).all())
         return idx[:, :, kth:kth + 1]
 
     # Test unsupported dtype
@@ -494,6 +498,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, 'i', 100)[::2]
         kth = 2
         idx = self.argpartition(a, kth)
+        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
+        self.assertTrue((a[idx[kth]] < a[idx[kth:]]).all())
         return idx[kth]
 
     # Test kth
@@ -503,6 +509,9 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, scale=100)
         kth = (2, 4)
         idx = self.argpartition(a, kth)
+        for _kth in kth:
+            self.assertTrue((a[idx[:_kth]] < a[idx[_kth]]).all())
+            self.assertTrue((a[idx[_kth]] < a[idx[_kth:]]).all())
         return (idx[2], idx[4])
 
     @testing.numpy_cupy_equal()
@@ -510,6 +519,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, scale=100)
         kth = -3
         idx = self.argpartition(a, kth)
+        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
+        self.assertTrue((a[idx[kth]] < a[idx[kth:]]).all())
         return idx[kth]
 
     @testing.numpy_cupy_raises()
@@ -532,6 +543,8 @@ class TestArgpartition(unittest.TestCase):
         kth = 2
         axis = 0
         idx = self.argpartition(a, kth, axis=axis)
+        self.assertTrue((a[idx[:kth, :, :]] < a[idx[kth, :, :]]).all())
+        self.assertTrue((a[idx[kth, :, :]] < a[idx[kth:, :, :]]).all())
         return idx[kth:kth + 1, :, :]
 
     @testing.numpy_cupy_array_equal()
@@ -540,6 +553,8 @@ class TestArgpartition(unittest.TestCase):
         kth = 2
         axis = -1
         idx = self.argpartition(a, kth, axis=axis)
+        self.assertTrue((a[idx[:, :, :kth]] < a[idx[:, :, kth]]).all())
+        self.assertTrue((a[idx[:, :, kth]] < a[idx[:, :, kth:]]).all())
         return idx[:, :, kth:kth + 1]
 
     @testing.numpy_cupy_equal()
@@ -548,6 +563,8 @@ class TestArgpartition(unittest.TestCase):
         kth = 2
         axis = None
         idx = self.argpartition(a, kth, axis=axis)
+        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
+        self.assertTrue((a[idx[kth]] < a[idx[kth:]]).all())
         return idx[kth]
 
     @testing.numpy_cupy_raises()
