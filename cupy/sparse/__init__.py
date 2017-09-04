@@ -12,6 +12,7 @@ from cupy.sparse.dia import isspmatrix_dia  # NOQA
 
 from cupy.sparse.construct import eye  # NOQA
 from cupy.sparse.construct import identity  # NOQA
+from cupy.sparse.construct import spdiags  # NOQA
 
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dok_matrix
@@ -20,7 +21,6 @@ from cupy.sparse.construct import identity  # NOQA
 # TODO(unno): implement kron
 # TODO(unno): implement kronsum
 # TODO(unno): implement diags
-# TODO(unno): implement spdiags
 # TODO(unno): implement block_diag
 # TODO(unno): implement tril
 # TODO(unno): implement triu

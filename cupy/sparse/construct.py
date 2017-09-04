@@ -4,10 +4,6 @@ import cupy
 def eye(m, n=None, k=0, dtype='d', format=None):
     """Creates a sparse matrix with ones on diagonal.
 
-    .. note::
-       Currently it only supports ``m==n``, ``k=0`` and csr, csc and coo
-       formats.
-
     Args:
         m (int): Number of rows.
         n (int or None): Number of columns. If it is ``None``,
@@ -43,8 +39,8 @@ def eye(m, n=None, k=0, dtype='d', format=None):
             data = cupy.ones(n, dtype=dtype)
             return cupy.sparse.coo_matrix((data, (row, col)), (n, n))
 
-    raise ValueError(
-        'only supports identity matries of csr, csc and coo format')
+    diags = cupy.ones((1, max(0, min(m + k, n))), dtype=dtype)
+    return spdiags(diags, k, m, n).asformat(format)
 
 
 def identity(n, dtype='d', format=None):
@@ -65,3 +61,22 @@ def identity(n, dtype='d', format=None):
 
     """
     return eye(n, n, dtype=dtype, format=format)
+
+
+def spdiags(data, diags, m, n, format=None):
+    """Creates a sparse matrix from diagonals.
+
+    Args:
+        data (cupy.ndarray): Matrix diagonals stored row-wise.
+        diags (cupy.ndarray): Diagonals to set.
+        m (int): Number of rows.
+        n (int): Number of cols.
+        format (str or None): Sparse format, e.g. ``format="csr"``.
+
+    Returns:
+        cupy.sparse.spmatrix: Created sparse matrix.
+
+    .. seealso:: :func:`scipy.sparse.spdiags`
+
+    """
+    return cupy.sparse.dia_matrix((data, diags), shape=(m, n)).asformat(format)

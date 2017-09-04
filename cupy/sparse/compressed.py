@@ -6,6 +6,7 @@ except ImportError:
     scipy_available = False
 
 import cupy
+from cupy import core
 from cupy.creation import basic
 from cupy import cusparse
 from cupy.sparse import base
@@ -14,6 +15,11 @@ from cupy.sparse import util
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix):
+
+    _compress_getitem_kern = core.ElementwiseKernel(
+        'T d, S ind, int32 minor', 'raw T answer',
+        'if (ind == minor) atomicAdd(&answer[0], d);',
+        'compress_getitem', preamble=util._preamble_atomic_add)
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
@@ -33,6 +39,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             if shape is None:
                 shape = arg1.shape
 
+            has_canonical_format = x.has_canonical_format
         elif util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
@@ -42,6 +49,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
+            has_canonical_format = True
 
         elif scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupy.sparse
@@ -53,6 +61,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
             if shape is None:
                 shape = arg1.shape
+            has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
@@ -64,6 +73,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
+
+            has_canonical_format = False
+
+        elif base.isdense(arg1):
+            if arg1.ndim > 2:
+                raise TypeError('expected dimension <= 2 array or matrix')
+            elif arg1.ndim == 1:
+                arg1 = arg1[None]
+            elif arg1.ndim == 0:
+                arg1 = arg1[None, None]
+            data, indices, indptr = self._convert_dense(arg1)
+            copy = False
+            if shape is None:
+                shape = arg1.shape
+
+            has_canonical_format = True
 
         else:
             raise ValueError(
@@ -93,10 +118,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
+        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data):
         return self.__class__(
             (data, self.indices.copy(), self.indptr.copy()), shape=self.shape)
+
+    def _convert_dense(self, x):
+        raise NotImplementedError
 
     def _swap(self, x, y):
         raise NotImplementedError
@@ -201,27 +230,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         start = self.indptr[major]
         end = self.indptr[major + 1]
         answer = cupy.zeros((), self.dtype)
-        preamble = '''
-#if __CUDA_ARCH__ < 600
-__device__ double atomicAdd(double* address, double val) {
-    unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val +
-                        __longlong_as_double(assumed)));
-    } while (assumed != old);
-    return __longlong_as_double(old);
-}
-#endif
-'''
-        kern = cupy.ElementwiseKernel(
-            'T d, S ind, int32 minor', 'raw T answer',
-            'if (ind == minor) atomicAdd(&answer[0], d);',
-            'compress_getitem', preamble=preamble)
-        kern(self.data[start:end], self.indices[start:end], minor, answer)
+        self._compress_getitem_kern(
+            self.data[start:end], self.indices[start:end], minor, answer)
         return answer[()]
 
     def _get_major_slice(self, major):
@@ -259,6 +269,10 @@ __device__ double atomicAdd(double* address, double val) {
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
+    @property
+    def has_canonical_format(self):
+        return self._has_canonical_format
+
     def get_shape(self):
         """Returns the shape of the matrix.
 
@@ -283,3 +297,14 @@ __device__ double atomicAdd(double* address, double val) {
             raise ValueError
 
     # TODO(unno): Implement sorted_indices
+
+    def sum_duplicates(self):
+        if self._has_canonical_format:
+            return
+        if self.data.size == 0:
+            self._has_canonical_format = True
+            return
+        coo = self.tocoo()
+        coo.sum_duplicates()
+        self.__init__(coo.asformat(self.format))
+        self._has_canonical_format = True

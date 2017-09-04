@@ -14,6 +14,7 @@ from cupy.testing.array import assert_array_max_ulp  # NOQA
 from cupy.testing.attr import gpu  # NOQA
 from cupy.testing.attr import multi_gpu  # NOQA
 from cupy.testing.attr import slow  # NOQA
+from cupy.testing.helper import assert_warns  # NOQA
 from cupy.testing.helper import for_all_dtypes  # NOQA
 from cupy.testing.helper import for_all_dtypes_combination  # NOQA
 from cupy.testing.helper import for_CF_orders  # NOQA

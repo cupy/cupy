@@ -4,6 +4,7 @@ from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
+from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
@@ -53,10 +54,13 @@ from cupy.cuda.device import get_device_id  # NOQA
 from cupy.cuda.function import Function  # NOQA
 from cupy.cuda.function import Module  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
+from cupy.cuda.memory import malloc_managed  # NOQA
+from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
+from cupy.cuda.memory_hook import MemoryHook  # NOQA
 from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
 from cupy.cuda.pinned_memory import PinnedMemory  # NOQA
 from cupy.cuda.pinned_memory import PinnedMemoryPointer  # NOQA

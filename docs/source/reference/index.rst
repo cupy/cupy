@@ -1,8 +1,8 @@
 .. _cupy_reference:
 
-*********************
-CuPy Reference Manual
-*********************
+****************
+Reference Manual
+****************
 
 This is the official reference of CuPy, a multi-dimensional array on CUDA with a subset of NumPy interface.
 
@@ -24,6 +24,7 @@ Reference
    ndarray
    ufunc
    routines
+   sparse           
    generic
    cuda
    memoize

@@ -8,6 +8,7 @@ import weakref
 
 from fastrlock cimport rlock
 
+from cupy.cuda import memory_hook
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
@@ -49,6 +50,47 @@ class Memory(object):
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr
+
+
+class ManagedMemory(Memory):
+
+    """Managed memory (Unified memory) allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA managed memory
+    allocation.
+
+    Args:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        size (int): Size of the memory allocation in bytes.
+
+    """
+
+    def __init__(self, Py_ssize_t size):
+        self.size = size
+        self.device = None
+        self.ptr = 0
+        if size > 0:
+            self.device = device.Device()
+            self.ptr = runtime.mallocManaged(size)
+
+    def prefetch(self, stream):
+        """(experimental) Prefetch memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream.
+        """
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+                                 stream.ptr)
+
+    def advise(self, int advise, device.Device device):
+        """(experimental) Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            device (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
 cdef set _peer_access_checked = set()
@@ -305,6 +347,31 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
     return MemoryPointer(mem, 0)
 
 
+cpdef MemoryPointer malloc_managed(Py_ssize_t size):
+    """Allocate managed memory (unified memory).
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use a managed memory as the default allocator is the following code::
+
+        set_allocator(malloc_managed)
+
+    The advantage using managed memory in CuPy is that device memory
+    oversubscription is possible for GPUs that have a non-zero value for the
+    device attribute cudaDevAttrConcurrentManagedAccess.
+    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
+
+    Read more at: http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
+    mem = ManagedMemory(size)
+    return MemoryPointer(mem, 0)
+
+
 cdef object _current_allocator = _malloc
 
 
@@ -365,7 +432,28 @@ class PooledMemory(Memory):
         """
         pool = self.pool()
         if pool and self.ptr != 0:
-            pool.free(self.ptr, self.size)
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                device_id = self.device.id
+                pmem_id = id(self)
+                size = self.size
+                ptr = self.ptr
+                hooks_values = hooks.values()  # avoid six for performance
+                for hook in hooks_values:
+                    hook.free_preprocess(device_id=device_id,
+                                         mem_size=size,
+                                         mem_ptr=ptr,
+                                         pmem_id=pmem_id)
+                try:
+                    pool.free(ptr, size)
+                finally:
+                    for hook in hooks_values:
+                        hook.free_postprocess(device_id=device_id,
+                                              mem_size=size,
+                                              mem_ptr=ptr,
+                                              pmem_id=pmem_id)
+            else:
+                pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
         self.device = None
@@ -389,8 +477,9 @@ cdef class SingleDeviceMemoryPool:
         self._initial_bins_size = 1024
         self._in_use = {}
         self._free = [set() for i in range(self._initial_bins_size)]
-        self._alloc = allocator
+        self._allocator = allocator
         self._weakref = weakref.ref(self)
+        self._device_id = device.get_device_id()
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
 
@@ -445,7 +534,58 @@ cdef class SingleDeviceMemoryPool:
             merged.next.prev = merged
         return merged
 
+    cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            memptr = None
+            device_id = self._device_id
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.alloc_preprocess(device_id=device_id,
+                                      mem_size=rounded_size)
+            try:
+                memptr = self._allocator(rounded_size)
+            finally:
+                for hook in hooks_values:
+                    mem_ptr = memptr.ptr if memptr is not None else 0
+                    hook.alloc_postprocess(device_id=device_id,
+                                           mem_size=rounded_size,
+                                           mem_ptr=mem_ptr)
+            return memptr
+        else:
+            return self._allocator(rounded_size)
+
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        rounded_size = self._round_size(size)
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            memptr = None
+            device_id = self._device_id
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.malloc_preprocess(device_id=device_id,
+                                       size=size,
+                                       mem_size=rounded_size)
+            try:
+                memptr = self._malloc(rounded_size)
+            finally:
+                if memptr is None:
+                    mem_ptr = 0
+                    pmem_id = 0
+                else:
+                    mem_ptr = memptr.ptr
+                    pmem_id = id(memptr.mem)
+                for hook in hooks_values:
+                    hook.malloc_postprocess(device_id=device_id,
+                                            size=size,
+                                            mem_size=rounded_size,
+                                            mem_ptr=mem_ptr,
+                                            pmem_id=pmem_id)
+            return memptr
+        else:
+            return self._malloc(rounded_size)
+
+    cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef set free_list = None
         cdef Chunk chunk = None
         cdef Chunk remaining = None
@@ -453,7 +593,6 @@ cdef class SingleDeviceMemoryPool:
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        size = self._round_size(size)
         index = self._bin_index_from_size(size)
         # find best-fit, or a smallest larger allocation
         length = len(self._free)
@@ -647,7 +786,12 @@ cdef class MemoryPool(object):
         This method can be used as a CuPy memory allocator. The simplest way to
         use a memory pool as the default allocator is the following code::
 
-           set_allocator(MemoryPool().malloc)
+            set_allocator(MemoryPool().malloc)
+
+        Also, the way to use a memory pool of Managed memory (Unified memory)
+        as the default allocator is the following code::
+
+            set_allocator(MemoryPool(malloc_managed).malloc)
 
         Args:
             size (int): Size of the memory buffer to allocate in bytes.

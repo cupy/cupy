@@ -3,6 +3,8 @@ import shutil
 import tempfile
 import unittest
 
+import six
+
 from cupy import testing
 
 import example_test
@@ -13,16 +15,12 @@ class TestGMM(unittest.TestCase):
 
     def test_gmm(self):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')
-        self.assertRegexpMatches(
-            output.decode('utf-8'), r'''Running CPU\.\.\.
-train_accuracy : [0-9\.]+
-test_accuracy : [0-9\.]+
- CPU :  [0-9\.]+ sec
-Running GPU\.\.\.
-train_accuracy : [0-9\.]+
-test_accuracy : [0-9\.]+
- GPU :  [0-9\.]+ sec
-''')
+        six.assertRegex(
+            self, output.decode('utf-8'),
+            r'Running CPU\.\.\.\s+train_accuracy : [0-9\.]+\s+' +
+            r'test_accuracy : [0-9\.]+\s+CPU :  [0-9\.]+ sec\s+' +
+            r'Running GPU\.\.\.\s+train_accuracy : [0-9\.]+\s+' +
+            r'test_accuracy : [0-9\.]+\s+GPU :  [0-9\.]+ sec')
 
     def test_output_image(self):
         dir_path = tempfile.mkdtemp()

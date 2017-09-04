@@ -767,7 +767,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         if axis == ndim - 1:
             data = self
@@ -826,7 +826,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         if axis == ndim - 1:
             data = data.copy()
@@ -874,7 +874,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         length = self.shape[axis]
         if isinstance(kth, int):
@@ -3073,12 +3073,20 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                         Py_ssize_t axis2=1):
+    cdef Py_ssize_t ndim = a.ndim
+    if (axis1 >= ndim or abs(axis2) >= ndim or
+            axis1 < - ndim or axis2 < - ndim):
+        raise ValueError('axis1(={0}) and axis2(={1}) must be within range '
+                         '(ndim={2})'.format(axis1, axis2, ndim))
+
+    axis1 %= ndim
+    axis2 %= ndim
     if axis1 < axis2:
         min_axis, max_axis = axis1, axis2
     else:
         min_axis, max_axis = axis2, axis1
 
-    tr = list(range(a.ndim))
+    tr = list(range(ndim))
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:
@@ -3475,6 +3483,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
+cdef _tensordot_core_mul_sum = ReductionKernel(
+    'S x, T y', 'U out',
+    'static_cast<U>(x) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
 
 cpdef ndarray tensordot_core(
@@ -3508,10 +3520,6 @@ cpdef ndarray tensordot_core(
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
 
-    if not use_sgemmEx:
-        a = a.astype(dtype, copy=False)
-        b = b.astype(dtype, copy=False)
-
     if out is None:
         out = ndarray(ret_shape, dtype)
         if dtype == ret_dtype:
@@ -3524,7 +3532,7 @@ cpdef ndarray tensordot_core(
             out = ndarray(ret_shape, dtype)
 
     if m == 1 and n == 1:
-        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        _tensordot_core_mul_sum(a.ravel(), b.ravel(), out.reshape(()))
         if out is not ret:
             elementwise_copy(out, ret)
         return ret
@@ -3544,6 +3552,10 @@ cpdef ndarray tensordot_core(
     if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
         c = c.view()
         c.shape = (n, m)
+
+    if not use_sgemmEx:
+        a = a.astype(dtype, copy=False)
+        b = b.astype(dtype, copy=False)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = device.get_cublas_handle()

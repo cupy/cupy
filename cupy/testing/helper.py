@@ -1,12 +1,14 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import contextlib
 import functools
 import os
 import pkg_resources
 import random
 import traceback
 import unittest
+import warnings
 
 import numpy
 
@@ -878,7 +880,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
 
     Returns:
          numpy.ndarray or cupy.ndarray:
-         The array filled with :math:`1, \cdots, N` with specified dtype
+         The array filled with :math:`1, \\cdots, N` with specified dtype
          with given shape, array module. Here, :math:`N` is
          the size of the returned array.
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
@@ -904,7 +906,7 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
 
     Returns:
          numpy.ndarray or cupy.ndarray:
-         The array filled with :math:`N, \cdots, 1` with specified dtype
+         The array filled with :math:`N, \\cdots, 1` with specified dtype
          with given shape, array module.
          Here, :math:`N` is the size of the returned array.
          If ``dtype`` is ``numpy.bool_``, evens (resp. odds) are converted to
@@ -960,3 +962,20 @@ class NumpyError(object):
 
     def __exit__(self, *_):
         numpy.seterr(**self.err)
+
+
+@contextlib.contextmanager
+def assert_warns(expected):
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        yield
+
+    if any(isinstance(m.message, expected) for m in w):
+        return
+
+    try:
+        exc_name = expected.__name__
+    except AttributeError:
+        exc_name = str(expected)
+
+    raise AssertionError('%s not triggerred' % exc_name)
