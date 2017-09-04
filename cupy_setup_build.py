@@ -367,9 +367,6 @@ def get_ext_modules(use_cython=False):
 
     extensions = make_extensions(arg_options, compiler, use_cython)
 
-    if use_cython:
-        extensions = cythonize(extensions, arg_options)
-
     return extensions
 
 
@@ -513,7 +510,8 @@ class sdist_with_cython(sdist.sdist):
     def __init__(self, *args, **kwargs):
         if not cython_available:
             raise RuntimeError('Cython is required to make sdist.')
-        get_ext_modules(True)  # convert Cython files to cpp files
+        ext_modules = get_ext_modules(True)  # get .pyx modules
+        cythonize(ext_modules, cupy_setup_options)
         sdist.sdist.__init__(self, *args, **kwargs)
 
 
@@ -540,6 +538,7 @@ class custom_build_ext(build_ext.build_ext):
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
         if cython_available:
-            get_ext_modules(True)  # convert Cython files to cpp files
+            ext_modules = get_ext_modules(True)  # get .pyx modules
+            cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
