@@ -33,7 +33,7 @@ The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that
 Its data is allocated on the *current device*, which will be explained later.
 
 
-Most of array manipulations are also do in the way similar to NumPy.
+Most of the array manipulations are also done in the way similar to NumPy.
 Take the Euclidean norm (a.k.a L2 norm) for example.
 NumPy has `numpy.lina.g.norm` to calculate it on CPU.
 
