@@ -180,16 +180,15 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
         c = cupy_result
         n = numpy_result
         array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
-        if (contiguous_check and
-                isinstance(c, cupy.ndarray) and isinstance(n, numpy.ndarray)):
-            if c.flags.c_contiguous != n.flags.c_contiguous:
+        if contiguous_check and isinstance(n, numpy.ndarray):
+            if n.flags.c_contiguous and not c.flags.c_contiguous:
                 raise AssertionError(
-                    'The state of c_contiguous flag is different. '
+                    'The state of c_contiguous flag is false. '
                     '(cupy_result:{} numpy_result:{})'.format(
                         c.flags.c_contiguous, n.flags.c_contiguous))
-            if c.flags.f_contiguous != n.flags.f_contiguous:
+            if n.flags.f_contiguous and not c.flags.f_contiguous:
                 raise AssertionError(
-                    'The state of f_contiguous flag is different. '
+                    'The state of f_contiguous flag is false. '
                     '(cupy_result:{} numpy_result:{})'.format(
                         c.flags.f_contiguous, n.flags.f_contiguous))
     return _make_decorator(check_func, name, type_check, accept_error, sp_name)
