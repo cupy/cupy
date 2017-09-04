@@ -44,13 +44,13 @@ class TestMisc(unittest.TestCase):
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, 13)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
