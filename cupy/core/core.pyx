@@ -3436,6 +3436,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
+cdef _tensordot_core_mul_sum = ReductionKernel(
+    'S x, T y', 'U out',
+    'static_cast<U>(x) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
 
 cpdef ndarray tensordot_core(
@@ -3469,10 +3473,6 @@ cpdef ndarray tensordot_core(
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
 
-    if not use_sgemmEx:
-        a = a.astype(dtype, copy=False)
-        b = b.astype(dtype, copy=False)
-
     if out is None:
         out = ndarray(ret_shape, dtype)
         if dtype == ret_dtype:
@@ -3485,7 +3485,7 @@ cpdef ndarray tensordot_core(
             out = ndarray(ret_shape, dtype)
 
     if m == 1 and n == 1:
-        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        _tensordot_core_mul_sum(a.ravel(), b.ravel(), out.reshape(()))
         if out is not ret:
             elementwise_copy(out, ret)
         return ret
@@ -3505,6 +3505,10 @@ cpdef ndarray tensordot_core(
     if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
         c = c.view()
         c.shape = (n, m)
+
+    if not use_sgemmEx:
+        a = a.astype(dtype, copy=False)
+        b = b.astype(dtype, copy=False)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = device.get_cublas_handle()
