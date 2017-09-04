@@ -47,7 +47,7 @@ def fliplr(a):
     """
     if a.ndim < 2:
         raise ValueError('Input must be >= 2-d')
-    return a[::, ::-1]
+    return cupy.take(a, cupy.arange(a.shape[1] - 1, -1, -1), axis=1)
 
 
 def flipud(a):
@@ -67,7 +67,7 @@ def flipud(a):
     """
     if a.ndim < 1:
         raise ValueError('Input must be >= 1-d')
-    return a[::-1]
+    return cupy.take(a, cupy.arange(a.shape[0] - 1, -1, -1), axis=0)
 
 
 def roll(a, shift, axis=None):
