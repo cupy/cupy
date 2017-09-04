@@ -928,6 +928,10 @@ cdef class ndarray:
             if not (0 <= k < length):
                 raise ValueError('kth(={}) out of bounds {}'.format(k, length))
 
+        # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
+        # currently performs full argsort with Thrust's efficient radix sort
+        # algoritm.
+
         # kth is ignored.
         return cupy.argsort(data, axis=axis)
 
