@@ -322,18 +322,16 @@ def parse_args():
 cupy_setup_options = parse_args()
 print('Options:', cupy_setup_options)
 
-def check_cython_version():
-    try:
-        import Cython
-        cython_version = pkg_resources.parse_version(Cython.__version__)
-        return cython_version >= required_cython_version
-    except ImportError:
-        return False
+try:
+    import Cython
+    import Cython.Build
+    cython_version = pkg_resources.parse_version(Cython.__version__)
+    cython_available = cython_version >= required_cython_version
+except ImportError:
+    cython_available = False
 
 
 def cythonize(extensions, arg_options):
-    import Cython.Build
-
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
@@ -513,7 +511,7 @@ class sdist_with_cython(sdist.sdist):
     """Custom `sdist` command with cyhonizing."""
 
     def __init__(self, *args, **kwargs):
-        if not check_cython_version():
+        if not cython_available:
             raise RuntimeError('Cython is required to make sdist.')
         get_ext_modules(True)  # convert Cython files to cpp files
         sdist.sdist.__init__(self, *args, **kwargs)
@@ -541,7 +539,7 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        if check_cython_version():
+        if cython_available:
             get_ext_modules(True)  # convert Cython files to cpp files
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
