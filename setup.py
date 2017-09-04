@@ -31,6 +31,7 @@ install_requires = [
 
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
+sdist = cupy_setup_build.sdist_with_cython
 
 setup(
     name='cupy',
@@ -92,5 +93,6 @@ setup(
     tests_require=['mock',
                    'nose'],
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext},
+    cmdclass={'build_ext': build_ext,
+              'sdist': sdist},
 )
