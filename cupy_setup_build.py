@@ -17,7 +17,7 @@ from install import build
 from install import utils
 
 
-required_cython_version = pkg_resources.parse_version('0.26.0')
+required_cython_version = pkg_resources.parse_version('0.26.1')
 
 MODULES = [
     {
