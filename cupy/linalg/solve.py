@@ -189,7 +189,7 @@ def pinv(a, rcond=1e-15):
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
-    return core.dot(vt.transpose(), s1[:, None] * u.transpose())
+    return core.dot(vt.T, s1[:, None] * u.T)
 
 
 # TODO(okuta): Implement tensorinv
