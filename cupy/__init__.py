@@ -526,3 +526,11 @@ def get_array_module(*args):
 fuse = fusion.fuse
 
 disable_experimental_feature_warning = False
+
+
+# set default allocator
+default_memory_pool = cuda.MemoryPool()
+default_pinned_memory_pool = cuda.PinnedMemoryPool()
+
+cuda.set_allocator(default_memory_pool.malloc)
+cuda.set_pinned_memory_allocator(default_pinned_memory_pool.malloc)
