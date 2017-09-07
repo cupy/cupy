@@ -128,14 +128,17 @@ if __name__ == '__main__':
             risk_free, volatility)
 
     with timer(' GPU (CuPy, Naive implementation)'):
-        call_gpu, put_gpu = black_scholes(
+        call_gpu1, put_gpu1 = black_scholes(
             cupy, stock_price_gpu, option_strike_gpu, option_years_gpu,
             risk_free, volatility)
 
     with timer(' GPU (CuPy, Elementwise kernel)'):
-        call_gpu, put_gpu = black_scholes_kernel(
+        call_gpu2, put_gpu2 = black_scholes_kernel(
             stock_price_gpu, option_strike_gpu, option_years_gpu,
             risk_free, volatility)
 
-    # Check whether all elements in call_gpu are equal to those of call_cpu
-    cupy.testing.assert_allclose(call_cpu, call_gpu)
+    # Check whether all elements in gpu arrays are equal to those of cpus
+    cupy.testing.assert_allclose(call_cpu, call_gpu1)
+    cupy.testing.assert_allclose(call_cpu, call_gpu2)
+    cupy.testing.assert_allclose(put_cpu, put_gpu1)
+    cupy.testing.assert_allclose(put_cpu, put_gpu2)
