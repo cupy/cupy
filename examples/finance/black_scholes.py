@@ -7,7 +7,7 @@ import numpy
 
 # This sample computes call and put prices for Europian options with
 # Black-Scholes equation. It was based on a sample of the financial package
-# in CUDA toolkit. For details, please see a corresponding whitepaper.
+# in CUDA toolkit. For details, please see the corresponding whitepaper.
 #
 # The following code shows that CuPy enables us to write algorithms for GPUs
 # without significantly modifying the existing NumPy's code.
