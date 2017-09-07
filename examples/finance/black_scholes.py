@@ -128,7 +128,7 @@ if __name__ == '__main__':
             risk_free, volatility)
 
     with timer(' GPU (CuPy, Naive implementation)'):
-        call_cpu, put_cpu = black_scholes(
+        call_gpu, put_gpu = black_scholes(
             cupy, stock_price_gpu, option_strike_gpu, option_years_gpu,
             risk_free, volatility)
 
