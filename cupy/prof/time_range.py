@@ -2,10 +2,11 @@ import contextlib
 import functools
 
 from cupy import cuda
+from cupy.cuda import runtime
 
 
 @contextlib.contextmanager
-def time_range(message, color_id=None, argb_color=None):
+def time_range(message, color_id=None, argb_color=None, sync=False):
     """A context manager to describe the enclosed block as a nested range
 
     >>> from cupy import prof
@@ -27,6 +28,8 @@ def time_range(message, color_id=None, argb_color=None):
     if color_id is not None and argb_color is not None:
         raise ValueError('Only either color_id or argb_color can be specified')
 
+    if sync:
+        runtime.deviceSynchronize()
     if argb_color is not None:
         cuda.nvtx.RangePushC(message, argb_color)
     else:
@@ -36,6 +39,8 @@ def time_range(message, color_id=None, argb_color=None):
     try:
         yield
     finally:
+        if sync:
+            runtime.deviceSynchronize()
         cuda.nvtx.RangePop()
 
 
@@ -59,7 +64,8 @@ class TimeRangeDecorator(object):
         :func:`cupy.cuda.nvtx.RangePop`
     """
 
-    def __init__(self, message=None, color_id=None, argb_color=None):
+    def __init__(self, message=None, color_id=None, argb_color=None,
+                 sync=False):
         if not cuda.nvtx_enabled:
             raise RuntimeError('nvtx is not installed')
 
@@ -70,8 +76,11 @@ class TimeRangeDecorator(object):
         self.message = message
         self.color_id = color_id if color_id is not None else -1
         self.argb_color = argb_color
+        self.sync = sync
 
     def __enter__(self):
+        if self.sync:
+            runtime.deviceSynchronize()
         if self.argb_color is not None:
             cuda.nvtx.RangePushC(self.message, self.argb_color)
         else:
@@ -79,6 +88,8 @@ class TimeRangeDecorator(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if self.sync:
+            runtime.deviceSynchronize()
         cuda.nvtx.RangePop()
 
     def _recreate_cm(self, message):
