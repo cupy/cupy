@@ -92,13 +92,13 @@ black_scholes_kernel = cupy.ElementwiseKernel(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu-id', '-g', default=0, type=int, help='GPU ID')
-    parser.add_argument('--n-samples', '-n', default=10000000, type=int)
+    parser.add_argument('--n-options', '-n', default=10000000, type=int)
     args = parser.parse_args()
 
     cupy.cuda.Device(args.gpu_id).use()
 
     def rand_range(m, M):
-        samples = cupy.random.rand(args.n_samples)
+        samples = cupy.random.rand(args.n_options)
         return (m + (M - m) * samples).astype(numpy.float64)
 
     print('initializing...')
