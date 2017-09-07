@@ -19,7 +19,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
             uses 'C' otherwise.
             And when ``order`` is 'K', it keeps strides as closely as
             possible.
-            If ``obj`` is ``numpy.ndarray``, thi function returns 'C' or 'F'
+            If ``obj`` is :class:`numpy.ndarray`, the function returns 'C' or 'F'
             order array.
         subok (bool): If True, then sub-classes will be passed-through,
             otherwise the returned array will be forced to be a base-class
@@ -33,8 +33,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
 
 
     .. note::
-       This method currently does not support ``subok``
-       arguments.
+       This method currently does not support ``subok`` argument.
 
     .. seealso:: :func:`numpy.array`
 

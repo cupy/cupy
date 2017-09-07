@@ -152,7 +152,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         contiguous_check(boool): If ``True``, consistency of contiguousness is
+         contiguous_check(bool): If ``True``, consistency of contiguousness is
              also checked.
 
     Decorated test fixture is required to return the arrays whose values are
