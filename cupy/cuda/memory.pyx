@@ -503,8 +503,8 @@ cdef class SingleDeviceMemoryPool:
         cdef int index, free_index
         cdef set free_list
         index = self._bin_index_from_size(size)
+        rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._free_lock, -1, True)
             self._grow_free_if_necessary(index + 1)
             free_index = self._index_vector[index]
             if free_index >= 0:
@@ -524,8 +524,8 @@ cdef class SingleDeviceMemoryPool:
         free_index = self._index_vector[index]
         if free_index < 0:
             return False
+        rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._free_lock, -1, True)
             free_list = self._free[free_index]
             if chunk in free_list:
                 free_list.remove(chunk)
@@ -634,8 +634,8 @@ cdef class SingleDeviceMemoryPool:
                 continue
             if len(<set>self._free[free_index]) == 0:
                 continue
+            rlock.lock_fastrlock(self._free_lock, -1, True)
             try:
-                rlock.lock_fastrlock(self._free_lock, -1, True)
                 free_list = self._free[free_index]
                 if free_list:
                     chunk = free_list.pop()
@@ -669,8 +669,8 @@ cdef class SingleDeviceMemoryPool:
                             raise OutOfMemoryError(size, total)
             chunk = Chunk(mem, 0, size)
 
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._in_use_lock, -1, True)
             self._in_use[chunk.ptr] = chunk
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
@@ -683,8 +683,8 @@ cdef class SingleDeviceMemoryPool:
         cdef set free_list
         cdef Chunk chunk
 
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._in_use_lock, -1, True)
             chunk = self._in_use.pop(ptr, None)
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
@@ -705,8 +705,8 @@ cdef class SingleDeviceMemoryPool:
         cdef set free_list, keep_list
         cdef Chunk chunk
         # Free all **non-split** chunks
+        rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._free_lock, -1, True)
             for i in range(len(self._free)):
                 free_list = self._free[i]
                 keep_list = set()
@@ -726,8 +726,8 @@ cdef class SingleDeviceMemoryPool:
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
         cdef set free_list
+        rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._free_lock, -1, True)
             for free_list in self._free:
                 n += len(free_list)
         finally:
@@ -737,8 +737,8 @@ cdef class SingleDeviceMemoryPool:
     cpdef used_bytes(self):
         cdef Py_ssize_t size = 0
         cdef Chunk chunk
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._in_use_lock, -1, True)
             for chunk in self._in_use.itervalues():
                 size += chunk.size
         finally:
@@ -749,8 +749,8 @@ cdef class SingleDeviceMemoryPool:
         cdef Py_ssize_t size = 0
         cdef set free_list
         cdef Chunk chunk
+        rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            rlock.lock_fastrlock(self._free_lock, -1, True)
             for free_list in self._free:
                 for chunk in free_list:
                     size += chunk.size
