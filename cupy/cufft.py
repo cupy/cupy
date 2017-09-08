@@ -5,6 +5,22 @@ from cupy.cuda import cufft
 
 
 def fft(a, n=None, axis=-1, norm=None, value_type=cufft.CUFFT_C2C, direction=cufft.CUFFT_FORWARD):
+    if n is None:
+        n = a.shape[axis]
+    if a.shape[axis] != n:
+        s = list(a.shape)
+        if s[axis] > n:
+            index = [slice(None)]*len(s)
+            index[axis] = slice(0, n)
+            a = a[index]
+        else:
+            index = [slice(None)]*len(s)
+            index[axis] = slice(0, s[axis])
+            s[axis] = n
+            z = cupy.zeros(s, a.dtype.char)
+            z[index] = a
+            a = z
+
     plan = cufft.plan1d(a.shape[axis], value_type, a.size // a.shape[axis])
     out = cupy.empty_like(a)
 
@@ -21,5 +37,7 @@ def fft(a, n=None, axis=-1, norm=None, value_type=cufft.CUFFT_C2C, direction=cuf
     if value_type == cufft.CUFFT_Z2D:
         cufft.execZ2D(plan, a.data, out.data)
 
+    if norm is not None:
+        out /= cupy.sqrt(n)
     cufft.destroy(plan)
     return out
