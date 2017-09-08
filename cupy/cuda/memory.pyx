@@ -1,5 +1,4 @@
 # distutils: language = c++
-
 import collections
 import ctypes
 import gc
@@ -7,6 +6,7 @@ import warnings
 import weakref
 
 from fastrlock cimport rlock
+from libcpp cimport algorithm
 
 from cupy.cuda import memory_hook
 from cupy.cuda import runtime
@@ -474,10 +474,8 @@ cdef class SingleDeviceMemoryPool:
         # cudaMalloc() is aligned to at least 512 bytes
         # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
         self._allocation_unit_size = 512
-        self._initial_bins_size = 1024
         self._in_use = {}
         self._free = []
-        self._index_vector.assign(self._initial_bins_size, -1)
         self._allocator = allocator
         self._weakref = weakref.ref(self)
         self._device_id = device.get_device_id()
@@ -494,39 +492,39 @@ cdef class SingleDeviceMemoryPool:
         unit = self._allocation_unit_size
         return (size - 1) // unit
 
-    cpdef _grow_free_if_necessary(self, Py_ssize_t size):
-        """Extend bins (_free) size if necessary"""
-        if self._index_vector.size() < size:
-            self._index_vector.resize(size, -1)
-
     cpdef _append_to_free_list(self, Py_ssize_t size, chunk):
-        cdef int index, free_index
+        cdef int index, bin_index
         cdef set free_list
-        index = self._bin_index_from_size(size)
+        bin_index = self._bin_index_from_size(size)
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            self._grow_free_if_necessary(index + 1)
-            free_index = self._index_vector[index]
-            if free_index >= 0:
-                free_list = self._free[free_index]
+            index = algorithm.lower_bound(
+                self._index_vector.begin(), self._index_vector.end(),
+                bin_index) - self._index_vector.begin()
+            if (index < self._index_vector.size() and
+                    self._index_vector[index] == bin_index):
+                free_list = self._free[index]
             else:
                 free_list = set()
-                self._index_vector[index] = len(self._free)
-                self._free.append(free_list)
+                self._index_vector.insert(
+                    self._index_vector.begin() + index, bin_index)
+                self._free.insert(index, free_list)
             free_list.add(chunk)
         finally:
             rlock.unlock_fastrlock(self._free_lock)
 
     cpdef bint _remove_from_free_list(self, Py_ssize_t size, chunk) except *:
-        cdef int index, free_index
+        cdef int index, bin_index
         cdef set free_list
-        index = self._bin_index_from_size(size)
-        free_index = self._index_vector[index]
-        if free_index < 0:
-            return False
+        bin_index = self._bin_index_from_size(size)
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            free_list = self._free[free_index]
+            index = algorithm.lower_bound(
+                self._index_vector.begin(), self._index_vector.end(),
+                bin_index) - self._index_vector.begin()
+            if self._index_vector[index] != bin_index:
+                return False
+            free_list = self._free[index]
             if chunk in free_list:
                 free_list.remove(chunk)
                 return True
@@ -621,27 +619,26 @@ cdef class SingleDeviceMemoryPool:
         cdef set free_list
         cdef Chunk chunk = None
         cdef Chunk remaining = None
+        cdef int bin_index, index, length
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        index = self._bin_index_from_size(size)
         # find best-fit, or a smallest larger allocation
-        length = self._index_vector.size()
-        for i in range(index, length):
-            free_index = self._index_vector[i]
-            if free_index < 0:
-                continue
-            if len(<set>self._free[free_index]) == 0:
-                continue
-            rlock.lock_fastrlock(self._free_lock, -1, True)
-            try:
-                free_list = self._free[free_index]
+        rlock.lock_fastrlock(self._free_lock, -1, True)
+        bin_index = self._bin_index_from_size(size)
+        try:
+            index = algorithm.lower_bound(
+                self._index_vector.begin(), self._index_vector.end(),
+                bin_index) - self._index_vector.begin()
+            length = self._index_vector.size()
+            for i in range(index, length):
+                free_list = self._free[i]
                 if free_list:
                     chunk = free_list.pop()
                     break
-            finally:
-                rlock.unlock_fastrlock(self._free_lock)
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:
             chunk, remaining = self._split(chunk, size)
