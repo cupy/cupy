@@ -24,3 +24,14 @@ class TestFft(unittest.TestCase):
             out = out.astype(np.complex64)
 
         return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-7)
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+
+        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.complex64)
+
+        return out
