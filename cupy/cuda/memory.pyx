@@ -487,8 +487,8 @@ cdef class SingleDeviceMemoryPool:
         unit = self._allocation_unit_size
         return ((size + unit - 1) // unit) * unit
 
-    cpdef Py_ssize_t _bin_index_from_size(self, Py_ssize_t size):
-        """Get appropriate bins (_free) index from the memory size"""
+    cpdef int _bin_index_from_size(self, Py_ssize_t size):
+        """Get appropriate bins index from the memory size"""
         unit = self._allocation_unit_size
         return (size - 1) // unit
 
@@ -499,15 +499,14 @@ cdef class SingleDeviceMemoryPool:
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
             index = algorithm.lower_bound(
-                self._index_vector.begin(), self._index_vector.end(),
-                bin_index) - self._index_vector.begin()
-            if (index < self._index_vector.size() and
-                    self._index_vector[index] == bin_index):
+                self._index.begin(), self._index.end(),
+                bin_index) - self._index.begin()
+            if index < self._index.size() and self._index[index] == bin_index:
                 free_list = self._free[index]
             else:
                 free_list = set()
-                self._index_vector.insert(
-                    self._index_vector.begin() + index, bin_index)
+                self._index.insert(
+                    self._index.begin() + index, bin_index)
                 self._free.insert(index, free_list)
             free_list.add(chunk)
         finally:
@@ -520,9 +519,9 @@ cdef class SingleDeviceMemoryPool:
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
             index = algorithm.lower_bound(
-                self._index_vector.begin(), self._index_vector.end(),
-                bin_index) - self._index_vector.begin()
-            if self._index_vector[index] != bin_index:
+                self._index.begin(), self._index.end(),
+                bin_index) - self._index.begin()
+            if self._index[index] != bin_index:
                 return False
             free_list = self._free[index]
             if chunk in free_list:
@@ -629,9 +628,9 @@ cdef class SingleDeviceMemoryPool:
         bin_index = self._bin_index_from_size(size)
         try:
             index = algorithm.lower_bound(
-                self._index_vector.begin(), self._index_vector.end(),
-                bin_index) - self._index_vector.begin()
-            length = self._index_vector.size()
+                self._index.begin(), self._index.end(),
+                bin_index) - self._index.begin()
+            length = self._index.size()
             for i in range(index, length):
                 free_list = self._free[i]
                 if free_list:
