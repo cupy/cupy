@@ -87,7 +87,7 @@ class TestDotFor0Dim(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_dot(self, xp, dtype_a, dtype_b):
         shape_a, shape_b = self.shape
         if self.trans_a:

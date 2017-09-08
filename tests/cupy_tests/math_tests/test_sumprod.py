@@ -80,13 +80,13 @@ class TestSumprod(unittest.TestCase):
         testing.assert_allclose(sa, sb.astype('e'))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_sum_axis_transposed(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(2, 0, 1)
         return a.sum(axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_sum_axis_transposed2(self, xp, dtype):
         a = testing.shaped_arange((20, 30, 40), xp, dtype).transpose(2, 0, 1)
         return a.sum(axis=1)
@@ -181,7 +181,7 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)

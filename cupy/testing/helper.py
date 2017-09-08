@@ -131,7 +131,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None):
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None):
+                        sp_name=None, contiguous_check=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -152,6 +152,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
+         contiguous_check(bool): If ``True``, consistency of contiguousness is
+             also checked.
 
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
@@ -175,8 +177,20 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     def check_func(cupy_result, numpy_result):
-        array.assert_allclose(cupy_result, numpy_result,
-                              rtol, atol, err_msg, verbose)
+        c = cupy_result
+        n = numpy_result
+        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+        if contiguous_check and isinstance(n, numpy.ndarray):
+            if n.flags.c_contiguous and not c.flags.c_contiguous:
+                raise AssertionError(
+                    'The state of c_contiguous flag is false. '
+                    '(cupy_result:{} numpy_result:{})'.format(
+                        c.flags.c_contiguous, n.flags.c_contiguous))
+            if n.flags.f_contiguous and not c.flags.f_contiguous:
+                raise AssertionError(
+                    'The state of f_contiguous flag is false. '
+                    '(cupy_result:{} numpy_result:{})'.format(
+                        c.flags.f_contiguous, n.flags.f_contiguous))
     return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
@@ -308,6 +322,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     """
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
+
     return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 

@@ -196,7 +196,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype):
         if self.skip_overflow and dtype in self.skip_dtypes:
             return xp.array([])
