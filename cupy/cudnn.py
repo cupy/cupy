@@ -300,27 +300,23 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),
                       cudnn.destroyRNNDescriptor)
-    cudnn.setRNNDescriptor(
-        desc.value, hidden_size, num_layers, dropout_desc.value,
-        input_mode, direction, mode, data_type)
+    if _cudnn_version >= 6000:
+        cudnn.setRNNDescriptor_v6(
+            handle, desc.value, hidden_size, num_layers, dropout_desc.value,
+            input_mode, direction, mode, algo, data_type)
+    else:
+        cudnn.setRNNDescriptor(
+            desc.value, hidden_size, num_layers, dropout_desc.value,
+            input_mode, direction, mode, data_type)
     return desc
 
 
-def create_rnn_descriptor_v6(handle,
-                             hidden_size, num_layers, dropout_desc,
-                             input_mode, direction, mode, algo, data_type,
-                             minibatch):
-    desc = Descriptor(cudnn.createRNNDescriptor(),
-                      cudnn.destroyRNNDescriptor)
-    cudnn.setRNNDescriptor_v6(
-        handle, desc.value, hidden_size, num_layers, dropout_desc.value,
-        input_mode, direction, mode, algo, data_type)
+def create_rnn_persistent_rnn_plan(desc, data_type, minibatch):
     # Persistent RNN
     plan = Descriptor(cudnn.createPersistentRNNPlan(desc.value, minibatch,
                                                     data_type),
                       cudnn.destroyPersistentRNNPlan)
     cudnn.setPersistentRNNPlan(desc.value, plan.value)
-    return desc
 
 
 def get_rnn_lin_layer_matrix_params(
