@@ -265,6 +265,13 @@ cdef extern from "cupy_cudnn.h" nogil:
     # RNN
     int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
     int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
+    int cudnnCreatePersistentRNNPlan(
+        RNNDescriptor rnnDesc,
+        const int minibatch, DataType dataType,
+        PersistentRNNPlan* plan)
+    int cudnnSetPersistentRNNPlan(
+        RNNDescriptor rnnDesc, PersistentRNNPlan plan)
+    int cudnnDestroyPersistentRNNPlan(PersistentRNNPlan plan)
     int cudnnSetRNNDescriptor_v5(
         RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
@@ -1072,6 +1079,27 @@ cpdef destroyRNNDescriptor(size_t rnnDesc):
     check_status(status)
 
 
+cpdef size_t createPersistentRNNPlan(
+    size_t rnnDesc, int minibatch, int dataType) except *:
+    cdef PersistentRNNPlan plan
+    status = cudnnCreatePersistentRNNPlan(
+        <RNNDescriptor>rnnDesc,
+        <int>minibatch, <DataType>dataType, &plan)
+    check_status(status)
+    return <size_t>plan
+
+
+cpdef setPersistentRNNPlan(size_t rnnDesc, size_t plan):
+    status = cudnnSetPersistentRNNPlan(
+        <RNNDescriptor>rnnDesc, <PersistentRNNPlan>plan)
+    check_status(status)
+
+
+cpdef destroyPersistentRNNPlan(size_t plan):
+    status = cudnnDestroyPersistentRNNPlan(<PersistentRNNPlan>plan)
+    check_status(status)
+
+
 cpdef setRNNDescriptor_v5(
         size_t rnnDesc, int hiddenSize, int numLayers,
         size_t dropoutDesc, int inputMode, int direction, int mode,
@@ -1080,6 +1108,18 @@ cpdef setRNNDescriptor_v5(
         <RNNDescriptor>rnnDesc, hiddenSize, numLayers,
         <DropoutDescriptor>dropoutDesc, <RNNInputMode>inputMode,
         <DirectionMode>direction, <RNNMode>mode, <DataType>dataType)
+    check_status(status)
+
+
+cpdef setRNNDescriptor_v6(
+        size_t handle, size_t rnnDesc, int hiddenSize, int numLayers,
+        size_t dropoutDesc, int inputMode, int direction, int mode,
+        int algo, int dataType):
+    status = cudnnSetRNNDescriptor_v6(
+        <Handle>handle, <RNNDescriptor>rnnDesc, hiddenSize, numLayers,
+        <DropoutDescriptor>dropoutDesc, <RNNInputMode>inputMode,
+        <DirectionMode>direction, <RNNMode>mode, <RNNAlgo>algo,
+        <DataType>dataType)
     check_status(status)
 
 

@@ -52,6 +52,7 @@ cdef extern from *:
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
+    ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
@@ -151,6 +152,10 @@ cpdef enum:
 
     CUDNN_UNIDIRECTIONAL = 0
     CUDNN_BIDIRECTIONAL = 1
+
+    CUDNN_RNN_ALGO_STANDARD = 0
+    CUDNN_RNN_ALGO_PERSIST_STATIC = 1
+    CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2
 
     CUDNN_LINEAR_INPUT = 0
     CUDNN_SKIP_INPUT = 1
