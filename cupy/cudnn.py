@@ -335,3 +335,51 @@ def is_tensor_core_available(dtype):
             int(device.get_compute_capability()) == 70):
         return True
     return False
+
+
+class DropoutTransaction(object):
+
+    def __init__(self, handle, dropout_ratio, seed):
+        self.states = create_dropout_states(handle)
+        self.desc = create_dropout_descriptor(
+            handle, dropout_ratio, self.states.data.ptr,
+            self.states.size, seed)
+
+    def set_dropout_ratio(self, handle, dropout_ratio):
+        set_dropout_descriptor(self.desc, handle, dropout_ratio)
+
+    def forward(self, x, handle):
+        if not isinstance(x, cupy.ndarray):
+            raise TypeError('argument x must be an cupy.ndarray')
+
+        x = cupy.ascontiguousarray(x)
+        y = cupy.empty_like(x)
+
+        x_mat = _as4darray(x)
+        x_desc = create_tensor_descriptor(x_mat)
+
+        reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc.value)
+        self.reserve_space = cupy.empty((reserve_size,))
+
+        cudnn.dropoutForward(handle, self.desc.value,
+                             x_desc.value, x_mat.data.ptr,
+                             x_desc.value, y.data.ptr,
+                             self.reserve_space.data.ptr, reserve_size)
+        return y,
+
+    def backward(self, dy, handle):
+        if not isinstance(dy, cupy.ndarray):
+            raise TypeError('argument dy must be an cupy.ndarray')
+
+        dy = cupy.ascontiguousarray(dy)
+        dx = cupy.empty_like(dy)
+
+        dy_mat = _as4darray(dy)
+        dy_desc = create_tensor_descriptor(dy_mat)
+
+        cudnn.dropoutBackward(handle, self.desc.value,
+                              dy_desc.value, dy_mat.data.ptr,
+                              dy_desc.value, dx.data.ptr,
+                              self.reserve_space.data.ptr,
+                              self.reserve_space.size)
+        return dx,
