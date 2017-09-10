@@ -438,7 +438,7 @@ class PooledMemory(Memory):
         hooks = None
         # to avoid error at exit
         mh = memory_hook
-        if mh is not None:
+        if mh is not None and mh.get_memory_hooks is not None:
             hooks = mh.get_memory_hooks()
         size = self.size
         if hooks:
