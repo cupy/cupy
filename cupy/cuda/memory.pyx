@@ -441,7 +441,11 @@ class PooledMemory(Memory):
         if pool is None:
             return
 
-        hooks = memory_hook.get_memory_hooks()
+        hooks = None
+        mh = memory_hook
+        if mh is not None:
+            hooks = memory_hook.get_memory_hooks()
+
         if hooks:
             device_id = device.id
             pmem_id = id(self)
