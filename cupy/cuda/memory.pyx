@@ -419,10 +419,6 @@ class PooledMemory(Memory):
         self.size = chunk.size
         self.pool = pool
 
-    def __del__(self):
-        if self.ptr != 0:
-            self.free()
-
     def free(self):
         """Frees the memory buffer and returns it to the memory pool.
 
@@ -430,33 +426,43 @@ class PooledMemory(Memory):
         buffer to the memory pool for reuse.
 
         """
+        cdef Py_ssize_t ptr
+        ptr = self.ptr
+        if ptr == 0:
+            return
         pool = self.pool()
-        if pool and self.ptr != 0:
-            hooks = memory_hook.get_memory_hooks()
-            if hooks:
-                device_id = self.device.id
-                pmem_id = id(self)
-                size = self.size
-                ptr = self.ptr
-                hooks_values = hooks.values()  # avoid six for performance
-                for hook in hooks_values:
-                    hook.free_preprocess(device_id=device_id,
-                                         mem_size=size,
-                                         mem_ptr=ptr,
-                                         pmem_id=pmem_id)
-                try:
-                    pool.free(ptr, size)
-                finally:
-                    for hook in hooks_values:
-                        hook.free_postprocess(device_id=device_id,
-                                              mem_size=size,
-                                              mem_ptr=ptr,
-                                              pmem_id=pmem_id)
-            else:
-                pool.free(self.ptr, self.size)
+        size = self.size
+        device = self.device
+
         self.ptr = 0
         self.size = 0
         self.device = None
+        self.pool = None
+        if pool is None:
+            return
+
+        hooks = memory_hook.get_memory_hooks()
+        if hooks:
+            device_id = device.id
+            pmem_id = id(self)
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.free_preprocess(device_id=device_id,
+                                     mem_size=size,
+                                     mem_ptr=ptr,
+                                     pmem_id=pmem_id)
+            try:
+                pool.free(ptr, size)
+            finally:
+                for hook in hooks_values:
+                    hook.free_postprocess(device_id=device_id,
+                                          mem_size=size,
+                                          mem_ptr=ptr,
+                                          pmem_id=pmem_id)
+        else:
+            pool.free(ptr, size)
+
+    __del__ = free
 
 
 cdef class SingleDeviceMemoryPool:
