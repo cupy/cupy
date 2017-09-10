@@ -1,62 +1,3 @@
-###############################################################################
-# Types
-###############################################################################
-
-cdef extern from *:
-    ctypedef int ActivationMode 'cudnnActivationMode_t'
-    ctypedef int AddMode 'cudnnAddMode_t'
-    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
-    ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
-    ctypedef int ConvolutionBwdDataPreference \
-        'cudnnConvolutionBwdDataPreference_t'
-    ctypedef struct ConvolutionBwdDataAlgoPerf \
-        'cudnnConvolutionBwdDataAlgoPerf_t':  # NOQA: E125
-        int algo
-        int status
-        float time
-        size_t memory
-    ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
-    ctypedef int ConvolutionBwdFilterPreference \
-        'cudnnConvolutionBwdFilterPreference_t'
-    ctypedef struct ConvolutionBwdFilterAlgoPerf \
-        'cudnnConvolutionBwdFilterAlgoPerf_t':  # NOQA: E125
-        int algo
-        int status
-        float time
-        size_t memory
-    ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
-    ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
-    ctypedef struct ConvolutionFwdAlgoPerf 'cudnnConvolutionFwdAlgoPerf_t':
-        int algo
-        int status
-        float time
-        size_t memory
-    ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
-    ctypedef int DataType 'cudnnDataType_t'
-    ctypedef int MathType 'cudnnMathType_t'
-    ctypedef int DirectionMode 'cudnnDirectionMode_t'
-    ctypedef int NanPropagation 'cudnnNanPropagation_t'
-    ctypedef int PoolingMode 'cudnnPoolingMode_t'
-    ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
-    ctypedef int RNNMode 'cudnnRNNMode_t'
-    ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
-    ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
-    ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
-    ctypedef int Status 'cudnnStatus_t'
-    ctypedef int TensorFormat 'cudnnTensorFormat_t'
-
-    ctypedef void* ActivationDescriptor 'cudnnActivationDescriptor_t'
-    ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
-    ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
-    ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
-    ctypedef void* Handle 'cudnnHandle_t'
-    ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
-    ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
-    ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
-    ctypedef void* SpatialTransformerDescriptor \
-        'cudnnSpatialTransformerDescriptor_t'
-    ctypedef void* SamplerType 'cudnnSamplerType_t'
-
 
 ###############################################################################
 # Enum
@@ -157,6 +98,11 @@ cpdef enum:
 
     CUDNN_SAMPLER_BILINEAR = 0
 
+###############################################################################
+# Version
+###############################################################################
+
+cpdef size_t getVersion() except *
 
 ###############################################################################
 # Initialization and CUDA cooperation
@@ -194,6 +140,7 @@ cpdef setFilter4dDescriptor_v4(
     size_t filterDesc, int dataType, int format, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor_v4(
     size_t filterDesc, int dataType, int format, int nbDims, size_t filterDimA)
+cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested)
 cpdef destroyFilterDescriptor(size_t filterDesc)
 
 
@@ -224,8 +171,7 @@ cpdef findConvolutionForwardAlgorithmEx(
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-    size_t destDesc, ConvolutionFwdPreference preference,
-    size_t memoryLimitInbytes) except *
+    size_t destDesc, int preference, size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionForwardWorkspaceSize(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int algo) except *
@@ -246,8 +192,7 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-    size_t filterDesc, ConvolutionBwdFilterPreference preference,
-    size_t memoryLimitInbytes) except *
+    size_t filterDesc, int preference, size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, int algo) except *
@@ -357,9 +302,69 @@ cpdef activationBackward_v4(
     size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
     size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
     size_t destDiffData)
+
+
+###############################################################################
+# Dropout
+###############################################################################
 cpdef size_t createDropoutDescriptor() except *
 cpdef destroyDropoutDescriptor(size_t dropoutDesc)
 cpdef size_t dropoutGetStatesSize(size_t handle) except *
+cpdef setDropoutDescriptor(
+    size_t dropoutDesc, size_t handle, float dropout,
+    size_t states, size_t stateSizeInBytes, unsigned long long seed)
+
+
+###############################################################################
+# RNN
+###############################################################################
+
+cpdef size_t createRNNDescriptor() except *
+cpdef destroyRNNDescriptor(size_t rnnDesc)
+cpdef setRNNDescriptor_v5(
+    size_t rnnDesc, int hiddenSize, int numLayers,
+    size_t dropoutDesc, int inputMode, int direction, int mode,
+    int dataType)
+cpdef getRNNWorkspaceSize(
+    size_t handle, size_t rnnDesc, int seqLength, size_t xDesc)
+cpdef getRNNTrainingReserveSize(
+    size_t handle, size_t rnnDesc, int seqLength, size_t xDesc)
+cpdef getRNNParamsSize(
+    size_t handle, size_t rnnDesc, size_t xDesc, int dataType)
+cpdef getRNNLinLayerMatrixParams(
+    size_t handle, size_t rnnDesc, int layer, size_t xDesc, size_t wDesc,
+    size_t w, int linLayerID, size_t linLayerMatDesc, size_t linLayerMat)
+cpdef getRNNLinLayerBiasParams(
+    size_t handle, size_t rnnDesc, int layer, size_t xDesc, size_t wDesc,
+    size_t w, int linLayerID, size_t linLayerBiasDesc,
+    size_t linLayerBias)
+cpdef RNNForwardInference(
+    size_t handle, size_t rnnDesc, int seqLength, size_t xDesc,
+    size_t x, size_t hxDesc, size_t hx, size_t cxDesc,
+    size_t cx, size_t wDesc, size_t w, size_t yDesc,
+    size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+    size_t cy, size_t workspace, size_t workSpaceSizeInBytes)
+cpdef RNNForwardTraining(
+    size_t handle, size_t rnnDesc, int seqLength, size_t xDesc, size_t x,
+    size_t hxDesc, size_t hx, size_t cxDesc, size_t cx,
+    size_t wDesc, size_t w, size_t yDesc, size_t y,
+    size_t hyDesc, size_t hy, size_t cyDesc, size_t cy,
+    size_t workspace, size_t workSpaceSizeInBytes, size_t reserveSpace,
+    size_t reserveSpaceSizeInBytes)
+cpdef RNNBackwardData(
+    size_t handle, size_t rnnDesc, int seqLength, size_t yDesc, size_t y,
+    size_t dyDesc, size_t dy, size_t dhyDesc, size_t dhy,
+    size_t dcyDesc, size_t dcy, size_t wDesc, size_t w,
+    size_t hxDesc, size_t hx, size_t cxDesc, size_t cx,
+    size_t dxDesc, size_t dx, size_t dhxDesc, size_t dhx,
+    size_t dcxDesc, size_t dcx, size_t workspace,
+    size_t workSpaceSizeInBytes, size_t reserveSpace,
+    size_t reserveSpaceSizeInBytes)
+cpdef RNNBackwardWeights(
+    size_t handle, size_t rnnDesc, int seqLength, size_t xDesc, size_t x,
+    size_t hxDesc, size_t hx, size_t yDesc, size_t y,
+    size_t workspace, size_t workSpaceSizeInBytes, size_t dwDesc,
+    size_t dw, size_t reserveSpace, size_t reserveSpaceSizeInBytes)
 
 
 ###############################################################################
