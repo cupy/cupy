@@ -148,7 +148,7 @@ def choice(a, size=None, replace=True, p=None):
 
     .. note::
 
-       Currently `p` is not supported when `replace=False`.
+       Currently ``p`` is not supported when ``replace=False``.
 
     Args:
         a (1-D array-like or int):
