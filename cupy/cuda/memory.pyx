@@ -430,24 +430,19 @@ class PooledMemory(Memory):
         ptr = self.ptr
         if ptr == 0:
             return
-        pool = self.pool()
-        size = self.size
-        device = self.device
-
         self.ptr = 0
-        self.size = 0
-        self.device = None
-        self.pool = None
+        pool = self.pool()
         if pool is None:
             return
 
         hooks = None
+        # to avoid error at exit
         mh = memory_hook
         if mh is not None:
-            hooks = memory_hook.get_memory_hooks()
-
+            hooks = mh.get_memory_hooks()
+        size = self.size
         if hooks:
-            device_id = device.id
+            device_id = self.device.id
             pmem_id = id(self)
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
