@@ -2409,6 +2409,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
     all_same_type = True
     all_one_and_contiguous = True
     any_contiguous_on_axis = False
+    total_bytes = 0
     dtype = tup[0].dtype
     for a in tup:
         all_same_type = all_same_type and (a.dtype == dtype)
@@ -2418,8 +2419,10 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         any_contiguous_on_axis = (
             any_contiguous_on_axis or
             a._strides[axis] == a.itemsize)
+        total_bytes += a.size * a.itemsize
 
-    if not all_same_type or not any_contiguous_on_axis:
+    if ((not all_same_type or not any_contiguous_on_axis) and
+            (len(tup) < 256 or total_bytes / len(tup) > 524288)):
         skip = (slice(None),) * axis
         i = 0
         for a in tup:
