@@ -2,7 +2,7 @@ import numpy
 
 
 def bytes(length):
-    """Return random bytes.
+    """Returns random bytes.
 
     .. seealso:: :func:`numpy.random.bytes`
     """
