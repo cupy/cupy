@@ -42,7 +42,7 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
         dict _in_use
-        object _free
+        list _free
         object __weakref__
         object _weakref
         object _free_lock
