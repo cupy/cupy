@@ -399,6 +399,60 @@ class TestChoiceFailure(unittest.TestCase):
             self.rs.choice(a=self.a, size=self.size, p=self.p)
 
 
+@testing.parameterize(
+    {'a': 5, 'size': 2},
+    {'a': 5, 'size': (2, 2)},
+    {'a': 5, 'size': ()},
+    {'a': numpy.array([0.0, 2.0, 4.0]), 'size': 2},
+)
+@testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
+@testing.gpu
+class TestChoiceReplaceFalse(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
+
+    def test_dtype_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, replace=False)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int'
+        self.assertEqual(v.dtype, expected_dtype)
+        self.assertEqual(v.shape, expected_shape)
+
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, replace=False).get()
+        size = self.size if isinstance(self.size, tuple) else (self.size,)
+        self.assertEqual(val.shape, size)
+        self.assertTrue((0 <= val).all())
+        self.assertTrue((val < 5).all())
+        val = numpy.asarray(val)
+        self.assertEqual(numpy.unique(val).size, val.size)
+
+
+@testing.parameterize(
+    {'a': 3, 'size': 5},
+    {'a': [1, 2, 3], 'size': 5},
+)
+@testing.fix_random()
+@testing.with_requires('numpy>=1.11.0')
+@testing.gpu
+class TestChoiceReplaceFalseFailure(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_choice_invalid_value(self, xp):
+        rs = xp.random.RandomState(seed=testing.generate_seed())
+        rs.choice(a=self.a, size=self.size, replace=False)
+
+
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):
