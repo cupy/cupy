@@ -5,6 +5,7 @@ from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
+from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
