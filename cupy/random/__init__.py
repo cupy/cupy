@@ -1,4 +1,13 @@
-from numpy.random import bytes   # NOQA
+import numpy
+
+
+def bytes(length):
+    """Return random bytes.
+
+    .. seealso:: :func:`numpy.random.bytes`
+    """
+    return numpy.bytes(length)
+
 
 from cupy.random import distributions  # NOQA
 from cupy.random import generator  # NOQA

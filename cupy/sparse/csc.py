@@ -32,7 +32,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given arrays are always used.
 
-    .. see::
+    .. seealso::
        :class:`scipy.sparse.csc_matrix`
 
     """
@@ -42,7 +42,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
 
-        .. warn::
+        .. warning::
            You need to install SciPy to use this method.
 
         Args:
