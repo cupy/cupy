@@ -19,7 +19,8 @@ def time_range(message, color_id=None, argb_color=None, sync=False):
         color_id: range color ID
         argb_color: range color in ARGB (e.g. 0xFF00FF00 for green)
         sync (bool): If ``True``, waits for completion of all outstanding
-            processings on GPU before calling RangePush() or RangePop()
+            processing on GPU before calling :func:`cupy.cuda.nvtx.RangePush()`
+            or :func:`cupy.cuda.nvtx.RangePop()`
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
@@ -61,7 +62,8 @@ class TimeRangeDecorator(object):
         color_id: range color ID
         argb_color: range color in ARGB (e.g. 0xFF00FF00 for green)
         sync (bool): If ``True``, waits for completion of all outstanding
-            processings on GPU before calling RangePush() or RangePop()
+            processing on GPU before calling :func:`cupy.cuda.nvtx.RangePush()`
+            or :func:`cupy.cuda.nvtx.RangePop()`
 
     .. seealso:: :func:`cupy.nvtx.range`
         :func:`cupy.cuda.nvtx.RangePush`
