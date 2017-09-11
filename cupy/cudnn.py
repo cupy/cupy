@@ -339,18 +339,17 @@ def is_tensor_core_available(dtype):
 
 class DropoutTransaction(object):
 
-    def __init__(self, handle, dropout_ratio, seed):
+    def __init__(self, handle, seed):
         self.states = create_dropout_states(handle)
         self.desc = create_dropout_descriptor(
-            handle, dropout_ratio, self.states.data.ptr,
+            handle, 0., self.states.data.ptr,
             self.states.size, seed)
 
-    def set_dropout_ratio(self, handle, dropout_ratio):
-        set_dropout_descriptor(self.desc, handle, dropout_ratio)
-
-    def forward(self, x, handle):
+    def forward(self, handle, x, dropout_ratio):
         if not isinstance(x, cupy.ndarray):
             raise TypeError('argument x must be an cupy.ndarray')
+
+        set_dropout_descriptor(self.desc, handle, dropout_ratio)
 
         x = cupy.ascontiguousarray(x)
         y = cupy.empty_like(x)
@@ -359,17 +358,19 @@ class DropoutTransaction(object):
         x_desc = create_tensor_descriptor(x_mat)
 
         reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc.value)
-        self.reserve_space = cupy.empty((reserve_size,))
+        reserve_space = cupy.empty((reserve_size,))
 
         cudnn.dropoutForward(handle, self.desc.value,
                              x_desc.value, x_mat.data.ptr,
                              x_desc.value, y.data.ptr,
-                             self.reserve_space.data.ptr, reserve_size)
-        return y,
+                             reserve_space.data.ptr, reserve_size)
+        return (reserve_space, y)
 
-    def backward(self, dy, handle):
+    def backward(self, handle, dy, dropout_ratio, reserve_space):
         if not isinstance(dy, cupy.ndarray):
             raise TypeError('argument dy must be an cupy.ndarray')
+
+        set_dropout_descriptor(self.desc, handle, dropout_ratio)
 
         dy = cupy.ascontiguousarray(dy)
         dx = cupy.empty_like(dy)
@@ -380,6 +381,6 @@ class DropoutTransaction(object):
         cudnn.dropoutBackward(handle, self.desc.value,
                               dy_desc.value, dy_mat.data.ptr,
                               dy_desc.value, dx.data.ptr,
-                              self.reserve_space.data.ptr,
-                              self.reserve_space.size)
-        return dx,
+                              reserve_space.data.ptr,
+                              reserve_space.size)
+        return dx
