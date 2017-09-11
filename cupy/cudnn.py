@@ -1,5 +1,6 @@
 import atexit
 import threading
+import warnings
 
 import numpy
 import six
@@ -309,6 +310,9 @@ def get_rnn_lin_layer_bias_params(
 
 
 def create_dropout_states(handle):
+    warnings.warn('create_dropout_states is deprecated.'
+                  'Please use DropoutStates class instead.',
+                  DeprecationWarning)
     state_size = cudnn.dropoutGetStatesSize(handle)
     return cupy.empty((state_size,), dtype='b')
 
@@ -337,10 +341,11 @@ def is_tensor_core_available(dtype):
     return False
 
 
-class DropoutTransaction(object):
+class DropoutStates(object):
 
     def __init__(self, handle, seed):
-        self.states = create_dropout_states(handle)
+        state_size = cudnn.dropoutGetStatesSize(handle)
+        self.states = cupy.empty((state_size,), dtype='b')
         self.desc = create_dropout_descriptor(
             handle, 0., self.states.data.ptr,
             self.states.size, seed)
