@@ -635,7 +635,7 @@ class TestArgpartition(unittest.TestCase):
         return self.argpartition(a, kth, axis=axis)
 
     @testing.with_requires('numpy<1.13')
-    @testing.numpy_cupy_raises(accept=ValueError)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_argpartition_invalid_negative_axis2(self, xp):
         a = testing.shaped_random((2, 2, 2), xp, scale=100)
         kth = 1
