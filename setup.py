@@ -35,7 +35,7 @@ sdist = cupy_setup_build.sdist_with_cython
 
 setup(
     name='cupy',
-    version='2.0.0b1',
+    version='2.0.0rc1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
