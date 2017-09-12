@@ -11,50 +11,74 @@ class TestFromData(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array(self, xp, dtype):
-        return xp.array([[1, 2, 3], [2, 3, 4]], dtype=dtype)
+    def test_array(self, xp, dtype, order):
+        return xp.array([[1, 2, 3], [2, 3, 4]], dtype=dtype, order=order)
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_from_numpy(self, xp, dtype):
+    def test_array_from_numpy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
-        return xp.array(a)
+        return xp.array(a, order=order)
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_copy(self, xp, dtype):
+    def test_array_copy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        return xp.array(a)
+        return xp.array(a, order=order)
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_copy_is_copied(self, xp, dtype):
+    def test_array_copy_is_copied(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a)
+        b = xp.array(a, order=order)
         a.fill(0)
         return b
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes(name='dtype1', no_complex=True)
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()
-    def test_array_copy_with_dtype(self, xp, dtype1, dtype2):
+    def test_array_copy_with_dtype(self, xp, dtype1, dtype2, order):
         # complex to real makes no sense
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
-        return xp.array(a, dtype=dtype2)
+        return xp.array(a, dtype=dtype2, order=order)
 
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
-    def test_array_copy_with_dtype_being_none(self, xp):
+    def test_array_copy_with_dtype_being_none(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
-        return xp.array(a, dtype=None)
+        return xp.array(a, dtype=None, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_no_copy(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=False, order=order)
+        a.fill(0)
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_f_contiguous_input(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.array(a, copy=False, order=order)
+        return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_no_copy(self, xp, dtype):
+    def test_array_f_contiguous_output(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False)
-        a.fill(0)
+        b = xp.array(a, copy=False, order='F')
+        self.assertTrue(b.flags.f_contiguous)
         return b
 
     @testing.multi_gpu(2)

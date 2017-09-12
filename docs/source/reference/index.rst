@@ -24,6 +24,7 @@ Reference
    ndarray
    ufunc
    routines
+   sparse           
    generic
    cuda
    memoize

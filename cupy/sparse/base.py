@@ -365,6 +365,13 @@ class spmatrix(object):
 
 
 def issparse(x):
+    """Checks if a given matrix is a sparse matrix.
+
+    Returns:
+        bool: Returns if ``x`` is :class:`cupy.sparse.spmatrix` that is a base
+            class of all sparse matrix classes.
+
+    """
     return isinstance(x, spmatrix)
 
 

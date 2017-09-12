@@ -279,9 +279,9 @@ cdef class ndarray:
             dtype: Type specifier.
             order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
                 (Fortran-style) order.
-                When `order` is 'A', it uses 'F' if `a` is column-major and
-                uses `C` otherwise.
-                And when `order` is 'K', it keeps strides as closely as
+                When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
+                uses 'C' otherwise.
+                And when ``order`` is 'K', it keeps strides as closely as
                 possible.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
@@ -359,8 +359,8 @@ cdef class ndarray:
         Args:
             order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
                 (Fortran-style) order.
-                When `order` is 'A', it uses 'F' if `a` is column-major and
-                uses `C` otherwise.
+                When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
+                uses 'C' otherwise.
                 And when `order` is 'K', it keeps strides as closely as
                 possible.
 
@@ -1668,10 +1668,13 @@ cdef class ndarray:
             raise ValueError(
                 'Shape mismatch. Old shape: {}, new shape: {}'.format(
                     self.shape, arr.shape))
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            arr = numpy.ascontiguousarray(arr)
+        elif self._f_contiguous:
+            arr = numpy.asfortranarray(arr)
+        else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        arr = numpy.ascontiguousarray(arr)
         ptr = arr.ctypes.get_as_parameter()
         if stream is None:
             self.data.copy_from_host(ptr, self.nbytes)
@@ -2011,19 +2014,22 @@ cdef _argmax = create_reduction_func(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
-    # TODO(beam2d): Support order and subok options
+cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
+                    bint subok=False, Py_ssize_t ndmin=0):
+    # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
+    if subok:
+        raise NotImplementedError
     if isinstance(obj, ndarray):
         src = obj
         if dtype is None:
             dtype = src.dtype
         dev = src.data.device
         if dev is None or dev.id == device.get_device_id():
-            a = src.astype(dtype, copy=copy)
+            a = src.astype(dtype, order=order, copy=copy)
         else:
-            a = src.copy().astype(dtype, copy=False)
+            a = src.copy(order=order).astype(dtype, copy=False)
 
         ndim = a._shape.size()
         if ndmin > ndim:
@@ -2032,12 +2038,15 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
+        if order == 'K':
+            order = 'A'
+        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
+        order = 'C' if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
-        a = ndarray(a_cpu.shape, dtype=a_dtype)
+        a = ndarray(a_cpu.shape, dtype=a_dtype, order=order)
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
@@ -3436,6 +3445,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
+cdef _tensordot_core_mul_sum = ReductionKernel(
+    'S x, T y', 'U out',
+    'static_cast<U>(x) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
 
 cpdef ndarray tensordot_core(
@@ -3469,10 +3482,6 @@ cpdef ndarray tensordot_core(
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
 
-    if not use_sgemmEx:
-        a = a.astype(dtype, copy=False)
-        b = b.astype(dtype, copy=False)
-
     if out is None:
         out = ndarray(ret_shape, dtype)
         if dtype == ret_dtype:
@@ -3485,7 +3494,7 @@ cpdef ndarray tensordot_core(
             out = ndarray(ret_shape, dtype)
 
     if m == 1 and n == 1:
-        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        _tensordot_core_mul_sum(a.ravel(), b.ravel(), out.reshape(()))
         if out is not ret:
             elementwise_copy(out, ret)
         return ret
@@ -3505,6 +3514,10 @@ cpdef ndarray tensordot_core(
     if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
         c = c.view()
         c.shape = (n, m)
+
+    if not use_sgemmEx:
+        a = a.astype(dtype, copy=False)
+        b = b.astype(dtype, copy=False)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = device.get_cublas_handle()

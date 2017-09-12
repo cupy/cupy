@@ -4,6 +4,8 @@ import numpy
 
 from cupy import testing
 
+import os
+
 
 @testing.gpu
 class TestMisc(unittest.TestCase):
@@ -44,15 +46,31 @@ class TestMisc(unittest.TestCase):
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
+    @unittest.skipIf(
+        os.sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, 13)
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_clip3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.clip(3, 13)
+
+    @unittest.skipIf(
+        os.sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_external_clip(self, xp, dtype):
+    def test_external_clip1(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.clip(a, 3, 13)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_external_clip2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.clip(a, 3, 13)
 

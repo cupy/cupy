@@ -3,9 +3,11 @@ from numpy import linalg
 import six
 
 import cupy
+from cupy.core import core
 from cupy import cuda
 from cupy.cuda import cublas
 from cupy.cuda import device
+from cupy.linalg import decomposition
 from cupy.linalg import util
 
 if cuda.cusolver_enabled:
@@ -165,7 +167,29 @@ def inv(a):
     return solve(a, b)
 
 
-# TODO(okuta): Implement pinv
+def pinv(a, rcond=1e-15):
+    '''Compute the Moore-Penrose pseudoinverse of a matrix.
+
+    It computes a pseudoinverse of a matrix ``a``, which is a generalization
+    of the inverse matrix with Singular Value Decomposition (SVD).
+    Note that it automatically removes small singular values for stability.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``
+        rcond (float): Cutoff parameter for small singular values.
+            For stability it computes the largest singular value denoted by
+            ``s``, and sets all singular values smaller than ``s`` to zero.
+
+    Returns:
+        cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
+
+    .. seealso:: :func:`numpy.linalg.pinv`
+    '''
+    u, s, vt = decomposition.svd(a, full_matrices=False)
+    cutoff = rcond * s.max()
+    s1 = 1 / s
+    s1[s <= cutoff] = 0
+    return core.dot(vt.T, s1[:, None] * u.T)
 
 
 def tensorinv(a, ind=2):

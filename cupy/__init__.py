@@ -213,7 +213,14 @@ from cupy.core.fusion import right_shift  # NOQA
 from cupy.binary.packing import packbits  # NOQA
 from cupy.binary.packing import unpackbits  # NOQA
 
-from numpy import binary_repr  # NOQA
+
+def binary_repr(num, width=None):
+    """Return the binary representation of the input number as a string.
+
+    .. seealso:: :func:`numpy.binary_repr`
+    """
+    return numpy.binary_repr(num, width)
+
 
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
@@ -276,7 +283,14 @@ from cupy.io.npz import savez_compressed  # NOQA
 from cupy.io.formatting import array_repr  # NOQA
 from cupy.io.formatting import array_str  # NOQA
 
-from numpy import base_repr  # NOQA
+
+def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
+    """Return a string representation of a number in the given base system.
+
+    .. seealso:: :func:`numpy.base_repr`
+    """
+    return numpy.base_repr(number, base, padding)
+
 
 # -----------------------------------------------------------------------------
 # Linear algebra
@@ -300,7 +314,14 @@ from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
-from numpy import isscalar  # NOQA
+
+def isscalar(num):
+    """Returns True if the type of num is a scalar type.
+
+    .. seealso:: :func:`numpy.isscalar`
+    """
+    return numpy.isscalar(num)
+
 
 from cupy.core.fusion import logical_and  # NOQA
 from cupy.core.fusion import logical_not  # NOQA
