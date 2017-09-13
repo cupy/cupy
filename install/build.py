@@ -18,6 +18,7 @@ maximum_cudnn_version = 7999
 minimum_cusolver_cuda_version = 8000
 
 _cuda_path = 'NOT_INITIALIZED'
+_nvcc_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
@@ -31,28 +32,31 @@ def _tempdir():
 
 
 def get_cuda_path():
-    global _cuda_path
+    global _cuda_path, _nvcc_path
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
     if _cuda_path is not 'NOT_INITIALIZED':
         return _cuda_path
 
-    nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
+    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
+
+    _nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if nvcc_path is None:
+    if _nvcc_path is None:
         utils.print_warning('nvcc not in path.',
                             'Please set path to nvcc.')
     else:
         cuda_path_default = os.path.normpath(
-            os.path.join(os.path.dirname(nvcc_path), '..'))
-
-    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-    if len(cuda_path) > 0 and cuda_path != cuda_path_default:
-        utils.print_warning(
-            'nvcc path != CUDA_PATH',
-            'nvcc path: %s' % cuda_path_default,
-            'CUDA_PATH: %s' % cuda_path)
+            os.path.join(os.path.dirname(_nvcc_path), '..'))
+        real_path = os.path.realpath(_nvcc_path)
+        print(real_path)
+        if (len(cuda_path) > 0 and cuda_path != cuda_path_default and
+                os.path.split(real_path)[1] != 'ccache'):
+            utils.print_warning(
+                'nvcc path != CUDA_PATH',
+                'nvcc path: %s' % cuda_path_default,
+                'CUDA_PATH: %s' % cuda_path)
 
     if os.path.exists(cuda_path):
         _cuda_path = cuda_path
@@ -67,6 +71,9 @@ def get_cuda_path():
 
 
 def get_nvcc_path():
+    if _nvcc_path is not None:
+        return _nvcc_path
+
     cuda_path = get_cuda_path()
     if cuda_path is None:
         return None
