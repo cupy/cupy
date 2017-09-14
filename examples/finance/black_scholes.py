@@ -18,8 +18,8 @@ import numpy
 
 # Naive implementation of the pricing of options with NumPy.
 def black_scholes(xp, s, x, t, r, v):
-    sqrt_t = 1 / xp.sqrt(t)
-    d1 = (xp.log(s / x) + (r + v * v / 2)) / (v * sqrt_t)
+    sqrt_t = xp.sqrt(t)
+    d1 = (xp.log(s / x) + (r + v * v / 2) * t) / (v * sqrt_t)
     d2 = d1 - v * sqrt_t
 
     def get_cumulative_normal_distribution(x):
@@ -54,8 +54,8 @@ black_scholes_kernel = cupy.ElementwiseKernel(
     'T s, T x, T t, T r, T v',  # Inputs
     'T call, T put',  # Outputs
     '''
-    const T sqrt_t = 1 / sqrt(t);
-    const T d1 = (log(s / x) + (r + v * v / 2)) / (v * sqrt_t);
+    const T sqrt_t = sqrt(t);
+    const T d1 = (log(s / x) + (r + v * v / 2) * t) / (v * sqrt_t);
     const T d2 = d1 - v * sqrt_t;
 
     const T cnd_d1 = get_cumulative_normal_distribution(d1);
