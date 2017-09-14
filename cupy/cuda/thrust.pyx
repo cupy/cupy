@@ -91,7 +91,8 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
 
 cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
               vector.vector[ptrdiff_t]& shape):
-    cdef size_t *_idx_start, *_keys_start
+    cdef size_t *_idx_start
+    cdef size_t *_keys_start
     cdef void *_data_start
 
     _idx_start = <size_t *>idx_start
