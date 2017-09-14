@@ -368,6 +368,7 @@ typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
 typedef enum {} cublasSideMode_t;
+typedef enum {} cublasGemmAlgo_t;
 typedef enum {
     CUBLAS_STATUS_SUCCESS=0,
 } cublasStatus_t;

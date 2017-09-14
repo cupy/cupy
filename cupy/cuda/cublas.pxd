@@ -18,6 +18,7 @@ cdef extern from *:
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int PointerMode 'cublasPointerMode_t'
     ctypedef int SideMode 'cublasSideMode_t'
+    ctypedef int GemmAlgo 'cublasGemmAlgo_t'
 
 
 ###############################################################################
