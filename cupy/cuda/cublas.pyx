@@ -178,13 +178,12 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasGemmEx(
         Handle handle, Operation transa, Operation transb,
         int m, int n, int k,
-        const float *alpha,
+        const void *alpha,
         const void *A, runtime.DataType Atype, int lda,
         const void *B, runtime.DataType Btype, int ldb,
-        const float *beta,
+        const void *beta,
         void *C, runtime.DataType Ctype, int ldc,
         runtime.DataType computetype, GemmAlgo algo)
-)
 
 ###############################################################################
 # Util
@@ -722,5 +721,5 @@ cpdef gemmEx(
             <const void*>B, <runtime.DataType>Btype, ldb,
             <const void*>beta,
             <void*>C, <runtime.DataType>Ctype, ldc,
-            <runtime.DateType>computeType, <GemmAlgo>algo)
+            <runtime.DataType>computeType, <GemmAlgo>algo)
     check_status(status)

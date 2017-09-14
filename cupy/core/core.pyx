@@ -3,6 +3,7 @@
 from __future__ import division
 import sys
 
+import ctypes
 import numpy
 import six
 
@@ -21,12 +22,15 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
+from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
 DEF MAX_NDIM = 25
+_one_fp32 = ctypes.c_float(1)
+_zero_fp32 = ctypes.c_float(0)
 
 
 @cython.profile(False)
@@ -3445,6 +3449,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
+cdef _compute_capability = None
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
@@ -3469,6 +3474,10 @@ cpdef ndarray tensordot_core(
         out.fill(0)
         return out
 
+    global _compute_capability
+    if _compute_capability is None:
+        _compute_capability = device.Device().compute_capability
+
     global _cuda_runtime_version
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
@@ -3476,6 +3485,12 @@ cpdef ndarray tensordot_core(
     use_sgemmEx = (_cuda_runtime_version >= 7500 and
                    a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
+
+    use_tensor_core = (_cuda_runtime_version >= 9000 and
+                       int(_compute_capability) == 70 and
+                       a.dtype == 'e' and
+                       b.dtype == 'e' and
+                       ret_dtype == 'e')
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
@@ -3526,7 +3541,18 @@ cpdef ndarray tensordot_core(
     # compute C^T = B^T * A here.
     a, transa, lda = _mat_to_cublas_contiguous(a, 0)
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-    if use_sgemmEx:
+    if use_tensor_core:
+        one_ptr = ctypes.cast(ctypes.byref(_one_fp32), ctypes.c_void_p)
+        zero_ptr = ctypes.cast(ctypes.byref(_zero_fp32), ctypes.c_void_p)
+        cublas.gemmEx(
+            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
+            one_ptr.value,
+            b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
+            a.data.ptr, runtime.CUDA_R_16F, <int>lda,
+            zero_ptr.value,
+            c.data.ptr, runtime.CUDA_R_16F, <int>m,
+            runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
+    elif use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
         cublas.sgemmEx(
             handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
