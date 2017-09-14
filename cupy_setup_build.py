@@ -435,7 +435,13 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         try:
             nvcc_path = build.get_nvcc_path()
             base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', nvcc_path)
+            use_ccache = bool(int(os.environ.get('CUPY_BUILD_USE_CCACHE',
+                                                 '0')))
+            if use_ccache:
+                self.set_executable('compiler_so', 'ccache ')
+                base_opts = [nvcc_path] + base_opts
+            else:
+                self.set_executable('compiler_so', nvcc_path)
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [

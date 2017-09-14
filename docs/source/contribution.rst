@@ -164,6 +164,8 @@ In order to run unit tests at the repository root, you first have to build Cytho
 .. note::
 
   It's not officially supported, but you can use `ccache <https://ccache.samba.org/>`_ to reduce compilation time.
+  Please set environment variable `CUPY_BUILD_USE_CCACHE=1`, when you want to use ccache for nvcc.
+
   On Ubuntu 16.04, you can set up as follows::
 
     $ sudo apt-get install ccache
