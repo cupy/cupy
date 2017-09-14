@@ -3544,6 +3544,7 @@ cpdef ndarray tensordot_core(
     if use_tensor_core:
         one_ptr = ctypes.cast(ctypes.byref(_one_fp32), ctypes.c_void_p)
         zero_ptr = ctypes.cast(ctypes.byref(_zero_fp32), ctypes.c_void_p)
+        cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
         cublas.gemmEx(
             handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
             one_ptr.value,
@@ -3552,6 +3553,7 @@ cpdef ndarray tensordot_core(
             zero_ptr.value,
             c.data.ptr, runtime.CUDA_R_16F, <int>m,
             runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
+        cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
     elif use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
         cublas.sgemmEx(

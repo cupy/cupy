@@ -30,6 +30,10 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasSetStream(Handle handle, driver.Stream streamId)
     int cublasGetStream(Handle handle, driver.Stream* streamId)
 
+    # Math Mode
+    int cublasSetMathMode(Handle handle, Math mode)
+    int cublasGetMathMode(Handle handle, Math* mode)
+
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx,
                      int* result)
@@ -290,6 +294,24 @@ cpdef size_t getStream(size_t handle) except *:
         status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
+
+
+###############################################################################
+# Math Mode
+###############################################################################
+
+cpdef setMathMode(size_t handle, int mode):
+    with nogil:
+        status = cublasSetMathMode(<Handle>handle, <Math>mode)
+    check_status(status)
+
+
+cpdef int getMathMode(size_t handle) except *:
+    cdef Math mode
+    with nogil:
+        status = cublasGetMathMode(<Handle>handle, &mode)
+    check_status(status)
+    return <int>mode
 
 
 ###############################################################################

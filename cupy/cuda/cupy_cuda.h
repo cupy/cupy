@@ -369,6 +369,7 @@ typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
 typedef enum {} cublasSideMode_t;
 typedef enum {} cublasGemmAlgo_t;
+typedef enum {} cublasMath_t;
 typedef enum {
     CUBLAS_STATUS_SUCCESS=0,
 } cublasStatus_t;
@@ -401,6 +402,15 @@ cublasStatus_t cublasSetStream(...) {
 }
 
 cublasStatus_t cublasGetStream(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+// Math Mode
+cublasStatus_t cublasSetMathMode(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGetMathMode(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

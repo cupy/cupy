@@ -19,6 +19,7 @@ cdef extern from *:
     ctypedef int PointerMode 'cublasPointerMode_t'
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int GemmAlgo 'cublasGemmAlgo_t'
+    ctypedef int Math 'cublasMath_t'
 
 
 ###############################################################################
@@ -45,6 +46,9 @@ cpdef enum:
     CUBLAS_GEMM_DFALT = -1
     CUBLAS_GEMM_DFALT_TENSOR_OP = 99
 
+    CUBLAS_DEFAULT_MATH = 0
+    CUBLAS_TENSOR_OP_MATH = 1
+
 ###############################################################################
 # Context
 ###############################################################################
@@ -62,6 +66,14 @@ cpdef setPointerMode(size_t handle, int mode)
 
 cpdef setStream(size_t handle, size_t stream)
 cpdef size_t getStream(size_t handle) except *
+
+
+###############################################################################
+# Math Mode
+###############################################################################
+
+cpdef setMathMode(size_t handle, int mode)
+cpdef int getMathMode(size_t handle) except *
 
 
 ###############################################################################
