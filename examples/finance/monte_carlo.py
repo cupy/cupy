@@ -25,8 +25,8 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     '''
     // We can use special variables i and _ind to get the index of the thread.
     // In this case, we used an index as a seed of random sequence.
-    uint64_t rand_state = i;
-    init_state(rand_state);
+    uint64_t rand_state[2];
+    init_state(rand_state, i);
 
     T call_sum = 0;
     const T v_by_sqrt_t = v * sqrt(t);
@@ -42,7 +42,6 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     call = discount_factor * call_sum / n_samples;
     ''',
     preamble='''
-    typedef unsigned int uint32_t;
     typedef unsigned long long uint64_t;
 
     __device__
@@ -51,30 +50,33 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
         return (call_value > 0) ? call_value : 0;
     }
 
-    // Initialize state with FNV-1a hash algorithm (64 bit)
-    __device__ inline void init_state(uint64_t& a) {
-        uint64_t b = 0xcbf29ce484222325;
-        b = b ^ a;
-        b = b * 1099511628211;
-        a = b;
+    // Initialize state
+    __device__ inline void init_state(uint64_t* a, int i) {
+        a[0] = i + 1;
+        a[1] = 0x5c721fd808f616b6;
     }
 
-    __device__ inline uint32_t xorshift64(uint64_t x) {
-        uint64_t y = x;
-        y = y ^ (y << 13);
-        y = y ^ (y >> 7);
-        y = y ^ (y << 17);
-        return y;
+    __device__ inline uint64_t xorshift128plus(uint64_t* x) {
+        uint64_t s1 = x[0];
+        uint64_t s0 = x[1];
+        x[0] = s0;
+        s1 = s1 ^ (s1 << 23);
+        s1 = s1 ^ (s1 >> 17);
+        s1 = s1 ^ s0;
+        s1 = s1 ^ (s0 >> 26);
+        x[1] = s1;
+        return s0 + s1;
     }
 
     // Draw a sample from an uniform distribution in a range of [0, 1]
-    __device__ inline T sample_uniform(uint64_t& state) {
-        const uint32_t x = xorshift64(state);
-        return T(x) / T(4294967296);  // 4294967296 = 2^32 + 1
+    __device__ inline T sample_uniform(uint64_t* state) {
+        const uint64_t x = xorshift128plus(state);
+        // 18446744073709551615 = 2^64 - 1
+        return T(x) / T(18446744073709551615);
     }
 
     // Draw a sample from a normal distribution with N(0, 1)
-    __device__ inline T sample_normal(uint64_t& state) {
+    __device__ inline T sample_normal(uint64_t* state) {
         T x = sample_uniform(state);
         T s = T(-1.4142135623730950488016887242097);  // = -sqrt(2)
         if(x > 0.5) {
