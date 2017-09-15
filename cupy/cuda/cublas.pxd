@@ -193,6 +193,6 @@ cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)
 cpdef gemmEx(size_t handle, int transa, int transb, int m, int n, int k,
-              size_t alpha, size_t A, int Atype, int lda, size_t B,
-              int Btype, int ldb, size_t beta, size_t C, int Ctype,
-              int ldc, int computeType, int algo)
+             size_t alpha, size_t A, int Atype, int lda, size_t B,
+             int Btype, int ldb, size_t beta, size_t C, int Ctype,
+             int ldc, int computeType, int algo)
