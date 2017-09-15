@@ -62,7 +62,28 @@ cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
     return cudaErrorUnknown;
 }
 
+typedef enum {} cublasGemmAlgo_t;
+
+cublasStatus_t cublasGemmEx(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if CUDA_VERSION < 8000
+
+
+#if CUDA_VERSION < 9000
+
+typedef enum {} cublasMath_t;
+
+cublasStatus_t cublasSetMathMode(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasGetMathMode(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if CUDA_VERSION < 9000
 
 } // extern "C"
 
@@ -545,6 +566,10 @@ cublasStatus_t cublasZgemmBatched(...) {
 }
 
 cublasStatus_t cublasSgemmEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGemmEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
