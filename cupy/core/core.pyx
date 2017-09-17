@@ -903,28 +903,28 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
-        condition = self != 0
+        cdef Py_ssize_t count_nonzero, ndim
         dtype = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
+        else:
+            r = self.ravel()
+            scan_index = scan((r != 0).astype(dtype))
+            count_nonzero = int(scan_index[-1])
+        ndim = max(self._shape.size(), 1)
+        if count_nonzero == 0:
+            return (ndarray((0,), dtype=dtype),) * ndim
 
-        scan_index = scan(condition.astype(dtype).ravel())
-        count_nonzero = int(scan_index[-1])
-
-        if self.ndim <= 1:
-            dst = ndarray((count_nonzero,), dtype=dtype)
-
+        dst = ndarray((count_nonzero * ndim,), dtype=dtype)
+        if ndim <= 1:
             kern = _nonzero_1d_kernel(self.dtype, dtype)
-            kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
-
+            kern.linear_launch(self.size, (r, scan_index, dst))
             return dst,
         else:
-            dst = ndarray((count_nonzero * self.ndim,), dtype=dtype)
-
-            kern = _nonzero_kernel(self.dtype, self.ndim, dtype, dtype)
+            kern = _nonzero_kernel(self.dtype, ndim, dtype, dtype)
             kern.linear_launch(self.size,
-                               (self.ravel(), Indexer(self.shape),
-                                scan_index, dst))
-            return tuple([dst[i::self.ndim]
-                          for i in range(self.ndim)])
+                               (r, Indexer(self.shape), scan_index, dst))
+            return tuple([dst[i::ndim] for i in range(ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -4126,7 +4126,7 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     return module.get_function(name)
 
 
-def scan(a, out=None):
+cpdef ndarray scan(ndarray a, ndarray out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:
