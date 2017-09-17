@@ -34,7 +34,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given arrays are always used.
 
-    .. see::
+    .. seealso::
        :class:`scipy.sparse.csr_matrix`
 
     """
