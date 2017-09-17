@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import contextlib
 import functools
+import inspect
 import os
 import pkg_resources
 import random
@@ -994,3 +995,42 @@ def assert_warns(expected):
         exc_name = str(expected)
 
     raise AssertionError('%s not triggerred' % exc_name)
+
+
+class NumpyAliasTestBase(unittest.TestCase):
+
+    @property
+    def func(self):
+        raise NotImplementedError()
+
+    @property
+    def cupy_func(self):
+        return getattr(cupy, self.func)
+
+    @property
+    def numpy_func(self):
+        return getattr(numpy, self.func)
+
+
+class NumpyAliasBasicTestBase(NumpyAliasTestBase):
+
+    def test_argspec(self):
+        self.assertEqual(
+            inspect.getargspec(self.cupy_func),
+            inspect.getargspec(self.numpy_func))
+
+    def test_docstring(self):
+        cupy_func = self.cupy_func
+        numpy_func = self.numpy_func
+        self.assertTrue(hasattr(cupy_func, '__doc__'))
+        self.assertNotEqual(cupy_func.__doc__, None)
+        self.assertNotEqual(cupy_func.__doc__, '')
+        self.assertIsNot(cupy_func.__doc__, numpy_func.__doc__)
+
+
+class NumpyAliasValuesTestBase(NumpyAliasTestBase):
+
+    def test_values(self):
+        self.assertEqual(
+            self.cupy_func(*self.args),
+            self.numpy_func(*self.args))
