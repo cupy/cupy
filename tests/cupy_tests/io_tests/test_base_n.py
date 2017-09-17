@@ -14,7 +14,7 @@ class TestBinaryRepr(testing.NumpyAliasBasicTestBase):
             (3, 5),
             (-3, 5),
             (3, 0),
-            (-3, 0),
+            #(-3, 0),  # NumPy<1.12 did not support insufficient width
         ]}))
 class TestBinaryReprValues(testing.NumpyAliasValuesTestBase):
 
