@@ -225,7 +225,7 @@ cpdef set_pinned_memory_allocator(allocator=_malloc):
     _current_allocator = allocator
 
 
-class PooledPinnedMemory(object):
+class PooledPinnedMemory(PinnedMemory):
 
     """Memory allocation for a memory pool.
 
