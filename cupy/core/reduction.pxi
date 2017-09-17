@@ -206,7 +206,6 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
-        cdef Py_ssize_t ndim
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
 
@@ -222,15 +221,17 @@ class simple_reduction_function(object):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        ndim = a._shape.size()
-        laxis, raxis = _get_axis(axis, ndim)
+        laxis, raxis = _get_axis(axis, a._shape.size())
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        if a.size == 0:
+        if out_args[0].size == 0:
             if len(out_args) == 1:
                 return out_args[0]
             return tuple(out_args)
+        if a.size == 0 and self.identity is None:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
 
         in_args, in_shape = _get_trans_args(
             in_args, laxis + raxis, a_shape, None)
