@@ -38,21 +38,21 @@ def get_cuda_path():
     if _cuda_path is not 'NOT_INITIALIZED':
         return _cuda_path
 
-    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-
-    _nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
+    nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if _nvcc_path is None:
+    if nvcc_path is None:
         utils.print_warning('nvcc not in path.',
                             'Please set path to nvcc.')
     else:
         cuda_path_default = os.path.normpath(
-            os.path.join(os.path.dirname(_nvcc_path), '..'))
-        if len(cuda_path) > 0 and cuda_path != cuda_path_default:
-            utils.print_warning(
-                'nvcc path != CUDA_PATH',
-                'nvcc path: %s' % cuda_path_default,
-                'CUDA_PATH: %s' % cuda_path)
+            os.path.join(os.path.dirname(nvcc_path), '..'))
+
+    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
+    if len(cuda_path) > 0 and cuda_path != cuda_path_default:
+        utils.print_warning(
+            'nvcc path != CUDA_PATH',
+            'nvcc path: %s' % cuda_path_default,
+            'CUDA_PATH: %s' % cuda_path)
 
     if os.path.exists(cuda_path):
         _cuda_path = cuda_path
