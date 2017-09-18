@@ -30,6 +30,7 @@ from cupy.cuda cimport memory
 
 DEF MAX_NDIM = 25
 
+
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
     xp = getattr(x, '__array_priority__', 0)
