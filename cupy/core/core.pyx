@@ -29,9 +29,6 @@ from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
 DEF MAX_NDIM = 25
-_one_fp32 = ctypes.c_float(1)
-_zero_fp32 = ctypes.c_float(0)
-
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
@@ -3464,6 +3461,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t mode, handle
     cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
+    cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
         ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
@@ -3476,7 +3474,7 @@ cpdef ndarray tensordot_core(
 
     global _compute_capability
     if _compute_capability is None:
-        _compute_capability = device.Device().compute_capability
+        _compute_capability = int(device.Device().compute_capability)
 
     global _cuda_runtime_version
     if _cuda_runtime_version is None:
@@ -3485,12 +3483,9 @@ cpdef ndarray tensordot_core(
     use_sgemmEx = (_cuda_runtime_version >= 7500 and
                    a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
-
-    use_tensor_core = (_cuda_runtime_version >= 9000 and
-                       int(_compute_capability) == 70 and
-                       a.dtype == 'e' and
-                       b.dtype == 'e' and
-                       ret_dtype == 'e')
+    use_tensor_core = (use_sgemmEx and
+                       _cuda_runtime_version >= 9000 and
+                       _compute_capability == 70)
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
@@ -3541,25 +3536,26 @@ cpdef ndarray tensordot_core(
     # compute C^T = B^T * A here.
     a, transa, lda = _mat_to_cublas_contiguous(a, 0)
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-    if use_tensor_core:
-        one_ptr = ctypes.cast(ctypes.byref(_one_fp32), ctypes.c_void_p)
-        zero_ptr = ctypes.cast(ctypes.byref(_zero_fp32), ctypes.c_void_p)
-        cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
-        cublas.gemmEx(
-            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-            one_ptr.value,
-            b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-            a.data.ptr, runtime.CUDA_R_16F, <int>lda,
-            zero_ptr.value,
-            c.data.ptr, runtime.CUDA_R_16F, <int>m,
-            runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
-        cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
-    elif use_sgemmEx:
+    if use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
-        cublas.sgemmEx(
-            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
-            runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
+        if use_tensor_core:
+            one_fp32 = 1
+            zero_fp32 = 0
+            cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+            cublas.gemmEx(
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
+                <size_t>&one_fp32,
+                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
+                a.data.ptr, runtime.CUDA_R_16F, <int>lda,
+                <size_t>&zero_fp32,
+                c.data.ptr, Ctype, <int>m,
+                runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
+            cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
+        else:
+            cublas.sgemmEx(
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+                b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
+                runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
         cublas.sgemm(
             handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
