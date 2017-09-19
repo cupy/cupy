@@ -2,10 +2,10 @@ from os import path
 import sys
 import traceback
 
-from cupy.cuda.memory_hook import MemoryHook
+from cupy.cuda import memory_hook
 
 
-class LineProfileHook(MemoryHook):
+class LineProfileHook(memory_hook.MemoryHook):
     """Code line CuPy memory profiler.
 
     This profiler shows line-by-line GPU memory consumption using traceback
