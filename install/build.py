@@ -67,8 +67,8 @@ def get_cuda_path():
 
 
 def get_nvcc_path():
-    nvcc = os.environ.get('NVCC', '')
-    if os.path.exists(nvcc):
+    nvcc = os.environ.get('NVCC', None)
+    if nvcc is not None and os.path.exists(nvcc):
         return nvcc
 
     cuda_path = get_cuda_path()
