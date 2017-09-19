@@ -6,10 +6,10 @@ from cupy.cuda.memory_hook import MemoryHook
 
 
 class LineProfileHook(MemoryHook):
-    """Code line Cupy memory profiler.
+    """Code line CuPy memory profiler.
 
-    This profiler shows line-by-line memory consumption using traceback module.
-    But, note that it can trace only cpython level, no cython level.
+    This profiler shows line-by-line GPU memory consumption using traceback
+    module. But, note that it can trace only CPython level, no Cython level.
     ref. https://github.com/cython/cython/issues/1755
 
     Example:
@@ -18,7 +18,7 @@ class LineProfileHook(MemoryHook):
             from cupy.cuda import memory_hooks
             hook = memory_hooks.LineProfileHook()
             with hook:
-                # some cupy codes
+                # some CuPy codes
             hook.print_report()
 
         Output example::
@@ -34,8 +34,8 @@ class LineProfileHook(MemoryHook):
 
             {filename}:{lineno}:{func_name} ({used_bytes}, {acquired_bytes})
 
-        where *used_bytes* is the memory bytes used from cupy memory pool, and
-        *acquired_bytes* is the actual memory bytes the cupy memory pool
+        where *used_bytes* is the memory bytes used from CuPy memory pool, and
+        *acquired_bytes* is the actual memory bytes the CuPy memory pool
         acquired from GPU device.
         *_root* is a root node of the stack trace to show total memory usage.
 
@@ -115,7 +115,7 @@ class LineProfileHook(MemoryHook):
 
 
 class StackFrame(object):
-    """Compatibility layer for outputs of traceback.extract_stack()
+    """Compatibility layer for outputs of traceback.extract_stack().
 
     Attributes:
         filename (string): filename
@@ -135,14 +135,14 @@ class StackFrame(object):
 
 
 class MemoryFrame(object):
-    """A single stack frame along with sum of memory usage at the frame
+    """A single stack frame along with sum of memory usage at the frame.
 
     Attributes:
         stackframe (FrameSummary): stackframe from traceback.extract_stack().
         parent (MemoryFrame): parent frame, that is, caller.
         children (list of MemoryFrame): child frames, that is, callees.
-        used_bytes (int): memory bytes that users used from cupy memory pool.
-        acquired_bytes (int): memory bytes that cupy memory pool acquired
+        used_bytes (int): memory bytes that users used from CuPy memory pool.
+        acquired_bytes (int): memory bytes that CuPy memory pool acquired
             from GPU device.
     """
 
