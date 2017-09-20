@@ -112,7 +112,7 @@ cdef list _preprocess_args(args):
     return ret
 
 
-cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
     """Reduces the dimensions of arrays into the minimum without copy."""
     cdef Py_ssize_t i, j, n, ndim, cnt, axis, s
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
@@ -120,11 +120,12 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
     cdef ParameterInfo p
     cdef ndarray arr, view
+    cdef ArgInfo ai
     cdef bint is_array
 
     ndim = len(shape)
     if ndim <= 1:
-        return args, shape
+        return args, arg_infos, shape
 
     n = len(args)
     for p, a in zip(params, args):
@@ -153,11 +154,13 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         axis = ndim - 1
 
     if cnt == ndim:
-        return args, shape
+        return args, arg_infos, shape
+
     if cnt == 1:
         newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
-        ret = []
-        for i, a in enumerate(args):
+        new_args = []
+        new_arg_infos = []
+        for i, (a, ai) in enumerate(zip(args, arg_infos)):
             if is_array_flags[i]:
                 arr = a
                 arr = arr.view()
@@ -165,14 +168,18 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
                     <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
-            ret.append(a)
-        return ret, tuple(newshape)
+                ai = ArgInfo_from_arg(a)
+            new_args.append(a)
+            new_arg_infos.append(ai)
+        return new_args, new_arg_infos, tuple(newshape)
 
     for i in range(ndim):
         if vecshape[i] != 1:
             newshape.push_back(vecshape[i])
-    ret = []
-    for i, a in enumerate(args):
+
+    new_args = []
+    new_arg_infos = []
+    for i, (a, ai) in enumerate(zip(args, arg_infos)):
         if is_array_flags[i]:
             arr = a
             arr = arr.view()
@@ -182,8 +189,10 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
                     newstrides.push_back(arr._strides[j])
             arr._set_shape_and_strides(newshape, newstrides, False)
             a = arr
-        ret.append(a)
-    return ret, tuple(newshape)
+            ai = ArgInfo_from_arg(a)
+        new_args.append(a)
+        new_arg_infos.append(ai)
+    return new_args, new_arg_infos, tuple(newshape)
 
 
 cdef class ParameterInfo:
@@ -552,21 +561,22 @@ cdef _broadcast_impl _broadcast(list arg_infos, tuple params, int size):
     return brod_impl
 
 
-cdef list _get_out_args(
-        list out_args, tuple out_types, tuple out_shape, tuple out_params,
-        str casting, bint use_size):
+cdef list _allocate_out_args(
+        tuple out_types, tuple out_shape, tuple out_params, bint use_size):
     """Allocates output arguments as needed."""
+
+    # Check: if there is a raw parameter, size must be specified.
+    if out_params is not None and not use_size:
+        if any(p.raw for p in out_params):
+            raise ValueError('Output array size is Undecided')
+    return [ndarray(out_shape, t) for t in out_types]
+
+
+cdef int _check_out_args(
+        list out_args, tuple out_types, tuple out_shape, tuple out_params,
+        str casting) except -1:
     cdef bint raw
 
-    # There were no out args: allocate them.
-    if len(out_args) == 0:
-        # Check: if there is a raw parameter, size must be specified.
-        if out_params is not None and not use_size:
-            if any(p.raw for p in out_params):
-                raise ValueError('Output array size is Undecided')
-        return [ndarray(out_shape, t) for t in out_types]
-
-    # There were out args: check dtype and shape consistency
     for i, (a, t) in enumerate(zip(out_args, out_types)):
         if not isinstance(a, ndarray):
             raise TypeError(
@@ -586,8 +596,6 @@ cdef list _get_out_args(
                       a.dtype.char,
                       casting)
             raise TypeError(msg)
-
-    return out_args
 
 
 cdef class _BaseKernelCallContext(object):
@@ -653,6 +661,9 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
 
     cpdef call(self, args):
         cdef _broadcast_impl brod_impl
+        cdef ArgInfo ai
+        cdef Py_ssize_t i
+
         size = self.size
         casting = self.casting
         stream = self.stream
@@ -666,30 +677,41 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
 
         # Preprocess
         args = _preprocess_args(args)
-
-        # Broadcast
         arg_infos = ArgInfo_from_args(args, True)
-        tup = self.broadcast_and_cast(
-            arg_infos, size, kernel.broadcast_skip_raw)
-        brod_impl, shape, arg_infos_ = tup
 
         # Decide parameter dtypes.
         in_types, out_types = self.decide_param_types(
             arg_infos[:nin],
             arg_infos[nin:])
 
+        # Broadcast
+        brod_impl, shape, arg_infos = self.broadcast_and_cast(
+            arg_infos, size, kernel.broadcast_skip_raw)
         args = brod_impl.apply(args)
 
-        in_args = [
-            a if isinstance(a, ndarray) else t(a)
-            for a, t in zip(args[:nin], in_types)]
-        out_args = [
-            a if isinstance(a, ndarray) else t(a)
-            for a, t in zip(args[nin:], out_types)]
+        #
+        in_args = args[:nin]
+        out_args = args[nin:]
+        in_arg_infos = arg_infos[:nin]
+        out_arg_infos = arg_infos[nin:]
+
+        # Cast scalar args to ndarrays
+        for i, ai in enumerate(in_arg_infos):
+            if not ai.is_ndarray:
+                in_args[i] = in_types[i](in_args[i])
+                in_arg_infos[i] = ArgInfo_from_arg(in_args[i])
+        for i, ai in enumerate(out_arg_infos):
+            if not ai.is_ndarray:
+                out_args[i] = out_types[i](out_args[i])
+                out_arg_infos[i] = ArgInfo_from_arg(out_args[i])
 
         # Allocate output args as needed.
-        out_args = _get_out_args(
-            out_args, out_types, shape, out_params, casting, size >= 0)
+        if len(out_args) == 0:
+            out_args = _allocate_out_args(
+                out_types, shape, out_params, size >= 0)
+            out_arg_infos = ArgInfo_from_args(out_args)
+        else:
+            _check_out_args(out_args, out_types, shape, out_params, casting)
 
         if nout == 1:
             ret = out_args[0]
@@ -701,16 +723,19 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
             return ret
 
         inout_args = in_args + out_args
+        inout_arg_infos = in_arg_infos + out_arg_infos
 
         # Reduce array dimensions
         if reduce_dims:
-            inout_args, shape = _reduce_dims(inout_args, inout_params, shape)
+            inout_args, inout_arg_infos, shape = _reduce_dims(
+                inout_args, inout_arg_infos, inout_params, shape)
 
         # Append indexer
         indexer = Indexer(shape)
         inout_args.append(indexer)
+        inout_arg_infos.append(ArgInfo_from_arg(indexer))
 
-        inout_arg_infos = tuple(ArgInfo_from_args(inout_args))
+        inout_arg_infos = tuple(inout_arg_infos)
 
         key = ('kernel', device.get_device_id(), inout_arg_infos) + \
             self.get_code_args()

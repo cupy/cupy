@@ -26,6 +26,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
 cpdef tuple _get_out_shape(
         tuple shape, tuple axis, tuple raxis, bint keepdims):
+    cdef Py_ssize_t i
     if keepdims:
         out_shape = list(shape)
         for i in axis:
@@ -34,33 +35,40 @@ cpdef tuple _get_out_shape(
     return tuple([shape[i] for i in raxis])
 
 
-cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+cpdef tuple _transpose_args(list args, list arg_infos, tuple trans, tuple shape, tuple params):
+    """Transposes args in-place."""
     cdef ParameterInfo p
+    cdef ArgInfo ai
+    cdef Py_ssize_t i
     if trans == tuple(range(len(shape))):
-        return args, shape
+        return shape
     if params is not None:
         for p in params:
             if p.raw:
                 raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(trans) if isinstance(a, ndarray) else a
-            for a in args]
+    for i, ai in enumerate(arg_infos):
+        if ai.is_ndarray:
+            args[i] = args[i].transpose(trans)
+            arg_infos[i] = ArgInfo_from_arg(args[i])
     shape = tuple([shape[i] for i in trans])
-    return args, shape
+    return shape
 
 
-cpdef list _get_inout_args(
-        list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
+cpdef tuple _get_inout_args(
+        list in_args, list out_args, list in_arg_infos, list out_arg_infos,
+        Indexer in_indexer, Indexer out_indexer,
         object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_shape = _reduce_dims(
-            in_args, params, in_indexer.shape)
-        out_args, out_shape = _reduce_dims(
-            out_args, params[len(in_args):], out_indexer.shape)
+        in_args, in_arg_infos, in_shape = _reduce_dims(
+            in_args, in_arg_infos, params, in_indexer.shape)
+        out_args, out_arg_infos, out_shape = _reduce_dims(
+            out_args, out_arg_infos, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    args = in_args + out_args + [in_indexer, out_indexer,
-                                 numpy.int32(out_clp2_size)]
-    return args
+    extra_args = [in_indexer, out_indexer, numpy.int32(out_clp2_size)]
+    args = in_args + out_args + extra_args
+    arg_infos = in_arg_infos + out_arg_infos + ArgInfo_from_args(extra_args)
+    return args, arg_infos
 
 
 cdef class _BaseReductionKernel(_BaseKernel):
@@ -110,6 +118,9 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
         self.casting = casting
 
     cpdef call(self, args):
+        cdef _broadcast_impl brod_impl
+        cdef ArgInfo ai
+        cdef Py_ssize_t i
         axis = self.axis
         keepdims = self.keepdims
         out = self.out
@@ -126,41 +137,51 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
         # preprocess_args
         in_args = _preprocess_args(in_args)
         out_args = _preprocess_args(out_args)
-
-        # broadcast
         in_arg_infos = ArgInfo_from_args(in_args, True)
         out_arg_infos = ArgInfo_from_args(out_args, True)
-        tup = self.broadcast_and_cast(in_arg_infos, -1, True)
-        brod_impl, shape, in_arg_infos_ = tup
 
         # Decide parameter dtypes.
         in_types, out_types = self.decide_param_types(
-            in_arg_infos_,
+            in_arg_infos,
             out_arg_infos)
 
+        # broadcast
+        brod_impl, in_shape, in_arg_infos = self.broadcast_and_cast(
+            in_arg_infos, -1, True)
         in_args = brod_impl.apply(in_args)
 
         # get out shape
-        laxis, raxis = _get_axis(axis, len(shape))
+        laxis, raxis = _get_axis(axis, len(in_shape))
         del axis  # to avoid bug
-        out_shape = _get_out_shape(shape, laxis, raxis, keepdims)
+        out_shape = _get_out_shape(in_shape, laxis, raxis, keepdims)
+
         # get out args
-        out_args = _get_out_args(
-            list(out_args), tuple(out_types), out_shape, None, casting, False)
+        if len(out_args) == 0:
+            out_args = _allocate_out_args(
+                tuple(out_types), out_shape, None, False)
+            out_arg_infos = ArgInfo_from_args(out_args)
+        else:
+            _check_out_args(
+                list(out_args), tuple(out_types), out_shape, None, casting)
+
         if 0 in out_shape:
             if len(out_args) == 1:
                 return out_args[0]
             return tuple(out_args)
 
-        if len(kernel.identity) == 0 and 0 in shape:
+        if len(kernel.identity) == 0 and 0 in in_shape:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % kernel.name)
 
-        in_args = [x if isinstance(x, ndarray) else t(x)
-                   for x, t in zip(in_args, in_types)]
-        # get trans args
-        in_args, in_shape = _get_trans_args(
-            in_args, laxis + raxis, shape, None)
+        # Cast scalar in_args to ndarrays
+        for i, ai in enumerate(in_arg_infos):
+            if not ai.is_ndarray:
+                in_args[i] = in_types[i](in_args[i])
+                in_arg_infos[i] = ArgInfo_from_arg(in_args[i])
+
+        # Transpose in_args
+        in_shape = _transpose_args(
+            in_args, in_arg_infos, laxis + raxis, in_shape, None)
 
         block_size = kernel.block_size
         in_indexer = Indexer(in_shape)
@@ -171,11 +192,11 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
             int(in_indexer.size // out_indexer.size - 1))
         block_stride = max(1, block_size // clp2_count)
 
-        inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, block_stride,
+        inout_args, inout_arg_infos = _get_inout_args(
+            in_args, out_args, in_arg_infos, out_arg_infos,
+            in_indexer, out_indexer, block_stride,
             params, kernel.reduce_dims)
-
-        inout_arg_infos = tuple(ArgInfo_from_args(inout_args))
+        inout_arg_infos = tuple(inout_arg_infos)
 
         key = ('kernel', device.get_device_id(), inout_arg_infos) + (
             self.get_code_args())
