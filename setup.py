@@ -46,6 +46,7 @@ setup(
               'cupy.core',
               'cupy.creation',
               'cupy.cuda',
+              'cupy.cuda.memory_hooks',
               'cupy.ext',
               'cupy.indexing',
               'cupy.io',
