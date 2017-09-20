@@ -21,12 +21,12 @@ from black_scholes import black_scholes_kernel
 
 
 monte_carlo_kernel = cupy.ElementwiseKernel(
-    'T s, T x, T t, T r, T v, int32 n_samples', 'T call',
+    'T s, T x, T t, T r, T v, int32 n_samples, int32 seed', 'T call',
     '''
     // We can use special variables i and _ind to get the index of the thread.
     // In this case, we used an index as a seed of random sequence.
     uint64_t rand_state[2];
-    init_state(rand_state, i);
+    init_state(rand_state, i, seed);
 
     T call_sum = 0;
     const T v_by_sqrt_t = v * sqrt(t);
@@ -51,9 +51,9 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     }
 
     // Initialize state
-    __device__ inline void init_state(uint64_t* a, int i) {
+    __device__ inline void init_state(uint64_t* a, int i, int seed) {
         a[0] = i + 1;
-        a[1] = 0x5c721fd808f616b6;
+        a[1] = 0x5c721fd808f616b6 + seed;
     }
 
     __device__ inline uint64_t xorshift128plus(uint64_t* x) {
@@ -92,7 +92,7 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
 
 def compute_option_prices(
         stock_price, option_strike, option_years, risk_free, volatility,
-        n_threads_per_option, n_samples_per_thread):
+        n_threads_per_option, n_samples_per_thread, seed=0):
 
     n_options = len(stock_price)
     call_prices = cupy.empty(
@@ -102,7 +102,7 @@ def compute_option_prices(
     # each of which corresponds to the element of 'call_prices'.
     monte_carlo_kernel(
         stock_price[:, None], option_strike[:, None], option_years[:, None],
-        risk_free, volatility, n_samples_per_thread, call_prices)
+        risk_free, volatility, n_samples_per_thread, seed, call_prices)
     return call_prices.mean(axis=1)
 
 
