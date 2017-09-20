@@ -69,6 +69,7 @@ def nonzero(a):
     .. seealso:: :func:`numpy.nonzero`
 
     """
+    assert isinstance(a, core.ndarray)
     return a.nonzero()
 
 
@@ -86,6 +87,7 @@ def flatnonzero(a):
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
+    assert isinstance(a, core.ndarray)
     return a.ravel().nonzero()[0]
 
 
