@@ -679,7 +679,7 @@ class ufunc(core.ufunc):
         self.nargs = fusion_op.nargs
         self._ops = fusion_op._ops
         self._preamble = fusion_op._preamble
-        self.__doc__ = fusion_op.__doc__
+        self.__doc__ = cupy_op.__doc__
         self._params = fusion_op._params
         self._routine_cache = fusion_op._routine_cache
 
