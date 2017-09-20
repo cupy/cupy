@@ -18,3 +18,11 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
 
 def ifft2(a, s=None, axes=(-2, -1), norm=None):
     return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE)
+
+
+def fftn(a, s=None, axes=None, norm=None):
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD)
+
+
+def ifftn(a, s=None, axes=None, norm=None):
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE)

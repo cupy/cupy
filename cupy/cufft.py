@@ -1,3 +1,5 @@
+import six
+
 import numpy as np
 
 import cupy
@@ -16,9 +18,15 @@ def fft(a, s, axes, norm, direction):
         value_type = cupy.cuda.cufft.CUFFT_Z2Z
 
     if s is None:
-        s = [a.shape[i] for i in axes]
+        if axes is None:
+            s = a.shape
+            axes = list(six.moves.range(len(s)))
+        else:
+            s = [a.shape[i] for i in axes]
     else:
         s = list(s)
+        if axes is None:
+            axes = [i - len(s) for i in six.moves.range(len(s))]
     for i, n in enumerate(s):
         if n is None:
             s[i] = a.shape[axes[i]]
@@ -37,15 +45,51 @@ def fft(a, s, axes, norm, direction):
                 z = cupy.zeros(shape, a.dtype.char)
                 z[index] = a
                 a = z
+
+    if a.ndim == len(axes) and a.ndim in [2, 3]:
+        if a.ndim == 2:
+            plan = cufft.plan2d(s[0], s[1], value_type)
+        else:
+            plan = cufft.plan3d(s[0], s[1], s[2], value_type)
+
+        perm = [None] * a.ndim
+        iperm = [None] * a.ndim
+        for i, axis in enumerate(axes):
+            perm[i - len(axes)] = axis % a.ndim
+            iperm[axis] = a.ndim - len(axes) + i
+        k = 0
+        for i in six.moves.range(a.ndim):
+            if i not in perm:
+                perm[k] = i
+                iperm[i] = k
+                k += 1
+        a = a.transpose(perm)
+        a = execFft(a, direction, plan, value_type)
+        a = a.transpose(iperm)
+    else:
+        for axis in axes:
+            if axis % a.ndim != a.ndim - 1:
+                a = a.swapaxes(axis, -1)
+            plan = cufft.plan1d(a.shape[-1], value_type, a.size // a.shape[-1])
+            a = execFft(a, direction, plan, value_type)
+            if axis % a.ndim != a.ndim - 1:
+                a = a.swapaxes(axis, -1)
+
+    if norm is None:
+        if direction == cufft.CUFFT_INVERSE:
+            for i in axes:
+                a /= a.shape[i]
+    else:
+        for i in axes:
+            a /= cupy.sqrt(a.shape[i])
+
+    return a
+
+
+def execFft(a, direction, plan, value_type):
     if a.base is not None:
         a = a.copy()
 
-    if len(axes) == 1:
-        plan = cufft.plan1d(s[0], value_type, a.size // a.shape[axes[0]])
-    elif len(axes) == 2:
-        plan = cufft.plan2d(s[0], s[1], value_type)
-    elif len(axes) == 3:
-        plan = cufft.plan3d(s[0], s[1], s[2], value_type)
     out = cupy.empty_like(a)
 
     if value_type == cufft.CUFFT_C2C:
@@ -60,14 +104,6 @@ def fft(a, s, axes, norm, direction):
         cufft.execD2Z(plan, a.data, out.data)
     if value_type == cufft.CUFFT_Z2D:
         cufft.execZ2D(plan, a.data, out.data)
-
-    if norm is None:
-        if direction == cufft.CUFFT_INVERSE:
-            for i in axes:
-                out /= a.shape[i]
-    else:
-        for i in axes:
-            out /= cupy.sqrt(a.shape[i])
 
     cufft.destroy(plan)
 
