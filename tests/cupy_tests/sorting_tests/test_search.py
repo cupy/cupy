@@ -161,6 +161,8 @@ class TestWhereError(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
+    {"array": numpy.zeros((0, 2))},
+    {"array": numpy.zeros((0, 2, 0))},
 )
 @testing.gpu
 class TestNonzero(unittest.TestCase):
@@ -177,6 +179,8 @@ class TestNonzero(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
+    {"array": numpy.zeros((0, 2))},
+    {"array": numpy.zeros((0, 2, 0))},
 )
 @testing.gpu
 class TestFlatNonzero(unittest.TestCase):
