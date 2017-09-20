@@ -1,5 +1,3 @@
-import numpy as np
-
 import cupy
 from cupy import cufft
 
