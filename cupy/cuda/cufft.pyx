@@ -13,6 +13,8 @@ cdef extern from "cupy_cufft.h":
 
     # cuFFT Plan Function
     Result cufftPlan1d(Handle *plan, int nx, Type type, int batch)
+    Result cufftPlan2d(Handle *plan, int nx, int ny, Type type)
+    Result cufftPlan3d(Handle *plan, int nx, int ny, int nz, Type type)
 
     # cuFFT Exec Function
     Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata, int direction)
@@ -65,6 +67,20 @@ cpdef destroy(size_t plan):
 cpdef plan1d(int nx, int type, int batch):
     cdef Handle plan
     result = cufftPlan1d(&plan, nx, <Type>type, batch)
+    check_result(result)
+    return plan
+
+
+cpdef plan2d(int nx, int ny, int type):
+    cdef Handle plan
+    result = cufftPlan2d(&plan, nx, ny, <Type>type)
+    check_result(result)
+    return plan
+
+
+cpdef plan3d(int nx, int ny, int nz, int type):
+    cdef Handle plan
+    result = cufftPlan3d(&plan, nx, ny, nz, <Type>type)
     check_result(result)
     return plan
 
