@@ -55,7 +55,6 @@ class TestEigenvalue(unittest.TestCase):
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
-        print(w)
         if xp is numpy:
             inds = numpy.argsort(w)
         else:

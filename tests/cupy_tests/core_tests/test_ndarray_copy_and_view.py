@@ -23,7 +23,6 @@ class TestArrayCopyAndView(unittest.TestCase):
     def test_view_itemsize(self, xp, dtype):
         a = testing.shaped_arange((4,), xp, dtype=numpy.int32)
         b = a.view(dtype=dtype)
-        print(xp, b.shape)
         return b
 
     @testing.numpy_cupy_array_equal()
