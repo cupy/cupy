@@ -9,6 +9,7 @@ import six
 import cupy
 from cupy.core import flags
 from cupy.cuda import stream
+from cupy.cuda import device
 try:
     from cupy.cuda import thrust
 except ImportError:
@@ -21,7 +22,6 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
-from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
