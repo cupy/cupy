@@ -13,7 +13,6 @@ from cupy.cuda import device
 
 _cudnn_version = cudnn.getVersion()
 _thread_local = threading.local()
-_compute_capability = None
 
 _handles = {}
 
@@ -331,11 +330,8 @@ def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
 
 
 def is_tensor_core_available(dtype):
-    global _compute_capability
-    if _compute_capability is None:
-        _compute_capability = int(device.Device().compute_capability)
     if (dtype == numpy.float16 and
             _cudnn_version >= 7000 and
-            _compute_capability == 70):
+            int(device.get_compute_capability()) == 70):
         return True
     return False
