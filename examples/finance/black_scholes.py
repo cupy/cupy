@@ -16,7 +16,7 @@ import numpy
 # with cupy.ElementwiseKernel.
 
 
-# Naive implementation of the pricing of options with NumPy.
+# Naive implementation of the pricing of options with NumPy and CuPy.
 def black_scholes(xp, s, x, t, r, v):
     sqrt_t = xp.sqrt(t)
     d1 = (xp.log(s / x) + (r + v * v / 2) * t) / (v * sqrt_t)
