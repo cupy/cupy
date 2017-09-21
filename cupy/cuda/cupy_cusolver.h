@@ -8,6 +8,7 @@
 #ifndef CUPY_NO_CUDA
 
 #include <cusolverDn.h>
+#include <cusolverSp.h>
 
 #else // #ifndef CUPY_NO_CUDA
 
@@ -21,6 +22,7 @@ typedef enum{} cusolverEigType_t;
 typedef enum{} cusolverEigMode_t;
 
 typedef void* cusolverDnHandle_t;
+typedef void* cusolverSpHandle_t;
 
 cusolverStatus_t cusolverDnCreate(...) {
     return CUSOLVER_STATUS_SUCCESS;
@@ -171,6 +173,14 @@ cusolverStatus_t cusolverDnSsyevd(...) {
 }
 
 cusolverStatus_t cusolverDnDsyevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpScsrlsvlu(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsrlsvlu(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
