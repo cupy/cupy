@@ -1,4 +1,6 @@
 # distutils: language = c++
+# # cython: profile=True
+# cython: binding=True
 
 from __future__ import division
 import sys
