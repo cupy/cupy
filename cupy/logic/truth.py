@@ -15,7 +15,7 @@ def all(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: An array reduced of the input array along the axis.
 
-    .. seealso:: :data:`numpy.all`
+    .. seealso:: :func:`numpy.all`
 
     """
     assert isinstance(a, cupy.ndarray)
@@ -36,7 +36,7 @@ def any(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: An array reduced of the input array along the axis.
 
-    .. seealso:: :data:`numpy.any`
+    .. seealso:: :func:`numpy.any`
 
     """
     assert isinstance(a, cupy.ndarray)
