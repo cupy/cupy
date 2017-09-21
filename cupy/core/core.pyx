@@ -3446,7 +3446,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
-cdef _compute_capability = None
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
@@ -3472,10 +3471,6 @@ cpdef ndarray tensordot_core(
         out.fill(0)
         return out
 
-    global _compute_capability
-    if _compute_capability is None:
-        _compute_capability = int(device.Device().compute_capability)
-
     global _cuda_runtime_version
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
@@ -3485,7 +3480,7 @@ cpdef ndarray tensordot_core(
                    (ret_dtype == 'e' or ret_dtype == 'f'))
     use_tensor_core = (use_sgemmEx and
                        _cuda_runtime_version >= 9000 and
-                       _compute_capability == 70)
+                       int(device.get_compute_capability()) == 70)
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
