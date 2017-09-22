@@ -1,6 +1,4 @@
 # distutils: language = c++
-# # cython: profile=True
-# cython: binding=True
 
 from __future__ import division
 import sys
@@ -2219,8 +2217,8 @@ cdef class _broadcast_impl:
                 continue
             if not arg.is_ndarray:
                 continue
-            self.nd = max(self.nd, arg.ndim)
-            r_shape = reversed(arg.shape)
+            self.nd = max(self.nd, arg.get_ndim())
+            r_shape = reversed(arg.get_shape())
             shape_arr.push_back(r_shape)
 
         r_shape.clear()
@@ -2253,14 +2251,14 @@ cdef class _broadcast_impl:
                 strides_list.append(None)
                 continue
 
-            a_shape = arg.shape
+            a_shape = arg.get_shape()
             if internal.vector_equal(a_shape, self._shape):
                 strides_list.append(None)
                 continue
 
             r_strides.assign(self.nd, <Py_ssize_t>0)
-            a_ndim = arg.ndim
-            strides_ = arg.strides
+            a_ndim = arg.get_ndim()
+            strides_ = arg.get_strides()
             for i in range(a_ndim):
                 a_sh = a_shape[a_ndim - i - 1]
                 if a_sh == r_shape[i]:
@@ -2312,8 +2310,8 @@ cdef class _broadcast_impl:
                 strides = <vector.vector[Py_ssize_t]>strides_
                 shape = tuple(self._shape)
                 broadcasted.append(
-                    ArgInfo(None, ndarray, a.dtype, shape, len(shape),
-                            tuple(strides)))
+                    ArgInfo_from_data(
+                        ndarray, a.get_dtype(), shape, tuple(strides)))
 
         return broadcasted
 

@@ -102,10 +102,10 @@ cdef void _preprocess_args(list args, list arg_infos):
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
-        elif ai.typ in _python_scalar_type_set:
+        elif ai.is_python_scalar:
             args[i] = _python_type_to_numpy_type[ai.typ](args[i])
             arg_infos[i] = ArgInfo_from_arg(args[i], True)
-        elif ai.typ in _numpy_scalar_type_set:
+        elif ai.is_numpy_scalar:
             pass
         else:
             raise TypeError('Unsupported type %s' % ai.typ)
@@ -254,110 +254,167 @@ cdef class ParameterInfo:
 cdef class ArgInfo:
     cdef:
         readonly object arg
-        readonly object typ
-        readonly object dtype
-        readonly tuple shape
-        readonly int ndim
+        readonly type typ
+        readonly object _dtype
+        readonly tuple _shape
+        readonly Py_ssize_t _ndim
+        readonly tuple _strides
+
         readonly bint is_ndarray
-        readonly tuple strides
+        readonly bint is_python_scalar
+        readonly bint is_numpy_scalar
+        readonly bint is_numpy_ndarray
+
+        readonly bint _has_dtype
+        readonly bint _has_shape
+        readonly bint _has_ndim
+        readonly bint _has_strides
 
     def __init__(
-            self, object arg, type typ, dtype, tuple shape, int ndim,
-            tuple strides):
+            self, object arg, type typ, dtype,
+            tuple shape, Py_ssize_t ndim, tuple strides,
+            bint has_dtype, bint has_shape, bint has_ndim, bint has_strides):
 
         self.arg = arg
         self.typ = typ
-        self.dtype = dtype
-        self.shape = shape
-        self.ndim = ndim
-        self.strides = strides
-        self.is_ndarray = typ is ndarray
+        self._shape = shape
+        self._dtype = dtype
+        self._ndim = ndim
+        self._strides = strides
+        self._has_dtype = has_dtype
+        self._has_shape = has_shape
+        self._has_ndim = has_ndim
+        self._has_strides = has_strides
+
+        self.is_ndarray = False
+        self.is_python_scalar = False
+        self.is_numpy_scalar = False
+        self.is_numpy_ndarray = False
+
+        if self.typ is ndarray:
+            self.is_ndarray = True
+        elif self.typ is Indexer:
+            pass
+        elif self.typ is slice:
+            pass
+        elif self.typ in _python_scalar_type_set:
+            self.is_python_scalar = True
+        elif self.typ in _numpy_scalar_type_set:
+            self.is_numpy_scalar = True
+        else:
+            self.is_numpy_ndarray = True
 
     def __repr__(self):
         return '<ArgInfo typ={} shape={} dtype={} ndim={}>'.format(
             self.typ.__name__,
-            self.shape,
-            'None' if self.dtype is None else self.dtype.name,
-            self.ndim)
+            self.get_shape(),
+            'None' if self.get_dtype() is None else self.get_dtype().name,
+            self.get_ndim())
 
     def __hash__(self):
         cdef int h
-        h = (hash(self.typ) ^ hash(self.shape) ^
-             hash(self.arg) ^ hash(self.strides))
-        if self.dtype is not None:
-            h ^= hash(self.dtype.char)
+        h = hash(self.typ) ^ hash(self.get_shape()) ^ hash(self.get_strides())
+        dtype = self.get_dtype()
+        if dtype is not None:
+            h ^= hash(dtype.char)
+        if not (self.is_ndarray or self.is_numpy_ndarray):
+            h ^= hash(self.arg)
         return h
 
     def __richcmp__(ArgInfo x, ArgInfo y, int op):
         if op == 2:
             if x is y:
                 return True
-            return (
-                # arg is either None or a scalar
-                x.arg == y.arg and
-                x.typ is y.typ and
-                x.dtype == y.dtype and
-                x.shape == y.shape and
-                x.strides == y.strides)
+            if not (x.typ is y.typ and
+                    x.get_shape() == y.get_shape() and
+                    x.get_strides() == y.get_strides()):
+                return False
+
+            dtype1 = x.get_dtype()
+            dtype2 = y.get_dtype()
+            if dtype1 is None:
+                if dtype2 is not None:
+                    return False
+            elif dtype2 is None:
+                return False
+            elif dtype1.char != dtype2.char:
+                return False
+
+            if x.arg is not y.arg:
+                if not (x.is_ndarray or x.is_numpy_ndarray) and x.arg != y.arg:
+                    return False
+
+            return True
+
+        elif op == 3:
+            return not (x == y)
+
         raise NotImplementedError()
+
+    cpdef get_dtype(self):
+        if not self._has_dtype:
+            if self.is_ndarray:
+                self._dtype = (<ndarray>self.arg).dtype
+            elif self.is_numpy_ndarray or self.is_numpy_scalar:
+                self._dtype = self.arg.dtype
+            self._has_dtype = True
+        return self._dtype
+
+    cpdef get_shape(self):
+        if not self._has_shape:
+            if self.is_ndarray:
+                # Note: (<ndarray>arg).shape incurs a symbolic lookup and thus slower.
+                self._shape = tuple((<ndarray>self.arg)._shape)
+            elif self.typ is Indexer:
+                self._shape = (<Indexer>self.arg).shape
+            elif self.is_python_scalar:
+                self._shape = ()
+            elif self.is_numpy_ndarray or self.is_numpy_scalar:
+                self._shape = self.arg.shape
+            self._has_shape = True
+        return self._shape
+
+    cpdef get_ndim(self):
+        if not self._has_ndim:
+            shape = self.get_shape()
+            if shape is not None:
+                self._ndim = len(shape)
+            self._has_ndim = True
+        return self._ndim
+
+    cpdef get_strides(self):
+        if not self._has_strides:
+            if self.is_ndarray:
+                self._strides = tuple((<ndarray>self.arg)._strides)
+            elif self.is_numpy_ndarray:
+                self._strides = self.arg.strides
+            self._has_strides = True
+        return self._strides
 
     cpdef str get_base_type_expr(self):
         if self.typ is Indexer:
-            t = 'CIndexer<%d>' % self.ndim
+            t = 'CIndexer<%d>' % self.get_ndim()
         else:
             dt = self.get_ctype_name()
             if self.typ is ndarray:
-                t = 'CArray<%s, %d>' % (dt, self.ndim)
+                t = 'CArray<%s, %d>' % (dt, self.get_ndim())
             else:
                 t = dt
         return t
 
     cdef str get_ctype_name(self):
-        return _get_ctype_name(self.dtype)
+        return _get_ctype_name(self.get_dtype())
+
+
+cpdef ArgInfo ArgInfo_from_data(typ, dtype, shape, strides):
+    cdef Py_ssize_t ndim = -1 if shape is None else len(shape)
+    return ArgInfo(
+        None, typ, dtype, shape, ndim, strides, True, True, True, True)
 
 
 cpdef ArgInfo ArgInfo_from_arg(arg, bint hold_strides=False):
-    typ = type(arg)
-    strides = None
-    arg_ = None
-
-    if arg is None:
-        dtype = None
-        shape = None
-        ndim = -1
-    elif typ is ndarray:
-        dtype = (<ndarray>arg).dtype
-        # Note: (<ndarray>arg).shape incurs a symbolic lookup and thus slower.
-        shape = tuple((<ndarray>arg)._shape)
-        ndim = len(shape)
-        if hold_strides:
-            strides = tuple((<ndarray>arg)._strides)
-    elif typ is Indexer:
-        dtype = None
-        shape = (<Indexer>arg).shape
-        ndim = len(shape)
-    elif typ is slice:
-        dtype = None
-        shape = None
-        ndim = -1
-    elif typ in _python_scalar_type_set:
-        arg_ = arg
-        dtype = None
-        shape = ()
-        ndim = 0
-    elif typ in _numpy_scalar_type_set:
-        arg_ = arg
-        dtype = arg.dtype
-        shape = arg.shape
-        ndim = len(shape)
-    else:
-        dtype = arg.dtype
-        shape = arg.shape
-        ndim = len(shape)
-        if hold_strides:
-            strides = arg.strides
-
-    return ArgInfo(arg_, typ, dtype, shape, ndim, strides)
+    return ArgInfo(
+        arg, type(arg), None, None, -1, None, False, False, False, False)
 
 
 cpdef list ArgInfo_from_args(args, bint hold_strides=False):
@@ -451,7 +508,7 @@ cdef class ParameterList:
         cdef ArgInfo a
         stmts = []
         for p, a in zip(self.params, self.arg_infos):
-            if not p.raw and a.typ is ndarray:
+            if not p.raw and a.is_ndarray:
                 stmts.append(
                     '{t} &{n} = _raw_{n}[_ind.get()];'.format(
                         t=p.ctype, n=p.name))
@@ -587,18 +644,18 @@ cdef int _check_out_args(
             raw = False
         else:
             raw = (<ParameterInfo>out_params[i]).raw
-        if not raw and ai.shape != out_shape:
+        if not raw and ai.get_shape() != out_shape:
             raise ValueError('Out shape is mismatched')
 
         if casting:
             t = out_types[i]
-            if not numpy_can_cast(t, ai.dtype, casting=casting):
+            if not numpy_can_cast(t, ai.get_dtype(), casting=casting):
                 raise TypeError(
                     'output (typecode \'{}\') could not be coerced to '
                     'provided output parameter (typecode \'{}\') according to '
                     'the casting rule "{}"'.format(
                         numpy.dtype(t).char,
-                        ai.dtype.char,
+                        ai.get_dtype().char,
                         casting))
 
 
@@ -900,8 +957,8 @@ cdef class _ElementwiseKernelCallContext(_BaseElementwiseKernelCallContext):
         tup = kernel.kernel_cache.get(key)
         if tup is None:
             in_ndarray_types = tuple(
-                [a.dtype.type if a.is_ndarray else None for a in in_arg_infos])
-            out_ndarray_types = tuple([a.dtype.type for a in out_arg_infos])
+                [a.get_dtype().type if a.is_ndarray else None for a in in_arg_infos])
+            out_ndarray_types = tuple([a.get_dtype().type for a in out_arg_infos])
 
             tup = _decide_param_types(
                 kernel.in_params, kernel.out_params,
@@ -1244,7 +1301,7 @@ cdef class _UfuncKernelCallContext(_BaseElementwiseKernelCallContext):
         for i, x in enumerate(out_types):
             a = param_list.arg_infos[i + nin]
             types.append('typedef %s out%d_type;' % (
-                _get_ctype_name(a.dtype), i))
+                _get_ctype_name(a.get_dtype()), i))
             op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(
                 i, a.get_ctype_name()))
 
@@ -1347,7 +1404,7 @@ cdef bint _check_should_use_min_scalar(list in_arg_infos) except *:
     max_array_kind = -1
     max_scalar_kind = -1
     for a in in_arg_infos:
-        kind = _kind_score[a.dtype.kind]
+        kind = _kind_score[a.get_dtype().kind]
         if a.is_ndarray:
             all_scalars = False
             max_array_kind = max(max_array_kind, kind)
@@ -1381,10 +1438,10 @@ cdef tuple _guess_routine(
         use_raw_value = _check_should_use_min_scalar(in_arg_infos)
         if use_raw_value:
             in_types = tuple([
-                a.dtype.type if a.is_ndarray else a.arg for a in in_arg_infos])
+                a.get_dtype().type if a.is_ndarray else a.arg for a in in_arg_infos])
             op = None
         else:
-            in_types = tuple([a.dtype.type for a in in_arg_infos])
+            in_types = tuple([a.get_dtype().type for a in in_arg_infos])
             op = cache.get(in_types)
 
         if op is None:
@@ -1403,7 +1460,7 @@ cdef tuple _guess_routine(
     if op is not None:
         return op
     if dtype is None:
-        dtype = tuple([a.dtype.type for a in in_arg_infos])
+        dtype = tuple([a.get_dtype().type for a in in_arg_infos])
     raise TypeError('Wrong type (%s) of arguments for %s' %
                     (dtype, name))
 

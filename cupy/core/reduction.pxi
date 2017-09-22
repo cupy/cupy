@@ -403,13 +403,16 @@ cdef class _SimpleReductionKernelCallContext(_BaseReductionKernelCallContext):
 
     cpdef get_code(self, ParameterList param_list, tuple code_args):
         pre_map_expr, reduce_expr, post_map_expr, reduce_type = code_args
+        cdef ArgInfo arg_info0 = param_list.arg_infos[0]
+        cdef ArgInfo arg_info1 = param_list.arg_infos[1]
+
         if reduce_type is None:
-            reduce_type = _get_ctype_name(param_list.arg_infos[1].dtype)
+            reduce_type = _get_ctype_name(arg_info1.get_dtype())
 
         type_preamble = (
             'typedef %s type_in0_raw; typedef %s type_out0_raw;' % (
-                _get_ctype_name(param_list.arg_infos[0].dtype),
-                _get_ctype_name(param_list.arg_infos[1].dtype)))
+                _get_ctype_name(arg_info0.get_dtype()),
+                _get_ctype_name(arg_info1.get_dtype())))
         input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
 
@@ -444,10 +447,10 @@ cdef class _ReductionKernelCallContext(_BaseReductionKernelCallContext):
         kernel = self.kernel
         # decide param types
         in_ndarray_types = tuple(
-            [a.dtype.type if a.is_ndarray else None
+            [a.get_dtype().type if a.is_ndarray else None
              for a in in_arg_infos])
         out_ndarray_types = tuple(
-            [a.dtype.type if a.is_ndarray else None
+            [a.get_dtype().type if a.is_ndarray else None
              for a in out_arg_infos])
         in_types, out_types, types = _decide_param_types(
             kernel.in_params, kernel.out_params,

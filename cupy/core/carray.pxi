@@ -45,6 +45,20 @@ cdef class Indexer:
         self.shape = shape
         self.size = size
 
+    def __hash__(self):
+        return hash(self.size) ^ hash(self.shape)
+
+    def __richcmp__(Indexer x, Indexer y, int op):
+        if op == 2:
+            if x is y:
+                return True
+            return x.size == y.size and x.shape == y.shape
+
+        elif op == 3:
+            return not (x == y)
+
+        raise NotImplementedError()
+
     @property
     def ndim(self):
         return len(self.shape)
