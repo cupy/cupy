@@ -35,7 +35,8 @@ cpdef tuple _get_out_shape(
     return tuple([shape[i] for i in raxis])
 
 
-cpdef tuple _transpose_args(list args, list arg_infos, tuple trans, tuple shape, tuple params):
+cpdef tuple _transpose_args(
+        list args, list arg_infos, tuple trans, tuple shape, tuple params):
     """Transposes args in-place."""
     cdef ParameterInfo p
     cdef ArgInfo ai

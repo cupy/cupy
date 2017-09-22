@@ -255,20 +255,26 @@ cdef class ArgInfo:
     cdef:
         readonly object arg
         readonly type typ
-        readonly object _dtype
-        readonly tuple _shape
-        readonly Py_ssize_t _ndim
-        readonly tuple _strides
+        object _dtype
+        str _dtype_char
+        tuple _shape
+        Py_ssize_t _ndim
+        tuple _strides
+
+        Py_hash_t _hash
+        tuple _key
 
         readonly bint is_ndarray
         readonly bint is_python_scalar
         readonly bint is_numpy_scalar
         readonly bint is_numpy_ndarray
 
-        readonly bint _has_dtype
-        readonly bint _has_shape
-        readonly bint _has_ndim
-        readonly bint _has_strides
+        bint _has_dtype
+        bint _has_dtype_char
+        bint _has_shape
+        bint _has_ndim
+        bint _has_strides
+        bint _has_hash
 
     def __init__(
             self, object arg, type typ, dtype,
@@ -282,9 +288,11 @@ cdef class ArgInfo:
         self._ndim = ndim
         self._strides = strides
         self._has_dtype = has_dtype
+        self._has_dtype_char = False
         self._has_shape = has_shape
         self._has_ndim = has_ndim
         self._has_strides = has_strides
+        self._has_hash = False
 
         self.is_ndarray = False
         self.is_python_scalar = False
@@ -312,39 +320,29 @@ cdef class ArgInfo:
             self.get_ndim())
 
     def __hash__(self):
-        cdef int h
-        h = hash(self.typ) ^ hash(self.get_shape()) ^ hash(self.get_strides())
-        dtype = self.get_dtype()
-        if dtype is not None:
-            h ^= hash(dtype.char)
-        if not (self.is_ndarray or self.is_numpy_ndarray):
-            h ^= hash(self.arg)
-        return h
+        cdef Py_hash_t h
+        if not self._has_hash:
+            self._hash = hash(self._get_key())
+            self._has_hash = True
+        return self._hash
+
+    cdef tuple _get_key(self):
+        cdef list l
+        if self._key is None:
+            l = [self.typ, self.get_shape(), self.get_strides()]
+            dtype = self.get_dtype()
+            if dtype is not None:
+                l.append(dtype.char)
+            if not (self.is_ndarray or self.is_numpy_ndarray):
+                l.append(self.arg)
+            self._key = tuple(l)
+        return self._key
 
     def __richcmp__(ArgInfo x, ArgInfo y, int op):
         if op == 2:
             if x is y:
                 return True
-            if not (x.typ is y.typ and
-                    x.get_shape() == y.get_shape() and
-                    x.get_strides() == y.get_strides()):
-                return False
-
-            dtype1 = x.get_dtype()
-            dtype2 = y.get_dtype()
-            if dtype1 is None:
-                if dtype2 is not None:
-                    return False
-            elif dtype2 is None:
-                return False
-            elif dtype1.char != dtype2.char:
-                return False
-
-            if x.arg is not y.arg:
-                if not (x.is_ndarray or x.is_numpy_ndarray) and x.arg != y.arg:
-                    return False
-
-            return True
+            return x._get_key() == y._get_key()
 
         elif op == 3:
             return not (x == y)
@@ -363,7 +361,8 @@ cdef class ArgInfo:
     cpdef get_shape(self):
         if not self._has_shape:
             if self.is_ndarray:
-                # Note: (<ndarray>arg).shape incurs a symbolic lookup and thus slower.
+                # Note: (<ndarray>arg).shape incurs a symbolic lookup
+                # and thus slower.
                 self._shape = tuple((<ndarray>self.arg)._shape)
             elif self.typ is Indexer:
                 self._shape = (<Indexer>self.arg).shape
@@ -957,8 +956,10 @@ cdef class _ElementwiseKernelCallContext(_BaseElementwiseKernelCallContext):
         tup = kernel.kernel_cache.get(key)
         if tup is None:
             in_ndarray_types = tuple(
-                [a.get_dtype().type if a.is_ndarray else None for a in in_arg_infos])
-            out_ndarray_types = tuple([a.get_dtype().type for a in out_arg_infos])
+                [a.get_dtype().type if a.is_ndarray else None
+                 for a in in_arg_infos])
+            out_ndarray_types = tuple([
+                a.get_dtype().type for a in out_arg_infos])
 
             tup = _decide_param_types(
                 kernel.in_params, kernel.out_params,
@@ -1438,7 +1439,8 @@ cdef tuple _guess_routine(
         use_raw_value = _check_should_use_min_scalar(in_arg_infos)
         if use_raw_value:
             in_types = tuple([
-                a.get_dtype().type if a.is_ndarray else a.arg for a in in_arg_infos])
+                a.get_dtype().type if a.is_ndarray else a.arg
+                for a in in_arg_infos])
             op = None
         else:
             in_types = tuple([a.get_dtype().type for a in in_arg_infos])
