@@ -232,9 +232,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = a
             arr = arr.view()
             newstrides.clear()
-            for i in range(ndim):
-                if vecshape[i] != 1:
-                    newstrides.push_back(arr._strides[i])
+            for j in range(ndim):
+                if vecshape[j] != 1:
+                    newstrides.push_back(arr._strides[j])
             arr._set_shape_and_strides(newshape, newstrides, False)
             a = arr
         ret.append(a)
