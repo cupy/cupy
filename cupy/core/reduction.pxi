@@ -163,7 +163,7 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
             out_arg_infos = ArgInfo_from_args(out_args)
         else:
             _check_out_args(
-                list(out_args), tuple(out_types), out_shape, None, casting)
+                out_arg_infos, tuple(out_types), out_shape, None, casting)
 
         if 0 in out_shape:
             if len(out_args) == 1:

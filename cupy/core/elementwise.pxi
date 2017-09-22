@@ -130,7 +130,9 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
         return shape
 
     n = len(args)
-    for i, (p, ai) in enumerate(zip(params, arg_infos)):
+    for i in range(len(args)):
+        p = params[i]
+        ai = arg_infos[i]
         is_array = not p.raw and ai.is_ndarray
         is_array_flags.push_back(is_array)
         if is_array:
@@ -160,8 +162,6 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
 
     if cnt == 1:
         newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
-        new_args = []
-        new_arg_infos = []
         for i in range(len(arg_infos)):
             if is_array_flags[i]:
                 arr = args[i]
@@ -177,8 +177,6 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
         if vecshape[i] != 1:
             newshape.push_back(vecshape[i])
 
-    new_args = []
-    new_arg_infos = []
     for i in range(len(args)):
         if is_array_flags[i]:
             arr = args[i]
@@ -283,8 +281,12 @@ cdef class ArgInfo:
             self.ndim)
 
     def __hash__(self):
-        return (hash(self.typ) ^ hash(self.dtype) ^ hash(self.shape) ^
-                hash(self.arg) ^ hash(self.strides))
+        cdef int h
+        h = (hash(self.typ) ^ hash(self.shape) ^
+             hash(self.arg) ^ hash(self.strides))
+        if self.dtype is not None:
+            h ^= hash(self.dtype.char)
+        return h
 
     def __richcmp__(ArgInfo x, ArgInfo y, int op):
         if op == 2:
@@ -571,29 +573,33 @@ cdef list _allocate_out_args(
 
 
 cdef int _check_out_args(
-        list out_args, tuple out_types, tuple out_shape, tuple out_params,
+        list out_arg_infos, tuple out_types, tuple out_shape, tuple out_params,
         str casting) except -1:
+    cdef ArgInfo ai
     cdef bint raw
+    numpy_can_cast = numpy.can_cast if casting else None
 
-    for i, (a, t) in enumerate(zip(out_args, out_types)):
-        if not isinstance(a, ndarray):
+    for i, ai in enumerate(out_arg_infos):
+        if not ai.is_ndarray:
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         if out_params is None:
             raw = False
         else:
             raw = (<ParameterInfo>out_params[i]).raw
-        if not raw and a.shape != out_shape:
+        if not raw and ai.shape != out_shape:
             raise ValueError('Out shape is mismatched')
 
-        if casting and not numpy.can_cast(t, a.dtype, casting=casting):
-            msg = 'output (typecode \'{}\') could not be coerced to ' \
-                  'provided output parameter (typecode \'{}\') according to ' \
-                  'the casting rule "{}"'.format(
-                      numpy.dtype(t).char,
-                      a.dtype.char,
-                      casting)
-            raise TypeError(msg)
+        if casting:
+            t = out_types[i]
+            if not numpy_can_cast(t, ai.dtype, casting=casting):
+                raise TypeError(
+                    'output (typecode \'{}\') could not be coerced to '
+                    'provided output parameter (typecode \'{}\') according to '
+                    'the casting rule "{}"'.format(
+                        numpy.dtype(t).char,
+                        ai.dtype.char,
+                        casting))
 
 
 cdef class _BaseKernelCallContext(object):
@@ -697,12 +703,16 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
         # Cast scalar args to ndarrays
         for i, ai in enumerate(in_arg_infos):
             if not ai.is_ndarray:
-                in_args[i] = in_types[i](in_args[i])
-                in_arg_infos[i] = ArgInfo_from_arg(in_args[i])
+                t = in_types[i]
+                a = t(in_args[i])
+                in_args[i] = a
+                in_arg_infos[i] = ArgInfo_from_arg(a)
         for i, ai in enumerate(out_arg_infos):
             if not ai.is_ndarray:
-                out_args[i] = out_types[i](out_args[i])
-                out_arg_infos[i] = ArgInfo_from_arg(out_args[i])
+                t = out_types[i]
+                a = t(out_args[i])
+                out_args[i] = a
+                out_arg_infos[i] = ArgInfo_from_arg(a)
 
         # Allocate output args as needed.
         if len(out_args) == 0:
@@ -710,7 +720,8 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
                 out_types, shape, out_params, size >= 0)
             out_arg_infos = ArgInfo_from_args(out_args)
         else:
-            _check_out_args(out_args, out_types, shape, out_params, casting)
+            _check_out_args(
+                out_arg_infos, out_types, shape, out_params, casting)
 
         if nout == 1:
             ret = out_args[0]
@@ -1305,11 +1316,11 @@ cdef tuple _guess_routine_from_in_types(tuple ops, tuple in_types):
     cdef Py_ssize_t i, n
     cdef tuple op, op_types
     n = len(in_types)
-    can_cast = numpy.can_cast
+    numpy_can_cast = numpy.can_cast
     for op in ops:
         op_types = op[0]
         for i in range(n):
-            if not can_cast(in_types[i], op_types[i]):
+            if not numpy_can_cast(in_types[i], op_types[i]):
                 break
         else:
             return op
