@@ -83,37 +83,39 @@ cdef str _get_ctype_name(dtype):
     return name
 
 
-cdef list _preprocess_args(args):
+cdef void _preprocess_args(list args, list arg_infos):
     """Preprocesses arguments for kernel invocation
 
+    This function modifies args and arg_infos in-place.
     - Checks device compatibility for ndarrays
     - Converts Python scalars into NumPy scalars
     """
-    cdef list ret = []
     cdef int dev_id = device.get_device_id()
-    cdef type typ
+    cdef ArgInfo ai
+    cdef Py_ssize_t i
 
-    for arg in args:
-        typ = type(arg)
-        if typ is ndarray:
-            arr_dev = (<ndarray>arg).data.device
+    for i, ai in enumerate(arg_infos):
+        if ai.is_ndarray:
+            arr_dev = (<ndarray>args[i]).data.device
             if arr_dev is not None and arr_dev.id != dev_id:
                 raise ValueError(
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
-        elif typ in _python_scalar_type_set:
-            arg = _python_type_to_numpy_type[typ](arg)
-        elif typ in _numpy_scalar_type_set:
+        elif ai.typ in _python_scalar_type_set:
+            args[i] = _python_type_to_numpy_type[ai.typ](args[i])
+            arg_infos[i] = ArgInfo_from_arg(args[i], True)
+        elif ai.typ in _numpy_scalar_type_set:
             pass
         else:
-            raise TypeError('Unsupported type %s' % typ)
-        ret.append(arg)
-    return ret
+            raise TypeError('Unsupported type %s' % ai.typ)
 
 
 cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
-    """Reduces the dimensions of arrays into the minimum without copy."""
+    """Reduces the dimensions of arrays into the minimum without copy.
+
+    This function modifies args and arg_infos in-place.
+    """
     cdef Py_ssize_t i, j, n, ndim, cnt, axis, s
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
     cdef vector.vector[bint] is_array_flags
@@ -125,14 +127,14 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
 
     ndim = len(shape)
     if ndim <= 1:
-        return args, arg_infos, shape
+        return shape
 
     n = len(args)
-    for p, a in zip(params, args):
-        is_array = not p.raw and isinstance(a, ndarray)
+    for i, (p, ai) in enumerate(zip(params, arg_infos)):
+        is_array = not p.raw and ai.is_ndarray
         is_array_flags.push_back(is_array)
         if is_array:
-            arr = a
+            arr = args[i]
             args_strides.push_back(arr._strides)
 
     vecshape = shape
@@ -154,24 +156,22 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
         axis = ndim - 1
 
     if cnt == ndim:
-        return args, arg_infos, shape
+        return shape
 
     if cnt == 1:
         newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
         new_args = []
         new_arg_infos = []
-        for i, (a, ai) in enumerate(zip(args, arg_infos)):
+        for i in range(len(arg_infos)):
             if is_array_flags[i]:
-                arr = a
+                arr = args[i]
                 arr = arr.view()
                 newstrides.assign(
                     <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
-                a = arr
-                ai = ArgInfo_from_arg(a)
-            new_args.append(a)
-            new_arg_infos.append(ai)
-        return new_args, new_arg_infos, tuple(newshape)
+                args[i] = arr
+                arg_infos[i] = ArgInfo_from_arg(arr)
+        return tuple(newshape)
 
     for i in range(ndim):
         if vecshape[i] != 1:
@@ -179,20 +179,18 @@ cpdef tuple _reduce_dims(list args, list arg_infos, tuple params, tuple shape):
 
     new_args = []
     new_arg_infos = []
-    for i, (a, ai) in enumerate(zip(args, arg_infos)):
+    for i in range(len(args)):
         if is_array_flags[i]:
-            arr = a
+            arr = args[i]
             arr = arr.view()
             newstrides.clear()
             for j in range(ndim):
                 if vecshape[j] != 1:
                     newstrides.push_back(arr._strides[j])
             arr._set_shape_and_strides(newshape, newstrides, False)
-            a = arr
-            ai = ArgInfo_from_arg(a)
-        new_args.append(a)
-        new_arg_infos.append(ai)
-    return new_args, new_arg_infos, tuple(newshape)
+            args[i] = arr
+            arg_infos[i] = ArgInfo_from_arg(arr)
+    return tuple(newshape)
 
 
 cdef class ParameterInfo:
@@ -676,8 +674,9 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
         params = kernel.params
 
         # Preprocess
-        args = _preprocess_args(args)
+        args = list(args)
         arg_infos = ArgInfo_from_args(args, True)
+        _preprocess_args(args, arg_infos)
 
         # Decide parameter dtypes.
         in_types, out_types = self.decide_param_types(
@@ -727,7 +726,7 @@ cdef class _BaseElementwiseKernelCallContext(_BaseKernelCallContext):
 
         # Reduce array dimensions
         if reduce_dims:
-            inout_args, inout_arg_infos, shape = _reduce_dims(
+            shape = _reduce_dims(
                 inout_args, inout_arg_infos, inout_params, shape)
 
         # Append indexer

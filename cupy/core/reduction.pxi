@@ -59,9 +59,9 @@ cpdef tuple _get_inout_args(
         Indexer in_indexer, Indexer out_indexer,
         object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_arg_infos, in_shape = _reduce_dims(
+        in_shape = _reduce_dims(
             in_args, in_arg_infos, params, in_indexer.shape)
-        out_args, out_arg_infos, out_shape = _reduce_dims(
+        out_shape = _reduce_dims(
             out_args, out_arg_infos, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
@@ -131,14 +131,15 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
         nargs = kernel.nargs
         params = kernel.params
 
+        args = list(args)
         in_args = args[:nin]
         out_args = args[nin:]
 
         # preprocess_args
-        in_args = _preprocess_args(in_args)
-        out_args = _preprocess_args(out_args)
         in_arg_infos = ArgInfo_from_args(in_args, True)
         out_arg_infos = ArgInfo_from_args(out_args, True)
+        _preprocess_args(in_args, in_arg_infos)
+        _preprocess_args(out_args, out_arg_infos)
 
         # Decide parameter dtypes.
         in_types, out_types = self.decide_param_types(
@@ -168,6 +169,11 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
             if len(out_args) == 1:
                 return out_args[0]
             return tuple(out_args)
+
+        if len(out_args) == 1:
+            ret = out_args[0]
+        else:
+            ret = tuple(out_args)
 
         if len(kernel.identity) == 0 and 0 in in_shape:
             raise ValueError(('zero-size array to reduction operation'
@@ -226,9 +232,7 @@ cdef class _BaseReductionKernelCallContext(_BaseKernelCallContext):
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
             inout_args, shared_mem, block_size)
 
-        if len(out_args) == 1:
-            return out_args[0]
-        return tuple(out_args)
+        return ret
 
     def emit_loop_class(
             self, emitter, class_name, ParameterList param_list):
