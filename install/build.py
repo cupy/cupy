@@ -1,4 +1,5 @@
 import contextlib
+import distutils.util
 import os
 import re
 import shutil
@@ -68,8 +69,8 @@ def get_cuda_path():
 
 def get_nvcc_path():
     nvcc = os.environ.get('NVCC', None)
-    if nvcc is not None and os.path.exists(nvcc):
-        return nvcc
+    if nvcc is not None:
+        return distutils.util.split_quoted(nvcc)
 
     cuda_path = get_cuda_path()
     if cuda_path is None:
@@ -82,7 +83,7 @@ def get_nvcc_path():
 
     nvcc_path = os.path.join(cuda_path, nvcc_bin)
     if os.path.exists(nvcc_path):
-        return nvcc_path
+        return [nvcc_path]
     else:
         return None
 
@@ -164,7 +165,7 @@ def _get_compiler_base_options():
         with open(test_cu_path, 'w') as f:
             f.write('int main() { return 0; }')
         proc = subprocess.Popen(
-            [nvcc_path, '-o', test_out_path, test_cu_path],
+            nvcc_path + ['-o', test_out_path, test_cu_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()

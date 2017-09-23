@@ -463,7 +463,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             self._setup_compile(output_dir, macros, include_dirs, sources,
                                 depends, extra_postargs)
 
-        compiler_so = [build.get_nvcc_path()]
+        compiler_so = build.get_nvcc_path()
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
