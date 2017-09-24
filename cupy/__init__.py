@@ -372,6 +372,10 @@ from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.window import blackman  # NOQA
+from cupy.math.window import hamming  # NOQA
+from cupy.math.window import hanning  # NOQA
+
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
