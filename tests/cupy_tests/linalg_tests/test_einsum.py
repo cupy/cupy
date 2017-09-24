@@ -148,6 +148,8 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (2, 3), 'subscripts': 'ij->ij...'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ij->i...j'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ij->...ij'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ij...->ij'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'i...j->ij'},  # do nothing
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow

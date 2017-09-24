@@ -312,8 +312,6 @@ def einsum(*operands):
                 continue
             raise ValueError('einstein sum subscripts string includes output '
                              'subscript \'{}\' multiple times'.format(key))
-        if '@' in input_subscripts and '@' not in output_subscript:
-            raise ValueError('output had too few broadcast dimensions')
     else:
         label_list = list(input_subscripts.replace(',', ''))
         out_label_set = set(label_list) - get_dummy_labels(label_list)
@@ -342,6 +340,10 @@ def einsum(*operands):
         if subscript.count('@') >= 2:
             raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
                              'one operand')
+        if '@' in input_subscripts and '@' not in output_subscript:
+            if len(subscript) <= ioperand.ndim:
+                raise ValueError('output had too few broadcast dimensions')
+            subscript = subscript.replace('@', '')
 
         result, subscript = calc_single_view(ioperand, subscript)
         single_views.append((result, subscript))
