@@ -8,8 +8,8 @@ import six
 
 import cupy
 from cupy.core import flags
-from cupy.cuda import stream
 from cupy.cuda import device
+from cupy.cuda import stream
 try:
     from cupy.cuda import thrust
 except ImportError:
