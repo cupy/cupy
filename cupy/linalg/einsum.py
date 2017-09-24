@@ -43,8 +43,7 @@ def calc_single_view(ioperand, subscript):
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
-        axes_to_diag = numpy.core.numeric.normalize_axis_tuple(axes_to_diag,
-                                                               result.ndim)
+        axes_to_diag = _normalize_axis_tuple(axes_to_diag, result.ndim)
         for axis in reversed(axes_to_diag[1:]):
             shape_a = result.shape[axis]
             shape_b = result.shape[axes_to_diag[0]]
@@ -101,6 +100,14 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
     return result, input_subscript
 
 
+def _normalize_axis_tuple(axis, ndim):
+    """Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    .. seealso:: :func:`numpy.core.numeric.normalize_axis_tuple`
+    """
+    return tuple((ax % ndim) for ax in axis)
+
+
 # TODO(fukatani): Implement as cupy.moveaxis
 def _moveaxis(a, source, destination):
     """Moves axes of an array to new positions.
@@ -108,8 +115,8 @@ def _moveaxis(a, source, destination):
     .. seealso:: :func:`numpy.moveaxis`
     """
 
-    source = numpy.core.numeric.normalize_axis_tuple(source, a.ndim)
-    destination = numpy.core.numeric.normalize_axis_tuple(destination, a.ndim)
+    source = _normalize_axis_tuple(source, a.ndim)
+    destination = _normalize_axis_tuple(destination, a.ndim)
     if len(source) != len(destination):
         raise ValueError('`source` and `destination` arguments must have '
                          'the same number of elements')
@@ -186,7 +193,6 @@ def calc_combined_view(ioperands, subscripts):
     if len(ioperands) == 1:
         return ioperands[0], subscripts[0]
 
-    result = cupy.ones(1)
     a_shape_stack = []
     b_shape_stack = []
     is_first_operand = True
