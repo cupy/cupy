@@ -18,10 +18,10 @@ def calc_single_view(ioperand, subscript):
             more than once, calculate diagonal for those axes.
     """
 
-    if '@' not in subscript:
-        assert ioperand.ndim == len(subscript)
+    if '@' in subscript:
+        assert ioperand.ndim >= len(subscript) - subscript.count('@')
     else:
-        assert ioperand.ndim >= len(subscript.replace('@', ''))
+        assert ioperand.ndim == len(subscript)
 
     subscripts_excluded_at = subscript.replace('@', '')
     labels = set(subscripts_excluded_at)
@@ -114,9 +114,9 @@ def _moveaxis(a, source, destination):
         raise ValueError('`source` and `destination` arguments must have '
                          'the same number of elements')
 
-    order = [n for n in range(a.ndim) if n not in source]
+    order = [n for n in six.moves.range(a.ndim) if n not in source]
 
-    for dest, src in sorted(zip(destination, source)):
+    for dest, src in sorted(six.moves.zip(destination, source)):
         order.insert(dest, src)
 
     result = a.transpose(order)
@@ -164,10 +164,10 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
 def move_broadcast_axes_to_front(ioperands, subscripts):
     broadcasted_operands = []
     broadcasted_subscripts = []
-    for operand, subscript in zip(ioperands, subscripts):
+    for operand, subscript in six.moves.zip(ioperands, subscripts):
         if '@' in subscript:
             ellipsis_pos = subscript.find('@')
-            source_axes = list(range(ellipsis_pos))
+            source_axes = list(six.moves.range(ellipsis_pos))
             destination_axes = [i - len(source_axes) for i in source_axes]
             operand = _moveaxis(operand, source_axes, destination_axes)
             subscript = subscript[ellipsis_pos:] + subscript[:ellipsis_pos]
@@ -190,15 +190,15 @@ def calc_combined_view(ioperands, subscripts):
     a_shape_stack = []
     b_shape_stack = []
     is_first_operand = True
-    for operand, subscript in zip(ioperands, subscripts):
+    for operand, subscript in six.moves.zip(ioperands, subscripts):
         if subscript and '@' == subscript[0]:
             broadcasted_dims = operand.ndim - len(subscript) + 1
             a_shape = numpy.prod(operand.shape[:broadcasted_dims],
-                                 dtype=numpy.int8)
+                                 dtype=numpy.uint32)
             if len(operand.shape[:broadcasted_dims]) > len(a_shape_stack):
                 a_shape_stack = list(operand.shape[:broadcasted_dims])
             b_shape = numpy.prod(operand.shape[broadcasted_dims:],
-                                 dtype=numpy.int8)
+                                 dtype=numpy.uint32)
             b_shape_stack += operand.shape[broadcasted_dims:]
             operand = operand.reshape(a_shape, 1, b_shape)
         else:
@@ -288,6 +288,17 @@ def einsum(*operands):
     if match.group(2):
         output_subscript = match.group(2)[2:]
 
+        if output_subscript.count('@') >= 2:
+            raise ValueError(
+                'Two or more \'...\' ellipsis can\'t be used for'
+                'output subscript')
+
+        # For compatibility with numpy.
+        # numpy.einsum arrows inputs like 'i->i...'.
+        # In this case, `...` does not affect the einsum results.
+        if '@' not in input_subscripts and '@' in subscripts:
+            output_subscript = output_subscript.replace('@', '')
+
         irregular_chars = set(output_subscript) - set(input_subscripts)
         if irregular_chars:
             pickup = list(irregular_chars)[0]
@@ -301,10 +312,6 @@ def einsum(*operands):
                 continue
             raise ValueError('einstein sum subscripts string includes output '
                              'subscript \'{}\' multiple times'.format(key))
-        if '@' in output_subscript and re.match('/^[a-zA-Z]*@[a-zA-Z]*?$/',
-                                                output_subscript):
-            raise ValueError('Two or more \'...\' ellipsis can\'t be used for'
-                             'output subscript')
         if '@' in input_subscripts and '@' not in output_subscript:
             raise ValueError('output had too few broadcast dimensions')
     else:
@@ -325,15 +332,14 @@ def einsum(*operands):
     for i in six.moves.range(len(input_subscripts_list)):
         subscript = input_subscripts_list[i]
         ioperand = converted_inputs[i]
-        if len(subscript.replace('@', '')) > ioperand.ndim:
+        if len(subscript) - subscript.count('@') > ioperand.ndim:
             raise ValueError('einstein sum subscripts string contains too '
                              'many subscripts for operand {}'.format(i))
         if '@' not in subscript and len(subscript) < ioperand.ndim:
             raise ValueError('operand has more dimensions than subscripts'
                              ' given in einstein sum, but no \'...\' ellipsis'
                              ' provided to broadcast the extra dimensions.')
-        if '@' in subscript and not re.match('^[a-zA-Z]*@[a-zA-Z]*?$',
-                                             subscript):
+        if subscript.count('@') >= 2:
             raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
                              'one operand')
 
