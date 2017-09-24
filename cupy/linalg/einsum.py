@@ -168,7 +168,7 @@ def move_broadcast_axes_to_front(ioperands, subscripts):
         if '@' in subscript:
             ellipsis_pos = subscript.find('@')
             source_axes = list(six.moves.range(ellipsis_pos))
-            destination_axes = [i - len(source_axes) for i in source_axes]
+            destination_axes = [i - ellipsis_pos for i in source_axes]
             operand = _moveaxis(operand, source_axes, destination_axes)
             subscript = subscript[ellipsis_pos:] + subscript[:ellipsis_pos]
         broadcasted_operands.append(operand)
