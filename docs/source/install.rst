@@ -164,7 +164,7 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
 Install CuPy for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CuPy uses Cython (>=0.24).
+CuPy uses Cython (>=0.26.1).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
 We recommend to use ``pip`` with ``-e`` option for editable mode::
 
