@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import sys
 import time
 
 import cupy
@@ -106,7 +107,7 @@ def compute_option_prices(
     return call_prices.mean(axis=1)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu-id', '-g', default=0, type=int, help='GPU ID')
     parser.add_argument('--n-options', default=1000, type=int)
@@ -151,3 +152,8 @@ if __name__ == '__main__':
         stock_price, option_strike, option_years, risk_free, volatility)
     error = cupy.std(call_mc - call_bs)
     print('Error: %f' % error)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
