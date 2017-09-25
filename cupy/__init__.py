@@ -526,3 +526,39 @@ def get_array_module(*args):
 fuse = fusion.fuse
 
 disable_experimental_feature_warning = False
+
+
+# set default allocator
+_default_memory_pool = cuda.MemoryPool()
+_default_pinned_memory_pool = cuda.PinnedMemoryPool()
+
+cuda.set_allocator(_default_memory_pool.malloc)
+cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
+
+
+def get_default_memory_pool():
+    """Returns CuPy default memory pool.
+
+    Returns:
+        cupy.cuda.MemoryPool: it is memory pool object.
+
+    .. note::
+       If you want to disable memory pool, please use the following code.
+       >>> cupy.cuda.set_allocator()
+
+    """
+    return _default_memory_pool
+
+
+def get_default_pinned_memory_pool():
+    """Returns CuPy default memory pool.
+
+    Returns:
+        cupy.cuda.MemoryPool: it is memory pool object.
+
+    .. note::
+       If you want to disable memory pool, please use the following code.
+       >>> cupy.cuda.set_pinned_memory_allocator()
+
+    """
+    return _default_pinned_memory_pool
