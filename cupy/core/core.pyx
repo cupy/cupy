@@ -66,12 +66,12 @@ cdef class ndarray:
         base (None or cupy.ndarray): Base array from which this array is
             created as a view.
         data (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        dtype(numpy.dtype): Dtype object of element type.
+        ~ndarray.dtype(numpy.dtype): Dtype object of element type.
 
             .. seealso::
                `Data type objects (dtype) \
                <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
-        size (int): Number of elements this array holds.
+        ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
 
@@ -2196,9 +2196,9 @@ cdef class broadcast:
         arrays (tuple of arrays): Arrays to be broadcasted.
 
     Attributes:
-        shape (tuple of ints): The broadcasted shape.
+        ~broadcast.shape (tuple of ints): The broadcasted shape.
         nd (int): Number of dimensions of the broadcasted shape.
-        size (int): Total size of the broadcasted shape.
+        ~broadcast.size (int): Total size of the broadcasted shape.
         values (list of arrays): The broadcasted arrays.
 
     .. seealso:: :class:`numpy.broadcast`
