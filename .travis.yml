@@ -11,7 +11,7 @@ python:
 
 install:
   - pip install -U pip wheel
-  - pip install cython
+  - pip install cython==0.26.1
   - python setup.py sdist --cupy-no-cuda
   - pip install autopep8 hacking
 
