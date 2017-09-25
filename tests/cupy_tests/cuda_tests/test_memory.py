@@ -99,7 +99,6 @@ class TestMemoryPointer(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
-@testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
@@ -307,6 +306,65 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p3 = self.pool.malloc(self.unit * 1)
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
         del p3
+
+
+@testing.parameterize(*testing.product({
+    'allocator': [memory._malloc, memory.malloc_managed],
+}))
+@testing.gpu
+class TestSingleDeviceMemoryPoolGPU(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = memory.SingleDeviceMemoryPool(self.allocator)
+        self.unit = self.pool._allocation_unit_size
+
+    def test_realloc(self):
+        p1 = self.pool.malloc(self.unit * 2)
+        new_p1 = self.pool._realloc(p1.ptr, p1.mem.size)
+        self.assertNotEqual(new_p1.ptr, p1.ptr)
+        self.assertEqual(new_p1.mem.size, p1.mem.size)
+
+    def test_realloc_all(self):
+        p = self.pool.malloc(self.unit * 4)
+        del p
+        p1 = self.pool.malloc(self.unit)
+        p1_ptr = p1.ptr
+        p1_size = p1.mem.size
+        p2 = self.pool.malloc(self.unit)
+        p2_ptr = p2.ptr
+        p2_size = p2.mem.size
+        p3 = self.pool.malloc(self.unit)
+        p3_ptr = p3.ptr
+        p3_size = p3.mem.size
+        p4 = self.pool.malloc(self.unit)
+        p4_ptr = p4.ptr
+        p4_size = p4.mem.size
+        del p3
+
+        used_bytes = self.pool.used_bytes()
+        free_bytes = self.pool.free_bytes()
+        self.pool._realloc_all()
+        self.assertEqual(used_bytes, self.pool.used_bytes())
+        self.assertEqual(free_bytes, self.pool.free_bytes())
+        p3 = self.pool.malloc(self.unit)
+
+        self.assertNotEqual(p1.ptr, p1_ptr)
+        self.assertNotEqual(p2.ptr, p2_ptr)
+        self.assertNotEqual(p3.ptr, p3_ptr)
+        self.assertNotEqual(p4.ptr, p4_ptr)
+
+        self.assertEqual(p1.mem.ptr, p1.ptr)
+        self.assertEqual(p1.mem.size, p1_size)
+        self.assertEqual(p2.mem.ptr, p2.ptr)
+        self.assertEqual(p2.mem.size, p2_size)
+        self.assertEqual(p3.mem.ptr, p3.ptr)
+        self.assertEqual(p3.mem.size, p3_size)
+        self.assertEqual(p4.mem.ptr, p4.ptr)
+        self.assertEqual(p4.mem.size, p4_size)
+
+        self.assertEqual(p2.ptr, p1.ptr + self.unit)
+        self.assertEqual(p3.ptr, p1.ptr + self.unit * 2)
+        self.assertEqual(p4.ptr, p1.ptr + self.unit * 3)
 
 
 @testing.parameterize(*testing.product({

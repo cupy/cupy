@@ -21,6 +21,7 @@ cdef class MemoryPointer:
         readonly device.Device device
         readonly object mem
         readonly size_t ptr
+        object __weakref__
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream)
@@ -45,6 +46,7 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
         dict _in_use
+        dict _in_use_memptr
         list _free
         object __weakref__
         object _weakref
@@ -71,6 +73,9 @@ cdef class SingleDeviceMemoryPool:
     cpdef bint _remove_from_free_list(self, Py_ssize_t size, chunk) except *
     cpdef tuple _split(self, Chunk chunk, Py_ssize_t size)
     cpdef Chunk _merge(self, Chunk head, Chunk remaining)
+    cpdef _realloc(self, size_t ptr, Py_ssize_t size)
+    cpdef _reset_memptr(self, Chunk chunk, Chunk new_chunk)
+    cpdef _realloc_all(self)
 
 cdef class MemoryPool:
 
