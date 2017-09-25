@@ -3,6 +3,7 @@ import string
 import numpy
 import six
 
+from cupy.cuda import compiler
 from cupy import util
 
 from cupy.cuda cimport device
@@ -485,6 +486,8 @@ cdef class ElementwiseKernel:
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='', **kwargs):
+        compiler.check_kernel_name(name)
+
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
