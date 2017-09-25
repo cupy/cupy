@@ -33,7 +33,7 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     const T mu_by_t = (r - v * v / 2) * t;
 
     // compute the price of the call option with Monte Carlo method
-    for(int i=0; i<n_samples; ++i) {
+    for (int i = 0; i < n_samples; ++i) {
         const T p = sample_normal(rand_state);
         call_sum += get_call_value(s, x, p, mu_by_t, v_by_sqrt_t);
     }
@@ -79,7 +79,7 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     __device__ inline T sample_normal(uint64_t* state) {
         T x = sample_uniform(state);
         T s = T(-1.4142135623730950488016887242097);  // = -sqrt(2)
-        if(x > 0.5) {
+        if (x > 0.5) {
             x = 1 - x;
             s = -s;
         }
