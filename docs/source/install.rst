@@ -127,7 +127,7 @@ If you installed CUDA into a non-default directory, you need to specify the dire
   $ CUDA_PATH=/opt/nvidia/cuda pip install cupy
 
 
-If you want to use custom ``nvcc`` compiler (For example, to use ```ccache`` ), please use ``NVCC`` environment variables before installing CuPy::
+If you want to use a custom ``nvcc`` compiler (For example, to use ``ccache`` ), please set ``NVCC`` environment variables before installing CuPy::
 
   export NVCC='ccache nvcc'
 
