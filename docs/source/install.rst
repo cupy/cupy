@@ -127,6 +127,11 @@ If you installed CUDA into a non-default directory, you need to specify the dire
   $ CUDA_PATH=/opt/nvidia/cuda pip install cupy
 
 
+If you want to use a custom ``nvcc`` compiler (For example, to use ``ccache`` ), please set ``NVCC`` environment variables before installing CuPy::
+
+  export NVCC='ccache nvcc'
+
+
 .. warning::
 
    If you want to use ``sudo`` to install CuPy, note that ``sudo`` command initializes all environment variables.
@@ -162,7 +167,7 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
 
 
 Install CuPy for developers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CuPy uses Cython (>=0.24).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
@@ -190,7 +195,7 @@ Use pip to uninstall CuPy::
 
 
 Upgrade CuPy
----------------
+------------
 
 Just use ``pip`` with ``-U`` option::
 
@@ -198,7 +203,7 @@ Just use ``pip`` with ``-U`` option::
 
 
 Reinstall CuPy
----------------
+--------------
 
 If you want to reinstall CuPy, please uninstall CuPy and then install it.
 We recommend to use ``--no-cache-dir`` option as ``pip`` sometimes uses cache::
@@ -211,7 +216,7 @@ You need to reinstall CuPy when you want to upgrade CUDA.
 
 
 Run CuPy with Docker
------------------------
+--------------------
 
 We are providing the official Docker image.
 Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run CuPy image with GPU.
