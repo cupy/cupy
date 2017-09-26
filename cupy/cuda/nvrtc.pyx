@@ -43,7 +43,8 @@ class NVRTCError(RuntimeError):
     def __init__(self, status):
         self.status = status
         cdef bytes msg = nvrtcGetErrorString(<Result>status)
-        super(NVRTCError, self).__init__(msg.decode())
+        super(NVRTCError, self).__init__(
+            '{} ({})'.format(msg.decode(), status))
 
 
 @cython.profile(False)
