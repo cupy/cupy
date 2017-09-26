@@ -311,6 +311,11 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnSetDropoutDescriptor(
         DropoutDescriptor dropoutDesc, Handle handle, float dropout,
         void* states, size_t stateSizeInBytes, unsigned long long seed)
+    int cudnnDropoutForward(
+        Handle handle, DropoutDescriptor dropoutDesc,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor dstDesc, void* dstData,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
     int cudnnDropoutBackward(
         Handle handle, DropoutDescriptor dropoutDesc,
         TensorDescriptor dydesc, void* dy, TensorDescriptor dxdesc,
@@ -1119,6 +1124,42 @@ cpdef setDropoutDescriptor(
     status = cudnnSetDropoutDescriptor(
         <DropoutDescriptor>dropoutDesc, <Handle>handle, dropout,
         <void*>states, stateSizeInBytes, seed)
+    check_status(status)
+
+
+cpdef size_t getDropoutReserveSpaceSize(size_t xDesc):
+    cdef size_t sizeInBytes
+    status = cudnnDropoutGetReserveSpaceSize(
+        <TensorDescriptor>xDesc, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef dropoutForward(
+        size_t handle, size_t dropoutDesc,
+        size_t srcDesc, size_t srcData,
+        size_t dstDesc, size_t dstData,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    with nogil:
+        status = cudnnDropoutForward(
+            <Handle>handle, <DropoutDescriptor>dropoutDesc,
+            <TensorDescriptor>srcDesc, <void*>srcData,
+            <TensorDescriptor>dstDesc, <void*>dstData,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef dropoutBackward(
+        size_t handle, size_t dropoutDesc,
+        size_t dyDesc, size_t dyData,
+        size_t dxDesc, size_t dxData,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    with nogil:
+        status = cudnnDropoutBackward(
+            <Handle>handle, <DropoutDescriptor>dropoutDesc,
+            <TensorDescriptor>dyDesc, <void*>dyData,
+            <TensorDescriptor>dxDesc, <void*>dxData,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
     check_status(status)
 
 
