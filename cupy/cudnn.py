@@ -311,12 +311,15 @@ def create_rnn_descriptor(handle, hidden_size, num_layers, dropout_desc,
     return desc
 
 
-def create_rnn_persistent_rnn_plan(desc, data_type, minibatch):
+def create_rnn_persistent_rnn_plan(desc, minibatch, data_type):
     # Persistent RNN
-    plan = Descriptor(cudnn.createPersistentRNNPlan(desc.value, minibatch,
-                                                    data_type),
-                      cudnn.destroyPersistentRNNPlan)
-    cudnn.setPersistentRNNPlan(desc.value, plan.value)
+    plan = cudnn.createPersistentRNNPlan(desc.value, minibatch, data_type)
+    plan_desc = Descriptor(plan, cudnn.destroyPersistentRNNPlan)
+    return plan_desc
+
+
+def set_rnn_persistent_rnn_plan(desc, plan_desc):
+    cudnn.setPersistentRNNPlan(desc.value, plan_desc.value)
 
 
 def get_rnn_lin_layer_matrix_params(
