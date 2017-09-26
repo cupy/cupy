@@ -272,13 +272,25 @@ class RandomState(object):
             if not numpy.allclose(p_sum, 1):
                 raise ValueError('probabilities do not sum to 1')
 
-        if not replace:
-            raise NotImplementedError
-
         if size is None:
             raise NotImplementedError
         shape = size
         size = numpy.prod(shape)
+
+        if not replace and p is None:
+            if a_size < size:
+                raise ValueError(
+                    'Cannot take a larger sample than population when '
+                    '\'replace=False\'')
+            if isinstance(a, six.integer_types):
+                indices = cupy.arange(a, dtype='l')
+            else:
+                indices = a.copy()
+            cupy.random.shuffle(indices)
+            return indices[:size].reshape(shape)
+
+        if not replace:
+            raise NotImplementedError
 
         if p is not None:
             p = cupy.broadcast_to(p, (size, a_size))

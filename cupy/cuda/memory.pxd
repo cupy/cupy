@@ -1,4 +1,7 @@
+from libcpp cimport vector
+
 from cupy.cuda cimport device
+
 
 cdef class Chunk:
 
@@ -42,7 +45,7 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
         dict _in_use
-        object _free
+        list _free
         object __weakref__
         object _weakref
         object _free_lock
@@ -50,6 +53,7 @@ cdef class SingleDeviceMemoryPool:
         readonly Py_ssize_t _allocation_unit_size
         readonly Py_ssize_t _initial_bins_size
         readonly int _device_id
+        vector.vector[int] _index
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t size)
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
@@ -62,8 +66,9 @@ cdef class SingleDeviceMemoryPool:
     cpdef free_bytes(self)
     cpdef total_bytes(self)
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size)
-    cpdef Py_ssize_t _bin_index_from_size(self, Py_ssize_t size)
-    cpdef void _grow_free_if_necessary(self, Py_ssize_t size)
+    cpdef int _bin_index_from_size(self, Py_ssize_t size)
+    cpdef _append_to_free_list(self, Py_ssize_t size, chunk)
+    cpdef bint _remove_from_free_list(self, Py_ssize_t size, chunk) except *
     cpdef tuple _split(self, Chunk chunk, Py_ssize_t size)
     cpdef Chunk _merge(self, Chunk head, Chunk remaining)
 

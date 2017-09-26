@@ -34,6 +34,7 @@ Memory hook
 
    cupy.cuda.MemoryHook
    cupy.cuda.memory_hooks.DebugPrintHook
+   cupy.cuda.memory_hooks.LineProfileHook
 
 Streams and events
 ------------------

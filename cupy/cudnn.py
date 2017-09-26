@@ -8,6 +8,7 @@ import cupy
 from cupy.core import internal
 from cupy import cuda
 from cupy.cuda import cudnn
+from cupy.cuda import device
 
 
 _cudnn_version = cudnn.getVersion()
@@ -367,13 +368,15 @@ def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
     return desc
 
 
-if _cudnn_version >= 3000:
-    def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
-                   srcDestData):
-        cudnn.addTensor_v3(handle, alpha, biasDesc,
-                           biasData, beta, srcDestDesc, srcDestData)
-else:
-    def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
-                   srcDestData):
-        cudnn.addTensor_v2(handle, cudnn.CUDNN_ADD_SAME_C, alpha, biasDesc,
-                           biasData, beta, srcDestDesc, srcDestData)
+def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
+               srcDestData):
+    cudnn.addTensor_v3(handle, alpha, biasDesc,
+                       biasData, beta, srcDestDesc, srcDestData)
+
+
+def is_tensor_core_available(dtype):
+    if (dtype == numpy.float16 and
+            _cudnn_version >= 7000 and
+            int(device.get_compute_capability()) == 70):
+        return True
+    return False

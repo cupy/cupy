@@ -33,7 +33,7 @@ class coo_matrix(sparse_data._data_matrix):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given data are always used.
 
-    .. see::
+    .. seealso::
        :class:`scipy.sparse.coo_matrix`
 
     """
@@ -166,7 +166,7 @@ class coo_matrix(sparse_data._data_matrix):
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
 
-        .. see::
+        .. seealso::
            :func:`scipy.sparse.coo_matrix.sum_duplicates`
 
         """
