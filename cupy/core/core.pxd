@@ -1,5 +1,6 @@
 from libcpp cimport vector
 from cupy.cuda cimport memory
+from cupy.cuda cimport pinned_memory
 
 from cupy.cuda.function cimport CPointer
 
@@ -14,6 +15,8 @@ cdef class ndarray:
         readonly object dtype
         readonly memory.MemoryPointer data
         readonly ndarray base
+        readonly pinned_memory.PinnedMemoryPointer data_swapout
+        readonly bint is_swapout
 
     cpdef tolist(self)
     cpdef tofile(self, fid, sep=*, format=*)
@@ -64,7 +67,8 @@ cdef class ndarray:
                                  vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity=*)
     cdef CPointer get_pointer(self)
-
+    cpdef swapout(self, stream=*)
+    cpdef swapin(self, stream=*)
 
 cdef class Indexer:
     cdef:

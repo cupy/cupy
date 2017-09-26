@@ -108,6 +108,9 @@ cdef class ndarray:
         else:
             raise TypeError('order not understood')
 
+        self.data_swapout = None
+        self.is_swapout = False
+
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
     # http://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
@@ -1751,6 +1754,48 @@ cdef class ndarray:
     cdef function.CPointer get_pointer(self):
         return CArray(self)
 
+    cpdef swapout(self, stream=None):
+        """Swaps out data from GPU device memory to HOST pinned memory
+           Copied from anaruse's repository
+           Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
+        """
+        if self.is_swapout is True:
+            # data is on pinned memory. no need to swap out.
+            return
+
+        byte_size = self.size * self.dtype.itemsize
+        self.data_swapout = pinned_memory.alloc_pinned_memory(
+            byte_size)
+
+        if stream is None:
+            self.data_swapout.copy_from_device(self.data, byte_size)
+        else:
+            self.data_swapout.copy_from_device_async(self.data, byte_size,
+                                                     stream)
+
+        self.data = None
+        self.is_swapout = True
+
+    cpdef swapin(self, stream=None):
+        """Swaps in data from HOST pinned memory to GPU device memory
+           Copied from anaruse's repository
+           Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
+        """
+        if self.is_swapout is False:
+            # data is on device memory. no need to swap in.
+            return
+
+        byte_size = self.size * self.dtype.itemsize
+        self.data = memory.alloc(byte_size)
+
+        if stream is None:
+            self.data_swapout.copy_to_device(self.data, byte_size)
+        else:
+            self.data_swapout.copy_to_device_async(self.data, byte_size,
+                                                   stream)
+
+        self.data_swapout = None
+        self.is_swapout = False
 
 cdef object newaxis = numpy.newaxis  # == None
 
