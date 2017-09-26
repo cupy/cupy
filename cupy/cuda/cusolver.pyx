@@ -136,7 +136,7 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverSpDcsrlsvlu(
         Handle handle, int n, int nnzA, const cusparseMatDescr_t descrA,
         const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
-        const double* b, float tol, int reorder, float* x, int* singularity)
+        const double* b, double tol, int reorder, double* x, int* singularity)
 
 
 ###############################################################################
@@ -517,8 +517,8 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
 ###############################################################################
 
 cpdef scsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
-                int csrRowPtrA, int csrColIndA, size_t b, tol, reorder,
-                size_t x, int singularity):
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
     with nogil:
         status = cusolverSpScsrlsvlu(
             <Handle>handle, n, nnzA, <const MatDescr> descrA,
@@ -528,8 +528,8 @@ cpdef scsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
     check_status(status)
 
 cpdef dcsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
-                int csrRowPtrA, int csrColIndA, size_t b, tol, reorder,
-                size_t x, int singularity):
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
     with nogil:
         status = cusolverSpDcsrlsvlu(
             <Handle>handle, n, nnzA, <const MatDescr> descrA,

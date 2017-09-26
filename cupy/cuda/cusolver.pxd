@@ -130,8 +130,8 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
 ###############################################################################
 
 cpdef scsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
-                int csrRowPtrA, int csrColIndA, size_t b, tol, reorder,
-                size_t x, int singularity):
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
 cpdef dcsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
-                int csrRowPtrA, int csrColIndA, size_t b, tol, reorder,
-                size_t x, int singularity):
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
