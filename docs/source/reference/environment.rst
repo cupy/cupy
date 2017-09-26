@@ -32,3 +32,5 @@ These environment variables are only used during installation.
 |               | When ``nvcc`` is not found, ``/usr/local/cuda`` is used.            |
 |               | See :ref:`install_cuda` for details.                                |
 +---------------+---------------------------------------------------------------------+
+| ``NVCC``      | Define the compiler to use when compiling CUDA files.               |
++---------------+---------------------------------------------------------------------+
