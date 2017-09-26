@@ -2060,7 +2060,7 @@ cdef _argmax = create_reduction_func(
 # -----------------------------------------------------------------------------
 
 cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
-                    bint subok=False, Py_ssize_t ndmin=0):
+                    bint subok=False, Py_ssize_t ndmin=0, stream=None):
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
@@ -2099,7 +2099,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
                                    a_cpu.size).reshape(a_cpu.shape)
         src_cpu[...] = a_cpu
-        stream = cuda.Stream.null
+        if stream is None:
+            stream = cuda.Stream.null
         a.set(src_cpu, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
