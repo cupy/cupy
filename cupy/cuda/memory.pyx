@@ -167,6 +167,9 @@ cdef class MemoryPointer:
     """
 
     def __init__(self, mem, Py_ssize_t offset):
+        self.reset(mem, offset)
+
+    def reset(self, mem, Py_ssize_t offset):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
@@ -482,6 +485,7 @@ cdef class SingleDeviceMemoryPool:
         # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
         self._allocation_unit_size = 512
         self._in_use = {}
+        self._in_use_memptr = {}
         self._free = []
         self._allocator = allocator
         self._weakref = weakref.ref(self)
@@ -655,12 +659,15 @@ cdef class SingleDeviceMemoryPool:
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
+                runtime.deviceSynchronize()
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
+                    runtime.deviceSynchronize()
+                    self._realloc_all()
                     gc.collect()
                     try:
                         mem = self._alloc(size).mem
@@ -672,15 +679,17 @@ cdef class SingleDeviceMemoryPool:
                             raise OutOfMemoryError(size, total)
             chunk = Chunk(mem, 0, size)
 
+        pmem = PooledMemory(chunk, self._weakref)
+        memptr = MemoryPointer(pmem, 0)
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             self._in_use[chunk.ptr] = chunk
+            self._in_use_memptr[chunk.ptr] = weakref.ref(memptr)
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
         if remaining is not None:
             self._append_to_free_list(remaining.size, remaining)
-        pmem = PooledMemory(chunk, self._weakref)
-        return MemoryPointer(pmem, 0)
+        return memptr
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef set free_list
@@ -689,6 +698,7 @@ cdef class SingleDeviceMemoryPool:
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             chunk = self._in_use.pop(ptr, None)
+            self._in_use_memptr.pop(ptr, None)
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
         if chunk is None:
@@ -703,6 +713,88 @@ cdef class SingleDeviceMemoryPool:
                 chunk = self._merge(chunk.prev, chunk)
 
         self._append_to_free_list(chunk.size, chunk)
+
+    cpdef _realloc(self, size_t ptr, Py_ssize_t size):
+        """Reallocate the given area of memory to mitigate fragmentation."""
+        try:
+            new_memptr = self._allocator(size)
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            runtime.deviceSynchronize()
+            return None
+
+        runtime.memcpy(new_memptr.ptr, ptr, size,
+                       runtime.memcpyDeviceToDevice)
+        runtime.deviceSynchronize()
+        return new_memptr
+
+    cpdef _reset_memptr(self, Chunk chunk, Chunk new_chunk):
+        if chunk.ptr in self._in_use:
+            chunk = self._in_use.pop(chunk.ptr)
+            memptr_ref = self._in_use_memptr.pop(chunk.ptr)
+            self._in_use[new_chunk.ptr] = new_chunk
+            self._in_use_memptr[new_chunk.ptr] = memptr_ref
+
+            pmem = PooledMemory(new_chunk, self._weakref)
+            memptr = memptr_ref()
+            memptr.mem.ptr = 0  # to skip free
+            try:
+                memptr.reset(pmem, 0)
+            except AttributeError:
+                # memptr is removed from app layer in another thread
+                pass
+        else:
+            if self._remove_from_free_list(chunk.size, chunk):
+                self._append_to_free_list(new_chunk.size, new_chunk)
+
+    cpdef _realloc_all(self):
+        """Reallocate all memory of in-use to mitigate fragmentation."""
+        ptrs_of_size = {}  # pointers of head chunks
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        try:
+            for ptr, chunk in self._in_use.iteritems():
+                size = chunk.mem.size
+                if size not in ptrs_of_size:
+                    ptrs_of_size[size] = set()
+                head_ptr = chunk.mem.ptr
+                ptrs_of_size[size].add(head_ptr)
+        finally:
+            rlock.unlock_fastrlock(self._in_use_lock)
+
+        # reallocate from smaller blocks because we assume _realloc_all
+        # is called when little memory is left
+        for size in sorted(ptrs_of_size.keys()):
+            for ptr in sorted(ptrs_of_size[size]):
+                new_memptr = self._realloc(ptr, size)
+                if new_memptr is None:
+                    return  # give up
+                if new_memptr.ptr > ptr:
+                    # This is based on an assumption that logical address are
+                    # almost linearly mapped to physical address. If the
+                    # assumption is correct, you can make larger continuous
+                    # free space in the high address area by calling the
+                    # realloc() twice when new address > old address. Note that
+                    # there is no guarantee that the assumption is correct.
+                    new_memptr_2nd = self._realloc(ptr, size)
+                    if new_memptr_2nd is not None:
+                        new_memptr = new_memptr_2nd
+                new_mem = new_memptr.mem
+
+                # split into chunks and reset memptr struct
+                rlock.lock_fastrlock(self._in_use_lock, -1, True)
+                try:
+                    chunk = self._in_use.get(ptr, None)
+                    if chunk is None:
+                        continue
+                    remaining = Chunk(new_mem, 0, size)
+                    while chunk is not None:
+                        new_chunk, remaining = self._split(
+                            remaining, chunk.size)
+                        self._reset_memptr(chunk, new_chunk)
+                        chunk = chunk.next
+                finally:
+                    rlock.unlock_fastrlock(self._in_use_lock)
 
     cpdef free_all_blocks(self):
         cdef set free_list, keep_list
