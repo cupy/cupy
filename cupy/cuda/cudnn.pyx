@@ -63,6 +63,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
+    ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
