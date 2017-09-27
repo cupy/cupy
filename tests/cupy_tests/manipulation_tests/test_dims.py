@@ -1,3 +1,4 @@
+import numpy
 import unittest
 
 import cupy
@@ -249,3 +250,53 @@ class TestDims(unittest.TestCase):
     def test_external_squeeze(self, xp):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return xp.squeeze(a)
+
+
+@testing.parameterize(
+    {'shapes': [()]},
+    {'shapes': [(0,)]},
+    {'shapes': [(1,)]},
+    {'shapes': [(2,)]},
+    {'shapes': [(), ()]},
+    {'shapes': [(0,), (0,)]},
+    {'shapes': [(1,), (1,)]},
+    {'shapes': [(2,), (2,)]},
+    {'shapes': [(0,), (1,)]},
+    {'shapes': [(2, 3), (1, 3)]},
+    {'shapes': [(2, 1, 3, 4), (3, 1, 4)]},
+    {'shapes': [(4, 3, 2, 3), (2, 3)]},
+    {'shapes': [(2, 0, 1, 1, 3), (2, 1, 0, 0, 3)]},
+    {'shapes': [(0, 1, 1, 3), (2, 1, 0, 0, 3)]},
+    {'shapes': [(0, 1, 1, 0, 3), (5, 2, 0, 1, 0, 0, 3), (2, 1, 0, 0, 0, 3)]},
+)
+@testing.gpu
+class TestBroadcast(unittest.TestCase):
+
+    # TODO(niboshi): Run test of xp.broadcast_arrays in this class
+
+    def _broadcast(self, xp, shapes):
+        arrays = [
+            testing.shaped_arange(s, xp, xp.float32) for s in shapes]
+        return xp.broadcast(*arrays)
+
+    def test_broadcast(self):
+        broadcast_np = self._broadcast(numpy, self.shapes)
+        broadcast_cp = self._broadcast(cupy, self.shapes)
+        self.assertEqual(broadcast_np.shape, broadcast_cp.shape)
+
+
+@testing.parameterize(
+    {'shapes': [(3,), (2,)]},
+    {'shapes': [(3, 2), (3, 4,)]},
+    {'shapes': [(0,), (2,)]},
+)
+@testing.gpu
+class TestInvalidBroadcast(unittest.TestCase):
+
+    # TODO(niboshi): Run test of xp.broadcast_arrays in this class
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_broadcast(self, xp):
+        arrays = [
+            testing.shaped_arange(s, xp, xp.float32) for s in self.shapes]
+        xp.broadcast(*arrays)
