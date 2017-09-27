@@ -13,7 +13,6 @@ cdef class Chunk:
         readonly Py_ssize_t size
         public Chunk prev
         public Chunk next
-        public bint in_use
 
 cdef class MemoryPointer:
 
