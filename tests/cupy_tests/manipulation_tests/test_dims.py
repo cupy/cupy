@@ -283,6 +283,8 @@ class TestBroadcast(unittest.TestCase):
         broadcast_np = self._broadcast(numpy, self.shapes)
         broadcast_cp = self._broadcast(cupy, self.shapes)
         self.assertEqual(broadcast_np.shape, broadcast_cp.shape)
+        self.assertEqual(broadcast_np.size, broadcast_cp.size)
+        self.assertEqual(broadcast_np.nd, broadcast_cp.nd)
 
 
 @testing.parameterize(
