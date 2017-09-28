@@ -239,10 +239,6 @@ class TestDims(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shapes': [()]},
-    {'shapes': [(0,)]},
-    {'shapes': [(1,)]},
-    {'shapes': [(2,)]},
     {'shapes': [(), ()]},
     {'shapes': [(0,), (0,)]},
     {'shapes': [(1,), (1,)]},
@@ -275,6 +271,7 @@ class TestBroadcast(unittest.TestCase):
 
 @testing.parameterize(
     {'shapes': [(3,), (2,)]},
+    {'shapes': [(3, 2), (2, 3,)]},
     {'shapes': [(3, 2), (3, 4,)]},
     {'shapes': [(0,), (2,)]},
 )
