@@ -18,6 +18,8 @@ cdef extern from *:
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int PointerMode 'cublasPointerMode_t'
     ctypedef int SideMode 'cublasSideMode_t'
+    ctypedef int GemmAlgo 'cublasGemmAlgo_t'
+    ctypedef int Math 'cublasMath_t'
 
 
 ###############################################################################
@@ -41,6 +43,11 @@ cpdef enum:
     CUBLAS_DIAG_NON_UNIT = 0
     CUBLAS_DIAG_UNIT = 1
 
+    CUBLAS_GEMM_DFALT = -1
+    CUBLAS_GEMM_DFALT_TENSOR_OP = 99
+
+    CUBLAS_DEFAULT_MATH = 0
+    CUBLAS_TENSOR_OP_MATH = 1
 
 ###############################################################################
 # Context
@@ -59,6 +66,14 @@ cpdef setPointerMode(size_t handle, int mode)
 
 cpdef setStream(size_t handle, size_t stream)
 cpdef size_t getStream(size_t handle) except *
+
+
+###############################################################################
+# Math Mode
+###############################################################################
+
+cpdef setMathMode(size_t handle, int mode)
+cpdef int getMathMode(size_t handle) except *
 
 
 ###############################################################################
@@ -177,3 +192,7 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
 cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)
+cpdef gemmEx(size_t handle, int transa, int transb, int m, int n, int k,
+             size_t alpha, size_t A, int Atype, int lda, size_t B,
+             int Btype, int ldb, size_t beta, size_t C, int Ctype,
+             int ldc, int computeType, int algo)

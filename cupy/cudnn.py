@@ -1,5 +1,6 @@
 import atexit
 import threading
+import warnings
 
 import numpy
 import six
@@ -9,6 +10,7 @@ from cupy.core import internal
 from cupy import cuda
 from cupy.cuda import cudnn
 from cupy.cuda import device
+from cupy.cuda import memory
 
 
 _cudnn_version = cudnn.getVersion()
@@ -354,6 +356,9 @@ def get_rnn_lin_layer_bias_params(
 
 
 def create_dropout_states(handle):
+    warnings.warn('create_dropout_states is deprecated.'
+                  'Please use DropoutStates class instead.',
+                  DeprecationWarning)
     state_size = cudnn.dropoutGetStatesSize(handle)
     return cupy.empty((state_size,), dtype='b')
 
@@ -380,3 +385,53 @@ def is_tensor_core_available(dtype):
             int(device.get_compute_capability()) == 70):
         return True
     return False
+
+
+class DropoutStates(object):
+
+    def __init__(self, handle, seed):
+        state_size = cudnn.dropoutGetStatesSize(handle)
+        self._states = memory.alloc(state_size)
+        self._desc = create_dropout_descriptor(
+            handle, 0., self._states.ptr,
+            state_size, seed)
+
+    def forward(self, handle, x, dropout_ratio):
+        if not isinstance(x, cupy.ndarray):
+            raise TypeError('argument x must be an cupy.ndarray')
+
+        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+
+        x = cupy.ascontiguousarray(x)
+        y = cupy.empty_like(x)
+
+        x_mat = _as4darray(x)
+        x_desc = create_tensor_descriptor(x_mat)
+
+        reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc.value)
+        reserve_space = cupy.empty((reserve_size,), dtype='b')
+
+        cudnn.dropoutForward(handle, self._desc.value,
+                             x_desc.value, x_mat.data.ptr,
+                             x_desc.value, y.data.ptr,
+                             reserve_space.data.ptr, reserve_size)
+        return (reserve_space, y)
+
+    def backward(self, handle, dy, dropout_ratio, reserve_space):
+        if not isinstance(dy, cupy.ndarray):
+            raise TypeError('argument dy must be an cupy.ndarray')
+
+        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+
+        dy = cupy.ascontiguousarray(dy)
+        dx = cupy.empty_like(dy)
+
+        dy_mat = _as4darray(dy)
+        dy_desc = create_tensor_descriptor(dy_mat)
+
+        cudnn.dropoutBackward(handle, self._desc.value,
+                              dy_desc.value, dy_mat.data.ptr,
+                              dy_desc.value, dx.data.ptr,
+                              reserve_space.data.ptr,
+                              reserve_space.size)
+        return dx

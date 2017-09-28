@@ -13,7 +13,6 @@ cdef class Chunk:
         readonly Py_ssize_t size
         public Chunk prev
         public Chunk next
-        public bint in_use
 
 cdef class MemoryPointer:
 
@@ -51,7 +50,6 @@ cdef class SingleDeviceMemoryPool:
         object _free_lock
         object _in_use_lock
         readonly Py_ssize_t _allocation_unit_size
-        readonly Py_ssize_t _initial_bins_size
         readonly int _device_id
         vector.vector[int] _index
 

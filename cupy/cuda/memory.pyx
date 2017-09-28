@@ -30,8 +30,9 @@ class Memory(object):
     This class provides an RAII interface of the CUDA memory allocation.
 
     Args:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
-        size (int): Size of the memory allocation in bytes.
+        ~Memory.device (cupy.cuda.Device): Device whose memory the pointer
+            refers to.
+        ~Memory.size (int): Size of the memory allocation in bytes.
 
     """
 
@@ -159,7 +160,8 @@ cdef class MemoryPointer:
             pointer refers.
 
     Attributes:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        ~MemoryPointer.device (cupy.cuda.Device): Device whose memory the
+            pointer refers to.
         mem (Memory): The device memory buffer.
         ptr (int): Pointer to the place within the buffer.
     """

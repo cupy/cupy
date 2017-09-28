@@ -687,7 +687,7 @@ class ufunc(object):
     """Universal function.
 
     Attributes:
-        name (str): The name of the universal function.
+        ~ufunc.name (str): The name of the universal function.
         nin (int): Number of input arguments.
         nout (int): Number of output arguments.
         nargs (int): Number of all arguments.

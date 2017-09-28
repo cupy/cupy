@@ -317,6 +317,17 @@ cpdef size_t dropoutGetStatesSize(size_t handle) except *
 cpdef setDropoutDescriptor(
     size_t dropoutDesc, size_t handle, float dropout,
     size_t states, size_t stateSizeInBytes, unsigned long long seed)
+cpdef size_t getDropoutReserveSpaceSize(size_t xDesc)
+cpdef dropoutForward(
+    size_t handle, size_t dropoutDesc,
+    size_t srcDesc, size_t srcData,
+    size_t dstDesc, size_t dstData,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+cpdef dropoutBackward(
+    size_t handle, size_t dropoutDesc,
+    size_t dyDesc, size_t dyData,
+    size_t dxtDesc, size_t dxData,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
 
 
 ###############################################################################
