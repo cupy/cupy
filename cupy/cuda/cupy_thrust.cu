@@ -15,7 +15,7 @@ using namespace thrust;
  */
 
 template <typename T>
-void cupy::thrust::_sort(void *data_start, size_t *keys_start, const std::vector<ptrdiff_t>& shape) {
+void cupy::thrust::_sort_impl(void *data_start, size_t *keys_start, const std::vector<ptrdiff_t>& shape) {
 
     size_t ndim = shape.size();
     ptrdiff_t size;
@@ -49,17 +49,45 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start, const std::vector
     }
 }
 
-template void cupy::thrust::_sort<cpy_byte>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ubyte>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_short>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ushort>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_int>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_uint>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_long>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_ulong>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_half>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_float>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
-template void cupy::thrust::_sort<cpy_double>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+void _sort(char type, void *data_start, size_t *keys_start, const std::vector<ptrdiff_t>& shape) {
+    switch (type) {
+    case 'b':
+        cupy::thrust::_sort_impl<cpy_byte>(data_start, keys_start, shape);
+        break;
+    case 'B':
+        cupy::thrust::_sort_impl<cpy_ubyte>(data_start, keys_start, shape);
+        break;
+    case 'h':
+        cupy::thrust::_sort_impl<cpy_short>(data_start, keys_start, shape);
+        break;
+    case 'H':
+        cupy::thrust::_sort_impl<cpy_ushort>(data_start, keys_start, shape);
+        break;
+    case 'i':
+        cupy::thrust::_sort_impl<cpy_int>(data_start, keys_start, shape);
+        break;
+    case 'I':
+        cupy::thrust::_sort_impl<cpy_uint>(data_start, keys_start, shape);
+        break;
+    case 'l':
+        cupy::thrust::_sort_impl<cpy_long>(data_start, keys_start, shape);
+        break;
+    case 'L':
+        cupy::thrust::_sort_impl<cpy_ulong>(data_start, keys_start, shape);
+        break;
+    case 'e':
+        cupy::thrust::_sort_impl<cpy_half>(data_start, keys_start, shape);
+        break;
+    case 'f':
+        cupy::thrust::_sort_impl<cpy_float>(data_start, keys_start, shape);
+        break;
+    case 'd':
+        cupy::thrust::_sort_impl<cpy_double>(data_start, keys_start, shape);
+        break;
+    default:
+        assert(NULL);           // Should guard on Cython layer.
+    };
+}
 
 
 /*

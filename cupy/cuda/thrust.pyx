@@ -14,7 +14,7 @@ from cupy.cuda cimport common
 ###############################################################################
 
 cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
-    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&)
+    void _sort[T](char, void *, size_t *, const vector.vector[ptrdiff_t]&)
     void _lexsort[T](size_t *, void *, size_t, size_t)
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&)
 
@@ -26,38 +26,19 @@ cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
 cpdef sort(dtype, size_t data_start, size_t keys_start,
            vector.vector[ptrdiff_t]& shape):
 
+    cdef char _type
     cdef void *_data_start
     cdef size_t *_keys_start
 
-    _data_start = <void *>data_start
-    _keys_start = <size_t *>keys_start
-
     # TODO(takagi): Support bool
-    if dtype == numpy.int8:
-        _sort[common.cpy_byte](_data_start, _keys_start, shape)
-    elif dtype == numpy.uint8:
-        _sort[common.cpy_ubyte](_data_start, _keys_start, shape)
-    elif dtype == numpy.int16:
-        _sort[common.cpy_short](_data_start, _keys_start, shape)
-    elif dtype == numpy.uint16:
-        _sort[common.cpy_ushort](_data_start, _keys_start, shape)
-    elif dtype == numpy.int32:
-        _sort[common.cpy_int](_data_start, _keys_start, shape)
-    elif dtype == numpy.uint32:
-        _sort[common.cpy_uint](_data_start, _keys_start, shape)
-    elif dtype == numpy.int64:
-        _sort[common.cpy_long](_data_start, _keys_start, shape)
-    elif dtype == numpy.uint64:
-        _sort[common.cpy_ulong](_data_start, _keys_start, shape)
-    elif dtype == numpy.float16:
-        _sort[common.cpy_half](_data_start, _keys_start, shape)
-    elif dtype == numpy.float32:
-        _sort[common.cpy_float](_data_start, _keys_start, shape)
-    elif dtype == numpy.float64:
-        _sort[common.cpy_double](_data_start, _keys_start, shape)
-    else:
+    _type = numpy.dtype(dtype).char
+    if _type not in 'bBhHiIlLefd':
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
+
+    _data_start = <void *>data_start
+    _keys_start = <size_t *>keys_start
+    _sort(_type, _data_start, _keys_start, shape)
 
 
 cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
