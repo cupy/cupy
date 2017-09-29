@@ -36,14 +36,14 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -188,7 +188,7 @@ class TestLexsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)

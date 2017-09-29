@@ -57,6 +57,7 @@ template void cupy::thrust::_sort<cpy_int>(void *, size_t *, const std::vector<p
 template void cupy::thrust::_sort<cpy_uint>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 template void cupy::thrust::_sort<cpy_long>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 template void cupy::thrust::_sort<cpy_ulong>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
+template void cupy::thrust::_sort<cpy_half>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 template void cupy::thrust::_sort<cpy_float>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 template void cupy::thrust::_sort<cpy_double>(void *, size_t *, const std::vector<ptrdiff_t>& shape);
 

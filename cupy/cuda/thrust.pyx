@@ -32,7 +32,7 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
 
-    # TODO(takagi): Support float16 and bool
+    # TODO(takagi): Support bool
     if dtype == numpy.int8:
         _sort[common.cpy_byte](_data_start, _keys_start, shape)
     elif dtype == numpy.uint8:
@@ -49,6 +49,8 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
         _sort[common.cpy_long](_data_start, _keys_start, shape)
     elif dtype == numpy.uint64:
         _sort[common.cpy_ulong](_data_start, _keys_start, shape)
+    elif dtype == numpy.float16:
+        _sort[common.cpy_half](_data_start, _keys_start, shape)
     elif dtype == numpy.float32:
         _sort[common.cpy_float](_data_start, _keys_start, shape)
     elif dtype == numpy.float64:
