@@ -286,7 +286,7 @@ class RandomState(object):
                 indices = cupy.arange(a, dtype='l')
             else:
                 indices = a.copy()
-            cupy.random.shuffle(indices)
+            self.shuffle(indices)
             return indices[:size].reshape(shape)
 
         if not replace:
