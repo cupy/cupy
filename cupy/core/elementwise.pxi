@@ -100,7 +100,7 @@ cdef dict _python_type_to_numpy_type = {
 
 cpdef _python_scalar_to_numpy_scalar(x):
     if isinstance(x, six.integer_types):
-        numpy_type = numpy.uint64 if x >= 0 else numpy.int64
+        numpy_type = numpy.uint64 if x >= 0x8000000000000000 else numpy.int64
     else:
         numpy_type = _python_type_to_numpy_type[type(x)]
     return numpy_type(x)
