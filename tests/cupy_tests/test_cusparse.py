@@ -3,9 +3,8 @@ import unittest
 import numpy
 try:
     import scipy.sparse
-    scipy_available = True
 except ImportError:
-    scipy_available = False
+    pass
 
 import cupy
 from cupy import testing
