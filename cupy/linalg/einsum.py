@@ -19,7 +19,8 @@ def calc_single_view(ioperand, subscript):
     """
 
     if '@' in subscript:
-        assert ioperand.ndim >= len(subscript) - subscript.count('@')
+        assert subscript.count('@') == 1
+        assert ioperand.ndim >= len(subscript) - 1
     else:
         assert ioperand.ndim == len(subscript)
 
@@ -102,9 +103,11 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 
 def _normalize_axis_tuple(axis, ndim):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    .. seealso:: :func:`numpy.core.numeric.normalize_axis_tuple`
     """
+    for ax in axis:
+        if ax >= ndim or ax < -ndim:
+            raise numpy.AxisError('axis {} is out of bounds for array of '
+                                  'dimension {}'.format(ax, ndim))
     return tuple((ax % ndim) for ax in axis)
 
 
@@ -280,6 +283,8 @@ def einsum(*operands):
         else:
             converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
+    # For simplicity of implementation of subscripts interpretation,
+    # All '...' is replaced to '@'.
     subscripts = subscripts.replace('...', '@')
     if '.' in subscripts:
         raise ValueError('einstein sum subscripts string contains a \'.\' that'
