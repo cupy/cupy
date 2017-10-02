@@ -96,7 +96,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
             State of random number generator.
             If an integer is given, the method makes a new state for random
             number generator and uses it.
-            If it is not given, the default state is used. 
+            If it is not given, the default state is used.
             This state is used to generate random indexes for nonzero entries.
         data_rvs (callable): A function to generate data for a random matrix.
             If it is not given, `random_state.rand` is used.
