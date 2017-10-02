@@ -238,12 +238,14 @@ class RandomState(object):
         """
         if size is None:
             size = ()
-        sample = cupy.empty(size, dtype='l')
+        sample = cupy.empty(size, dtype=cupy.int_)
         # cupy.random only uses int32 random generator
-        curand.generate(
-            self._generator, sample.data.ptr, sample.size * 2)
+        size_in_int = sample.dtype.itemsize // 4
+        curand.generate( 
+           self._generator, sample.data.ptr, sample.size * size_in_int)
+
         # Disable sign bit
-        sample &= 0x7FFFFFFFFFFFFFFF
+        sample &= six.MAXSIZE
         return sample
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
