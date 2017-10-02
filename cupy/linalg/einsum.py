@@ -103,6 +103,7 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
 
 def _normalize_axis_tuple(axis, ndim):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
+
     """
     for ax in axis:
         if ax >= ndim or ax < -ndim:
