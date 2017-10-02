@@ -94,9 +94,16 @@ cdef dict _kind_score = {
 cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
     complex: numpy.dtype(complex).type,
-    bool: numpy.dtype(bool).type}
-for i in six.integer_types:
-    _python_type_to_numpy_type[i] = numpy.int64
+    bool: numpy.dtype(bool).type,
+}
+
+
+cpdef _python_scalar_to_numpy_scalar(x):
+    if isinstance(x, six.integer_types):
+        numpy_type = numpy.uint64 if x >= 0 else numpy.int64
+    else:
+        numpy_type = _python_type_to_numpy_type[type(x)]
+    return numpy_type(x)
 
 
 cpdef str _get_typename(dtype):
@@ -127,7 +134,7 @@ cpdef list _preprocess_args(args):
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
         elif typ in _python_scalar_type_set:
-            arg = _python_type_to_numpy_type[typ](arg)
+            arg = _python_scalar_to_numpy_scalar(arg)
         elif typ in _numpy_scalar_type_set:
             pass
         else:
