@@ -286,7 +286,6 @@ def create_rnn_descriptor(handle, hidden_size, num_layers, dropout_desc,
 
 
 def create_rnn_persistent_rnn_plan(desc, minibatch, data_type):
-    # Persistent RNN
     plan = cudnn.createPersistentRNNPlan(desc.value, minibatch, data_type)
     plan_desc = Descriptor(plan, cudnn.destroyPersistentRNNPlan)
     return plan_desc
