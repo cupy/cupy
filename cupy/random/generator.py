@@ -230,7 +230,7 @@ class RandomState(object):
             size (int or tuple of ints): Output shape.
 
         Returns:
-            Drawn samples.
+            cupy.ndarray: Drawn samples.
 
         .. seealso::
             :meth:`numpy.random.RandomState.tomaxint`
