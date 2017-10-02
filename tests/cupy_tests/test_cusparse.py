@@ -89,3 +89,31 @@ class TestCsrmm2(unittest.TestCase):
         expect = self.alpha * (self.op_a.dot(self.op_b)) + self.beta * self.c
         self.assertIs(y, c)
         testing.assert_array_almost_equal(y, expect)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'transa': [False, True],
+    'transb': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestCsrgemm(unittest.TestCase):
+
+    def setUp(self):
+        self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
+        if self.transa:
+            self.a = self.op_a.T
+        else:
+            self.a = self.op_a
+        self.op_b = scipy.sparse.random(3, 4, density=0.5, dtype=self.dtype)
+        if self.transb:
+            self.b = self.op_b.T
+        else:
+            self.b = self.op_b
+
+    def test_csrgemm(self):
+        a = cupy.sparse.csr_matrix(self.a)
+        b = cupy.sparse.csr_matrix(self.b)
+        y = cupy.cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
+        expect = self.op_a.dot(self.op_b)
+        testing.assert_array_almost_equal(y.toarray(), expect.toarray())
