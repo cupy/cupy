@@ -69,7 +69,7 @@ class TestCsrmm2(unittest.TestCase):
             self.b = self.op_b.T
         else:
             self.b = self.op_b
-        self.c = numpy.zeros((2, 4)).astype(self.dtype)
+        self.c = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
 
     def test_csrmm2(self):
         a = cupy.sparse.csr_matrix(self.a)
