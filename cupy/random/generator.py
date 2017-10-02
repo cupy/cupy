@@ -241,7 +241,7 @@ class RandomState(object):
         sample = cupy.empty(size, dtype=cupy.int_)
         # cupy.random only uses int32 random generator
         size_in_int = sample.dtype.itemsize // 4
-        curand.generate( 
+        curand.generate(
             self._generator, sample.data.ptr, sample.size * size_in_int)
 
         # Disable sign bit
