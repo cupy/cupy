@@ -49,7 +49,7 @@ class TestCsrmm(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float64],
+    'dtype': [numpy.float32, numpy.float64],
     'trans': [(False, False), (True, False), (False, True)],
 }))
 @testing.with_requires('scipy')
