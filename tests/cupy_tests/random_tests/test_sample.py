@@ -86,6 +86,35 @@ class TestRandint2(unittest.TestCase):
 
 
 @testing.gpu
+class TestRandintDtype(unittest.TestCase):
+
+    @testing.for_dtypes([
+        numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32])
+    def test_dtype(self, dtype):
+        size = (1000,)
+        low = numpy.iinfo(dtype).min
+        high = numpy.iinfo(dtype).max + 1
+        x = random.randint(low, high, size, dtype)
+        self.assertLessEqual(low, min(x))
+        self.assertLessEqual(max(x), high)
+
+    @testing.for_dtypes([numpy.uint32, numpy.int64, numpy.uint64])
+    def test_dtype2(self, dtype):
+        size = (1,)
+        low = numpy.iinfo(dtype).min
+        high = low + numpy.iinfo(numpy.int32).max + 1
+        x = random.randint(low, high, size, dtype)
+        self.assertLessEqual(low, min(x))
+        self.assertLessEqual(max(x), high)
+
+        high = numpy.iinfo(dtype).max + 1
+        low = high - numpy.iinfo(numpy.int32).max - 1
+        x = random.randint(low, high, size, dtype)
+        self.assertLessEqual(low, int(min(x)))
+        self.assertLessEqual(int(max(x)), high)
+
+
+@testing.gpu
 class TestRandomIntegers(unittest.TestCase):
 
     _multiprocess_can_split_ = True
