@@ -1187,8 +1187,8 @@ cpdef destroyRNNDescriptor(size_t rnnDesc):
     check_status(status)
 
 
-cpdef size_t createPersistentRNNPlan(
-    size_t rnnDesc, int minibatch, int dataType) except *:
+cpdef size_t createPersistentRNNPlan(size_t rnnDesc, int minibatch,
+                                     int dataType) except *:
     cdef PersistentRNNPlan plan
     status = cudnnCreatePersistentRNNPlan(
         <RNNDescriptor>rnnDesc,
