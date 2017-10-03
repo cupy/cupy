@@ -486,7 +486,9 @@ cdef class ElementwiseKernel:
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='', **kwargs):
-        compiler.check_kernel_name(name)
+        if not compiler.is_valid_kernel_name(name):
+            raise ValueError(
+                'Invalid kernel name: "%s"' % name)
 
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)

@@ -230,7 +230,5 @@ class _NVRTCProgram(object):
             raise CompileException(log, self.src, self.name, options)
 
 
-def check_kernel_name(name):
-    if not re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name):
-        raise ValueError(
-            'Invalid kernel name: "%s"' % name)
+def is_valid_kernel_name(name):
+    return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None

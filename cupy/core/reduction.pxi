@@ -328,7 +328,9 @@ class ReductionKernel(object):
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
-        compiler.check_kernel_name(name)
+        if not compiler.is_valid_kernel_name(name):
+            raise ValueError(
+                'Invalid kernel name: "%s"' % name)
 
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
