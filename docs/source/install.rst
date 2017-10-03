@@ -163,7 +163,7 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
 .. note::
 
    Use full paths for the environment variables.
-   The setup script does not parse the home directory mark ``~``.
+   ``distutils`` that is used in the setup script does not parse the home directory mark ``~``.
 
 
 Install CuPy for developers
