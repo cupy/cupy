@@ -309,6 +309,28 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
+    # zero-dim and zero-sized arrays
+    {'shape': (), 'indexes': Ellipsis, 'value': 1},
+    {'shape': (), 'indexes': (), 'value': 1},
+    {'shape': (), 'indexes': None, 'value': 1},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (), 'indexes': True, 'value': 1},
+    # {'shape': (), 'indexes': (True,), 'value': 1},
+    # {'shape': (), 'indexes': (False, True, True), 'value': 1},
+    # {'shape': (), 'indexes': numpy.array([True]), 'value': 1},
+    # {'shape': (), 'indexes': numpy.array([False, True, True]), 'value': 1},
+    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (0,), 'indexes': None, 'value': 1},
+    {'shape': (0,), 'indexes': (), 'value': 1},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (0,), 'indexes': True, 'value': 1},
+    # {'shape': (0,), 'indexes': (True,), 'value': 1},
+    # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
+    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
