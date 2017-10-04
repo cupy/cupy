@@ -99,7 +99,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # {'shape': (), 'indexes': (False, True, True)},
     # {'shape': (), 'indexes': numpy.array([True])},
     # {'shape': (), 'indexes': numpy.array([False, True, True])},
-    # {'shape': (), 'indexes': numpy.empty((), dtype=numpy.bool_)},
+    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
     {'shape': (0,), 'indexes': None},
     {'shape': (0,), 'indexes': ()},
     # TODO(niboshi): pass the following commented out tests
@@ -108,7 +109,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # {'shape': (0,), 'indexes': (False, True, True)},
     # {'shape': (0,), 'indexes': numpy.array([True])},
     # {'shape': (0,), 'indexes': numpy.array([False, True, True])},
-    # {'shape': (0,), 'indexes': numpy.empty((), dtype=numpy.bool_)},
+    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
