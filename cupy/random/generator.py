@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import functools
 import operator
 import os
 import time
@@ -180,18 +181,35 @@ class RandomState(object):
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
 
-        ret = cupy.zeros(size, dtype=dtype)
-        sample = cupy.zeros(size, dtype=dtype)
-        done = cupy.zeros(size, dtype=numpy.bool_)
-        while True:
+        n = functools.reduce(operator.mul, size, 1)
+
+        sample = cupy.empty((n,), dtype=dtype)
+        n_rem = n  # The number of remaining elements to sample
+        ret = None
+        while n_rem > 0:
             curand.generate(
                 self._generator, sample.data.ptr, sample.size)
+            # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
-            ret = cupy.where(success, sample, ret)
-            done |= success
-            if done.all():
-                return ret
+
+            if ret is None:
+                # If the sampling has finished in the first iteration,
+                # just return the sample.
+                if success.all():
+                    n_rem = 0
+                    ret = sample
+                    break
+
+                # Allocate the return array.
+                ret = cupy.empty((n,), dtype=dtype)
+
+            n_succ = min(n_rem, int(success.sum()))
+            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
+            n_rem -= n_succ
+
+        assert n_rem == 0
+        return ret.reshape(size)
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
