@@ -640,8 +640,8 @@ class TestArgpartition(unittest.TestCase):
         axis = 3
         return self.argpartition(a, kth, axis=axis)
 
-    def test_argpartition_invalid_axis2(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp, scale=100)
+    def test_argpartition_invalid_axis2(self):
+        a = testing.shaped_random((2, 2, 2), cupy, scale=100)
         kth = 1
         axis = 3
         with self.assertRaises(cupy.core.core._AxisError):
@@ -655,8 +655,8 @@ class TestArgpartition(unittest.TestCase):
         axis = -4
         return self.argpartition(a, kth, axis=axis)
 
-    def test_argpartition_invalid_negative_axis2(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp, scale=100)
+    def test_argpartition_invalid_negative_axis2(self):
+        a = testing.shaped_random((2, 2, 2), cupy, scale=100)
         kth = 1
         axis = -4
         with self.assertRaises(cupy.core.core._AxisError):
