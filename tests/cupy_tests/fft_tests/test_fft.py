@@ -6,9 +6,9 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
+    'n': [None, 0, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'ortho', ''],
 }))
 @testing.gpu
 class TestFft(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestFft(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
@@ -27,7 +27,7 @@ class TestFft(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
@@ -78,6 +78,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
@@ -86,7 +87,7 @@ class TestFftn(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError)
     def test_fftn(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
@@ -97,7 +98,7 @@ class TestFftn(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError)
     def test_ifftn(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)

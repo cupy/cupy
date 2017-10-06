@@ -122,10 +122,40 @@ def _fft_c2c(a, direction, norm, axes):
 
 
 def fft(a, s, axes, norm, direction, dim, value_type='C2C'):
+    if norm not in (None, 'ortho'):
+        raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
+                         % norm)
+
+    if s is not None:
+        if isinstance(s, np.compat.integer_types):
+            s_len = 1
+            if s < 1:
+                raise ValueError(
+                    "Invalid number of FFT data points (%d) specified." % s)
+        else:
+            s_len = len(s)
+            for n in s:
+                if (n is not None) and (n < 1):
+                    raise ValueError(
+                        "Invalid number of FFT data points (%d) specified."
+                        % n)
+        if s_len != dim:
+            raise ValueError('Invalid shape length %s, should be %s'
+                             % (s_len, dim))
+
+    if axes is not None:
+        if isinstance(axes, np.compat.integer_types):
+            axes_len = 1
+        else:
+            axes_len = len(axes)
+        if axes_len != dim:
+            raise ValueError('Invalid axes length %s, should be %s'
+                             % (axes_len, dim))
+
     a = _convert_dtype(a, value_type)
     if axes is None:
         axes = [i for i in six.moves.range(-dim, 0)]
-    elif not hasattr(axes, '__iter__'):
+    elif isinstance(axes, np.compat.integer_types):
         axes = (axes,)
     a = _cook_shape(a, s, axes, value_type)
 
