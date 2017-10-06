@@ -12,3 +12,7 @@ from cupy.fft.fft import rfftn  # NOQA
 from cupy.fft.fft import irfftn  # NOQA
 from cupy.fft.fft import hfft  # NOQA
 from cupy.fft.fft import ihfft  # NOQA
+from cupy.fft.fft import fftfreq  # NOQA
+from cupy.fft.fft import rfftfreq  # NOQA
+from cupy.fft.fft import fftshift  # NOQA
+from cupy.fft.fft import ifftshift  #NOQA

@@ -1,3 +1,7 @@
+import six
+
+import numpy as np
+
 import cupy
 from cupy import cufft
 
@@ -63,3 +67,34 @@ def ihfft(a, n=None, axis=-1, norm=None):
     if n is None:
         n = a.shape[axis]
     return rfft(a, n, axis, norm).conj() / (n if norm is None else 1)
+
+
+def fftfreq(n, d=1.0):
+    return cupy.hstack((cupy.arange(0, (n - 1) // 2 + 1),
+                        cupy.arange(-(n // 2), 0))) / n / d
+
+
+def rfftfreq(n, d=1.0):
+    return cupy.arange(0, n // 2 + 1) / n / d
+
+
+def fftshift(x, axes=None):
+    x = cupy.asarray(x)
+    if axes is None:
+        axes = list(six.moves.range(x.ndim))
+    elif isinstance(axes, np.compat.integer_types):
+        axes = (axes,)
+    for axis in axes:
+        x = cupy.roll(x, x.shape[axis] // 2, axis)
+    return x
+
+
+def ifftshift(x, axes=None):
+    x = cupy.asarray(x)
+    if axes is None:
+        axes = list(six.moves.range(x.ndim))
+    elif isinstance(axes, np.compat.integer_types):
+        axes = (axes,)
+    for axis in axes:
+        x = cupy.roll(x, -(x.shape[axis] // 2), axis)
+    return x
