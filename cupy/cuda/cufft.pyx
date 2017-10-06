@@ -15,10 +15,12 @@ cdef extern from "cupy_cufft.h":
     Result cufftPlan1d(Handle *plan, int nx, Type type, int batch)
 
     # cuFFT Exec Function
-    Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata, int direction)
+    Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata,
+                        int direction)
     Result cufftExecR2C(Handle plan, Float *idata, Complex *odata)
     Result cufftExecC2R(Handle plan, Complex *idata, Float *odata)
-    Result cufftExecZ2Z(Handle plan, DoubleComplex *idata, DoubleComplex *odata, int direction)
+    Result cufftExecZ2Z(Handle plan, DoubleComplex *idata,
+                        DoubleComplex *odata, int direction)
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
@@ -85,7 +87,8 @@ cpdef execC2R(size_t plan, size_t idata, size_t odata):
 
 
 cpdef execZ2Z(size_t plan, size_t idata, size_t odata, int direction):
-    result = cufftExecZ2Z(plan, <DoubleComplex*>idata, <DoubleComplex*>odata, direction)
+    result = cufftExecZ2Z(plan, <DoubleComplex*>idata, <DoubleComplex*>odata,
+                          direction)
     check_result(result)
 
 
