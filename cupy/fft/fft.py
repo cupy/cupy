@@ -52,3 +52,14 @@ def rfftn(a, s=None, axes=None, norm=None):
 def irfftn(a, s=None, axes=None, norm=None):
     return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE,
                      a.ndim if axes is None else len(axes), 'C2R')
+
+
+def hfft(a, n=None, axis=-1, norm=None):
+    a = irfft(a.conj(), n, axis)
+    return a * (a.shape[axis] if norm is None else cupy.sqrt(a.shape[axis], dtype=a.dtype))
+
+
+def ihfft(a, n=None, axis=-1, norm=None):
+    if n is None:
+        n = a.shape[axis]
+    return rfft(a, n, axis, norm).conj() / (n if norm is None else 1)

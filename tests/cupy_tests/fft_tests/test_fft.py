@@ -207,3 +207,36 @@ class TestRfftn(unittest.TestCase):
             out = out.astype(np.float32)
 
         return out
+
+
+@testing.parameterize(*testing.product({
+    'n': [None, 5, 10, 15],
+    'shape': [(10,), (10, 10)],
+    'norm': [None, 'ortho'],
+}))
+@testing.gpu
+class TestHfft(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    def test_hfft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.hfft(a, n=self.n, norm=self.norm)
+
+        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.float32)
+
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7)
+    def test_ihfft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
+
+        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.complex64)
+
+        return out
