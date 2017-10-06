@@ -136,7 +136,7 @@ def fft(a, s, axes, norm, direction, dim, value_type='C2C'):
         a = _fft_c2c(a, direction, norm, axes[:-1])
     else:
         a = _fft_c2c(a, direction, norm, axes[:-1])
-        if isinstance(s, int):
+        if isinstance(s, np.compat.integer_types):
             out_size = s
         elif (s is None) or (s[-1] is None):
             out_size = a.shape[axes[-1]] * 2 - 2
