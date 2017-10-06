@@ -33,7 +33,7 @@ class TestCsrmm(unittest.TestCase):
         a = cupy.sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
-        expect = self.alpha * (self.op_a.dot(self.b))
+        expect = self.alpha * self.op_a.dot(self.b)
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm_with_c(self):
@@ -42,7 +42,7 @@ class TestCsrmm(unittest.TestCase):
         c = cupy.array(self.c, order='f')
         y = cupy.cusparse.csrmm(
             a, b, c=c, alpha=self.alpha, beta=self.beta, transa=self.transa)
-        expect = self.alpha * (self.op_a.dot(self.b)) + self.beta * self.c
+        expect = self.alpha * self.op_a.dot(self.b) + self.beta * self.c
         self.assertIs(y, c)
         testing.assert_array_almost_equal(y, expect)
 
@@ -76,7 +76,7 @@ class TestCsrmm2(unittest.TestCase):
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm2(
             a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
-        expect = self.alpha * (self.op_a.dot(self.op_b))
+        expect = self.alpha * self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm2_with_c(self):
@@ -86,6 +86,6 @@ class TestCsrmm2(unittest.TestCase):
         y = cupy.cusparse.csrmm2(
             a, b, c=c, alpha=self.alpha, beta=self.beta,
             transa=self.transa, transb=self.transb)
-        expect = self.alpha * (self.op_a.dot(self.op_b)) + self.beta * self.c
+        expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
         self.assertIs(y, c)
         testing.assert_array_almost_equal(y, expect)
