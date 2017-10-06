@@ -60,7 +60,8 @@ def irfftn(a, s=None, axes=None, norm=None):
 
 def hfft(a, n=None, axis=-1, norm=None):
     a = irfft(a.conj(), n, axis)
-    return a * (a.shape[axis] if norm is None else cupy.sqrt(a.shape[axis], dtype=a.dtype))
+    return a * (a.shape[axis] if norm is None else
+                cupy.sqrt(a.shape[axis], dtype=a.dtype))
 
 
 def ihfft(a, n=None, axis=-1, norm=None):

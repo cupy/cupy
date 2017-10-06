@@ -15,4 +15,4 @@ from cupy.fft.fft import ihfft  # NOQA
 from cupy.fft.fft import fftfreq  # NOQA
 from cupy.fft.fft import rfftfreq  # NOQA
 from cupy.fft.fft import fftshift  # NOQA
-from cupy.fft.fft import ifftshift  #NOQA
+from cupy.fft.fft import ifftshift  # NOQA
