@@ -4,3 +4,9 @@ from cupy.fft.fft import fft2  # NOQA
 from cupy.fft.fft import ifft2  # NOQA
 from cupy.fft.fft import fftn  # NOQA
 from cupy.fft.fft import ifftn  # NOQA
+from cupy.fft.fft import rfft  # NOQA
+from cupy.fft.fft import irfft  # NOQA
+from cupy.fft.fft import rfft2  # NOQA
+from cupy.fft.fft import irfft2  # NOQA
+from cupy.fft.fft import rfftn  # NOQA
+from cupy.fft.fft import irfftn  # NOQA
