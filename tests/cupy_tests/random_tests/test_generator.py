@@ -437,6 +437,13 @@ class TestChoiceReplaceFalse(unittest.TestCase):
         val = numpy.asarray(val)
         self.assertEqual(numpy.unique(val).size, val.size)
 
+    def test_reproduce(self):
+        rs1 = cupy.random.RandomState(1)
+        v1 = rs1.choice(a=self.a, size=self.size, replace=False)
+        rs2 = cupy.random.RandomState(1)
+        v2 = rs2.choice(a=self.a, size=self.size, replace=False)
+        self.assertTrue((v1 == v2).all())
+
 
 @testing.parameterize(
     {'a': 3, 'size': 5},
