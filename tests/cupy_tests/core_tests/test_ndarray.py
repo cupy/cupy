@@ -260,3 +260,22 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
         o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
         wrap_take(a, i, out=o)
+
+
+@testing.gpu
+class TestNdarrayArrayAndArrayWrap(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_array(self, dtype):
+        a = testing.shaped_arange((3, 4, 5), cupy, dtype)
+        a_npy = numpy.asarray(a)
+        self.assertIsInstance(a_npy, numpy.ndarray)
+        testing.assert_array_equal(a_npy, a)
+
+    @testing.for_all_dtypes()
+    def test_array_wrap(self, dtype):
+        a = testing.shaped_arange((3, 4, 5), cupy, dtype)
+        abs_a = numpy.abs(a)
+        self.assertIsInstance(abs_a, cupy.ndarray)
+        npy_dtype = numpy.abs(numpy.zeros(1, dtype=dtype)).dtype
+        self.assertEqual(abs_a.dtype, npy_dtype)
