@@ -216,6 +216,7 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Array interface
     # -------------------------------------------------------------------------
+
     # TODO(beam2d): Implement __array_interface__
 
     # -------------------------------------------------------------------------
@@ -1364,11 +1365,18 @@ cdef class ndarray:
 
     def __array__(self, dtype=None):
         if dtype is None or self.dtype == dtype:
-            return self
+            return self.get()
         else:
-            return self.astype(dtype)
+            return self.get().astype(dtype)
 
-    # TODO(okuta): Implement __array_wrap__
+    def __array_wrap__(self, arr):
+        if arr.flags.f_contiguous and not arr.flags.c_contiguous:
+            order = 'F'
+        else:
+            order = 'C'
+        wrapper = ndarray(arr.shape, arr.dtype, order=order)
+        wrapper.set(arr)
+        return wrapper
 
     # Container customization:
 
