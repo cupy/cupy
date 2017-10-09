@@ -370,4 +370,9 @@ def einsum(*operands):
         result, subscript = single_views[0]
 
     result, subscript = calc_summed_view(result, subscript, output_subscript)
-    return calc_transposed_view(result, subscript, output_subscript)
+    result = calc_transposed_view(result, subscript, output_subscript)
+
+    if ioperands[0].flags.c_contiguous:
+        return cupy.ascontiguousarray(result)
+    else:
+        return cupy.asfortranarray(result)
