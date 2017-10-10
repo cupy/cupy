@@ -1,6 +1,7 @@
 import hashlib
 import math
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -227,3 +228,7 @@ class _NVRTCProgram(object):
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options)
+
+
+def is_valid_kernel_name(name):
+    return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
