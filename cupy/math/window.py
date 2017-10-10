@@ -7,7 +7,25 @@ from cupy.math import trigonometric
 
 
 def blackman(M):
-    """.. seealso:: :func:`numpy.blackman`"""
+    """Return the Blackman window.
+
+    The Blackman window is defined as
+
+    .. math::
+        w(n) = 0.42 - 0.5 \\cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
+        + 0.08 \\cos\\left(\\frac{4\\pi{n}}{M-1}\\right)
+        \\qquad 0 \\leq n \\leq M-1
+
+    Args:
+        M (:class:`~int`):
+            Number of points in the output window. If zero or less, an empty
+            array is returned.
+
+    Returns:
+        ~cupy.ndarray: Output ndarray.
+
+    .. seealso:: :func:`numpy.blackman`
+    """
     if M < 1:
         return from_data.array([])
     if M == 1:
@@ -18,7 +36,24 @@ def blackman(M):
 
 
 def hamming(M):
-    """.. seealso:: :func:`numpy.hamming`"""
+    """Return the Hamming window.
+
+    The Hamming window is defined as
+
+    .. math::
+        w(n) = 0.54 - 0.46cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
+        \\qquad 0 \\leq n \\leq M-1
+
+    Args:
+        M (:class:`~int`):
+            Number of points in the output window. If zero or less, an empty
+            array is returned.
+
+    Returns:
+        ~cupy.ndarray: Output ndarray.
+
+    .. seealso:: :func:`numpy.hamming`
+    """
     if M < 1:
         return from_data.array([])
     if M == 1:
@@ -28,7 +63,24 @@ def hamming(M):
 
 
 def hanning(M):
-    """.. seealso:: :func:`numpy.hanning`"""
+    """Return the Hanning window.
+
+    The Hanning window is defined as
+
+    .. math::
+        w(n) = 0.5 - 0.5cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
+        \\qquad 0 \\leq n \\leq M-1
+
+    Args:
+        M (:class:`~int`):
+            Number of points in the output window. If zero or less, an empty
+            array is returned.
+
+    Returns:
+        ~cupy.ndarray: Output ndarray.
+
+    .. seealso:: :func:`numpy.hanning`
+    """
     if M < 1:
         return from_data.array([])
     if M == 1:
