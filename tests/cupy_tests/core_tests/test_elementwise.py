@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import core
@@ -59,3 +60,13 @@ class TestElementwise(unittest.TestCase):
         b_cpu = numpy.copy(a_cpu, order)
 
         self.assertEqual(b.strides, b_cpu.strides)
+
+
+@testing.gpu
+class TestElementwiseInvalidArgument(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    def test_invalid_kernel_name(self):
+        with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
+            cupy.ElementwiseKernel('T x', '', '', '1')
