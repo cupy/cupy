@@ -231,7 +231,7 @@ class TestInterval(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
-        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        vals = [self.rs.interval(2, None).get() for _ in range(20)]
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
