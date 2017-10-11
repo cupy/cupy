@@ -14,3 +14,12 @@ def shuffle(a):
     """
     rs = generator.get_random_state()
     return rs.shuffle(a)
+
+
+def permutation(a):
+    """Returns a permuted range or shuffles an array."""
+    if isinstance(a, int):
+        rs = generator.get_random_state()
+        return rs.permutation(a)
+    else:
+        return shuffle(a)

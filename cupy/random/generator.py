@@ -344,9 +344,62 @@ class RandomState(object):
         if a.ndim == 0:
             raise TypeError('An array whose ndim is 0 is not supported')
 
-        sample = cupy.zeros((len(a)), dtype=numpy.int32)
-        curand.generate(self._generator, sample.data.ptr, sample.size)
-        a[:] = a[cupy.argsort(sample)]
+        a[:] = a[self.permutation(len(a))]
+
+    def permutation(self, num):
+        """Returns a permuted range."""
+        if not isinstance(num, int):
+            raise TypeError('The data type of argument "num" must be integer')
+
+        sample = cupy.empty((num), dtype=numpy.int32)
+        curand.generate(self._generator, sample.data.ptr, num)
+        if num < 1024:
+            array = cupy.argsort(sample)
+        else:
+            array = cupy.arange(num, dtype=numpy.int32)
+            _cupy_permutation()(array, sample, size=num)
+        return array
+
+
+def _cupy_permutation():
+    return core.ElementwiseKernel(
+        'raw int32 _array, raw int32 _sample',
+        '',
+        '''
+            int *array = reinterpret_cast<int*>(&_array[0]);
+            const int *sample = reinterpret_cast<const int*>(&_sample[0]);
+            const int invalid = -1;
+            const int num = _ind.size();
+            int j = (sample[i] & 0x7fffffff) % num;
+            if (i == j) return;
+            int j_offset = ((2*j - i + (num-1)) % (num-1)) + 1;
+            int loops = 256;
+            bool do_next = true;
+            while (do_next && loops > 0) {
+                // try to swap the contents of array[i] and array[j]
+                if (i != j) {
+                    int val_j = atomicExch(&array[j], invalid);
+                    if (val_j != invalid) {
+                        int val_i = atomicExch(&array[i], invalid);
+                        if (val_i != invalid) {
+                            array[i] = val_j;
+                            array[j] = val_i;
+                            do_next = false;
+                            // finished
+                        }
+                        else {
+                            // restore array[j]
+                            array[j] = val_j;
+                        }
+                    }
+                }
+                // update j
+                j = (j + j_offset) % num;
+                loops--;
+            }
+        ''',
+        'cupy_permutation'
+        )
 
 
 def seed(seed=None):
