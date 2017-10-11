@@ -225,8 +225,10 @@ class CuSparseError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
-    if status != 0:
-        raise CuSparseError(status)
+    with nogil:
+        if status != 0:
+            with gil:
+                raise CuSparseError(status)
 
 
 ########################################

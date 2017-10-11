@@ -49,8 +49,10 @@ class NVRTCError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
-    if status != 0:
-        raise NVRTCError(status)
+    with nogil:
+        if status != 0:
+            with gil:
+                raise NVRTCError(status)
 
 
 cpdef tuple getVersion():
