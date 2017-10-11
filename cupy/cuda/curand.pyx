@@ -79,8 +79,10 @@ class CURANDError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
-    if status != 0:
-        raise CURANDError(status)
+    with nogil:
+        if status != 0:
+            with gil:
+                raise CURANDError(status)
 
 
 ###############################################################################

@@ -133,8 +133,10 @@ class CUDARuntimeError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
-    if status != 0:
-        raise CUDARuntimeError(status)
+    with nogil:
+        if status != 0:
+            with gil:
+                raise CUDARuntimeError(status)
 
 
 ###############################################################################

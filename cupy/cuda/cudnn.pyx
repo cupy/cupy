@@ -441,8 +441,10 @@ class CuDNNError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
-    if status != 0:
-        raise CuDNNError(status)
+    with nogil:
+        if status != 0:
+            with gil:
+                raise CuDNNError(status)
 
 
 ###############################################################################

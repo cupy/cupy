@@ -94,8 +94,10 @@ class NcclError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(ncclResult_t status):
-    if status != ncclSuccess:
-        raise NcclError(status)
+    with nogil:
+        if status != ncclSuccess:
+            with gil:
+                raise NcclError(status)
 
 
 def get_version():
