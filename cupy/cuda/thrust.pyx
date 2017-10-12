@@ -7,7 +7,7 @@ import numpy
 from libcpp.vector cimport vector
 
 from cupy.cuda cimport common
-from cupy.cuda import stream as stream_module
+from cupy.cuda cimport stream as stream_module
 
 
 ###############################################################################
@@ -34,7 +34,7 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
 
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream_module.get_current_stream().ptr)
+    _strm = <size_t>(stream_module.get_current_stream_ptr())
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -68,7 +68,7 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start, size_t k, size_t n):
 
     idx_ptr = <size_t *>idx_start
     keys_ptr = <void *>keys_start
-    _strm = <size_t>(stream_module.get_current_stream().ptr)
+    _strm = <size_t>(stream_module.get_current_stream_ptr())
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -106,7 +106,7 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
     _idx_start = <size_t *>idx_start
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream_module.get_current_stream().ptr)
+    _strm = <size_t>(stream_module.get_current_stream_ptr())
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:

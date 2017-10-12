@@ -26,6 +26,7 @@ from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
+from cupy.cuda cimport stream as stream_module
 
 DEF MAX_NDIM = 25
 
@@ -1694,8 +1695,10 @@ cdef class ndarray:
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is None:
-            stream = cuda.get_current_stream()
-        if stream == cuda.Stream.null:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1729,8 +1732,10 @@ cdef class ndarray:
 
         ptr = arr.ctypes.get_as_parameter()
         if stream is None:
-            stream = cuda.get_current_stream()
-        if stream == cuda.Stream.null:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)

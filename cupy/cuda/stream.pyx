@@ -1,9 +1,21 @@
 from cupy.cuda import runtime
+from cpython cimport pythread
 import threading
 import weakref
 
 
 thread_local = threading.local()
+cdef int current_stream_key = pythread.PyThread_create_key()
+
+cdef size_t get_current_stream_ptr():
+    """C API to get current CUDA stream pointer.
+
+    Returns:
+        size_t: The current CUDA stream pointer.
+    """
+    # PyThread_get_key_value returns NULL if a key is not set,
+    # which is equivalent with default stream pointer (0)
+    return <size_t>pythread.PyThread_get_key_value(current_stream_key)
 
 
 def get_current_stream():
@@ -18,6 +30,19 @@ def get_current_stream():
     if stream is None:
         stream = Stream.null
     return stream
+
+
+cpdef _set_current_stream(stream):
+    """Sets current CUDA stream.
+
+    Args:
+        cupy.cuda.Stream: The current CUDA stream.
+    """
+    if stream is None:
+        stream = Stream.null
+    cdef size_t stream_ptr = stream.ptr
+    pythread.PyThread_set_key_value(current_stream_key, <void *>stream_ptr)
+    thread_local.current_stream_ref = weakref.ref(stream)
 
 
 class Event(object):
@@ -71,8 +96,10 @@ class Event(object):
 
         """
         if stream is None:
-            stream = get_current_stream()
-        runtime.eventRecord(self.ptr, stream.ptr)
+            stream_ptr = get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        runtime.eventRecord(self.ptr, stream_ptr)
 
     def synchronize(self):
         """Synchronizes all device work to the event.
@@ -144,19 +171,20 @@ class Stream(object):
             thread_local.prev_stream_ref_stack = []
         prev_stream_ref = weakref.ref(get_current_stream())
         thread_local.prev_stream_ref_stack.append(prev_stream_ref)
-        thread_local.current_stream_ref = weakref.ref(self)
+        _set_current_stream(self)
         return self
 
     def __exit__(self, *args):
         prev_stream_ref = thread_local.prev_stream_ref_stack.pop()
-        thread_local.current_stream_ref = prev_stream_ref
+        _set_current_stream(prev_stream_ref())
+        pass
 
     def use(self):
         """Makes this stream current.
 
         If you want to switch a stream temporarily, use the *with* statement.
         """
-        thread_local.current_stream_ref = weakref.ref(self)
+        _set_current_stream(self)
         return self
 
     @property

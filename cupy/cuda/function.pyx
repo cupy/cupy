@@ -8,7 +8,7 @@ from libcpp cimport vector
 
 from cupy.cuda cimport driver
 from cupy.core cimport core
-from cupy.cuda import stream as stream_module
+from cupy.cuda cimport stream as stream_module
 
 
 cdef extern from "cupy_stdint.h" nogil:
@@ -107,7 +107,7 @@ cdef inline CPointer _pointer(x):
 
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
-        return stream_module.get_current_stream().ptr
+        return stream_module.get_current_stream_ptr()
     else:
         return stream.ptr
 
