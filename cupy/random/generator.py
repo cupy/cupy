@@ -353,12 +353,12 @@ class RandomState(object):
 
         sample = cupy.empty((num), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
-        if num <= 128 or num > 32*1024*1024:
+        if num <= 128 or num > 32 * 1024 * 1024:
             array = cupy.argsort(sample)
         else:
             array = cupy.arange(num, dtype=numpy.int32)
             # apply sort of cache blocking
-            block_size = 1*1024*1024
+            block_size = 1 * 1024 * 1024
             while num / block_size > 12:
                 block_size *= 2
             for j_start in range(0, num, block_size):
@@ -409,7 +409,7 @@ def _cupy_permutation():
             }
         ''',
         'cupy_permutation'
-        )
+    )
 
 
 def seed(seed=None):
