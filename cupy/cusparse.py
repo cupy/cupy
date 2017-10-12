@@ -143,7 +143,8 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     beta = numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm', a.dtype,
-        handle, _transpose_flag(transa), m, n, k, a.nnz,
+        handle, _transpose_flag(transa),
+        a.shape[0], n, a.shape[1], a.nnz,
         alpha.data, a._descr.descriptor, a.data.data.ptr,
         a.indptr.data.ptr, a.indices.data.ptr,
         b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
@@ -160,6 +161,8 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     where :math:`o_a` and :math:`o_b` are transpose functions when ``transa``
     and ``tranb`` are ``True`` respectively. And they are identity functions
     otherwise.
+    It is forbidden that both ``transa`` and ``transb`` are ``True`` in
+    cuSPARSE specification.
 
     Args:
         a (cupy.sparse.csr): Sparse matrix A.
@@ -177,10 +180,11 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
+    assert not (transa and transb)
 
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
-    if a_shape[1] != b.shape[0]:
+    if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
@@ -199,7 +203,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     beta = numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm2', a.dtype,
-        handle, op_a, op_b, m, n, k, a.nnz,
+        handle, op_a, op_b, a.shape[0], n, a.shape[1], a.nnz,
         alpha.data, a._descr.descriptor, a.data.data.ptr,
         a.indptr.data.ptr, a.indices.data.ptr,
         b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
