@@ -530,12 +530,12 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((3, 3, 10), xp, dtype, 100)
         kth = 2
         idx = self.argpartition(a, kth)
-        rows = [[[0]],[[1]],[[2]]]
-        cols = [[[0],[1],[2]]]
-        self.assertTrue((a[rows, cols, idx[:, :, :kth]]
-                         < a[rows, cols, idx[:, :, kth:kth + 1]]).all())
-        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]]
-                         < a[rows, cols, idx[:, :, kth + 1:]]).all())
+        rows = [[[0]], [[1]], [[2]]]
+        cols = [[[0], [1], [2]]]
+        self.assertTrue((a[rows, cols, idx[:, :, :kth]] <
+                         a[rows, cols, idx[:, :, kth:kth + 1]]).all())
+        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]] <
+                         a[rows, cols, idx[:, :, kth + 1:]]).all())
         return idx[:, :, kth:kth + 1]
 
     # Test unsupported dtype
@@ -599,12 +599,12 @@ class TestArgpartition(unittest.TestCase):
         kth = 2
         axis = 0
         idx = self.argpartition(a, kth, axis=axis)
-        rows = [[[0],[1],[2]]]
+        rows = [[[0], [1], [2]]]
         cols = [[[0, 1, 2]]]
-        self.assertTrue((a[idx[:kth, :, :], rows, cols]
-                         < a[idx[kth:kth + 1, :, :], rows, cols]).all())
-        self.assertTrue((a[idx[kth:kth + 1, :, :], rows, cols]
-                         < a[idx[kth + 1:, :, :], rows, cols]).all())
+        self.assertTrue((a[idx[:kth, :, :], rows, cols] <
+                         a[idx[kth:kth + 1, :, :], rows, cols]).all())
+        self.assertTrue((a[idx[kth:kth + 1, :, :], rows, cols] <
+                         a[idx[kth + 1:, :, :], rows, cols]).all())
         return idx[kth:kth + 1, :, :]
 
     @testing.numpy_cupy_array_equal()
@@ -613,12 +613,12 @@ class TestArgpartition(unittest.TestCase):
         kth = 2
         axis = -1
         idx = self.argpartition(a, kth, axis=axis)
-        rows = [[[0]],[[1]],[[2]]]
-        cols = [[[0],[1],[2]]]
-        self.assertTrue((a[rows, cols, idx[:, :, :kth]]
-                         < a[rows, cols, idx[:, :, kth:kth + 1]]).all())
-        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]]
-                         < a[rows, cols, idx[:, :, kth + 1:]]).all())
+        rows = [[[0]], [[1]], [[2]]]
+        cols = [[[0], [1], [2]]]
+        self.assertTrue((a[rows, cols, idx[:, :, :kth]] <
+                         a[rows, cols, idx[:, :, kth:kth + 1]]).all())
+        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]] <
+                         a[rows, cols, idx[:, :, kth + 1:]]).all())
         return idx[:, :, kth:kth + 1]
 
     @testing.numpy_cupy_equal()
