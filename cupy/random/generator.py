@@ -353,17 +353,23 @@ class RandomState(object):
 
         sample = cupy.empty((num), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
-        if num < 1024:
+        if num <= 128 or num > 32*1024*1024:
             array = cupy.argsort(sample)
         else:
             array = cupy.arange(num, dtype=numpy.int32)
-            _cupy_permutation()(array, sample, size=num)
+            # apply sort of cache blocking
+            block_size = 1*1024*1024
+            while num / block_size > 12:
+                block_size *= 2
+            for j_start in range(0, num, block_size):
+                j_end = j_start + block_size
+                _cupy_permutation()(array, sample, j_start, j_end, size=num)
         return array
 
 
 def _cupy_permutation():
     return core.ElementwiseKernel(
-        'raw int32 _array, raw int32 _sample',
+        'raw int32 _array, raw int32 _sample, int32 j_start, int32 _j_end',
         '',
         '''
             int *array = reinterpret_cast<int*>(&_array[0]);
@@ -371,8 +377,12 @@ def _cupy_permutation():
             const int invalid = -1;
             const int num = _ind.size();
             int j = (sample[i] & 0x7fffffff) % num;
-            if (i == j) return;
-            int j_offset = ((2*j - i + (num-1)) % (num-1)) + 1;
+            if (i == j) continue;
+            int j_end = _j_end;
+            if (j_end > num) j_end = num;
+            if (j < j_start || j >= j_end) continue;
+            int j_num = j_end - j_start;
+            int j_offset = ((2*j - i + num) % (j_num - 1)) + 1;
             int loops = 256;
             bool do_next = true;
             while (do_next && loops > 0) {
@@ -385,7 +395,7 @@ def _cupy_permutation():
                             array[i] = val_j;
                             array[j] = val_i;
                             do_next = false;
-                            // finished
+                            // done
                         }
                         else {
                             // restore array[j]
@@ -394,7 +404,7 @@ def _cupy_permutation():
                     }
                 }
                 // update j
-                j = (j + j_offset) % num;
+                j = j_start + ((j - j_start) + j_offset) % j_num;
                 loops--;
             }
         ''',
