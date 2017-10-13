@@ -162,6 +162,11 @@ class TestTensorInv(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.tensorinv(a, ind=ind)
 
+    def check_ind(self, a_shape, ind):
+        a = cupy.random.rand(*a_shape)
+        with self.assertRaises(ValueError):
+            cupy.linalg.tensorinv(a, ind=ind)
+
     def test_tensorinv(self):
         self.check_x((12, 3, 4), ind=1)
         self.check_x((3, 8, 24), ind=2)
@@ -176,3 +181,7 @@ class TestTensorInv(unittest.TestCase):
     def test_invalid_shape(self):
         self.check_shape((2, 3, 4), ind=1)
         self.check_shape((1, 2, 3, 4), ind=3)
+
+    def test_invalid_index(self):
+        self.check_ind((12, 3, 4), ind=-1)
+        self.check_ind((18, 3, 3, 2), ind=0)
