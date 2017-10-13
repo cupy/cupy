@@ -6,6 +6,7 @@ cdef extern from *:
     ctypedef int Device 'CUdevice'
     ctypedef int Result 'CUresult'
 
+    ctypedef void* Context 'CUcontext'
     ctypedef void* Deviceptr 'CUdeviceptr'
     ctypedef void* Event 'struct CUevent_st*'
     ctypedef void* Function 'struct CUfunc_st*'
@@ -23,6 +24,12 @@ cpdef enum:
     CU_JIT_INPUT_OBJECT = 3
     CU_JIT_INPUT_LIBRARY = 4
 
+
+###############################################################################
+# Context management
+###############################################################################
+
+cpdef size_t ctxGetCurrent() except *
 
 ###############################################################################
 # Module load and kernel execution

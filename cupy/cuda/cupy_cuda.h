@@ -130,6 +130,12 @@ CUresult cuGetErrorString(...) {
 }
 
 
+// Context management
+CUresult cuCtxGetCurrent(...) {
+    return CUDA_SUCCESS;
+}
+
+
 // Module load and kernel execution
 CUresult cuLinkCreate (...) {
     return CUDA_SUCCESS;
