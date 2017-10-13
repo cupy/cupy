@@ -44,14 +44,6 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 3, 2), xp)
         return xp.atleast_3d(a)
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_broadcast_arrays(self, xp, dtype):
-        a = testing.shaped_arange((2, 1, 3, 4), xp, dtype)
-        b = testing.shaped_arange((3, 1, 4), xp, dtype)
-        c, d = xp.broadcast_arrays(a, b)
-        return d
-
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -254,19 +246,25 @@ class TestDims(unittest.TestCase):
 @testing.gpu
 class TestBroadcast(unittest.TestCase):
 
-    # TODO(niboshi): Run test of xp.broadcast_arrays in this class
-
-    def _broadcast(self, xp, shapes):
+    def _broadcast(self, xp, dtype, shapes):
         arrays = [
-            testing.shaped_arange(s, xp, xp.float32) for s in shapes]
+            testing.shaped_arange(s, xp, dtype) for s in shapes]
         return xp.broadcast(*arrays)
 
-    def test_broadcast(self):
-        broadcast_np = self._broadcast(numpy, self.shapes)
-        broadcast_cp = self._broadcast(cupy, self.shapes)
+    @testing.for_all_dtypes()
+    def test_broadcast(self, dtype):
+        broadcast_np = self._broadcast(numpy, dtype, self.shapes)
+        broadcast_cp = self._broadcast(cupy, dtype, self.shapes)
         self.assertEqual(broadcast_np.shape, broadcast_cp.shape)
         self.assertEqual(broadcast_np.size, broadcast_cp.size)
         self.assertEqual(broadcast_np.nd, broadcast_cp.nd)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_broadcast_arrays(self, xp, dtype):
+        arrays = [
+            testing.shaped_arange(s, xp, dtype) for s in self.shapes]
+        return xp.broadcast_arrays(*arrays)
 
 
 @testing.parameterize(
@@ -278,10 +276,16 @@ class TestBroadcast(unittest.TestCase):
 @testing.gpu
 class TestInvalidBroadcast(unittest.TestCase):
 
-    # TODO(niboshi): Run test of xp.broadcast_arrays in this class
-
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
-    def test_invalid_broadcast(self, xp):
+    def test_invalid_broadcast(self, xp, dtype):
         arrays = [
-            testing.shaped_arange(s, xp, xp.float32) for s in self.shapes]
+            testing.shaped_arange(s, xp, dtype) for s in self.shapes]
         xp.broadcast(*arrays)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_broadcast_arrays(self, xp, dtype):
+        arrays = [
+            testing.shaped_arange(s, xp, dtype) for s in self.shapes]
+        xp.broadcast_arrays(*arrays)
