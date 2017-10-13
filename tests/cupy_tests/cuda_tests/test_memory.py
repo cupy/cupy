@@ -1,4 +1,5 @@
 import ctypes
+import threading
 import unittest
 
 import cupy.cuda
@@ -382,3 +383,31 @@ class TestMemoryPool(unittest.TestCase):
     def test_total_bytes(self):
         with cupy.cuda.Device(0):
             self.assertEqual(0, self.pool.total_bytes())
+
+
+@testing.gpu
+class TestAllocator(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = memory.MemoryPool()
+        memory.set_allocator(self.pool.malloc)
+
+    def tearDown(self):
+        memory.set_allocator()
+        self.pool.free_all_blocks()
+
+    def test_set_allocator(self):
+        with cupy.cuda.Device(0):
+            self.assertEqual(0, self.pool.used_bytes())
+            arr = cupy.arange(128, dtype=cupy.int64)
+            self.assertEqual(1024, self.pool.used_bytes())
+
+    def test_reuse_between_thread(self):
+        def job():
+            cupy.arange(16)
+
+        with cupy.cuda.Device(0):
+            t = threading.Thread(target=job)
+            t.start()
+            t.join()
+            job()
