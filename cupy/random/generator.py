@@ -372,17 +372,9 @@ def _cupy_permutation():
         'raw int32 _array, raw int32 _sample, int32 j_start, int32 _j_end',
         '',
         '''
-            int *array = reinterpret_cast<int*>(&_array[0]);
-            const int *sample = reinterpret_cast<const int*>(&_sample[0]);
-            const int invalid = -1;
-            const int num = _ind.size();
             int j = (sample[i] & 0x7fffffff) % num;
-            if (i == j) continue;
-            int j_end = _j_end;
-            if (j_end > num) j_end = num;
-            if (j < j_start || j >= j_end) continue;
-            int j_num = j_end - j_start;
-            int j_offset = ((2*j - i + num) % (j_num - 1)) + 1;
+            if (j == i || j < j_start || j >= j_end) continue;
+            int j_offset = ((2*j - i + num) % (num - 1)) + 1;
             int loops = 256;
             bool do_next = true;
             while (do_next && loops > 0) {
@@ -404,11 +396,19 @@ def _cupy_permutation():
                     }
                 }
                 // update j
-                j = j_start + ((j - j_start) + j_offset) % j_num;
+                j = (j + j_offset) % num;
                 loops--;
             }
         ''',
-        'cupy_permutation'
+        'cupy_permutation',
+        loop_prep='''
+            int *array = reinterpret_cast<int*>(&_array[0]);
+            const int *sample = reinterpret_cast<const int*>(&_sample[0]);
+            const int invalid = -1;
+            const int num = _ind.size();
+            int j_end = _j_end;
+            if (j_end > num) j_end = num;
+        '''
     )
 
 
