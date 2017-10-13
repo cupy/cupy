@@ -16,6 +16,7 @@ class TestSolve(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
+    @condition.retry(10)
     def check_x(self, a_shape, b_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
@@ -32,7 +33,6 @@ class TestSolve(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.solve(a, b)
 
-    @condition.retry(10)
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
@@ -77,6 +77,7 @@ class TestInv(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
+    @condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -90,7 +91,6 @@ class TestInv(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.inv(a)
 
-    @condition.retry(10)
     def test_inv(self):
         self.check_x((3, 3))
         self.check_x((4, 4))
@@ -109,6 +109,7 @@ class TestPinv(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
+    @condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -123,7 +124,6 @@ class TestPinv(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.pinv(a)
 
-    @condition.retry(10)
     def test_pinv(self):
         self.check_x((3, 3), rcond=1e-15)
         self.check_x((2, 4), rcond=1e-15)
@@ -148,6 +148,7 @@ class TestTensorInv(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
+    @condition.retry(10)
     def check_x(self, a_shape, ind, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -161,7 +162,6 @@ class TestTensorInv(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.tensorinv(a, ind=ind)
 
-    @condition.retry(10)
     def test_tensorinv(self):
         self.check_x((12, 3, 4), ind=1)
         self.check_x((3, 8, 24), ind=2)
