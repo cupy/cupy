@@ -173,22 +173,6 @@ cusparseStatus_t cusparseDnnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-cusparseStatus_t cusparseSnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseScsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 cusparseStatus_t cusparseCreateIdentityPermutation(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -220,5 +204,35 @@ cusparseStatus_t cusparseXcscsort(...) {
 }  // extern "C"
 
 #endif  // CUPY_NO_CUDA
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Definitions are for compatibility
+///////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
+
+#if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+
+cusparseStatus_t cusparseSnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif  // #if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+
+}  // extern "C"
+
 
 #endif  // INCLUDE_GUARD_CUPY_CUSPARSE_H
