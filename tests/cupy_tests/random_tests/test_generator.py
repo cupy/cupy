@@ -31,7 +31,6 @@ class FunctionSwitcher(object):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -168,7 +167,6 @@ class TestRandomState8(TestRandomState):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
@@ -197,7 +195,6 @@ class TestRandAndRandN(unittest.TestCase):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
@@ -234,7 +231,7 @@ class TestInterval(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
-        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        vals = [self.rs.interval(2, None).get() for _ in range(20)]
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
@@ -266,7 +263,6 @@ class TestInterval(unittest.TestCase):
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoice1(unittest.TestCase):
 
@@ -302,7 +298,6 @@ class TestChoice1(unittest.TestCase):
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoice2(unittest.TestCase):
 
@@ -335,7 +330,6 @@ class TestChoice2(unittest.TestCase):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
@@ -387,7 +381,6 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
@@ -406,7 +399,6 @@ class TestChoiceFailure(unittest.TestCase):
     {'a': numpy.array([0.0, 2.0, 4.0]), 'size': 2},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceReplaceFalse(unittest.TestCase):
 
@@ -450,7 +442,6 @@ class TestChoiceReplaceFalse(unittest.TestCase):
     {'a': [1, 2, 3], 'size': 5},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceReplaceFalseFailure(unittest.TestCase):
 
