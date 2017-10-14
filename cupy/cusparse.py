@@ -74,11 +74,11 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated ``y``.
 
     """
-    if a.shape[1] != len(x):
-        raise ValueError('dimension mismatch')
     assert y is None or y.flags.f_contiguous
 
     a_shape = a.shape if not transa else a.shape[::-1]
+    if a_shape[1] != len(x):
+        raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
     m, n = a_shape
@@ -91,7 +91,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     _call_cusparse(
         'csrmv', dtype,
         handle, _transpose_flag(transa),
-        m, n, a.nnz, alpha.data, a._descr.descriptor,
+        a.shape[0], a.shape[1], a.nnz, alpha.data, a._descr.descriptor,
         a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
         x.data.ptr, beta.data, y.data.ptr)
 

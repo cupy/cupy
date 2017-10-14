@@ -117,3 +117,41 @@ class TestCsrgemm(unittest.TestCase):
         y = cupy.cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
         expect = self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y.toarray(), expect.toarray())
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'transa': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestCsrmv(unittest.TestCase):
+
+    alpha = 0.5
+    beta = 0.25
+
+    def setUp(self):
+        self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
+        if self.transa:
+            self.a = self.op_a.T
+        else:
+            self.a = self.op_a
+        self.x = numpy.random.uniform(-1, 1, 3).astype(self.dtype)
+        self.y = numpy.random.uniform(-1, 1, 2).astype(self.dtype)
+
+    def test_csrmv(self):
+        a = cupy.sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.cusparse.csrmv(
+            a, x, alpha=self.alpha, transa=self.transa)
+        expect = self.alpha * self.op_a.dot(self.x)
+        testing.assert_array_almost_equal(y, expect)
+
+    def test_csrmv_with_y(self):
+        a = cupy.sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.array(self.y, order='f')
+        z = cupy.cusparse.csrmv(
+            a, x, y=y, alpha=self.alpha, beta=self.beta, transa=self.transa)
+        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
+        self.assertIs(y, z)
+        testing.assert_array_almost_equal(y, expect)
