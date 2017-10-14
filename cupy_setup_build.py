@@ -18,6 +18,9 @@ from install import utils
 
 
 required_cython_version = pkg_resources.parse_version('0.24.0')
+ignore_cython_versions = [
+    pkg_resources.parse_version('0.27.0'),
+]
 
 MODULES = [
     {
@@ -326,7 +329,9 @@ try:
     import Cython
     import Cython.Build
     cython_version = pkg_resources.parse_version(Cython.__version__)
-    cython_available = cython_version >= required_cython_version
+    cython_available = (
+        cython_version >= required_cython_version and
+        cython_version not in ignore_cython_versions)
 except ImportError:
     cython_available = False
 
@@ -348,12 +353,12 @@ def check_extensions(extensions):
     for x in extensions:
         for f in x.sources:
             if not path.isfile(f):
-                msg = ('Missing file: %s\n' % f +
-                       'Please install Cython. ' +
-                       'Please also check the version of Cython.\n' +
-                       'See ' +
-                       'https://docs-cupy.chainer.org/en/stable/install.html')
-                raise RuntimeError(msg)
+                raise RuntimeError(
+                    'Missing file: %s\n' % f +
+                    'Please install Cython %s. ' % required_cython_version +
+                    'Please also check the version of Cython.\n' +
+                    'See ' +
+                    'https://docs-cupy.chainer.org/en/stable/install.html')
 
 
 def get_ext_modules(use_cython=False):
