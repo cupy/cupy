@@ -124,6 +124,14 @@ class coo_matrix(sparse_data._data_matrix):
         return coo_matrix(
             (data, (self.row.copy(), self.col.copy())), shape=self.shape)
 
+    def eliminate_zeros(self):
+        """Removes zero entories in place."""
+        self.sum_duplicates()
+        ind = self.data != 0
+        self.data = self.data[ind]
+        self.row = self.row[ind]
+        self.col = self.col[ind]
+
     @property
     def has_canonical_format(self):
         return self._has_canonical_format
