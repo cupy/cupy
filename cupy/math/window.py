@@ -7,7 +7,7 @@ from cupy.math import trigonometric
 
 
 def blackman(M):
-    """Return the Blackman window.
+    """Returns the Blackman window.
 
     The Blackman window is defined as
 
@@ -36,12 +36,12 @@ def blackman(M):
 
 
 def hamming(M):
-    """Return the Hamming window.
+    """Returns the Hamming window.
 
     The Hamming window is defined as
 
     .. math::
-        w(n) = 0.54 - 0.46cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
+        w(n) = 0.54 - 0.46\\cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
         \\qquad 0 \\leq n \\leq M-1
 
     Args:
@@ -63,12 +63,12 @@ def hamming(M):
 
 
 def hanning(M):
-    """Return the Hanning window.
+    """Returns the Hanning window.
 
     The Hanning window is defined as
 
     .. math::
-        w(n) = 0.5 - 0.5cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
+        w(n) = 0.5 - 0.5\\cos\\left(\\frac{2\\pi{n}}{M-1}\\right)
         \\qquad 0 \\leq n \\leq M-1
 
     Args:
