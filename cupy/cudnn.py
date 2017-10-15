@@ -279,7 +279,7 @@ def create_rnn_descriptor(handle, hidden_size, num_layers, dropout_desc,
             handle, desc.value, hidden_size, num_layers, dropout_desc.value,
             input_mode, direction, mode, algo, data_type)
     else:
-        cudnn.setRNNDescriptor(
+        cudnn.setRNNDescriptor_v5(
             desc.value, hidden_size, num_layers, dropout_desc.value,
             input_mode, direction, mode, data_type)
     return desc
