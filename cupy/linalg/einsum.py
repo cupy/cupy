@@ -245,6 +245,8 @@ def einsum(*operands):
     array operations can be represented in a simple fashion. This function
     provides a way to compute such summations.
     .. note::
+       Memory contiguity of calculation result is not always compatible with
+       `numpy.einsum`.
        ``out``, ``order``, ``dtype``, ``casting`` and ``optimize`` options
        are not supported.
     Args:
