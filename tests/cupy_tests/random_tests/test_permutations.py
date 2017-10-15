@@ -82,7 +82,7 @@ class TestPermutationSoundness(unittest.TestCase):
 @testing.parameterize(*(testing.product({
     'offset': [0, 17, 34, 51],
     'gap': [1, 2, 3, 5, 7],
-    'mask': [1, 2, 4, 8, 16, 32, 64],
+    'mask': [1, 2, 4, 8, 16, 32, 64, 128],
 })))
 @testing.gpu
 class TestPermutationRandomness(unittest.TestCase):
