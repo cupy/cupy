@@ -400,6 +400,7 @@ class TestAllocator(unittest.TestCase):
         with cupy.cuda.Device(0):
             self.assertEqual(0, self.pool.used_bytes())
             arr = cupy.arange(128, dtype=cupy.int64)
+            self.assertEqual(1024, arr.data.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
     def test_reuse_between_thread(self):
