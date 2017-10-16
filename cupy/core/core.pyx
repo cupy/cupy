@@ -2186,6 +2186,9 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     return ret
 
 
+cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
+
+
 cdef class broadcast:
     """Object that performs broadcasting.
 
@@ -2212,7 +2215,7 @@ cdef class broadcast:
         readonly Py_ssize_t nd
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t i, j, s, ss, a_ndim, a_sh
+        cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh
         cdef vector.vector[Py_ssize_t] shape, strides, r_shape, r_strides
         cdef vector.vector[vector.vector[Py_ssize_t]] shape_arr
         cdef ndarray a, view
@@ -2229,12 +2232,18 @@ cdef class broadcast:
 
         r_shape.clear()
         for i in range(self.nd):
-            ss = 0
+            smin = PY_SSIZE_T_MAX
+            smax = 0
             for j in range(<Py_ssize_t>shape_arr.size()):
                 if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
-                    ss = max(ss, s)
-            r_shape.push_back(ss)
+                    smin = min(smin, s)
+                    smax = max(smax, s)
+            if smin == 0 and smax > 1:
+                raise ValueError(
+                    'shape mismatch: objects cannot be broadcast to a '
+                    'single shape')
+            r_shape.push_back(0 if smin == 0 else smax)
 
         shape.assign(r_shape.rbegin(), r_shape.rend())
         self.shape = tuple(shape)
