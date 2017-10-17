@@ -49,11 +49,11 @@ The latest version of each package will automatically be installed if missing.
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0, 9.0
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6, v7
 
 NCCL support
 
