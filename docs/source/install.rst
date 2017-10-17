@@ -13,6 +13,13 @@ We recommend these Linux distributions.
 
 The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
 
+.. warning::
+
+   If you are using certain versions of conda, it may fail to build CuPy with error
+   ``g++: error: unrecognized command line option ‘-R’``.
+   This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
+   If you encounter this problem, please downgrade or upgrade it.
+
 .. note::
 
    We are testing CuPy automatically with Jenkins, where all the above *recommended* environments are tested.
