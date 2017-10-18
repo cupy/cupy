@@ -1,9 +1,9 @@
-from nose.plugins import attrib
+import pytest
 
-gpu = attrib.attr('gpu')
-cudnn = attrib.attr('gpu', 'cudnn')
-slow = attrib.attr('slow')
+gpu = pytest.mark.gpu
+cudnn = pytest.mark.cudnn
+slow = pytest.mark.slow
 
 
 def multi_gpu(gpu_num):
-    return attrib.attr(gpu=gpu_num)
+    return pytest.mark.multi_gpu(gpu=gpu_num)

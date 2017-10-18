@@ -7,7 +7,7 @@ import six
 
 from cupy import testing
 
-import example_test
+from example_tests import example_test
 
 
 @testing.with_requires('matplotlib')
