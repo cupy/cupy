@@ -89,7 +89,7 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k, size_
     sequence(cuda::par.on(stream_), dp_first, dp_last);
     for (size_t i = 0; i < k; ++i) {
         T *key_start = static_cast<T*>(keys_start) + i * n;
-        stable_sort< system::cuda::detail::execute_on_stream, device_ptr<size_t> >(
+        stable_sort(
             cuda::par.on(stream_),
             dp_first,
             dp_last,
