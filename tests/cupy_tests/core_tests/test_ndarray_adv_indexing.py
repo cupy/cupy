@@ -89,6 +89,26 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
+    # zero-dim and zero-sized arrays
+    {'shape': (), 'indexes': Ellipsis},
+    {'shape': (), 'indexes': ()},
+    {'shape': (), 'indexes': None},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (), 'indexes': True},
+    # {'shape': (), 'indexes': (True,)},
+    # {'shape': (), 'indexes': (False, True, True)},
+    # {'shape': (), 'indexes': numpy.array([True])},
+    # {'shape': (), 'indexes': numpy.array([False, True, True])},
+    # {'shape': (), 'indexes': numpy.empty((), dtype=numpy.bool_)},
+    {'shape': (0,), 'indexes': None},
+    {'shape': (0,), 'indexes': ()},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (0,), 'indexes': True},
+    # {'shape': (0,), 'indexes': (True,)},
+    # {'shape': (0,), 'indexes': (False, True, True)},
+    # {'shape': (0,), 'indexes': numpy.array([True])},
+    # {'shape': (0,), 'indexes': numpy.array([False, True, True])},
+    # {'shape': (0,), 'indexes': numpy.empty((), dtype=numpy.bool_)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -151,7 +171,22 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (), 'indexes': ([1],)},
+    {'shape': (), 'indexes': (-1,)},
+    {'shape': (), 'indexes': (0,)},
+    {'shape': (), 'indexes': (1,)},
+    {'shape': (), 'indexes': ([0],)},
+    {'shape': (), 'indexes': (numpy.array([0]),)},
+    {'shape': (), 'indexes': (numpy.array(0),)},
+    {'shape': (), 'indexes': ([False],)},
+    {'shape': (0,), 'indexes': (-1,)},
+    {'shape': (0,), 'indexes': (0,)},
+    {'shape': (0,), 'indexes': (1,)},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (0,), 'indexes': ([0],)},
+    # {'shape': (0,), 'indexes': (numpy.array([0]),)},
+    # {'shape': (0,), 'indexes': (numpy.array(0),)},
+    # {'shape': (0,), 'indexes': ([False],)},
+    {'shape': (0, 1), 'indexes': (0, Ellipsis)},
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
     {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float)},
     {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},

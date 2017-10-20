@@ -30,6 +30,10 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasSetStream(Handle handle, driver.Stream streamId)
     int cublasGetStream(Handle handle, driver.Stream* streamId)
 
+    # Math Mode
+    int cublasSetMathMode(Handle handle, Math mode)
+    int cublasGetMathMode(Handle handle, Math* mode)
+
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx,
                      int* result)
@@ -175,7 +179,15 @@ cdef extern from 'cupy_cuda.h' nogil:
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
         int batchSize)
-
+    int cublasGemmEx(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k,
+        const void *alpha,
+        const void *A, runtime.DataType Atype, int lda,
+        const void *B, runtime.DataType Btype, int ldb,
+        const void *beta,
+        void *C, runtime.DataType Ctype, int ldc,
+        runtime.DataType computetype, GemmAlgo algo)
 
 ###############################################################################
 # Util
@@ -282,6 +294,24 @@ cpdef size_t getStream(size_t handle) except *:
         status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
+
+
+###############################################################################
+# Math Mode
+###############################################################################
+
+cpdef setMathMode(size_t handle, int mode):
+    with nogil:
+        status = cublasSetMathMode(<Handle>handle, <Math>mode)
+    check_status(status)
+
+
+cpdef int getMathMode(size_t handle) except *:
+    cdef Math mode
+    with nogil:
+        status = cublasGetMathMode(<Handle>handle, &mode)
+    check_status(status)
+    return <int>mode
 
 
 ###############################################################################
@@ -697,4 +727,21 @@ cpdef sgetriBatched(
         status = cublasSgetriBatched(
             <Handle>handle, n, <const float**>Aarray, lda, <int*>PivotArray,
             <float**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef gemmEx(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        size_t alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, size_t beta, size_t C, int Ctype,
+        int ldc, int computeType, int algo):
+    with nogil:
+        status = cublasGemmEx(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            <const void*>alpha,
+            <const void*>A, <runtime.DataType>Atype, lda,
+            <const void*>B, <runtime.DataType>Btype, ldb,
+            <const void*>beta,
+            <void*>C, <runtime.DataType>Ctype, ldc,
+            <runtime.DataType>computeType, <GemmAlgo>algo)
     check_status(status)

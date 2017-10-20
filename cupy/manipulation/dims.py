@@ -117,7 +117,7 @@ def broadcast_arrays(*args):
     .. seealso:: :func:`numpy.broadcast_arrays`
 
     """
-    return broadcast(*args).values
+    return list(broadcast(*args).values)
 
 
 def broadcast_to(array, shape):

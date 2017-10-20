@@ -1,15 +1,16 @@
 # distutils: language = c++
 
 import collections
-import threading
 import weakref
+
+from fastrlock cimport rlock
 
 from cupy.cuda import runtime
 
 from cupy.cuda cimport runtime
 
 
-cdef class PinnedMemory:
+class PinnedMemory(object):
 
     """Pinned memory allocation on host.
 
@@ -26,7 +27,7 @@ cdef class PinnedMemory:
         if size > 0:
             self.ptr = runtime.hostAlloc(size, flags)
 
-    def __dealloc__(self):
+    def __del__(self):
         if self.ptr:
             runtime.freeHost(self.ptr)
 
@@ -52,7 +53,7 @@ cdef class PinnedMemoryPointer:
         ptr (int): Pointer to the place within the buffer.
     """
 
-    def __init__(self, PinnedMemory mem, Py_ssize_t offset):
+    def __init__(self, mem, Py_ssize_t offset):
         self.mem = mem
         self.ptr = mem.ptr + offset
 
@@ -131,11 +132,11 @@ cdef class PinnedMemoryPointer:
 cdef class _EventWatcher:
     cdef:
         cdef list events
-        cdef object lock
+        cdef object _lock
 
     def __init__(self):
         self.events = []
-        self.lock = threading.Lock()
+        self._lock = rlock.create_fastrlock()
 
     cpdef add(self, event, obj):
         """ Add event to be monitored.
@@ -146,11 +147,14 @@ cdef class _EventWatcher:
             event (cupy.cuda.Event): The CUDA event to be monitored.
             obj: The object to be held.
         """
-        with self.lock:
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
             self._check_and_release_without_lock()
             if event.done:
                 return
             self.events.append((event, obj))
+        finally:
+            rlock.unlock_fastrlock(self._lock)
 
     cpdef check_and_release(self):
         """ Check and release completed events.
@@ -158,8 +162,11 @@ cdef class _EventWatcher:
         """
         if not self.events:
             return
-        with self.lock:
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
             self._check_and_release_without_lock()
+        finally:
+            rlock.unlock_fastrlock(self._lock)
 
     cpdef _check_and_release_without_lock(self):
         while self.events and self.events[0][0].done:
@@ -218,7 +225,7 @@ cpdef set_pinned_memory_allocator(allocator=_malloc):
     _current_allocator = allocator
 
 
-cdef class PooledPinnedMemory(PinnedMemory):
+class PooledPinnedMemory(PinnedMemory):
 
     """Memory allocation for a memory pool.
 
@@ -227,16 +234,12 @@ cdef class PooledPinnedMemory(PinnedMemory):
 
     """
 
-    def __init__(self, PinnedMemory mem, pool):
+    def __init__(self, mem, pool):
         self.ptr = mem.ptr
         self.size = mem.size
         self.pool = pool
 
-    def __dealloc__(self):
-        if self.ptr != 0:
-            self.free()
-
-    cpdef free(self):
+    def free(self):
         """Releases the memory buffer and sends it to the memory pool.
 
         This function actually does not free the buffer. It just returns the
@@ -248,6 +251,8 @@ cdef class PooledPinnedMemory(PinnedMemory):
             pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
+
+    __del__ = free
 
 
 cdef class PinnedMemoryPool:
@@ -271,46 +276,57 @@ cdef class PinnedMemoryPool:
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
+        self._lock = rlock.create_fastrlock()
         self._allocation_unit_size = 512
 
     cpdef PinnedMemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
-        cdef PinnedMemory mem
 
         if size == 0:
             return PinnedMemoryPointer(PinnedMemory(0), 0)
 
         # Round up the memory size to fit memory alignment of cudaHostAlloc
         unit = self._allocation_unit_size
-        size = (((size + unit - 1) // unit) * unit)
-        free = self._free[size]
-        if free:
-            mem = free.pop()
-        else:
-            try:
-                mem = self._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
-                if e.status != runtime.errorMemoryAllocation:
-                    raise
-                self.free_all_blocks()
-                mem = self._alloc(size).mem
+        size = ((size + unit - 1) // unit) * unit
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
+            free = self._free[size]
+            if free:
+                mem = free.pop()
+            else:
+                try:
+                    mem = self._alloc(size).mem
+                except runtime.CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    self.free_all_blocks()
+                    mem = self._alloc(size).mem
 
-        self._in_use[mem.ptr] = mem
+            self._in_use[mem.ptr] = mem
+        finally:
+            rlock.unlock_fastrlock(self._lock)
         pmem = PooledPinnedMemory(mem, self._weakref)
         return PinnedMemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef list free
-        cdef PinnedMemory mem
-        mem = self._in_use.pop(ptr, None)
-        if mem is None:
-            raise RuntimeError('Cannot free out-of-pool memory')
-        free = self._free[size]
-        free.append(mem)
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
+            mem = self._in_use.pop(ptr, None)
+            if mem is None:
+                raise RuntimeError('Cannot free out-of-pool memory')
+            free = self._free[size]
+            free.append(mem)
+        finally:
+            rlock.unlock_fastrlock(self._lock)
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
-        self._free.clear()
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
+            self._free.clear()
+        finally:
+            rlock.unlock_fastrlock(self._lock)
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
@@ -319,6 +335,10 @@ cdef class PinnedMemoryPool:
             int: The total number of free blocks.
         """
         cdef Py_ssize_t n = 0
-        for v in self._free.values():
-            n += len(v)
+        rlock.lock_fastrlock(self._lock, -1, True)
+        try:
+            for v in self._free.values():
+                n += len(v)
+        finally:
+            rlock.unlock_fastrlock(self._lock)
         return n

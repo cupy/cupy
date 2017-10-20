@@ -3,9 +3,11 @@ from numpy import linalg
 import six
 
 import cupy
+from cupy.core import core
 from cupy import cuda
 from cupy.cuda import cublas
 from cupy.cuda import device
+from cupy.linalg import decomposition
 from cupy.linalg import util
 
 if cuda.cusolver_enabled:
@@ -22,6 +24,11 @@ def solve(a, b):
         a (cupy.ndarray): The matrix with dimension ``(M, M)``
         b (cupy.ndarray): The vector with ``M`` elements, or
             the matrix with dimension ``(M, K)``
+
+    Returns:
+        cupy.ndarray:
+            The vector with ``M`` elements, or the matrix with dimension
+            ``(M, K)``.
 
     .. seealso:: :func:`numpy.linalg.solve`
     '''
@@ -110,6 +117,10 @@ def tensorsolve(a, b, axes=None):
         axes (tuple of ints): Axes in ``a`` to reorder to the right
             before inversion.
 
+    Returns:
+        cupy.ndarray:
+            The tensor with shape ``Q`` such that ``b.shape + Q == a.shape``.
+
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     '''
     if axes is not None:
@@ -131,10 +142,54 @@ def tensorsolve(a, b, axes=None):
 # TODO(okuta): Implement lstsq
 
 
-# TODO(okuta): Implement inv
+def inv(a):
+    '''Computes the inverse of a matrix.
+
+    This function computes matrix ``a_inv`` from n-dimensional regular matrix
+    ``a`` such that ``dot(a, a_inv) == eye(n)``.
+
+    Args:
+        a (cupy.ndarray): The regular matrix
+
+    Returns:
+        cupy.ndarray: The inverse of a matrix.
+
+    .. seealso:: :func:`numpy.linalg.inv`
+    '''
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
+
+    util._assert_cupy_array(a)
+    util._assert_rank2(a)
+    util._assert_nd_squareness(a)
+
+    b = cupy.eye(len(a), dtype=a.dtype)
+    return solve(a, b)
 
 
-# TODO(okuta): Implement pinv
+def pinv(a, rcond=1e-15):
+    '''Compute the Moore-Penrose pseudoinverse of a matrix.
+
+    It computes a pseudoinverse of a matrix ``a``, which is a generalization
+    of the inverse matrix with Singular Value Decomposition (SVD).
+    Note that it automatically removes small singular values for stability.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``
+        rcond (float): Cutoff parameter for small singular values.
+            For stability it computes the largest singular value denoted by
+            ``s``, and sets all singular values smaller than ``s`` to zero.
+
+    Returns:
+        cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
+
+    .. seealso:: :func:`numpy.linalg.pinv`
+    '''
+    u, s, vt = decomposition.svd(a, full_matrices=False)
+    cutoff = rcond * s.max()
+    s1 = 1 / s
+    s1[s <= cutoff] = 0
+    return core.dot(vt.T, s1[:, None] * u.T)
 
 
 # TODO(okuta): Implement tensorinv

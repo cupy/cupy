@@ -41,6 +41,7 @@ from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
+from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
@@ -214,7 +215,14 @@ from cupy.core.fusion import right_shift  # NOQA
 from cupy.binary.packing import packbits  # NOQA
 from cupy.binary.packing import unpackbits  # NOQA
 
-from numpy import binary_repr  # NOQA
+
+def binary_repr(num, width=None):
+    """Return the binary representation of the input number as a string.
+
+    .. seealso:: :func:`numpy.binary_repr`
+    """
+    return numpy.binary_repr(num, width)
+
 
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
@@ -277,7 +285,14 @@ from cupy.io.npz import savez_compressed  # NOQA
 from cupy.io.formatting import array_repr  # NOQA
 from cupy.io.formatting import array_str  # NOQA
 
-from numpy import base_repr  # NOQA
+
+def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
+    """Return a string representation of a number in the given base system.
+
+    .. seealso:: :func:`numpy.base_repr`
+    """
+    return numpy.base_repr(number, base, padding)
+
 
 # -----------------------------------------------------------------------------
 # Linear algebra
@@ -301,7 +316,14 @@ from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
-from numpy import isscalar  # NOQA
+
+def isscalar(num):
+    """Returns True if the type of num is a scalar type.
+
+    .. seealso:: :func:`numpy.isscalar`
+    """
+    return numpy.isscalar(num)
+
 
 from cupy.core.fusion import logical_and  # NOQA
 from cupy.core.fusion import logical_not  # NOQA
@@ -351,6 +373,10 @@ from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.window import blackman  # NOQA
+from cupy.math.window import hamming  # NOQA
+from cupy.math.window import hanning  # NOQA
+
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
@@ -416,6 +442,7 @@ from cupy.core.fusion import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
+from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import lexsort  # NOQA
 from cupy.sorting.sort import msort  # NOQA
@@ -498,7 +525,7 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, ndarray):
+        if isinstance(arg, (ndarray, sparse.spmatrix)):
             return _cupy
     return numpy
 
@@ -506,3 +533,39 @@ def get_array_module(*args):
 fuse = fusion.fuse
 
 disable_experimental_feature_warning = False
+
+
+# set default allocator
+_default_memory_pool = cuda.MemoryPool()
+_default_pinned_memory_pool = cuda.PinnedMemoryPool()
+
+cuda.set_allocator(_default_memory_pool.malloc)
+cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
+
+
+def get_default_memory_pool():
+    """Returns CuPy default memory pool.
+
+    Returns:
+        cupy.cuda.MemoryPool: it is memory pool object.
+
+    .. note::
+       If you want to disable memory pool, please use the following code.
+       >>> cupy.cuda.set_allocator()
+
+    """
+    return _default_memory_pool
+
+
+def get_default_pinned_memory_pool():
+    """Returns CuPy default memory pool.
+
+    Returns:
+        cupy.cuda.MemoryPool: it is memory pool object.
+
+    .. note::
+       If you want to disable memory pool, please use the following code.
+       >>> cupy.cuda.set_pinned_memory_allocator()
+
+    """
+    return _default_pinned_memory_pool

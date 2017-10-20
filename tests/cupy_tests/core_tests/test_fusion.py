@@ -1,3 +1,4 @@
+import mock
 import numpy
 import six
 import unittest
@@ -1231,3 +1232,70 @@ class TestFusionDecorator(unittest.TestCase):
 
         a = xp.array([1])
         return func_w_paren(a)
+
+
+@testing.gpu
+class TestFusionKernelName(unittest.TestCase):
+
+    def check(self, xp, func, expected_name, is_elementwise):
+        a = xp.array([2, 3], 'f')
+        b = xp.array([2, 3], 'f')
+        c = xp.array([2, 3], 'f')
+
+        # Test kernel name (with mock)
+        if xp is cupy:
+            target = (
+                'cupy.core.core.ElementwiseKernel' if is_elementwise
+                else 'cupy.core.core.ReductionKernel')
+
+            with mock.patch(target) as Kernel:
+                func(a, b, c)
+                Kernel.assert_called_once()
+                self.assertEqual(Kernel.call_args[1]['name'], expected_name)
+
+        # Test there's no error in computation (without mock)
+        return func(a, b, c)
+
+    @testing.numpy_cupy_array_equal()
+    def test_elementwise(self, xp):
+        def func(a, b, c):
+            @cupy.fuse()
+            def func_a1(x, y, z):
+                return (x + y) * z
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'func_a1', True)
+
+    @testing.numpy_cupy_array_equal()
+    def test_elementwise_with_name(self, xp):
+        def func(a, b, c):
+            @cupy.fuse(kernel_name='abc')
+            def func_a1(x, y, z):
+                return (x + y) * z
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'abc', True)
+
+    @testing.numpy_cupy_array_equal()
+    def test_reduction(self, xp):
+        def func(a, b, c):
+            @cupy.fuse(reduce=cupy.sum)
+            def func_a1(x, y, z):
+                return (x + y) * z
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'func_a1', False)
+
+    @testing.numpy_cupy_array_equal()
+    def test_reduction_with_name(self, xp):
+        def func(a, b, c):
+            @cupy.fuse(reduce=cupy.sum, kernel_name='abc')
+            def func_a1(x, y, z):
+                return (x + y) * z
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'abc', False)

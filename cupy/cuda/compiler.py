@@ -1,6 +1,7 @@
 import hashlib
 import math
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -160,6 +161,11 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
         temp_path = tf.name
     shutil.move(temp_path, path)
 
+    # Save .cu source file along with .cubin
+    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+        with open(path + '.cu', 'w') as f:
+            f.write(source)
+
     mod.load(cubin)
     return mod
 
@@ -222,3 +228,7 @@ class _NVRTCProgram(object):
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options)
+
+
+def is_valid_kernel_name(name):
+    return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None

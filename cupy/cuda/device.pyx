@@ -22,6 +22,7 @@ cpdef int get_device_id() except *:
 cdef dict _cublas_handles = {}
 cdef dict _cusolver_handles = {}
 cdef dict _cusparse_handles = {}
+cdef dict _compute_capabilities = {}
 
 
 cpdef get_cublas_handle():
@@ -43,6 +44,13 @@ cpdef get_cusparse_handle():
     if dev_id in _cusparse_handles:
         return _cusparse_handles[dev_id]
     return Device().cusparse_handle
+
+
+cpdef get_compute_capability():
+    dev_id = get_device_id()
+    if dev_id in _compute_capabilities:
+        return _compute_capabilities[dev_id]
+    return Device().compute_capability
 
 
 cdef class Device:
@@ -117,9 +125,14 @@ cdef class Device:
         by the string '35'.
 
         """
-        major = runtime.deviceGetAttribute(75, self.id)
-        minor = runtime.deviceGetAttribute(76, self.id)
-        return '%d%d' % (major, minor)
+        if self.id in _compute_capabilities:
+            return _compute_capabilities[self.id]
+        with self:
+            major = runtime.deviceGetAttribute(75, self.id)
+            minor = runtime.deviceGetAttribute(76, self.id)
+            cc = '%d%d' % (major, minor)
+            _compute_capabilities[self.id] = cc
+            return cc
 
     @property
     def cublas_handle(self):

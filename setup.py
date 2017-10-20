@@ -31,10 +31,11 @@ install_requires = [
 
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
+sdist = cupy_setup_build.sdist_with_cython
 
 setup(
     name='cupy',
-    version='2.0.0b1',
+    version='3.0.0a1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -45,6 +46,7 @@ setup(
               'cupy.core',
               'cupy.creation',
               'cupy.cuda',
+              'cupy.cuda.memory_hooks',
               'cupy.ext',
               'cupy.indexing',
               'cupy.io',
@@ -92,5 +94,6 @@ setup(
     tests_require=['mock',
                    'nose'],
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext},
+    cmdclass={'build_ext': build_ext,
+              'sdist': sdist},
 )

@@ -80,13 +80,13 @@ class TestSumprod(unittest.TestCase):
         testing.assert_allclose(sa, sb.astype('e'))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_sum_axis_transposed(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(2, 0, 1)
         return a.sum(axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_sum_axis_transposed2(self, xp, dtype):
         a = testing.shaped_arange((20, 30, 40), xp, dtype).transpose(2, 0, 1)
         return a.sum(axis=1)
@@ -181,7 +181,7 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
@@ -238,10 +238,12 @@ class TestCumprod(unittest.TestCase):
         return xp.cumprod(a, axis=1)
 
     @testing.slow
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_huge_array(self, xp):
-        a = xp.ones(2 ** 32, 'b')
-        return xp.cumprod(a)
+    def test_cumprod_huge_array(self):
+        size = 2 ** 32
+        a = cupy.ones(size, 'b')
+        result = cupy.cumprod(a, dtype='b')
+        del a
+        self.assertTrue((result == 1).all())
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')

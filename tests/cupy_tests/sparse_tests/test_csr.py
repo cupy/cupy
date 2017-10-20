@@ -53,6 +53,16 @@ def _make_unordered(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_duplicate(xp, sp, dtype):
+    data = xp.array([0, 1, 3, 2, 4, 5], dtype)
+    indices = xp.array([0, 0, 0, 2, 0, 2], 'i')
+    indptr = xp.array([0, 3, 6, 6], 'i')
+    # 4, 0, 0, 0
+    # 4, 0, 7, 0
+    # 0, 0, 0, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make_square(xp, sp, dtype):
     data = xp.array([0, 1, 2, 3], dtype)
     indices = xp.array([0, 1, 0, 2], 'i')
@@ -127,6 +137,52 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, m.indices)
         cupy.testing.assert_array_equal(n.indptr, m.indptr)
         self.assertEqual(n.shape, m.shape)
+
+    def test_init_dense(self):
+        m = cupy.array([[0, 1, 0, 2],
+                        [0, 0, 0, 0],
+                        [0, 0, 3, 0]], dtype=self.dtype)
+        n = cupy.sparse.csr_matrix(m)
+        self.assertEqual(n.nnz, 3)
+        self.assertEqual(n.shape, (3, 4))
+        cupy.testing.assert_array_equal(n.data, [1, 2, 3])
+        cupy.testing.assert_array_equal(n.indices, [1, 3, 2])
+        cupy.testing.assert_array_equal(n.indptr, [0, 2, 2, 3])
+
+    def test_init_dense_empty(self):
+        m = cupy.array([[0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]], dtype=self.dtype)
+        n = cupy.sparse.csr_matrix(m)
+        self.assertEqual(n.nnz, 0)
+        self.assertEqual(n.shape, (3, 4))
+        cupy.testing.assert_array_equal(n.data, [])
+        cupy.testing.assert_array_equal(n.indices, [])
+        cupy.testing.assert_array_equal(n.indptr, [0, 0, 0, 0])
+
+    def test_init_dense_one_dim(self):
+        m = cupy.array([0, 1, 0, 2], dtype=self.dtype)
+        n = cupy.sparse.csr_matrix(m)
+        self.assertEqual(n.nnz, 2)
+        self.assertEqual(n.shape, (1, 4))
+        cupy.testing.assert_array_equal(n.data, [1, 2])
+        cupy.testing.assert_array_equal(n.indices, [1, 3])
+        cupy.testing.assert_array_equal(n.indptr, [0, 2])
+
+    def test_init_dense_zero_dim(self):
+        m = cupy.array(1, dtype=self.dtype)
+        n = cupy.sparse.csr_matrix(m)
+        self.assertEqual(n.nnz, 1)
+        self.assertEqual(n.shape, (1, 1))
+        cupy.testing.assert_array_equal(n.data, [1])
+        cupy.testing.assert_array_equal(n.indices, [0])
+        cupy.testing.assert_array_equal(n.indptr, [0, 1])
+
+    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_init_dense_invalid_ndim(self, xp, sp):
+        m = xp.zeros((1, 1, 1), dtype=self.dtype)
+        sp.csr_matrix(m)
 
     def test_copy(self):
         n = self.m.copy()
@@ -304,6 +360,21 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         len(m)
 
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_iter(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        rows = []
+        for r in m:
+            rows.append(r)
+            self.assertIsInstance(r, sp.spmatrix)
+        self.assertEqual(len(rows), 3)
+        return xp.concatenate([r.toarray() for r in rows])
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_asfptype(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.asfptype().toarray()
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -328,7 +399,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
     def test_toarray_unknown_order(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        m.toarray(order='unknown')
+        m.toarray(order='#')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
@@ -341,14 +412,39 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.tocoo().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocoo_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocoo(copy=True)
+        self.assertIsNot(m.data, n.data)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsc_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsc(copy=True)
+        self.assertIsNot(m.data, n.data)
+        self.assertIsNot(m.indices, n.indices)
+        self.assertIsNot(m.indptr, n.indptr)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsr(copy=True)
+        self.assertIsNot(m.data, n.data)
+        self.assertIsNot(m.indices, n.indices)
+        self.assertIsNot(m.indptr, n.indptr)
+        return n.toarray()
 
     # dot
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -403,7 +499,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(5).astype(self.dtype)
         m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -571,7 +667,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(5).astype(self.dtype)
         m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -629,7 +725,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = xp.array(2, dtype=self.dtype)
         return (x * m).toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
@@ -672,6 +768,21 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = _make_square(xp, sp, self.dtype)
         m ** -1
 
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_pow_not_square(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m ** 2
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_pow_float(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** 1.5
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
+    def test_pow_list(self, xp, sp):
+        m = _make_square(xp, sp, self.dtype)
+        m ** []
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = _make_unordered(xp, sp, self.dtype)
@@ -679,9 +790,22 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates(self, xp, sp):
+        m = _make_duplicate(xp, sp, self.dtype)
+        self.assertFalse(m.has_canonical_format)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_transpose_axes_int(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.transpose(axes=0)
 
 
 @testing.parameterize(*testing.product({

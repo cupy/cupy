@@ -24,7 +24,7 @@ class dia_matrix(data._data_matrix):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given arrays are always used.
 
-    .. see::
+    .. seealso::
        :class:`scipy.sparse.dia_matrix`
 
     """
@@ -131,7 +131,7 @@ class dia_matrix(data._data_matrix):
             cupy.sparse.csc_matrix: Converted matrix.
 
         """
-        if self.nnz == 0:
+        if self.data.size == 0:
             return csc.csc_matrix(self.shape, dtype=self.dtype)
 
         num_rows, num_cols = self.shape

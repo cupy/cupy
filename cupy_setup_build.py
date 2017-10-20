@@ -11,12 +11,16 @@ import sys
 import pkg_resources
 import setuptools
 from setuptools.command import build_ext
+from setuptools.command import sdist
 
 from install import build
 from install import utils
 
 
-required_cython_version = pkg_resources.parse_version('0.24.0')
+required_cython_version = pkg_resources.parse_version('0.26.1')
+ignore_cython_versions = [
+    pkg_resources.parse_version('0.27.0'),
+]
 
 MODULES = [
     {
@@ -321,18 +325,21 @@ def parse_args():
     return arg_options
 
 
-def check_cython_version():
-    try:
-        import Cython
-        cython_version = pkg_resources.parse_version(Cython.__version__)
-        return cython_version >= required_cython_version
-    except ImportError:
-        return False
+cupy_setup_options = parse_args()
+print('Options:', cupy_setup_options)
+
+try:
+    import Cython
+    import Cython.Build
+    cython_version = pkg_resources.parse_version(Cython.__version__)
+    cython_available = (
+        cython_version >= required_cython_version and
+        cython_version not in ignore_cython_versions)
+except ImportError:
+    cython_available = False
 
 
 def cythonize(extensions, arg_options):
-    import Cython.Build
-
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
@@ -349,17 +356,16 @@ def check_extensions(extensions):
     for x in extensions:
         for f in x.sources:
             if not path.isfile(f):
-                msg = ('Missing file: %s\n' % f +
-                       'Please install Cython. ' +
-                       'Please also check the version of Cython.\n' +
-                       'See ' +
-                       'https://docs-cupy.chainer.org/en/stable/install.html')
-                raise RuntimeError(msg)
+                raise RuntimeError(
+                    'Missing file: %s\n' % f +
+                    'Please install Cython %s. ' % required_cython_version +
+                    'Please also check the version of Cython.\n' +
+                    'See ' +
+                    'https://docs-cupy.chainer.org/en/stable/install.html')
 
 
 def get_ext_modules(use_cython=False):
-    arg_options = parse_args()
-    print('Options:', arg_options)
+    arg_options = cupy_setup_options
 
     # We need to call get_config_vars to initialize _config_vars in distutils
     # see #1849
@@ -368,9 +374,6 @@ def get_ext_modules(use_cython=False):
     sysconfig.customize_compiler(compiler)
 
     extensions = make_extensions(arg_options, compiler, use_cython)
-
-    if use_cython:
-        extensions = cythonize(extensions, arg_options)
 
     return extensions
 
@@ -468,7 +471,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             self._setup_compile(output_dir, macros, include_dirs, sources,
                                 depends, extra_postargs)
 
-        compiler_so = [build.get_nvcc_path()]
+        compiler_so = build.get_nvcc_path()
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
@@ -508,6 +511,18 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         return other_objects + cu_objects
 
 
+class sdist_with_cython(sdist.sdist):
+
+    """Custom `sdist` command with cyhonizing."""
+
+    def __init__(self, *args, **kwargs):
+        if not cython_available:
+            raise RuntimeError('Cython is required to make sdist.')
+        ext_modules = get_ext_modules(True)  # get .pyx modules
+        cythonize(ext_modules, cupy_setup_options)
+        sdist.sdist.__init__(self, *args, **kwargs)
+
+
 class custom_build_ext(build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
@@ -530,7 +545,8 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        if check_cython_version():
-            get_ext_modules(True)  # convert Cython files to cpp files
+        if cython_available:
+            ext_modules = get_ext_modules(True)  # get .pyx modules
+            cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)

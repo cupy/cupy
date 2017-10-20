@@ -59,6 +59,24 @@ class TestSearch(unittest.TestCase):
         return a.argmax(axis=2)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_argmax_zero_size(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmax()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_argmax_zero_size_axis0(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmax(axis=0)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_argmax_zero_size_axis1(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmax(axis=1)
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmin_all(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
@@ -105,6 +123,24 @@ class TestSearch(unittest.TestCase):
     def test_argmin_axis2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return a.argmin(axis=2)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_argmin_zero_size(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmin()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_argmin_zero_size_axis0(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmin(axis=0)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_argmin_zero_size_axis1(self, xp, dtype):
+        a = testing.shaped_random((0, 1), xp, dtype)
+        return a.argmin(axis=1)
 
 
 @testing.parameterize(
@@ -161,6 +197,8 @@ class TestWhereError(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
+    {"array": numpy.zeros((0, 2))},
+    {"array": numpy.zeros((0, 2, 0))},
 )
 @testing.gpu
 class TestNonzero(unittest.TestCase):
@@ -177,6 +215,8 @@ class TestNonzero(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
+    {"array": numpy.zeros((0, 2))},
+    {"array": numpy.zeros((0, 2, 0))},
 )
 @testing.gpu
 class TestFlatNonzero(unittest.TestCase):

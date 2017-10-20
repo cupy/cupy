@@ -1,5 +1,5 @@
-CuPy Contribution Guide
-=======================
+Contribution Guide
+==================
 
 This is a guide for all contributions to CuPy.
 The development of CuPy is running on `the official repository at GitHub <https://github.com/cupy/cupy>`_.
@@ -170,6 +170,9 @@ In order to run unit tests at the repository root, you first have to build Cytho
     $ export PATH=/usr/lib/ccache:$PATH
 
   See `ccache <https://ccache.samba.org/>`_ for details.
+
+  If you want to use ccache for nvcc, please install ccache v3.3 or later.
+  You also need to set environment variable ``NVCC='ccache nvcc'``.
 
 Once the Cython modules are built, you can run unit tests simply by running ``nosetests`` command at the repository root::
 

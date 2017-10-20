@@ -37,12 +37,6 @@ class FusionOp(object):
         return "<FusionOp, name={}, types=[{}]>".format(
             self.name, ', '.join(_.name for _ in self.types))
 
-    def build_kernel_name(self):
-        return self.name + '_' + '_'.join([
-            'IN_' + '_'.join(build_kernel_name(_) for _ in self.in_vars),
-            'OUT_' + '_'.join(build_kernel_name(_) for _ in self.out_vars),
-        ])
-
 
 class _FusionVar(object):
 
@@ -54,9 +48,6 @@ class _FusionVar(object):
     def __repr__(self):
         return "<_FusionVar, num={}, ty={}, const={}>".format(
             self.num, self.ty, self.const)
-
-    def build_kernel_name(self):
-        return self.ty.name + '_at' + str(self.num)
 
 
 class _FusionMem(object):
@@ -93,9 +84,6 @@ class _FusionRef(object):
 
     def __repr__(self):
         return "<_FusionRef, dtype=%s>" % self.dtype
-
-    def build_kernel_name(self):
-        return build_kernel_name(self._var)
 
     def __neg__(self):
         return negative(self)
@@ -498,7 +486,7 @@ def _get_fix_code(data_type, fixed_type, operation):
     return module_code
 
 
-def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
+def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
     in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
     mem = _FusionMem(in_vars)
     in_refs = [_FusionRef(_, mem) for _ in in_vars]
@@ -516,9 +504,6 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
     operation = ''.join(_get_declaration_from_var(_) for _ in tmpvars)
     operation += ''.join(_get_declaration_from_op(_) for _ in op_list)
     operation += '\n'.join(_get_operation_code(_) for _ in op_list)
-
-    if name is None:
-        name = 'fusion__' + '__'.join(build_kernel_name(_) for _ in op_list)
 
     if reduce is None:
         if not out_params:
@@ -574,6 +559,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name=None):
                                     reduce_code,
                                     'res = _post_map(_post_fix(a))',
                                     identity,
+                                    name=name,
                                     reduce_type=post_type,
                                     preamble=submodule_code)
 
@@ -592,9 +578,9 @@ class Fusion(object):
         post_map (function): Mapping function for reduced values.
     """
 
-    def __init__(self, func, input_num, reduce, post_map):
+    def __init__(self, func, input_num, reduce, post_map, name=None):
         self.func = func
-        self.name = func.__name__
+        self.name = name or func.__name__
         self.input_num = input_num
         self.reduce = reduce
         self.post_map = post_map
@@ -633,7 +619,7 @@ class Fusion(object):
                 else:
                     nin = len(args)
                 f = _get_fusion(self.func, nin, self.reduce,
-                                self.post_map, self.identity, types)
+                                self.post_map, self.identity, types, self.name)
                 self._memo[key] = f
             f = self._memo[key]
             if self.reduce is None:
@@ -667,28 +653,21 @@ def fuse(*args, **kwargs):
             pre-mapping step. If not assigned, reduction step is skipped.
         post_map (function): Mapping function for reduced values.
             If not assigned, post_map step is skipped.
+        kernel_name (str): Name of the fused kernel function.
+            If omitted, the name of the decorated function is used.
     """
     util.experimental('cupy.core.fusion')
 
-    def wrapper(f, input_num=None, reduce=None, post_map=lambda x: x):
-        return Fusion(f, input_num, reduce, post_map)
+    def wrapper(
+            f, input_num=None, reduce=None, post_map=lambda x: x,
+            kernel_name=None):
+        return Fusion(f, input_num, reduce, post_map, kernel_name)
 
     if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
         return functools.update_wrapper(wrapper(args[0]), args[0])
     else:
         return lambda f: functools.update_wrapper(
             wrapper(f, *args, **kwargs), f)
-
-
-def build_kernel_name(entity):
-    if isinstance(entity, FusionOp):
-        return entity.build_kernel_name()
-    elif isinstance(entity, _FusionVar):
-        return entity.build_kernel_name()
-    elif isinstance(entity, _FusionRef):
-        return entity.build_kernel_name()
-    else:
-        assert False, type(entity)
 
 
 class ufunc(core.ufunc):
@@ -700,7 +679,7 @@ class ufunc(core.ufunc):
         self.nargs = fusion_op.nargs
         self._ops = fusion_op._ops
         self._preamble = fusion_op._preamble
-        self.__doc__ = fusion_op.__doc__
+        self.__doc__ = cupy_op.__doc__
         self._params = fusion_op._params
         self._routine_cache = fusion_op._routine_cache
 
@@ -729,26 +708,13 @@ def _create_ufunc(cupy_ufunc, numpy_ufunc):
     return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc)
 
 
-_where = ufunc(sorting.search._where_ufunc,
-               sorting.search.where, numpy.where)
+where = ufunc(sorting.search._where_ufunc,
+              sorting.search.where, numpy.where)
 
-_clip = ufunc(core._clip, math.misc.clip, numpy.clip)
+clip = ufunc(core._clip, math.misc.clip, numpy.clip)
 
-_elementwise_copy = ufunc(core._elementwise_copy,
-                          creation.from_data.copy, numpy.copy)
-
-
-def where(*args, **kwargs):
-    return _where(*args, **kwargs)
-
-
-def clip(*args, **kwargs):
-    return _clip(*args, **kwargs)
-
-
-def copy(*args, **kwargs):
-    return _elementwise_copy(*args, **kwargs)
-
+copy = ufunc(core._elementwise_copy,
+             creation.from_data.copy, numpy.copy)
 
 bitwise_and = _create_ufunc(core.bitwise_and, numpy.bitwise_and)
 bitwise_or = _create_ufunc(core.bitwise_or, numpy.bitwise_or)
@@ -846,6 +812,7 @@ class reduction(object):
     def __init__(self, cupy_op, numpy_op):
         self._cupy_op = cupy_op
         self._numpy_op = numpy_op
+        self.__doc__ = cupy_op.__doc__
 
     def __call__(self, *args, **kwargs):
         if builtins.any(type(_) == numpy.ndarray for _ in args):
@@ -854,36 +821,12 @@ class reduction(object):
             return self._cupy_op(*args, **kwargs)
 
 
-_all = reduction(logic.truth.all, numpy.all)
-_any = reduction(logic.truth.any, numpy.any)
-_sum = reduction(math.sumprod.sum, numpy.sum)
-_prod = reduction(math.sumprod.prod, numpy.prod)
-_amax = reduction(statistics.order.amax, numpy.amax)
-_amin = reduction(statistics.order.amin, numpy.amin)
-
-
-def all(*args, **kwargs):
-    return _all(*args, **kwargs)
-
-
-def any(*args, **kwargs):
-    return _any(*args, **kwargs)
-
-
-def sum(*args, **kwargs):
-    return _sum(*args, **kwargs)
-
-
-def prod(*args, **kwargs):
-    return _prod(*args, **kwargs)
-
-
-def amax(*args, **kwargs):
-    return _amax(*args, **kwargs)
-
-
-def amin(*args, **kwargs):
-    return _amin(*args, **kwargs)
+all = reduction(logic.truth.all, numpy.all)
+any = reduction(logic.truth.any, numpy.any)
+sum = reduction(math.sumprod.sum, numpy.sum)
+prod = reduction(math.sumprod.prod, numpy.prod)
+amax = reduction(statistics.order.amax, numpy.amax)
+amin = reduction(statistics.order.amin, numpy.amin)
 
 
 all._raw = core._all

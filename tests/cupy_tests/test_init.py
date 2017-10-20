@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 
+import cupy
 from cupy import testing
 
 
@@ -71,7 +72,7 @@ class TestNotAvailable(unittest.TestCase):
             os.environ['CUDA_VISIBLE_DEVICES'] = self.old
 
     def test_no_device_1(self):
-        os.environ['CUDA_VISIBLE_DEVICES'] = ''
+        os.environ['CUDA_VISIBLE_DEVICES'] = ' '
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
@@ -79,6 +80,17 @@ class TestNotAvailable(unittest.TestCase):
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
         available = _test_cupy_available(self)
         self.assertFalse(available)
+
+
+class TestMemoryPool(unittest.TestCase):
+
+    def test_get_default_memory_pool(self):
+        p = cupy.get_default_memory_pool()
+        self.assertIsInstance(p, cupy.cuda.memory.MemoryPool)
+
+    def test_get_default_pinned_memory_pool(self):
+        p = cupy.get_default_pinned_memory_pool()
+        self.assertIsInstance(p, cupy.cuda.pinned_memory.PinnedMemoryPool)
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in

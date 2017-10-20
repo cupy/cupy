@@ -18,6 +18,13 @@ class TestArrayCopyAndView(unittest.TestCase):
         b[:] = 0
         return a
 
+    @testing.for_dtypes([numpy.int16, numpy.int64])
+    @testing.numpy_cupy_array_equal()
+    def test_view_itemsize(self, xp, dtype):
+        a = testing.shaped_arange((4,), xp, dtype=numpy.int32)
+        b = a.view(dtype=dtype)
+        return b
+
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)

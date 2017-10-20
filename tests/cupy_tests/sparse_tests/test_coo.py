@@ -110,6 +110,15 @@ class TestCooMatrix(unittest.TestCase):
         testing.assert_array_equal(
             self.m.col, cupy.array([0, 1, 3, 2], self.dtype))
 
+    def test_init_copy(self):
+        n = cupy.sparse.coo_matrix(self.m)
+        self.assertIsNot(n, self.m)
+        cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
+
+    def test_init_copy_other_sparse(self):
+        n = cupy.sparse.coo_matrix(self.m.tocsr())
+        cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 
@@ -317,6 +326,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.getnnz()
 
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_asfptype(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.asfptype().toarray()
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -328,14 +342,42 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m.A
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocoo(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.tocoo().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocoo_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocoo(copy=True)
+        self.assertIsNot(m.data, n.data)
+        self.assertIsNot(m.row, n.row)
+        self.assertIsNot(m.col, n.col)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsc().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsc_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsc(copy=True)
+        self.assertIsNot(m.data, n.data)
+        return n.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsr().toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_tocsr_copy(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        n = m.tocsr(copy=True)
+        self.assertIsNot(m.data, n.data)
+        return n.toarray()
 
     # dot
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -663,6 +705,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_transpose_axes_int(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.transpose(axes=0)
 
 
 @testing.parameterize(*testing.product({

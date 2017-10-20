@@ -63,31 +63,69 @@ def _proc_as_batch(proc, x, axis):
     trans, revert = _axis_to_first(x, axis)
     t = x.transpose(trans)
     s = t.shape
-    r = t.reshape(x.shape[axis], -1).T
-    result = proc(r)
-    return result.T.reshape(s).transpose(revert)
+    r = t.reshape(x.shape[axis], -1)
+    pos = 1
+    size = r.size
+    batch = r.shape[1]
+    while pos < size:
+        proc(pos, batch, r, size=size)
+        pos <<= 1
+    return r.reshape(s).transpose(revert)
 
 
-def _cumsum_batch(out):
-    kern = core.ElementwiseKernel(
-        'int32 pos, int32 batch', 'raw T x',
-        '''
-        int b = i % batch;
-        int j = i / batch;
-        if (j & pos) {
-          const int dst_index[] = {b, j};
-          const int src_index[] = {b, j ^ pos | (pos - 1)};
-          x[dst_index] += x[src_index];
-        }
-        ''',
-        'cumsum_batch_kernel'
-    )
+def _cum_core(a, axis, dtype, out, kern, batch_kern):
+    if out is None:
+        if dtype is None:
+            kind = a.dtype.kind
+            if kind == 'b':
+                dtype = numpy.dtype('l')
+            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
+                dtype = numpy.dtype('l')
+            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
+                dtype = numpy.dtype('L')
+            else:
+                dtype = a.dtype
+
+        out = a.astype(dtype)
+    else:
+        out[...] = a
+
+    if axis is None:
+        out = out.ravel()
+    elif not (-a.ndim <= axis < a.ndim):
+        raise core.core._AxisError('axis(={}) out of bounds'.format(axis))
+    else:
+        return _proc_as_batch(batch_kern, out, axis=axis)
 
     pos = 1
     while pos < out.size:
-        kern(pos, out.shape[0], out, size=out.size)
+        kern(pos, out, size=out.size)
         pos <<= 1
     return out
+
+
+_cumsum_batch_kern = core.ElementwiseKernel(
+    'int64 pos, int64 batch', 'raw T x',
+    '''
+    ptrdiff_t b = i % batch;
+    ptrdiff_t j = i / batch;
+    if (j & pos) {
+      const ptrdiff_t dst_index[] = {j, b};
+      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
+      x[dst_index] += x[src_index];
+    }
+    ''',
+    'cumsum_batch_kernel'
+)
+_cumsum_kern = core.ElementwiseKernel(
+    'int64 pos', 'raw T x',
+    '''
+    if (i & pos) {
+      x[i] += x[i ^ pos | (pos - 1)];
+    }
+    ''',
+    'cumsum_kernel'
+)
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
@@ -106,66 +144,31 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
-    if out is None:
-        if dtype is None:
-            kind = a.dtype.kind
-            if kind == 'b':
-                dtype = numpy.dtype('l')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
-            else:
-                dtype = a.dtype
-
-        out = a.astype(dtype)
-    else:
-        out[...] = a
-
-    if axis is None:
-        out = out.ravel()
-    elif not (-a.ndim <= axis < a.ndim):
-        raise core.core._AxisError('axis(={}) out of bounds'.format(axis))
-    else:
-        return _proc_as_batch(_cumsum_batch, out, axis=axis)
-
-    kern = core.ElementwiseKernel(
-        'int32 pos', 'raw T x',
-        '''
-        if (i & pos) {
-          x[i] += x[i ^ pos | (pos - 1)];
-        }
-        ''',
-        'cumsum_kernel'
-    )
-
-    pos = 1
-    while pos < out.size:
-        kern(pos, out, size=out.size)
-        pos <<= 1
-    return out
+    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern)
 
 
-def _cumprod_batch(out):
-    kern = core.ElementwiseKernel(
-        'int64 pos, int64 batch', 'raw T x',
-        '''
-        int b = i % batch;
-        int j = i / batch;
-        if (j & pos) {
-          const int dst_index[] = {b, j};
-          const int src_index[] = {b, j ^ pos | (pos - 1)};
-          x[dst_index] *= x[src_index];
-        }
-        ''',
-        'cumprod_batch_kernel'
-    )
-
-    pos = 1
-    while pos < out.size:
-        kern(pos, out.shape[0], out, size=out.size)
-        pos <<= 1
-    return out
+_cumprod_batch_kern = core.ElementwiseKernel(
+    'int64 pos, int64 batch', 'raw T x',
+    '''
+    ptrdiff_t b = i % batch;
+    ptrdiff_t j = i / batch;
+    if (j & pos) {
+      const ptrdiff_t dst_index[] = {j, b};
+      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
+      x[dst_index] *= x[src_index];
+    }
+    ''',
+    'cumprod_batch_kernel'
+)
+_cumprod_kern = core.ElementwiseKernel(
+    'int64 pos', 'raw T x',
+    '''
+    if (i & pos) {
+      x[i] *= x[i ^ pos | (pos - 1)];
+    }
+    ''',
+    'cumprod_kernel'
+)
 
 
 def cumprod(a, axis=None, dtype=None, out=None):
@@ -184,44 +187,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
-    if out is None:
-        if dtype is None:
-            kind = a.dtype.kind
-            if kind == 'b':
-                dtype = numpy.dtype('l')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
-            else:
-                dtype = a.dtype
-
-        out = a.astype(dtype)
-    else:
-        out[...] = a
-
-    if axis is None:
-        out = out.ravel()
-    elif not (-a.ndim <= axis < a.ndim):
-        raise core.core._AxisError('axis(={}) out of bounds'.format(axis))
-    else:
-        return _proc_as_batch(_cumprod_batch, out, axis=axis)
-
-    kern = core.ElementwiseKernel(
-        'int64 pos', 'raw T x',
-        '''
-        if (i & pos) {
-          x[i] *= x[i ^ pos | (pos - 1)];
-        }
-        ''',
-        'cumprod_kernel'
-    )
-
-    pos = 1
-    while pos < out.size:
-        kern(pos, out, size=out.size)
-        pos <<= 1
-    return out
+    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
 
 
 # TODO(okuta): Implement diff

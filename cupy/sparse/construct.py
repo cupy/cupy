@@ -4,10 +4,6 @@ import cupy
 def eye(m, n=None, k=0, dtype='d', format=None):
     """Creates a sparse matrix with ones on diagonal.
 
-    .. note::
-       Currently it only supports ``m==n``, ``k=0`` and csr, csc and coo
-       formats.
-
     Args:
         m (int): Number of rows.
         n (int or None): Number of columns. If it is ``None``,
@@ -43,8 +39,8 @@ def eye(m, n=None, k=0, dtype='d', format=None):
             data = cupy.ones(n, dtype=dtype)
             return cupy.sparse.coo_matrix((data, (row, col)), (n, n))
 
-    raise ValueError(
-        'only supports identity matries of csr, csc and coo format')
+    diags = cupy.ones((1, max(0, min(m + k, n))), dtype=dtype)
+    return spdiags(diags, k, m, n).asformat(format)
 
 
 def identity(n, dtype='d', format=None):
@@ -65,3 +61,71 @@ def identity(n, dtype='d', format=None):
 
     """
     return eye(n, n, dtype=dtype, format=format)
+
+
+def spdiags(data, diags, m, n, format=None):
+    """Creates a sparse matrix from diagonals.
+
+    Args:
+        data (cupy.ndarray): Matrix diagonals stored row-wise.
+        diags (cupy.ndarray): Diagonals to set.
+        m (int): Number of rows.
+        n (int): Number of cols.
+        format (str or None): Sparse format, e.g. ``format="csr"``.
+
+    Returns:
+        cupy.sparse.spmatrix: Created sparse matrix.
+
+    .. seealso:: :func:`scipy.sparse.spdiags`
+
+    """
+    return cupy.sparse.dia_matrix((data, diags), shape=(m, n)).asformat(format)
+
+
+def random(m, n, density=0.01, format='coo', dtype=None,
+           random_state=None, data_rvs=None):
+    """Generates a random sparse matrix.
+
+    Args:
+        m (int): Number of rows.
+        n (int): Number of cols.
+        density (float): Ratio of non-zero entries.
+        format (str): Matrix format.
+        dtype (dtype): Type of the returned matrix values.
+        random_state (cupy.random.RandomState or int):
+            State of random number generator.
+            If an integer is given, the method makes a new state for random
+            number generator and uses it.
+            If it is not given, the default state is used.
+            This state is used to generate random indexes for nonzero entries.
+        data_rvs (callable): A function to generate data for a random matrix.
+            If it is not given, `random_state.rand` is used.
+
+    Returns:
+        cupy.sparse.spmatrix: Generated matrix.
+
+    """
+    if density < 0 or density > 1:
+        raise ValueError('density expected to be 0 <= density <= 1')
+    dtype = cupy.dtype(dtype)
+    if dtype.char not in 'fd':
+        raise NotImplementedError('type %s not supported' % dtype)
+
+    mn = m * n
+
+    k = int(density * m * n)
+
+    if random_state is None:
+        random_state = cupy.random
+    elif isinstance(random_state, (int, cupy.integer)):
+        random_state = cupy.random.RandomState(random_state)
+
+    if data_rvs is None:
+        data_rvs = random_state.rand
+
+    ind = random_state.choice(mn, size=k, replace=False)
+    j = cupy.floor(ind * (1. / m)).astype('i')
+    i = ind - j * m
+    vals = data_rvs(k).astype(dtype)
+    return cupy.sparse.coo_matrix(
+        (vals, (i, j)), shape=(m, n)).asformat(format)

@@ -8,6 +8,7 @@ import six
 
 import cupy
 from cupy.core import flags
+from cupy.cuda import device
 from cupy.cuda import stream
 try:
     from cupy.cuda import thrust
@@ -66,12 +67,12 @@ cdef class ndarray:
         base (None or cupy.ndarray): Base array from which this array is
             created as a view.
         data (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        dtype(numpy.dtype): Dtype object of element type.
+        ~ndarray.dtype(numpy.dtype): Dtype object of element type.
 
             .. seealso::
                `Data type objects (dtype) \
                <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
-        size (int): Number of elements this array holds.
+        ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
 
@@ -279,9 +280,9 @@ cdef class ndarray:
             dtype: Type specifier.
             order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
                 (Fortran-style) order.
-                When `order` is 'A', it uses 'F' if `a` is column-major and
-                uses `C` otherwise.
-                And when `order` is 'K', it keeps strides as closely as
+                When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
+                uses 'C' otherwise.
+                And when ``order`` is 'K', it keeps strides as closely as
                 possible.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
@@ -359,8 +360,8 @@ cdef class ndarray:
         Args:
             order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
                 (Fortran-style) order.
-                When `order` is 'A', it uses 'F' if `a` is column-major and
-                uses `C` otherwise.
+                When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
+                uses 'C' otherwise.
                 And when `order` is 'K', it keeps strides as closely as
                 possible.
 
@@ -402,12 +403,23 @@ cdef class ndarray:
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef ndarray v
         v = ndarray.__new__(ndarray)
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
+
+        if dtype is None:
+            v.size = self.size
+            v._shape = self._shape
+            v._strides = self._strides
+        else:
+            shape = list(self._shape)
+            strides = list(self._strides)
+            shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
+            strides[-1] = strides[-1] * v.dtype.itemsize // self.dtype.itemsize
+            v._shape = shape
+            v._strides = strides
+            v.size = self.size * self.dtype.itemsize // v.dtype.itemsize
+
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
-        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         return v
@@ -756,7 +768,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         if axis == ndim - 1:
             data = self
@@ -815,7 +827,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         if axis == ndim - 1:
             data = data.copy()
@@ -844,6 +856,7 @@ cdef class ndarray:
             kth (int or sequence of ints): Element index to partition by. If
                 supplied with a sequence of k-th it will partition all elements
                 indexed by k-th of them into their sorted position at once.
+
             axis (int): Axis along which to sort. Default is -1, which means
                 sort along the last axis.
 
@@ -862,7 +875,7 @@ cdef class ndarray:
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
-            raise ValueError('Axis out of range')
+            raise _AxisError('Axis out of range')
 
         length = self.shape[axis]
         if isinstance(kth, int):
@@ -876,7 +889,53 @@ cdef class ndarray:
         # kth is ignored.
         self.sort(axis=axis)
 
-    # TODO(okuta): Implement argpartition
+    def argpartition(self, kth, axis=-1):
+        """Returns the indices that would partially sort an array.
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of the same type and shape as ``a``.
+
+        .. seealso::
+            :func:`cupy.argpartition` for full documentation,
+            :meth:`numpy.ndarray.argpartition`
+
+        """
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
+
+        ndim = data.ndim
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise _AxisError('Axis out of range')
+
+        length = data.shape[axis]
+        if isinstance(kth, int):
+            kth = kth,
+        for k in kth:
+            if k < 0:
+                k += length
+            if not (0 <= k < length):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+
+        # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
+        # currently performs full argsort with Thrust's efficient radix sort
+        # algoritm.
+
+        # kth is ignored.
+        return cupy.argsort(data, axis=axis)
+
     # TODO(okuta): Implement searchsorted
 
     def nonzero(self):
@@ -892,28 +951,28 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
-        condition = self != 0
+        cdef Py_ssize_t count_nonzero, ndim
         dtype = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
+        else:
+            r = self.ravel()
+            scan_index = scan((r != 0).astype(dtype))
+            count_nonzero = int(scan_index[-1])
+        ndim = max(self._shape.size(), 1)
+        if count_nonzero == 0:
+            return (ndarray((0,), dtype=dtype),) * ndim
 
-        scan_index = scan(condition.astype(dtype).ravel())
-        count_nonzero = int(scan_index[-1])
-
-        if self.ndim <= 1:
-            dst = ndarray((count_nonzero,), dtype=dtype)
-
+        dst = ndarray((count_nonzero * ndim,), dtype=dtype)
+        if ndim <= 1:
             kern = _nonzero_1d_kernel(self.dtype, dtype)
-            kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
-
+            kern.linear_launch(self.size, (r, scan_index, dst))
             return dst,
         else:
-            dst = ndarray((count_nonzero * self.ndim,), dtype=dtype)
-
-            kern = _nonzero_kernel(self.dtype, self.ndim, dtype, dtype)
+            kern = _nonzero_kernel(self.dtype, ndim, dtype, dtype)
             kern.linear_launch(self.size,
-                               (self.ravel(), Indexer(self.shape),
-                                scan_index, dst))
-            return tuple([dst[i::self.ndim]
-                          for i in range(self.ndim)])
+                               (r, Indexer(self.shape), scan_index, dst))
+            return tuple([dst[i::ndim] for i in range(ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -1657,10 +1716,13 @@ cdef class ndarray:
             raise ValueError(
                 'Shape mismatch. Old shape: {}, new shape: {}'.format(
                     self.shape, arr.shape))
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            arr = numpy.ascontiguousarray(arr)
+        elif self._f_contiguous:
+            arr = numpy.asfortranarray(arr)
+        else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        arr = numpy.ascontiguousarray(arr)
         ptr = arr.ctypes.get_as_parameter()
         if stream is None:
             self.data.copy_from_host(ptr, self.nbytes)
@@ -2000,19 +2062,22 @@ cdef _argmax = create_reduction_func(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
-    # TODO(beam2d): Support order and subok options
+cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
+                    bint subok=False, Py_ssize_t ndmin=0):
+    # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
+    if subok:
+        raise NotImplementedError
     if isinstance(obj, ndarray):
         src = obj
         if dtype is None:
             dtype = src.dtype
         dev = src.data.device
         if dev is None or dev.id == device.get_device_id():
-            a = src.astype(dtype, copy=copy)
+            a = src.astype(dtype, order=order, copy=copy)
         else:
-            a = src.copy().astype(dtype, copy=False)
+            a = src.copy(order=order).astype(dtype, copy=False)
 
         ndim = a._shape.size()
         if ndmin > ndim:
@@ -2021,12 +2086,15 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order='C',
+        if order == 'K':
+            order = 'A'
+        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
+        order = 'C' if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
-        a = ndarray(a_cpu.shape, dtype=a_dtype)
+        a = ndarray(a_cpu.shape, dtype=a_dtype, order=order)
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
@@ -2166,6 +2234,9 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     return ret
 
 
+cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
+
+
 cdef class broadcast:
     """Object that performs broadcasting.
 
@@ -2176,9 +2247,9 @@ cdef class broadcast:
         arrays (tuple of arrays): Arrays to be broadcasted.
 
     Attributes:
-        shape (tuple of ints): The broadcasted shape.
+        ~broadcast.shape (tuple of ints): The broadcasted shape.
         nd (int): Number of dimensions of the broadcasted shape.
-        size (int): Total size of the broadcasted shape.
+        ~broadcast.size (int): Total size of the broadcasted shape.
         values (list of arrays): The broadcasted arrays.
 
     .. seealso:: :class:`numpy.broadcast`
@@ -2192,7 +2263,7 @@ cdef class broadcast:
         readonly Py_ssize_t nd
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t i, j, s, ss, a_ndim, a_sh
+        cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh
         cdef vector.vector[Py_ssize_t] shape, strides, r_shape, r_strides
         cdef vector.vector[vector.vector[Py_ssize_t]] shape_arr
         cdef ndarray a, view
@@ -2209,12 +2280,18 @@ cdef class broadcast:
 
         r_shape.clear()
         for i in range(self.nd):
-            ss = 0
+            smin = PY_SSIZE_T_MAX
+            smax = 0
             for j in range(<Py_ssize_t>shape_arr.size()):
                 if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
-                    ss = max(ss, s)
-            r_shape.push_back(ss)
+                    smin = min(smin, s)
+                    smax = max(smax, s)
+            if smin == 0 and smax > 1:
+                raise ValueError(
+                    'shape mismatch: objects cannot be broadcast to a '
+                    'single shape')
+            r_shape.push_back(0 if smin == 0 else smax)
 
         shape.assign(r_shape.rbegin(), r_shape.rend())
         self.shape = tuple(shape)
@@ -3015,12 +3092,20 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                         Py_ssize_t axis2=1):
+    cdef Py_ssize_t ndim = a.ndim
+    if (axis1 >= ndim or abs(axis2) >= ndim or
+            axis1 < - ndim or axis2 < - ndim):
+        raise ValueError('axis1(={0}) and axis2(={1}) must be within range '
+                         '(ndim={2})'.format(axis1, axis2, ndim))
+
+    axis1 %= ndim
+    axis2 %= ndim
     if axis1 < axis2:
         min_axis, max_axis = axis1, axis2
     else:
         min_axis, max_axis = axis2, axis1
 
-    tr = list(range(a.ndim))
+    tr = list(range(ndim))
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:
@@ -3417,6 +3502,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef _cuda_runtime_version = None
+cdef _tensordot_core_mul_sum = ReductionKernel(
+    'S x, T y', 'U out',
+    'static_cast<U>(x) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
 
 cpdef ndarray tensordot_core(
@@ -3427,6 +3516,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t mode, handle
     cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
+    cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
         ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
@@ -3444,15 +3534,14 @@ cpdef ndarray tensordot_core(
     use_sgemmEx = (_cuda_runtime_version >= 7500 and
                    a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
+    use_tensor_core = (use_sgemmEx and
+                       _cuda_runtime_version >= 9000 and
+                       int(device.get_compute_capability()) == 70)
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
-
-    if not use_sgemmEx:
-        a = a.astype(dtype, copy=False)
-        b = b.astype(dtype, copy=False)
 
     if out is None:
         out = ndarray(ret_shape, dtype)
@@ -3466,7 +3555,7 @@ cpdef ndarray tensordot_core(
             out = ndarray(ret_shape, dtype)
 
     if m == 1 and n == 1:
-        (a.ravel() * b.ravel()).sum(out=out.reshape(()))
+        _tensordot_core_mul_sum(a.ravel(), b.ravel(), out.reshape(()))
         if out is not ret:
             elementwise_copy(out, ret)
         return ret
@@ -3487,6 +3576,10 @@ cpdef ndarray tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
+    if not use_sgemmEx:
+        a = a.astype(dtype, copy=False)
+        b = b.astype(dtype, copy=False)
+
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = device.get_cublas_handle()
     # Matrix-Matrix product A^T * B
@@ -3496,10 +3589,24 @@ cpdef ndarray tensordot_core(
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
     if use_sgemmEx:
         Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
-        cublas.sgemmEx(
-            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
-            runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
+        if use_tensor_core:
+            one_fp32 = 1
+            zero_fp32 = 0
+            cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+            cublas.gemmEx(
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
+                <size_t>&one_fp32,
+                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
+                a.data.ptr, runtime.CUDA_R_16F, <int>lda,
+                <size_t>&zero_fp32,
+                c.data.ptr, Ctype, <int>m,
+                runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
+            cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
+        else:
+            cublas.sgemmEx(
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+                b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
+                runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
         cublas.sgemm(
             handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
@@ -4094,7 +4201,7 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     return module.get_function(name)
 
 
-def scan(a, out=None):
+cpdef ndarray scan(ndarray a, ndarray out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:

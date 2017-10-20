@@ -31,8 +31,6 @@ class FunctionSwitcher(object):
 
 
 @testing.fix_random()
-@unittest.skipUnless(
-    os.sys.platform != 'win32', 'dtype problem on Windows')
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -233,7 +231,7 @@ class TestInterval(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
-        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        vals = [self.rs.interval(2, None).get() for _ in range(20)]
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
@@ -262,12 +260,46 @@ class TestInterval(unittest.TestCase):
     {'a': 3, 'size': (5, 5), 'p': [0.3, 0.3, 0.4]},
     {'a': 3, 'size': (5, 5), 'p': numpy.array([0.3, 0.3, 0.4])},
     {'a': 3, 'size': (), 'p': None},
-    {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
 @testing.gpu
-class TestChoice(unittest.TestCase):
+class TestChoice1(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
+
+    def test_dtype_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, p=self.p)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int64'
+        self.assertEqual(v.dtype, expected_dtype)
+        self.assertEqual(v.shape, expected_shape)
+
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        vals = [self.rs.choice(a=self.a, size=self.size, p=self.p).get()
+                for _ in range(20)]
+        size_ = self.size if isinstance(self.size, tuple) else (self.size,)
+        for val in vals:
+            self.assertEqual(val.shape, size_)
+        self.assertEqual(min(_.min() for _ in vals), 0)
+        self.assertEqual(max(_.max() for _ in vals), 2)
+
+
+@testing.parameterize(
+    {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
+)
+@testing.fix_random()
+@testing.gpu
+class TestChoice2(unittest.TestCase):
 
     def setUp(self):
         self.rs = cupy.random.get_random_state()
@@ -358,6 +390,65 @@ class TestChoiceFailure(unittest.TestCase):
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):
             self.rs.choice(a=self.a, size=self.size, p=self.p)
+
+
+@testing.parameterize(
+    {'a': 5, 'size': 2},
+    {'a': 5, 'size': (2, 2)},
+    {'a': 5, 'size': ()},
+    {'a': numpy.array([0.0, 2.0, 4.0]), 'size': 2},
+)
+@testing.fix_random()
+@testing.gpu
+class TestChoiceReplaceFalse(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = cupy.random.get_random_state()
+        self.rs.seed(testing.generate_seed())
+
+    def test_dtype_shape(self):
+        v = self.rs.choice(a=self.a, size=self.size, replace=False)
+        if isinstance(self.size, six.integer_types):
+            expected_shape = (self.size,)
+        else:
+            expected_shape = self.size
+        if isinstance(self.a, numpy.ndarray):
+            expected_dtype = 'float'
+        else:
+            expected_dtype = 'int'
+        self.assertEqual(v.dtype, expected_dtype)
+        self.assertEqual(v.shape, expected_shape)
+
+    @condition.repeat(3, 10)
+    def test_bound(self):
+        val = self.rs.choice(a=self.a, size=self.size, replace=False).get()
+        size = self.size if isinstance(self.size, tuple) else (self.size,)
+        self.assertEqual(val.shape, size)
+        self.assertTrue((0 <= val).all())
+        self.assertTrue((val < 5).all())
+        val = numpy.asarray(val)
+        self.assertEqual(numpy.unique(val).size, val.size)
+
+    def test_reproduce(self):
+        rs1 = cupy.random.RandomState(1)
+        v1 = rs1.choice(a=self.a, size=self.size, replace=False)
+        rs2 = cupy.random.RandomState(1)
+        v2 = rs2.choice(a=self.a, size=self.size, replace=False)
+        self.assertTrue((v1 == v2).all())
+
+
+@testing.parameterize(
+    {'a': 3, 'size': 5},
+    {'a': [1, 2, 3], 'size': 5},
+)
+@testing.fix_random()
+@testing.gpu
+class TestChoiceReplaceFalseFailure(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_choice_invalid_value(self, xp):
+        rs = xp.random.RandomState(seed=testing.generate_seed())
+        rs.choice(a=self.a, size=self.size, replace=False)
 
 
 class TestResetStates(unittest.TestCase):

@@ -29,7 +29,9 @@ def _calc_out_shape(shape, axis, keepdims):
         {'f': ['all', 'any'],
          'x': [numpy.arange(24).reshape(2, 3, 4) - 10,
                numpy.zeros((2, 3, 4)),
-               numpy.ones((2, 3, 4))],
+               numpy.ones((2, 3, 4)),
+               numpy.zeros((0, 3, 4)),
+               numpy.ones((0, 3, 4))],
          'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
          'keepdims': [False, True]}))
 @testing.gpu

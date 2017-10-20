@@ -39,15 +39,57 @@ typedef enum cudaDataType_t cudaDataType;
 #endif // #if CUDA_VERSION >= 7050
 #endif // #if CUDA_VERSION < 8000
 
+
 #if CUDA_VERSION < 7050
 cublasStatus_t cublasSgemmEx(...) {
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
+
 #endif // #if CUDA_VERSION < 7050
+
+
+#if CUDA_VERSION < 8000
+
+enum cudaMemoryAdvise {};
+
+cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
+                                 int dstDevice, cudaStream_t stream) {
+    return cudaErrorUnknown;
+}
+
+cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
+                          enum cudaMemoryAdvise advice, int device) {
+    return cudaErrorUnknown;
+}
+
+typedef enum {} cublasGemmAlgo_t;
+
+cublasStatus_t cublasGemmEx(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if CUDA_VERSION < 8000
+
+
+#if CUDA_VERSION < 9000
+
+typedef enum {} cublasMath_t;
+
+cublasStatus_t cublasSetMathMode(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasGetMathMode(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+#endif // #if CUDA_VERSION < 9000
 
 } // extern "C"
 
 #else // #ifndef CUPY_NO_CUDA
+
+
 
 extern "C" {
 
@@ -139,6 +181,7 @@ typedef enum {
 } cudaError_t;
 typedef enum {} cudaDataType;
 enum cudaDeviceAttr {};
+enum cudaMemoryAdvise {};
 enum cudaMemcpyKind {};
 
 
@@ -218,6 +261,10 @@ cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMallocManaged(...) {
+    return cudaSuccess;
+}
+
 int cudaFree(...) {
     return cudaSuccess;
 }
@@ -253,6 +300,15 @@ cudaError_t cudaMemset(...) {
 cudaError_t cudaMemsetAsync(...) {
     return cudaSuccess;
 }
+
+cudaError_t cudaMemAdvise(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPrefetchAsync(...) {
+    return cudaSuccess;
+}
+
 
 cudaError_t cudaPointerGetAttributes(...) {
     return cudaSuccess;
@@ -333,6 +389,8 @@ typedef enum {} cublasFillMode_t;
 typedef enum {} cublasOperation_t;
 typedef enum {} cublasPointerMode_t;
 typedef enum {} cublasSideMode_t;
+typedef enum {} cublasGemmAlgo_t;
+typedef enum {} cublasMath_t;
 typedef enum {
     CUBLAS_STATUS_SUCCESS=0,
 } cublasStatus_t;
@@ -365,6 +423,15 @@ cublasStatus_t cublasSetStream(...) {
 }
 
 cublasStatus_t cublasGetStream(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+// Math Mode
+cublasStatus_t cublasSetMathMode(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGetMathMode(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -499,6 +566,10 @@ cublasStatus_t cublasZgemmBatched(...) {
 }
 
 cublasStatus_t cublasSgemmEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGemmEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

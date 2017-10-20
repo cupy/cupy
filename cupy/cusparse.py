@@ -74,11 +74,11 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated ``y``.
 
     """
-    if a.shape[1] != len(x):
-        raise ValueError('dimension mismatch')
     assert y is None or y.flags.f_contiguous
 
     a_shape = a.shape if not transa else a.shape[::-1]
+    if a_shape[1] != len(x):
+        raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
     m, n = a_shape
@@ -91,7 +91,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     _call_cusparse(
         'csrmv', dtype,
         handle, _transpose_flag(transa),
-        m, n, a.nnz, alpha.data, a._descr.descriptor,
+        a.shape[0], a.shape[1], a.nnz, alpha.data, a._descr.descriptor,
         a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
         x.data.ptr, beta.data, y.data.ptr)
 
@@ -143,7 +143,8 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     beta = numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm', a.dtype,
-        handle, _transpose_flag(transa), m, n, k, a.nnz,
+        handle, _transpose_flag(transa),
+        a.shape[0], n, a.shape[1], a.nnz,
         alpha.data, a._descr.descriptor, a.data.data.ptr,
         a.indptr.data.ptr, a.indices.data.ptr,
         b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
@@ -160,6 +161,8 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     where :math:`o_a` and :math:`o_b` are transpose functions when ``transa``
     and ``tranb`` are ``True`` respectively. And they are identity functions
     otherwise.
+    It is forbidden that both ``transa`` and ``transb`` are ``True`` in
+    cuSPARSE specification.
 
     Args:
         a (cupy.sparse.csr): Sparse matrix A.
@@ -177,10 +180,11 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
+    assert not (transa and transb)
 
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
-    if a_shape[1] != b.shape[0]:
+    if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
@@ -199,7 +203,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     beta = numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm2', a.dtype,
-        handle, op_a, op_b, m, n, k, a.nnz,
+        handle, op_a, op_b, a.shape[0], n, a.shape[1], a.nnz,
         alpha.data, a._descr.descriptor, a.data.data.ptr,
         a.indptr.data.ptr, a.indices.data.ptr,
         b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
@@ -498,3 +502,77 @@ def csr2csc(x):
         cusparse.CUSPARSE_ACTION_NUMERIC,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+
+
+def dense2csc(x):
+    """Converts a dense matrix in CSC format.
+
+    Args:
+        x (cupy.ndarray): A matrix to be converted.
+
+    Returns:
+        cupy.sparse.csc_matrix: A converted matrix.
+
+    """
+    assert x.ndim == 2
+    x = cupy.asfortranarray(x)
+    nnz = numpy.empty((), dtype='i')
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+
+    descr = MatDescriptor.create()
+    nnz_per_col = cupy.empty(m, 'i')
+    _call_cusparse(
+        'nnz', x.dtype,
+        handle, cusparse.CUSPARSE_DIRECTION_COLUMN, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_col.data.ptr, nnz.ctypes.data)
+
+    nnz = int(nnz)
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(n + 1, 'i')
+    indices = cupy.empty(nnz, 'i')
+
+    _call_cusparse(
+        'dense2csc', x.dtype,
+        handle, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_col.data.ptr,
+        data.data.ptr, indices.data.ptr, indptr.data.ptr)
+    # Note that a desciptor is recreated
+    return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+
+
+def dense2csr(x):
+    """Converts a dense matrix in CSR format.
+
+    Args:
+        x (cupy.ndarray): A matrix to be converted.
+
+    Returns:
+        cupy.sparse.csr_matrix: A converted matrix.
+
+    """
+    assert x.ndim == 2
+    x = cupy.asfortranarray(x)
+    nnz = numpy.empty((), dtype='i')
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+
+    descr = MatDescriptor.create()
+    nnz_per_row = cupy.empty(m, 'i')
+    _call_cusparse(
+        'nnz', x.dtype,
+        handle, cusparse.CUSPARSE_DIRECTION_ROW, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_row.data.ptr, nnz.ctypes.data)
+
+    nnz = int(nnz)
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(m + 1, 'i')
+    indices = cupy.empty(nnz, 'i')
+
+    _call_cusparse(
+        'dense2csr', x.dtype,
+        handle, m, n, descr.descriptor,
+        x.data.ptr, m, nnz_per_row.data.ptr,
+        data.data.ptr, indptr.data.ptr, indices.data.ptr)
+    # Note that a desciptor is recreated
+    return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
