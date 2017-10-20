@@ -174,7 +174,7 @@ class TestUnravelIndex(unittest.TestCase):
         a = testing.shaped_arange((4, 3, 2), xp, dtype)
         xp.unravel_index(a, (6, 4), order='V')
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_invalid_index(self, xp, dtype):
         a = testing.shaped_arange((4, 3, 2), xp, dtype) + 1
