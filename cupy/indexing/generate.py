@@ -260,6 +260,13 @@ def unravel_index(indices, dims, order='C'):
     else:
         raise TypeError("order not understood")
 
+    if not cupy.can_cast(indices, cupy.int64, "same_kind"):
+        raise TypeError(
+            "Iterator operand 0 dtype could not be cast "
+            "from dtype('{}') to dtype('{}') "
+            "according to the rule 'same_kind'".format(
+                indices.dtype, cupy.int64().dtype))
+
     if (indices < 0).any():
         raise ValueError("invalid entry in index array")
 
