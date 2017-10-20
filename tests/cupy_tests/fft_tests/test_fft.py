@@ -40,21 +40,35 @@ class TestFft(unittest.TestCase):
         return out
 
 
-@testing.parameterize(*testing.product({
-    's1': [None, 5, 10, 15],
-    's2': [None, 5, 10, 15],
-    'norm': [None, 'ortho'],
-}))
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+)
 @testing.gpu
 class TestFft2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_fft2(self, xp, dtype):
-        a = testing.shaped_random((10, 10), xp, dtype)
-        out = xp.fft.fft2(a, s=(self.s1, self.s2), norm=self.norm)
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -62,10 +76,11 @@ class TestFft2(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_ifft2(self, xp, dtype):
-        a = testing.shaped_random((10, 10), xp, dtype)
-        out = xp.fft.ifft2(a, s=(self.s1, self.s2), norm=self.norm)
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -74,8 +89,16 @@ class TestFft2(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
@@ -146,31 +169,46 @@ class TestRfft(unittest.TestCase):
         return out
 
 
-@testing.parameterize(*testing.product({
-    's1': [None, 5, 10, 15],
-    's2': [None, 5, 10, 15],
-    'norm': [None, 'ortho'],
-}))
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+)
 @testing.gpu
 class TestRfft2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_rfft2(self, xp, dtype):
-        a = testing.shaped_random((10, 10), xp, dtype)
-        out = xp.fft.rfft2(a, s=(self.s1, self.s2), norm=self.norm)
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_irfft2(self, xp, dtype):
-        a = testing.shaped_random((10, 10), xp, dtype)
-        out = xp.fft.irfft2(a, s=(self.s1, self.s2), norm=self.norm)
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
@@ -178,12 +216,21 @@ class TestRfft2(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
@@ -192,7 +239,8 @@ class TestRfftn(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_rfftn(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
@@ -203,7 +251,8 @@ class TestRfftn(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_irfftn(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)

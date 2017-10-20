@@ -7,55 +7,53 @@ from cupy import cufft
 
 
 def fft(a, n=None, axis=-1, norm=None):
-    return cufft.fft(a, n, axis, norm, cupy.cuda.cufft.CUFFT_FORWARD, 1)
+    return cufft.fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
 
 
 def ifft(a, n=None, axis=-1, norm=None):
-    return cufft.fft(a, n, axis, norm, cupy.cuda.cufft.CUFFT_INVERSE, 1)
+    return cufft.fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_INVERSE)
 
 
 def fft2(a, s=None, axes=(-2, -1), norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD, 2)
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD)
 
 
 def ifft2(a, s=None, axes=(-2, -1), norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE, 2)
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE)
 
 
 def fftn(a, s=None, axes=None, norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD,
-                     a.ndim if axes is None else len(axes))
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD)
 
 
 def ifftn(a, s=None, axes=None, norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE,
-                     a.ndim if axes is None else len(axes))
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE)
 
 
 def rfft(a, n=None, axis=-1, norm=None):
-    return cufft.fft(a, n, axis, norm, cupy.cuda.cufft.CUFFT_FORWARD, 1, 'R2C')
+    return cufft.fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD,
+                     'R2C')
 
 
 def irfft(a, n=None, axis=-1, norm=None):
-    return cufft.fft(a, n, axis, norm, cupy.cuda.cufft.CUFFT_INVERSE, 1, 'C2R')
+    return cufft.fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_INVERSE,
+                     'C2R')
 
 
 def rfft2(a, s=None, axes=(-2, -1), norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD, 2, 'R2C')
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD, 'R2C')
 
 
 def irfft2(a, s=None, axes=(-2, -1), norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE, 2, 'C2R')
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE, 'C2R')
 
 
 def rfftn(a, s=None, axes=None, norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD,
-                     a.ndim if axes is None else len(axes), 'R2C')
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_FORWARD, 'R2C')
 
 
 def irfftn(a, s=None, axes=None, norm=None):
-    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE,
-                     a.ndim if axes is None else len(axes), 'C2R')
+    return cufft.fft(a, s, axes, norm, cupy.cuda.cufft.CUFFT_INVERSE, 'C2R')
 
 
 def hfft(a, n=None, axis=-1, norm=None):
