@@ -252,7 +252,27 @@ def ix_(*args):
 # TODO(okuta): Implement ravel_multi_index
 
 
-# TODO(okuta): Implement unravel_index
+def unravel_index(indices, dims, order='C'):
+    if order == 'C':
+        dims = reversed(dims)
+    elif order == 'F':
+        pass
+    else:
+        raise ValueError("only 'C' or 'F' order is permitted")
+
+    if (indices < 0).any():
+        raise ValueError("invalid entry in index array")
+
+    unraveled_coords = list()
+    for dim in dims:
+        if indices < 0
+        unraveled_coords.append(indices % dim)
+        indices = indices // dim
+
+    if (indices > 0).any():
+        raise ValueError("invalid entry in index array")
+
+    return tuple(unraveled_coords)
 
 
 # TODO(okuta): Implement diag_indices
