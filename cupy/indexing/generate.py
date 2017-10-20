@@ -265,7 +265,6 @@ def unravel_index(indices, dims, order='C'):
 
     unraveled_coords = list()
     for dim in dims:
-        if indices < 0
         unraveled_coords.append(indices % dim)
         indices = indices // dim
 
