@@ -253,6 +253,28 @@ def ix_(*args):
 
 
 def unravel_index(indices, dims, order='C'):
+    """Converts a flat index or array of flat indices into a tuple of coordinate arrays.
+
+    Args:
+        indices: An integer array whose elements are indices
+            into the flattened version of an array of dimensions :obj:`dims`.
+        dims: The shape of the array to use for unraveling indices.
+        order: Determines whether the indices should be viewed as indexing
+            in row-major (C-style) or column-major (Fortran-style) order.
+
+    Returns: tuple of ndarrays:
+        Each array in the tuple has the same shape as the indices array.
+
+    Examples
+    --------
+    >>> cupy.unravel_index(cupy.array([22, 41, 37]), (7, 6))
+    (array([3, 6, 6]), array([4, 5, 1]))
+    >>> cupy.unravel_index(cupy.array([31, 41, 13]), (7, 6), order='F')
+    (array([3, 6, 6]), array([4, 5, 1]))
+
+     .. seealso:: :func:`numpy.unravel_index`
+
+    """
     if order == 'C':
         dims = reversed(dims)
     elif order == 'F':
