@@ -22,6 +22,7 @@ class TestFft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
+        # np.fft.fft alway returns np.complex128
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 

@@ -14,6 +14,7 @@ These functions cover a subset of
    creation
    manipulation
    binary
+   fft
    indexing
    io
    linalg
