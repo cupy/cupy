@@ -278,6 +278,8 @@ def unravel_index(indices, dims, order='C'):
     if (indices > 0).any():
         raise ValueError("invalid entry in index array")
 
+    if order == 'C':
+        unraveled_coords = reversed(unraveled_coords)
     return tuple(unraveled_coords)
 
 
