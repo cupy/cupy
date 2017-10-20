@@ -159,13 +159,13 @@ class TestUnravelIndex(unittest.TestCase):
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_C(self, xp, dtype):
-        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        a = testing.shaped_arange((4, 3, 2), xp, dtype) - 1
         return xp.unravel_index(a, (6, 4))
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_F(self, xp, dtype):
-        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        a = testing.shaped_arange((4, 3, 2), xp, dtype) - 1
         return xp.unravel_index(a, (6, 4), order='F')
 
     @testing.for_int_dtypes()
@@ -177,7 +177,7 @@ class TestUnravelIndex(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_invalid_index(self, xp, dtype):
-        a = testing.shaped_arange((4, 3, 2), xp, dtype) + 1
+        a = testing.shaped_arange((4, 3, 2), xp, dtype)
         xp.unravel_index(a, (6, 4))
 
     @testing.for_float_dtypes()
