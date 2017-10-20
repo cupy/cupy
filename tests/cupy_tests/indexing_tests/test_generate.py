@@ -140,7 +140,7 @@ class TestC_(unittest.TestCase):
 @testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
 
-    _multiprocesGs_can_split_ = True
+    _multiprocess_can_split_ = True
 
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
