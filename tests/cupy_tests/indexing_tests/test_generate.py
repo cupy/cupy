@@ -169,7 +169,7 @@ class TestUnravelIndex(unittest.TestCase):
         return xp.unravel_index(a, (6, 4), order='F')
 
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_raises(accept_error=ValueError)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_invalid_order(self, xp, dtype):
         a = testing.shaped_arange((4, 3, 2), xp, dtype)
         xp.unravel_index(a, (6, 4), order='V')
