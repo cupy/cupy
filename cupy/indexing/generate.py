@@ -258,7 +258,7 @@ def unravel_index(indices, dims, order='C'):
     elif order == 'F':
         pass
     else:
-        raise ValueError("only 'C' or 'F' order is permitted")
+        raise TypeError("order not understood")
 
     if (indices < 0).any():
         raise ValueError("invalid entry in index array")
