@@ -149,3 +149,39 @@ class TestAxisConcatenator(unittest.TestCase):
     def test_len(self):
         a = generate.AxisConcatenator()
         self.assertEqual(len(a), 0)
+
+
+@testing.gpu
+class TestUnravelIndex(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_C(self, xp, dtype):
+        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        return xp.unravel_index(a, (6, 4))
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_F(self, xp, dtype):
+        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        return xp.unravel_index(a, (6, 4), order='F')
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_invalid_order(self, xp, dtype):
+        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        xp.unravel_index(a, (6, 4), order='V')
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_invalid_index(self, xp, dtype):
+        a = testing.shaped_arange((4, 3, 2), xp, dtype) + 1
+        xp.unravel_index(a, (6, 4))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_dtype(self, xp, dtype):
+        a = testing.shaped_arange((4, 3, 2), xp, dtype)
+        xp.unravel_index(a, (6, 4))
