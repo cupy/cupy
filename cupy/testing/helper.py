@@ -444,8 +444,6 @@ def numpy_cupy_raises(name='xp', sp_name=None, accept_error=Exception):
 
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
-
-    .. seealso:: :func:`cupy.testing.assert_array_less`
     """
 
     def decorator(impl):
