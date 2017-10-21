@@ -255,6 +255,31 @@ class RandomState(object):
         """
         return self.normal(size=size, dtype=dtype)
 
+    def tomaxint(self, size=None):
+        """Draws integers between 0 and max integer inclusive.
+
+        Args:
+            size (int or tuple of ints): Output shape.
+
+        Returns:
+            cupy.ndarray: Drawn samples.
+
+        .. seealso::
+            :meth:`numpy.random.RandomState.tomaxint`
+
+        """
+        if size is None:
+            size = ()
+        sample = cupy.empty(size, dtype=cupy.int_)
+        # cupy.random only uses int32 random generator
+        size_in_int = sample.dtype.itemsize // 4
+        curand.generate(
+            self._generator, sample.data.ptr, sample.size * size_in_int)
+
+        # Disable sign bit
+        sample &= six.MAXSIZE
+        return sample
+
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformly-distributed samples over an interval.
 
