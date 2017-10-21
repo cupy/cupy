@@ -147,14 +147,15 @@ cdef class Function:
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
                         size_t block_max_size=128, stream=None):
         # TODO(beam2d): Tune it
-        gridx = size // block_max_size + 1
-        if gridx > 65536:
-            gridx = 65536
-        if size > block_max_size:
-            size = block_max_size
+        gridx = (size + block_max_size - 1) // block_max_size
+        if gridx > 2 ** 31 - 1:
+            gridx = 2 ** 31 - 1
+        blockx = size
+        if blockx > block_max_size:
+            blockx = block_max_size
         s = _get_stream(stream)
         _launch(self.ptr,
-                gridx, 1, 1, size, 1, 1, args, shared_mem, s)
+                gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
 
 
 cdef class Module:
