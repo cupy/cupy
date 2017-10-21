@@ -167,16 +167,30 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, each element of the array is ``numpy.int32``.
+            Currently, only 32 bit integers can be sampled.
+            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
+            a ``numpy.int32`` array is returned.
+            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
+            a ``numpy.uint32`` array is returned.
         """
-        dtype = numpy.int32
         if size is None:
             return self.interval(mx, 1).reshape(())
         elif isinstance(size, int):
             size = (size, )
 
         if mx == 0:
-            return cupy.zeros(size, dtype=dtype)
+            return cupy.zeros(size, dtype=numpy.int32)
+
+        if mx < 0:
+            raise ValueError(
+                'mx must be non-negative (actual: {})'.format(mx))
+        elif mx <= 0x7fffffff:
+            dtype = numpy.int32
+        elif mx <= 0xffffffff:
+            dtype = numpy.uint32
+        else:
+            raise ValueError(
+                'mx must be within uint32 range (actual: {})'.format(mx))
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
