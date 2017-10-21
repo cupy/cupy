@@ -272,7 +272,7 @@ def unravel_index(indices, dims, order='C'):
     >>> cupy.unravel_index(cupy.array([31, 41, 13]), (7, 6), order='F')
     (array([3, 6, 6]), array([4, 5, 1]))
 
-     .. seealso:: :func:`numpy.unravel_index`
+    .. seealso:: :func:`numpy.unravel_index`
 
     """
     if order == 'C':
