@@ -4,8 +4,8 @@ import threading
 import weakref
 
 
-thread_local = threading.local()
-cdef int current_stream_key = pythread.PyThread_create_key()
+cdef object _thread_local = threading.local()
+cdef int _current_stream_key = pythread.PyThread_create_key()
 
 cdef size_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
@@ -15,7 +15,7 @@ cdef size_t get_current_stream_ptr():
     """
     # PyThread_get_key_value returns NULL if a key is not set,
     # which is equivalent with default stream pointer (0)
-    return <size_t>pythread.PyThread_get_key_value(current_stream_key)
+    return <size_t>pythread.PyThread_get_key_value(_current_stream_key)
 
 
 def get_current_stream():
@@ -24,9 +24,9 @@ def get_current_stream():
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
-    if not hasattr(thread_local, 'current_stream_ref'):
-        thread_local.current_stream_ref = weakref.ref(Stream.null)
-    stream = thread_local.current_stream_ref()
+    if not hasattr(_thread_local, 'current_stream_ref'):
+        _thread_local.current_stream_ref = weakref.ref(Stream.null)
+    stream = _thread_local.current_stream_ref()
     if stream is None:
         stream = Stream.null
     return stream
@@ -41,8 +41,8 @@ cpdef _set_current_stream(stream):
     if stream is None:
         stream = Stream.null
     cdef size_t stream_ptr = stream.ptr
-    pythread.PyThread_set_key_value(current_stream_key, <void *>stream_ptr)
-    thread_local.current_stream_ref = weakref.ref(stream)
+    pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
+    _thread_local.current_stream_ref = weakref.ref(stream)
 
 
 class Event(object):
@@ -167,15 +167,15 @@ class Stream(object):
         # because the memory would still be used in kernels executed in GPU.
 
     def __enter__(self):
-        if not hasattr(thread_local, 'prev_stream_ref_stack'):
-            thread_local.prev_stream_ref_stack = []
+        if not hasattr(_thread_local, 'prev_stream_ref_stack'):
+            _thread_local.prev_stream_ref_stack = []
         prev_stream_ref = weakref.ref(get_current_stream())
-        thread_local.prev_stream_ref_stack.append(prev_stream_ref)
+        _thread_local.prev_stream_ref_stack.append(prev_stream_ref)
         _set_current_stream(self)
         return self
 
     def __exit__(self, *args):
-        prev_stream_ref = thread_local.prev_stream_ref_stack.pop()
+        prev_stream_ref = _thread_local.prev_stream_ref_stack.pop()
         _set_current_stream(prev_stream_ref())
         pass
 
