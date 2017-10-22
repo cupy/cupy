@@ -1,10 +1,10 @@
 # nvprof --print-gpu-trace python examples/stream/curand.py
 import cupy
 
-x = cupy.array([1, 2, 3])
 rand = cupy.random.generator.RandomState()
 
-with cupy.cuda.stream.Stream():
+stream = cupy.cuda.stream.Stream()
+with stream:
     y = rand.lognormal(size=(1, 3))
 
 stream = cupy.cuda.stream.Stream()

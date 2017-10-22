@@ -16,9 +16,17 @@ def _norm_with_elapsed_time(x):
     return y
 
 
-with cupy.cuda.stream.Stream():
+expected = _norm_with_elapsed_time(x)
+cupy.cuda.Device().synchronize()
+
+stream = cupy.cuda.stream.Stream()
+with stream:
     y = _norm_with_elapsed_time(x)
+stream.synchronize()
+cupy.testing.assert_array_equal(y, expected)
 
 stream = cupy.cuda.stream.Stream()
 stream.use()
 y = _norm_with_elapsed_time(x)
+stream.synchronize()
+cupy.testing.assert_array_equal(y, expected)

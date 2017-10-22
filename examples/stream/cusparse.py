@@ -13,10 +13,17 @@ def _make(xp, sp, dtype):
 
 
 x = _make(cupy, cupy.sparse, float)
+expected = cupy.cusparse.cscsort(x)
+cupy.cuda.Device().synchronize()
 
-with cupy.cuda.stream.Stream():
+stream = cupy.cuda.stream.Stream()
+with stream:
     y = cupy.cusparse.cscsort(x)
+stream.synchronize()
+cupy.testing.assert_array_equal(y, expected)
 
 stream = cupy.cuda.stream.Stream()
 stream.use()
 y = cupy.cusparse.cscsort(x)
+stream.synchronize()
+cupy.testing.assert_array_equal(y, expected)
