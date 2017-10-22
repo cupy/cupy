@@ -764,20 +764,52 @@ cdef class SingleDeviceMemoryPool:
 
         self._append_to_free_list(chunk.size, chunk, stream_ptr)
 
-    cpdef free_all_blocks(self):
+    cpdef free_all_blocks(self, stream=None, stream_ptr=None):
+        """Free all **non-split** chunks"""
         cdef set free_list, keep_list
         cdef Chunk chunk
-        # Free all **non-split** chunks
+        cdef list arena
+        cdef vector.vector[int]* arena_index
+        cdef size_t index
+        cdef size_t _stream_ptr
+
+        # free blocks in all arenas
+        if stream is None and stream_ptr is None:
+            rlock.lock_fastrlock(self._free_lock, -1, True)
+            try:
+                for _stream_ptr in list(self._free.iterkeys()):
+                    self.free_all_blocks(stream_ptr=_stream_ptr)
+            finally:
+                rlock.unlock_fastrlock(self._free_lock)
+            return
+
+        # free blocks in the arena of the given stream
+        if stream_ptr is not None:
+            _stream_ptr = <size_t>stream_ptr
+        elif stream is not None:
+            _stream_ptr = <size_t>stream.ptr
+        else:
+            assert(False)
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            for arena in self._free.itervalues():
-                for i in range(len(arena)):
-                    free_list = arena[i]
-                    keep_list = set()
-                    for chunk in free_list:
-                        if chunk.prev is not None or chunk.next is not None:
-                            keep_list.add(chunk)
-                    arena[i] = keep_list
+            if _stream_ptr not in self._free:
+                return
+            arena = self._free[_stream_ptr]
+            arena_index = &self._index[_stream_ptr]
+            for index in range(len(arena) -1, -1, -1):
+                free_list = arena[index]
+                keep_list = set()
+                for chunk in free_list:
+                    if chunk.prev is not None or chunk.next is not None:
+                        keep_list.add(chunk)
+                if len(keep_list) > 0:
+                    arena[index] = keep_list
+                else:
+                    arena_index.erase(arena_index.begin() + index)
+                    del arena[index]
+            if len(arena) == 0:
+                self._index.erase(_stream_ptr)
+                del self._free[_stream_ptr]
         finally:
             rlock.unlock_fastrlock(self._free_lock)
 
@@ -883,10 +915,19 @@ cdef class MemoryPool(object):
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.malloc(size)
 
-    cpdef free_all_blocks(self):
-        """Release free blocks."""
+    cpdef free_all_blocks(self, stream=None, stream_ptr=None):
+        """Release free blocks.
+
+        Args:
+            stream (cupy.cuda.Stream): Release free blocks in the arena
+                of the given stream. The default releases blocks in all
+                arenas. Specify either of `stream` or `stream_ptr`.
+            stream_ptr (size_t): Release free blocks in the arena
+                of the given stream. The default releases blocks in all
+                arenas. Specify either of `stream` or `stream_ptr`.
+        """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
-        mp.free_all_blocks()
+        mp.free_all_blocks(stream=stream, stream_ptr=stream_ptr)
 
     cpdef free_all_free(self):
         """Release free blocks."""

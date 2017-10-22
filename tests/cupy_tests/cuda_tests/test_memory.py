@@ -291,6 +291,23 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
             p2 = self.pool.malloc(self.unit * 4)
             ptr2 = p2.ptr
             del p2
+        self.pool.free_all_blocks(stream=stream_module.Stream.null)
+        p3 = self.pool.malloc(self.unit * 4)
+        self.assertNotEqual(ptr1, p3.ptr)
+        self.assertNotEqual(ptr2, p3.ptr)
+        with self.stream:
+            p4 = self.pool.malloc(self.unit * 4)
+            self.assertNotEqual(ptr1, p4.ptr)
+            self.assertEqual(ptr2, p4.ptr)
+
+    def test_free_all_blocks_all_streams(self):
+        p1 = self.pool.malloc(self.unit * 4)
+        ptr1 = p1.ptr
+        del p1
+        with self.stream:
+            p2 = self.pool.malloc(self.unit * 4)
+            ptr2 = p2.ptr
+            del p2
         self.pool.free_all_blocks()
         p3 = self.pool.malloc(self.unit * 4)
         self.assertNotEqual(ptr1, p3.ptr)
