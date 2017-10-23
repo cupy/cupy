@@ -90,6 +90,6 @@ If these types were returned, it would be required to synchronize between GPU an
 If you want to use scalar values, cast the returned arrays explicitly.
 
   >>> type(np.sum(np.arange(3)))
-  <type 'numpy.int64'>
+  <class 'numpy.int64'>
   >>> type(cupy.sum(cupy.arange(3)))
-  <type 'cupy.core.core.ndarray'>
+  <class 'cupy.core.core.ndarray'>
