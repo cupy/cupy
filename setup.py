@@ -35,7 +35,7 @@ sdist = cupy_setup_build.sdist_with_cython
 
 __version__ = None
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'cupy/_version.py')) as f:
+with open(os.path.join(here, 'cupy', '_version.py')) as f:
     exec(f.read())
 
 setup(
