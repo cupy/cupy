@@ -172,6 +172,11 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
   export LDFLAGS=-L/path/to/cudnn/lib
   export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 
+.. note::
+
+   Use full paths for the environment variables.
+   ``distutils`` that is used in the setup script does not parse the home directory mark ``~``.
+
 
 Install CuPy for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
