@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import imp
 import os
 from setuptools import setup
 import sys
@@ -33,10 +34,9 @@ ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 sdist = cupy_setup_build.sdist_with_cython
 
-__version__ = None
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'cupy', '_version.py')) as f:
-    exec(f.read())
+__version__ = imp.load_source(
+    '_version', os.path.join(here, 'cupy', '_version.py')).__version__
 
 setup(
     name='cupy',
