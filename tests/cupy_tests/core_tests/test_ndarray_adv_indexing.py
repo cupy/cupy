@@ -109,8 +109,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # {'shape': (0,), 'indexes': (False, True, True)},
     # {'shape': (0,), 'indexes': numpy.array([True])},
     # {'shape': (0,), 'indexes': numpy.array([False, True, True])},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
+    # {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    # {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -329,8 +329,10 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
     # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
     # {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
     # {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_),
+    #  'value': 1},
+    # {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_),
+    #  'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
