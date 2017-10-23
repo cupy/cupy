@@ -41,6 +41,7 @@ cpdef _set_current_stream(stream):
     if stream is None:
         stream = Stream.null
     cdef size_t stream_ptr = stream.ptr
+    pythread.PyThread_delete_key_value(_current_stream_key)
     pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
     _thread_local.current_stream_ref = weakref.ref(stream)
 
