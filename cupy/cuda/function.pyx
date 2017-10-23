@@ -140,7 +140,8 @@ cdef class Function:
         s = _get_stream(stream)
         _launch(
             self.ptr,
-            grid[0], grid[1], grid[2], block[0], block[1], block[2],
+            max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
+            max(1, block[0]), max(1, block[1]), max(1, block[2]),
             args, shared_mem, s)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,

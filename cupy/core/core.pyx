@@ -1430,14 +1430,12 @@ cdef class ndarray:
 
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
-        if len(slices) > self.ndim + n_newaxes:
-            raise IndexError('too many indices for array')
-
         # Check if advanced is true,
         # and convert list/NumPy arrays to cupy.ndarray
         advanced = False
         mask_exists = False
         for i, s in enumerate(slices):
+            is_list = False
             if isinstance(s, (list, numpy.ndarray)):
                 is_list = isinstance(s, list)
                 s = array(s)
@@ -1449,11 +1447,14 @@ cdef class ndarray:
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
-                    mask_exists = True
+                    mask_exists = not is_list
                 else:
                     raise IndexError(
                         'arrays used as indices must be of integer or boolean '
                         'type. (actual: {})'.format(s.dtype.type))
+
+        if not mask_exists and len(slices) > self.ndim + n_newaxes:
+            raise IndexError('too many indices for array')
 
         if mask_exists:
             n_not_slice_none = 0
@@ -2981,14 +2982,12 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 
     slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
-    if len(slices) > a.ndim + n_newaxes:
-        raise IndexError('too many indices for array')
-
     # Check if advanced is true,
     # and convert list/NumPy arrays to cupy.ndarray
     advanced = False
     mask_exists = False
     for i, s in enumerate(slices):
+        is_list = False
         if isinstance(s, (list, numpy.ndarray)):
             is_list = isinstance(s, list)
             s = array(s)
@@ -3000,11 +2999,14 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             if issubclass(s.dtype.type, numpy.integer):
                 advanced = True
             elif issubclass(s.dtype.type, numpy.bool_):
-                mask_exists = True
+                mask_exists = not is_list
             else:
                 raise IndexError(
                     'arrays used as indices must be of integer or boolean '
                     'type. (actual: {})'.format(s.dtype.type))
+
+    if not mask_exists and len(slices) > a.ndim + n_newaxes:
+        raise IndexError('too many indices for array')
 
     if mask_exists:
         n_not_slice_none = 0
