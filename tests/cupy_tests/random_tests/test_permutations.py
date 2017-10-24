@@ -4,7 +4,6 @@ import cupy
 from cupy import testing
 from cupy.testing import condition
 
-import chainer
 import numpy
 import scipy.misc as scm
 
@@ -66,7 +65,7 @@ class TestPermutationSoundness(unittest.TestCase):
 
     def setUp(self):
         a = cupy.random.permutation(self.num)
-        self.a = chainer.cuda.to_cpu(a)
+        self.a = a.get()
 
     # Test soundness
 
@@ -92,7 +91,7 @@ class TestPermutationRandomness(unittest.TestCase):
 
     def setUp(self):
         a = cupy.random.permutation(self.num)
-        self.a = chainer.cuda.to_cpu(a)
+        self.a = a.get()
         self.num_half = int(self.num / 2)
 
     # Test randomness
