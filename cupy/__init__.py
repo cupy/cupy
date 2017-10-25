@@ -1,9 +1,11 @@
 from __future__ import division
-import pkg_resources
 import sys
 
 import numpy
 import six
+
+from cupy import _version
+
 
 try:
     from cupy import core  # NOQA
@@ -27,7 +29,7 @@ def is_available():
     return cuda.is_available()
 
 
-__version__ = pkg_resources.get_distribution('cupy').version
+__version__ = _version.__version__
 
 
 from cupy import binary  # NOQA
