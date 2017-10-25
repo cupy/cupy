@@ -1,3 +1,4 @@
+import cupy
 from cupy import core
 from cupy.random import generator
 
@@ -89,7 +90,10 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
     """
     rs = generator.get_random_state()
-    return (rs.normal(0, 1, size, dtype) * scale + loc).astype(dtype)
+    x = rs.normal(0, 1, size, dtype)
+    cupy.multiply(x, scale, out=x)
+    cupy.add(x, loc, out=x)
+    return x
 
 
 def standard_normal(size=None, dtype=float):

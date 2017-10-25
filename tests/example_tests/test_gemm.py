@@ -1,6 +1,6 @@
 import unittest
 
-import example_test
+from example_tests import example_test
 
 
 class TestGEMM(unittest.TestCase):

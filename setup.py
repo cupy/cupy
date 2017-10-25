@@ -23,7 +23,6 @@ setup_requires = [
     'fastrlock>=0.3',
 ]
 install_requires = [
-    'nose',
     'numpy>=1.9.0',
     'six>=1.9.0',
     'fastrlock>=0.3',
@@ -35,7 +34,7 @@ sdist = cupy_setup_build.sdist_with_cython
 
 setup(
     name='cupy',
-    version='2.0.0rc1',
+    version='3.0.0a1',
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
