@@ -1139,6 +1139,18 @@ cpdef setRNNDescriptor_v5(
     check_status(status)
 
 
+cpdef setRNNDescriptor_v6(
+        size_t handle, size_t rnnDesc, int hiddenSize, int numLayers,
+        size_t dropoutDesc, int inputMode, int direction, int mode,
+        int algo, int dataType):
+    status = cudnnSetRNNDescriptor_v6(
+        <Handle>handle, <RNNDescriptor>rnnDesc, hiddenSize, numLayers,
+        <DropoutDescriptor>dropoutDesc, <RNNInputMode>inputMode,
+        <DirectionMode>direction, <RNNMode>mode, <RNNAlgo>algo,
+        <DataType>dataType)
+    check_status(status)
+
+
 cpdef getRNNWorkspaceSize(
         size_t handle, size_t rnnDesc, int seqLength, size_t xDesc):
     cdef size_t sizeInBytes
