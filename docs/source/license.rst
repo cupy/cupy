@@ -25,8 +25,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-CuPy
-----
+NumPy
+-----
+
 The CuPy is designed based on NumPy's API.
 CuPy's source code and documents contain the original NumPy ones.
 
