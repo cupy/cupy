@@ -1,5 +1,5 @@
 Basics of CuPy
---------------
+==============
 
 .. currentmodule:: cupy
 
@@ -10,7 +10,7 @@ In this section, you will learn about the following things:
 * host-device and device-device array transfer
 
 Basics of cupy.ndarray
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 In the following code, cp is an abbreviation of cupy, as np is numpy as is customarily done:
@@ -35,7 +35,7 @@ Its data is allocated on the *current device*, which will be explained later.
 
 Most of the array manipulations are also done in the way similar to NumPy.
 Take the Euclidean norm (a.k.a L2 norm) for example.
-NumPy has `numpy.lina.g.norm` to calculate it on CPU.
+NumPy has :func:`numpy.linalg.norm` to calculate it on CPU.
 
 .. doctest::
 
@@ -57,7 +57,7 @@ So, we recommend you to read the `NumPy documentation <http://docs.scipy.org/doc
 
 
 Current Device
-~~~~~~~~~~~~~~
+--------------
 
 CuPy has a concept of the *current device*, which is the default device on which
 the allocation, manipulation, calculation etc. of arrays are taken place.
@@ -115,10 +115,10 @@ Be careful that if processing of an array on a non-current device will cause an 
 
 
 Data Transfer
-~~~~~~~~~~~~~
+-------------
 
 Move arrays to a device
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 :func:`cupy.asarray` can be used to move a :class:`numpy.ndarray`, a list, or any object
 that can be passed to :func:`numpy.array` to the current device:
@@ -149,7 +149,7 @@ transfer the array between devices with this function.
 
 
 Move array from a device to the host
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Moving a device array to the host can be done by :func:`cupy.asnumpy` as follows:
 
@@ -173,7 +173,7 @@ We can also use :meth:`cupy.ndarray.get()`:
    the device which arrays are transferred.
 
 How to write CPU/GPU agnostic code
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 The compatibility of CuPy with NumPy enables us to write CPU/GPU generic code.
 It can be made easy by the :func:`cupy.get_array_module` function.
