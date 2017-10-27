@@ -150,6 +150,10 @@ class TestRfft(unittest.TestCase):
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft(self, xp, dtype):
+        # the scaling of old Numpy is incorrect
+        if np.__version__ < np.lib.NumpyVersion('1.13.0') and self.n is not None:
+            return xp.empty(0)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
 
@@ -197,6 +201,10 @@ class TestRfft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2(self, xp, dtype):
+        # the scaling of old Numpy is incorrect
+        if np.__version__ < np.lib.NumpyVersion('1.13.0') and self.s is not None:
+            return xp.empty(0)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
 
