@@ -48,6 +48,7 @@ setup(
               'cupy.cuda',
               'cupy.cuda.memory_hooks',
               'cupy.ext',
+              'cupy.fft',
               'cupy.indexing',
               'cupy.io',
               'cupy.linalg',
