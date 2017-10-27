@@ -197,7 +197,7 @@ class TestRfft2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2(self, xp, dtype):
@@ -247,7 +247,7 @@ class TestRfftn(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype):
@@ -293,7 +293,7 @@ class TestHfft(unittest.TestCase):
 
         return out
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
