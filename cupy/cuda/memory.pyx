@@ -30,8 +30,9 @@ class Memory(object):
     This class provides an RAII interface of the CUDA memory allocation.
 
     Args:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
-        size (int): Size of the memory allocation in bytes.
+        ~Memory.device (cupy.cuda.Device): Device whose memory the pointer
+            refers to.
+        ~Memory.size (int): Size of the memory allocation in bytes.
 
     """
 
@@ -159,7 +160,8 @@ cdef class MemoryPointer:
             pointer refers.
 
     Attributes:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        ~MemoryPointer.device (cupy.cuda.Device): Device whose memory the
+            pointer refers to.
         mem (Memory): The device memory buffer.
         ptr (int): Pointer to the place within the buffer.
     """
@@ -419,10 +421,6 @@ class PooledMemory(Memory):
         self.size = chunk.size
         self.pool = pool
 
-    def __del__(self):
-        if self.ptr != 0:
-            self.free()
-
     def free(self):
         """Frees the memory buffer and returns it to the memory pool.
 
@@ -430,33 +428,42 @@ class PooledMemory(Memory):
         buffer to the memory pool for reuse.
 
         """
-        pool = self.pool()
-        if pool and self.ptr != 0:
-            hooks = memory_hook.get_memory_hooks()
-            if hooks:
-                device_id = self.device.id
-                pmem_id = id(self)
-                size = self.size
-                ptr = self.ptr
-                hooks_values = hooks.values()  # avoid six for performance
-                for hook in hooks_values:
-                    hook.free_preprocess(device_id=device_id,
-                                         mem_size=size,
-                                         mem_ptr=ptr,
-                                         pmem_id=pmem_id)
-                try:
-                    pool.free(ptr, size)
-                finally:
-                    for hook in hooks_values:
-                        hook.free_postprocess(device_id=device_id,
-                                              mem_size=size,
-                                              mem_ptr=ptr,
-                                              pmem_id=pmem_id)
-            else:
-                pool.free(self.ptr, self.size)
+        cdef Py_ssize_t ptr
+        ptr = self.ptr
+        if ptr == 0:
+            return
         self.ptr = 0
-        self.size = 0
-        self.device = None
+        pool = self.pool()
+        if pool is None:
+            return
+
+        hooks = None
+        # to avoid error at exit
+        mh = memory_hook
+        if mh is not None and mh.get_memory_hooks is not None:
+            hooks = mh.get_memory_hooks()
+        size = self.size
+        if hooks:
+            device_id = self.device.id
+            pmem_id = id(self)
+            hooks_values = hooks.values()  # avoid six for performance
+            for hook in hooks_values:
+                hook.free_preprocess(device_id=device_id,
+                                     mem_size=size,
+                                     mem_ptr=ptr,
+                                     pmem_id=pmem_id)
+            try:
+                pool.free(ptr, size)
+            finally:
+                for hook in hooks_values:
+                    hook.free_postprocess(device_id=device_id,
+                                          mem_size=size,
+                                          mem_ptr=ptr,
+                                          pmem_id=pmem_id)
+        else:
+            pool.free(ptr, size)
+
+    __del__ = free
 
 
 cdef class SingleDeviceMemoryPool:

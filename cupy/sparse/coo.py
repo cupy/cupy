@@ -19,6 +19,9 @@ class coo_matrix(sparse_data._data_matrix):
 
     Now it has only one initializer format below:
 
+    ``coo_matrix(S)``
+        ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
+
     ``coo_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
@@ -33,7 +36,7 @@ class coo_matrix(sparse_data._data_matrix):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given data are always used.
 
-    .. see::
+    .. seealso::
        :class:`scipy.sparse.coo_matrix`
 
     """
@@ -45,7 +48,22 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
 
-        if util.isshape(arg1):
+        if base.issparse(arg1):
+            x = arg1.asformat(self.format)
+            data = x.data
+            row = x.row
+            col = x.col
+
+            if arg1.format != self.format:
+                # When formats are differnent, all arrays are already copied
+                copy = False
+
+            if shape is None:
+                shape = arg1.shape
+
+            has_canonical_format = x.has_canonical_format
+
+        elif util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = cupy.zeros(0, dtype if dtype else 'd')
@@ -71,16 +89,6 @@ class coo_matrix(sparse_data._data_matrix):
                     'row, column, and data array must all be the same length')
 
             has_canonical_format = False
-
-        elif isspmatrix_coo(arg1):
-            data = arg1.data
-            row = arg1.row
-            col = arg1.col
-
-            if shape is None:
-                shape = arg1.shape
-
-            has_canonical_format = arg1.has_canonical_format
 
         else:
             raise ValueError(
@@ -166,7 +174,7 @@ class coo_matrix(sparse_data._data_matrix):
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
 
-        .. see::
+        .. seealso::
            :func:`scipy.sparse.coo_matrix.sum_duplicates`
 
         """

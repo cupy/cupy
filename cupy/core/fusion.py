@@ -679,7 +679,7 @@ class ufunc(core.ufunc):
         self.nargs = fusion_op.nargs
         self._ops = fusion_op._ops
         self._preamble = fusion_op._preamble
-        self.__doc__ = fusion_op.__doc__
+        self.__doc__ = cupy_op.__doc__
         self._params = fusion_op._params
         self._routine_cache = fusion_op._routine_cache
 
@@ -708,26 +708,13 @@ def _create_ufunc(cupy_ufunc, numpy_ufunc):
     return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc)
 
 
-_where = ufunc(sorting.search._where_ufunc,
-               sorting.search.where, numpy.where)
+where = ufunc(sorting.search._where_ufunc,
+              sorting.search.where, numpy.where)
 
-_clip = ufunc(core._clip, math.misc.clip, numpy.clip)
+clip = ufunc(core._clip, math.misc.clip, numpy.clip)
 
-_elementwise_copy = ufunc(core._elementwise_copy,
-                          creation.from_data.copy, numpy.copy)
-
-
-def where(*args, **kwargs):
-    return _where(*args, **kwargs)
-
-
-def clip(*args, **kwargs):
-    return _clip(*args, **kwargs)
-
-
-def copy(*args, **kwargs):
-    return _elementwise_copy(*args, **kwargs)
-
+copy = ufunc(core._elementwise_copy,
+             creation.from_data.copy, numpy.copy)
 
 bitwise_and = _create_ufunc(core.bitwise_and, numpy.bitwise_and)
 bitwise_or = _create_ufunc(core.bitwise_or, numpy.bitwise_or)
@@ -825,6 +812,7 @@ class reduction(object):
     def __init__(self, cupy_op, numpy_op):
         self._cupy_op = cupy_op
         self._numpy_op = numpy_op
+        self.__doc__ = cupy_op.__doc__
 
     def __call__(self, *args, **kwargs):
         if builtins.any(type(_) == numpy.ndarray for _ in args):
@@ -833,36 +821,12 @@ class reduction(object):
             return self._cupy_op(*args, **kwargs)
 
 
-_all = reduction(logic.truth.all, numpy.all)
-_any = reduction(logic.truth.any, numpy.any)
-_sum = reduction(math.sumprod.sum, numpy.sum)
-_prod = reduction(math.sumprod.prod, numpy.prod)
-_amax = reduction(statistics.order.amax, numpy.amax)
-_amin = reduction(statistics.order.amin, numpy.amin)
-
-
-def all(*args, **kwargs):
-    return _all(*args, **kwargs)
-
-
-def any(*args, **kwargs):
-    return _any(*args, **kwargs)
-
-
-def sum(*args, **kwargs):
-    return _sum(*args, **kwargs)
-
-
-def prod(*args, **kwargs):
-    return _prod(*args, **kwargs)
-
-
-def amax(*args, **kwargs):
-    return _amax(*args, **kwargs)
-
-
-def amin(*args, **kwargs):
-    return _amin(*args, **kwargs)
+all = reduction(logic.truth.all, numpy.all)
+any = reduction(logic.truth.any, numpy.any)
+sum = reduction(math.sumprod.sum, numpy.sum)
+prod = reduction(math.sumprod.prod, numpy.prod)
+amax = reduction(statistics.order.amax, numpy.amax)
+amin = reduction(statistics.order.amin, numpy.amin)
 
 
 all._raw = core._all

@@ -66,12 +66,12 @@ cdef class ndarray:
         base (None or cupy.ndarray): Base array from which this array is
             created as a view.
         data (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        dtype(numpy.dtype): Dtype object of element type.
+        ~ndarray.dtype(numpy.dtype): Dtype object of element type.
 
             .. seealso::
                `Data type objects (dtype) \
                <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
-        size (int): Number of elements this array holds.
+        ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
 
@@ -858,6 +858,7 @@ cdef class ndarray:
             kth (int or sequence of ints): Element index to partition by. If
                 supplied with a sequence of k-th it will partition all elements
                 indexed by k-th of them into their sorted position at once.
+
             axis (int): Axis along which to sort. Default is -1, which means
                 sort along the last axis.
 
@@ -890,7 +891,53 @@ cdef class ndarray:
         # kth is ignored.
         self.sort(axis=axis)
 
-    # TODO(okuta): Implement argpartition
+    def argpartition(self, kth, axis=-1):
+        """Returns the indices that would partially sort an array.
+
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+
+        Returns:
+            cupy.ndarray: Array of the same type and shape as ``a``.
+
+        .. seealso::
+            :func:`cupy.argpartition` for full documentation,
+            :meth:`numpy.ndarray.argpartition`
+
+        """
+        if axis is None:
+            data = self.reshape(self.size)
+            axis = -1
+        else:
+            data = self
+
+        ndim = data.ndim
+        if axis < 0:
+            axis += ndim
+        if not (0 <= axis < ndim):
+            raise _AxisError('Axis out of range')
+
+        length = data.shape[axis]
+        if isinstance(kth, int):
+            kth = kth,
+        for k in kth:
+            if k < 0:
+                k += length
+            if not (0 <= k < length):
+                raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+
+        # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
+        # currently performs full argsort with Thrust's efficient radix sort
+        # algoritm.
+
+        # kth is ignored.
+        return cupy.argsort(data, axis=axis)
+
     # TODO(okuta): Implement searchsorted
 
     def nonzero(self):
@@ -906,28 +953,28 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
-        condition = self != 0
+        cdef Py_ssize_t count_nonzero, ndim
         dtype = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
+        else:
+            r = self.ravel()
+            scan_index = scan((r != 0).astype(dtype))
+            count_nonzero = int(scan_index[-1])
+        ndim = max(self._shape.size(), 1)
+        if count_nonzero == 0:
+            return (ndarray((0,), dtype=dtype),) * ndim
 
-        scan_index = scan(condition.astype(dtype).ravel())
-        count_nonzero = int(scan_index[-1])
-
-        if self.ndim <= 1:
-            dst = ndarray((count_nonzero,), dtype=dtype)
-
+        dst = ndarray((count_nonzero * ndim,), dtype=dtype)
+        if ndim <= 1:
             kern = _nonzero_1d_kernel(self.dtype, dtype)
-            kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
-
+            kern.linear_launch(self.size, (r, scan_index, dst))
             return dst,
         else:
-            dst = ndarray((count_nonzero * self.ndim,), dtype=dtype)
-
-            kern = _nonzero_kernel(self.dtype, self.ndim, dtype, dtype)
+            kern = _nonzero_kernel(self.dtype, ndim, dtype, dtype)
             kern.linear_launch(self.size,
-                               (self.ravel(), Indexer(self.shape),
-                                scan_index, dst))
-            return tuple([dst[i::self.ndim]
-                          for i in range(self.ndim)])
+                               (r, Indexer(self.shape), scan_index, dst))
+            return tuple([dst[i::ndim] for i in range(ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -1385,14 +1432,12 @@ cdef class ndarray:
 
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
-        if len(slices) > self.ndim + n_newaxes:
-            raise IndexError('too many indices for array')
-
         # Check if advanced is true,
         # and convert list/NumPy arrays to cupy.ndarray
         advanced = False
         mask_exists = False
         for i, s in enumerate(slices):
+            is_list = False
             if isinstance(s, (list, numpy.ndarray)):
                 is_list = isinstance(s, list)
                 s = array(s)
@@ -1404,11 +1449,14 @@ cdef class ndarray:
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
                 elif issubclass(s.dtype.type, numpy.bool_):
-                    mask_exists = True
+                    mask_exists = not is_list
                 else:
                     raise IndexError(
                         'arrays used as indices must be of integer or boolean '
                         'type. (actual: {})'.format(s.dtype.type))
+
+        if not mask_exists and len(slices) > self.ndim + n_newaxes:
+            raise IndexError('too many indices for array')
 
         if mask_exists:
             n_not_slice_none = 0
@@ -2232,6 +2280,9 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     return ret
 
 
+cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
+
+
 cdef class broadcast:
     """Object that performs broadcasting.
 
@@ -2242,9 +2293,9 @@ cdef class broadcast:
         arrays (tuple of arrays): Arrays to be broadcasted.
 
     Attributes:
-        shape (tuple of ints): The broadcasted shape.
+        ~broadcast.shape (tuple of ints): The broadcasted shape.
         nd (int): Number of dimensions of the broadcasted shape.
-        size (int): Total size of the broadcasted shape.
+        ~broadcast.size (int): Total size of the broadcasted shape.
         values (list of arrays): The broadcasted arrays.
 
     .. seealso:: :class:`numpy.broadcast`
@@ -2258,7 +2309,7 @@ cdef class broadcast:
         readonly Py_ssize_t nd
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t i, j, s, ss, a_ndim, a_sh
+        cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh
         cdef vector.vector[Py_ssize_t] shape, strides, r_shape, r_strides
         cdef vector.vector[vector.vector[Py_ssize_t]] shape_arr
         cdef ndarray a, view
@@ -2275,12 +2326,18 @@ cdef class broadcast:
 
         r_shape.clear()
         for i in range(self.nd):
-            ss = 0
+            smin = PY_SSIZE_T_MAX
+            smax = 0
             for j in range(<Py_ssize_t>shape_arr.size()):
                 if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
-                    ss = max(ss, s)
-            r_shape.push_back(ss)
+                    smin = min(smin, s)
+                    smax = max(smax, s)
+            if smin == 0 and smax > 1:
+                raise ValueError(
+                    'shape mismatch: objects cannot be broadcast to a '
+                    'single shape')
+            r_shape.push_back(0 if smin == 0 else smax)
 
         shape.assign(r_shape.rbegin(), r_shape.rend())
         self.shape = tuple(shape)
@@ -2970,14 +3027,12 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 
     slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
-    if len(slices) > a.ndim + n_newaxes:
-        raise IndexError('too many indices for array')
-
     # Check if advanced is true,
     # and convert list/NumPy arrays to cupy.ndarray
     advanced = False
     mask_exists = False
     for i, s in enumerate(slices):
+        is_list = False
         if isinstance(s, (list, numpy.ndarray)):
             is_list = isinstance(s, list)
             s = array(s)
@@ -2989,11 +3044,14 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             if issubclass(s.dtype.type, numpy.integer):
                 advanced = True
             elif issubclass(s.dtype.type, numpy.bool_):
-                mask_exists = True
+                mask_exists = not is_list
             else:
                 raise IndexError(
                     'arrays used as indices must be of integer or boolean '
                     'type. (actual: {})'.format(s.dtype.type))
+
+    if not mask_exists and len(slices) > a.ndim + n_newaxes:
+        raise IndexError('too many indices for array')
 
     if mask_exists:
         n_not_slice_none = 0
@@ -4172,7 +4230,7 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     return module.get_function(name)
 
 
-def scan(a, out=None):
+cpdef ndarray scan(ndarray a, ndarray out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:

@@ -211,18 +211,32 @@ class TestInterval(unittest.TestCase):
 
     def test_shape_zero(self):
         v = self.rs.interval(10, None)
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, ())
 
     def test_shape_one_dim(self):
         v = self.rs.interval(10, 10)
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, (10,))
 
     def test_shape_multi_dim(self):
         v = self.rs.interval(10, (1, 2))
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, (1, 2))
+
+    def test_int32_range(self):
+        v = self.rs.interval(0x00000000, 2)
+        self.assertEqual(v.dtype, numpy.int32)
+
+        v = self.rs.interval(0x7fffffff, 2)
+        self.assertEqual(v.dtype, numpy.int32)
+
+    def test_uint32_range(self):
+        v = self.rs.interval(0x80000000, 2)
+        self.assertEqual(v.dtype, numpy.uint32)
+
+        v = self.rs.interval(0xffffffff, 2)
+        self.assertEqual(v.dtype, numpy.uint32)
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
@@ -436,6 +450,13 @@ class TestChoiceReplaceFalse(unittest.TestCase):
         self.assertTrue((val < 5).all())
         val = numpy.asarray(val)
         self.assertEqual(numpy.unique(val).size, val.size)
+
+    def test_reproduce(self):
+        rs1 = cupy.random.RandomState(1)
+        v1 = rs1.choice(a=self.a, size=self.size, replace=False)
+        rs2 = cupy.random.RandomState(1)
+        v2 = rs2.choice(a=self.a, size=self.size, replace=False)
+        self.assertTrue((v1 == v2).all())
 
 
 @testing.parameterize(

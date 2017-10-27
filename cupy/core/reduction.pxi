@@ -3,6 +3,7 @@ import string
 
 import numpy
 
+from cupy.cuda import compiler
 from cupy import util
 
 
@@ -202,36 +203,39 @@ class simple_reduction_function(object):
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
 
-    def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
-        if not isinstance(a, ndarray):
-            raise TypeError('Input type must be cupy.ndarray')
-        if self.identity is None and 0 in a.shape:
-            raise ValueError(('zero-size array to reduction operation'
-                              ' %s which has no identity') % self.name)
+    def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
+                 bint keepdims=False):
+        cdef list in_args, out_args
+        cdef tuple in_sahpe, laxis, raxis
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
 
         in_args = [a]
+        a_shape = a.shape
         if out is None:
-            a = _preprocess_args((a,))[0]
+            _preprocess_args((a,))
             out_args = []
         else:
-            a, out = _preprocess_args((a, out))
+            _preprocess_args((a, out))
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        axis, raxis = _get_axis(axis, a.ndim)
-        out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
+        laxis, raxis = _get_axis(axis, a._shape.size())
+        del axis  # to avoid bug
+        out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        if 0 in out_shape:
+        if out_args[0].size == 0:
             if len(out_args) == 1:
                 return out_args[0]
             return tuple(out_args)
+        if a.size == 0 and self.identity is None:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
 
         in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, in_args[0].shape, None)
+            in_args, laxis + raxis, a_shape, None)
 
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
@@ -324,6 +328,10 @@ class ReductionKernel(object):
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
+        if not compiler.is_valid_kernel_name(name):
+            raise ValueError(
+                'Invalid kernel name: "%s"' % name)
+
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)

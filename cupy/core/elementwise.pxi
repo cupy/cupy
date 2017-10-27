@@ -3,6 +3,7 @@ import string
 import numpy
 import six
 
+from cupy.cuda import compiler
 from cupy import util
 
 from cupy.cuda cimport device
@@ -93,9 +94,16 @@ cdef dict _kind_score = {
 cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
     complex: numpy.dtype(complex).type,
-    bool: numpy.dtype(bool).type}
-for i in six.integer_types:
-    _python_type_to_numpy_type[i] = numpy.int64
+    bool: numpy.dtype(bool).type,
+}
+
+
+cpdef _python_scalar_to_numpy_scalar(x):
+    if isinstance(x, six.integer_types):
+        numpy_type = numpy.uint64 if x >= 0x8000000000000000 else numpy.int64
+    else:
+        numpy_type = _python_type_to_numpy_type[type(x)]
+    return numpy_type(x)
 
 
 cpdef str _get_typename(dtype):
@@ -126,7 +134,7 @@ cpdef list _preprocess_args(args):
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
         elif typ in _python_scalar_type_set:
-            arg = _python_type_to_numpy_type[typ](arg)
+            arg = _python_scalar_to_numpy_scalar(arg)
         elif typ in _numpy_scalar_type_set:
             pass
         else:
@@ -232,9 +240,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = a
             arr = arr.view()
             newstrides.clear()
-            for i in range(ndim):
-                if vecshape[i] != 1:
-                    newstrides.push_back(arr._strides[i])
+            for j in range(ndim):
+                if vecshape[j] != 1:
+                    newstrides.push_back(arr._strides[j])
             arr._set_shape_and_strides(newshape, newstrides, False)
             a = arr
         ret.append(a)
@@ -485,6 +493,10 @@ cdef class ElementwiseKernel:
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='', **kwargs):
+        if not compiler.is_valid_kernel_name(name):
+            raise ValueError(
+                'Invalid kernel name: "%s"' % name)
+
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
@@ -687,7 +699,7 @@ class ufunc(object):
     """Universal function.
 
     Attributes:
-        name (str): The name of the universal function.
+        ~ufunc.name (str): The name of the universal function.
         nin (int): Number of input arguments.
         nout (int): Number of output arguments.
         nargs (int): Number of all arguments.

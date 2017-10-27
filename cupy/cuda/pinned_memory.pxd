@@ -1,12 +1,5 @@
 from cupy.cuda cimport memory
 
-cdef class PinnedMemory:
-
-    cdef:
-        public size_t ptr
-        public Py_ssize_t size
-
-
 cdef class PinnedMemoryPointer:
 
     cdef:
@@ -30,14 +23,6 @@ cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size)
 cpdef set_pinned_memory_allocator(allocator=*)
 
 
-cdef class PooledPinnedMemory(PinnedMemory):
-
-    cdef:
-        object pool
-
-    cpdef free(self)
-
-
 cdef class PinnedMemoryPool:
 
     cdef:
@@ -46,6 +31,7 @@ cdef class PinnedMemoryPool:
         object _free
         object __weakref__
         object _weakref
+        object _lock
         Py_ssize_t _allocation_unit_size
 
     cpdef PinnedMemoryPointer malloc(self, Py_ssize_t size)
