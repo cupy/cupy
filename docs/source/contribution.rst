@@ -147,9 +147,10 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
-Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your code::
 
-  $ pip install nose mock
+Note that we are using pytest and mock package for testing, so install them before writing your code::
+
+  $ pip install pytest mock
 
 In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
@@ -174,20 +175,22 @@ In order to run unit tests at the repository root, you first have to build Cytho
   If you want to use ccache for nvcc, please install ccache v3.3 or later.
   You also need to set environment variable ``NVCC='ccache nvcc'``.
 
-Once the Cython modules are built, you can run unit tests simply by running ``nosetests`` command at the repository root::
+Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
-  $ nosetests
+  $ python -m pytest
 
-It requires CUDA by default.
-In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the ``nosetests`` command::
+It requires CUDA and cuDNN by default.
+In order to run unit tests that do not require CUDA and cuDNN, use ``CUPY_TEST_GPU_LIMIT=0`` environment variable and ``-m='not cudnn'`` option::
 
-  $ nosetests path/to/your/test.py --attr='!gpu'
+  $ export CUPY_TESITNG_GPU_LIMIT=0
+  $ python -m pytest path/to/your/test.py -m='not cudnn'
 
 Some GPU tests involve multiple GPUs.
-If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--eval-attr='gpu<N'`` where ``N`` is a concrete integer.
-For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs to ``CUPY_TEST_GPU_LIMIT``.
+For example, if you have only one GPU, launch ``pytest`` by the following command to skip multi-GPU tests::
 
-  $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
+  $ export CUPY_TEST_GPU_LIMIT=1
+  $ python -m pytest path/to/gpu/test.py
 
 Tests are put into the ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``cupy`` and ``install`` directories, respectively.
@@ -196,26 +199,16 @@ In order to enable test runner to find test scripts correctly, we are using spec
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
 * The name of each test script must start with the ``test_`` prefix.
 
-Following this naming convention, you can run all the tests by just typing ``nosetests`` at the repository root::
+Following this naming convention, you can run all the tests by running the following command at the repository root::
 
-  $ nosetests
+  $ python -m pytest
 
 Or you can also specify a root directory to search test scripts from::
 
-  $ nosetests tests/cupy_tests     # to just run tests of CuPy
-  $ nosetests tests/install_tests  # to just run tests of installation modules
+  $ python -m pytest tests/cupy_tests     # to just run tests of CuPy
+  $ python -m pytest tests/install_tests  # to just run tests of installation modules
 
 If you modify the code related to existing unit tests, you must run appropriate commands.
-
-.. note::
-   CuPy tests include type-exhaustive test functions which take long time to execute.
-   If you are running tests on a multi-core machine, you can parallelize the tests by following options::
-
-     $ nosetests --processes=12 --process-timeout=1000 tests/cupy_tests
-
-   The magic numbers can be modified for your usage.
-   Note that some tests require many CUDA compilations, which require a bit long time.
-   Without the ``process-timeout`` option, the timeout is set shorter, causing timeout failures for many test cases.
 
 There are many examples of unit tests under the ``tests`` directory.
 They simply use the ``unittest`` package of the standard library.
@@ -233,8 +226,9 @@ Test functions that require CUDA must be tagged by the ``cupy.testing.attr.gpu``
       def test_my_gpu_func(self):
           ...
 
-The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
-We also have the ``cupy.testing.attr.cudnn`` decorator to let ``nosetests`` know that the test depends on cuDNN.
+The functions tagged by the ``gpu`` decorator are skipped if ``CUPY_TEST_GPU_LIMIT=0`` environment variable is set.
+We also have the ``cupy.testing.attr.cudnn`` decorator to let ``pytest`` know that the test depends on cuDNN.
+The test functions decorated by ``cudnn`` are skipped if ``-m='not cudnn'`` is given.
 
 The test functions decorated by ``gpu`` must not depend on multiple GPUs.
 In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::
@@ -249,14 +243,10 @@ In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()``
       def test_my_two_gpu_func(self):
           ...
 
-Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/cupy/cupy/>`_ **with --attr='!gpu,!slow' option**.
-Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
-The reviewing process starts after the test passes.
+Once you send a pull request, `Travis-CI <https://travis-ci.org/cupy/cupy/>`_ automatically checks if your code meets our coding guidelines described above.
+Since Travis-CI does not support CUDA, we cannot run unit tests automatically.
+The reviewing process starts after the automatic check passes.
 Note that reviewers will test your code without the option to check CUDA-related code.
-
-.. note::
-   Some of numerically unstable tests might cause errors irrelevant to your changes.
-   In such a case, we ignore the failures and go on to the review process, so do not worry about it.
 
 We leverage doctest as well. You can run doctest by typing ``make doctest`` at the ``docs`` directory::
 
