@@ -279,19 +279,19 @@ class TestTomaxint(unittest.TestCase):
         x = self.rs.tomaxint()
         self.assertEqual(x.shape, ())
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
     def test_tomaxint_int(self):
         x = self.rs.tomaxint(3)
         self.assertEqual(x.shape, (3,))
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
     def test_tomaxint_tuple(self):
         x = self.rs.tomaxint((2, 3))
         self.assertEqual(x.shape, (2, 3))
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
 
 @testing.parameterize(
