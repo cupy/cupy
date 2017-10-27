@@ -8,6 +8,8 @@ from cupy import testing
     {'repeats': 2, 'axis': None},
     {'repeats': 2, 'axis': 1},
     {'repeats': 2, 'axis': -1},
+    {'repeats': [2], 'axis': None},
+    {'repeats': [2], 'axis': 1},
     {'repeats': [0, 0, 0], 'axis': 1},
     {'repeats': [1, 2, 3], 'axis': 1},
     {'repeats': [1, 2, 3], 'axis': -2},
@@ -20,6 +22,23 @@ class TestRepeat(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_repeat(self, xp):
         x = testing.shaped_arange((2, 3, 4), xp)
+        return xp.repeat(x, self.repeats, self.axis)
+
+@testing.parameterize(
+    {'repeats': 0, 'axis': None},
+    {'repeats': 2, 'axis': None},
+    {'repeats': 2, 'axis': 0},
+    {'repeats': [2], 'axis': None},
+    {'repeats': [2], 'axis': 0},
+    {'repeats': [1, 2, 3, 4], 'axis': None},
+    {'repeats': [1, 2, 3, 4], 'axis': 0},
+)
+@testing.gpu
+class TestRepeat1D(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_array_repeat(self, xp):
+        x = testing.shaped_arange((4,), xp)
         return xp.repeat(x, self.repeats, self.axis)
 
 
