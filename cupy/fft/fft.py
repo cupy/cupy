@@ -334,8 +334,8 @@ def fftfreq(n, d=1.0):
 
     .. seealso:: :func:`numpy.fft.fftfreq`
     """
-    return cupy.hstack((cupy.arange(0, (n - 1) // 2 + 1),
-                        cupy.arange(-(n // 2), 0))) / n / d
+    return cupy.hstack((cupy.arange(0, (n - 1) // 2 + 1, dtype=np.float64),
+                        cupy.arange(-(n // 2), 0, dtype=np.float64))) / n / d
 
 
 def rfftfreq(n, d=1.0):
@@ -351,7 +351,7 @@ def rfftfreq(n, d=1.0):
 
     .. seealso:: :func:`numpy.fft.rfftfreq`
     """
-    return cupy.arange(0, n // 2 + 1) / n / d
+    return cupy.arange(0, n // 2 + 1, dtype=np.float64) / n / d
 
 
 def fftshift(x, axes=None):
