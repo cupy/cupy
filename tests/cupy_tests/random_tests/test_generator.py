@@ -118,7 +118,7 @@ class TestRandomState(unittest.TestCase):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, None)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     def test_seed_not_none(self, dtype):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
