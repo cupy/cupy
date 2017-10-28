@@ -277,7 +277,7 @@ class RandomState(object):
             self._generator, sample.data.ptr, sample.size * size_in_int)
 
         # Disable sign bit
-        sample &= six.MAXSIZE
+        sample &= cupy.iinfo(cupy.int_).max
         return sample
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
