@@ -195,9 +195,6 @@ def tensordot(a, b, axes=2):
     return core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-# TODO(okuta): Implement einsum
-
-
 # TODO(okuta): Implement matrix_power
 
 
