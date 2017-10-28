@@ -1,4 +1,3 @@
-import nose
 import os
 import shutil
 import subprocess
@@ -84,5 +83,5 @@ class TestNotAvailable(unittest.TestCase):
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
 if __name__ == '__main__':
-    nose.runmodule(argv=[__file__, '-vvs', '-x', '--pdb', '--pdb-failure'],
-                   exit=False)
+    import pytest
+    pytest.main([__file__, '-vvs', '-x', '--pdb'])
