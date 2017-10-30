@@ -2166,7 +2166,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 
-def has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
+def _has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
     for elem in source:
         if elem == n:
             return True
@@ -2198,7 +2198,7 @@ cpdef ndarray moveaxis(ndarray a, vector.vector[Py_ssize_t] source,
     cdef Py_ssize_t n = 0
     for i in range(a.ndim):
         n = <Py_ssize_t>i
-        if not has_element(source, n):
+        if not _has_element(source, n):
             order.push_back(n)
 
     for i in range(len(source)):
