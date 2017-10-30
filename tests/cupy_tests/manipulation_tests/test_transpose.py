@@ -14,6 +14,11 @@ class TestTranspose(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 2])
 
+    @testing.numpy_cupy_raises()
+    def test_moveaxis_failure(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, [0, 1], [1, 3])
+
     @testing.numpy_cupy_array_equal()
     def test_rollaxis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
