@@ -10,11 +10,13 @@ class TestTranspose(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
     def test_moveaxis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 2])
 
     @testing.numpy_cupy_raises()
+    @testing.with_requires('numpy>=1.11')
     def test_moveaxis_failure(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 3])
