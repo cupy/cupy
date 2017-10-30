@@ -1491,7 +1491,7 @@ cdef class ndarray:
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
-                        'numpy.newaxis (`None`) and integer or'
+                        'numpy.newaxis (`None`) and integer or '
                         'boolean arrays are valid indices')
 
             # check if this is a combination of basic and advanced indexing
@@ -3043,7 +3043,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             else:
                 raise IndexError(
                     'only integers, slices (`:`), ellipsis (`...`),'
-                    'numpy.newaxis (`None`) and integer or'
+                    'numpy.newaxis (`None`) and integer or '
                     'boolean arrays are valid indices')
 
         # check if this is a combination of basic and advanced indexing
