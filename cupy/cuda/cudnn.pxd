@@ -93,6 +93,10 @@ cpdef enum:
     CUDNN_UNIDIRECTIONAL = 0
     CUDNN_BIDIRECTIONAL = 1
 
+    CUDNN_RNN_ALGO_STANDARD = 0
+    CUDNN_RNN_ALGO_PERSIST_STATIC = 1
+    CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2
+
     CUDNN_LINEAR_INPUT = 0
     CUDNN_SKIP_INPUT = 1
 
@@ -339,6 +343,10 @@ cpdef setRNNDescriptor_v5(
     size_t rnnDesc, int hiddenSize, int numLayers,
     size_t dropoutDesc, int inputMode, int direction, int mode,
     int dataType)
+cpdef setRNNDescriptor_v6(
+    size_t handle, size_t rnnDesc, int hiddenSize, int numLayers,
+    size_t dropoutDesc, int inputMode, int direction, int mode,
+    int algo, int dataType)
 cpdef getRNNWorkspaceSize(
     size_t handle, size_t rnnDesc, int seqLength, size_t xDesc)
 cpdef getRNNTrainingReserveSize(

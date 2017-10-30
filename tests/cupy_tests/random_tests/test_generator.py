@@ -31,7 +31,6 @@ class FunctionSwitcher(object):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandomState(unittest.TestCase):
 
@@ -168,7 +167,6 @@ class TestRandomState8(TestRandomState):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
@@ -197,7 +195,6 @@ class TestRandAndRandN(unittest.TestCase):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
@@ -211,18 +208,32 @@ class TestInterval(unittest.TestCase):
 
     def test_shape_zero(self):
         v = self.rs.interval(10, None)
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, ())
 
     def test_shape_one_dim(self):
         v = self.rs.interval(10, 10)
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, (10,))
 
     def test_shape_multi_dim(self):
         v = self.rs.interval(10, (1, 2))
-        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.dtype, numpy.int32)
         self.assertEqual(v.shape, (1, 2))
+
+    def test_int32_range(self):
+        v = self.rs.interval(0x00000000, 2)
+        self.assertEqual(v.dtype, numpy.int32)
+
+        v = self.rs.interval(0x7fffffff, 2)
+        self.assertEqual(v.dtype, numpy.int32)
+
+    def test_uint32_range(self):
+        v = self.rs.interval(0x80000000, 2)
+        self.assertEqual(v.dtype, numpy.uint32)
+
+        v = self.rs.interval(0xffffffff, 2)
+        self.assertEqual(v.dtype, numpy.uint32)
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
@@ -234,7 +245,7 @@ class TestInterval(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
-        vals = [self.rs.interval(2, None).get() for _ in range(10)]
+        vals = [self.rs.interval(2, None).get() for _ in range(20)]
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
@@ -257,6 +268,32 @@ class TestInterval(unittest.TestCase):
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
+@testing.fix_random()
+@testing.gpu
+class TestTomaxint(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState(seed=testing.generate_seed())
+
+    def test_tomaxint_none(self):
+        x = self.rs.tomaxint()
+        self.assertEqual(x.shape, ())
+        self.assertTrue((0 <= x).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+
+    def test_tomaxint_int(self):
+        x = self.rs.tomaxint(3)
+        self.assertEqual(x.shape, (3,))
+        self.assertTrue((0 <= x).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+
+    def test_tomaxint_tuple(self):
+        x = self.rs.tomaxint((2, 3))
+        self.assertEqual(x.shape, (2, 3))
+        self.assertTrue((0 <= x).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+
+
 @testing.parameterize(
     {'a': 3, 'size': 2, 'p': None},
     {'a': 3, 'size': 2, 'p': [0.3, 0.3, 0.4]},
@@ -266,7 +303,6 @@ class TestInterval(unittest.TestCase):
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoice1(unittest.TestCase):
 
@@ -302,7 +338,6 @@ class TestChoice1(unittest.TestCase):
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoice2(unittest.TestCase):
 
@@ -335,7 +370,6 @@ class TestChoice2(unittest.TestCase):
 
 
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceChi(unittest.TestCase):
 
@@ -387,7 +421,6 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
@@ -406,7 +439,6 @@ class TestChoiceFailure(unittest.TestCase):
     {'a': numpy.array([0.0, 2.0, 4.0]), 'size': 2},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceReplaceFalse(unittest.TestCase):
 
@@ -450,7 +482,6 @@ class TestChoiceReplaceFalse(unittest.TestCase):
     {'a': [1, 2, 3], 'size': 5},
 )
 @testing.fix_random()
-@testing.with_requires('numpy>=1.11.0')
 @testing.gpu
 class TestChoiceReplaceFalseFailure(unittest.TestCase):
 

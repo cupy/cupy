@@ -98,3 +98,14 @@ class TestReductionKernel(unittest.TestCase):
         self.check_int8_sum((512, 256 * 256), axis=1)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=0)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
+
+
+@testing.gpu
+class TestReductionKernelInvalidArgument(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    def test_invalid_kernel_name(self):
+        with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
+            core.ReductionKernel(
+                'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')

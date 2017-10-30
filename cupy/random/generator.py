@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import functools
 import operator
 import os
 import time
@@ -166,32 +167,63 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, each element of the array is ``numpy.int32``.
+            Currently, only 32 bit integers can be sampled.
+            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
+            a ``numpy.int32`` array is returned.
+            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
+            a ``numpy.uint32`` array is returned.
         """
-        dtype = numpy.int32
         if size is None:
             return self.interval(mx, 1).reshape(())
         elif isinstance(size, int):
             size = (size, )
 
         if mx == 0:
-            return cupy.zeros(size, dtype=dtype)
+            return cupy.zeros(size, dtype=numpy.int32)
+
+        if mx < 0:
+            raise ValueError(
+                'mx must be non-negative (actual: {})'.format(mx))
+        elif mx <= 0x7fffffff:
+            dtype = numpy.int32
+        elif mx <= 0xffffffff:
+            dtype = numpy.uint32
+        else:
+            raise ValueError(
+                'mx must be within uint32 range (actual: {})'.format(mx))
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
 
-        ret = cupy.zeros(size, dtype=dtype)
-        sample = cupy.zeros(size, dtype=dtype)
-        done = cupy.zeros(size, dtype=numpy.bool_)
-        while True:
+        n = functools.reduce(operator.mul, size, 1)
+
+        sample = cupy.empty((n,), dtype=dtype)
+        n_rem = n  # The number of remaining elements to sample
+        ret = None
+        while n_rem > 0:
             curand.generate(
                 self._generator, sample.data.ptr, sample.size)
+            # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
-            ret = cupy.where(success, sample, ret)
-            done |= success
-            if done.all():
-                return ret
+
+            if ret is None:
+                # If the sampling has finished in the first iteration,
+                # just return the sample.
+                if success.all():
+                    n_rem = 0
+                    ret = sample
+                    break
+
+                # Allocate the return array.
+                ret = cupy.empty((n,), dtype=dtype)
+
+            n_succ = min(n_rem, int(success.sum()))
+            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
+            n_rem -= n_succ
+
+        assert n_rem == 0
+        return ret.reshape(size)
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
@@ -222,6 +254,31 @@ class RandomState(object):
 
         """
         return self.normal(size=size, dtype=dtype)
+
+    def tomaxint(self, size=None):
+        """Draws integers between 0 and max integer inclusive.
+
+        Args:
+            size (int or tuple of ints): Output shape.
+
+        Returns:
+            cupy.ndarray: Drawn samples.
+
+        .. seealso::
+            :meth:`numpy.random.RandomState.tomaxint`
+
+        """
+        if size is None:
+            size = ()
+        sample = cupy.empty(size, dtype=cupy.int_)
+        # cupy.random only uses int32 random generator
+        size_in_int = sample.dtype.itemsize // 4
+        curand.generate(
+            self._generator, sample.data.ptr, sample.size * size_in_int)
+
+        # Disable sign bit
+        sample &= cupy.iinfo(cupy.int_).max
+        return sample
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformly-distributed samples over an interval.

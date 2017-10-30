@@ -1,9 +1,11 @@
 from __future__ import division
-import pkg_resources
 import sys
 
 import numpy
 import six
+
+from cupy import _version
+
 
 try:
     from cupy import core  # NOQA
@@ -27,7 +29,7 @@ def is_available():
     return cuda.is_available()
 
 
-__version__ = pkg_resources.get_distribution('cupy').version
+__version__ = _version.__version__
 
 
 from cupy import binary  # NOQA
@@ -40,6 +42,7 @@ from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
+from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
@@ -371,6 +374,10 @@ from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.window import blackman  # NOQA
+from cupy.math.window import hamming  # NOQA
+from cupy.math.window import hanning  # NOQA
+
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
@@ -436,6 +443,7 @@ from cupy.core.fusion import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
+from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import lexsort  # NOQA
 from cupy.sorting.sort import msort  # NOQA
@@ -518,7 +526,7 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, ndarray):
+        if isinstance(arg, (ndarray, sparse.spmatrix)):
             return _cupy
     return numpy
 

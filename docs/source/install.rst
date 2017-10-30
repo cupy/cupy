@@ -13,6 +13,13 @@ We recommend these Linux distributions.
 
 The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
 
+.. warning::
+
+   If you are using certain versions of conda, it may fail to build CuPy with error
+   ``g++: error: unrecognized command line option ‘-R’``.
+   This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
+   If you encounter this problem, please downgrade or upgrade it.
+
 .. note::
 
    We are testing CuPy automatically with Jenkins, where all the above *recommended* environments are tested.
@@ -49,11 +56,11 @@ The latest version of each package will automatically be installed if missing.
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0, 9.0
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6, v7
 
 NCCL support
 
@@ -164,6 +171,11 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
   export CFLAGS=-I/path/to/cudnn/include
   export LDFLAGS=-L/path/to/cudnn/lib
   export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+
+.. note::
+
+   Use full paths for the environment variables.
+   ``distutils`` that is used in the setup script does not parse the home directory mark ``~``.
 
 
 Install CuPy for developers

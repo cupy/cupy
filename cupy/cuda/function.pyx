@@ -140,20 +140,19 @@ cdef class Function:
         s = _get_stream(stream)
         _launch(
             self.ptr,
-            grid[0], grid[1], grid[2], block[0], block[1], block[2],
+            max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
+            max(1, block[0]), max(1, block[1]), max(1, block[2]),
             args, shared_mem, s)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
                         size_t block_max_size=128, stream=None):
         # TODO(beam2d): Tune it
-        gridx = size // block_max_size + 1
-        if gridx > 65536:
-            gridx = 65536
-        if size > block_max_size:
-            size = block_max_size
+        cdef size_t gridx = min(
+            0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
+        cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
         _launch(self.ptr,
-                gridx, 1, 1, size, 1, 1, args, shared_mem, s)
+                gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
 
 
 cdef class Module:

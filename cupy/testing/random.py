@@ -1,20 +1,25 @@
+from __future__ import absolute_import
 import atexit
 import functools
 import numpy
 import os
+import random
 import types
 import unittest
 
 import cupy
 
 
+_old_python_random_state = None
 _old_numpy_random_state = None
 _old_cupy_random_states = None
 
 
 def do_setup(deterministic=True):
+    global _old_python_random_state
     global _old_numpy_random_state
     global _old_cupy_random_states
+    _old_python_random_state = random.getstate()
     _old_numpy_random_state = numpy.random.get_state()
     _old_cupy_random_states = cupy.random.generator._random_states
     cupy.random.reset_states()
@@ -25,18 +30,23 @@ def do_setup(deterministic=True):
             _old_cupy_random_states)
 
     if not deterministic:
+        random.seed()
         numpy.random.seed()
         cupy.random.seed()
     else:
+        random.seed(99)
         numpy.random.seed(100)
         cupy.random.seed(101)
 
 
 def do_teardown():
+    global _old_python_random_state
     global _old_numpy_random_state
     global _old_cupy_random_states
+    random.setstate(_old_python_random_state)
     numpy.random.set_state(_old_numpy_random_state)
     cupy.random.generator._random_states = _old_cupy_random_states
+    _old_python_random_state = None
     _old_numpy_random_state = None
     _old_cupy_random_states = None
 
@@ -78,7 +88,7 @@ def _teardown_random():
 
 def generate_seed():
     assert _nest_count > 0, 'random is not set up'
-    return numpy.random.randint(0xffffffff, dtype=numpy.int64)
+    return numpy.random.randint(0x7fffffff)
 
 
 def fix_random():
