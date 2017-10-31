@@ -1,4 +1,5 @@
 from cupy.random import generator
+import six
 
 # TODO(okuta): Implement permutation
 
@@ -18,7 +19,7 @@ def shuffle(a):
 
 def permutation(a):
     """Returns a permuted range or shuffles an array."""
-    if isinstance(a, int):
+    if isinstance(a, six.integer_types):
         rs = generator.get_random_state()
         return rs.permutation(a)
     else:
