@@ -19,7 +19,7 @@ class TestPadDefault(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_pad_default(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
@@ -53,7 +53,7 @@ class TestPad(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_pad(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
