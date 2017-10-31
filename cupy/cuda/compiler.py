@@ -78,7 +78,12 @@ def compile_using_nvrtc(source, options=(), arch=None):
         return ptx
 
 
-def _preprocess(source, options=()):
+def _preprocess(source, options=(), arch=None):
+    if not arch:
+        arch = _get_arch()
+
+    options += ('-arch={}'.format(arch),)
+
     prog = _NVRTCProgram(source, '')
     try:
         result = prog.compile(options)
@@ -118,7 +123,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
-        base = _empty_file_preprocess_cache[env] = _preprocess('', options)
+        base = _preprocess('', options, arch)
+        _empty_file_preprocess_cache[env] = base
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
     key_src = key_src.encode('utf-8')
