@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy
 
@@ -22,8 +23,17 @@ class TestPadDefault(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_pad_default(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-        a = xp.pad(array, self.pad_width, mode=self.mode)
-        return a
+
+        # Older version of NumPy(<1.12) can emit ComplexWarning
+        def f():
+            return xp.pad(array, self.pad_width, mode=self.mode)
+
+        if xp is numpy:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                return f()
+        else:
+            return f()
 
 
 @testing.parameterize(
@@ -47,9 +57,18 @@ class TestPad(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_pad(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-        a = xp.pad(array, self.pad_width, mode=self.mode,
-                   constant_values=self.constant_values)
-        return a
+
+        # Older version of NumPy(<1.12) can emit ComplexWarning
+        def f():
+            return xp.pad(array, self.pad_width, mode=self.mode,
+                          constant_values=self.constant_values)
+
+        if xp is numpy:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                return f()
+        else:
+            return f()
 
 
 @testing.gpu
