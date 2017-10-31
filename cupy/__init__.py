@@ -35,6 +35,7 @@ __version__ = _version.__version__
 from cupy import binary  # NOQA
 from cupy.core import fusion  # NOQA
 from cupy import creation  # NOQA
+from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
