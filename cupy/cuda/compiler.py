@@ -78,10 +78,7 @@ def compile_using_nvrtc(source, options=(), arch=None):
         return ptx
 
 
-def _preprocess(source, options=(), arch=None):
-    if not arch:
-        arch = _get_arch()
-
+def _preprocess(source, options, arch):
     options += ('-arch={}'.format(arch),)
 
     prog = _NVRTCProgram(source, '')
