@@ -189,7 +189,7 @@ def inv(a):
     workspace = cupy.empty(buffersize, dtype=dtype)
 
     # LU factorization
-    getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr, 
+    getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
     b = cupy.eye(m, dtype=dtype)
