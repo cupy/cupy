@@ -163,20 +163,18 @@ def inv(a):
 
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-    
+
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     cusolver_handle = device.get_cusolver_handle()
-    cublas_handle = device.get_cublas_handle()
     dev_info = cupy.empty(1, dtype=dtype)
-    
+
     ipiv = cupy.empty((a.shape[0], 1), dtype=dtype)
 
     if dtype == 'f':
-        #geqrf = cusolver.sgeqrf
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
         getrs = cusolver.sgetrs
@@ -186,20 +184,20 @@ def inv(a):
         getrs = cusolver.dgetrs
 
     m = a.shape[0]
-        
+
     buffersize = getrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
     workspace = cupy.empty(buffersize, dtype=dtype)
-    
+
     # LU factorization
     getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr, 
           ipiv.data.ptr, dev_info.data.ptr)
-    
+
     b = cupy.eye(m, dtype=dtype)
-    
+
     # solve for the inverse
     getrs(cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr,
           m, dev_info.data.ptr)
-        
+
     return b
 
 
