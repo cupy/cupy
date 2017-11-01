@@ -494,6 +494,7 @@ class TestFusionArithmetic(unittest.TestCase):
         self.check_binary_negative_float('power')
 
     def test_subtract(self):
+        # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
         self.check_binary_without_bool('subtract')
 
     def test_true_divide(self):

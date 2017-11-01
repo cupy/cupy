@@ -118,7 +118,9 @@ class TestDims(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_expand_dims_negative2(self, xp):
         a = testing.shaped_arange((2, 3), xp)
-        return xp.expand_dims(a, -4)
+        # TODO(unno): Too large and too small axis is deprecated in NumPy 1.13
+        with testing.assert_warns(DeprecationWarning):
+            return xp.expand_dims(a, -4)
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze1(self, xp):
