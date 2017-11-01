@@ -1805,7 +1805,8 @@ cdef class ndarray:
     cpdef swapout(self, stream=None):
         """Swaps out data from GPU device memory to HOST pinned memory
            Copied from anaruse's repository
-           Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
+           Source: https://github.com/anaruse/
+                   cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
         """
         if self.is_swapout is True:
             # data is on pinned memory. no need to swap out.
@@ -1827,7 +1828,8 @@ cdef class ndarray:
     cpdef swapin(self, stream=None):
         """Swaps in data from HOST pinned memory to GPU device memory
            Copied from anaruse's repository
-           Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
+           Source: https://github.com/anaruse/
+                   cupy/blob/OOC_cupy_v102/cupy/core/core.pyx
         """
         if self.is_swapout is False:
             # data is on device memory. no need to swap in.

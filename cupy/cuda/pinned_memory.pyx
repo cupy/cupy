@@ -11,6 +11,7 @@ from cupy.cuda cimport runtime
 
 from cupy.cuda cimport memory
 
+
 class PinnedMemory(object):
 
     """Pinned memory allocation on host.
@@ -90,8 +91,10 @@ cdef class PinnedMemoryPointer:
 
     cpdef copy_from_device(self, memory.MemoryPointer src, Py_ssize_t size):
         """Copies data from src (device memory) to self (pinned memory).
+
         Copied from anaruse's repository
-        Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
+        Source: https://github.com/anaruse/
+                cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
 
         Args:
             src (cupy.cuda.MemoryPointer): Source memory pointer.
@@ -106,7 +109,8 @@ cdef class PinnedMemoryPointer:
         """Copies data from src (device memory) to self (pinned memory)
         asynchronously.
         Copied from anaruse's repository
-        Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
+        Source: https://github.com/anaruse/
+                cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
 
         Args:
             src (cupy.cuda.MemoryPointer): Source memory pointer.
@@ -120,7 +124,8 @@ cdef class PinnedMemoryPointer:
     cpdef copy_to_device(self, memory.MemoryPointer dst, Py_ssize_t size):
         """Copies data from self (pinned memory) to dst (device memory).
         Copied from anaruse's repository
-        Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
+        Source: https://github.com/anaruse/
+                cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
 
         Args:
             dst (cupy.cuda.MemoryPointer): Destination memory pointer.
@@ -135,7 +140,8 @@ cdef class PinnedMemoryPointer:
         """Copies data from self (pinned memory) to dst (device memory)
         asynchronously.
         Copied from anaruse's repository
-        Source: https://github.com/anaruse/cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
+        Source: https://github.com/anaruse/
+                cupy/blob/OOC_cupy_v102/cupy/cuda/pinned_memory.pyx
 
         Args:
             dst (cupy.cuda.MemoryPointer): Destination memory pointer.

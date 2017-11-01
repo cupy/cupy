@@ -10,9 +10,11 @@ cdef class PinnedMemoryPointer:
 
     cpdef Py_ssize_t size(self)
     cpdef copy_from_device(self, memory.MemoryPointer src, Py_ssize_t size)
-    cpdef copy_from_device_async(self, memory.MemoryPointer src, Py_ssize_t size, stream)
+    cpdef copy_from_device_async(self, memory.MemoryPointer src,
+                                 Py_ssize_t size, stream)
     cpdef copy_to_device(self, memory.MemoryPointer dst, Py_ssize_t size)
-    cpdef copy_to_device_async(self, memory.MemoryPointer dst, Py_ssize_t size, stream)
+    cpdef copy_to_device_async(self, memory.MemoryPointer dst,
+                               Py_ssize_t size, stream)
 
 cpdef _add_to_watch_list(event, obj)
 
