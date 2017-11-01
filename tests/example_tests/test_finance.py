@@ -2,7 +2,7 @@ import unittest
 
 import six
 
-import example_test
+from example_tests import example_test
 
 
 class TestBlackScholes(unittest.TestCase):
