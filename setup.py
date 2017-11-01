@@ -96,7 +96,7 @@ setup(
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=['mock',
-                   'nose'],
+                   'pytest'],
     ext_modules=ext_modules,
     cmdclass={'build_ext': build_ext,
               'sdist': sdist},
