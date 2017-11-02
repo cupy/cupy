@@ -292,7 +292,7 @@ def unravel_index(indices, dims, order='C'):
     if (indices < 0).any():
         raise ValueError("invalid entry in index array")
 
-    unraveled_coords = list()
+    unraveled_coords = []
     for dim in dims:
         unraveled_coords.append(indices % dim)
         indices = indices // dim
