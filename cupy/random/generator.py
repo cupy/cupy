@@ -439,6 +439,20 @@ def get_random_state():
     return rs
 
 
+def set_random_state(rs):
+    """Sets the state of the random number generator for the current device.
+
+    Args:
+        state(RandomState): Random state to set for the current device.
+    """
+    if not isinstance(rs, RandomState):
+        raise TypeError(
+            'Random state must be an instance of RandomState. '
+            'Actual: {}'.format(type(rs)))
+    dev = cuda.Device()
+    _random_states[dev.id] = rs
+
+
 def _check_and_get_dtype(dtype):
     dtype = numpy.dtype(dtype)
     if dtype.char not in ('f', 'd'):
