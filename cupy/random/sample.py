@@ -1,5 +1,6 @@
 import six
 
+import cupy
 from cupy import core
 from cupy.creation import basic
 from cupy.random import distributions
@@ -58,7 +59,7 @@ def randn(*size, **kwarg):
     return distributions.normal(size=size, dtype=dtype)
 
 
-def randint(low, high=None, size=None):
+def randint(low, high=None, size=None, dtype='l'):
     """Returns a scalar or an array of integer values over ``[low, high)``.
 
     Each element of returned values are independently sampled from
@@ -72,6 +73,7 @@ def randint(low, high=None, size=None):
             and lower bound of the interval is set to ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
+        dtype: Data type specifier.
 
     Returns:
         int or cupy.ndarray of ints: If size is ``None``,
@@ -88,10 +90,22 @@ def randint(low, high=None, size=None):
 
     if lo >= hi:
         raise ValueError('low >= high')
+    if lo < cupy.iinfo(dtype).min:
+        raise ValueError(
+            'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+    if hi > cupy.iinfo(dtype).max + 1:
+        raise ValueError(
+            'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
     diff = hi - lo - 1
+    if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
+        raise NotImplementedError(
+            'Sampling from a range whose extent is larger than int32 range is '
+            'currently not supported')
     rs = generator.get_random_state()
-    return lo + rs.interval(diff, size)
+    x = rs.interval(diff, size).astype(dtype, copy=False)
+    cupy.add(x, lo, out=x)
+    return x
 
 
 def random_integers(low, high=None, size=None):
