@@ -3,16 +3,39 @@
 import collections
 import ctypes
 import gc
+import threading
 import warnings
 import weakref
 
 from fastrlock cimport rlock
 
+from cupy.cuda import driver
 from cupy.cuda import memory_hook
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
+
+
+thread_local = threading.local()
+
+
+cdef inline _ensure_context(int device_id):
+
+    """Ensure that CUcontext bound to the calling host thread exists.
+
+    See discussion on https://github.com/cupy/cupy/issues/72 for details.
+    """
+
+    if not hasattr(thread_local, 'seen_devices'):
+        thread_local.seen_devices = set()
+    if device_id not in thread_local.seen_devices:
+        try:
+            driver.ctxGetCurrent()
+        except driver.CUDADriverError:
+            # Call Runtime API to establish context on this host thread.
+            runtime.memGetInfo()
+        thread_local.seen_devices.add(device_id)
 
 
 class OutOfMemoryError(MemoryError):
@@ -615,7 +638,8 @@ cdef class SingleDeviceMemoryPool:
                 finally:
                     rlock.unlock_fastrlock(self._free_lock)
 
-        if chunk:
+        if chunk is not None:
+            _ensure_context(self._device_id)
             chunk, remaining = self._split(chunk, size)
         else:
             # cudaMalloc if a cache is not found
