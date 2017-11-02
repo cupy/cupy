@@ -256,10 +256,10 @@ def unravel_index(indices, dims, order='C'):
     """Converts a flat index or array of flat indices into a tuple of coordinate arrays.
 
     Args:
-        indices: An integer array whose elements are indices
+        indices (cupy.ndarray): An integer array whose elements are indices
             into the flattened version of an array of dimensions :obj:`dims`.
-        dims: The shape of the array to use for unraveling indices.
-        order: Determines whether the indices should be viewed as indexing
+        dims (tuple of ints): The shape of the array to use for unraveling indices.
+        order ('C' or 'F'): Determines whether the indices should be viewed as indexing
             in row-major (C-style) or column-major (Fortran-style) order.
 
     Returns: tuple of ndarrays:
