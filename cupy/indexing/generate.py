@@ -160,9 +160,9 @@ array([1, 2, 3, 0, 0, 4, 5, 6], dtype=int32)
 
 
 def indices(dimensions, dtype=int):
-    """Return an array representing the indices of a grid.
+    """Returns an array representing the indices of a grid.
 
-    Compute an array where the subarrays contain index values 0,1,...
+    Computes an array where the subarrays contain index values 0,1,...
     varying only along the corresponding axis.
 
     Args:
@@ -239,7 +239,7 @@ def ix_(*args):
     for k, new in enumerate(args):
         new = from_data.asarray(new)
         if new.ndim != 1:
-            raise ValueError("Cross index must be 1 dimensional")
+            raise ValueError('Cross index must be 1 dimensional')
         if new.size == 0:
             # Explicitly type empty arrays to avoid float default
             new = new.astype(numpy.intp)

@@ -10,7 +10,7 @@ import numpy
 
 
 def fill_diagonal(a, val, wrap=False):
-    """Fill the main diagonal of the given array of any dimensionality.
+    """Fills the main diagonal of the given array of any dimensionality.
 
     For an array `a` with ``a.ndim > 2``, the diagonal is the list of
     locations with indices ``a[i, i, ..., i]`` all identical. This function
@@ -36,7 +36,7 @@ def fill_diagonal(a, val, wrap=False):
     """
     # The followings are imported from the original numpy
     if a.ndim < 2:
-        raise ValueError("array must be at least 2-d")
+        raise ValueError('array must be at least 2-d')
     end = None
     if a.ndim == 2:
         step = a.shape[1] + 1
@@ -44,7 +44,7 @@ def fill_diagonal(a, val, wrap=False):
             end = a.shape[1] * a.shape[1]
     else:
         if not numpy.alltrue(numpy.diff(a.shape) == 0):
-            raise ValueError("All dimensions of input must be of equal length")
+            raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
     # Since the current cupy does not support a.flat,
