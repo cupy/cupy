@@ -280,17 +280,17 @@ def unravel_index(indices, dims, order='C'):
     elif order == 'F':
         pass
     else:
-        raise TypeError("order not understood")
+        raise TypeError('order not understood')
 
-    if not cupy.can_cast(indices, cupy.int64, "same_kind"):
+    if not cupy.can_cast(indices, cupy.int64, 'same_kind'):
         raise TypeError(
-            "Iterator operand 0 dtype could not be cast "
-            "from dtype('{}') to dtype('{}') "
-            "according to the rule 'same_kind'".format(
+            'Iterator operand 0 dtype could not be cast '
+            'from dtype(\'{}\') to dtype(\'{}\') '
+            'according to the rule \'same_kind\''.format(
                 indices.dtype, cupy.int64().dtype))
 
     if (indices < 0).any():
-        raise ValueError("invalid entry in index array")
+        raise ValueError('invalid entry in index array')
 
     unraveled_coords = []
     for dim in dims:
@@ -298,7 +298,7 @@ def unravel_index(indices, dims, order='C'):
         indices = indices // dim
 
     if (indices > 0).any():
-        raise ValueError("invalid entry in index array")
+        raise ValueError('invalid entry in index array')
 
     if order == 'C':
         unraveled_coords = reversed(unraveled_coords)
