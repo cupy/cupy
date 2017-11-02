@@ -85,6 +85,7 @@ enum CUjitInputType {};
 
 
 typedef void* CUdeviceptr;
+struct CUctx_st;
 struct CUevent_st;
 struct CUfunc_st;
 struct CUmod_st;
@@ -92,6 +93,7 @@ struct CUstream_st;
 struct CUlinkState_st;
 
 
+typedef struct CUctx_st* CUcontext;
 typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
@@ -105,6 +107,12 @@ CUresult cuGetErrorName(...) {
 }
 
 CUresult cuGetErrorString(...) {
+    return CUDA_SUCCESS;
+}
+
+
+// Context management
+CUresult cuCtxGetCurrent(...) {
     return CUDA_SUCCESS;
 }
 
