@@ -13,8 +13,11 @@ class TestBinaryRepr(testing.NumpyAliasBasicTestBase):
             (0, 0),
             (3, 5),
             (-3, 5),
-            (3, 0),
-            # (-3, 0),  # NumPy<1.12 did not support insufficient width
+            # TODO(unno): Insuffisicent width is deprecated in numpy>=1.13.
+            # We need to check if it cause a warning, and maybe it causes an
+            # error in the future.
+            # (3, 0),
+            # (-3, 0),
         ]}))
 class TestBinaryReprValues(testing.NumpyAliasValuesTestBase):
 
