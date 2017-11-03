@@ -240,7 +240,7 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
-            seed = numpy.uint64(seed)
+            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)

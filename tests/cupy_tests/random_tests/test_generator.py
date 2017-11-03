@@ -118,10 +118,22 @@ class TestRandomState(unittest.TestCase):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, None)
 
-    @testing.for_all_dtypes()
+    @testing.for_int_dtypes()
     def test_seed_not_none(self, dtype):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+
+    @testing.for_dtypes([numpy.complex_])
+    def test_seed_invalid_type_complex(self, dtype):
+        with self.assertRaises(TypeError):
+            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
+                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+
+    @testing.for_float_dtypes()
+    def test_seed_invalid_type_float(self, dtype):
+        with self.assertRaises(TypeError):
+            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
+                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
 
 
 @testing.gpu
