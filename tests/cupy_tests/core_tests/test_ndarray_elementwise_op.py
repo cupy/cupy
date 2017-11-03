@@ -159,7 +159,10 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_array_op(self, op, xp, x_type, y_type):
+    def check_array_array_op(self, op, xp, x_type, y_type, no_bool=False):
+        if (no_bool and
+                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+            return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
         return op(a, b)
@@ -176,7 +179,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.10')
     def test_isub_array(self):
-        self.check_array_array_op(operator.isub)
+        self.check_array_array_op(operator.isub, no_bool=True)
 
     def test_mul_array(self):
         self.check_array_array_op(operator.mul)
@@ -265,7 +268,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
                     or numpy.dtype(y_type).kind == 'c':
                 return xp.array(True)
         if (no_bool and
-            (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -378,7 +381,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
                     or numpy.dtype(y_type).kind == 'c':
                 return x_type(True)
         if (no_bool and
-            (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
             return x_type(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
