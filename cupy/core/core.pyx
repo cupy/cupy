@@ -3183,12 +3183,10 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     for s in a.shape[ri:li:-1]:
         strides.insert(0, s * strides[0])
 
-    # convert all negative indices to wrap_indices
-    for i in range(li, ri + 1):
-        slices[i] %= a_interm_shape[i]
-
-    flattened_indexes = [stride * s
-                         for stride, s in zip(strides, slices[li:ri + 1])]
+    # wrap all out-of-bound indices
+    flattened_indexes = [
+        stride * (s % a_interm_shape_i) for stride, s, a_interm_shape_i
+        in zip(strides, slices[li:ri + 1], a_interm_shape[li:ri + 1])]
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
