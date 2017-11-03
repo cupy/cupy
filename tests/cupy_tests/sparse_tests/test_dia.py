@@ -192,6 +192,36 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         return m.transpose().toarray()
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'ret_dtype': [None, numpy.float32, numpy.float64],
+    'axis': [None, 0, 1, -1, -2],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestDiaMatrixSum(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=self.axis, dtype=self.ret_dtype)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_with_out(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        if self.axis == None:
+            shape = ()
+        else:
+            shape = list(m.shape)
+            shape[self.axis] = 1
+            shape = tuple(shape)
+        out = xp.empty(shape, dtype=self.ret_dtype)
+        if xp is numpy:
+            # TODO(unno): numpy.matrix is used for scipy.sparse though
+            # cupy.ndarray is used for cupy.sparse.
+            out = xp.asmatrix(out)
+        return m.sum(axis=self.axis, dtype=self.ret_dtype, out=out)
+
+
 class TestIsspmatrixDia(unittest.TestCase):
 
     def test_dia(self):

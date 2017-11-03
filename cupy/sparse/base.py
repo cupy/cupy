@@ -321,7 +321,49 @@ class spmatrix(object):
 
     # TODO(unno): Implement setdiag
 
-    # TODO(unno): Implement sum
+    def sum(self, axis=None, dtype=None, out=None):
+        """Sums the matrix elements over a given axis.
+
+        Args:
+            axis (int): Axis along which the sum is comuted.
+            dtype: The type of returned matrix.
+            out (cupy.ndarray): Output matrix.
+
+        Returns:
+            cupy.ndarray: Summed array.
+
+        .. seealso::
+           :func:`scipy.sparse.spmatrix.sum`
+
+        """
+        util.validateaxis(axis)
+
+        # This implementation uses multiplication, though it is not efficient
+        # for some matrix types. These should override this function.
+
+        m, n = self.shape
+
+        if axis is None:
+            return (self.dot(cupy.ones(n, dtype=self.dtype))).sum(
+                dtype=dtype, out=out)
+
+        if axis < 0:
+            axis += 2
+
+        if axis == 0:
+            ret = self.T.dot(cupy.ones(m, dtype=self.dtype)).reshape(1, n)
+        else:  # axis == 1
+            ret = self.dot(cupy.ones(n, dtype=self.dtype)).reshape(m, 1)
+
+        if out is not None:
+            if out.shape != ret.shape:
+                raise ValueError('dimensions do not match')
+            out[:] = ret
+            return out
+        elif dtype is not None:
+            return ret.astype(dtype)
+        else:
+            return ret
 
     def toarray(self, order=None, out=None):
         """Return a dense ndarray representation of this matrix."""
