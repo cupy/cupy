@@ -2179,8 +2179,8 @@ def normalize_axis_tuple(vector.vector[Py_ssize_t] axis, ndim):
     """
     for ax in axis:
         if ax >= ndim or ax < -ndim:
-            raise numpy.AxisError('axis {} is out of bounds for array of '
-                                  'dimension {}'.format(ax, ndim))
+            raise _AxisError('axis {} is out of bounds for array of '
+                             'dimension {}'.format(ax, ndim))
     return tuple((ax % ndim) for ax in axis)
 
 

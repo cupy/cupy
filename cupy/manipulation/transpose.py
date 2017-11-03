@@ -56,7 +56,7 @@ def moveaxis(a, source, destination):
     .. seealso:: :func:`numpy.moveaxis`
 
     """
-    # TODO(okuta): check type
+    # TODO(fukatani): check type
     return core.moveaxis(a, source, destination)
 
 
