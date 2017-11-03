@@ -39,7 +39,8 @@ def reset_handles():
     cdef list handles = _handle
     _handle.clear()
     for handle in handles:
-        cudnn.destroy(handle)
+        if handle:
+            cudnn.destroy(handle)
 
 
 cpdef dict _get_nd_tensor_cache():
