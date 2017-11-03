@@ -116,7 +116,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
 
 def percentile(a, q, axis=None, out=None, interpolation='linear',
                keepdims=False):
-    """Compute the qth percentile of the data along the specified axis.
+    """Computes the q-th percentile of the data along the specified axis.
 
     Args:
         a (cupy.ndarray): Array for which to compute percentiles.
@@ -186,7 +186,7 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif interpolation == 'nearest':
         # TODO(hvy): Implement nearest using around
-        raise NotImplementedError()
+        raise ValueError()
     elif interpolation == 'linear':
         pass
     else:
