@@ -12,6 +12,7 @@ import unittest
 import warnings
 
 import numpy
+import six
 
 import cupy
 from cupy import internal
@@ -1013,9 +1014,13 @@ class NumpyAliasTestBase(unittest.TestCase):
 class NumpyAliasBasicTestBase(NumpyAliasTestBase):
 
     def test_argspec(self):
+        if six.PY2:
+            f = inspect.getargspec
+        else:
+            f = inspect.signature
         self.assertEqual(
-            inspect.getargspec(self.cupy_func),
-            inspect.getargspec(self.numpy_func))
+            f(self.cupy_func),
+            f(self.numpy_func))
 
     def test_docstring(self):
         cupy_func = self.cupy_func
