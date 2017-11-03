@@ -1091,7 +1091,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.var`
 
         """
-        return _var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _var(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
+                    keepdims=keepdims)
 
     cpdef ndarray std(self, axis=None, dtype=None, out=None, ddof=0,
                       keepdims=False):
@@ -1102,7 +1103,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.std`
 
         """
-        return _std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _std(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
+                    keepdims=keepdims)
 
     cpdef ndarray prod(self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
