@@ -795,9 +795,9 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m.sum(axis=(0, 1))
         
     @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_float_axis(self, xp, sp):
+    def test_sum_str_axis(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        m.sum(axis=0.0)
+        m.sum(axis='test')
         
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_sum_too_large_axis(self, xp, sp):
