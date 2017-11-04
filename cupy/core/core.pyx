@@ -2174,7 +2174,7 @@ def _has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
 
 
 cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
-      except *:
+        except *:
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
     """
