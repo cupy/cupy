@@ -15,6 +15,7 @@ Matrix and vector products
    cupy.matmul
    cupy.tensordot
    cupy.einsum
+   cupy.einsum_path
    cupy.kron
 
 Decompositions

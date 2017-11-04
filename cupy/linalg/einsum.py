@@ -219,31 +219,6 @@ def input_subscript_sanity_check(subscript, ioperand, index):
 
 
 def einsum_core(*operands):
-    """einsum(subscripts, *operands)
-
-    Evaluates the Einstein summation convention on the operands.
-    Using the Einstein summation convention, many common multi-dimensional
-    array operations can be represented in a simple fashion. This function
-    provides a way to compute such summations.
-
-    .. note::
-       Memory contiguity of calculation result is not always compatible with
-       `numpy.einsum`.
-       ``out``, ``order``, ``dtype``, ``casting`` and ``optimize`` options
-       are not supported.
-
-    Args:
-        subscripts (str): Specifies the subscripts for summation.
-        operands (sequence of arrays): These are the arrays for the operation.
-
-    Returns:
-        cupy.ndarray:
-            The calculation based on the Einstein summation convention.
-
-    .. seealso:: :func:`numpy.einsum`
-
-    """
-
     # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting', 'optimize'
 
     input_subscripts, output_subscript, ioperands = \
@@ -304,6 +279,9 @@ def _find_contraction(positions, input_sets, output_set):
 
 
 def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
+    """Finds the best path from all possible combinations.
+
+    """
     if len(input_sets) == 1:
         return [(0,)]
 
@@ -432,6 +410,14 @@ def _parse_einsum_input(operands):
 
 
 def einsum_path(*operands, **kwargs):
+    """einsum_path(subscripts, *operands)
+
+    Evaluates the lowest cost contraction order for an einsum expression by
+    considering the creation of intermediate arrays.
+
+    .. seealso:: :func:`numpy.einsum_path`
+
+    """
     # Make sure all keywords are valid
     valid_contract_kwargs = ['optimize', 'einsum_call']
     unknown_kwargs = [k for (k, v) in kwargs.items() if k
@@ -442,7 +428,7 @@ def einsum_path(*operands, **kwargs):
 
     # Figure out what the path really is
     path_type = kwargs.pop('optimize', True)
-    if path_type:
+    if path_type is True:
         path_type = 'greedy'
     if path_type is None:
         path_type = False
@@ -605,6 +591,31 @@ def einsum_path(*operands, **kwargs):
 
 
 def einsum(*operands, **kwargs):
+    """einsum(subscripts, *operands)
+
+    Evaluates the Einstein summation convention on the operands.
+    Using the Einstein summation convention, many common multi-dimensional
+    array operations can be represented in a simple fashion. This function
+    provides a way to compute such summations.
+
+    .. note::
+       Memory contiguity of calculation result is not always compatible with
+       `numpy.einsum`.
+       ``out``, ``order``, ``dtype`` and ``casting`` options are not supported.
+       ``optimize``=`'optimal'` is not supported.
+
+    Args:
+        subscripts (str): Specifies the subscripts for summation.
+        operands (sequence of arrays): These are the arrays for the operation.
+
+    Returns:
+        cupy.ndarray:
+            The calculation based on the Einstein summation convention.
+
+    .. seealso:: :func:`numpy.einsum`
+
+    """
+
     # Grab non-einsum kwargs
     optimize_arg = kwargs.pop('optimize', False)
 
