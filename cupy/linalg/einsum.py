@@ -205,7 +205,20 @@ def get_dummy_labels(label_list):
     return dummy_label_set
 
 
-def einsum(*operands):
+def input_subscript_sanity_check(subscript, ioperand, index):
+    if len(subscript) - subscript.count('@') > ioperand.ndim:
+        raise ValueError('einstein sum subscripts string contains too '
+                         'many subscripts for operand {}'.format(index))
+    if '@' not in subscript and len(subscript) < ioperand.ndim:
+        raise ValueError('operand has more dimensions than subscripts'
+                         ' given in einstein sum, but no \'...\' ellipsis'
+                         ' provided to broadcast the extra dimensions.')
+    if subscript.count('@') >= 2:
+        raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
+                         'one operand')
+
+
+def einsum_core(*operands):
     """einsum(subscripts, *operands)
 
     Evaluates the Einstein summation convention on the operands.
@@ -233,16 +246,126 @@ def einsum(*operands):
 
     # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting', 'optimize'
 
+    input_subscripts, output_subscript, ioperands = \
+        _parse_einsum_input(operands)
+
+    input_subscripts_list = input_subscripts.split(',')
+
+    single_views = []
+    for i in six.moves.range(len(input_subscripts_list)):
+        subscript = input_subscripts_list[i]
+        ioperand = ioperands[i]
+        input_subscript_sanity_check(subscript, ioperand, i)
+        if '@' in input_subscripts and '@' not in output_subscript:
+            if len(subscript) <= ioperand.ndim:
+                raise ValueError('output had too few broadcast dimensions')
+            subscript = subscript.replace('@', '')
+
+        result, subscript = calc_single_view(ioperand, subscript)
+        single_views.append((result, subscript))
+
+    if len(ioperands) >= 2:
+        results = [view[0] for view in single_views]
+        subscripts = [view[1] for view in single_views]
+        results, subscripts = move_broadcast_axes_to_front(results, subscripts)
+        result, subscript = calc_combined_view(results, subscripts)
+        result, subscript = calc_single_view(result, subscript)
+    else:
+        result, subscript = single_views[0]
+
+    result, subscript = calc_summed_view(result, subscript, output_subscript)
+    result = calc_transposed_view(result, subscript, output_subscript)
+    return result
+
+
+def _compute_size_by_dict(indices, idx_dict):
+    ret = 1
+    for i in indices:
+        ret *= idx_dict[i]
+    return ret
+
+
+def _find_contraction(positions, input_sets, output_set):
+    idx_contract = set()
+    idx_remain = output_set.copy()
+    remaining = []
+    for ind, value in enumerate(input_sets):
+        if ind in positions:
+            idx_contract |= value
+        else:
+            remaining.append(value)
+            idx_remain |= value
+
+    new_result = idx_remain & idx_contract
+    idx_removed = (idx_contract - new_result)
+    remaining.append(new_result)
+
+    return (new_result, remaining, idx_removed, idx_contract)
+
+
+def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
+    if len(input_sets) == 1:
+        return [(0,)]
+
+    path = []
+    for iteration in six.moves.range(len(input_sets) - 1):
+        iteration_results = []
+        comb_iter = []
+
+        # Compute all unique pairs
+        for x in six.moves.range(len(input_sets)):
+            for y in six.moves.range(x + 1, len(input_sets)):
+                comb_iter.append((x, y))
+
+        for positions in comb_iter:
+            # Find the contraction
+            contract = _find_contraction(positions, input_sets, output_set)
+            idx_result, new_input_sets, idx_removed, idx_contract = contract
+
+            # Sieve the results based on memory_limit
+            if _compute_size_by_dict(idx_result, idx_dict) > memory_limit:
+                continue
+
+            # Build sort tuple
+            removed_size = _compute_size_by_dict(idx_removed, idx_dict)
+            cost = _compute_size_by_dict(idx_contract, idx_dict)
+            sort = (-removed_size, cost)
+
+            # Add contraction to possible choices
+            iteration_results.append([sort, positions, new_input_sets])
+
+        # If we did not find a new contraction contract remaining
+        if not iteration_results:
+            path.append(tuple(six.moves.range(len(input_sets))))
+            break
+
+        # Sort based on first index
+        best = min(iteration_results, key=lambda x: x[0])
+        path.append(best[1])
+        input_sets = best[2]
+
+    return path
+
+
+def _parse_einsum_input(operands):
     if not operands:
         raise ValueError('must specify the einstein sum subscripts string and '
                          'at least one operand, or at least one operand and '
                          'its corresponding subscripts list')
 
     subscripts = operands[0]
-    ioperands = operands[1:]
+    ioperands = list(operands[1:])
 
     if not isinstance(subscripts, str):
         raise TypeError('Current cupy einsum support only string subscripts')
+
+    num_input_subscripts = len(subscripts.split(','))
+    if num_input_subscripts < len(ioperands):
+        raise ValueError('fewer operands provided to einstein sum function '
+                         'than specified in the subscripts string')
+    if num_input_subscripts > len(ioperands):
+        raise ValueError('more operands provided to einstein sum function '
+                         'than specified in the subscripts string')
 
     subscripts = subscripts.replace(' ', '')
     irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,.')
@@ -250,14 +373,6 @@ def einsum(*operands):
         pickup = list(irregular_chars)[0]
         raise ValueError('invalid subscript \'{}\' in einstein sum subscripts '
                          'string, subscripts must be letters'.format(pickup))
-
-    converted_inputs = []
-    dtype = numpy.result_type(*ioperands)
-    for a in ioperands:
-        if isinstance(a, cupy.ndarray):
-            converted_inputs.append(a.astype(dtype))
-        else:
-            converted_inputs.append(cupy.asarray(a, dtype=dtype))
 
     # For simplicity of implementation of subscripts interpretation,
     # All '...' is replaced to '@'.
@@ -305,45 +420,221 @@ def einsum(*operands):
         out_label_list = sorted(list(out_label_set))
         output_subscript = ''.join(out_label_list)
 
-    input_subscripts_list = input_subscripts.split(',')
-    if len(input_subscripts_list) < len(converted_inputs):
-        raise ValueError('fewer operands provided to einstein sum function '
-                         'than specified in the subscripts string')
-    if len(input_subscripts_list) > len(converted_inputs):
-        raise ValueError('more operands provided to einstein sum function '
-                         'than specified in the subscripts string')
+    converted_ioperands = []
+    dtype = numpy.result_type(*ioperands)
+    for a in ioperands:
+        if isinstance(a, cupy.ndarray):
+            converted_ioperands.append(a.astype(dtype))
+        else:
+            converted_ioperands.append(cupy.asarray(a, dtype=dtype))
 
-    single_views = []
-    for i in six.moves.range(len(input_subscripts_list)):
-        subscript = input_subscripts_list[i]
-        ioperand = converted_inputs[i]
-        if len(subscript) - subscript.count('@') > ioperand.ndim:
-            raise ValueError('einstein sum subscripts string contains too '
-                             'many subscripts for operand {}'.format(i))
-        if '@' not in subscript and len(subscript) < ioperand.ndim:
-            raise ValueError('operand has more dimensions than subscripts'
-                             ' given in einstein sum, but no \'...\' ellipsis'
-                             ' provided to broadcast the extra dimensions.')
-        if subscript.count('@') >= 2:
-            raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
-                             'one operand')
-        if '@' in input_subscripts and '@' not in output_subscript:
-            if len(subscript) <= ioperand.ndim:
-                raise ValueError('output had too few broadcast dimensions')
-            subscript = subscript.replace('@', '')
+    return input_subscripts, output_subscript, converted_ioperands
 
-        result, subscript = calc_single_view(ioperand, subscript)
-        single_views.append((result, subscript))
 
-    if len(converted_inputs) >= 2:
-        results = [view[0] for view in single_views]
-        subscripts = [view[1] for view in single_views]
-        results, subscripts = move_broadcast_axes_to_front(results, subscripts)
-        result, subscript = calc_combined_view(results, subscripts)
-        result, subscript = calc_single_view(result, subscript)
+def einsum_path(*operands, **kwargs):
+    # Make sure all keywords are valid
+    valid_contract_kwargs = ['optimize', 'einsum_call']
+    unknown_kwargs = [k for (k, v) in kwargs.items() if k
+                      not in valid_contract_kwargs]
+    if unknown_kwargs:
+        raise TypeError('Did not understand the following kwargs:'
+                        ' %s' % unknown_kwargs)
+
+    # Figure out what the path really is
+    path_type = kwargs.pop('optimize', True)
+    if path_type:
+        path_type = 'greedy'
+    if path_type is None:
+        path_type = False
+
+    memory_limit = None
+
+    # No optimization or a named path algorithm
+    if not path_type or isinstance(path_type, str):
+        pass
+
+    # Given an explicit path
+    elif len(path_type) and (path_type[0] == 'einsum_path'):
+        pass
+
+    # Path tuple with memory limit
+    elif ((len(path_type) == 2) and isinstance(path_type[0], str) and
+            isinstance(path_type[1], (int, float))):
+        memory_limit = int(path_type[1])
+        path_type = path_type[0]
+
     else:
-        result, subscript = single_views[0]
+        raise TypeError('Did not understand the path: %s' % str(path_type))
 
-    result, subscript = calc_summed_view(result, subscript, output_subscript)
-    result = calc_transposed_view(result, subscript, output_subscript)
-    return result
+    # Hidden option, only einsum should call this
+    einsum_call_arg = kwargs.pop('einsum_call', False)
+
+    # Python side parsing
+    input_subscripts, output_subscript, operands = \
+        _parse_einsum_input(operands)
+
+    # Build a few useful list and sets
+    input_list = input_subscripts.split(',')
+    input_sets = [set(x) for x in input_list]
+    output_set = set(output_subscript)
+    indices = set(input_subscripts.replace(',', ''))
+
+    # Get length of each unique dimension and ensure all dimensions are correct
+    dimension_dict = {}
+    for i, subscript in enumerate(input_list):
+        ioperand = operands[i]
+        input_subscript_sanity_check(subscript, ioperand, i)
+        ellipsis_pos = subscript.find('@')
+        for cnum, char in enumerate(subscript):
+            if cnum == ellipsis_pos:
+                continue
+            if ellipsis_pos != -1 and cnum > ellipsis_pos:
+                cnum -= len(subscript)
+            dim = ioperand.shape[cnum]
+            if char in dimension_dict:
+                if dimension_dict[char] != dim:
+                    raise ValueError('Size of label \'%s\' for operand %d does'
+                                     ' not match previous terms.', char, i)
+            else:
+                dimension_dict[char] = dim
+        if ellipsis_pos != -1:
+            dim = 1
+            upper = ellipsis_pos + ioperand.ndim - len(subscript) + 1
+            for i in six.moves.range(ellipsis_pos, upper):
+                dim *= ioperand.shape[i]
+            dimension_dict['@'] = dim
+
+    # Compute size of each input array plus the output array
+    size_list = []
+    for subscript in input_list + [output_subscript]:
+        size_list.append(_compute_size_by_dict(subscript, dimension_dict))
+    max_size = max(size_list)
+
+    if memory_limit is None:
+        memory_arg = max_size
+    else:
+        memory_arg = memory_limit
+
+    # Compute naive cost
+    # This isn't quite right, need to look into exactly how einsum does this
+    naive_cost = _compute_size_by_dict(indices, dimension_dict)
+    indices_in_input = input_subscripts.replace(',', '')
+    mult = max(len(input_list) - 1, 1)
+    if len(indices_in_input) > len(set(indices_in_input)):
+        mult *= 2
+    naive_cost *= mult
+
+    # Compute the path
+    if not path_type or (len(input_list) in [1, 2]) or (indices == output_set):
+        # Nothing to be optimized, leave it to einsum
+        path = [tuple(six.moves.range(len(input_list)))]
+    elif path_type == 'greedy':
+        # Maximum memory should be at most out_size for this algorithm
+        memory_arg = min(memory_arg, max_size)
+        path = _greedy_path(input_sets, output_set, dimension_dict, memory_arg)
+    elif path_type[0] == 'einsum_path':
+        path = path_type[1:]
+    else:
+        raise KeyError('Path name %s not found', path_type)
+
+    cost_list, scale_list, size_list, contraction_list = [], [], [], []
+
+    # Build contraction tuple (positions, gemm, einsum_str, remaining)
+    for cnum, contract_inds in enumerate(path):
+        # Make sure we remove inds from right to left
+        contract_inds = tuple(sorted(list(contract_inds), reverse=True))
+
+        contract = _find_contraction(contract_inds, input_sets, output_set)
+        out_inds, input_sets, idx_removed, idx_contract = contract
+
+        cost = _compute_size_by_dict(idx_contract, dimension_dict)
+        if idx_removed:
+            cost *= 2
+        cost_list.append(cost)
+        scale_list.append(len(idx_contract))
+        size_list.append(_compute_size_by_dict(out_inds, dimension_dict))
+
+        tmp_inputs = []
+        for x in contract_inds:
+            tmp_inputs.append(input_list.pop(x))
+
+        # Last contraction
+        if (cnum - len(path)) == -1:
+            idx_result = output_subscript
+        else:
+            sort_result = [(dimension_dict[ind], ind) for ind in out_inds]
+            idx_result = ''.join([x[1] for x in sorted(sort_result)])
+
+        input_list.append(idx_result)
+        einsum_str = ','.join(tmp_inputs) + '->' + idx_result
+
+        contraction = (contract_inds, idx_removed, einsum_str, input_list[:])
+        contraction_list.append(contraction)
+
+    opt_cost = sum(cost_list) + 1
+
+    if einsum_call_arg:
+        return (operands, contraction_list)
+
+    # Return the path along with a nice string representation
+    overall_contraction = input_subscripts + '->' + output_subscript
+    header = ('scaling', 'current', 'remaining')
+
+    speedup = naive_cost / opt_cost
+    max_i = max(size_list)
+
+    path_print = '  Complete contraction:  %s\n' % overall_contraction
+    path_print += '         Naive scaling:  %d\n' % len(indices)
+    path_print += '     Optimized scaling:  %d\n' % max(scale_list)
+    path_print += '      Naive FLOP count:  %.3e\n' % naive_cost
+    path_print += '  Optimized FLOP count:  %.3e\n' % opt_cost
+    path_print += '   Theoretical speedup:  %3.3f\n' % speedup
+    path_print += '  Largest intermediate:  %.3e elements\n' % max_i
+    path_print += '-' * 74 + '\n'
+    path_print += '%6s %24s %40s\n' % header
+    path_print += '-' * 74
+
+    for n, contraction in enumerate(contraction_list):
+        inds, idx_rm, einsum_str, remaining = contraction
+        remaining_str = ','.join(remaining) + '->' + output_subscript
+        path_run = (scale_list[n], einsum_str, remaining_str)
+        path_print += '\n%4d    %24s %40s' % path_run
+
+    path = ['einsum_path'] + path
+    return (path, path_print)
+
+
+def einsum(*operands, **kwargs):
+    # Grab non-einsum kwargs
+    optimize_arg = kwargs.pop('optimize', False)
+
+    # If no optimization, run pure einsum
+    if not optimize_arg:
+        return einsum_core(*operands, **kwargs)
+
+    # Make sure all keywords are valid
+    valid_contract_kwargs = ['optimize', ]
+    unknown_kwargs = [k for (k, v) in kwargs.items() if
+                      k not in valid_contract_kwargs]
+
+    if unknown_kwargs:
+        raise TypeError('Did not understand the following kwargs: %s'
+                        % unknown_kwargs)
+
+    # Build the contraction list and operand
+    operands, contraction_list = einsum_path(*operands, optimize=optimize_arg,
+                                             einsum_call=True)
+
+    # Start contraction loop
+    for num, contraction in enumerate(contraction_list):
+        inds, idx_rm, einsum_str, remaining = contraction
+        tmp_operands = []
+        for x in inds:
+            tmp_operands.append(operands.pop(x))
+
+        new_view = einsum_core(einsum_str.replace('@', '...'), *tmp_operands)
+
+        operands.append(new_view)
+        del tmp_operands, new_view
+
+    return operands[0]

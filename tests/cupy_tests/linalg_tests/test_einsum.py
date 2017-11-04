@@ -4,23 +4,28 @@ import numpy
 
 from cupy import testing
 
-
+@testing.parameterize(*testing.product({
+    'do_opt': (True, False)
+}))
 class TestEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
     def test_irregular_ellipsis1(self, xp):
-        xp.einsum('..', xp.zeros((2, 2, 2)))
+        xp.einsum('..', xp.zeros((2, 2, 2)), optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_irregular_ellipsis2(self, xp):
-        xp.einsum('...i...', xp.zeros((2, 2, 2)))
+        xp.einsum('...i...', xp.zeros((2, 2, 2)), optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_irregular_ellipsis3(self, xp):
-        xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
+        xp.einsum('i...->...i...', xp.zeros((2, 2, 2)), optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_irregular_ellipsis4(self, xp):
+        # Numpy bug?
+        # numpy not raises error if optimize is True.
+        # xp.einsum('...->', xp.zeros((2, 2, 2)), optimize=self.do_opt)
         xp.einsum('...->', xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_raises()
@@ -33,43 +38,46 @@ class TestEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
     def test_not_string_subject(self, xp):
-        xp.einsum(0, 0)
+        xp.einsum(0, 0, optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_bad_argument(self, xp):
-        xp.einsum('', 0, bad_arg=0)
+        xp.einsum('', 0, bad_arg=0, optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_many_operands1(self, xp):
-        xp.einsum('', 0, 0)
+        xp.einsum('', 0, 0, optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_many_operands2(self, xp):
-        xp.einsum('i,j', xp.array([0, 0]), xp.array([0, 0]), xp.array([0, 0]))
+        xp.einsum('i,j', xp.array([0, 0]), xp.array([0, 0]), xp.array([0, 0]),
+                  optimize = self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_few_operands1(self, xp):
-        xp.einsum(',', 0)
+        xp.einsum(',', 0, optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_many_dimension1(self, xp):
-        xp.einsum('i', 0)
+        xp.einsum('i', 0, optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_many_dimension2(self, xp):
-        xp.einsum('ij', xp.array([0, 0]))
+        xp.einsum('ij', xp.array([0, 0]), optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_many_dimension3(self, xp):
-        xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3))
+        xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3),
+                  optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_few_dimension(self, xp):
-        xp.einsum('i->i', xp.arange(6).reshape(2, 3))
+        xp.einsum('i->i', xp.arange(6).reshape(2, 3),
+                  optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_invalid_char1(self, xp):
-        xp.einsum('i%', xp.array([0, 0]))
+        xp.einsum('i%', xp.array([0, 0]), optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_invalid_char2(self, xp):
@@ -244,16 +252,23 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
         return xp.asarray(xp.einsum('i,->', a, 4))
 
 
-@testing.parameterize(
-    {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
-     'subscripts': 'ij,jk,kl', 'skip_overflow': True},
-    {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
-     'subscripts': 'ij,ik,i->ijk', 'skip_overflow': False},
-    {'shape_a': (2, 4), 'shape_b': (3, 2), 'shape_c': (2,),
-     'subscripts': 'ij,ki,i->jk', 'skip_overflow': False},
-    {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
-     'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
-)
+@testing.parameterize(*testing.product({
+    'shape_a': [(2, 3)], 'shape_b': [(3, 4)], 'shape_c': [(4, 5)],
+    'subscripts': ['ij,jk,kl'], 'skip_overflow': [True],
+    'optimize': [True, False, 'greedy']
+}) + testing.product({
+    'shape_a': [(2, 4)], 'shape_b': [(2, 3)], 'shape_c': [(2,)],
+    'subscripts': ['ij,ik,i->ijk'], 'skip_overflow': [False],
+    'optimize': [True, False, 'greedy']
+}) + testing.product({
+    'shape_a': [(2, 4)], 'shape_b': [(3, 2)], 'shape_c': [(2,)],
+    'subscripts': ['ij,ki,i->jk'], 'skip_overflow': [False],
+    'optimize': [True, False, 'greedy']
+}) + testing.product({
+    'shape_a': [(2, 3, 4)], 'shape_b': [(2,)], 'shape_c': [(3, 4, 2,)],
+    'subscripts': ['i...,i,...i->...i'], 'skip_overflow': [True],
+    'optimize': [True, False,]
+}))
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
@@ -265,4 +280,5 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         b = testing.shaped_arange(self.shape_b, xp, dtype)
         c = testing.shaped_arange(self.shape_c, xp, dtype)
-        return xp.einsum(self.subscripts, a, b, c).astype(numpy.float32)
+        return xp.einsum(self.subscripts, a, b, c,
+                         optimize=self.optimize).astype(numpy.float32)
