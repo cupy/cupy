@@ -145,9 +145,8 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
     else:
         zerod = False
     if q.ndim > 1:
-        msg = 'Expected q to have a dimension of 1.\n' \
-            'Actual: {0} != 1'.format(q.ndim)
-        raise ValueError(msg)
+        raise ValueError('Expected q to have a dimension of 1.\n'
+                         'Actual: {0} != 1'.format(q.ndim))
 
     if keepdims:
         if axis is None:
