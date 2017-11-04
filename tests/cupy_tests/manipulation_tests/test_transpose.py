@@ -11,9 +11,15 @@ class TestTranspose(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.11')
-    def test_moveaxis(self, xp):
+    def test_moveaxis1(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 2])
+
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
+    def test_moveaxis2(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, 1, -1)
 
     # dim is too large
     @testing.numpy_cupy_raises()
@@ -27,7 +33,7 @@ class TestTranspose(unittest.TestCase):
     @testing.with_requires('numpy>=1.11')
     def test_moveaxis_invalid2(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
-        return xp.moveaxis(a, [0, -3], [1, 2])
+        return xp.moveaxis(a, [0, -4], [1, 2])
 
     # len(source) != len(destination)
     @testing.numpy_cupy_raises()
