@@ -186,13 +186,14 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif interpolation == 'nearest':
         # TODO(hvy): Implement nearest using around
-        raise ValueError()
+        raise ValueError("'nearest' interpolation is not yet supported. "
+                         'Please use any other interpolation method.')
     elif interpolation == 'linear':
         pass
     else:
-        msg = 'Unexpected interpolation method.\n' \
-            'Actual: {0}'.format(interpolation)
-        raise ValueError(msg)
+        raise ValueError('Unexpected interpolation method.\n'
+                         "Actual: {0} not in ('linear', 'lower', 'higher', "
+                         "'midpoint')".format(interpolation))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
