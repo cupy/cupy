@@ -192,7 +192,7 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         "Actual: {0} not in ('linear', 'lower', 'higher', "
+                         "Actual: '{0}' not in ('linear', 'lower', 'higher', "
                          "'midpoint')".format(interpolation))
 
     if indices.dtype == cupy.int32:
