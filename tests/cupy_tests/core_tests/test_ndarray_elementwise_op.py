@@ -17,7 +17,10 @@ class TestArrayElementwiseOp(unittest.TestCase):
                                         no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
-                              no_complex=False):
+                              no_bool=False, no_complex=False):
+        if no_bool and (numpy.dtype(x_type) == '?' and
+                        numpy.dtype(y_type) == '?'):
+            return xp.array(True)
         if no_complex and (numpy.dtype(x_type).kind == 'c'
                            or numpy.dtype(y_type).kind == 'c'):
             return xp.array(True)
@@ -38,14 +41,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.iadd)
 
     def test_sub_scalar(self):
-        self.check_array_scalar_op(operator.sub)
+        self.check_array_scalar_op(operator.sub, no_bool=True)
 
     def test_rsub_scalar(self):
-        self.check_array_scalar_op(operator.sub, swap=True)
+        self.check_array_scalar_op(operator.sub, swap=True, no_bool=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_isub_scalar(self):
-        self.check_array_scalar_op(operator.isub)
+        self.check_array_scalar_op(operator.isub, no_bool=True)
 
     def test_mul_scalar(self):
         self.check_array_scalar_op(operator.mul)
@@ -160,8 +163,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_array_op(self, op, xp, x_type, y_type, no_bool=False):
-        if (no_bool and
-                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+        if no_bool and (numpy.dtype(x_type) == '?' and
+                        numpy.dtype(y_type) == '?'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
@@ -175,7 +178,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_array_op(operator.iadd)
 
     def test_sub_array(self):
-        self.check_array_array_op(operator.sub)
+        self.check_array_array_op(operator.sub, no_bool=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_isub_array(self):
@@ -267,8 +270,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
             if numpy.dtype(x_type).kind == 'c' \
                     or numpy.dtype(y_type).kind == 'c':
                 return xp.array(True)
-        if (no_bool and
-                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+        if no_bool and (numpy.dtype(x_type) == '?' and
+                        numpy.dtype(y_type) == '?'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -380,8 +383,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
             if numpy.dtype(x_type).kind == 'c' \
                     or numpy.dtype(y_type).kind == 'c':
                 return x_type(True)
-        if (no_bool and
-                (numpy.dtype(x_type) == '?' or numpy.dtype(y_type) == '?')):
+        if no_bool and (numpy.dtype(x_type) == '?' and
+                        numpy.dtype(y_type) == '?'):
             return x_type(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
@@ -446,7 +449,10 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_reversed_op(self, op, xp, x_type, y_type):
+    def check_array_reversed_op(self, op, xp, x_type, y_type, no_bool=False):
+        if no_bool and (numpy.dtype(x_type) == '?'
+                        and numpy.dtype(y_type) == '?'):
+            return xp.array(True)
         a = xp.array([1, 2, 3, 4, 5], x_type)
         b = xp.array([1, 2, 3, 4, 5], y_type)
         return op(a, b[::-1])
@@ -455,7 +461,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_reversed_op(operator.add)
 
     def test_array_reversed_sub(self):
-        self.check_array_reversed_op(operator.sub)
+        self.check_array_reversed_op(operator.sub, no_bool=True)
 
     def test_array_reversed_mul(self):
         self.check_array_reversed_op(operator.mul)
