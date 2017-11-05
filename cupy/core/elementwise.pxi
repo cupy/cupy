@@ -311,6 +311,13 @@ def _get_param_info(s, is_const):
 
 @util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
+    return _decide_params_type_core(in_params, out_params, in_args_dtype,
+                                    out_args_dtype)
+
+
+cdef tuple _decide_params_type_core(
+        tuple in_params, tuple out_params, tuple in_args_dtype,
+        tuple out_args_dtype):
     type_dict = {}
     if out_args_dtype:
         assert len(out_params) == len(out_args_dtype)
@@ -416,28 +423,32 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
 
 cdef list _get_out_args_with_params(
         list out_args, tuple out_types, tuple out_shape, tuple out_params,
-        bint is_size_specified=False):
+        bint is_size_specified):
     cdef ParameterInfo p
+    cdef ndarray arr
+    cdef vector.vector[Py_ssize_t] shape
     if not out_args:
         for p in out_params:
-            if p.raw and is_size_specified is False:
+            if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
+    shape = out_shape
     for i in range(len(out_params)):
         a = out_args[i]
         p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
-        if not p.raw and a.shape != out_shape:
+        arr = a
+        if not p.raw and not internal.vector_equal(arr._shape, shape):
             raise ValueError('Out shape is mismatched')
     return out_args
 
 
-@util.memoize(for_each_device=True)
-def _get_elementwise_kernel(args_info, types, params, operation, name,
-                            preamble, kwargs):
+cdef function.Function _get_elementwise_kernel(
+        tuple args_info, tuple types, tuple params, str operation, str name,
+        str preamble, dict kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -455,7 +466,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name,
-        preamble, **dict(kwargs))
+        preamble, **kwargs)
 
 
 cdef class ElementwiseKernel:
@@ -505,7 +516,9 @@ cdef class ElementwiseKernel:
         readonly str name
         readonly bint reduce_dims
         readonly str preamble
-        readonly object kwargs
+        readonly dict kwargs
+        readonly dict _kernel_memo
+        readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='', **kwargs):
@@ -524,7 +537,9 @@ cdef class ElementwiseKernel:
         self.name = name
         self.reduce_dims = reduce_dims
         self.preamble = preamble
-        self.kwargs = frozenset(kwargs.items())
+        self.kwargs = kwargs
+        self._kernel_memo = {}
+        self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError("Can not use 'i' as a parameter name")
@@ -550,12 +565,13 @@ cdef class ElementwiseKernel:
             ``__init__`` method.
 
         """
-
         cdef function.Function kern
+        cdef Py_ssize_t size
 
-        size = kwargs.pop('size', None)
+        size = -1
+        size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
-        if kwargs:
+        if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
 
         n_args = len(args)
@@ -563,7 +579,7 @@ cdef class ElementwiseKernel:
             raise TypeError('Wrong number of arguments for %s' % self.name)
         args = _preprocess_args(args)
 
-        values, shape = _broadcast(args, self.params, size is not None)
+        values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
         out_args = values[self.nin:]
 
@@ -572,12 +588,11 @@ cdef class ElementwiseKernel:
              for a in in_args])
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
-        in_types, out_types, types = _decide_params_type(
-            self.in_params, self.out_params,
+        in_types, out_types, types = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
         is_size_specified = False
-        if size is not None:
+        if size != -1:
             shape = size,
             is_size_specified = True
 
@@ -602,12 +617,32 @@ cdef class ElementwiseKernel:
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
-        kern = _get_elementwise_kernel(
-            args_info, types, self.params, self.operation,
-            self.name, self.preamble, self.kwargs)
+        kern = self._get_elementwise_kernel(args_info, types)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=128, stream=stream)
         return ret
+
+    cpdef tuple _decide_params_type(
+            self, tuple in_args_dtype, tuple out_args_dtype):
+        key = (in_args_dtype, out_args_dtype)
+        if key in self._params_type_memo:
+            return self._params_type_memo[key]
+        ret = _decide_params_type_core(
+            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
+        self._params_type_memo[key] = ret
+        return ret
+
+    cpdef function.Function _get_elementwise_kernel(
+            self, tuple args_info, tuple types):
+        id = device.get_device_id()
+        key = (id, args_info, types)
+        if key in self._kernel_memo:
+            return self._kernel_memo[key]
+        kern = _get_elementwise_kernel(
+            args_info, types, self.params, self.operation,
+            self.name, self.preamble, self.kwargs)
+        self._kernel_memo[key] = kern
+        return kern
 
 
 @util.memoize(for_each_device=True)
