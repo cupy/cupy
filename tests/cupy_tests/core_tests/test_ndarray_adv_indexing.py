@@ -140,36 +140,55 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp(unittest.TestCase):
         return a[self.indexes]
 
 
-@testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': (slice(None),)},
-    {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
-)
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
+    shape = (2, 3, 4)
+
     def test_adv_getitem_cupy_indices1(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([1, 0])
+        original_index = index.copy()
         b = a[index]
         b_cpu = a.get()[index.get()]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
     def test_adv_getitem_cupy_indices2(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([1, 0])
+        original_index = index.copy()
         b = a[(slice(None), index)]
         b_cpu = a.get()[(slice(None), index.get())]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
     def test_adv_getitem_cupy_indices3(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([True, False])
+        original_index = index.copy()
         b = a[index]
         b_cpu = a.get()[index.get()]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
+
+    def test_adv_getitem_cupy_indices4(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([4, -5])
+        original_index = index.copy()
+        b = a[index]
+        b_cpu = a.get()[index.get() % self.shape[1]]
+        testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
+
+    def test_adv_getitem_cupy_indices5(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([4, -5])
+        original_index = index.copy()
+        b = a[[1, 0], index]
+        b_cpu = a.get()[[1, 0], index.get() % self.shape[1]]
+        testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
 
 @testing.parameterize(
@@ -404,21 +423,43 @@ class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
 
-    def test_cupy_indices_integer_array(self):
-        shape = (2, 3)
-        a = cupy.zeros(shape)
-        indexes = cupy.array([0, 1])
-        a[:, indexes] = cupy.array(1.)
+    shape = (2, 3)
+
+    def test_cupy_indices_integer_array_1(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([0, 1])
+        original_index = index.copy()
+        a[:, index] = cupy.array(1.)
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
+
+    def test_cupy_indices_integer_array_2(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([3, -5])
+        original_index = index.copy()
+        a[:, index] = cupy.array(1.)
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
+
+    def test_cupy_indices_integer_array_3(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([3, -5])
+        original_index = index.copy()
+        a[[1, 1], index] = cupy.array(1.)
+        testing.assert_array_equal(
+            a, cupy.array([[0., 0., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
 
     def test_cupy_indices_boolean_array(self):
-        shape = (2, 3)
-        a = cupy.zeros(shape)
-        indexes = cupy.array([True, False])
-        a[indexes] = cupy.array(1.)
+        a = cupy.zeros(self.shape)
+        index = cupy.array([True, False])
+        original_index = index.copy()
+        a[index] = cupy.array(1.)
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 1.], [0., 0., 0.]]))
+        testing.assert_array_almost_equal(original_index, index)
 
 
 @testing.gpu
