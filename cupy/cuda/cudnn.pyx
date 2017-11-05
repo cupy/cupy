@@ -120,6 +120,10 @@ cdef extern from "cupy_cudnn.h" nogil:
         ConvolutionDescriptor convDesc, MathType mathType)
     int cudnnGetConvolutionMathType(
         ConvolutionDescriptor convDesc, MathType *mathType)
+    int cudnnSetConvolutionGroupCount(
+        ConvolutionDescriptor convDesc, int groupCount)
+    int cudnnGetConvolutionGroupCount(
+        ConvolutionDescriptor convDesc, int *groupCount)
     int cudnnSetConvolution2dDescriptor_v4(
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int dilation_h, int dilation_w, ConvolutionMode mode)
@@ -613,6 +617,19 @@ cpdef size_t getConvolutionMathType(size_t convDesc) except *:
     status = cudnnGetConvolutionMathType(
         <ConvolutionDescriptor>convDesc, &mathType)
     return <size_t>mathType
+
+
+cpdef setConvolutionGroupCount(size_t convDesc, int groupCount):
+    status = cudnnSetConvolutionGroupCount(
+        <ConvolutionDescriptor>convDesc, groupCount)
+    check_status(status)
+
+
+cpdef int getConvolutionGroupCount(size_t convDesc) except *:
+    cdef int groupCount
+    status = cudnnGetConvolutionGroupCount(
+        <ConvolutionDescriptor>convDesc, &groupCount)
+    return groupCount
 
 
 cpdef setConvolution2dDescriptor_v4(
