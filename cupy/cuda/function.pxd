@@ -1,7 +1,3 @@
-cdef class CPointer:
-    cdef void* ptr
-
-
 cdef class Function:
 
     cdef:

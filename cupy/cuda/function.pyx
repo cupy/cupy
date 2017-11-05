@@ -4,107 +4,22 @@ import numpy
 import six
 
 cimport cpython  # NOQA
-from libc.stdint cimport int8_t
-from libc.stdint cimport int16_t
-from libc.stdint cimport int32_t
-from libc.stdint cimport int64_t
 from libcpp cimport vector
 
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
+from cupy.core cimport _scalar
 from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
 
 
-cdef class CPointer:
-    def __init__(self, p=0):
-        self.ptr = <void*>p
-
-
-cdef class CInt8(CPointer):
-    cdef:
-        int8_t val
-
-    def __init__(self, int8_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt16(CPointer):
-    cdef:
-        int16_t val
-
-    def __init__(self, int16_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt32(CPointer):
-    cdef:
-        int32_t val
-
-    def __init__(self, int32_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt64(CPointer):
-    cdef:
-        int64_t val
-
-    def __init__(self, int64_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt128(CPointer):
-    cdef:
-        double complex val
-
-    def __init__(self, double complex v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef set _pointer_numpy_types = {numpy.dtype(i).type
-                                 for i in '?bhilqBHILQefdFD'}
-
-
-cdef inline CPointer _pointer(x):
-    cdef Py_ssize_t itemsize
-    if x is None:
-        return CPointer()
+cdef inline core.CPointer _pointer(x):
+    if isinstance(x, core.CPointer):
+        return x
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
-    if isinstance(x, core.Indexer):
-        return (<core.Indexer>x).get_pointer()
-
-    if isinstance(x, CPointer):
-        return x
-
-    if type(x) not in _pointer_numpy_types:
-        if isinstance(x, six.integer_types):
-            x = numpy.int64(x)
-        elif isinstance(x, float):
-            x = numpy.float64(x)
-        elif isinstance(x, bool):
-            x = numpy.bool_(x)
-        else:
-            raise TypeError('Unsupported type %s' % type(x))
-
-    itemsize = x.itemsize
-    if itemsize == 1:
-        return CInt8(x.view(numpy.int8))
-    if itemsize == 2:
-        return CInt16(x.view(numpy.int16))
-    if itemsize == 4:
-        return CInt32(x.view(numpy.int32))
-    if itemsize == 8:
-        return CInt64(x.view(numpy.int64))
-    if itemsize == 16:
-        return CInt128(x.view(numpy.complex128))
-    raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
+    return _scalar.convert_scalar(x, True)
 
 
 cdef inline size_t _get_stream(stream) except *:
@@ -119,9 +34,11 @@ cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
              args, Py_ssize_t shared_mem, size_t stream):
     cdef list pargs = []
     cdef vector.vector[void*] kargs
-    cdef CPointer cp
+    cdef core.CPointer cp
     kargs.reserve(len(args))
     for a in args:
+        if a is None:
+            kargs.push_back(<void*>0)
         cp = _pointer(a)
         pargs.append(cp)
         kargs.push_back(cp.ptr)

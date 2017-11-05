@@ -43,9 +43,6 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
-DEF MAX_NDIM = 25
-
-
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
     xp = getattr(x, '__array_priority__', 0)
@@ -1897,7 +1894,7 @@ cdef class ndarray:
         else:
             self._update_f_contiguity()
 
-    cdef function.CPointer get_pointer(self):
+    cdef CPointer get_pointer(self):
         return CArray(self)
 
     cpdef object toDlpack(self):

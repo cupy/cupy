@@ -1,8 +1,11 @@
 from libcpp cimport vector
+
+from cupy.cuda.function cimport Module
 from cupy.cuda cimport memory
 
-from cupy.cuda.function cimport CPointer
-from cupy.cuda.function cimport Module
+
+DEF MAX_NDIM = 25
+
 
 cdef class ndarray:
     cdef:
@@ -84,12 +87,26 @@ cdef class broadcast:
         readonly Py_ssize_t nd
 
 
-cdef class Indexer:
+cdef class CPointer:
+    cdef void* ptr
+
+
+cdef struct _CArray:
+    void* data
+    Py_ssize_t size
+    Py_ssize_t shape_and_strides[MAX_NDIM * 2]
+
+
+cdef struct _CIndexer:
+    Py_ssize_t size
+    Py_ssize_t shape_and_index[MAX_NDIM * 2]
+
+
+cdef class Indexer(CPointer):
     cdef:
         readonly Py_ssize_t size
         readonly tuple shape
-
-    cdef CPointer get_pointer(self)
+        _CIndexer val
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
