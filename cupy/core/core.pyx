@@ -2475,47 +2475,51 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
 
     ret = ndarray(shape, dtype=dtype)
 
-    if len(tup) > 3:
-        all_same_type = True
-        all_one_and_contiguous = True
-        dtype = tup[0].dtype
-        for a in tup:
-            all_same_type = all_same_type and (a.dtype == dtype)
-            all_one_and_contiguous = (
-                all_one_and_contiguous and a._c_contiguous and
-                a._shape[axis] == 1)
-
-        if all_same_type:
-            ptrs = numpy.ndarray(len(tup), numpy.int64)
-            for i, a in enumerate(tup):
-                ptrs[i] = a.data.ptr
-            x = array(ptrs)
-
-            if all_one_and_contiguous:
-                base = <int>internal.prod_ssize_t(shape[axis + 1:])
-                _concatenate_kernel_one(x, base, ret)
-            else:
-                ndim = tup[0].ndim
-                x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
-                cum_sizes = numpy.ndarray(len(tup), numpy.int32)
-                cum = 0
-                for i, a in enumerate(tup):
-                    for j in range(ndim):
-                        x_strides[i, j] = <int>a._strides[j]
-                    cum_sizes[i] = cum
-                    cum += <int>a._shape[axis]
-
-                _concatenate_kernel(
-                    x, axis, array(cum_sizes), array(x_strides), ret)
-            return ret
-
-    skip = (slice(None),) * axis
-    i = 0
+    all_same_type = True
+    all_one_and_contiguous = True
+    any_contiguous_on_axis = False
+    total_bytes = 0
+    dtype = tup[0].dtype
     for a in tup:
-        aw = a._shape[axis]
-        ret[skip + (slice(i, i + aw),)] = a
-        i += aw
+        all_same_type = all_same_type and (a.dtype == dtype)
+        all_one_and_contiguous = (
+            all_one_and_contiguous and a._c_contiguous and
+            a._shape[axis] == 1)
+        any_contiguous_on_axis = (
+            any_contiguous_on_axis or
+            a._strides[axis] == a.itemsize)
+        total_bytes += a.size * a.itemsize
 
+    if ((not all_same_type or not any_contiguous_on_axis) and
+            (len(tup) < 256 or total_bytes / len(tup) > 524288)):
+        skip = (slice(None),) * axis
+        i = 0
+        for a in tup:
+            aw = a._shape[axis]
+            ret[skip + (slice(i, i + aw),)] = a
+            i += aw
+    else:
+        ptrs = numpy.ndarray(len(tup), numpy.int64)
+        for i, a in enumerate(tup):
+            ptrs[i] = a.data.ptr
+        x = array(ptrs)
+
+        if all_one_and_contiguous:
+            base = <int>internal.prod_ssize_t(shape[axis + 1:])
+            _concatenate_kernel_one(x, base, ret)
+        else:
+            ndim = tup[0].ndim
+            x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
+            cum_sizes = numpy.ndarray(len(tup), numpy.int32)
+            cum = 0
+            for i, a in enumerate(tup):
+                for j in range(ndim):
+                    x_strides[i, j] = <int>a._strides[j]
+                cum_sizes[i] = cum
+                cum += <int>a._shape[axis]
+
+            _concatenate_kernel(
+                x, axis, array(cum_sizes), array(x_strides), ret)
     return ret
 
 cdef _concatenate_kernel_one = ElementwiseKernel(
