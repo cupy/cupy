@@ -545,7 +545,7 @@ def einsum_path(*operands, **kwargs):
             tmp_inputs.append(input_list.pop(x))
 
         # Last contraction
-        if (cnum - len(path)) == -1:
+        if cnum == len(path) - 1:
             idx_result = output_subscript
         else:
             sort_result = [(dimension_dict[ind], ind) for ind in out_inds]
