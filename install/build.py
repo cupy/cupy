@@ -119,6 +119,7 @@ def get_compiler_setting():
         'library_dirs': library_dirs,
         'define_macros': define_macros,
         'language': 'c++',
+        'extra_compile_args': ['-std=c++11'],
     }
 
 

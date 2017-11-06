@@ -41,6 +41,7 @@ MODULES = [
             'cupy.cuda.profiler',
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
+            'cupy.cuda.stream',
             'cupy.cuda.runtime',
             'cupy.util',
         ],

@@ -1,4 +1,49 @@
 from cupy.cuda import runtime
+from cpython cimport pythread
+import threading
+import weakref
+
+
+cdef object _thread_local = threading.local()
+cdef int _current_stream_key = pythread.PyThread_create_key()
+
+cdef size_t get_current_stream_ptr():
+    """C API to get current CUDA stream pointer.
+
+    Returns:
+        size_t: The current CUDA stream pointer.
+    """
+    # PyThread_get_key_value returns NULL if a key is not set,
+    # which is equivalent with default stream pointer (0)
+    return <size_t>pythread.PyThread_get_key_value(_current_stream_key)
+
+
+def get_current_stream():
+    """Gets current CUDA stream.
+
+    Returns:
+        cupy.cuda.Stream: The current CUDA stream.
+    """
+    if not hasattr(_thread_local, 'current_stream_ref'):
+        _thread_local.current_stream_ref = weakref.ref(Stream.null)
+    stream = _thread_local.current_stream_ref()
+    if stream is None:
+        stream = Stream.null
+    return stream
+
+
+cpdef _set_current_stream(stream):
+    """Sets current CUDA stream.
+
+    Args:
+        cupy.cuda.Stream: The current CUDA stream.
+    """
+    if stream is None:
+        stream = Stream.null
+    cdef size_t stream_ptr = stream.ptr
+    pythread.PyThread_delete_key_value(_current_stream_key)
+    pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
+    _thread_local.current_stream_ref = weakref.ref(stream)
 
 
 class Event(object):
@@ -52,8 +97,10 @@ class Event(object):
 
         """
         if stream is None:
-            stream = Stream.null
-        runtime.eventRecord(self.ptr, stream.ptr)
+            stream_ptr = get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        runtime.eventRecord(self.ptr, stream_ptr)
 
     def synchronize(self):
         """Synchronizes all device work to the event.
@@ -89,12 +136,13 @@ class Stream(object):
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Otherwise, a plain new
-            stream is created.
+            stream is created. Users must not use this parameter, instead, use
+            ``Stream.null`` object to use the default stream.
         non_blocking (bool): If ``True``, the stream does not synchronize with
             the NULL stream.
 
     Attributes:
-        ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
+        ptr (size_t): Raw stream handle. It can be passed to
             the CUDA Runtime API via ctypes.
 
     """
@@ -102,6 +150,10 @@ class Stream(object):
     null = None
 
     def __init__(self, null=False, non_blocking=False):
+        if null and Stream.null:
+            self.ptr = 0  # to avoid AttributeError on __del__
+            raise ValueError('Use cupy.cuda.Stream.null instead of creating '
+                             'a new cupy.cuda.Stream(null=True) object')
         if null:
             self.ptr = 0
         elif non_blocking:
@@ -112,6 +164,29 @@ class Stream(object):
     def __del__(self):
         if self.ptr:
             runtime.streamDestroy(self.ptr)
+        # Note that we can not release memory pool of the stream held in CPU
+        # because the memory would still be used in kernels executed in GPU.
+
+    def __enter__(self):
+        if not hasattr(_thread_local, 'prev_stream_ref_stack'):
+            _thread_local.prev_stream_ref_stack = []
+        prev_stream_ref = weakref.ref(get_current_stream())
+        _thread_local.prev_stream_ref_stack.append(prev_stream_ref)
+        _set_current_stream(self)
+        return self
+
+    def __exit__(self, *args):
+        prev_stream_ref = _thread_local.prev_stream_ref_stack.pop()
+        _set_current_stream(prev_stream_ref())
+        pass
+
+    def use(self):
+        """Makes this stream current.
+
+        If you want to switch a stream temporarily, use the *with* statement.
+        """
+        _set_current_stream(self)
+        return self
 
     @property
     def done(self):

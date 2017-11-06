@@ -26,6 +26,7 @@ from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
+from cupy.cuda cimport stream as stream_module
 
 DEF MAX_NDIM = 25
 
@@ -443,7 +444,7 @@ cdef class ndarray:
             value = value.item()
 
         if value == 0 and self._c_contiguous:
-            self.data.memset_async(0, self.nbytes, stream.Stream(True))
+            self.data.memset_async(0, self.nbytes)
         else:
             elementwise_copy(value, self, dtype=self.dtype)
 
@@ -1683,6 +1684,7 @@ cdef class ndarray:
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1696,6 +1698,10 @@ cdef class ndarray:
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1708,6 +1714,7 @@ cdef class ndarray:
             arr (numpy.ndarray): The source array on the host memory.
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         """
         if not isinstance(arr, numpy.ndarray):
@@ -1728,6 +1735,10 @@ cdef class ndarray:
 
         ptr = arr.ctypes.get_as_parameter()
         if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
@@ -3425,7 +3436,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     b = view
 
     out = ndarray(out_shape, dtype=dtype)
-    out.data.memset(0, out.nbytes)
+    out.data.memset_async(0, out.nbytes)
 
     out_view = out.view()
     out_view_shape = out.shape

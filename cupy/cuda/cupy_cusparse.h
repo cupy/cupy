@@ -52,6 +52,15 @@ cusparseStatus_t cusparseSetPointerMode(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+// Stream
+cusparseStatus_t cusparseSetStream(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// cusparseGetStream is only available from CUDA 8.0
+// cusparseStatus_t cusparseGetStream(...) {
+//   return CUSPARSE_STATUS_SUCCESS;
+// }
 
 // cuSPARSE Level1 Function
 cusparseStatus_t cusparseSgthr(...) {

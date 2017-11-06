@@ -51,11 +51,6 @@ class RandomState(object):
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
 
-    def set_stream(self, stream=None):
-        if stream is None:
-            stream = cuda.Stream()
-        curand.setStream(self._generator, stream.ptr)
-
     def _generate_normal(self, func, size, dtype, *args):
         # curand functions below don't support odd size.
         # * curand.generateNormal

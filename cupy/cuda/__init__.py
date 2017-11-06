@@ -68,6 +68,7 @@ from cupy.cuda.pinned_memory import PinnedMemoryPointer  # NOQA
 from cupy.cuda.pinned_memory import PinnedMemoryPool  # NOQA
 from cupy.cuda.pinned_memory import set_pinned_memory_allocator  # NOQA
 from cupy.cuda.stream import Event  # NOQA
+from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
 
