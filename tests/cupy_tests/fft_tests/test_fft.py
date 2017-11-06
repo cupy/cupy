@@ -11,6 +11,7 @@ from cupy import testing
     'norm': [None, 'ortho', ''],
 }))
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -60,6 +61,7 @@ class TestFft(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -108,6 +110,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -143,6 +146,7 @@ class TestFftn(unittest.TestCase):
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestRfft(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -194,6 +198,7 @@ class TestRfft(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestRfft2(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -245,6 +250,7 @@ class TestRfft2(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestRfftn(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -280,6 +286,7 @@ class TestRfftn(unittest.TestCase):
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestHfft(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -313,6 +320,7 @@ class TestHfft(unittest.TestCase):
     {'n': 100, 'd': 2},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestFftfreq(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -342,6 +350,7 @@ class TestFftfreq(unittest.TestCase):
     {'shape': (10, 10), 'axes': (0, 1)},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.10.0')
 class TestFftshift(unittest.TestCase):
 
     _multiprocess_can_split_ = True
