@@ -467,6 +467,7 @@ def einsum_path(*operands, **kwargs):
 
     # Get length of each unique dimension and ensure all dimensions are correct
     dimension_dict = {}
+    broadcasted_dims = []
     for i, subscript in enumerate(input_list):
         ioperand = operands[i]
         input_subscript_sanity_check(subscript, ioperand, i)
@@ -488,7 +489,9 @@ def einsum_path(*operands, **kwargs):
             upper = ellipsis_pos + ioperand.ndim - len(subscript) + 1
             for j in six.moves.range(ellipsis_pos, upper):
                 dim *= ioperand.shape[j]
-            dimension_dict['@'] = dim
+            broadcasted_dims.append(dim)
+    if broadcasted_dims:
+        dimension_dict['@'] = max(broadcasted_dims)
 
     # Compute size of each input array plus the output array
     size_list = []
