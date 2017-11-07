@@ -163,7 +163,7 @@ class TestOptimizedEinSumError(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_too_many_operands2(self, xp):
         xp.einsum('i,j', xp.array([0, 0]), xp.array([0, 0]), xp.array([0, 0]),
-                  optimize = self.do_opt)
+                  optimize=self.do_opt)
 
     @testing.numpy_cupy_raises()
     def test_too_few_operands1(self, xp):

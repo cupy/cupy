@@ -278,7 +278,7 @@ def _find_contraction(positions, input_sets, output_set):
     return (new_result, remaining, idx_removed, idx_contract)
 
 
-def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
+def _greedy_path(input_sets, output_set, dim_dict, memory_limit):
     """Finds the best path from all possible combinations.
 
     """
@@ -301,12 +301,12 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
             idx_result, new_input_sets, idx_removed, idx_contract = contract
 
             # Sieve the results based on memory_limit
-            if _compute_size_by_dict(idx_result, idx_dict) > memory_limit:
+            if _compute_size_by_dict(idx_result, dim_dict) > memory_limit:
                 continue
 
             # Build sort tuple
-            removed_size = _compute_size_by_dict(idx_removed, idx_dict)
-            cost = _compute_size_by_dict(idx_contract, idx_dict)
+            removed_size = _compute_size_by_dict(idx_removed, dim_dict)
+            cost = _compute_size_by_dict(idx_contract, dim_dict)
             sort = (-removed_size, cost)
 
             # Add contraction to possible choices
