@@ -22,10 +22,10 @@ from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA
 from cupy.random.distributions import uniform  # NOQA
 from cupy.random.generator import get_random_state  # NOQA
-from cupy.random.generator import set_random_state  # NOQA
 from cupy.random.generator import RandomState  # NOQA
 from cupy.random.generator import reset_states  # NOQA
 from cupy.random.generator import seed  # NOQA
+from cupy.random.generator import set_random_state  # NOQA
 from cupy.random.permutations import shuffle  # NOQA
 from cupy.random.sample import choice  # NOQA
 from cupy.random.sample import multinomial  # NOQA
