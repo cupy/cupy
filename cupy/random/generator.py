@@ -12,6 +12,7 @@ import cupy
 from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
+from cupy.cuda import device
 
 
 class RandomState(object):
@@ -449,8 +450,7 @@ def set_random_state(rs):
         raise TypeError(
             'Random state must be an instance of RandomState. '
             'Actual: {}'.format(type(rs)))
-    dev = cuda.Device()
-    _random_states[dev.id] = rs
+    _random_states[device.get_device_id()] = rs
 
 
 def _check_and_get_dtype(dtype):
