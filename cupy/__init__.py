@@ -461,6 +461,7 @@ from cupy.core.fusion import amin  # NOQA
 from cupy.core.fusion import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
+from cupy.statistics.order import percentile  # NOQA
 
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
