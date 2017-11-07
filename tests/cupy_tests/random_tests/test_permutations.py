@@ -56,7 +56,7 @@ class TestShuffle(unittest.TestCase):
 
 
 @testing.parameterize(*(testing.product({
-    'num': [100, 1000, 10000, 100000],
+    'num': [0, 1, 100, 1000, 10000, 100000],
 })))
 @testing.gpu
 class TestPermutationSoundness(unittest.TestCase):
@@ -71,11 +71,7 @@ class TestPermutationSoundness(unittest.TestCase):
 
     @condition.repeat(3)
     def test_permutation_soundness(self):
-        hist, _ = numpy.histogram(self.a, numpy.arange(self.num + 1))
-        amin = numpy.amin(hist)
-        amax = numpy.amax(hist)
-        if amin != 1 or amax != 1:
-            raise
+        assert(numpy.sort(self.a) == numpy.arange(self.num)).all()
 
 
 @testing.parameterize(*(testing.product({
@@ -94,7 +90,7 @@ class TestPermutationRandomness(unittest.TestCase):
         self.a = a.get()
         self.num_half = int(self.num / 2)
 
-    # Test randomness
+    # Simple bit proportion test
 
     @condition.repeat_with_success_at_least(5, 3)
     def test_permutation_randomness(self):
