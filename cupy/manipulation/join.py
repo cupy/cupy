@@ -120,6 +120,10 @@ def stack(tup, axis=0):
 
     .. seealso:: :func:`numpy.stack`
     """
+    for x in tup:
+        if not (-x.ndim <= axis < x.ndim):
+            raise core.core._AxisError(
+                'axis {} out of bounds [0, {})'.format(axis, x.ndim))
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis)
 
 
