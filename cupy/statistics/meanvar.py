@@ -45,7 +45,8 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     """
     # TODO(okuta): check type
-    return a.var(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
+                 keepdims=keepdims)
 
 
 def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -67,7 +68,8 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     """
     # TODO(okuta): check type
-    return a.std(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
+                 keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanmean
