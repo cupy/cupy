@@ -252,7 +252,54 @@ def ix_(*args):
 # TODO(okuta): Implement ravel_multi_index
 
 
-# TODO(okuta): Implement unravel_index
+def unravel_index(indices, dims, order='C'):
+    """Converts a flat index into a tuple of coordinate arrays.
+
+    Args:
+        indices (cupy.ndarray): An integer array storing indices for an array
+            of dimensions ``dims``.
+        dims (tuple of ints): The shape of the array.
+        order (str): Select from row-major (``'C'``) or column-major (``'F'``).
+
+    Returns:
+        tuple of cupy.ndarray: Each array represents corrdinates and it
+        has the shape of ``indices``.
+
+    .. seealso: :func:`numpy.unravel_index`
+
+    """
+    if order not in {'C', 'F', 'A', 'K', 'c', 'f', 'a', 'k'}:
+        raise TypeError('order not understood')
+    elif order == 'C' or order == 'c':
+        return unravel_index(indices, dims[::-1], order='F')[::-1]
+    elif not (order == 'F' or order == 'f'):
+        raise ValueError('only \'C\' or \'F\' order is permitted')
+
+    shape = (len(dims),) + indices.shape
+    dims = cupy.asarray(dims, 'i')
+
+    size = dims.prod()
+    if (indices < 0).any() or (indices >= size).any():
+        raise ValueError('invalid entry in index array')
+
+    out = cupy.empty(shape, 'l')
+    cupy.ElementwiseKernel(
+        'T index, int32 indices_size, raw S dims, int32 dims_size',
+        'raw int64 out',
+        '''
+        for (int j = 0; j < dims_size; ++j) {
+           int dim = dims[j];
+           int next_index = index / dim;
+           int rest = index - dim * next_index;
+           index = next_index;
+           out[j * indices_size + i] = rest;
+        }
+        ''', 'unravel_index'
+    )(indices, indices.size, dims, dims.size, out)
+
+    # Note(unno): When indices.shape is (), it returns a tuple of integer
+    # values in NumPy. It feels strange but I keep compatibility.
+    return tuple([x[0] for x in cupy.split(out, len(out))])
 
 
 # TODO(okuta): Implement diag_indices

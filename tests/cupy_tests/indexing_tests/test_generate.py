@@ -149,3 +149,65 @@ class TestAxisConcatenator(unittest.TestCase):
     def test_len(self):
         a = generate.AxisConcatenator()
         self.assertEqual(len(a), 0)
+
+
+@testing.parameterize(*testing.product({
+    'order': ['C', 'F'],
+}))
+class TestUnravelIndex(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_call_0(self, xp):
+        indices = xp.array(1, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_1(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_2(self, xp):
+        indices = testing.shaped_arange((2, 3), xp, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_3(self, xp):
+        indices = testing.shaped_arange((2, 3, 2), xp, 'i')
+        shape = (5, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
+    
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_K_order(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order='K')
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_A_order(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order='A')
+
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_unknown_order(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i')
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order='unknown')
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_too_small_indices(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i') - 3
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_too_large_indices(self, xp):
+        indices = testing.shaped_arange((5,), xp, 'i') + 10
+        shape = (3, 4)
+        return xp.unravel_index(indices, shape, order=self.order)
