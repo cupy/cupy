@@ -554,8 +554,6 @@ cdef class SingleDeviceMemoryPool:
 
     cdef vector.vector[int]* _arena_index(self, size_t stream_ptr):
         """Get appropriate arena sparse index of a given stream"""
-        if self._index.count(stream_ptr) == 0:
-            self._index[stream_ptr] = vector.vector[int]()
         return &self._index[stream_ptr]
 
     cpdef _append_to_free_list(self, Py_ssize_t size, chunk,
