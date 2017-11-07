@@ -1,5 +1,5 @@
 from libcpp cimport vector
-from libcpp cimport unordered_map
+from libcpp cimport map
 
 from cupy.cuda cimport device
 
@@ -54,7 +54,7 @@ cdef class SingleDeviceMemoryPool:
         object _in_use_lock
         readonly Py_ssize_t _allocation_unit_size
         readonly int _device_id
-        unordered_map.unordered_map[size_t, vector.vector[int]] _index
+        map.map[size_t, vector.vector[int]] _index
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t size)
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
