@@ -486,8 +486,8 @@ def einsum_path(*operands, **kwargs):
         if ellipsis_pos != -1:
             dim = 1
             upper = ellipsis_pos + ioperand.ndim - len(subscript) + 1
-            for i in six.moves.range(ellipsis_pos, upper):
-                dim *= ioperand.shape[i]
+            for j in six.moves.range(ellipsis_pos, upper):
+                dim *= ioperand.shape[j]
             dimension_dict['@'] = dim
 
     # Compute size of each input array plus the output array
