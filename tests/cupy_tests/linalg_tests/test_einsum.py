@@ -465,11 +465,11 @@ class TestEinSumPath(unittest.TestCase):
 
 @testing.with_requires('numpy>=1.12')
 @testing.parameterize(
-    {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
+    {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
      'subscript': 'a...,...b,c...->abc...'},
     {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
      'subscript': 'a...,...,c...->ac...'},
-    {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
+    {'shape_a': (3, 3, 4), 'shape_b': (4, 3), 'shape_c': (2, 3, 4),
      'subscript': 'a...,...b,c...->abc...'},
     {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
      'subscript': 'a...,...,c...->ac...'},
