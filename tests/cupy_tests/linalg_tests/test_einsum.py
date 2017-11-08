@@ -131,6 +131,8 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_einsum_unary(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         return xp.einsum(self.subscripts, a)
 
