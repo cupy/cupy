@@ -1,6 +1,5 @@
 import six
 
-import cupy
 from cupy import core
 from cupy.creation import basic
 from cupy.random import distributions
@@ -81,31 +80,8 @@ def randint(low, high=None, size=None, dtype='l'):
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
-    if high is None:
-        lo = 0
-        hi = low
-    else:
-        lo = low
-        hi = high
-
-    if lo >= hi:
-        raise ValueError('low >= high')
-    if lo < cupy.iinfo(dtype).min:
-        raise ValueError(
-            'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-    if hi > cupy.iinfo(dtype).max + 1:
-        raise ValueError(
-            'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
-
-    diff = hi - lo - 1
-    if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
-        raise NotImplementedError(
-            'Sampling from a range whose extent is larger than int32 range is '
-            'currently not supported')
     rs = generator.get_random_state()
-    x = rs.interval(diff, size).astype(dtype, copy=False)
-    cupy.add(x, lo, out=x)
-    return x
+    return rs.randint(low, high, size, dtype)
 
 
 def random_integers(low, high=None, size=None):
