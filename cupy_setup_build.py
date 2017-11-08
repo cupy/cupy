@@ -35,6 +35,7 @@ MODULES = [
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
+            'cupy.cuda.memory_hook',
             'cupy.cuda.nvrtc',
             'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',

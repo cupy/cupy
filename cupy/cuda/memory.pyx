@@ -10,10 +10,10 @@ import weakref
 from fastrlock cimport rlock
 
 from cupy.cuda import driver
-from cupy.cuda import memory_hook
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
+from cupy.cuda cimport memory_hook
 from cupy.cuda cimport runtime
 
 
@@ -462,9 +462,7 @@ class PooledMemory(Memory):
 
         hooks = None
         # to avoid error at exit
-        mh = memory_hook
-        if mh is not None and mh.get_memory_hooks is not None:
-            hooks = mh.get_memory_hooks()
+        hooks = memory_hook.get_memory_hooks()
         size = self.size
         if hooks:
             device_id = self.device.id
