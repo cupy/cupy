@@ -3,9 +3,8 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
-#include <cuda.h>
-
 #ifndef CUPY_NO_CUDA
+#  include <cuda.h>
 #  include <cusparse.h>
 
 #else  // CUPY_NO_CUDA
