@@ -253,10 +253,16 @@ def einsum_core(*operands):
     return result
 
 
-def _compute_size_by_dict(indices, idx_dict):
+def _compute_size_by_dict(indices, idx_dict, broadcasted_dims, operand_idx=()):
     ret = 1
     for i in indices:
-        ret *= idx_dict[i]
+        if i == '@':
+            if operand_idx:
+                ret *= max([broadcasted_dims[i] for i in operand_idx])
+            else:
+                ret *= max(broadcasted_dims)
+        else:
+            ret *= idx_dict[i]
     return ret
 
 
@@ -278,7 +284,8 @@ def _find_contraction(positions, input_sets, output_set):
     return (new_result, remaining, idx_removed, idx_contract)
 
 
-def _greedy_path(input_sets, output_set, dim_dict, memory_limit):
+def _greedy_path(input_sets, output_set, dim_dict, broadcasted_dims,
+                 memory_limit):
     """Finds the best path from all possible combinations.
 
     """
@@ -301,12 +308,15 @@ def _greedy_path(input_sets, output_set, dim_dict, memory_limit):
             idx_result, new_input_sets, idx_removed, idx_contract = contract
 
             # Sieve the results based on memory_limit
-            if _compute_size_by_dict(idx_result, dim_dict) > memory_limit:
+            if _compute_size_by_dict(idx_result, dim_dict, broadcasted_dims,
+                                     comb_iter) > memory_limit:
                 continue
 
             # Build sort tuple
-            removed_size = _compute_size_by_dict(idx_removed, dim_dict)
-            cost = _compute_size_by_dict(idx_contract, dim_dict)
+            removed_size = _compute_size_by_dict(idx_removed, dim_dict,
+                                                 broadcasted_dims, comb_iter)
+            cost = _compute_size_by_dict(idx_contract, dim_dict,
+                                         broadcasted_dims, comb_iter)
             sort = (-removed_size, cost)
 
             # Add contraction to possible choices
@@ -466,7 +476,7 @@ def einsum_path(*operands, **kwargs):
     indices = set(input_subscripts.replace(',', ''))
 
     # Get length of each unique dimension and ensure all dimensions are correct
-    dimension_dict = {}
+    dim_dict = {}
     broadcasted_dims = []
     for i, subscript in enumerate(input_list):
         ioperand = operands[i]
@@ -478,12 +488,12 @@ def einsum_path(*operands, **kwargs):
             if ellipsis_pos != -1 and cnum > ellipsis_pos:
                 cnum -= len(subscript)
             dim = ioperand.shape[cnum]
-            if char in dimension_dict:
-                if dimension_dict[char] != dim:
+            if char in dim_dict:
+                if dim_dict[char] != dim:
                     raise ValueError('Size of label \'%s\' for operand %d does'
                                      ' not match previous terms.', char, i)
             else:
-                dimension_dict[char] = dim
+                dim_dict[char] = dim
         if ellipsis_pos != -1:
             dim = 1
             upper = ellipsis_pos + ioperand.ndim - len(subscript) + 1
@@ -491,12 +501,13 @@ def einsum_path(*operands, **kwargs):
                 dim *= ioperand.shape[j]
             broadcasted_dims.append(dim)
     if broadcasted_dims:
-        dimension_dict['@'] = max(broadcasted_dims)
+        dim_dict['@'] = max(broadcasted_dims)
 
     # Compute size of each input array plus the output array
     size_list = []
     for subscript in input_list + [output_subscript]:
-        size_list.append(_compute_size_by_dict(subscript, dimension_dict))
+        size_list.append(_compute_size_by_dict(subscript, dim_dict,
+                                               broadcasted_dims))
     max_size = max(size_list)
 
     if memory_limit is None:
@@ -506,7 +517,7 @@ def einsum_path(*operands, **kwargs):
 
     # Compute naive cost
     # This isn't quite right, need to look into exactly how einsum does this
-    naive_cost = _compute_size_by_dict(indices, dimension_dict)
+    naive_cost = _compute_size_by_dict(indices, dim_dict, broadcasted_dims)
     indices_in_input = input_subscripts.replace(',', '')
     mult = max(len(input_list) - 1, 1)
     if len(indices_in_input) > len(set(indices_in_input)):
@@ -520,7 +531,8 @@ def einsum_path(*operands, **kwargs):
     elif path_type == 'greedy':
         # Maximum memory should be at most out_size for this algorithm
         memory_arg = min(memory_arg, max_size)
-        path = _greedy_path(input_sets, output_set, dimension_dict, memory_arg)
+        path = _greedy_path(input_sets, output_set, dim_dict, broadcasted_dims,
+                            memory_arg)
     elif path_type[0] == 'einsum_path':
         path = path_type[1:]
     else:
@@ -536,12 +548,13 @@ def einsum_path(*operands, **kwargs):
         contract = _find_contraction(contract_inds, input_sets, output_set)
         out_inds, input_sets, idx_removed, idx_contract = contract
 
-        cost = _compute_size_by_dict(idx_contract, dimension_dict)
+        cost = _compute_size_by_dict(idx_contract, dim_dict, broadcasted_dims)
         if idx_removed:
             cost *= 2
         cost_list.append(cost)
         scale_list.append(len(idx_contract))
-        size_list.append(_compute_size_by_dict(out_inds, dimension_dict))
+        size_list.append(_compute_size_by_dict(out_inds, dim_dict,
+                                               broadcasted_dims))
 
         tmp_inputs = []
         for x in contract_inds:
@@ -551,7 +564,7 @@ def einsum_path(*operands, **kwargs):
         if cnum == len(path) - 1:
             idx_result = output_subscript
         else:
-            sort_result = [(dimension_dict[ind], ind) for ind in out_inds]
+            sort_result = [(dim_dict[ind], ind) for ind in out_inds]
             idx_result = ''.join([x[1] for x in sorted(sort_result)])
 
         input_list.append(idx_result)
