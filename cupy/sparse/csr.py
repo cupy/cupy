@@ -135,7 +135,18 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
 
-    # TODO(unno): Implement eliminate_zeros
+    def eliminate_zeros(self):
+        """Removes zero entories in place."""
+        self.sum_duplicates()
+        if cupy.cuda.runtime.runtimeGetVersion() >= 8000:
+            compress = cusparse.csr2csr_compress(self, 0)
+        else:
+            coo = self.tocoo()
+            coo.eliminate_zeros()
+            compress = coo.tocsr()
+        self.data = compress.data
+        self.indices = compress.indices
+        self.indptr = compress.indptr
 
     # TODO(unno): Implement max
 
