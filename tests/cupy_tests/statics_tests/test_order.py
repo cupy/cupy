@@ -47,6 +47,7 @@ class TestOrder(unittest.TestCase):
 
     @for_all_interpolations()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.with_requires('numpy>=1.10.0')
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_percentile_tuple_axis(self, xp, dtype, interpolation):
         a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
