@@ -203,6 +203,7 @@ class TestProduct(unittest.TestCase):
         return xp.inner(a, b)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.10.2')
     @testing.numpy_cupy_allclose()
     def test_reversed_inner(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)[::-1]
