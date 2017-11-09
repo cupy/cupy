@@ -19,28 +19,28 @@ from cupy.cuda import cudnn as py_cudnn
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()
 
-cdef vector.vector[size_t] _handle
+cdef vector.vector[size_t] _handles
 
 
 cpdef size_t get_handle() except *:
+    cdef int dev
     dev = device.get_device_id()
-    if _handle.size() <= dev:
-        _handle.resize(dev + 1, 0)
-    ret = _handle[dev]
+    if _handles.size() <= dev:
+        _handles.resize(dev + 1, 0)
+    ret = _handles[dev]
     if ret != 0:
         return ret
     ret = cudnn.create()
-    _handle[dev] = ret
+    _handles[dev] = ret
     return ret
 
 
 @atexit.register
 def reset_handles():
-    cdef list handles = _handle
-    _handle.clear()
-    for handle in handles:
+    for handle in _handles:
         if handle:
             cudnn.destroy(handle)
+    _handles.clear()
 
 
 cpdef dict _get_nd_tensor_cache():
@@ -76,10 +76,12 @@ cpdef get_data_type(dtype):
 cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type):
     cdef vector.vector[int] c_shape, c_strides
+    cdef Py_ssize_t itemsize, s
     itemsize = arr.itemsize
-    for s in arr.strides:
+    for s in arr._strides:
         c_strides.push_back(s // itemsize)
-    c_shape = arr.shape
+    for s in arr._shape:
+        c_shape.push_back(s)
     cudnn.setTensorNdDescriptor(
         desc, data_type, arr.ndim, <size_t>&c_shape[0], <size_t>&c_strides[0])
 
@@ -88,7 +90,7 @@ cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr, int format):
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
-    if arr.ndim == 4:
+    if arr._shape.size() == 4:
         n, c, h, w = arr.shape
         cudnn.setTensor4dDescriptor(desc, format, data_type, n, c, h, w)
     else:
@@ -98,13 +100,15 @@ cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr, int format):
 cpdef _create_filter_descriptor(
         size_t desc, core.ndarray arr, int format=cudnn.CUDNN_TENSOR_NCHW):
     cdef vector.vector[int] c_shape
+    cdef Py_ssize_t s
     data_type = get_data_type(arr.dtype)
-    if arr.ndim == 4:
+    if arr._shape.size() == 4:
         n, c, h, w = arr.shape
         cudnn.setFilter4dDescriptor_v4(
             desc, data_type, format, n, c, h, w)
     else:
-        c_shape = arr.shape
+        for s in arr._shape:
+            c_shape.push_back(s)
         cudnn.setFilterNdDescriptor_v4(
             desc, data_type, format, arr.ndim, <size_t>&c_shape[0])
 
@@ -390,11 +394,9 @@ def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
 
 
 def is_tensor_core_available(dtype):
-    if (dtype == numpy.float16 and
-            _cudnn_version >= 7000 and
-            int(device.get_compute_capability()) == 70):
-        return True
-    return False
+    return (_cudnn_version >= 7000 and
+            dtype == numpy.float16 and
+            int(device.get_compute_capability()) == 70)
 
 
 class DropoutStates(object):

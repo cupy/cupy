@@ -22,7 +22,7 @@ from cupy import testing
     'dtype': [numpy.float32, numpy.float64],
     'mode': modes,
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN >= 4.0 is supported')
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestCudnnActivation(unittest.TestCase):
 
     def setUp(self):
