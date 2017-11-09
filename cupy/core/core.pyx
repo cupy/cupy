@@ -1878,7 +1878,6 @@ elementwise_copy_where = create_ufunc(
     'if (in1) out0 = in0', default_casting='unsafe')
 
 
-
 cdef _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
     out0 = a;
