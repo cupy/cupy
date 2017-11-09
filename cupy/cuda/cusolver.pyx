@@ -1,5 +1,6 @@
 """Thin wrapper of CUSOLVER."""
 cimport cython
+cimport cusparse
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
@@ -12,6 +13,7 @@ from cupy.cuda cimport stream as stream_module
 cdef extern from 'cupy_cusolver.h' nogil:
     # Context
     int cusolverDnCreate(Handle* handle)
+    int cusolverSpCreate(HandleSp* handle)
     int cusolverDnDestroy(Handle handle)
 
     # Stream
@@ -128,6 +130,15 @@ cdef extern from 'cupy_cusolver.h' nogil:
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
 
+    int cusolverSpScsrlsvqr(
+        HandleSp handle, int m, int nnz, const MatDescr descrA,
+        const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const float* b, float tol, int reorder, float* x, int* singularity)
+
+    int cusolverSpDcsrlsvqr(
+        HandleSp handle, int m, int nnz, const MatDescr descrA,
+        const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const double* b, double tol, int reorder, double* x, int* singularity)
 
 ###############################################################################
 # Error handling
@@ -170,6 +181,14 @@ cpdef size_t create() except *:
     cdef Handle handle
     with nogil:
         status = cusolverDnCreate(&handle)
+    check_status(status)
+    return <size_t>handle
+
+
+cpdef size_t createSp() except *:
+    cdef HandleSp handle
+    with nogil:
+        status = cusolverSpCreate(&handle)
     check_status(status)
     return <size_t>handle
 
@@ -534,4 +553,32 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
         status = cusolverDnDsyevd(
             <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <double*>A, lda,
             <double*>W, <double*>work, lwork, <int*>info)
+    check_status(status)
+
+###############################################################################
+# sparse LAPACK Functions
+###############################################################################
+
+cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpScsrlsvqr(
+            <HandleSp>handle, m, nnz, <const MatDescr> descrA,
+            <const float*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const float*> b,
+            tol, reorder, <float*> x, <int*> singularity)
+    check_status(status)
+
+cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpDcsrlsvqr(
+            <HandleSp>handle, m, nnz, <const MatDescr> descrA,
+            <const double*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const double*> b,
+            tol, reorder, <double*> x, <int*> singularity)
     check_status(status)
