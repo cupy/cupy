@@ -72,3 +72,6 @@ cdef class Indexer:
         readonly tuple shape
 
     cdef CPointer get_pointer(self)
+
+
+cpdef ndarray ascontiguousarray(ndarray a, dtype=*)

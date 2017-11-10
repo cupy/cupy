@@ -1,5 +1,7 @@
 cpdef int get_device_id() except *
-cpdef get_cublas_handle()
+cpdef size_t get_cublas_handle() except *
+cpdef size_t get_cusolver_handle() except *
+cpdef size_t get_cusparse_handle() except *
 
 cdef class Device:
     cdef:
