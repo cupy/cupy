@@ -1,10 +1,10 @@
 import unittest
 
 import numpy
-from scipy.sparse import linalg
+import scipy.sparse.linalg  # NOQA
 
 from cupy import testing
-from cupy.sparse import linalg
+import cupy.sparse.linalg  # NOQA
 
 
 @testing.parameterize(*testing.product({
