@@ -4,14 +4,17 @@ import cupy
 from cupy import cuda
 from cupy.cuda import device
 from cupy.linalg import util
-from cupy.sparse import csr_matrix, isspmatrix_csr
+from cupy.sparse import csr_matrix
+from cupy.sparse import isspmatrix_csr
+
 
 if cuda.cusolver_enabled:
     from cupy.cuda import cusolver
 
 
 def lsqr(A, b):
-    ''' Solve linear system with QR decomposition.
+
+    """Solve linear system with QR decomposition.
 
     Find the solution to a large, sparse, linear system of equations.
     Given two-dimensional matrix `A` is decomposed into ``Q * R``.
@@ -25,7 +28,8 @@ def lsqr(A, b):
         x (cupy.ndarray): The final solution.
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
-    '''
+    """
+
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 

@@ -3,8 +3,8 @@ import unittest
 import numpy
 import scipy.sparse.linalg  # NOQA
 
-from cupy import testing
 import cupy.sparse.linalg  # NOQA
+from cupy import testing
 
 
 @testing.parameterize(*testing.product({
