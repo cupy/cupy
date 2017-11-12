@@ -23,6 +23,7 @@ typedef enum{} cusolverEigMode_t;
 
 typedef void* cusolverDnHandle_t;
 typedef void* cusolverSpHandle_t;
+typedef void* cusparseMatDescr_t;
 
 cusolverStatus_t cusolverDnCreate(...) {
     return CUSOLVER_STATUS_SUCCESS;
