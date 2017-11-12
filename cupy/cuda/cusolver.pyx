@@ -1,5 +1,6 @@
 """Thin wrapper of CUSOLVER."""
 cimport cython
+cimport cusparse
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
@@ -127,6 +128,15 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnDsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
+
+    int cusolverSpScsrlsvlu(
+        Handle handle, int n, int nnzA, const cusparseMatDescr_t descrA,
+        const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const float* b, float tol, int reorder, float* x, int* singularity)
+    int cusolverSpDcsrlsvlu(
+        Handle handle, int n, int nnzA, const cusparseMatDescr_t descrA,
+        const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const double* b, double tol, int reorder, double* x, int* singularity)
 
 
 ###############################################################################
@@ -534,4 +544,30 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
         status = cusolverDnDsyevd(
             <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <double*>A, lda,
             <double*>W, <double*>work, lwork, <int*>info)
+    check_status(status)
+
+###############################################################################
+# sparse LAPACK Functions
+###############################################################################
+
+cpdef scsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
+    with nogil:
+        status = cusolverSpScsrlsvlu(
+            <Handle>handle, n, nnzA, <const MatDescr> descrA,
+            <const float*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const float*> b,
+            tol, reorder, <float*> x, <int*> singularity)
+    check_status(status)
+
+cpdef dcsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
+    with nogil:
+        status = cusolverSpDcsrlsvlu(
+            <Handle>handle, n, nnzA, <const MatDescr> descrA,
+            <const double*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const double*> b,
+            tol, reorder, <double*> x, <int*> singularity)
     check_status(status)

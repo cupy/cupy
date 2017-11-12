@@ -9,6 +9,7 @@ from cupy.cuda.driver cimport Stream
 
 cdef extern from *:
     ctypedef void* Handle 'cusolverDnHandle_t'
+    ctypedef void* Handle 'cusolverSpHandle_t'
 
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int SideMode 'cublasSideMode_t'
@@ -123,3 +124,14 @@ cpdef sgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
 cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
+
+###############################################################################
+# sparse LAPACK Functions
+###############################################################################
+
+cpdef scsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
+cpdef dcsrlsvlu(size_t handle, int n, int nnzA, size_t descrA, size_t csrValA,
+                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
