@@ -29,7 +29,7 @@ class TestLsqr(unittest.TestCase):
             x = x.astype(self.dtype)
         return x
 
-    @testing.numpy_cupy_allclose(atol=1e-3,  sp_name='sp')
+    @testing.numpy_cupy_allclose(atol=1e-3, sp_name='sp')
     def test_ndarray(self, xp, sp):
         A = xp.array(self.A).astype(self.dtype)
         b = xp.array(self.b).astype(self.dtype)

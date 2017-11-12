@@ -13,7 +13,6 @@ if cuda.cusolver_enabled:
 
 
 def lsqr(A, b):
-
     """Solve linear system with QR decomposition.
 
     Find the solution to a large, sparse, linear system of equations.
