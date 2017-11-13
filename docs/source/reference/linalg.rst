@@ -63,3 +63,4 @@ Solving linear equations
    cupy.linalg.tensorsolve
    cupy.linalg.inv
    cupy.linalg.pinv
+   cupy.linalg.tensorinv
