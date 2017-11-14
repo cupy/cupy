@@ -40,7 +40,7 @@ class TestLsqr(unittest.TestCase):
         b = xp.array(self.b).astype(self.dtype)
         A = sp.csr_matrix(A)
         x = sp.linalg.lsqr(A, b)
-        if xp == numpy:
+        if sp == scipy.sparse:
             return x[0].astype(self.dtype)
         else:
             return x
@@ -51,7 +51,7 @@ class TestLsqr(unittest.TestCase):
         A = xp.array(self.A).astype(self.dtype)
         b = xp.array(self.b).astype(self.dtype)
         x = sp.linalg.lsqr(A, b)
-        if xp == numpy:
+        if sp == scipy.sparse:
             return x[0].astype(self.dtype)
         else:
             return x
