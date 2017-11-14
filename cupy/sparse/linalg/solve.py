@@ -4,8 +4,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import device
 from cupy.linalg import util
-from cupy.sparse import csr_matrix
-from cupy.sparse import isspmatrix_csr
+from cupy import sparse
 
 
 if cuda.cusolver_enabled:
@@ -13,10 +12,10 @@ if cuda.cusolver_enabled:
 
 
 def lsqr(A, b):
-    """Solve linear system with QR decomposition.
+    """Solves linear system with QR decomposition.
 
     Find the solution to a large, sparse, linear system of equations.
-    Given two-dimensional matrix `A` is decomposed into ``Q * R``.
+    Given two-dimensional matrix ``A`` is decomposed into ``Q * R``.
 
     Args:
         A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
@@ -32,11 +31,11 @@ def lsqr(A, b):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
-    if not isspmatrix_csr(A):
-        A = csr_matrix(A)
+    if not sparse.isspmatrix_csr(A):
+        A = sparse.csr_matrix(A)
     util._assert_nd_squareness(A)
     util._assert_cupy_array(b)
-    m, _ = A.shape
+    m = A.shape[0]
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')
 
@@ -54,15 +53,14 @@ def lsqr(A, b):
 
     if dtype == 'f':
         singularity = numpy.empty(1, numpy.int32)
-        cusolver.scsrlsvqr(
-            handle, m, nnz, A._descr.descriptor, A.data.data.ptr,
-            A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
-            x.data.ptr, singularity.ctypes.data)
-    else:  # dtype == 'd'
+        csrlsvqr = cusolver.scsrlsvqr
+    else:
         singularity = numpy.empty(1, numpy.int64)
-        cusolver.dcsrlsvqr(
-            handle, m, nnz, A._descr.descriptor, A.data.data.ptr,
-            A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
-            x.data.ptr, singularity.ctypes.data)
+        csrlsvqr = cusolver.dcsrlsvqr
+
+    csrlsvqr(
+        handle, m, nnz, A._descr.descriptor, A.data.data.ptr,
+        A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
+        x.data.ptr, singularity.ctypes.data)
 
     return x
