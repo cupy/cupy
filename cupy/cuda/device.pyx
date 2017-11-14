@@ -21,7 +21,7 @@ cpdef int get_device_id() except *:
 
 cdef dict _cublas_handles = {}
 cdef dict _cusolver_handles = {}
-cdef dict _cusolver_handlessp = {}
+cdef dict _cusolver_sp_handles = {}
 cdef dict _cusparse_handles = {}
 cdef dict _compute_capabilities = {}
 
@@ -42,11 +42,11 @@ cpdef size_t get_cusolver_handle() except *:
     return Device().cusolver_handle
 
 
-cpdef get_cusolver_handlesp():
+cpdef get_cusolver_sp_handle():
     dev_id = get_device_id()
-    if dev_id in _cusolver_handlessp:
-        return _cusolver_handlessp[dev_id]
-    return Device().cusolver_handlesp
+    if dev_id in _cusolver_sp_handles:
+        return _cusolver_sp_handles[dev_id]
+    return Device().cusolver_sp_handle
 
 
 cpdef size_t get_cusparse_handle() except *:
@@ -180,8 +180,8 @@ cdef class Device:
             return handle
 
     @property
-    def cusolver_handlesp(self):
-        """The cuSOLVER handleSp for this device.
+    def cusolver_sp_handle(self):
+        """The cuSOLVER Sphandle for this device.
 
         The same handle is used for the same device even if the Device instance
         itself is different.
@@ -190,11 +190,11 @@ cdef class Device:
         if not cusolver_enabled:
             raise RuntimeError(
                 'Current cupy only supports cusolver in CUDA 8.0')
-        if self.id in _cusolver_handlessp:
-            return _cusolver_handlessp[self.id]
+        if self.id in _cusolver_sp_handles:
+            return _cusolver_sp_handles[self.id]
         with self:
             handle = cusolver.createSp()
-            _cusolver_handlessp[self.id] = handle
+            _cusolver_sp_handles[self.id] = handle
             return handle
 
     @property

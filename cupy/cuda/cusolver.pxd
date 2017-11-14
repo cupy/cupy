@@ -9,7 +9,7 @@ from cupy.cuda.driver cimport Stream
 
 cdef extern from *:
     ctypedef void* Handle 'cusolverDnHandle_t'
-    ctypedef void* HandleSp 'cusolverSpHandle_t'
+    ctypedef void* SpHandle 'cusolverSpHandle_t'
 
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int SideMode 'cublasSideMode_t'

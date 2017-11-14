@@ -13,7 +13,7 @@ from cupy.cuda cimport stream as stream_module
 cdef extern from 'cupy_cusolver.h' nogil:
     # Context
     int cusolverDnCreate(Handle* handle)
-    int cusolverSpCreate(HandleSp* handle)
+    int cusolverSpCreate(SpHandle* handle)
     int cusolverDnDestroy(Handle handle)
 
     # Stream
@@ -131,12 +131,12 @@ cdef extern from 'cupy_cusolver.h' nogil:
         double* W, double* work, int lwork, int* info)
 
     int cusolverSpScsrlsvqr(
-        HandleSp handle, int m, int nnz, const MatDescr descrA,
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
         const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const float* b, float tol, int reorder, float* x, int* singularity)
 
     int cusolverSpDcsrlsvqr(
-        HandleSp handle, int m, int nnz, const MatDescr descrA,
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
         const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const double* b, double tol, int reorder, double* x, int* singularity)
 
@@ -186,7 +186,7 @@ cpdef size_t create() except *:
 
 
 cpdef size_t createSp() except *:
-    cdef HandleSp handle
+    cdef SpHandle handle
     with nogil:
         status = cusolverSpCreate(&handle)
     check_status(status)
@@ -565,7 +565,7 @@ cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
     cdef int status
     with nogil:
         status = cusolverSpScsrlsvqr(
-            <HandleSp>handle, m, nnz, <const MatDescr> descrA,
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
             <const float*> csrValA, <const int*> csrRowPtrA,
             <const int*> csrColIndA, <const float*> b,
             tol, reorder, <float*> x, <int*> singularity)
@@ -577,7 +577,7 @@ cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
     cdef int status
     with nogil:
         status = cusolverSpDcsrlsvqr(
-            <HandleSp>handle, m, nnz, <const MatDescr> descrA,
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
             <const double*> csrValA, <const int*> csrRowPtrA,
             <const int*> csrColIndA, <const double*> b,
             tol, reorder, <double*> x, <int*> singularity)
