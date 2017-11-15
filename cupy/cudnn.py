@@ -207,9 +207,9 @@ def create_pooling_descriptor(ksize, stride, pad, mode):
 def create_lrn_descriptor(lrnN, lrnAlpha, lrnBeta, lrnK):
     desc = Descriptor(cudnn.createLRNDescriptor(),
                       cudnn.destroyLRNDescriptor)
-    
+
     cudnn.setLRNDescriptor(desc.value, lrnN, lrnAlpha, lrnBeta, lrnK)
-    
+
     return desc
 
 

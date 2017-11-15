@@ -36,7 +36,7 @@ typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
 typedef void* cudnnTensorDescriptor_t;
 typedef void* cudnnLRNDescriptor_t;
-    
+
 
 // Error handling
 const char* cudnnGetErrorString(...) {
@@ -155,7 +155,7 @@ cudnnStatus_t cudnnSoftmaxForward(...) {
 cudnnStatus_t cudnnSoftmaxBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
-    
+
 // Local Response Norm
 cudnnStatus_t cudnnCreateLRNDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
@@ -164,11 +164,11 @@ cudnnStatus_t cudnnCreateLRNDescriptor(...) {
 cudnnStatus_t cudnnSetLRNDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
-    
+
 cudnnStatus_t cudnnDestroyLRNDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
-    
+
 cudnnStatus_t cudnnLRNCrossChannelForward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
