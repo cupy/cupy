@@ -124,7 +124,8 @@ def stack(tup, axis=0):
     for x in tup:
         if not (-x.ndim - 1 <= axis <= x.ndim):
             raise core.core._AxisError(
-                'axis {} out of bounds [0, {})'.format(axis, x.ndim))
+                'axis {} out of bounds [{}, {}]'.format(
+                    axis, -x.ndim - 1, x.ndim))
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis)
 
 
