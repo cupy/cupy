@@ -3149,7 +3149,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
-    cdef Py_ssize_t i, p, li, ri
+    cdef Py_ssize_t i, p, li, ri, max_index
     cdef ndarray take_idx, input_flat, out_flat, ret
     cdef tuple a_shape
 
@@ -3200,10 +3200,25 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     for s in a.shape[ri:li:-1]:
         strides.insert(0, s * strides[0])
 
-    # wrap all out-of-bound indices
-    flattened_indexes = [
-        stride * (s % a_interm_shape_i) for stride, s, a_interm_shape_i
-        in zip(strides, slices[li:ri + 1], a_interm_shape[li:ri + 1])]
+    max_index = internal.prod(a.shape[li:ri+1]) - 1  # 0 start
+    flattened_indexes = []
+    for stride, s, a_interm_shape_i in zip(
+            strides, slices[li:ri + 1], a_interm_shape[li:ri + 1]):
+        # cast to appropriate dtype if the linearized index can
+        # exceed the range of the original dtype.
+        dtype = None
+        if max_index >= 2**32 and issubclass(
+                s.dtype.type, (numpy.int8, numpy.int16, numpy.int32)):
+            dtype = numpy.int64
+        elif max_index >= 2**16 and issubclass(
+                s.dtype.type, (numpy.int8, numpy.int16)):
+            dtype = numpy.int32
+        elif max_index >= 2**8 and issubclass(s.dtype.type, numpy.int8):
+            dtype = numpy.int16
+        if dtype is not None:
+            s = s.astype(dtype)
+        # wrap all out-of-bound indices
+        flattened_indexes.append(stride * (s % a_interm_shape_i))
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape

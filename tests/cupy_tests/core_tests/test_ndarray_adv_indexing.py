@@ -191,6 +191,100 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
         testing.assert_array_equal(original_index, index)
 
 
+@testing.gpu
+class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
+
+    def test_getitem_int8_1(self):
+        a = cupy.arange(17 * 16).reshape(17, 16)
+        index1 = cupy.array([16], dtype=numpy.int8)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        b = a[index1, index2]
+        b_cpu = a.get()[index1.get(), index2.get()]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_getitem_int8_2(self):
+        a = cupy.arange(17 * 3 * 16).reshape(17, 3, 16)
+        index1 = cupy.array([16], dtype=numpy.int8)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        b = a[index1, :, index2]
+        b_cpu = a.get()[index1.get(), :, index2.get()]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_getitem_int16(self):
+        a = cupy.arange(257 * 256).reshape(257, 256)
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int16)
+        b = a[index1, index2]
+        b_cpu = a.get()[index1.get(), index2.get()]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_getitem_mix_16_32(self):
+        a = cupy.arange(257 * 256).reshape(257, 256)
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int32)
+        b = a[index1, index2]
+        b_cpu = a.get()[index1.get(), index2.get()]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_getitem_mix_16_8(self):
+        a = cupy.arange(257 * 256).reshape(257, 256)
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        b = a[index1, index2]
+        b_cpu = a.get()[index1.get(), index2.get()]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_setitem_int8_1(self):
+        original_a = cupy.arange(17 * 16).reshape(17, 16)
+        a = original_a.copy()
+        index1 = cupy.array([16], dtype=numpy.int8)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        a[index1, index2] = -1
+        a_cpu = original_a.get()
+        a_cpu[index1.get(), index2.get()] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+    def test_setitem_int8_2(self):
+        original_a = cupy.arange(17 * 3 * 16).reshape(17, 3, 16)
+        a = original_a.copy()
+        index1 = cupy.array([16], dtype=numpy.int8)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        a[index1, :, index2] = -1
+        a_cpu = original_a.get()
+        a_cpu[index1.get(), :, index2.get()] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+    def test_setitem_int16(self):
+        original_a = cupy.arange(257 * 256).reshape(257, 256)
+        a = original_a.copy()
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int16)
+        a[index1, index2] = -1
+        a_cpu = original_a.get()
+        a_cpu[index1.get(), index2.get()] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+    def test_setitem_mix_16_32(self):
+        original_a = cupy.arange(257 * 256).reshape(257, 256)
+        a = original_a.copy()
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int32)
+        a[index1, index2] = -1
+        a_cpu = original_a.get()
+        a_cpu[index1.get(), index2.get()] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+    def test_setitem_mix_16_8(self):
+        original_a = cupy.arange(257 * 256).reshape(257, 256)
+        a = original_a.copy()
+        index1 = cupy.array([256], dtype=numpy.int16)
+        index2 = cupy.array([1], dtype=numpy.int8)
+        a[index1, index2] = -1
+        a_cpu = original_a.get()
+        a_cpu[index1.get(), index2.get()] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+
 @testing.parameterize(
     {'shape': (), 'indexes': (-1,)},
     {'shape': (), 'indexes': (0,)},
