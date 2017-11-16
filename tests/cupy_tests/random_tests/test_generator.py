@@ -297,16 +297,16 @@ class TestInterval(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_bound_1(self):
         vals = self.generate_many(10, (2, 3), _count=10)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         for val in vals:
             self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(_.min() for _ in vals), 0)
-        self.assertEqual(max(_.max() for _ in vals), 10)
+        self.assertEqual(min(val.min() for val in vals), 0)
+        self.assertEqual(max(val.max() for val in vals), 10)
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
         vals = self.generate_many(2, None, _count=20)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 2)
 
@@ -315,7 +315,7 @@ class TestInterval(RandomGeneratorTestCase):
         mx = 5
         trial = 100
         vals = self.generate_many(mx, None, _count=trial)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / (mx + 1)] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
@@ -385,12 +385,12 @@ class TestChoice1(RandomGeneratorTestCase):
     def test_bound(self):
         vals = self.generate_many(
             a=self.a, size=self.size, p=self.p, _count=20)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
             self.assertEqual(val.shape, size_)
-        self.assertEqual(min(_.min() for _ in vals), 0)
-        self.assertEqual(max(_.max() for _ in vals), 2)
+        self.assertEqual(min(val.min() for val in vals), 0)
+        self.assertEqual(max(val.max() for val in vals), 2)
 
 
 @testing.parameterize(
@@ -419,12 +419,12 @@ class TestChoice2(RandomGeneratorTestCase):
     def test_bound(self):
         vals = self.generate_many(
             a=self.a, size=self.size, p=self.p, _count=20)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
             self.assertEqual(val.shape, size_)
-        self.assertEqual(min(_.min() for _ in vals), 0)
-        self.assertEqual(max(_.max() for _ in vals), 2)
+        self.assertEqual(min(val.min() for val in vals), 0)
+        self.assertEqual(max(val.max() for val in vals), 2)
 
 
 @testing.fix_random()
@@ -437,7 +437,7 @@ class TestChoiceChi(RandomGeneratorTestCase):
     def test_goodness_of_fit(self):
         trial = 100
         vals = self.generate_many(3, 1, True, [0.3, 0.3, 0.4], _count=trial)
-        vals = [_.get() for _ in vals]
+        vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
         expected = numpy.array([30, 30, 40])
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
