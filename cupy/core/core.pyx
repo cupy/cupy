@@ -3207,14 +3207,23 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         # cast to appropriate dtype if the linearized index can
         # exceed the range of the original dtype.
         dtype = None
-        if max_index >= 2**32 and issubclass(
+        if max_index >= 2**31 and issubclass(
                 s.dtype.type, (numpy.int8, numpy.int16, numpy.int32)):
             dtype = numpy.int64
-        elif max_index >= 2**16 and issubclass(
+        elif max_index >= 2**15 and issubclass(
                 s.dtype.type, (numpy.int8, numpy.int16)):
             dtype = numpy.int32
-        elif max_index >= 2**8 and issubclass(s.dtype.type, numpy.int8):
+        elif max_index >= 2**7 and issubclass(s.dtype.type, numpy.int8):
             dtype = numpy.int16
+
+        if max_index >= 2**32 and issubclass(
+                s.dtype.type, (numpy.uint8, numpy.uint16, numpy.uint32)):
+            dtype = numpy.uint64
+        elif max_index >= 2**16 and issubclass(
+                s.dtype.type, (numpy.uint8, numpy.uint16)):
+            dtype = numpy.uint32
+        elif max_index >= 2**8 and issubclass(s.dtype.type, numpy.uint8):
+            dtype = numpy.uint16
         if dtype is not None:
             s = s.astype(dtype)
         # wrap all out-of-bound indices
