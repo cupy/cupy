@@ -198,6 +198,7 @@ def check_library(compiler, includes=(), libraries=(),
                           include_dirs, library_dirs)
     except Exception as e:
         print(e)
+        sys.stdout.flush()
         return False
     return True
 
@@ -238,6 +239,7 @@ def check_installed_modules(compiler, settings):
 
         print('')
         print('-------- Configuring Module: {} --------'.format(module['name']))
+        sys.stdout.flush()
         if not check_library(compiler,
                              includes=module['include'],
                              include_dirs=settings['include_dirs']):
