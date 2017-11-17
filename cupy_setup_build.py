@@ -68,6 +68,7 @@ MODULES = [
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
+        'version_method': build.get_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -82,6 +83,7 @@ MODULES = [
             'cudnn',
         ],
         'check_method': build.check_cudnn_version,
+        'version_method': build.get_cudnn_version,
     },
     {
         'name': 'nccl',
@@ -95,6 +97,7 @@ MODULES = [
             'nccl',
         ],
         'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
     },
     {
         'name': 'cusolver',
@@ -199,6 +202,107 @@ def check_library(compiler, includes=(), libraries=(),
     return True
 
 
+def check_installed_modules(compiler, settings):
+    """
+    For each module in MODULES list, this function checks if each module
+    can be built in the current environment and reports it.
+    Returns a list of module names available.
+    """
+
+    nvcc_path = build.get_nvcc_path()
+    summary = [
+        '',
+        '************************************************************',
+        '* CuPy Configuration Summary                               *',
+        '************************************************************',
+        '',
+        'Build Environment:',
+        '  Include directories: {}'.format(str(settings['include_dirs'])),
+        '  Library directories: {}'.format(str(settings['library_dirs'])),
+        '  nvcc command       : {}'.format(nvcc_path if nvcc_path else '(not found)'),
+        '',
+        'Environment Variables:',
+    ]
+
+    for v in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH']:
+        summary += ['  {:<16}: {}'.format(v, os.environ.get(v, '(none)'))]
+
+    summary += [
+        '',
+        'Modules:',
+    ]
+
+    ret = []
+    for module in MODULES:
+        (installed, status, msg) = (False, 'No', [])
+
+        print('')
+        print('-------- Configuring Module: {} --------'.format(module['name']))
+        if not check_library(compiler,
+                             includes=module['include'],
+                             include_dirs=settings['include_dirs']):
+            msg = ['Include files not found: %s' % module['include'],
+                   'Check your CFLAGS environment variable.']
+        elif not check_library(compiler,
+                               libraries=module['libraries'],
+                               library_dirs=settings['library_dirs']):
+            msg = ['Cannot link libraries: %s' % module['libraries'],
+                   'Check your LDFLAGS environment variable.']
+        elif 'check_method' in module and not module['check_method'](compiler, settings):
+            # Fail on per-library condition check (version requirements etc.)
+            installed = True
+            msg = ['Installed library is not supported.']
+        elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            msg = ['Cannot find nvcc in PATH.',
+                   'Check your PATH environment variable.']
+        else:
+            installed = True
+            status = 'Yes'
+            ret.append(module['name'])
+
+        if installed and 'version_method' in module:
+            status += ' (version {})'.format(module['version_method'](True))
+
+        summary += [
+            '  {:<10}: {}'.format(module['name'], status)
+        ]
+
+        # If error message exists...
+        if len(msg) != 0:
+            summary += ['    -> {}'.format(m) for m in msg]
+
+            # Skip checking other modules when CUDA is unavailable.
+            if module['name'] == 'cuda':
+                break
+
+    if len(ret) != len(MODULES):
+        if 'cuda' in ret:
+            lines = [
+                'WARNING: Some modules could not be configured.',
+                'CuPy will be installed without these modules.',
+            ]
+        else:
+            lines = [
+                'ERROR: CUDA could not be found on your system.',
+            ]
+        summary += [
+            '',
+        ] + lines + [
+            'Please refer to the Installation Guide for details:',
+            'http://docs.chainer.org/en/stable/install.html',
+            '',
+        ]
+
+    summary += [
+        '************************************************************',
+        '',
+    ]
+
+    print('\n'.join(summary))
+    return ret
+
+
 def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -240,40 +344,20 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
+
+    available_modules = []
+    if no_cuda:
+        available_modules = [m['name'] for m in MODULES]
+    else:
+        available_modules = check_installed_modules(compiler, settings)
+        if 'cuda' not in available_modules:
+            raise Exception('Your CUDA environment is invalid. '
+                            'Please check above error log.')
+
     ret = []
     for module in MODULES:
-        print('Include directories:', settings['include_dirs'])
-        print('Library directories:', settings['library_dirs'])
-
-        if not no_cuda:
-            err = False
-            if not check_library(compiler,
-                                 includes=module['include'],
-                                 include_dirs=settings['include_dirs']):
-                utils.print_warning(
-                    'Include files not found: %s' % module['include'],
-                    'Skip installing %s support' % module['name'],
-                    'Check your CFLAGS environment variable')
-                err = True
-            elif not check_library(compiler,
-                                   libraries=module['libraries'],
-                                   library_dirs=settings['library_dirs']):
-                utils.print_warning(
-                    'Cannot link libraries: %s' % module['libraries'],
-                    'Skip installing %s support' % module['name'],
-                    'Check your LDFLAGS environment variable')
-                err = True
-            elif('check_method' in module and
-                 not module['check_method'](compiler, settings)):
-                err = True
-
-            if err:
-                if module['name'] == 'cuda':
-                    raise Exception('Your CUDA environment is invalid. '
-                                    'Please check above error log.')
-                else:
-                    # Other modules are optional. They are skipped.
-                    continue
+        if module['name'] not in available_modules:
+            continue
 
         s = settings.copy()
         if not no_cuda:
@@ -289,13 +373,6 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
-
-        if not no_cuda and module['name'] == 'thrust':
-            if build.get_nvcc_path() is None:
-                utils.print_warning(
-                    'Cannot find nvcc in PATH.',
-                    'Skip installing thrust support.')
-                continue
 
         for f in module['file']:
             name = module_extension_name(f)
