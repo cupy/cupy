@@ -881,14 +881,63 @@ cdef class ndarray:
         length = self.shape[axis]
         if isinstance(kth, int):
             kth = kth,
+        max_k = 0
         for k in kth:
             if k < 0:
                 k += length
             if not (0 <= k < length):
                 raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+            if max_k < k:
+                max_k = k
+        max_k = (max_k // 32 + 1) * 32
 
-        # kth is ignored.
-        self.sort(axis=axis)
+        if max_k > 1024 or 2 * max_k >= self.shape[axis] or len(self.shape) > 1:
+            # kth is ignored.
+            self.sort(axis=axis)
+        else:
+            self[:2 * max_k] = cupy.sort(self[:2 * max_k])
+            ElementwiseKernel(
+                'raw T a, int32 k, int32 n',
+                '',
+                '''
+                    int x = 0;
+                    for (int j = 2 * k + i; j < n; j += 32) {
+                        if (a[j] < a[k - 1]) {
+                            T tmp = a[k + 32 * x + i];
+                            a[k + 32 * x + i] = a[j];
+                            a[j] = tmp;
+                            ++x;
+                        }
+                        if (__any_sync(0xffffffff, x >= k / 32)) {
+                            if (i == 0) {
+                                for (int s = 0; s < k; ++s) {
+                                    for (int t = s + 1; t < 2 * k; ++t) {
+                                        if (a[s] > a[t]) {
+                                            T tmp = a[s];
+                                            a[s] = a[t];
+                                            a[t] = tmp;
+                                        }
+                                    }
+                                }
+                            }
+                            x = 0;
+                            __threadfence_block();
+                        }
+                    }
+                    __threadfence_block();
+                    if (i == 0) {
+                        for (int s = 0; s < k; ++s) {
+                            for (int t = s + 1; t < 2 * k; ++t) {
+                                if (a[s] > a[t]) {
+                                    T tmp = a[s];
+                                    a[s] = a[t];
+                                    a[t] = tmp;
+                                }
+                            }
+                        }
+                    }
+                '''
+            )(self, max_k, self.shape[axis], size=32)
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
