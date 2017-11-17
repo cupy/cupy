@@ -97,7 +97,7 @@ cdef class ndarray:
             self.data = memptr
         self.base = None
 
-        if order == 'C':
+        if order in ('C', None):
             self._strides = internal.get_contiguous_strides(
                 self._shape, self.itemsize, is_c_contiguous=True)
             self._c_contiguous = True
@@ -309,6 +309,8 @@ cdef class ndarray:
         if subok is not None:
             raise TypeError('subok is not supported yet')
 
+        if order is None:
+            order = 'K'
         if order not in ['C', 'F', 'A', 'K']:
             raise TypeError('order not understood')
 
