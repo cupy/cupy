@@ -12,6 +12,7 @@ import cupy
 from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
+from cupy.cuda import device
 
 
 class RandomState(object):
@@ -50,11 +51,6 @@ class RandomState(object):
         # When createGenerator raises an error, _generator is not initialized
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
-
-    def set_stream(self, stream=None):
-        if stream is None:
-            stream = cuda.Stream()
-        curand.setStream(self._generator, stream.ptr)
 
     def _generate_normal(self, func, size, dtype, *args):
         # curand functions below don't support odd size.
@@ -240,7 +236,7 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
-            seed = numpy.uint64(seed)
+            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
@@ -277,7 +273,7 @@ class RandomState(object):
             self._generator, sample.data.ptr, sample.size * size_in_int)
 
         # Disable sign bit
-        sample &= six.MAXSIZE
+        sample &= cupy.iinfo(cupy.int_).max
         return sample
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
@@ -437,6 +433,19 @@ def get_random_state():
         rs = RandomState(seed)
         rs = _random_states.setdefault(dev.id, rs)
     return rs
+
+
+def set_random_state(rs):
+    """Sets the state of the random number generator for the current device.
+
+    Args:
+        state(RandomState): Random state to set for the current device.
+    """
+    if not isinstance(rs, RandomState):
+        raise TypeError(
+            'Random state must be an instance of RandomState. '
+            'Actual: {}'.format(type(rs)))
+    _random_states[device.get_device_id()] = rs
 
 
 def _check_and_get_dtype(dtype):

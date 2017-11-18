@@ -4,6 +4,7 @@
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
 #ifndef CUPY_NO_CUDA
+#  include <cuda.h>
 #  include <cusparse.h>
 
 #else  // CUPY_NO_CUDA
@@ -52,6 +53,15 @@ cusparseStatus_t cusparseSetPointerMode(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+// Stream
+cusparseStatus_t cusparseSetStream(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// cusparseGetStream is only available from CUDA 8.0
+// cusparseStatus_t cusparseGetStream(...) {
+//   return CUSPARSE_STATUS_SUCCESS;
+// }
 
 // cuSPARSE Level1 Function
 cusparseStatus_t cusparseSgthr(...) {
@@ -204,5 +214,35 @@ cusparseStatus_t cusparseXcscsort(...) {
 }  // extern "C"
 
 #endif  // CUPY_NO_CUDA
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Definitions are for compatibility
+///////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
+
+#if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+
+cusparseStatus_t cusparseSnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDnnz_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2csr_compress(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif  // #if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+
+}  // extern "C"
+
 
 #endif  // INCLUDE_GUARD_CUPY_CUSPARSE_H

@@ -160,8 +160,8 @@ class TestWhereTwoArrays(unittest.TestCase):
         # Almost all values of a matrix `shaped_random` makes are not zero.
         # To make a sparse matrix, we need multiply `m`.
         cond = testing.shaped_random(self.cond_shape, xp, cond_type) * m
-        x = testing.shaped_random(self.x_shape, xp, x_type)
-        y = testing.shaped_random(self.y_shape, xp, y_type)
+        x = testing.shaped_random(self.x_shape, xp, x_type, seed=0)
+        y = testing.shaped_random(self.y_shape, xp, y_type, seed=1)
         return xp.where(cond, x, y)
 
 

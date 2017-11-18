@@ -89,7 +89,7 @@ That is because CuPy scalar values (e.g. :class:`cupy.float32`) are aliases of N
 If these types were returned, it would be required to synchronize between GPU and CPU.
 If you want to use scalar values, cast the returned arrays explicitly.
 
-  >>> type(np.sum(np.arange(3)))
-  <type 'numpy.int64'>
-  >>> type(cupy.sum(cupy.arange(3)))
-  <type 'cupy.core.core.ndarray'>
+  >>> type(np.sum(np.arange(3))) == np.int64
+  True
+  >>> type(cupy.sum(cupy.arange(3))) == cupy.core.core.ndarray
+  True

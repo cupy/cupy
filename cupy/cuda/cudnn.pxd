@@ -156,6 +156,9 @@ cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolutionMathType(
     size_t convDesc, size_t mathType)
 cpdef size_t getConvolutionMathType(size_t convDesc) except *
+cpdef setConvolutionGroupCount(
+    size_t convDesc, int groupCount)
+cpdef int getConvolutionGroupCount(size_t convDesc) except *
 cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode)

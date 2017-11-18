@@ -52,6 +52,7 @@ Random number generator
 
    cupy.random.seed
    cupy.random.get_random_state
+   cupy.random.set_random_state
    cupy.random.RandomState
 
 

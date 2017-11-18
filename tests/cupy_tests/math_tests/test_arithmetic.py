@@ -19,8 +19,10 @@ class TestArithmetic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-4)
-    def check_binary(self, name, xp, dtype, no_complex=False):
+    def check_binary(self, name, xp, dtype, no_complex=False, no_bool=False):
         if no_complex and numpy.dtype(dtype).kind == 'c':
+            return dtype(True)
+        if no_bool and numpy.dtype(dtype) == '?':
             return dtype(True)
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
@@ -94,7 +96,8 @@ class TestArithmetic(unittest.TestCase):
         self.check_binary_negative_float('power')
 
     def test_subtract(self):
-        self.check_binary('subtract')
+        # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
+        self.check_binary('subtract', no_bool=True)
         self.check_raises_with_numpy_input(2, 'subtract')
 
     def test_true_divide(self):

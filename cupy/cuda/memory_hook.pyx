@@ -1,13 +1,15 @@
 import collections
 import threading
 
-thread_local = threading.local()
+cdef thread_local = threading.local()
 
 
-def get_memory_hooks():
-    if not hasattr(thread_local, 'memory_hooks'):
-        thread_local.memory_hooks = collections.OrderedDict()
-    return thread_local.memory_hooks
+cpdef get_memory_hooks():
+    ret = getattr(thread_local, 'memory_hooks', None)
+    if ret is None:
+        ret = collections.OrderedDict()
+        thread_local.memory_hooks = ret
+    return ret
 
 
 class MemoryHook(object):

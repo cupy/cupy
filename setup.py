@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import imp
 import os
 from setuptools import setup
 import sys
@@ -32,9 +33,13 @@ ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 sdist = cupy_setup_build.sdist_with_cython
 
+here = os.path.abspath(os.path.dirname(__file__))
+__version__ = imp.load_source(
+    '_version', os.path.join(here, 'cupy', '_version.py')).__version__
+
 setup(
     name='cupy',
-    version='3.0.0a1',
+    version=__version__,
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -47,6 +52,7 @@ setup(
               'cupy.cuda',
               'cupy.cuda.memory_hooks',
               'cupy.ext',
+              'cupy.fft',
               'cupy.indexing',
               'cupy.io',
               'cupy.linalg',
@@ -91,7 +97,7 @@ setup(
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=['mock',
-                   'nose'],
+                   'pytest'],
     ext_modules=ext_modules,
     cmdclass={'build_ext': build_ext,
               'sdist': sdist},

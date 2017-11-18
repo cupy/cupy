@@ -26,6 +26,7 @@ from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
+from cupy.cuda cimport stream as stream_module
 
 DEF MAX_NDIM = 25
 
@@ -443,7 +444,7 @@ cdef class ndarray:
             value = value.item()
 
         if value == 0 and self._c_contiguous:
-            self.data.memset_async(0, self.nbytes, stream.Stream(True))
+            self.data.memset_async(0, self.nbytes)
         else:
             elementwise_copy(value, self, dtype=self.dtype)
 
@@ -1092,7 +1093,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.var`
 
         """
-        return _var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _var(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
+                    keepdims=keepdims)
 
     cpdef ndarray std(self, axis=None, dtype=None, out=None, ddof=0,
                       keepdims=False):
@@ -1103,7 +1105,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.std`
 
         """
-        return _std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _std(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
+                    keepdims=keepdims)
 
     cpdef ndarray prod(self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
@@ -1492,7 +1495,7 @@ cdef class ndarray:
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
-                        'numpy.newaxis (`None`) and integer or'
+                        'numpy.newaxis (`None`) and integer or '
                         'boolean arrays are valid indices')
 
             # check if this is a combination of basic and advanced indexing
@@ -1681,6 +1684,7 @@ cdef class ndarray:
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1694,6 +1698,10 @@ cdef class ndarray:
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1706,6 +1714,7 @@ cdef class ndarray:
             arr (numpy.ndarray): The source array on the host memory.
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
 
         """
         if not isinstance(arr, numpy.ndarray):
@@ -1726,6 +1735,10 @@ cdef class ndarray:
 
         ptr = arr.ctypes.get_as_parameter()
         if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        if stream_ptr == 0:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
@@ -2473,47 +2486,51 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
 
     ret = ndarray(shape, dtype=dtype)
 
-    if len(tup) > 3:
-        all_same_type = True
-        all_one_and_contiguous = True
-        dtype = tup[0].dtype
-        for a in tup:
-            all_same_type = all_same_type and (a.dtype == dtype)
-            all_one_and_contiguous = (
-                all_one_and_contiguous and a._c_contiguous and
-                a._shape[axis] == 1)
-
-        if all_same_type:
-            ptrs = numpy.ndarray(len(tup), numpy.int64)
-            for i, a in enumerate(tup):
-                ptrs[i] = a.data.ptr
-            x = array(ptrs)
-
-            if all_one_and_contiguous:
-                base = <int>internal.prod_ssize_t(shape[axis + 1:])
-                _concatenate_kernel_one(x, base, ret)
-            else:
-                ndim = tup[0].ndim
-                x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
-                cum_sizes = numpy.ndarray(len(tup), numpy.int32)
-                cum = 0
-                for i, a in enumerate(tup):
-                    for j in range(ndim):
-                        x_strides[i, j] = <int>a._strides[j]
-                    cum_sizes[i] = cum
-                    cum += <int>a._shape[axis]
-
-                _concatenate_kernel(
-                    x, axis, array(cum_sizes), array(x_strides), ret)
-            return ret
-
-    skip = (slice(None),) * axis
-    i = 0
+    all_same_type = True
+    all_one_and_contiguous = True
+    any_contiguous_on_axis = False
+    total_bytes = 0
+    dtype = tup[0].dtype
     for a in tup:
-        aw = a._shape[axis]
-        ret[skip + (slice(i, i + aw),)] = a
-        i += aw
+        all_same_type = all_same_type and (a.dtype == dtype)
+        all_one_and_contiguous = (
+            all_one_and_contiguous and a._c_contiguous and
+            a._shape[axis] == 1)
+        any_contiguous_on_axis = (
+            any_contiguous_on_axis or
+            a._strides[axis] == a.itemsize)
+        total_bytes += a.size * a.itemsize
 
+    if ((not all_same_type or not any_contiguous_on_axis) and
+            (len(tup) < 256 or total_bytes / len(tup) > 524288)):
+        skip = (slice(None),) * axis
+        i = 0
+        for a in tup:
+            aw = a._shape[axis]
+            ret[skip + (slice(i, i + aw),)] = a
+            i += aw
+    else:
+        ptrs = numpy.ndarray(len(tup), numpy.int64)
+        for i, a in enumerate(tup):
+            ptrs[i] = a.data.ptr
+        x = array(ptrs)
+
+        if all_one_and_contiguous:
+            base = <int>internal.prod_ssize_t(shape[axis + 1:])
+            _concatenate_kernel_one(x, base, ret)
+        else:
+            ndim = tup[0].ndim
+            x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
+            cum_sizes = numpy.ndarray(len(tup), numpy.int32)
+            cum = 0
+            for i, a in enumerate(tup):
+                for j in range(ndim):
+                    x_strides[i, j] = <int>a._strides[j]
+                cum_sizes[i] = cum
+                cum += <int>a._shape[axis]
+
+            _concatenate_kernel(
+                x, axis, array(cum_sizes), array(x_strides), ret)
     return ret
 
 cdef _concatenate_kernel_one = ElementwiseKernel(
@@ -3044,7 +3061,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             else:
                 raise IndexError(
                     'only integers, slices (`:`), ellipsis (`...`),'
-                    'numpy.newaxis (`None`) and integer or'
+                    'numpy.newaxis (`None`) and integer or '
                     'boolean arrays are valid indices')
 
         # check if this is a combination of basic and advanced indexing
@@ -3183,12 +3200,10 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
     for s in a.shape[ri:li:-1]:
         strides.insert(0, s * strides[0])
 
-    # convert all negative indices to wrap_indices
-    for i in range(li, ri + 1):
-        slices[i] %= a_interm_shape[i]
-
-    flattened_indexes = [stride * s
-                         for stride, s in zip(strides, slices[li:ri + 1])]
+    # wrap all out-of-bound indices
+    flattened_indexes = [
+        stride * (s % a_interm_shape_i) for stride, s, a_interm_shape_i
+        in zip(strides, slices[li:ri + 1], a_interm_shape[li:ri + 1])]
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
@@ -3421,7 +3436,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     b = view
 
     out = ndarray(out_shape, dtype=dtype)
-    out.data.memset(0, out.nbytes)
+    out.data.memset_async(0, out.nbytes)
 
     out_view = out.view()
     out_view_shape = out.shape

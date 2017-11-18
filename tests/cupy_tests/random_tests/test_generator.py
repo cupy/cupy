@@ -118,10 +118,22 @@ class TestRandomState(unittest.TestCase):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, None)
 
-    @testing.for_all_dtypes()
+    @testing.for_int_dtypes()
     def test_seed_not_none(self, dtype):
         with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
             self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+
+    @testing.for_dtypes([numpy.complex_])
+    def test_seed_invalid_type_complex(self, dtype):
+        with self.assertRaises(TypeError):
+            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
+                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+
+    @testing.for_float_dtypes()
+    def test_seed_invalid_type_float(self, dtype):
+        with self.assertRaises(TypeError):
+            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
+                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
 
 
 @testing.gpu
@@ -279,19 +291,19 @@ class TestTomaxint(unittest.TestCase):
         x = self.rs.tomaxint()
         self.assertEqual(x.shape, ())
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
     def test_tomaxint_int(self):
         x = self.rs.tomaxint(3)
         self.assertEqual(x.shape, (3,))
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
     def test_tomaxint_tuple(self):
         x = self.rs.tomaxint((2, 3))
         self.assertEqual(x.shape, (2, 3))
         self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= six.MAXSIZE).all())
+        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
 
 
 @testing.parameterize(
@@ -524,12 +536,33 @@ class TestGetRandomState(unittest.TestCase):
 
 
 @testing.gpu
-class TestGetRandomStateThreadSafe(unittest.TestCase):
+class TestSetRandomState(unittest.TestCase):
+
+    def setUp(self):
+        self.rs_tmp = generator._random_states
+
+    def tearDown(self, *args):
+        generator._random_states = self.rs_tmp
+
+    def test_set_random_state(self):
+        rs = generator.RandomState()
+        generator.set_random_state(rs)
+        assert generator.get_random_state() is rs
+
+    def test_set_random_state_call_multiple_times(self):
+        generator.set_random_state(generator.RandomState())
+        rs = generator.RandomState()
+        generator.set_random_state(rs)
+        assert generator.get_random_state() is rs
+
+
+@testing.gpu
+class TestRandomStateThreadSafe(unittest.TestCase):
 
     def setUp(self):
         cupy.random.reset_states()
 
-    def test_thread_safe(self):
+    def test_get_random_state_thread_safe(self):
         seed = 10
         threads = [
             threading.Thread(target=lambda: cupy.random.seed(seed)),
@@ -550,6 +583,20 @@ class TestGetRandomStateThreadSafe(unittest.TestCase):
         cupy.random.seed(seed)
         expected = cupy.random.uniform()
         self.assertEqual(actual, expected)
+
+    def test_set_random_state_thread_safe(self):
+        rs = cupy.random.RandomState()
+        threads = [
+            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
+            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert cupy.random.get_random_state() is rs
 
 
 @testing.gpu

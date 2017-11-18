@@ -300,6 +300,14 @@ cudnnStatus_t cudnnGetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
@@ -526,6 +534,14 @@ cudnnStatus_t cudnnSetConvolutionMathType(...) {
 }
 
 cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 

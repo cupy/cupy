@@ -1,9 +1,11 @@
 from __future__ import division
-import pkg_resources
 import sys
 
 import numpy
 import six
+
+from cupy import _version
+
 
 try:
     from cupy import core  # NOQA
@@ -27,12 +29,13 @@ def is_available():
     return cuda.is_available()
 
 
-__version__ = pkg_resources.get_distribution('cupy').version
+__version__ = _version.__version__
 
 
 from cupy import binary  # NOQA
 from cupy.core import fusion  # NOQA
 from cupy import creation  # NOQA
+from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
@@ -267,6 +270,7 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
@@ -457,6 +461,7 @@ from cupy.core.fusion import amin  # NOQA
 from cupy.core.fusion import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
+from cupy.statistics.order import percentile  # NOQA
 
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA

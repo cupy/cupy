@@ -2,16 +2,26 @@ import unittest
 
 import numpy
 
-import cupy
 from cupy import testing
 
 
 class TestEinSumError(unittest.TestCase):
 
-    # '...' ellipsis is not supported.
-    def test_not_supported_ellipsis(self):
-        with self.assertRaises(TypeError):
-            cupy.einsum('...', 0)
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis1(self, xp):
+        xp.einsum('..', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis2(self, xp):
+        xp.einsum('...i...', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis3(self, xp):
+        xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
+
+    @testing.numpy_cupy_raises()
+    def test_irregular_ellipsis4(self, xp):
+        xp.einsum('...->', xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_raises()
     def test_no_arguments(self, xp):
@@ -48,6 +58,10 @@ class TestEinSumError(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_many_dimension2(self, xp):
         xp.einsum('ij', xp.array([0, 0]))
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dimension3(self, xp):
+        xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3))
 
     @testing.numpy_cupy_raises()
     def test_too_few_dimension(self, xp):
@@ -109,28 +123,43 @@ class TestEinSumError(unittest.TestCase):
 
 @testing.parameterize(
     {'shape_a': (2, 3), 'subscripts': 'ij'},  # do nothing
-    {'shape_a': (2, 3), 'subscripts': 'ij'},  # transpose
+    {'shape_a': (2, 3), 'subscripts': '...'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ji'},  # transpose
     {'shape_a': (3, 3), 'subscripts': 'ii->i'},  # diagonal 2d
     {'shape_a': (3, 3, 3), 'subscripts': 'jii->ij'},  # partial diagonal 3d
     {'shape_a': (3, 3, 3), 'subscripts': 'iji->ij'},  # partial diagonal 3d
+    {'shape_a': (3, 3, 3), 'subscripts': '...ii->...i'},  # partial diagonal 3d
     {'shape_a': (3, 3, 3), 'subscripts': 'iii->i'},  # diagonal 3d
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->jik'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->kij'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'ijk->ikj'},  # swap axes
     {'shape_a': (2, 3, 4), 'subscripts': 'kji->ikj'},  # swap axes
+    {'shape_a': (2, 3, 4), 'subscripts': 'j...i->i...j'},  # swap axes
     {'shape_a': (3,), 'subscripts': 'i->'},  # sum
     {'shape_a': (3, 3), 'subscripts': 'ii'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'j...i->...'},  # sum
+
+    {'shape_a': (2, 3), 'subscripts': 'ij->ij...'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ij->i...j'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ij->...ij'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'ij...->ij'},  # do nothing
+    {'shape_a': (2, 3), 'subscripts': 'i...j->ij'},  # do nothing
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         return xp.einsum(self.subscripts, a)
 
@@ -138,27 +167,58 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 @testing.parameterize(
     # outer
     {'shape_a': (2,), 'shape_b': (3,),
-     'subscripts': 'i,j', 'skip_overflow': False},
+     'subscripts': 'i,j'},
     # dot matvec
     {'shape_a': (2, 3), 'shape_b': (3,),
-     'subscripts': 'ij,j', 'skip_overflow': False},
+     'subscripts': 'ij,j'},
     {'shape_a': (2, 3), 'shape_b': (2,),
-     'subscripts': 'ij,i', 'skip_overflow': False},
+     'subscripts': 'ij,i'},
     # dot matmat
     {'shape_a': (2, 3), 'shape_b': (3, 4),
-     'subscripts': 'ij,jk', 'skip_overflow': False},
+     'subscripts': 'ij,jk'},
     # tensordot
     {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
-     'subscripts': 'ijk, jil -> kl', 'skip_overflow': True},
+     'subscripts': 'ijk, jil -> kl'},
+    {'shape_a': (3, 4, 2), 'shape_b': (4, 2, 3),
+     'subscripts': 'i...,...k->ki...'},
+    {'shape_a': (3, 4, 2), 'shape_b': (4, 3, 2),
+     'subscripts': 'ij...,ji...->i...'},
     # trace and tensordot and diagonal
     {'shape_a': (2, 3, 2, 4), 'shape_b': (3, 2, 2),
      'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
+    {'shape_a': (2, 4, 2, 3), 'shape_b': (3, 2, 4),
+     'subscripts': 'i...ij,ji...->...j'},
+    # broadcast
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,j...->ij...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,...j->ij...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3,),
+     'subscripts': 'ij...,j->ij...'},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik...,k...->i...'},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik...,...kj->i...j'},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': '...k,kj'},
+    {'shape_a': (4, 3), 'shape_b': (3, 2),
+     'subscripts': 'ik,k...->i...'},
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': 'ijkl,k'},
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': '...kl,k'},
+    {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
+     'subscripts': '...kl,k...'},
+    {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
+     'subscripts': '...lmn,lmno->...o'},
 )
 class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
+    skip_overflow = False
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
-    @testing.numpy_cupy_allclose()
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_complex=True)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         if self.skip_overflow and (dtype_a in self.skip_dtypes or
                                    dtype_b in self.skip_dtypes):
@@ -169,15 +229,15 @@ class TestEinSumBinaryOperation(unittest.TestCase):
 
 
 class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_scalar_1(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
         return xp.asarray(xp.einsum(',i->', 3, a))
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_scalar_2(self, xp, dtype):
         shape_a = (2,)
         a = testing.shaped_arange(shape_a, xp, dtype)
@@ -191,6 +251,8 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij,ik,i->ijk', 'skip_overflow': False},
     {'shape_a': (2, 4), 'shape_b': (3, 2), 'shape_c': (2,),
      'subscripts': 'ij,ki,i->jk', 'skip_overflow': False},
+    {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
+     'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
 )
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
