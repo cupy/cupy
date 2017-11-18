@@ -321,7 +321,7 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),
                       py_cudnn.destroyRNNDescriptor)
-    if _cudnn_version >= 7000:
+    if _cudnn_version >= 6000:
         _handle = get_handle()
         _algo = cudnn.CUDNN_RNN_ALGO_STANDARD
         cudnn.setRNNDescriptor_v6(
