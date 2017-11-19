@@ -183,7 +183,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp)
         return xp.stack((a, a), axis=2)
 
-    @testing.with_requires('numpy>=1.10')
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_stack_with_axis_over(self, xp):
         a = testing.shaped_arange((2, 3), xp)
