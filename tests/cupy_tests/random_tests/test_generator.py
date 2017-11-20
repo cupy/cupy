@@ -1,5 +1,4 @@
 import mock
-import operator
 import os
 import threading
 import unittest
@@ -10,7 +9,6 @@ import six
 import cupy
 from cupy import core
 from cupy import cuda
-from cupy.cuda import curand
 from cupy.random import generator
 from cupy import testing
 from cupy.testing import condition
@@ -64,19 +62,6 @@ class RandomGeneratorTestCase(unittest.TestCase):
         return vals
 
 
-class FunctionSwitcher(object):
-
-    def __init__(self, f):
-        self.tmp = f
-        self.func_name = f.__name__
-
-    def __enter__(self):
-        setattr(curand, self.func_name, mock.Mock())
-
-    def __exit__(self, *_):
-        setattr(curand, self.func_name, self.tmp)
-
-
 @testing.fix_random()
 @testing.gpu
 class TestRandomState(unittest.TestCase):
@@ -84,35 +69,37 @@ class TestRandomState(unittest.TestCase):
     def setUp(self):
         self.rs = generator.RandomState(seed=testing.generate_seed())
 
-    def check_seed(self, curand_func, seed):
-        self.rs.seed(seed)
-        call_args_list = curand_func.call_args_list
-        self.assertEqual(1, len(call_args_list))
-        call_args = call_args_list[0][0]
-        self.assertEqual(2, len(call_args))
-        self.assertIs(self.rs._generator, call_args[0])
-        self.assertEqual(numpy.uint64, call_args[1].dtype)
+    def check_seed(self, seed):
+        rs = self.rs
 
-    def test_seed_none(self):
-        with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
-            self.check_seed(curand.setPseudoRandomGeneratorSeed, None)
+        rs.seed(seed)
+        xs1 = [rs.uniform() for _ in range(100)]
+
+        rs.seed(seed)
+        xs2 = [rs.uniform() for _ in range(100)]
+
+        rs.seed(seed)
+        rs.seed(None)
+        xs3 = [rs.uniform() for _ in range(100)]
+
+        # Random state must be reproducible
+        assert xs1 == xs2
+        # Random state must be initialized randomly with seed=None
+        assert xs1 != xs3
 
     @testing.for_int_dtypes()
     def test_seed_not_none(self, dtype):
-        with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
-            self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+        self.check_seed(dtype(0))
 
     @testing.for_dtypes([numpy.complex_])
     def test_seed_invalid_type_complex(self, dtype):
         with self.assertRaises(TypeError):
-            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
-                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+            self.rs.seed(dtype(0))
 
     @testing.for_float_dtypes()
     def test_seed_invalid_type_float(self, dtype):
         with self.assertRaises(TypeError):
-            with FunctionSwitcher(curand.setPseudoRandomGeneratorSeed):
-                self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+            self.rs.seed(dtype(0))
 
 
 @testing.gpu
@@ -130,32 +117,26 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     target_method = 'lognormal'
 
-    def check_lognormal(self, curand_func, dtype):
-        shape = core.get_size(self.size)
-        exp_size = six.moves.reduce(operator.mul, shape, 1)
-        if exp_size % 2 == 1:
-            exp_size += 1
+    def check_lognormal(self, dtype):
+        vals = self.generate_many(
+            self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        curand_func.return_value = cupy.zeros(exp_size, dtype=dtype)
-        out = self.generate(self.args[0], self.args[1], self.size, dtype)
-        gen, _, size, mean, sigma = curand_func.call_args[0]
-        self.assertIs(gen, self.rs._generator)
-        self.assertEqual(size, exp_size)
-        self.assertIs(mean, self.args[0])
-        self.assertIs(sigma, self.args[1])
-        self.assertEqual(out.shape, shape)
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape
+            assert (0 <= val).all()
+        # TODO(niboshi): Distribution test
 
     def test_lognormal_float(self):
-        with FunctionSwitcher(curand.generateLogNormalDouble):
-            self.check_lognormal(curand.generateLogNormalDouble, float)
+        self.check_lognormal(float)
 
     def test_lognormal_float32(self):
-        with FunctionSwitcher(curand.generateLogNormal):
-            self.check_lognormal(curand.generateLogNormal, numpy.float32)
+        self.check_lognormal(numpy.float32)
 
     def test_lognormal_float64(self):
-        with FunctionSwitcher(curand.generateLogNormalDouble):
-            self.check_lognormal(curand.generateLogNormalDouble, numpy.float64)
+        self.check_lognormal(numpy.float64)
 
 
 @testing.gpu
@@ -173,28 +154,22 @@ class TestNormal(RandomGeneratorTestCase):
 
     target_method = 'normal'
 
-    def check_normal(self, curand_func, dtype):
-        shape = core.get_size(self.size)
-        exp_size = six.moves.reduce(operator.mul, shape, 1)
-        if exp_size % 2 == 1:
-            exp_size += 1
+    def check_normal(self, dtype):
+        vals = self.generate_many(
+            self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        curand_func.return_value = cupy.zeros(exp_size, dtype=dtype)
-        out = self.generate(self.args[0], self.args[1], self.size, dtype)
-        gen, _, size, loc, scale = curand_func.call_args[0]
-        self.assertIs(gen, self.rs._generator)
-        self.assertEqual(size, exp_size)
-        self.assertIs(loc, self.args[0])
-        self.assertIs(scale, self.args[1])
-        self.assertEqual(out.shape, shape)
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape
+        # TODO(niboshi): Distribution test
 
     def test_normal_float32(self):
-        with FunctionSwitcher(curand.generateNormal):
-            self.check_normal(curand.generateNormal, numpy.float32)
+        self.check_normal(numpy.float32)
 
     def test_normal_float64(self):
-        with FunctionSwitcher(curand.generateNormalDouble):
-            self.check_normal(curand.generateNormalDouble, numpy.float64)
+        self.check_normal(numpy.float64)
 
 
 @testing.gpu
@@ -211,19 +186,23 @@ class TestRandomSample(unittest.TestCase):
     def setUp(self):
         self.rs = generator.RandomState(seed=testing.generate_seed())
 
-    def check_random_sample(self, curand_func, dtype):
-        out = self.rs.random_sample(self.size, dtype)
-        curand_func.assert_called_once_with(
-            self.rs._generator, out.data.ptr, out.size)
+    def check_random_sample(self, dtype):
+        vals = [self.rs.random_sample(self.size, dtype) for _ in range(10)]
+
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape
+            assert (0 <= val).all()
+            assert (val < 1).all()
+        # TODO(niboshi): Distribution test
 
     def test_random_sample_float32(self):
-        with FunctionSwitcher(curand.generateUniform):
-            self.check_random_sample(curand.generateUniform, numpy.float32)
+        self.check_random_sample(numpy.float32)
 
     def test_random_sample_float64(self):
-        with FunctionSwitcher(curand.generateUniformDouble):
-            self.check_random_sample(
-                curand.generateUniformDouble, numpy.float64)
+        self.check_random_sample(numpy.float64)
 
 
 @testing.fix_random()
@@ -233,21 +212,9 @@ class TestRandAndRandN(unittest.TestCase):
     def setUp(self):
         self.rs = generator.RandomState(seed=testing.generate_seed())
 
-    def test_rand(self):
-        self.rs.random_sample = mock.Mock()
-        self.rs.rand(1, 2, 3, dtype=numpy.float32)
-        self.rs.random_sample.assert_called_once_with(
-            size=(1, 2, 3), dtype=numpy.float32)
-
     def test_rand_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.rand(1, 2, 3, unnecessary='unnecessary_argument')
-
-    def test_randn(self):
-        self.rs.normal = mock.Mock()
-        self.rs.randn(1, 2, 3, dtype=numpy.float32)
-        self.rs.normal.assert_called_once_with(
-            size=(1, 2, 3), dtype=numpy.float32)
 
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
@@ -261,54 +228,80 @@ class TestInterval(RandomGeneratorTestCase):
     target_method = 'interval'
 
     def test_zero(self):
-        x = self.generate(0, (2, 3))
-        numpy.testing.assert_array_equal(
-            x.get(), numpy.zeros((2, 3)))
+        shape = (2, 3)
+        vals = self.generate_many(0, shape, _count=10)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == shape
+            assert (val == 0).all()
 
     def test_shape_zero(self):
-        v = self.generate(10, None)
-        self.assertEqual(v.dtype, numpy.int32)
-        self.assertEqual(v.shape, ())
+        mx = 10
+        vals = self.generate_many(mx, None, _count=10)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == ()
+            assert (0 <= val).all()
+            assert (val <= mx).all()
+        # TODO(niboshi): Distribution test
 
     def test_shape_one_dim(self):
-        v = self.generate(10, 10)
-        self.assertEqual(v.dtype, numpy.int32)
-        self.assertEqual(v.shape, (10,))
+        mx = 10
+        size = 20
+        vals = self.generate_many(mx, size, _count=10)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == (size,)
+            assert (0 <= val).all()
+            assert (val <= mx).all()
+        # TODO(niboshi): Distribution test
 
     def test_shape_multi_dim(self):
-        v = self.generate(10, (1, 2))
-        self.assertEqual(v.dtype, numpy.int32)
-        self.assertEqual(v.shape, (1, 2))
+        mx = 10
+        shape = (1, 2)
+        vals = self.generate_many(mx, shape, _count=10)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == shape
+            assert (0 <= val).all()
+            assert (val <= mx).all()
+        # TODO(niboshi): Distribution test
 
     def test_int32_range(self):
         v = self.generate(0x00000000, 2)
-        self.assertEqual(v.dtype, numpy.int32)
+        assert v.dtype == numpy.int32
 
         v = self.generate(0x7fffffff, 2)
-        self.assertEqual(v.dtype, numpy.int32)
+        assert v.dtype == numpy.int32
 
     def test_uint32_range(self):
         v = self.generate(0x80000000, 2)
-        self.assertEqual(v.dtype, numpy.uint32)
+        assert v.dtype == numpy.uint32
 
         v = self.generate(0xffffffff, 2)
-        self.assertEqual(v.dtype, numpy.uint32)
+        assert v.dtype == numpy.uint32
 
-    @condition.repeat(3, 10)
     def test_bound_1(self):
         vals = self.generate_many(10, (2, 3), _count=10)
-        vals = [val.get() for val in vals]
         for val in vals:
-            self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(val.min() for val in vals), 0)
-        self.assertEqual(max(val.max() for val in vals), 10)
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == (2, 3)
+            assert (0 <= val).all()
+            assert (val <= 10).all()
 
-    @condition.repeat(3, 10)
     def test_bound_2(self):
         vals = self.generate_many(2, None, _count=20)
-        vals = [val.get() for val in vals]
-        self.assertEqual(min(vals), 0)
-        self.assertEqual(max(vals), 2)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == numpy.int32
+            assert val.shape == ()
+            assert (0 <= val).all()
+            assert (val <= 2).all()
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
