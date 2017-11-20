@@ -324,7 +324,7 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
     if _cudnn_version >= 6000:
         _handle = get_handle()
         if algo is None:
-          algo = cudnn.CUDNN_RNN_ALGO_STANDARD
+            algo = cudnn.CUDNN_RNN_ALGO_STANDARD
         cudnn.setRNNDescriptor_v6(
             _handle, desc.value, hidden_size, num_layers, dropout_desc.value,
             input_mode, direction, mode, algo, data_type)
