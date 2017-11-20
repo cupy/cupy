@@ -24,6 +24,7 @@ class TestRepeat(unittest.TestCase):
         x = testing.shaped_arange((2, 3, 4), xp)
         return xp.repeat(x, self.repeats, self.axis)
 
+
 @testing.parameterize(
     {'repeats': 0, 'axis': None},
     {'repeats': 2, 'axis': None},
