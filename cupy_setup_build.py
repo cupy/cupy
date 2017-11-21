@@ -205,7 +205,7 @@ def check_library(compiler, includes=(), libraries=(),
 
 def check_installed_modules(compiler, settings):
     """
-    For each module in MODULES list, this function checks if each module
+    For each module in MODULES list, this function checks if the module
     can be built in the current environment and reports it.
     Returns a list of module names available.
     """
@@ -235,7 +235,7 @@ def check_installed_modules(compiler, settings):
 
     ret = []
     for module in MODULES:
-        (installed, status, msg) = (False, 'No', [])
+        (installed, status, errmsg) = (False, 'No', [])
 
         print('')
         print('-------- Configuring Module: {} --------'.format(module['name']))
@@ -243,21 +243,21 @@ def check_installed_modules(compiler, settings):
         if not check_library(compiler,
                              includes=module['include'],
                              include_dirs=settings['include_dirs']):
-            msg = ['Include files not found: %s' % module['include'],
-                   'Check your CFLAGS environment variable.']
+            errmsg = ['Include files not found: %s' % module['include'],
+                      'Check your CFLAGS environment variable.']
         elif not check_library(compiler,
                                libraries=module['libraries'],
                                library_dirs=settings['library_dirs']):
-            msg = ['Cannot link libraries: %s' % module['libraries'],
-                   'Check your LDFLAGS environment variable.']
+            errmsg = ['Cannot link libraries: %s' % module['libraries'],
+                      'Check your LDFLAGS environment variable.']
         elif 'check_method' in module and not module['check_method'](compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
-            msg = ['Installed library is not supported.']
+            errmsg = ['The library is installed but not supported.']
         elif module['name'] == 'thrust' and nvcc_path is None:
             installed = True
-            msg = ['Cannot find nvcc in PATH.',
-                   'Check your PATH environment variable.']
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
         else:
             installed = True
             status = 'Yes'
@@ -271,8 +271,8 @@ def check_installed_modules(compiler, settings):
         ]
 
         # If error message exists...
-        if len(msg) != 0:
-            summary += ['    -> {}'.format(m) for m in msg]
+        if len(errmsg) != 0:
+            summary += ['    -> {}'.format(m) for m in errmsg]
 
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
@@ -292,7 +292,7 @@ def check_installed_modules(compiler, settings):
             '',
         ] + lines + [
             'Please refer to the Installation Guide for details:',
-            'http://docs.chainer.org/en/stable/install.html',
+            'http://docs-cupy.chainer.org/en/stable/install.html',
             '',
         ]
 
