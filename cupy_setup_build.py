@@ -225,8 +225,8 @@ def check_installed_modules(compiler, settings):
         'Environment Variables:',
     ]
 
-    for v in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH']:
-        summary += ['  {:<16}: {}'.format(v, os.environ.get(v, '(none)'))]
+    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CUDA_PATH', 'NVCC']:
+        summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
         '',
