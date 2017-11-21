@@ -23,9 +23,8 @@ The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+
 .. note::
 
    We are testing CuPy automatically with Jenkins, where all the above *recommended* environments are tested.
-   We cannot guarantee that CuPy works on other environments including Windows and macOS (especially with CUDA support), even if CuPy looks running correctly.
+   We cannot guarantee that CuPy works on other environments including Windows and macOS, even if CuPy looks running correctly.
 
-CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+.
 CuPy uses C++ compiler such as g++.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
@@ -54,17 +53,17 @@ The latest version of each package will automatically be installed if missing.
 * `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12, 1.13
 * `Six <https://pythonhosted.org/six/>`_ 1.9+
 
-CUDA support
+In addition, you need to install `CUDA <https://developer.nvidia.com/cuda-zone>`_.
+The following versions of CUDA can be used: 7.0, 7.5, 8.0 and 9.0.
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0, 9.0
+Optional Libraries
+~~~~~~~~~~~~~~~~~~
 
-cuDNN support
+The following libraries are optional dependencies.
+CuPy will enable these features only if they are installed.
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6, v7
-
-NCCL support
-
-* `nccl <https://github.com/NVIDIA/nccl>`_ v1.3+
+* `NCCL <https://github.com/NVIDIA/nccl>`_ v1.3+
 
 Install CuPy
 ------------
