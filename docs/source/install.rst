@@ -55,6 +55,7 @@ The latest version of each package will automatically be installed if missing.
 
 In addition, you need to install `CUDA <https://developer.nvidia.com/cuda-zone>`_.
 The following versions of CUDA can be used: 7.0, 7.5, 8.0 and 9.0.
+You need a GPU with Compute Capability of at least 3.0.
 
 Optional Libraries
 ~~~~~~~~~~~~~~~~~~
