@@ -6,7 +6,7 @@ Here are the environment variables CuPy uses.
 
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_CACHE_DIR``                 | Path to the directory to store kernel cache.       |
-|                                    | ``$(HOME)/.cupy.kernel_cache`` is used by default. |
+|                                    | ``${HOME}/.cupy/kernel_cache`` is used by default. |
 |                                    | See :ref:`overview` for details.                   |
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_CACHE_SAVE_CUDA_SOURCE``    | If set to 1, CUDA source file will be saved along  |
