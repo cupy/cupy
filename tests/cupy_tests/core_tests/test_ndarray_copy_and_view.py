@@ -70,7 +70,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         b.fill(1)
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders(['C', 'F', 'A', 'K', None])
     @testing.for_all_dtypes(name='src_dtype', no_complex=True)
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
