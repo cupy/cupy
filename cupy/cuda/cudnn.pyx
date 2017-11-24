@@ -63,6 +63,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
+    ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
@@ -328,6 +329,13 @@ cdef extern from "cupy_cudnn.h" nogil:
     # RNN
     int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
     int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
+    int cudnnCreatePersistentRNNPlan(
+        RNNDescriptor rnnDesc,
+        const int minibatch, DataType dataType,
+        PersistentRNNPlan* plan)
+    int cudnnSetPersistentRNNPlan(
+        RNNDescriptor rnnDesc, PersistentRNNPlan plan)
+    int cudnnDestroyPersistentRNNPlan(PersistentRNNPlan plan)
     int cudnnSetRNNDescriptor_v5(
         RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
@@ -1207,6 +1215,27 @@ cpdef size_t createRNNDescriptor() except *:
 
 cpdef destroyRNNDescriptor(size_t rnnDesc):
     status = cudnnDestroyRNNDescriptor(<RNNDescriptor>rnnDesc)
+    check_status(status)
+
+
+cpdef size_t createPersistentRNNPlan(size_t rnnDesc, int minibatch,
+                                     int dataType) except *:
+    cdef PersistentRNNPlan plan
+    status = cudnnCreatePersistentRNNPlan(
+        <RNNDescriptor>rnnDesc,
+        <int>minibatch, <DataType>dataType, &plan)
+    check_status(status)
+    return <size_t>plan
+
+
+cpdef setPersistentRNNPlan(size_t rnnDesc, size_t plan):
+    status = cudnnSetPersistentRNNPlan(
+        <RNNDescriptor>rnnDesc, <PersistentRNNPlan>plan)
+    check_status(status)
+
+
+cpdef destroyPersistentRNNPlan(size_t plan):
+    status = cudnnDestroyPersistentRNNPlan(<PersistentRNNPlan>plan)
     check_status(status)
 
 

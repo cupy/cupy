@@ -339,6 +339,10 @@ cpdef dropoutBackward(
 
 cpdef size_t createRNNDescriptor() except *
 cpdef destroyRNNDescriptor(size_t rnnDesc)
+cpdef size_t createPersistentRNNPlan(
+    size_t rnnDesc, int minibatch, int dataType) except *
+cpdef setPersistentRNNPlan(size_t rnnDesc, size_t plan)
+cpdef destroyPersistentRNNPlan(size_t plan)
 cpdef setRNNDescriptor_v5(
     size_t rnnDesc, int hiddenSize, int numLayers,
     size_t dropoutDesc, int inputMode, int direction, int mode,
