@@ -196,7 +196,7 @@ class CompileException(Exception):
         linum_fmt = '{{:0{}d}} '.format(digits)
         f.write('NVRTC compilation error: {}\n'.format(self))
         f.write('-----\n')
-        f.write('Name: {}\n'.format(' '.join(self.name)))
+        f.write('Name: {}\n'.format(self.name))
         f.write('Options: {}\n'.format(' '.join(self.options)))
         f.write('CUDA source:\n')
         for i, line in enumerate(lines):
