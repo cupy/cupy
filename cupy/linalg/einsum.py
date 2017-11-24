@@ -44,7 +44,8 @@ def calc_single_view(ioperand, subscript):
                     axes_to_diag.append(i)
                 else:
                     axes_to_diag.append(i - len(subscripts_excluded_at))
-        axes_to_diag = _normalize_axis_tuple(axes_to_diag, result.ndim)
+        axes_to_diag = cupy.core.normalize_axis_tuple(axes_to_diag,
+                                                      result.ndim)
         for axis in reversed(axes_to_diag[1:]):
             shape_a = result.shape[axis]
             shape_b = result.shape[axes_to_diag[0]]
@@ -101,39 +102,6 @@ def calc_summed_view(ioperand, input_subscript, output_subscript):
     return result, input_subscript
 
 
-def _normalize_axis_tuple(axis, ndim):
-    """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    """
-    for ax in axis:
-        if ax >= ndim or ax < -ndim:
-            raise numpy.AxisError('axis {} is out of bounds for array of '
-                                  'dimension {}'.format(ax, ndim))
-    return tuple((ax % ndim) for ax in axis)
-
-
-# TODO(fukatani): Implement as cupy.moveaxis
-def _moveaxis(a, source, destination):
-    """Moves axes of an array to new positions.
-
-    .. seealso:: :func:`numpy.moveaxis`
-    """
-
-    source = _normalize_axis_tuple(source, a.ndim)
-    destination = _normalize_axis_tuple(destination, a.ndim)
-    if len(source) != len(destination):
-        raise ValueError('`source` and `destination` arguments must have '
-                         'the same number of elements')
-
-    order = [n for n in six.moves.range(a.ndim) if n not in source]
-
-    for dest, src in sorted(six.moves.zip(destination, source)):
-        order.insert(dest, src)
-
-    result = a.transpose(order)
-    return result
-
-
 def calc_transposed_view(ioperand, input_subscript, output_subscript):
     """Calculates 'ij->ji' by cupy.transpose if needed.
 
@@ -169,7 +137,7 @@ def calc_transposed_view(ioperand, input_subscript, output_subscript):
         else:
             source_axes.append(label_pos_input - len(input_subscript))
 
-    return _moveaxis(ioperand, source_axes, destination_axes)
+    return cupy.moveaxis(ioperand, source_axes, destination_axes)
 
 
 def move_broadcast_axes_to_front(ioperands, subscripts):
@@ -180,7 +148,7 @@ def move_broadcast_axes_to_front(ioperands, subscripts):
             ellipsis_pos = subscript.find('@')
             source_axes = list(six.moves.range(ellipsis_pos))
             destination_axes = [i - ellipsis_pos for i in source_axes]
-            operand = _moveaxis(operand, source_axes, destination_axes)
+            operand = cupy.moveaxis(operand, source_axes, destination_axes)
             subscript = subscript[ellipsis_pos:] + subscript[:ellipsis_pos]
         broadcasted_operands.append(operand)
         broadcasted_subscripts.append(subscript)
