@@ -39,12 +39,12 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the Gumbel destribution.
 
-    .. seealso:: :func:`numpy.random.gumbel`
+    .. seealso::
+        :func:`cupy.RandomState.gumbel`
+        :func:`numpy.random.gumbel`
     """
-    rs = uniform(size=size, dtype=dtype)
-    # We use `1 - x` as input of `log` method to prevent overflow.
-    # It obeys numpy implementation.
-    return _gumbel_kernel(rs, loc, scale, rs)
+    rs = generator.get_random_state()
+    return rs.gumbel(loc, scale, size, dtype)
 
 
 def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):

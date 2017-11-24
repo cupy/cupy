@@ -14,6 +14,20 @@ from cupy import cuda
 from cupy.cuda import curand
 
 
+_gumbel_kernel = None
+
+
+def _get_gumbel_kernel():
+    global _gumbel_kernel
+    if _gumbel_kernel is None:
+        _gumbel_kernel = core.ElementwiseKernel(
+            'T x, T loc, T scale', 'T y',
+            'y = loc - log(-log(1 - x)) * scale',
+            'gumbel_kernel'
+        )
+    return _gumbel_kernel
+
+
 class RandomState(object):
 
     """Portable container of a pseudo-random number generator.
@@ -327,12 +341,12 @@ class RandomState(object):
         if p is not None:
             p = cupy.broadcast_to(p, (size, a_size))
             index = cupy.argmax(cupy.log(p) +
-                                cupy.random.gumbel(size=(size, a_size)),
+                                self.gumbel(size=(size, a_size)),
                                 axis=1)
             if not isinstance(shape, six.integer_types):
                 index = cupy.reshape(index, shape)
         else:
-            index = cupy.random.randint(0, a_size, size=shape)
+            index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
 
@@ -361,6 +375,51 @@ class RandomState(object):
         sample = cupy.zeros((len(a)), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, sample.size)
         a[:] = a[cupy.argsort(sample)]
+
+    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a Gumbel distribution.
+
+        .. seealso::
+            :func:`cupy.random.gumbel` for full documentation,
+            :meth:`numpy.random.RandomState.gumbel`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        # We use `1 - x` as input of `log` method to prevent overflow.
+        # It obeys numpy implementation.
+        _get_gumbel_kernel()(x, loc, scale, x)
+        return x
+
+    def randint(self, low, high=None, size=None, dtype='l'):
+        """Returns a scalar or an array of integer values over ``[low, high)``.
+
+        .. seealso::
+            :func:`cupy.random.randint` for full documentation,
+            :meth:`numpy.random.RandomState.randint`
+        """
+        if high is None:
+            lo = 0
+            hi = low
+        else:
+            lo = low
+            hi = high
+
+        if lo >= hi:
+            raise ValueError('low >= high')
+        if lo < cupy.iinfo(dtype).min:
+            raise ValueError(
+                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+        if hi > cupy.iinfo(dtype).max + 1:
+            raise ValueError(
+                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+
+        diff = hi - lo - 1
+        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
+            raise NotImplementedError(
+                'Sampling from a range whose extent is larger than int32 '
+                'range is currently not supported')
+        x = self.interval(diff, size).astype(dtype, copy=False)
+        cupy.add(x, lo, out=x)
+        return x
 
 
 def seed(seed=None):
