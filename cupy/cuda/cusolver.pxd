@@ -37,7 +37,7 @@ cpdef enum:
 ###############################################################################
 
 cpdef size_t create() except *
-cpdef size_t createSp() except *
+cpdef size_t spCreate() except *
 cpdef void destroy(size_t handle) except *
 
 ###############################################################################

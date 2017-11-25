@@ -193,7 +193,7 @@ cdef class Device:
         if self.id in _cusolver_sp_handles:
             return _cusolver_sp_handles[self.id]
         with self:
-            handle = cusolver.createSp()
+            handle = cusolver.spCreate()
             _cusolver_sp_handles[self.id] = handle
             return handle
 

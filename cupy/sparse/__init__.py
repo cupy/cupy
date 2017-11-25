@@ -38,3 +38,5 @@ from cupy.sparse.construct import spdiags  # NOQA
 # TODO(unno): implement isspmatrix_bsr(x)
 # TODO(unno): implement isspmatrix_lil(x)
 # TODO(unno): implement isspmatrix_dok(x)
+
+from cupy.sparse import linalg  # NOQA

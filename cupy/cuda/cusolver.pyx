@@ -185,7 +185,7 @@ cpdef size_t create() except *:
     return <size_t>handle
 
 
-cpdef size_t createSp() except *:
+cpdef size_t spCreate() except *:
     cdef SpHandle handle
     with nogil:
         status = cusolverSpCreate(&handle)
