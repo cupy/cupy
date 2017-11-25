@@ -15,7 +15,8 @@ def lsqr(A, b):
     """Solves linear system with QR decomposition.
 
     Find the solution to a large, sparse, linear system of equations.
-    Given two-dimensional matrix ``A`` is decomposed into ``Q * R``.
+    The function solves ``Ax = b``. Given two-dimensional matrix ``A`` is
+    decomposed into ``Q * R``.
 
     Args:
         A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
@@ -23,7 +24,10 @@ def lsqr(A, b):
         b (cupy.ndarray): Right-hand side vector.
 
     Returns:
-        x (cupy.ndarray): The final solution.
+        ret (tuple): Tuple of the same type as scipy. The solution vector
+            ``x`` is the first element of the tuple. There are some unknown
+            elements, which are expressed as None, due to the differences
+            in the implementation of cusolver and scipy.
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
@@ -45,22 +49,24 @@ def lsqr(A, b):
     else:
         dtype = numpy.find_common_type((A.dtype.char, 'f'), ()).char
 
-    handle = device.get_cusolver_handlesp()
+    handle = device.get_cusolver_sp_handle()
     nnz = A.nnz
     tol = 1.0
     reorder = 1
     x = cupy.empty(m, dtype=dtype)
+    singularity = numpy.empty(1, numpy.int64)
 
     if dtype == 'f':
-        singularity = numpy.empty(1, numpy.int32)
         csrlsvqr = cusolver.scsrlsvqr
     else:
-        singularity = numpy.empty(1, numpy.int64)
         csrlsvqr = cusolver.dcsrlsvqr
-
     csrlsvqr(
         handle, m, nnz, A._descr.descriptor, A.data.data.ptr,
         A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
         x.data.ptr, singularity.ctypes.data)
+    x = x.astype(numpy.float64)
 
-    return x
+    r1norm = cupy.linalg.norm(b - A.dot(x))
+    xnorm = cupy.linalg.norm(x)
+    ret = (x, None, None, r1norm, None, None, None, None, xnorm, None)
+    return ret
