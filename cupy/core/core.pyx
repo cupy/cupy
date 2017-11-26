@@ -1657,6 +1657,9 @@ cdef class ndarray:
     def __float__(self):
         return float(self.get())
 
+    def __complex__(self):
+        return complex(self.get())
+
     def __oct__(self):
         return oct(self.get())
 
