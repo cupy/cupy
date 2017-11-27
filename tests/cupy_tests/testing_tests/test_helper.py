@@ -71,6 +71,52 @@ class TestCheckCupyNumpyError(unittest.TestCase):
                                        numpy_error, numpy_tb,
                                        accept_error=Exception)
 
+    def test_cupy_derived_error(self):
+        cupy_error = ValueError()
+        cupy_tb = 'xxxx'
+        numpy_error = Exception()
+        numpy_tb = 'yyyy'
+        # Nothing happens
+        helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                       numpy_error, numpy_tb,
+                                       accept_error=Exception)
+
+    def test_numpy_derived_error(self):
+        cupy_error = Exception()
+        cupy_tb = 'xxxx'
+        numpy_error = IndexError()
+        numpy_tb = 'yyyy'
+        # Nothing happens
+        helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                       numpy_error, numpy_tb,
+                                       accept_error=Exception)
+
+    def test_cupy_derived_unaccept_error(self):
+        cupy_error = IndexError()
+        cupy_tb = 'xxxx'
+        numpy_error = Exception()
+        numpy_tb = 'yyyy'
+        pattern = re.compile(cupy_tb + '.*' + numpy_tb, re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            # Neither `IndexError` nor `Exception` is derived from
+            # `ValueError`, therefore expect an error
+            helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                           numpy_error, numpy_tb,
+                                           accept_error=ValueError)
+
+    def test_numpy_derived_unaccept_error(self):
+        cupy_error = Exception()
+        cupy_tb = 'xxxx'
+        numpy_error = ValueError()
+        numpy_tb = 'yyyy'
+        pattern = re.compile(cupy_tb + '.*' + numpy_tb, re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            # `Exception` is not derived from `ValueError`, therefore except an
+            # error
+            helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                           numpy_error, numpy_tb,
+                                           accept_error=ValueError)
+
     def test_forbidden_error(self):
         cupy_error = Exception()
         cupy_tb = 'xxxx'
