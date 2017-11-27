@@ -51,17 +51,17 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
 @testing.parameterize(*(
     testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in all_types]
+                  for d in all_types]
                  + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
         'name': ['conj', 'angle', 'real', 'imag'],
     }) + testing.product({
         'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types]
+                  for d in negative_types]
                  + [0, 0.0j, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'name': ['angle'],
     }) + testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d) + 1
-                 for d in all_types]
+                  for d in all_types]
                  + [2, 2.0, 2j, True]),
         'name': ['reciprocal'],
     })
@@ -106,18 +106,18 @@ class TestArithmeticUnary(unittest.TestCase):
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in all_types]
+                  for d in all_types]
                  + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
         'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                 for d in all_types]
+                  for d in all_types]
                  + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
         'name': ['add', 'multiply', 'power', 'subtract'],
     }) + testing.product({
         'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types]
+                  for d in negative_types]
                  + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types]
+                  for d in negative_types]
                  + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'name': ['divide', 'true_divide', 'subtract'],
     }) + testing.product({
@@ -128,18 +128,18 @@ class TestArithmeticUnary(unittest.TestCase):
         'name': ['power', 'true_divide', 'subtract'],
     }) + testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in no_complex_types]
+                  for d in no_complex_types]
                  + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                 for d in no_complex_types]
+                  for d in no_complex_types]
                  + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'name': ['floor_divide', 'fmod', 'remainder'],
     }) + testing.product({
         'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_no_complex_types]
+                  for d in negative_no_complex_types]
                  + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_no_complex_types]
+                  for d in negative_no_complex_types]
                  + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'name': ['floor_divide', 'fmod', 'remainder'],
     })
@@ -172,7 +172,8 @@ class TestArithmeticBinary(unittest.TestCase):
         #     numpy => complex64
         #     cupy => complex128
         if (isinstance(arg1, complex)
-                and numpy.asarray(arg2).dtype in (numpy.float16, numpy.float32)):
+                and (numpy.asarray(arg2).dtype
+                     in (numpy.float16, numpy.float32))):
             return xp.array(True)
 
         if isinstance(arg1, numpy.ndarray):
