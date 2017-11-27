@@ -514,7 +514,9 @@ cdef class ElementwiseKernel:
             raise ValueError("Can not use 'i' as a parameter name")
 
     def __call__(self, *args, **kwargs):
-        """Compiles and invokes the elementwise kernel.
+        """__call__(*args, **kwargs)
+
+        Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
         kernels with different argument dtypes or dimensions are not
@@ -523,9 +525,11 @@ cdef class ElementwiseKernel:
 
         Args:
             args: Arguments of the kernel.
-            size (int): Range size of the indices. If specified, the variable
-                ``n`` is set to this value. Otherwise, the result of
-                broadcasting is used to determine the value of ``n``.
+            size (int): Range size of the indices.  By default, the range size
+                is automatically determined from the result of broadcasting.
+                This parameter must be specified if and only if all ndarrays
+                are `raw` and the range size cannot be determined
+                automatically.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
