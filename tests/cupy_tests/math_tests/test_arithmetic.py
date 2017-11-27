@@ -78,6 +78,7 @@ class TestArithmeticUnary(unittest.TestCase):
         # Some NumPy functions return Python scalars for Python scalar inputs.
         # We need to convert them to arrays to compare with CuPy outputs.
         if xp is numpy:
+
             # Note that Python `bool` is a subclass of `int`
             if (isinstance(arg1, int)
                     and self.name in ('real', 'imag')):
@@ -90,12 +91,12 @@ class TestArithmeticUnary(unittest.TestCase):
                 y = xp.asarray(y)
 
         # TODO(niboshi): Fix this
+        # numpy.real and numpy.imag return Python int if the input is Python
+        # bool. CuPy should return an array of dtype.int64 in such cases,
+        # instead of an array of dtype.bool.
         if xp is cupy:
-            if self.name == 'conj' and isinstance(arg1, bool):
-                y = y.astype(numpy.int8)
-
-            elif self.name == 'reciprocal' and isinstance(arg1, bool):
-                y = y.astype(numpy.int8)
+            if (self.name in ('real', 'imag') and isinstance(arg1, bool)):
+                y = y.astype(numpy.int64)
 
         return y
 
@@ -172,14 +173,6 @@ class TestArithmeticBinary(unittest.TestCase):
         #     cupy => complex128
         if (isinstance(arg1, complex)
                 and numpy.asarray(arg2).dtype in (numpy.float16, numpy.float32)):
-            return xp.array(True)
-
-        # TODO(niboshi): Fix this: xp.add(xp.array(True), True)
-        #     numpy => True
-        #     cupy => array(2)
-        if (numpy.asarray(arg1).dtype == numpy.bool
-                and numpy.asarray(arg2).dtype == numpy.bool
-                and (isinstance(arg1, bool) or isinstance(arg2, bool))):
             return xp.array(True)
 
         if isinstance(arg1, numpy.ndarray):
