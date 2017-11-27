@@ -50,16 +50,19 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*(
     testing.product({
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in all_types],
+        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
+                 for d in all_types]
+                 + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
         'name': ['conj', 'angle', 'real', 'imag'],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types],
+        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_types]
+                 + [0, 0.0j, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'name': ['angle'],
     }) + testing.product({
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d) + 1
-                 for d in all_types],
+        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d) + 1
+                 for d in all_types]
+                 + [2, 2.0, 2j, True]),
         'name': ['reciprocal'],
     })
 ))
@@ -70,41 +73,73 @@ class TestArithmeticUnary(unittest.TestCase):
         arg1 = self.arg1
         if isinstance(arg1, numpy.ndarray):
             arg1 = xp.asarray(arg1)
-        return getattr(xp, self.name)(arg1)
+        y = getattr(xp, self.name)(arg1)
+
+        # Some NumPy functions return Python scalars for Python scalar inputs.
+        # We need to convert them to arrays to compare with CuPy outputs.
+        if xp is numpy:
+            # Note that Python `bool` is a subclass of `int`
+            if (isinstance(arg1, int)
+                    and self.name in ('real', 'imag')):
+                assert type(y) is int
+                y = xp.asarray(y)
+
+            elif (isinstance(arg1, (float, complex))
+                    and self.name in ('real', 'imag')):
+                assert type(y) is float
+                y = xp.asarray(y)
+
+        # TODO(niboshi): Fix this
+        if xp is cupy:
+            if self.name == 'conj' and isinstance(arg1, bool):
+                y = y.astype(numpy.int8)
+
+            elif self.name == 'reciprocal' and isinstance(arg1, bool):
+                y = y.astype(numpy.int8)
+
+        return y
 
 
 @testing.gpu
 @testing.parameterize(*(
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in all_types],
-        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                 for d in all_types],
+        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
+                 for d in all_types]
+                 + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
+        'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+                 for d in all_types]
+                 + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
         'name': ['add', 'multiply', 'power', 'subtract'],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_types],
+        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_types]
+                 + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
+        'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_types]
+                 + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'name': ['divide', 'true_divide', 'subtract'],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in float_types],
+                 for d in float_types] + [0.0, 2.0, -2.0],
         'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in float_types],
+                 for d in float_types] + [0.0, 2.0, -2.0],
         'name': ['power', 'true_divide', 'subtract'],
     }) + testing.product({
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
-                 for d in no_complex_types],
-        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                 for d in no_complex_types],
+        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
+                 for d in no_complex_types]
+                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
+        'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+                 for d in no_complex_types]
+                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'name': ['floor_divide', 'fmod', 'remainder'],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_no_complex_types],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in negative_no_complex_types],
+        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_no_complex_types]
+                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
+        'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_no_complex_types]
+                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
         'name': ['floor_divide', 'fmod', 'remainder'],
     })
 ))
@@ -120,17 +155,16 @@ class TestArithmeticBinary(unittest.TestCase):
         #     cupy => 0j
         if (self.name == 'power'
                 and numpy.asarray(arg1 == 0).any()
-                and numpy.asarray(numpy.iscomplex(arg2)).any()):
+                and numpy.asarray(arg2).dtype in complex_types):
             return xp.array(True)
 
-        # TODO(niboshi): Fix this: xp.power(0j, False)
+        # TODO(niboshi): Fix this: xp.power(0j, 0)
         #     numpy => 1+0j
         #     cupy => 0j
         if (self.name == 'power'
                 and numpy.asarray(arg1).dtype in complex_types
                 and numpy.asarray(arg1 == 0j).any()
-                and numpy.asarray(arg2).dtype == numpy.bool
-                and numpy.asarray(arg2 == False).any()):
+                and numpy.asarray(arg2 == 0).any()):
             return xp.array(True)
 
         # TODO(niboshi): Fix this: xp.add(0j, xp.array([2.], 'f')).dtype
@@ -159,7 +193,14 @@ class TestArithmeticBinary(unittest.TestCase):
                 numpy.warnings.filterwarnings('ignore')
                 y = func(arg1, arg2)
 
+        # TODO(niboshi): Fix this
+        if xp is cupy:
+            if (xp.asarray(arg1).dtype in (numpy.float16, numpy.float32)
+                    and isinstance(arg2, complex)):
+                y = y.astype(numpy.complex64)
+
         # TODO(niboshi): Fix this. Treat NaN and inf interchangeably
+        y = xp.asarray(y)
         if y.dtype in (float_types + complex_types):
             y[y == numpy.inf] = numpy.nan
             y[y == -numpy.inf] = numpy.nan
