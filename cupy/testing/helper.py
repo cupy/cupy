@@ -59,7 +59,8 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not isinstance(cupy_error, accept_error):
+    elif not (isinstance(cupy_error, accept_error) and
+              isinstance(numpy_error, accept_error)):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
