@@ -50,7 +50,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
     elif not isinstance(cupy_error, type(numpy_error)):
-        # CuPy errors should always be more explicit than NumPy errors, i.e.
+        # CuPy errors should be at least as explicit as the NumPy errors, i.e.
         # allow CuPy errors to derive from NumPy errors but not the opposite.
         # This ensures that try/except blocks that catch NumPy errors also
         # catch CuPy errors.
