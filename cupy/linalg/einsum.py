@@ -281,7 +281,7 @@ def _find_contraction(positions, input_sets, output_set):
     idx_removed = (idx_contract - new_result)
     remaining.append(new_result)
 
-    return (new_result, remaining, idx_removed, idx_contract)
+    return new_result, remaining, idx_removed, idx_contract
 
 
 def _greedy_path(input_sets, output_set, dim_dict, broadcasted_dims,
@@ -447,10 +447,6 @@ def einsum_path(*operands, **kwargs):
 
     # No optimization or a named path algorithm
     if not path_type or isinstance(path_type, str):
-        pass
-
-    # Given an explicit path
-    elif len(path_type) and (path_type[0] == 'einsum_path'):
         pass
 
     # Path tuple with memory limit

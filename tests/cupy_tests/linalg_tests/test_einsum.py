@@ -21,9 +21,6 @@ class TestEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
     def test_irregular_ellipsis4(self, xp):
-        # Numpy bug?
-        # numpy not raises error if optimize is True.
-        # xp.einsum('...->', xp.zeros((2, 2, 2)), optimize=self.do_opt)
         xp.einsum('...->', xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_raises()
