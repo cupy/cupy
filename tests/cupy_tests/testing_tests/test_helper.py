@@ -76,7 +76,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         cupy_tb = 'xxxx'
         numpy_error = Exception()
         numpy_tb = 'yyyy'
-        # Nothing happens
+        # Nothing happens, CuPy errors may derive from NumPy errors
         helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                        numpy_error, numpy_tb,
                                        accept_error=Exception)
@@ -86,10 +86,12 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         cupy_tb = 'xxxx'
         numpy_error = IndexError()
         numpy_tb = 'yyyy'
-        # Nothing happens
-        helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
-                                       numpy_error, numpy_tb,
-                                       accept_error=Exception)
+        # NumPy errors may not derive from CuPy errors, i.e. CuPy errors should
+        # always be more explicit
+        pattern = re.compile(cupy_tb + '.*' + numpy_tb, re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                           numpy_error, numpy_tb)
 
     def test_cupy_derived_unaccept_error(self):
         cupy_error = IndexError()
