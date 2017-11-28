@@ -275,7 +275,10 @@ def unravel_index(indices, dims, order='C'):
     .. seealso:: :func:`numpy.unravel_index`
 
     """
-    if order in ('C', None):
+    if order is None:
+        order = 'C'
+
+    if order == 'C':
         dims = reversed(dims)
     elif order == 'F':
         pass
