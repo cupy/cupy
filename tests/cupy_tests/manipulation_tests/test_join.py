@@ -188,7 +188,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp)
         try:
             return xp.stack((a, a), axis=3)
-        except IndexError as e:
+        except IndexError:
             # For 'numpy<=1.12', catch both IndexError from NumPy and
             # IndexOrValueError from CuPy. For 'numpy>=1.13', simply do not
             # catch the AxisError.
