@@ -17,3 +17,4 @@ cupy.egg-info/
 dist/
 htmlcov/
 .idea/
+.cache/
