@@ -1036,7 +1036,7 @@ cdef class ndarray:
 
     # TODO(okuta): Implement ptp
 
-    cpdef ndarray clip(self, a_min, a_max, out=None):
+    cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
         """Returns an array with values limited to [a_min, a_max].
 
         .. seealso::
@@ -1044,6 +1044,18 @@ cdef class ndarray:
            :meth:`numpy.ndarray.clip`
 
         """
+        if a_min is None and a_max is None:
+            raise ValueError('array_clip: must set either max or min')
+        if a_min is None:
+            if issubclass(self.dtype.type, numpy.floating):
+                a_min = self.dtype.type('-inf')
+            elif issubclass(self.dtype.type, numpy.integer):
+                a_min = numpy.iinfo(self.dtype.type).min
+        if a_max is None:
+            if issubclass(self.dtype.type, numpy.floating):
+                a_max = self.dtype.type('inf')
+            elif issubclass(self.dtype.type, numpy.integer):
+                a_max = numpy.iinfo(self.dtype.type).max
         return _clip(self, a_min, a_max, out=out)
 
     # TODO(okuta): Implement round
