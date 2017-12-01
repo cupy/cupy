@@ -8,7 +8,6 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy
 from cupy import testing
 from cupy.testing import condition
 
@@ -51,23 +50,3 @@ class TestLsqr(unittest.TestCase):
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
-
-    @condition.retry(10)
-    def test_r1norm(self):
-        Asc = self.A.astype(self.dtype)
-        Acu = cupy.sparse.csr_matrix(self.A, dtype=self.dtype)
-        bsc = self.b.astype(self.dtype)
-        bcu = cupy.array(self.b, dtype=self.dtype)
-        retsc = scipy.sparse.linalg.lsqr(Asc, bsc)
-        retcu = cupy.sparse.linalg.lsqr(Acu, bcu)
-        testing.assert_allclose(retsc[3], retcu[3], atol=1e-3)
-
-    @condition.retry(10)
-    def test_xnorm(self):
-        Asc = self.A.astype(self.dtype)
-        Acu = cupy.sparse.csr_matrix(self.A, dtype=self.dtype)
-        bsc = self.b.astype(self.dtype)
-        bcu = cupy.array(self.b, dtype=self.dtype)
-        retsc = scipy.sparse.linalg.lsqr(Asc, bsc)
-        retcu = cupy.sparse.linalg.lsqr(Acu, bcu)
-        testing.assert_allclose(retsc[8], retcu[8], atol=1e-3)

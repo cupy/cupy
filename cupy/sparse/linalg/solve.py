@@ -25,12 +25,11 @@ def lsqr(A, b):
 
     Returns:
         ret (tuple): Its length must be ten. It has same type elements
-            as SciPy. Only first, fourth and ninth elements are available.
-            The first element is the solution vector, ``x``.
-            The fourth element is ``norm(b - Ax)``.
-            The ninth element is ``norm(x)``.
-            Other elements are expressed as ``None`` because the
-            implementation of cuSOLVER is different from the one of SciPy.
+            as SciPy. Only the first element, the solution vector ``x``, is
+            available and other elements are expressed as ``None`` because
+            the implementation of cuSOLVER is different from the one of SciPy.
+            You can easily calculate the fourth element by ``norm(b - Ax)``
+            and the ninth element by ``norm(x)``.
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
@@ -68,9 +67,7 @@ def lsqr(A, b):
         A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
         x.data.ptr, singularity.ctypes.data)
 
-    r1norm = cupy.linalg.norm(b - A.dot(x))
-    xnorm = cupy.linalg.norm(x)
     # The return type of SciPy is always float64. Therefore, x must be casted.
     x = x.astype(numpy.float64)
-    ret = (x, None, None, r1norm, None, None, None, None, xnorm, None)
+    ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
