@@ -1048,6 +1048,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.clip`
 
         """
+        if a_min is None and a_max is None:
+            raise ValueError('array_clip: must set either max or min')
         if a_min is None:
             if issubclass(self.dtype.type, numpy.floating):
                 a_min = self.dtype.type('-inf')

@@ -72,6 +72,12 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, None)
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_clip_min_max_none(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.clip(None, None)
+
     @unittest.skipIf(
         os.sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
