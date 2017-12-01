@@ -742,9 +742,7 @@ class ufunc(object):
         return types
 
     def __call__(self, *args, **kwargs):
-        """__call__(*args, **kwargs)
-
-        Applies the universal function to arguments elementwise.
+        """Applies the universal function to arguments elementwise.
 
         Args:
             args: Input arguments. Each of them can be a :class:`cupy.ndarray`
