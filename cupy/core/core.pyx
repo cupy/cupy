@@ -889,55 +889,91 @@ cdef class ndarray:
                 raise ValueError('kth(={}) out of bounds {}'.format(k, length))
             if max_k < k:
                 max_k = k
-        max_k = (max_k // 32 + 1) * 32
 
-        if max_k > 1024 or 2 * max_k >= self.shape[axis] or len(self.shape) > 1:
+        max_k = (max_k // 32 + 1) * 32
+        sz = 1 << 14
+        while sz * max_k > 16 * self.size:
+            sz //= 2
+
+        if max_k > 1024 or sz < 32 or len(self.shape) > 1:
             # kth is ignored.
             self.sort(axis=axis)
         else:
-            self[:2 * max_k] = cupy.sort(self[:2 * max_k])
             ElementwiseKernel(
-                'raw T a, int32 k, int32 n',
+                'raw T a, int32 k, int32 n, int32 m',
                 '',
                 '''
+                    int z = i / 32 * m;
+                    int id = i % 32;
+                    bitonic_sort(a, z, k + z, id);
                     int x = 0;
-                    for (int j = 2 * k + i; j < n; j += 32) {
-                        if (a[j] < a[k - 1]) {
-                            T tmp = a[k + 32 * x + i];
-                            a[k + 32 * x + i] = a[j];
+                    for (int j = k + id + z; j < z + m; j += 32) {
+                        if (a[j] < a[k - 1 + z]) {
+                            T tmp = a[k + 32 * x + id + z];
+                            a[k + 32 * x + id + z] = a[j];
                             a[j] = tmp;
                             ++x;
                         }
                         if (__any_sync(0xffffffff, x >= k / 32)) {
-                            if (i == 0) {
-                                for (int s = 0; s < k; ++s) {
-                                    for (int t = s + 1; t < 2 * k; ++t) {
-                                        if (a[s] > a[t]) {
-                                            T tmp = a[s];
-                                            a[s] = a[t];
-                                            a[t] = tmp;
-                                        }
-                                    }
-                                }
-                            }
+                            bitonic_sort(a, k + z, 2 * k + z, id);
+                            merge(a, k, id, z);
                             x = 0;
-                            __threadfence_block();
                         }
                     }
-                    __threadfence_block();
-                    if (i == 0) {
-                        for (int s = 0; s < k; ++s) {
-                            for (int t = s + 1; t < 2 * k; ++t) {
-                                if (a[s] > a[t]) {
-                                    T tmp = a[s];
-                                    a[s] = a[t];
-                                    a[t] = tmp;
-                                }
+                    bitonic_sort(a, k + z, 2 * k + z, id);
+                    merge(a, k, id, z);
+                ''',
+                preamble='''
+                    inline __device__ void bitonic_sort_step(CArray<T, 1> a,
+                            int x, int y, int i, int s, int w) {
+                        for (int j = i; j < (y - x) / 2; j += 32) {
+                            int n = j + (j & -w);
+                            T v = a[n + x], u = a[n + w + x];
+                            if (n / s % 2 == 0 ? v > u : v < u) {
+                                a[n + x] = u;
+                                a[n + w + x] = v;
                             }
+                        }
+                    }
+
+                    inline __device__ void bitonic_sort(
+                            CArray<T, 1> a, int x, int y, int i) {
+                        for (int s = 2; s <= y - x; s *= 2) {
+                            for (int w = s / 2; w >= 1; w /= 2) {
+                                bitonic_sort_step(a, x, y, i, s, w);
+                            }
+                        }
+                    }
+
+                    inline __device__ void merge(
+                            CArray<T, 1> a, int k, int i, int z) {
+                        for (int s = i; s < k; s += 32) {
+                            if (a[s + z] > a[2 * k - 1 - s + z]) {
+                                T tmp = a[s + z];
+                                a[s + z] = a[2 * k - 1 - s + z];
+                                a[2 * k - 1 - s + z] = tmp;
+                            }
+                        }
+                        for (int w = k / 2; w >= 1; w /= 2) {
+                            bitonic_sort_step(a, z, k + z, i, k, w);
                         }
                     }
                 '''
-            )(self, max_k, self.shape[axis], size=32)
+            )(self, max_k, self.size, self.size // (sz // 32), size=sz)
+            ElementwiseKernel(
+                'raw T a, int32 k, int32 n, int32 m',
+                '',
+                '''
+                    for (int j = i; j < k; j += 32) {
+                        for (int t = j + k, s = j + m; s < n; t += k, s += m) {
+                            T tmp = a[s];
+                            a[s] = a[t];
+                            a[t] = tmp;
+                        }
+                    }
+                '''
+            )(self, max_k, self.size, self.size // (sz // 32), size=32)
+            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz / 32,))
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
