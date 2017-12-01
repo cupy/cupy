@@ -49,7 +49,11 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         self.fail('Only numpy raises error\n\n' + numpy_tb)
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
-    elif type(cupy_error) is not type(numpy_error):
+    elif not isinstance(cupy_error, type(numpy_error)):
+        # CuPy errors should be at least as explicit as the NumPy errors, i.e.
+        # allow CuPy errors to derive from NumPy errors but not the opposite.
+        # This ensures that try/except blocks that catch NumPy errors also
+        # catch CuPy errors.
         msg = '''Different types of errors occurred
 
 cupy
@@ -58,7 +62,8 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not isinstance(cupy_error, accept_error):
+    elif not (isinstance(cupy_error, accept_error) and
+              isinstance(numpy_error, accept_error)):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
