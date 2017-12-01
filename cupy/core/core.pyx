@@ -1852,29 +1852,18 @@ include "reduction.pxi"
 
 cdef _id = 'out0 = in0'
 
-_elementwise_copy = create_ufunc(
+elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = out0_type(in0)')
+    'out0 = out0_type(in0)', default_casting='unsafe')
 # complex numbers requires out0 = complex<T>(in0)
 
-
-def elementwise_copy(*args, **kwargs):
-    kwargs['casting'] = 'unsafe'
-    return _elementwise_copy(*args, **kwargs)
-
-
-_elementwise_copy_where = create_ufunc(
+elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
-    'if (in1) out0 = in0')
-
-
-def elementwise_copy_where(*args, **kwargs):
-    kwargs['casting'] = 'unsafe'
-    return _elementwise_copy_where(*args, **kwargs)
+    'if (in1) out0 = in0', default_casting='unsafe')
 
 
 cdef _divmod_float = '''
