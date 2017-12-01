@@ -341,6 +341,9 @@ def cythonize(extensions, arg_options):
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
+    # Embed signatures for Sphinx documentation.
+    directives['embedsignature'] = True
+
     cythonize_option_keys = ('annotate',)
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}

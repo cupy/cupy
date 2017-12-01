@@ -355,9 +355,7 @@ class ReductionKernel(object):
         self.preamble = preamble
 
     def __call__(self, *args, **kwargs):
-        """__call__(*args, **kwargs)
-
-        Compiles and invokes the reduction kernel.
+        """Compiles and invokes the reduction kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
         kernels with different argument dtypes, ndims, or axis are not
