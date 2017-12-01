@@ -723,6 +723,31 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState.assert_called_with(7)
 
 
+@testing.gpu
+class TestGetRandomState3(unittest.TestCase):
+
+    def _get_rvs(self, seed_str):
+        os.environ['CUPY_SEED'] = seed_str
+        generator.reset_states()
+        rs = generator.get_random_state()
+        rvu = rs.rand(4)
+        rvn = rs.randn(4)
+        return rvu, rvn
+
+    def test_get_twice_same(self):
+        rvs0 = self._get_rvs('9')
+        rvs1 = self._get_rvs('9')
+        for rv0, rv1 in zip(rvs0, rvs1):
+            cupy.testing.assert_array_equal(rv0, rv1)
+
+    def test_get_twice_different(self):
+        rvs0 = self._get_rvs('10')
+        rvs1 = self._get_rvs('11')
+        for rv0, rv1 in zip(rvs0, rvs1):
+            for r0, r1 in zip(rv0, rv1):
+                self.assertNotEqual(r0, r1)
+
+
 class TestCheckAndGetDtype(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
