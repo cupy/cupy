@@ -406,7 +406,7 @@ def numpy_cupy_equal(name='xp', sp_name=None):
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
 
-    Decorated test fixture is required throw same errors
+    Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
