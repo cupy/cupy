@@ -706,19 +706,19 @@ class TestGetRandomState2(unittest.TestCase):
 
     def test_get_random_state_no_cupy_with_chainer_seed(self):
         os.environ.pop('CUPY_SEED', None)
-        os.environ['CHAINER_SEED'] = str(5)
+        os.environ['CHAINER_SEED'] = '5'
         generator.get_random_state()
         generator.RandomState.assert_called_with(5)
 
     def test_get_random_state_with_cupy_no_chainer_seed(self):
-        os.environ['CUPY_SEED'] = str(6)
+        os.environ['CUPY_SEED'] = '6'
         os.environ.pop('CHAINER_SEED', None)
         generator.get_random_state()
         generator.RandomState.assert_called_with(6)
 
     def test_get_random_state_with_cupy_with_chainer_seed(self):
-        os.environ['CUPY_SEED'] = str(7)
-        os.environ['CHAINER_SEED'] = str(8)
+        os.environ['CUPY_SEED'] = '7'
+        os.environ['CHAINER_SEED'] = '8'
         generator.get_random_state()
         generator.RandomState.assert_called_with(7)
 
