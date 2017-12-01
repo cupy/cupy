@@ -514,9 +514,7 @@ cdef class ElementwiseKernel:
             raise ValueError("Can not use 'i' as a parameter name")
 
     def __call__(self, *args, **kwargs):
-        """__call__(*args, **kwargs)
-
-        Compiles and invokes the elementwise kernel.
+        """Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
         kernels with different argument dtypes or dimensions are not
