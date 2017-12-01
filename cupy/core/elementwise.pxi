@@ -523,9 +523,11 @@ cdef class ElementwiseKernel:
 
         Args:
             args: Arguments of the kernel.
-            size (int): Range size of the indices. If specified, the variable
-                ``n`` is set to this value. Otherwise, the result of
-                broadcasting is used to determine the value of ``n``.
+            size (int): Range size of the indices.  By default, the range size
+                is automatically determined from the result of broadcasting.
+                This parameter must be specified if and only if all ndarrays
+                are `raw` and the range size cannot be determined
+                automatically.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
