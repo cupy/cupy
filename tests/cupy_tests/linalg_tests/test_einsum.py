@@ -121,10 +121,10 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum('i-', xp.array([0, 0]))
 
 
-@testing.with_requires('numpy>=1.12')
 @testing.parameterize(*testing.product({
     'do_opt': (True, False)
 }))
+@testing.with_requires('numpy>=1.12')
 class TestOptimizedEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
@@ -387,7 +387,6 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b, c).astype(numpy.float32)
 
 
-@testing.with_requires('numpy>=1.12')
 @testing.parameterize(*testing.product({
     'shape_a': [(2, 3)], 'shape_b': [(3, 4)], 'shape_c': [(4, 5)],
     'subscripts': ['ij,jk,kl'], 'skip_overflow': [True],
@@ -405,6 +404,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     'subscripts': ['i...,i,...i->...i'], 'skip_overflow': [True],
     'optimize': [True, 'greedy']
 }))
+@testing.with_requires('numpy>=1.12')
 class TestEinSumTernaryOptimizedOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
@@ -420,7 +420,6 @@ class TestEinSumTernaryOptimizedOperation(unittest.TestCase):
                          optimize=self.optimize).astype(numpy.float32)
 
 
-@testing.with_requires('numpy>=1.12')
 @testing.parameterize(
     # memory constraint
     {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
@@ -435,6 +434,7 @@ class TestEinSumTernaryOptimizedOperation(unittest.TestCase):
     {'subscript': 'dcc,fce,ea,dbf->ab', 'opt': True},
     {'subscript': 'a,ac,ab,ad,cd,bd,bc->', 'opt': True},
 )
+@testing.with_requires('numpy>=1.12')
 class TestEinSumPath(unittest.TestCase):
 
     chars = 'abcdefghij'
@@ -460,7 +460,6 @@ class TestEinSumPath(unittest.TestCase):
                               einsum_call=True)[1]
 
 
-@testing.with_requires('numpy>=1.12')
 @testing.parameterize(
     {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
      'subscript': 'a...,...b,c...->abc...'},
@@ -471,6 +470,7 @@ class TestEinSumPath(unittest.TestCase):
     {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
      'subscript': 'a...,...,c...->ac...'},
 )
+@testing.with_requires('numpy>=1.12')
 class TestEinSumPathEllipsis(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
