@@ -254,11 +254,25 @@ def einsum_core(*operands):
 
 
 def _compute_size_by_dict(indices, idx_dict, broadcasted_dims, operand_idx=()):
+    """Compute computation cost.
+
+    Args:
+        indices (str): Indexes which will be contracted.
+        idx_dict (dict): Dimension length for each index.
+        broadcasted_dims (dict): Dimension length of broadcasted dims for each
+            operand sets.
+        operand_idx (tuple of ints): Indices of operands will be computated.
+            If (), all operands for einsum is considered.
+
+    Return:
+        int: computation cost for indices.
+
+    """
     ret = 1
     for i in indices:
         if i == '@':
             if operand_idx:
-                ret *= max([broadcasted_dims[i] for i in operand_idx])
+                ret *= max([broadcasted_dims[oi] for oi in operand_idx])
             else:
                 ret *= max(broadcasted_dims)
         else:
@@ -267,6 +281,19 @@ def _compute_size_by_dict(indices, idx_dict, broadcasted_dims, operand_idx=()):
 
 
 def _find_contraction(positions, input_sets, output_set):
+    """Find which indexes contracted or remained.
+
+    Args:
+        positions (pair of ints): Indexes which input set will be contracted.
+        input_sets : before contraction.
+
+    Return:
+        new_result (set of chars): New input set produced by contraction.
+        remaining (list of sets of chars): Remained inpus sets.
+        idx_removed (set of chars): Removed indexes after calculation.
+        idx_contract: Contracted indexes.
+
+    """
     idx_contract = set()
     idx_remain = output_set.copy()
     remaining = []
@@ -458,9 +485,6 @@ def einsum_path(*operands, **kwargs):
     else:
         raise TypeError('Did not understand the path: %s' % str(path_type))
 
-    # Hidden option, only einsum should call this
-    einsum_call_arg = kwargs.pop('einsum_call', False)
-
     # Python side parsing
     input_subscripts, output_subscript, operands = \
         _parse_einsum_input(operands)
@@ -511,15 +535,6 @@ def einsum_path(*operands, **kwargs):
     else:
         memory_arg = memory_limit
 
-    # Compute naive cost
-    # This isn't quite right, need to look into exactly how einsum does this
-    naive_cost = _compute_size_by_dict(indices, dim_dict, broadcasted_dims)
-    indices_in_input = input_subscripts.replace(',', '')
-    mult = max(len(input_list) - 1, 1)
-    if len(indices_in_input) > len(set(indices_in_input)):
-        mult *= 2
-    naive_cost *= mult
-
     # Compute the path
     if not path_type or (len(input_list) in [1, 2]) or (indices == output_set):
         # Nothing to be optimized, leave it to einsum
@@ -569,37 +584,7 @@ def einsum_path(*operands, **kwargs):
         contraction = (contract_inds, idx_removed, einsum_str, input_list[:])
         contraction_list.append(contraction)
 
-    opt_cost = sum(cost_list) + 1
-
-    if einsum_call_arg:
-        return (operands, contraction_list)
-
-    # Return the path along with a nice string representation
-    overall_contraction = input_subscripts + '->' + output_subscript
-    header = ('scaling', 'current', 'remaining')
-
-    speedup = naive_cost / opt_cost
-    max_i = max(size_list)
-
-    path_print = '  Complete contraction:  %s\n' % overall_contraction
-    path_print += '         Naive scaling:  %d\n' % len(indices)
-    path_print += '     Optimized scaling:  %d\n' % max(scale_list)
-    path_print += '      Naive FLOP count:  %.3e\n' % naive_cost
-    path_print += '  Optimized FLOP count:  %.3e\n' % opt_cost
-    path_print += '   Theoretical speedup:  %3.3f\n' % speedup
-    path_print += '  Largest intermediate:  %.3e elements\n' % max_i
-    path_print += '-' * 74 + '\n'
-    path_print += '%6s %24s %40s\n' % header
-    path_print += '-' * 74
-
-    for n, contraction in enumerate(contraction_list):
-        inds, idx_rm, einsum_str, remaining = contraction
-        remaining_str = ','.join(remaining) + '->' + output_subscript
-        path_run = (scale_list[n], einsum_str, remaining_str)
-        path_print += '\n%4d    %24s %40s' % path_run
-
-    path = ['einsum_path'] + path
-    return (path, path_print)
+    return operands, contraction_list
 
 
 def einsum(*operands, **kwargs):
@@ -645,8 +630,7 @@ def einsum(*operands, **kwargs):
                         % unknown_kwargs)
 
     # Build the contraction list and operand
-    operands, contraction_list = einsum_path(*operands, optimize=optimize_arg,
-                                             einsum_call=True)
+    operands, contraction_list = einsum_path(*operands, optimize=optimize_arg)
 
     # Start contraction loop
     for num, contraction in enumerate(contraction_list):
