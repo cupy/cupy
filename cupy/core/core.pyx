@@ -3424,6 +3424,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     cdef Py_ssize_t batchCount
     cdef ndarray ap, bp, outp
 
+    orig_a_shape = a.shape
+    orig_b_shape = b.shape
+    if len(orig_a_shape) == 0 or len(orig_b_shape) == 0:
+        raise ValueError('Scalar operands are not allowed, use \'*\' instead')
+
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
     dtype = numpy.find_common_type((ret_dtype, 'f'), ())
 
@@ -3509,9 +3514,16 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     *la, ka, n = a.shape
     *lb, m, kb = b.shape
 
-    assert ka == kb
+    if ka != kb:
+        raise ValueError(
+            'shapes ({}) and ({}) not aligned'.format(
+                ','.join([str(_) for _ in orig_a_shape]),
+                ','.join([str(_) for _ in orig_b_shape])))
     for la_, lb_ in zip(la, lb):
-        assert la_ == lb_ or la_ == 1 or lb_ == 1
+        if not (la_ == lb_ or la_ == 1 or lb_ == 1):
+            raise ValueError(
+                'operands could not be broadcast together with '
+                'remapped shapes')
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
