@@ -24,24 +24,27 @@ cdef dict _cusolver_handles = {}
 cdef dict _cusparse_handles = {}
 
 
-cpdef get_cublas_handle():
+cpdef size_t get_cublas_handle() except *:
     dev_id = get_device_id()
-    if dev_id in _cublas_handles:
-        return _cublas_handles[dev_id]
+    ret = _cublas_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cublas_handle
 
 
-cpdef get_cusolver_handle():
+cpdef size_t get_cusolver_handle() except *:
     dev_id = get_device_id()
-    if dev_id in _cusolver_handles:
-        return _cusolver_handles[dev_id]
+    ret = _cusolver_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cusolver_handle
 
 
-cpdef get_cusparse_handle():
+cpdef size_t get_cusparse_handle() except *:
     dev_id = get_device_id()
-    if dev_id in _cusparse_handles:
-        return _cusparse_handles[dev_id]
+    ret = _cusparse_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cusparse_handle
 
 
