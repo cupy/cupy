@@ -713,7 +713,7 @@ where = ufunc(sorting.search._where_ufunc,
 
 clip = ufunc(core._clip, math.misc.clip, numpy.clip)
 
-copy = ufunc(core._elementwise_copy,
+copy = ufunc(core.elementwise_copy,
              creation.from_data.copy, numpy.copy)
 
 bitwise_and = _create_ufunc(core.bitwise_and, numpy.bitwise_and)
