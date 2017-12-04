@@ -15,7 +15,9 @@ class TestDims(unittest.TestCase):
         b = testing.shaped_arange((2,), xp)
         c = testing.shaped_arange((2, 2), xp)
         d = testing.shaped_arange((4, 3, 2), xp)
-        return func(a, b, c, d)
+        e = 1
+        f = numpy.float32(1)
+        return func(a, b, c, d, e, f)
 
     @testing.numpy_cupy_array_list_equal()
     def test_atleast_1d1(self, xp):

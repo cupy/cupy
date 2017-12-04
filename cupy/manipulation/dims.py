@@ -26,6 +26,7 @@ def _atleast_nd_helper(n, arys):
 
     res = []
     for a in arys:
+        a = cupy.asarray(a)
         if isinstance(a, cupy.ndarray):
             if a.ndim < n:
                 new_shape = _atleast_nd_shape_map[(n, a.ndim)](a.shape)
