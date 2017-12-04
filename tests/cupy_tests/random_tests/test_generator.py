@@ -1,4 +1,3 @@
-import mock
 import os
 import threading
 import unittest
@@ -679,15 +678,12 @@ class TestRandomStateThreadSafe(unittest.TestCase):
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = generator.RandomState
-        generator.RandomState = mock.Mock()
         self.rs_dict = generator._random_states
         generator._random_states = {}
         self.cupy_seed = os.getenv('CUPY_SEED')
         self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
-        generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
         if self.cupy_seed is None:
             os.environ.pop('CUPY_SEED', None)
@@ -701,26 +697,55 @@ class TestGetRandomState2(unittest.TestCase):
     def test_get_random_state_no_cupy_no_chainer_seed(self):
         os.environ.pop('CUPY_SEED', None)
         os.environ.pop('CHAINER_SEED', None)
-        generator.get_random_state()
-        generator.RandomState.assert_called_with(None)
+        rvs0 = self._get_rvs_reset()
+        rvs1 = self._get_rvs_reset()
+
+        self._check_different(rvs0, rvs1)
 
     def test_get_random_state_no_cupy_with_chainer_seed(self):
+        rvs0 = self._get_rvs(generator.RandomState(5))
+
         os.environ.pop('CUPY_SEED', None)
         os.environ['CHAINER_SEED'] = '5'
-        generator.get_random_state()
-        generator.RandomState.assert_called_with('5')
+        rvs1 = self._get_rvs_reset()
+
+        self._check_same(rvs0, rvs1)
 
     def test_get_random_state_with_cupy_no_chainer_seed(self):
+        rvs0 = self._get_rvs(generator.RandomState(6))
+
         os.environ['CUPY_SEED'] = '6'
         os.environ.pop('CHAINER_SEED', None)
-        generator.get_random_state()
-        generator.RandomState.assert_called_with('6')
+        rvs1 = self._get_rvs_reset()
+
+        self._check_same(rvs0, rvs1)
 
     def test_get_random_state_with_cupy_with_chainer_seed(self):
+        rvs0 = self._get_rvs(generator.RandomState(7))
+
         os.environ['CUPY_SEED'] = '7'
         os.environ['CHAINER_SEED'] = '8'
-        generator.get_random_state()
-        generator.RandomState.assert_called_with('7')
+        rvs1 = self._get_rvs_reset()
+
+        self._check_same(rvs0, rvs1)
+
+    def _get_rvs(self, rs):
+        rvu = rs.rand(4)
+        rvn = rs.randn(4)
+        return rvu, rvn
+
+    def _get_rvs_reset(self):
+        generator.reset_states()
+        return self._get_rvs(generator.get_random_state())
+
+    def _check_same(self, rvs0, rvs1):
+        for rv0, rv1 in zip(rvs0, rvs1):
+            testing.assert_array_equal(rv0, rv1)
+
+    def _check_different(self, rvs0, rvs1):
+        for rv0, rv1 in zip(rvs0, rvs1):
+            for r0, r1 in zip(rv0, rv1):
+                self.assertNotEqual(r0, r1)
 
 
 class TestCheckAndGetDtype(unittest.TestCase):
