@@ -1,5 +1,8 @@
 import unittest
 
+import numpy
+
+import cupy
 from cupy import testing
 
 
@@ -32,3 +35,56 @@ class TestComparison(unittest.TestCase):
 
     def test_equal(self):
         self.check_binary('equal')
+
+
+class TestIsclose(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_is_close_finite(self, xp, dtype):
+        a = xp.array([0.9e-5, 1.1e-5, 1000 + 1e-4, 1000 - 1e-4], dtype=dtype)
+        b = xp.array([0, 0, 1000, 1000], dtype=dtype)
+        return xp.isclose(a, b)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_is_close_min_int(self, xp, dtype):
+        a = xp.array([0], dtype=dtype)
+        b = xp.array([numpy.iinfo('i').min], dtype=dtype)
+        return xp.isclose(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_is_close_infinite(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, nan, 0, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, 0, nan, inf, ninf], dtype=dtype)
+        return xp.isclose(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_is_close_infinite_equal_nan(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, inf, ninf], dtype=dtype)
+        return xp.isclose(a, b, equal_nan=True)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_is_close_array_scalar(self, xp, dtype):
+        a = xp.array([0.9e-5, 1.1e-5], dtype=dtype)
+        b = xp.dtype(xp.dtype).type(0)
+        return xp.isclose(a, b)
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_is_close_scalar_scalar(self, dtype):
+        # cupy.isclose always returns ndarray
+        a = cupy.dtype(cupy.dtype).type(0)
+        b = cupy.dtype(cupy.dtype).type(0)
+        cond = cupy.isclose(a, b)
+        assert cond.shape == ()
+        assert bool(cond)
