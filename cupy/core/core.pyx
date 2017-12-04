@@ -2636,6 +2636,29 @@ cdef _concatenate_kernel = ElementwiseKernel(
 )
 
 
+cpdef int size(ndarray a, axis=None) except *:
+    """Returns the number of elements along a given axis.
+
+    Args:
+        a (ndarray): Input data.
+        axis (int or None): Axis along which the elements are counted.
+            When it is ``None``, it returns the total number of elements.
+
+    Returns:
+        int: Number of elements along the given axis.
+
+    """
+    cdef int index
+    if axis is None:
+        return a.size
+    else:
+        index = axis
+        if index < 0:
+            index += a.ndim
+        if not 0 <= index < a.ndim:
+            raise IndexError('index out of range')
+        return a._shape[index]
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
