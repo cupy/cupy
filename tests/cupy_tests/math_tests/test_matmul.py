@@ -124,6 +124,7 @@ class TestMatmulLarge(unittest.TestCase):
 @testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_invalid_shape(self, xp):
         shape1, shape2 = self.shape_pair
