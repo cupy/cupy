@@ -1,4 +1,3 @@
-import mock
 import os
 import threading
 import unittest
@@ -696,17 +695,12 @@ class TestGetRandomState2(unittest.TestCase):
             os.environ['CHAINER_SEED'] = self.chainer_seed
 
     def test_get_random_state_no_cupy_no_chainer_seed(self):
-        # set up mock
-        self.rs_tmp = generator.RandomState
-        generator.RandomState = mock.Mock()
-
         os.environ.pop('CUPY_SEED', None)
         os.environ.pop('CHAINER_SEED', None)
-        generator.get_random_state()
-        generator.RandomState.assert_called_with(None)
+        rvs0 = self._get_rvs_reset()
+        rvs1 = self._get_rvs_reset()
 
-        # tear down mock
-        generator.RandomState = self.rs_tmp
+        self._check_different(rvs0, rvs1)
 
     def test_get_random_state_no_cupy_with_chainer_seed(self):
         rvs0 = self._get_rvs(generator.RandomState(5))
@@ -735,21 +729,6 @@ class TestGetRandomState2(unittest.TestCase):
 
         self._check_same(rvs0, rvs1)
 
-    def test_no_seed_dont_reproduce(self):
-        rvs0 = self._get_rvs_reset()
-        rvs1 = self._get_rvs_reset()
-        self._check_different(rvs0, rvs1)
-
-    def test_same_seed_reproduce(self):
-        rvs0 = self._get_rvs(generator.RandomState(9))
-        rvs1 = self._get_rvs(generator.RandomState(9))
-        self._check_same(rvs0, rvs1)
-
-    def test_different_seed_dont_reproduce(self):
-        rvs0 = self._get_rvs(generator.RandomState(10))
-        rvs1 = self._get_rvs(generator.RandomState(11))
-        self._check_different(rvs0, rvs1)
-
     def _get_rvs(self, rs):
         rvu = rs.rand(4)
         rvn = rs.randn(4)
@@ -761,7 +740,7 @@ class TestGetRandomState2(unittest.TestCase):
 
     def _check_same(self, rvs0, rvs1):
         for rv0, rv1 in zip(rvs0, rvs1):
-            cupy.testing.assert_array_equal(rv0, rv1)
+            testing.assert_array_equal(rv0, rv1)
 
     def _check_different(self, rvs0, rvs1):
         for rv0, rv1 in zip(rvs0, rvs1):
