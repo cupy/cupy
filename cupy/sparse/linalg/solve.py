@@ -4,7 +4,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import device
 from cupy.linalg import util
-from cupy import sparse
+import cupy.sparse
 
 
 if cuda.cusolver_enabled:
@@ -37,8 +37,8 @@ def lsqr(A, b):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
-    if not sparse.isspmatrix_csr(A):
-        A = sparse.csr_matrix(A)
+    if not cupy.sparse.isspmatrix_csr(A):
+        A = cupy.sparse.csr_matrix(A)
     util._assert_nd_squareness(A)
     util._assert_cupy_array(b)
     m = A.shape[0]
