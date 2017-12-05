@@ -8,6 +8,7 @@ try:
 except ImportError:
     scipy_available = False
 
+from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
@@ -15,6 +16,8 @@ from cupy.testing import condition
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestLsqr(unittest.TestCase):
 
