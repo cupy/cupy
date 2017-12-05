@@ -187,15 +187,21 @@ class TestArithmeticBinary(unittest.TestCase):
                 numpy.warnings.filterwarnings('ignore')
                 y = func(arg1, arg2)
 
-        # TODO(niboshi): Fix this
+        # TODO(niboshi): Fix this. If rhs is a Python complex,
+        #    numpy returns complex64
+        #    cupy returns complex128
         if xp is cupy:
             if (xp.asarray(arg1).dtype in (numpy.float16, numpy.float32)
                     and isinstance(arg2, complex)):
                 y = y.astype(numpy.complex64)
 
-        # TODO(niboshi): Fix this. Treat NaN and inf interchangeably
+        # TODO(niboshi): Fix this. Division by zero results in
+        #    numpy => nan
+        #    cupy => +/- inf
         y = xp.asarray(y)
-        if y.dtype in (float_types + complex_types):
+        if (self.name in ('floor_divide', 'remainder')
+                and y.dtype in (float_types + complex_types)
+                and (xp.asarray(self.arg2) == 0).any()):
             y[y == numpy.inf] = numpy.nan
             y[y == -numpy.inf] = numpy.nan
 
