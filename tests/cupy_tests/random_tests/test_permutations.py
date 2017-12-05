@@ -100,7 +100,7 @@ class TestPermutationRandomness(unittest.TestCase):
     # whole elements in the sub-array should become similar
     # when elements count of original array is 2^N.
     # Note that this is not an establishd method to check randomness.
-    # TODO: implement randomness check using some established methods.
+    # TODO(anaruse): implement randomness check using some established methods.
     @condition.repeat_with_success_at_least(5, 3)
     def test_permutation_randomness(self):
         if self.mask > self.num_half:
