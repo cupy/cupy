@@ -64,6 +64,7 @@ setup(
               'cupy.random',
               'cupy.sorting',
               'cupy.sparse',
+              'cupy.sparse.linalg',
               'cupy.statistics',
               'cupy.testing'],
     package_data={
