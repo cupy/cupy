@@ -92,6 +92,15 @@ class TestPermutationRandomness(unittest.TestCase):
 
     # Simple bit proportion test
 
+    # This test is to check kind of randomness of permutation.
+    # An intuition behind this test is that, when you make a sub-array
+    # by regularly extracting half elements from the permuted array,
+    # the sub-array should also hold randomeness and accordingly
+    # frequency of appearance of 0 and 1 at each bit position of
+    # whole elements in the sub-array should become similar
+    # when elements count of original array is 2^N.
+    # Note that this is not an establishd method to check randomness.
+    # TODO: implement randomness check using some established methods.
     @condition.repeat_with_success_at_least(5, 3)
     def test_permutation_randomness(self):
         if self.mask > self.num_half:
