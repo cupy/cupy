@@ -1,9 +1,11 @@
 from __future__ import division
-import pkg_resources
 import sys
 
 import numpy
 import six
+
+from cupy import _version
+
 
 try:
     from cupy import core  # NOQA
@@ -27,12 +29,13 @@ def is_available():
     return cuda.is_available()
 
 
-__version__ = pkg_resources.get_distribution('cupy').version
+__version__ = _version.__version__
 
 
 from cupy import binary  # NOQA
 from cupy.core import fusion  # NOQA
 from cupy import creation  # NOQA
+from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
@@ -164,6 +167,7 @@ from cupy.manipulation.basic import copyto  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 
+from cupy.manipulation.transpose import moveaxis  # NOQA
 from cupy.manipulation.transpose import rollaxis  # NOQA
 from cupy.manipulation.transpose import swapaxes  # NOQA
 from cupy.manipulation.transpose import transpose  # NOQA
@@ -267,6 +271,7 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
@@ -372,6 +377,10 @@ from cupy.core.fusion import prod  # NOQA
 from cupy.core.fusion import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.window import blackman  # NOQA
+from cupy.math.window import hamming  # NOQA
+from cupy.math.window import hanning  # NOQA
+
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
@@ -437,6 +446,7 @@ from cupy.core.fusion import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
 
+from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
 from cupy.sorting.sort import lexsort  # NOQA
 from cupy.sorting.sort import msort  # NOQA
@@ -452,6 +462,7 @@ from cupy.core.fusion import amin  # NOQA
 from cupy.core.fusion import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
+from cupy.statistics.order import percentile  # NOQA
 
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA

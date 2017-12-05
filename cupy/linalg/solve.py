@@ -131,7 +131,7 @@ def tensorsolve(a, b, axes=None):
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = numpy.prod(oldshape)
+    prod = cupy.internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -192,4 +192,33 @@ def pinv(a, rcond=1e-15):
     return core.dot(vt.T, s1[:, None] * u.T)
 
 
-# TODO(okuta): Implement tensorinv
+def tensorinv(a, ind=2):
+    '''Computes the inverse of a tensor.
+
+    This function computes tensor ``a_inv`` from tensor ``a`` such that
+    ``tensordot(a_inv, a, ind) == I``, where ``I`` denotes the identity tensor.
+
+    Args:
+        a (cupy.ndarray):
+            The tensor such that
+            ``prod(a.shape[:ind]) == prod(a.shape[ind:])``.
+        ind (int):
+            The positive number used in ``axes`` option of ``tensordot``.
+
+    Returns:
+        cupy.ndarray:
+            The inverse of a tensor whose shape is equivalent to
+            ``a.shape[ind:] + a.shape[:ind]``.
+
+    .. seealso:: :func:`numpy.linalg.tensorinv`
+    '''
+    util._assert_cupy_array(a)
+
+    if ind <= 0:
+        raise ValueError('Invalid ind argument')
+    oldshape = a.shape
+    invshape = oldshape[ind:] + oldshape[:ind]
+    prod = cupy.internal.prod(oldshape[ind:])
+    a = a.reshape(prod, -1)
+    a_inv = inv(a)
+    return a_inv.reshape(*invshape)

@@ -134,3 +134,6 @@ Miscellaneous
    cupy.minimum
    cupy.fmax
    cupy.fmin
+   cupy.blackman
+   cupy.hamming
+   cupy.hanning

@@ -93,6 +93,10 @@ cpdef enum:
     CUDNN_UNIDIRECTIONAL = 0
     CUDNN_BIDIRECTIONAL = 1
 
+    CUDNN_RNN_ALGO_STANDARD = 0
+    CUDNN_RNN_ALGO_PERSIST_STATIC = 1
+    CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2
+
     CUDNN_LINEAR_INPUT = 0
     CUDNN_SKIP_INPUT = 1
 
@@ -152,6 +156,9 @@ cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolutionMathType(
     size_t convDesc, size_t mathType)
 cpdef size_t getConvolutionMathType(size_t convDesc) except *
+cpdef setConvolutionGroupCount(
+    size_t convDesc, int groupCount)
+cpdef int getConvolutionGroupCount(size_t convDesc) except *
 cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode)
@@ -332,10 +339,18 @@ cpdef dropoutBackward(
 
 cpdef size_t createRNNDescriptor() except *
 cpdef destroyRNNDescriptor(size_t rnnDesc)
+cpdef size_t createPersistentRNNPlan(
+    size_t rnnDesc, int minibatch, int dataType) except *
+cpdef setPersistentRNNPlan(size_t rnnDesc, size_t plan)
+cpdef destroyPersistentRNNPlan(size_t plan)
 cpdef setRNNDescriptor_v5(
     size_t rnnDesc, int hiddenSize, int numLayers,
     size_t dropoutDesc, int inputMode, int direction, int mode,
     int dataType)
+cpdef setRNNDescriptor_v6(
+    size_t handle, size_t rnnDesc, int hiddenSize, int numLayers,
+    size_t dropoutDesc, int inputMode, int direction, int mode,
+    int algo, int dataType)
 cpdef getRNNWorkspaceSize(
     size_t handle, size_t rnnDesc, int seqLength, size_t xDesc)
 cpdef getRNNTrainingReserveSize(

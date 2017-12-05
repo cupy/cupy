@@ -13,7 +13,7 @@
 | [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
 | [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
 | **Examples** ([Official](https://github.com/cupy/cupy/blob/master/examples))
-| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-jp))
+| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and many functions on it.
@@ -43,7 +43,7 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 
 ## Development
 
-Please see [the documentation for developers](https://docs-cupy.chainer.org/en/stable/developers.html).
+Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/contribution.html).
 
 ## More information
 

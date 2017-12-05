@@ -13,12 +13,18 @@ We recommend these Linux distributions.
 
 The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
 
+.. warning::
+
+   If you are using certain versions of conda, it may fail to build CuPy with error
+   ``g++: error: unrecognized command line option ‘-R’``.
+   This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
+   If you encounter this problem, please downgrade or upgrade it.
+
 .. note::
 
    We are testing CuPy automatically with Jenkins, where all the above *recommended* environments are tested.
-   We cannot guarantee that CuPy works on other environments including Windows and macOS (especially with CUDA support), even if CuPy looks running correctly.
+   We cannot guarantee that CuPy works on other environments including Windows and macOS, even if CuPy looks running correctly.
 
-CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+.
 CuPy uses C++ compiler such as g++.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
@@ -47,17 +53,18 @@ The latest version of each package will automatically be installed if missing.
 * `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11, 1.12, 1.13
 * `Six <https://pythonhosted.org/six/>`_ 1.9+
 
-CUDA support
+In addition, you need to install `CUDA <https://developer.nvidia.com/cuda-zone>`_.
+The following versions of CUDA can be used: 7.0, 7.5, 8.0 and 9.0.
+You need a GPU with Compute Capability of at least 3.0.
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 7.0, 7.5, 8.0
+Optional Libraries
+~~~~~~~~~~~~~~~~~~
 
-cuDNN support
+The following libraries are optional dependencies.
+CuPy will enable these features only if they are installed.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6
-
-NCCL support
-
-* `nccl <https://github.com/NVIDIA/nccl>`_ v1.3+
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v4, v5, v5.1, v6, v7
+* `NCCL <https://github.com/NVIDIA/nccl>`_ v1.3+
 
 Install CuPy
 ------------
@@ -164,6 +171,11 @@ If you want to use cuDNN or NCCL installed in other directory, please use ``CFLA
   export CFLAGS=-I/path/to/cudnn/include
   export LDFLAGS=-L/path/to/cudnn/lib
   export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+
+.. note::
+
+   Use full paths for the environment variables.
+   ``distutils`` that is used in the setup script does not parse the home directory mark ``~``.
 
 
 Install CuPy for developers

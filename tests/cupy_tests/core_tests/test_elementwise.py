@@ -70,3 +70,63 @@ class TestElementwiseInvalidArgument(unittest.TestCase):
     def test_invalid_kernel_name(self):
         with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
             cupy.ElementwiseKernel('T x', '', '', '1')
+
+
+@testing.gpu
+class TestElementwiseType(unittest.TestCase):
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_upper_1(self, xp, dtype):
+        a = xp.array([0], dtype=xp.int8)
+        b = xp.iinfo(dtype).max
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_upper_2(self, xp, dtype):
+        a = xp.array([1], dtype=xp.int8)
+        b = xp.iinfo(dtype).max - 1
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_upper_3(self, xp, dtype):
+        a = xp.array([xp.iinfo(dtype).max], dtype=dtype)
+        b = xp.int8(0)
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_upper_4(self, xp, dtype):
+        a = xp.array([xp.iinfo(dtype).max - 1], dtype=dtype)
+        b = xp.int8(1)
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_lower_1(self, xp, dtype):
+        a = xp.array([0], dtype=xp.int8)
+        b = xp.iinfo(dtype).min
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_lower_2(self, xp, dtype):
+        a = xp.array([-1], dtype=xp.int8)
+        b = xp.iinfo(dtype).min + 1
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_lower_3(self, xp, dtype):
+        a = xp.array([xp.iinfo(dtype).min], dtype=dtype)
+        b = xp.int8(0)
+        return a + b
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_large_int_lower_4(self, xp, dtype):
+        a = xp.array([xp.iinfo(dtype).min + 1], dtype=dtype)
+        b = xp.int8(-1)
+        return a + b

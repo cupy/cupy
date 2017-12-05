@@ -31,8 +31,12 @@ Decompositions
 Matrix eigenvalues
 ------------------
 
-.. autofunction:: cupy.linalg.eigh
-.. autofunction:: cupy.linalg.eigvalsh
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.linalg.eigh
+   cupy.linalg.eigvalsh
 
 Norms etc.
 ----------
@@ -59,3 +63,4 @@ Solving linear equations
    cupy.linalg.tensorsolve
    cupy.linalg.inv
    cupy.linalg.pinv
+   cupy.linalg.tensorinv

@@ -12,6 +12,21 @@ import cupy
 from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
+from cupy.cuda import device
+
+
+_gumbel_kernel = None
+
+
+def _get_gumbel_kernel():
+    global _gumbel_kernel
+    if _gumbel_kernel is None:
+        _gumbel_kernel = core.ElementwiseKernel(
+            'T x, T loc, T scale', 'T y',
+            'y = loc - log(-log(1 - x)) * scale',
+            'gumbel_kernel'
+        )
+    return _gumbel_kernel
 
 
 class RandomState(object):
@@ -50,11 +65,6 @@ class RandomState(object):
         # When createGenerator raises an error, _generator is not initialized
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
-
-    def set_stream(self, stream=None):
-        if stream is None:
-            stream = cuda.Stream()
-        curand.setStream(self._generator, stream.ptr)
 
     def _generate_normal(self, func, size, dtype, *args):
         # curand functions below don't support odd size.
@@ -167,16 +177,30 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, each element of the array is ``numpy.int32``.
+            Currently, only 32 bit integers can be sampled.
+            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
+            a ``numpy.int32`` array is returned.
+            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
+            a ``numpy.uint32`` array is returned.
         """
-        dtype = numpy.int32
         if size is None:
             return self.interval(mx, 1).reshape(())
         elif isinstance(size, int):
             size = (size, )
 
         if mx == 0:
-            return cupy.zeros(size, dtype=dtype)
+            return cupy.zeros(size, dtype=numpy.int32)
+
+        if mx < 0:
+            raise ValueError(
+                'mx must be non-negative (actual: {})'.format(mx))
+        elif mx <= 0x7fffffff:
+            dtype = numpy.int32
+        elif mx <= 0xffffffff:
+            dtype = numpy.uint32
+        else:
+            raise ValueError(
+                'mx must be within uint32 range (actual: {})'.format(mx))
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
@@ -226,7 +250,7 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
-            seed = numpy.uint64(seed)
+            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
@@ -240,6 +264,31 @@ class RandomState(object):
 
         """
         return self.normal(size=size, dtype=dtype)
+
+    def tomaxint(self, size=None):
+        """Draws integers between 0 and max integer inclusive.
+
+        Args:
+            size (int or tuple of ints): Output shape.
+
+        Returns:
+            cupy.ndarray: Drawn samples.
+
+        .. seealso::
+            :meth:`numpy.random.RandomState.tomaxint`
+
+        """
+        if size is None:
+            size = ()
+        sample = cupy.empty(size, dtype=cupy.int_)
+        # cupy.random only uses int32 random generator
+        size_in_int = sample.dtype.itemsize // 4
+        curand.generate(
+            self._generator, sample.data.ptr, sample.size * size_in_int)
+
+        # Disable sign bit
+        sample &= cupy.iinfo(cupy.int_).max
+        return sample
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformly-distributed samples over an interval.
@@ -313,12 +362,12 @@ class RandomState(object):
         if p is not None:
             p = cupy.broadcast_to(p, (size, a_size))
             index = cupy.argmax(cupy.log(p) +
-                                cupy.random.gumbel(size=(size, a_size)),
+                                self.gumbel(size=(size, a_size)),
                                 axis=1)
             if not isinstance(shape, six.integer_types):
                 index = cupy.reshape(index, shape)
         else:
-            index = cupy.random.randint(0, a_size, size=shape)
+            index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
 
@@ -435,6 +484,51 @@ def _cupy_permutation():
         'cupy_permutation',
     )
 
+    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a Gumbel distribution.
+
+        .. seealso::
+            :func:`cupy.random.gumbel` for full documentation,
+            :meth:`numpy.random.RandomState.gumbel`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        # We use `1 - x` as input of `log` method to prevent overflow.
+        # It obeys numpy implementation.
+        _get_gumbel_kernel()(x, loc, scale, x)
+        return x
+
+    def randint(self, low, high=None, size=None, dtype='l'):
+        """Returns a scalar or an array of integer values over ``[low, high)``.
+
+        .. seealso::
+            :func:`cupy.random.randint` for full documentation,
+            :meth:`numpy.random.RandomState.randint`
+        """
+        if high is None:
+            lo = 0
+            hi = low
+        else:
+            lo = low
+            hi = high
+
+        if lo >= hi:
+            raise ValueError('low >= high')
+        if lo < cupy.iinfo(dtype).min:
+            raise ValueError(
+                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+        if hi > cupy.iinfo(dtype).max + 1:
+            raise ValueError(
+                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+
+        diff = hi - lo - 1
+        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
+            raise NotImplementedError(
+                'Sampling from a range whose extent is larger than int32 '
+                'range is currently not supported')
+        x = self.interval(diff, size).astype(dtype, copy=False)
+        cupy.add(x, lo, out=x)
+        return x
+
 
 def seed(seed=None):
     """Resets the state of the random number generator with a seed.
@@ -482,9 +576,24 @@ def get_random_state():
         seed = os.getenv('CUPY_SEED')
         if seed is None:
             seed = os.getenv('CHAINER_SEED')
+        if seed is not None:
+            seed = numpy.uint64(int(seed))
         rs = RandomState(seed)
         rs = _random_states.setdefault(dev.id, rs)
     return rs
+
+
+def set_random_state(rs):
+    """Sets the state of the random number generator for the current device.
+
+    Args:
+        state(RandomState): Random state to set for the current device.
+    """
+    if not isinstance(rs, RandomState):
+        raise TypeError(
+            'Random state must be an instance of RandomState. '
+            'Actual: {}'.format(type(rs)))
+    _random_states[device.get_device_id()] = rs
 
 
 def _check_and_get_dtype(dtype):

@@ -39,7 +39,7 @@ cdef class ndarray:
     cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray clip(self, a_min, a_max, out=*)
+    cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
 
     cpdef ndarray trace(self, offset=*, axis1=*, axis2=*, dtype=*,
                         out=*)
@@ -72,3 +72,6 @@ cdef class Indexer:
         readonly tuple shape
 
     cdef CPointer get_pointer(self)
+
+
+cpdef ndarray ascontiguousarray(ndarray a, dtype=*)

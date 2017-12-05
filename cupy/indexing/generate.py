@@ -160,9 +160,9 @@ array([1, 2, 3, 0, 0, 4, 5, 6], dtype=int32)
 
 
 def indices(dimensions, dtype=int):
-    """Return an array representing the indices of a grid.
+    """Returns an array representing the indices of a grid.
 
-    Compute an array where the subarrays contain index values 0,1,...
+    Computes an array where the subarrays contain index values 0,1,...
     varying only along the corresponding axis.
 
     Args:
@@ -239,7 +239,7 @@ def ix_(*args):
     for k, new in enumerate(args):
         new = from_data.asarray(new)
         if new.ndim != 1:
-            raise ValueError("Cross index must be 1 dimensional")
+            raise ValueError('Cross index must be 1 dimensional')
         if new.size == 0:
             # Explicitly type empty arrays to avoid float default
             new = new.astype(numpy.intp)
@@ -252,7 +252,60 @@ def ix_(*args):
 # TODO(okuta): Implement ravel_multi_index
 
 
-# TODO(okuta): Implement unravel_index
+def unravel_index(indices, dims, order='C'):
+    """Converts a flat index or array of flat indices into a tuple of coordinate arrays.
+
+    Args:
+        indices (cupy.ndarray): An integer array whose elements are indices
+            into the flattened version of an array of dimensions :obj:`dims`.
+        dims (tuple of ints): The shape of the array to use for unraveling indices.
+        order ('C' or 'F'): Determines whether the indices should be viewed as indexing
+            in row-major (C-style) or column-major (Fortran-style) order.
+
+    Returns: tuple of ndarrays:
+        Each array in the tuple has the same shape as the indices array.
+
+    Examples
+    --------
+    >>> cupy.unravel_index(cupy.array([22, 41, 37]), (7, 6))
+    (array([3, 6, 6]), array([4, 5, 1]))
+    >>> cupy.unravel_index(cupy.array([31, 41, 13]), (7, 6), order='F')
+    (array([3, 6, 6]), array([4, 5, 1]))
+
+    .. seealso:: :func:`numpy.unravel_index`
+
+    """
+    if order is None:
+        order = 'C'
+
+    if order == 'C':
+        dims = reversed(dims)
+    elif order == 'F':
+        pass
+    else:
+        raise TypeError('order not understood')
+
+    if not cupy.can_cast(indices, cupy.int64, 'same_kind'):
+        raise TypeError(
+            'Iterator operand 0 dtype could not be cast '
+            'from dtype(\'{}\') to dtype(\'{}\') '
+            'according to the rule \'same_kind\''.format(
+                indices.dtype, cupy.int64().dtype))
+
+    if (indices < 0).any():
+        raise ValueError('invalid entry in index array')
+
+    unraveled_coords = []
+    for dim in dims:
+        unraveled_coords.append(indices % dim)
+        indices = indices // dim
+
+    if (indices > 0).any():
+        raise ValueError('invalid entry in index array')
+
+    if order == 'C':
+        unraveled_coords = reversed(unraveled_coords)
+    return tuple(unraveled_coords)
 
 
 # TODO(okuta): Implement diag_indices

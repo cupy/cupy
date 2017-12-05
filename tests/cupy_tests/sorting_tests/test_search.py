@@ -59,6 +59,12 @@ class TestSearch(unittest.TestCase):
         return a.argmax(axis=2)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_argmax_tie(self, xp, dtype):
+        a = xp.array([0, 5, 2, 3, 4, 5], dtype)
+        return a.argmax()
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_argmax_zero_size(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
@@ -125,6 +131,12 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=2)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_argmin_tie(self, xp, dtype):
+        a = xp.array([0, 1, 2, 3, 0, 5], dtype)
+        return a.argmin()
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_argmin_zero_size(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
@@ -160,8 +172,8 @@ class TestWhereTwoArrays(unittest.TestCase):
         # Almost all values of a matrix `shaped_random` makes are not zero.
         # To make a sparse matrix, we need multiply `m`.
         cond = testing.shaped_random(self.cond_shape, xp, cond_type) * m
-        x = testing.shaped_random(self.x_shape, xp, x_type)
-        y = testing.shaped_random(self.y_shape, xp, y_type)
+        x = testing.shaped_random(self.x_shape, xp, x_type, seed=0)
+        y = testing.shaped_random(self.y_shape, xp, y_type, seed=1)
         return xp.where(cond, x, y)
 
 

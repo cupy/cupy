@@ -30,16 +30,19 @@ MODULES = [
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',
+            'cupy.cuda.cufft',
             'cupy.cuda.curand',
             'cupy.cuda.cusparse',
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
+            'cupy.cuda.memory_hook',
             'cupy.cuda.nvrtc',
             'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
+            'cupy.cuda.stream',
             'cupy.cuda.runtime',
             'cupy.util',
         ],
@@ -48,6 +51,7 @@ MODULES = [
             'cuda.h',
             'cuda_profiler_api.h',
             'cuda_runtime.h',
+            'cufft.h',
             'curand.h',
             'cusparse.h',
             'nvrtc.h',
@@ -57,6 +61,7 @@ MODULES = [
             'cublas',
             'cuda',
             'cudart',
+            'cufft',
             'curand',
             'cusparse',
             'nvrtc',
@@ -68,6 +73,7 @@ MODULES = [
         'name': 'cudnn',
         'file': [
             'cupy.cuda.cudnn',
+            'cupy.cudnn',
         ],
         'include': [
             'cudnn.h',
@@ -339,6 +345,9 @@ except ImportError:
 def cythonize(extensions, arg_options):
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
+
+    # Embed signatures for Sphinx documentation.
+    directives['embedsignature'] = True
 
     cythonize_option_keys = ('annotate',)
     cythonize_options = {key: arg_options[key]

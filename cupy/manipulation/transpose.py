@@ -36,6 +36,30 @@ def swapaxes(a, axis1, axis2):
     return a.swapaxes(axis1, axis2)
 
 
+def moveaxis(a, source, destination):
+    """Moves axes of an array to new positions.
+
+    Other axes remain in their original order.
+
+    Args:
+        a (cupy.ndarray): Array whose axes should be reordered.
+        source (int or sequence of int):
+            Original positions of the axes to move. These must be unique.
+        destination (int or sequence of int):
+            Destination positions for each of the original axes. These must
+            also be unique.
+
+    Returns:
+        cupy.ndarray:
+        Array with moved axes. This array is a view of the input array.
+
+    .. seealso:: :func:`numpy.moveaxis`
+
+    """
+    # TODO(fukatani): check type
+    return core.moveaxis(a, source, destination)
+
+
 def transpose(a, axes=None):
     """Permutes the dimensions of an array.
 

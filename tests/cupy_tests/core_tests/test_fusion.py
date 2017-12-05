@@ -415,17 +415,33 @@ class TestFusionArithmetic(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
     def check_unary(self, name, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
     def check_binary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return a, b
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    @fusion_default_array_equal()
+    def check_binary_without_complex(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return a, b
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    @fusion_default_array_equal()
+    def check_binary_without_bool(self, name, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return a, b
@@ -478,7 +494,8 @@ class TestFusionArithmetic(unittest.TestCase):
         self.check_binary_negative_float('power')
 
     def test_subtract(self):
-        self.check_binary('subtract')
+        # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
+        self.check_binary_without_bool('subtract')
 
     def test_true_divide(self):
         with testing.NumpyError(divide='ignore'):
@@ -490,7 +507,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_floor_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('floor_divide')
+            self.check_binary_without_complex('floor_divide')
 
     def test_floor_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -498,7 +515,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('fmod')
+            self.check_binary_without_complex('fmod')
 
     def test_fmod_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -521,7 +538,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_remainder(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('remainder')
+            self.check_binary_without_complex('remainder')
 
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -534,22 +551,25 @@ class TestFusionUfunc(unittest.TestCase):
     def sample_function(x, y, z):
         return cupy.square(cupy.add(x, y))
 
-    def random_bool(self):
+    def random_bool(self, seed=0):
         return testing.shaped_random((3, 3),
                                      xp=cupy,
-                                     dtype=numpy.bool_)
+                                     dtype=numpy.bool_,
+                                     seed=seed)
 
-    def random_int(self, lower=-1000, higher=1000):
+    def random_int(self, lower=-1000, higher=1000, seed=0):
         return testing.shaped_random((3, 3),
                                      xp=cupy,
                                      dtype=numpy.int64,
-                                     scale=(higher - lower)) + lower
+                                     scale=(higher - lower),
+                                     seed=seed) + lower
 
-    def random_real(self, lower=-1000, higher=1000):
+    def random_real(self, lower=-1000, higher=1000, seed=0):
         return testing.shaped_random((3, 3),
                                      xp=cupy,
                                      dtype=numpy.float64,
-                                     scale=(higher - lower)) + lower
+                                     scale=(higher - lower),
+                                     seed=seed) + lower
 
     def check(self, func, n, gen, args=None):
         if args is None:
@@ -789,10 +809,14 @@ class TestFusionUfunc(unittest.TestCase):
 
     def test_special(self):
         self.check(cupy.where, 3,
-                   (self.random_bool, self.random_int, self.random_int),
+                   (self.random_bool,
+                    lambda *args: self.random_int(*args, seed=0),
+                    lambda *args: self.random_int(*args, seed=1)),
                    ((), (0, 100), (0, 100)))
         self.check(cupy.clip, 3,
-                   (self.random_real, self.random_real, self.random_real),
+                   (lambda *args: self.random_real(*args, seed=0),
+                    lambda *args: self.random_real(*args, seed=1),
+                    lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
 
     def test_reduce(self):

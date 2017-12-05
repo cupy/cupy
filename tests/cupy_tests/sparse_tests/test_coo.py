@@ -110,6 +110,15 @@ class TestCooMatrix(unittest.TestCase):
         testing.assert_array_equal(
             self.m.col, cupy.array([0, 1, 3, 2], self.dtype))
 
+    def test_init_copy(self):
+        n = cupy.sparse.coo_matrix(self.m)
+        self.assertIsNot(n, self.m)
+        cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
+
+    def test_init_copy_other_sparse(self):
+        n = cupy.sparse.coo_matrix(self.m.tocsr())
+        cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 
@@ -701,6 +710,13 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     def test_transpose_axes_int(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.transpose(axes=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_eliminate_zeros(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.eliminate_zeros()
+        self.assertEqual(m.nnz, 3)
+        return m.toarray()
 
 
 @testing.parameterize(*testing.product({

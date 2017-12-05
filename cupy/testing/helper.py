@@ -12,6 +12,7 @@ import unittest
 import warnings
 
 import numpy
+import six
 
 import cupy
 from cupy import internal
@@ -48,7 +49,11 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         self.fail('Only numpy raises error\n\n' + numpy_tb)
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
-    elif type(cupy_error) is not type(numpy_error):
+    elif not isinstance(cupy_error, type(numpy_error)):
+        # CuPy errors should be at least as explicit as the NumPy errors, i.e.
+        # allow CuPy errors to derive from NumPy errors but not the opposite.
+        # This ensures that try/except blocks that catch NumPy errors also
+        # catch CuPy errors.
         msg = '''Different types of errors occurred
 
 cupy
@@ -57,7 +62,8 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not isinstance(cupy_error, accept_error):
+    elif not (isinstance(cupy_error, accept_error) and
+              isinstance(numpy_error, accept_error)):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
@@ -137,14 +143,14 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     Args:
          rtol(float): Relative tolerance.
-         atol(float): Absolute tolerance
+         atol(float): Absolute tolerance.
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
@@ -153,7 +159,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         contiguous_check(bool): If ``True``, consistency of contiguousness is
+         contiguous_check(bool): If ``True``, consistency of contiguity is
              also checked.
 
     Decorated test fixture is required to return the arrays whose values are
@@ -208,7 +214,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
@@ -239,12 +245,12 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
-             If it is ``True`` all error types are acceptable.
-             If it is ``False`` no error is acceptable.
+             If it is ``True``, all error types are acceptable.
+             If it is ``False``, no error is acceptable.
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
@@ -272,7 +278,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
@@ -305,7 +311,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
@@ -377,7 +383,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool, Exception or tuple of Exception): Sepcify
+         accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
              this argument, the errors are ignored and not raised.
@@ -407,7 +413,7 @@ def numpy_cupy_equal(name='xp', sp_name=None):
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
 
-    Decorated test fixture is required throw same errors
+    Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
@@ -442,11 +448,15 @@ def numpy_cupy_raises(name='xp', sp_name=None, accept_error=Exception):
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
+         accept_error(bool, Exception or tuple of Exception): Specify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
-
-    .. seealso:: :func:`cupy.testing.assert_array_less`
     """
 
     def decorator(impl):
@@ -543,11 +553,11 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
-         no_float16(bool): If, True, ``numpy.float16`` is
+         no_float16(bool): If ``True``, ``numpy.float16`` is
              omitted from candidate dtypes.
-         no_bool(bool): If, True, ``numpy.bool_`` is
+         no_bool(bool): If ``True``, ``numpy.bool_`` is
              omitted from candidate dtypes.
-         no_complex(bool): If, True, ``numpy.complex64`` and
+         no_complex(bool): If ``True``, ``numpy.complex64`` and
              ``numpy.complex128`` are omitted from candidate dtypes.
 
     dtypes to be tested: ``numpy.complex64`` (optional),
@@ -602,7 +612,7 @@ def for_float_dtypes(name='dtype', no_float16=False):
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
-         no_float16(bool): If, True, ``numpy.float16`` is
+         no_float16(bool): If ``True``, ``numpy.float16`` is
              omitted from candidate dtypes.
 
     dtypes to be tested are ``numpy.float16`` (optional), ``numpy.float32``,
@@ -822,7 +832,7 @@ def for_orders(orders, name='order'):
     """Decorator to parameterize tests with order.
 
     Args:
-         orders(list of orders): orders to be tested.
+         orders(list of order): orders to be tested.
          name(str): Argument name to which the specified order is passed.
 
     This decorator adds a keyword argument specified by ``name``
@@ -1015,9 +1025,13 @@ class NumpyAliasTestBase(unittest.TestCase):
 class NumpyAliasBasicTestBase(NumpyAliasTestBase):
 
     def test_argspec(self):
+        if six.PY2:
+            f = inspect.getargspec
+        else:
+            f = inspect.signature
         self.assertEqual(
-            inspect.getargspec(self.cupy_func),
-            inspect.getargspec(self.numpy_func))
+            f(self.cupy_func),
+            f(self.numpy_func))
 
     def test_docstring(self):
         cupy_func = self.cupy_func

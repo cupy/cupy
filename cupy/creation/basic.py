@@ -144,7 +144,7 @@ def zeros(shape, dtype=float, order='C'):
 
     """
     a = cupy.ndarray(shape, dtype, order=order)
-    a.data.memset(0, a.nbytes)
+    a.data.memset_async(0, a.nbytes)
     return a
 
 
@@ -167,7 +167,7 @@ def zeros_like(a, dtype=None):
     if dtype is None:
         dtype = a.dtype
     a = cupy.ndarray(a.shape, dtype)
-    a.data.memset(0, a.nbytes)
+    a.data.memset_async(0, a.nbytes)
     return a
 
 

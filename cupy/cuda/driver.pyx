@@ -23,6 +23,9 @@ cdef extern from "cupy_cuda.h" nogil:
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)
 
+    # Context management
+    int cuCtxGetCurrent(Context* pctx)
+
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
                      void** optionValues, LinkState* stateOut)
@@ -67,6 +70,18 @@ class CUDADriverError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CUDADriverError(status)
+
+
+###############################################################################
+# Context management
+###############################################################################
+
+cpdef size_t ctxGetCurrent() except *:
+    cdef Context* ctx
+    with nogil:
+        status = cuCtxGetCurrent(ctx)
+    check_status(status)
+    return <size_t>ctx
 
 
 ###############################################################################

@@ -21,35 +21,47 @@ cpdef int get_device_id() except *:
 
 cdef dict _cublas_handles = {}
 cdef dict _cusolver_handles = {}
+cdef dict _cusolver_sp_handles = {}
 cdef dict _cusparse_handles = {}
 cdef dict _compute_capabilities = {}
 
 
-cpdef get_cublas_handle():
+cpdef size_t get_cublas_handle() except *:
     dev_id = get_device_id()
-    if dev_id in _cublas_handles:
-        return _cublas_handles[dev_id]
+    ret = _cublas_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cublas_handle
 
 
-cpdef get_cusolver_handle():
+cpdef size_t get_cusolver_handle() except *:
     dev_id = get_device_id()
-    if dev_id in _cusolver_handles:
-        return _cusolver_handles[dev_id]
+    ret = _cusolver_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cusolver_handle
 
 
-cpdef get_cusparse_handle():
+cpdef get_cusolver_sp_handle():
     dev_id = get_device_id()
-    if dev_id in _cusparse_handles:
-        return _cusparse_handles[dev_id]
+    if dev_id in _cusolver_sp_handles:
+        return _cusolver_sp_handles[dev_id]
+    return Device().cusolver_sp_handle
+
+
+cpdef size_t get_cusparse_handle() except *:
+    dev_id = get_device_id()
+    ret = _cusparse_handles.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().cusparse_handle
 
 
-cpdef get_compute_capability():
+cpdef str get_compute_capability():
     dev_id = get_device_id()
-    if dev_id in _compute_capabilities:
-        return _compute_capabilities[dev_id]
+    ret = _compute_capabilities.get(dev_id, None)
+    if ret is not None:
+        return ret
     return Device().compute_capability
 
 
@@ -165,6 +177,24 @@ cdef class Device:
         with self:
             handle = cusolver.create()
             _cusolver_handles[self.id] = handle
+            return handle
+
+    @property
+    def cusolver_sp_handle(self):
+        """The cuSOLVER Sphandle for this device.
+
+        The same handle is used for the same device even if the Device instance
+        itself is different.
+
+        """
+        if not cusolver_enabled:
+            raise RuntimeError(
+                'Current cupy only supports cusolver in CUDA 8.0')
+        if self.id in _cusolver_sp_handles:
+            return _cusolver_sp_handles[self.id]
+        with self:
+            handle = cusolver.spCreate()
+            _cusolver_sp_handles[self.id] = handle
             return handle
 
     @property

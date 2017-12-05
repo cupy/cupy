@@ -58,7 +58,7 @@ def randn(*size, **kwarg):
     return distributions.normal(size=size, dtype=dtype)
 
 
-def randint(low, high=None, size=None):
+def randint(low, high=None, size=None, dtype='l'):
     """Returns a scalar or an array of integer values over ``[low, high)``.
 
     Each element of returned values are independently sampled from
@@ -72,6 +72,7 @@ def randint(low, high=None, size=None):
             and lower bound of the interval is set to ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
+        dtype: Data type specifier.
 
     Returns:
         int or cupy.ndarray of ints: If size is ``None``,
@@ -79,19 +80,8 @@ def randint(low, high=None, size=None):
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
-    if high is None:
-        lo = 0
-        hi = low
-    else:
-        lo = low
-        hi = high
-
-    if lo >= hi:
-        raise ValueError('low >= high')
-
-    diff = hi - lo - 1
     rs = generator.get_random_state()
-    return lo + rs.interval(diff, size)
+    return rs.randint(low, high, size, dtype)
 
 
 def random_integers(low, high=None, size=None):

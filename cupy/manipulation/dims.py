@@ -1,4 +1,5 @@
 import six
+import warnings
 
 import cupy
 from cupy import core
@@ -117,7 +118,7 @@ def broadcast_arrays(*args):
     .. seealso:: :func:`numpy.broadcast_arrays`
 
     """
-    return broadcast(*args).values
+    return list(broadcast(*args).values)
 
 
 def broadcast_to(array, shape):
@@ -154,6 +155,13 @@ def expand_dims(a, axis):
     shape = a.shape
     if axis < 0:
         axis = axis + len(shape) + 1
+    if axis > a.ndim or axis < 0:
+        # TODO(unno): Too large and too small axis is deprecated in NumPy 1.13
+        # We need to fix this behavior after NumPy forbids it.
+        warnings.warn(
+            'Both axis > a.ndim and axis < -a.ndim - 1 are deprecated and '
+            'will raise an AxisError in the future.',
+            DeprecationWarning)
     return a.reshape(shape[:axis] + (1,) + shape[axis:])
 
 

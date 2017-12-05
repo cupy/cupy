@@ -99,7 +99,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # {'shape': (), 'indexes': (False, True, True)},
     # {'shape': (), 'indexes': numpy.array([True])},
     # {'shape': (), 'indexes': numpy.array([False, True, True])},
-    # {'shape': (), 'indexes': numpy.empty((), dtype=numpy.bool_)},
+    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
     {'shape': (0,), 'indexes': None},
     {'shape': (0,), 'indexes': ()},
     # TODO(niboshi): pass the following commented out tests
@@ -108,7 +109,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # {'shape': (0,), 'indexes': (False, True, True)},
     # {'shape': (0,), 'indexes': numpy.array([True])},
     # {'shape': (0,), 'indexes': numpy.array([False, True, True])},
-    # {'shape': (0,), 'indexes': numpy.empty((), dtype=numpy.bool_)},
+    # {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    # {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
@@ -138,36 +140,55 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp(unittest.TestCase):
         return a[self.indexes]
 
 
-@testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': (slice(None),)},
-    {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
-)
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
+    shape = (2, 3, 4)
+
     def test_adv_getitem_cupy_indices1(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([1, 0])
+        original_index = index.copy()
         b = a[index]
         b_cpu = a.get()[index.get()]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
     def test_adv_getitem_cupy_indices2(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([1, 0])
+        original_index = index.copy()
         b = a[(slice(None), index)]
         b_cpu = a.get()[(slice(None), index.get())]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
     def test_adv_getitem_cupy_indices3(self):
-        shape = (2, 3, 4)
-        a = cupy.zeros(shape)
+        a = cupy.zeros(self.shape)
         index = cupy.array([True, False])
+        original_index = index.copy()
         b = a[index]
         b_cpu = a.get()[index.get()]
         testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
+
+    def test_adv_getitem_cupy_indices4(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([4, -5])
+        original_index = index.copy()
+        b = a[index]
+        b_cpu = a.get()[index.get() % self.shape[1]]
+        testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
+
+    def test_adv_getitem_cupy_indices5(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([4, -5])
+        original_index = index.copy()
+        b = a[[1, 0], index]
+        b_cpu = a.get()[[1, 0], index.get() % self.shape[1]]
+        testing.assert_array_equal(b, b_cpu)
+        testing.assert_array_equal(original_index, index)
 
 
 @testing.parameterize(
@@ -307,6 +328,30 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
+    # zero-dim and zero-sized arrays
+    {'shape': (), 'indexes': Ellipsis, 'value': 1},
+    {'shape': (), 'indexes': (), 'value': 1},
+    {'shape': (), 'indexes': None, 'value': 1},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (), 'indexes': True, 'value': 1},
+    # {'shape': (), 'indexes': (True,), 'value': 1},
+    # {'shape': (), 'indexes': (False, True, True), 'value': 1},
+    # {'shape': (), 'indexes': numpy.array([True]), 'value': 1},
+    # {'shape': (), 'indexes': numpy.array([False, True, True]), 'value': 1},
+    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (0,), 'indexes': None, 'value': 1},
+    {'shape': (0,), 'indexes': (), 'value': 1},
+    # TODO(niboshi): pass the following commented out tests
+    # {'shape': (0,), 'indexes': True, 'value': 1},
+    # {'shape': (0,), 'indexes': (True,), 'value': 1},
+    # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
+    # {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_),
+    #  'value': 1},
+    # {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_),
+    #  'value': 1},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
@@ -378,21 +423,43 @@ class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
 
-    def test_cupy_indices_integer_array(self):
-        shape = (2, 3)
-        a = cupy.zeros(shape)
-        indexes = cupy.array([0, 1])
-        a[:, indexes] = cupy.array(1.)
+    shape = (2, 3)
+
+    def test_cupy_indices_integer_array_1(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([0, 1])
+        original_index = index.copy()
+        a[:, index] = cupy.array(1.)
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
+
+    def test_cupy_indices_integer_array_2(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([3, -5])
+        original_index = index.copy()
+        a[:, index] = cupy.array(1.)
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
+
+    def test_cupy_indices_integer_array_3(self):
+        a = cupy.zeros(self.shape)
+        index = cupy.array([3, -5])
+        original_index = index.copy()
+        a[[1, 1], index] = cupy.array(1.)
+        testing.assert_array_equal(
+            a, cupy.array([[0., 0., 0.], [1., 1., 0.]]))
+        testing.assert_array_equal(index, original_index)
 
     def test_cupy_indices_boolean_array(self):
-        shape = (2, 3)
-        a = cupy.zeros(shape)
-        indexes = cupy.array([True, False])
-        a[indexes] = cupy.array(1.)
+        a = cupy.zeros(self.shape)
+        index = cupy.array([True, False])
+        original_index = index.copy()
+        a[index] = cupy.array(1.)
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 1.], [0., 0., 0.]]))
+        testing.assert_array_almost_equal(original_index, index)
 
 
 @testing.gpu

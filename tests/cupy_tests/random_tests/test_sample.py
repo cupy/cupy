@@ -13,38 +13,11 @@ from cupy.testing import hypothesis
 
 @testing.gpu
 class TestRandint(unittest.TestCase):
-
     _multiprocess_can_split_ = True
 
-    def setUp(self):
-        self.rs_tmp = random.generator._random_states
-        device_id = cuda.Device().id
-        self.m = mock.Mock()
-        self.m.interval.return_value = 0
-        random.generator._random_states = {device_id: self.m}
-
-    def tearDown(self):
-        random.generator._random_states = self.rs_tmp
-
-    def test_value_error(self):
+    def test_lo_hi_reversed(self):
         with self.assertRaises(ValueError):
             random.randint(100, 1)
-
-    def test_high_and_size_are_none(self):
-        random.randint(3)
-        self.m.interval.assert_called_with(2, None)
-
-    def test_size_is_none(self):
-        random.randint(3, 5)
-        self.m.interval.assert_called_with(1, None)
-
-    def test_high_is_none(self):
-        random.randint(3, None, (1, 2, 3))
-        self.m.interval.assert_called_with(2, (1, 2, 3))
-
-    def test_no_none(self):
-        random.randint(3, 5, (1, 2, 3))
-        self.m.interval.assert_called_with(1, (1, 2, 3))
 
 
 @testing.fix_random()
@@ -86,28 +59,62 @@ class TestRandint2(unittest.TestCase):
 
 
 @testing.gpu
+class TestRandintDtype(unittest.TestCase):
+
+    @testing.for_dtypes([
+        numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32])
+    def test_dtype(self, dtype):
+        size = (1000,)
+        low = numpy.iinfo(dtype).min
+        high = numpy.iinfo(dtype).max + 1
+        x = random.randint(low, high, size, dtype)
+        self.assertLessEqual(low, min(x))
+        self.assertLessEqual(max(x), high)
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_dtype2(self, dtype):
+        dtype = numpy.dtype(dtype)
+
+        # randint does not support 64 bit integers
+        if dtype in (numpy.int64, numpy.uint64):
+            return
+
+        iinfo = numpy.iinfo(dtype)
+        size = (10000,)
+
+        x = random.randint(iinfo.min, iinfo.max + 1, size, dtype)
+        self.assertEqual(x.dtype, dtype)
+        self.assertLessEqual(iinfo.min, min(x))
+        self.assertLessEqual(max(x), iinfo.max)
+
+        # Lower bound check
+        with self.assertRaises(ValueError):
+            random.randint(iinfo.min - 1, iinfo.min + 10, size, dtype)
+
+        # Upper bound check
+        with self.assertRaises(ValueError):
+            random.randint(iinfo.max - 10, iinfo.max + 2, size, dtype)
+
+
+@testing.gpu
 class TestRandomIntegers(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    def setUp(self):
-        self.randint_tmp = random.sample_.randint
-        random.sample_.randint = mock.Mock()
-
-    def tearDown(self):
-        random.sample_.randint = self.randint_tmp
-
     def test_normal(self):
-        random.random_integers(3, 5)
-        random.sample_.randint.assert_called_with(3, 6, None)
+        with mock.patch('cupy.random.sample_.randint') as m:
+            random.random_integers(3, 5)
+        m.assert_called_with(3, 6, None)
 
     def test_high_is_none(self):
-        random.random_integers(3, None)
-        random.sample_.randint.assert_called_with(1, 4, None)
+        with mock.patch('cupy.random.sample_.randint') as m:
+            random.random_integers(3, None)
+        m.assert_called_with(1, 4, None)
 
     def test_size_is_not_none(self):
-        random.random_integers(3, 5, (1, 2, 3))
-        random.sample_.randint.assert_called_with(3, 6, (1, 2, 3))
+        with mock.patch('cupy.random.sample_.randint') as m:
+            random.random_integers(3, 5, (1, 2, 3))
+        m.assert_called_with(3, 6, (1, 2, 3))
 
 
 @testing.fix_random()
@@ -202,15 +209,15 @@ class TestChoice(unittest.TestCase):
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):
-        random.sample_.random_sample = mock.Mock()
-        random.rand(1, 2, 3, dtype=numpy.float32)
-        random.sample_.random_sample.assert_called_once_with(
+        with mock.patch('cupy.random.sample_.random_sample') as m:
+            random.rand(1, 2, 3, dtype=numpy.float32)
+        m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_rand_default_dtype(self):
-        random.sample_.random_sample = mock.Mock()
-        random.rand(1, 2, 3)
-        random.sample_.random_sample.assert_called_once_with(
+        with mock.patch('cupy.random.sample_.random_sample') as m:
+            random.rand(1, 2, 3)
+        m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
 
     def test_rand_invalid_argument(self):
@@ -218,15 +225,15 @@ class TestRandomSample(unittest.TestCase):
             random.rand(1, 2, 3, unnecessary='unnecessary_argument')
 
     def test_randn(self):
-        random.distributions.normal = mock.Mock()
-        random.randn(1, 2, 3, dtype=numpy.float32)
-        random.distributions.normal.assert_called_once_with(
+        with mock.patch('cupy.random.distributions.normal') as m:
+            random.randn(1, 2, 3, dtype=numpy.float32)
+        m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_randn_default_dtype(self):
-        random.distributions.normal = mock.Mock()
-        random.randn(1, 2, 3)
-        random.distributions.normal.assert_called_once_with(
+        with mock.patch('cupy.random.distributions.normal') as m:
+            random.randn(1, 2, 3)
+        m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
 
     def test_randn_invalid_argument(self):

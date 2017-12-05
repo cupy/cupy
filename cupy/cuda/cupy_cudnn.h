@@ -300,6 +300,14 @@ cudnnStatus_t cudnnGetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
@@ -454,6 +462,21 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
 
+typedef enum {} cudnnRNNAlgo_t;
+typedef void* cudnnPersistentRNNPlan_t;
+
+cudnnStatus_t cudnnCreatePersistentRNNPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetPersistentRNNPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyPersistentRNNPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 cudnnStatus_t cudnnSetRNNDescriptor_v6(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -511,6 +534,14 @@ cudnnStatus_t cudnnSetConvolutionMathType(...) {
 }
 
 cudnnStatus_t cudnnGetConvolutionMathType(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 

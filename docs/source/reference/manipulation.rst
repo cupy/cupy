@@ -29,6 +29,7 @@ Transposition
    :toctree: generated/
    :nosignatures:
 
+   cupy.moveaxis
    cupy.rollaxis
    cupy.swapaxes
    cupy.transpose
