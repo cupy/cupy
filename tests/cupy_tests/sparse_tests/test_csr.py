@@ -362,8 +362,7 @@ class TestCsrMatrixInit(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'make_method': [
-        '_make', '_make_unordered', '_make_empty', '_make_duplicate',
-        '_make_shape'],
+        '_make', '_make_unordered', '_make_empty', '_make_shape'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
