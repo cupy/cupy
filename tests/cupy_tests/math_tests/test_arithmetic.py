@@ -75,19 +75,18 @@ class TestArithmeticUnary(unittest.TestCase):
             arg1 = xp.asarray(arg1)
         y = getattr(xp, self.name)(arg1)
 
-        # Some NumPy functions return Python scalars for Python scalar inputs.
+        # From NumPy>=1.11, some functions return Python scalars for Python
+        # scalar inputs.
         # We need to convert them to arrays to compare with CuPy outputs.
         if xp is numpy:
 
             # Note that Python `bool` is a subclass of `int`
             if (isinstance(arg1, int)
                     and self.name in ('real', 'imag')):
-                assert type(y) is int
                 y = xp.asarray(y)
 
             elif (isinstance(arg1, (float, complex))
                     and self.name in ('real', 'imag')):
-                assert type(y) is float
                 y = xp.asarray(y)
 
         # TODO(niboshi): Fix this
