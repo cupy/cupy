@@ -1,4 +1,3 @@
-import mock
 import os
 import threading
 import unittest
