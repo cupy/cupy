@@ -5,7 +5,6 @@ from cupy import testing
 from cupy.testing import condition
 
 import numpy
-import scipy.misc as scm
 
 
 @testing.gpu
@@ -129,5 +128,5 @@ class TestPermutationRandomness(unittest.TestCase):
     def _comb(self, N, k):
         val = numpy.float64(1)
         for i in range(k):
-            val *= (N-i)/(k-i)
+            val *= (N - i) / (k - i)
         return val
