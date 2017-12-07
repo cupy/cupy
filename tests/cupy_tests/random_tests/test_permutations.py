@@ -117,11 +117,17 @@ class TestPermutationRandomness(unittest.TestCase):
             raise
 
     def _calc_probability(self, count):
-        comb_all = scm.comb(self.num, self.num_half, exact=False)
+        comb_all = self._comb(self.num, self.num_half)
         comb_le_count = 0
         for i in range(count + 1):
-            tmp = scm.comb(self.num_half, i, exact=False)
+            tmp = self._comb(self.num_half, i)
             comb_i = tmp * tmp
             comb_le_count += comb_i
         prob = comb_le_count / comb_all
         return prob
+
+    def _comb(self, N, k):
+        val = numpy.float64(1)
+        for i in range(k):
+            val *= (N-i)/(k-i)
+        return val

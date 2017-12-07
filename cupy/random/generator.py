@@ -427,6 +427,51 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
+    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a Gumbel distribution.
+
+        .. seealso::
+            :func:`cupy.random.gumbel` for full documentation,
+            :meth:`numpy.random.RandomState.gumbel`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        # We use `1 - x` as input of `log` method to prevent overflow.
+        # It obeys numpy implementation.
+        _get_gumbel_kernel()(x, loc, scale, x)
+        return x
+
+    def randint(self, low, high=None, size=None, dtype='l'):
+        """Returns a scalar or an array of integer values over ``[low, high)``.
+
+        .. seealso::
+            :func:`cupy.random.randint` for full documentation,
+            :meth:`numpy.random.RandomState.randint`
+        """
+        if high is None:
+            lo = 0
+            hi = low
+        else:
+            lo = low
+            hi = high
+
+        if lo >= hi:
+            raise ValueError('low >= high')
+        if lo < cupy.iinfo(dtype).min:
+            raise ValueError(
+                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+        if hi > cupy.iinfo(dtype).max + 1:
+            raise ValueError(
+                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+
+        diff = hi - lo - 1
+        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
+            raise NotImplementedError(
+                'Sampling from a range whose extent is larger than int32 '
+                'range is currently not supported')
+        x = self.interval(diff, size).astype(dtype, copy=False)
+        cupy.add(x, lo, out=x)
+        return x
+
 
 def _cupy_permutation():
     return core.ElementwiseKernel(
@@ -483,51 +528,6 @@ def _cupy_permutation():
         ''',
         'cupy_permutation',
     )
-
-    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from a Gumbel distribution.
-
-        .. seealso::
-            :func:`cupy.random.gumbel` for full documentation,
-            :meth:`numpy.random.RandomState.gumbel`
-        """
-        x = self.uniform(size=size, dtype=dtype)
-        # We use `1 - x` as input of `log` method to prevent overflow.
-        # It obeys numpy implementation.
-        _get_gumbel_kernel()(x, loc, scale, x)
-        return x
-
-    def randint(self, low, high=None, size=None, dtype='l'):
-        """Returns a scalar or an array of integer values over ``[low, high)``.
-
-        .. seealso::
-            :func:`cupy.random.randint` for full documentation,
-            :meth:`numpy.random.RandomState.randint`
-        """
-        if high is None:
-            lo = 0
-            hi = low
-        else:
-            lo = low
-            hi = high
-
-        if lo >= hi:
-            raise ValueError('low >= high')
-        if lo < cupy.iinfo(dtype).min:
-            raise ValueError(
-                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi > cupy.iinfo(dtype).max + 1:
-            raise ValueError(
-                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
-
-        diff = hi - lo - 1
-        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
-            raise NotImplementedError(
-                'Sampling from a range whose extent is larger than int32 '
-                'range is currently not supported')
-        x = self.interval(diff, size).astype(dtype, copy=False)
-        cupy.add(x, lo, out=x)
-        return x
 
 
 def seed(seed=None):
