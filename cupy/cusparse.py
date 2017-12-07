@@ -178,6 +178,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
 
     """
     assert a.ndim == b.ndim == 2
+    assert a.has_canonical_format
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
     assert not (transa and transb)
@@ -226,6 +227,8 @@ def csrgeam(a, b, alpha=1, beta=1):
         cupy.sparse.csr_matrix: Result matrix.
 
     """
+    assert a.has_canonical_format
+    assert b.has_canonical_format
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
 
@@ -259,7 +262,9 @@ def csrgeam(a, b, alpha=1, beta=1):
         c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
         c_indices.data.ptr)
 
-    return cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=a.shape)
+    c = cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=a.shape)
+    c._has_canonical_format = True
+    return c
 
 
 def csrgemm(a, b, transa=False, transb=False):
@@ -279,6 +284,8 @@ def csrgemm(a, b, transa=False, transb=False):
 
     """
     assert a.ndim == b.ndim == 2
+    assert a.has_canonical_format
+    assert b.has_canonical_format
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
     if a_shape[1] != b_shape[0]:
@@ -320,7 +327,9 @@ def csrgemm(a, b, transa=False, transb=False):
         c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
         c_indices.data.ptr)
 
-    return cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
+    c = cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
+    c._has_canonical_format = True
+    return c
 
 
 def csr2dense(x, out=None):
@@ -545,7 +554,9 @@ def dense2csc(x):
         x.data.ptr, m, nnz_per_col.data.ptr,
         data.data.ptr, indices.data.ptr, indptr.data.ptr)
     # Note that a desciptor is recreated
-    return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    csc = cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    csc._has_canonical_format = True
+    return csc
 
 
 def dense2csr(x):
@@ -582,7 +593,9 @@ def dense2csr(x):
         x.data.ptr, m, nnz_per_row.data.ptr,
         data.data.ptr, indptr.data.ptr, indices.data.ptr)
     # Note that a desciptor is recreated
-    return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+    csr = cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+    csr._has_canonical_format = True
+    return csr
 
 
 def csr2csr_compress(x, tol):
