@@ -890,23 +890,37 @@ cdef class ndarray:
             if max_k < k:
                 max_k = k
 
+        # For simplicity, max_k is round up to the power of 2.
         max_k = max(32, 1 << max_k.bit_length())
 
+        # The parameter t is the length of the list that stores elements to be
+        # selected for each thread. We divide the array into sz subarrays.
+        # These parameters are determined from measurement on TITAN X.
         t = 4
         sz = 128 if self.size <= 1 << 21 else 256
 
-        if self.size // sz < max_k + 32 * t or max_k >= 256 or len(self.shape) > 1:
+        # If the array size is small or k is large, we simply sort the array.
+        if (self.size // sz < max_k + 32 * t or max_k >= 256
+                or len(self.shape) > 1):
             # kth is ignored.
             self.sort(axis=axis)
         else:
             ElementwiseKernel(
-                'raw T a, int32 k, int32 n, int32 m, int32 t',
+                'raw T a, int32 k, int32 m, int32 t',
                 '',
                 '''
+                    // In this kernel, 32 threads handle one subarray. This
+                    // number equals to the warp size. The first k elements are
+                    // always sorted and the next 32 times t elements stored
+                    // values that have possibilities to be selected.
+
+                    // This thread handles a[z:z+m].
                     int z = i / 32 * m;
                     int id = i % 32;
-                    bitonic_sort(a, z, k + z, id);
                     int x = 0;
+
+                    bitonic_sort(a, z, k + z, id);
+
                     for (int j = k + id + z; j < z + m; j += 32) {
                         if (a[j] < a[k - 1 + z]) {
                             T tmp = a[k + 32 * x + id + z];
@@ -914,12 +928,18 @@ cdef class ndarray:
                             a[j] = tmp;
                             ++x;
                         }
+
+                        // If at least one thread has found t values that can
+                        // be selected, we update the first k elements.
                         if (__any_sync(0xffffffff, x >= t)) {
                             bitonic_sort(a, k + z, 32 * t + k + z, id);
                             merge(a, k, id, z, min(k / 32, t));
                             x = 0;
                         }
                     }
+
+                    // Finally, we merge the first k elements and the
+                    // remainders to be stored.
                     bitonic_sort(a, k + z, 32 * t + k + z, id);
                     merge(a, k, id, z, min(k / 32, t));
                 ''',
@@ -936,6 +956,7 @@ cdef class ndarray:
                         }
                     }
 
+                    // Sort a[x:y].
                     __device__ void bitonic_sort(
                             CArray<T, 1> a, int x, int y, int i) {
                         for (int s = 2; s <= y - x; s *= 2) {
@@ -945,6 +966,7 @@ cdef class ndarray:
                         }
                     }
 
+                    // Merge first k elements and the next 32 times t elements.
                     __device__ void merge(
                             CArray<T, 1> a, int k, int i, int z, int t) {
                         for (int s = i; s < 32 * t; s += 32) {
@@ -954,16 +976,22 @@ cdef class ndarray:
                                 a[k + z + s] = tmp;
                             }
                         }
+
+                        // After merge step, the first k elements are already
+                        // bitonic. Therefore, we do not need to fully sort.
                         for (int w = k / 2; w >= 1; w /= 2) {
                             bitonic_sort_step(a, z, k + z, i, k, w);
                         }
                     }
                 '''
-            )(self, max_k, self.size, self.size // sz, t, size=32*sz)
+            )(self, max_k, self.size // sz, t, size=32*sz)
             ElementwiseKernel(
                 'raw T a, int32 k, int32 n, int32 sz',
                 '',
                 '''
+                    // In this kernel, we collect the first k elements of each
+                    // subarray and the remainder to the head of the array.
+
                     int m = n / sz;
                     for (int j = i; j < k; j += 32) {
                         for (int s = 1; s < sz; ++s) {
@@ -979,7 +1007,11 @@ cdef class ndarray:
                     }
                 '''
             )(self, max_k, self.size, sz, size=32)
-            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz + self.size % sz,))
+            # The elements that have possibilities to be selected are collected
+            # in the head of the array. We sort them to get the smallest k
+            # elements.
+            thrust.sort(self.dtype, self.data.ptr, 0,
+                        (max_k * sz + self.size % sz,))
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
