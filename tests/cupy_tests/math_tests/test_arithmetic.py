@@ -194,13 +194,14 @@ class TestArithmeticBinary(unittest.TestCase):
                     and isinstance(arg2, complex)):
                 y = y.astype(numpy.complex64)
 
-        # TODO(niboshi): Fix this. Division by zero results in
-        #    numpy => nan
-        #    cupy => +/- inf
-        y = xp.asarray(y)
+        # NumPy returns different values (nan/inf) on division by zero
+        # depending on the architecture.
+        # As it is not possible for CuPy to replicate this behavior, we ignore
+        # the difference here.
         if (self.name in ('floor_divide', 'remainder')
                 and y.dtype in (float_types + complex_types)
                 and (xp.asarray(self.arg2) == 0).any()):
+            y = xp.asarray(y)
             y[y == numpy.inf] = numpy.nan
             y[y == -numpy.inf] = numpy.nan
 
