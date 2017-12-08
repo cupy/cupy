@@ -890,17 +890,16 @@ cdef class ndarray:
             if max_k < k:
                 max_k = k
 
-        max_k = (max_k // 32 + 1) * 32
-        sz = 1 << 14
-        while sz * max_k > 16 * self.size:
-            sz //= 2
+        max_k = max(32, 1 << max_k.bit_length())
+        t = 4 if max_k <= 128 else 8
+        sz = 128 if self.size <= 1 << 21 else 256
 
-        if max_k > 1024 or sz < 32 or len(self.shape) > 1:
+        if self.size // sz < max_k + 32 * t or max_k >= 256 or len(self.shape) > 1:
             # kth is ignored.
             self.sort(axis=axis)
         else:
             ElementwiseKernel(
-                'raw T a, int32 k, int32 n, int32 m',
+                'raw T a, int32 k, int32 n, int32 m, int32 t',
                 '',
                 '''
                     int z = i / 32 * m;
@@ -914,29 +913,29 @@ cdef class ndarray:
                             a[j] = tmp;
                             ++x;
                         }
-                        if (__any_sync(0xffffffff, x >= k / 32)) {
-                            bitonic_sort(a, k + z, 2 * k + z, id);
-                            merge(a, k, id, z);
+                        if (__any_sync(0xffffffff, x >= t)) {
+                            bitonic_sort(a, k + z, 32 * t + k + z, id);
+                            merge(a, k, id, z, min(k / 32, t));
                             x = 0;
                         }
                     }
-                    bitonic_sort(a, k + z, 2 * k + z, id);
-                    merge(a, k, id, z);
+                    bitonic_sort(a, k + z, 32 * t + k + z, id);
+                    merge(a, k, id, z, min(k / 32, t));
                 ''',
                 preamble='''
-                    inline __device__ void bitonic_sort_step(CArray<T, 1> a,
+                    __device__ void bitonic_sort_step(CArray<T, 1> a,
                             int x, int y, int i, int s, int w) {
                         for (int j = i; j < (y - x) / 2; j += 32) {
                             int n = j + (j & -w);
                             T v = a[n + x], u = a[n + w + x];
-                            if (n / s % 2 == 0 ? v > u : v < u) {
+                            if (n & s ? v < u : v > u) {
                                 a[n + x] = u;
                                 a[n + w + x] = v;
                             }
                         }
                     }
 
-                    inline __device__ void bitonic_sort(
+                    __device__ void bitonic_sort(
                             CArray<T, 1> a, int x, int y, int i) {
                         for (int s = 2; s <= y - x; s *= 2) {
                             for (int w = s / 2; w >= 1; w /= 2) {
@@ -945,13 +944,13 @@ cdef class ndarray:
                         }
                     }
 
-                    inline __device__ void merge(
-                            CArray<T, 1> a, int k, int i, int z) {
-                        for (int s = i; s < k; s += 32) {
-                            if (a[s + z] > a[2 * k - 1 - s + z]) {
-                                T tmp = a[s + z];
-                                a[s + z] = a[2 * k - 1 - s + z];
-                                a[2 * k - 1 - s + z] = tmp;
+                    __device__ void merge(
+                            CArray<T, 1> a, int k, int i, int z, int t) {
+                        for (int s = i; s < 32 * t; s += 32) {
+                            if (a[k + z - s - 1] > a[k + z + s]) {
+                                T tmp = a[k + z - s - 1];
+                                a[k + z - s - 1] = a[k + z + s];
+                                a[k + z + s] = tmp;
                             }
                         }
                         for (int w = k / 2; w >= 1; w /= 2) {
@@ -959,7 +958,7 @@ cdef class ndarray:
                         }
                     }
                 '''
-            )(self, max_k, self.size, self.size // (sz // 32), size=sz)
+            )(self, max_k, self.size, self.size // sz, t, size=32*sz)
             ElementwiseKernel(
                 'raw T a, int32 k, int32 n, int32 m',
                 '',
@@ -972,8 +971,8 @@ cdef class ndarray:
                         }
                     }
                 '''
-            )(self, max_k, self.size, self.size // (sz // 32), size=32)
-            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz / 32,))
+            )(self, max_k, self.size, self.size // sz, size=32)
+            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz,))
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
