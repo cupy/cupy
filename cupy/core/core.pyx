@@ -891,7 +891,8 @@ cdef class ndarray:
                 max_k = k
 
         max_k = max(32, 1 << max_k.bit_length())
-        t = 4 if max_k <= 128 else 8
+
+        t = 4
         sz = 128 if self.size <= 1 << 21 else 256
 
         if self.size // sz < max_k + 32 * t or max_k >= 256 or len(self.shape) > 1:
@@ -960,19 +961,25 @@ cdef class ndarray:
                 '''
             )(self, max_k, self.size, self.size // sz, t, size=32*sz)
             ElementwiseKernel(
-                'raw T a, int32 k, int32 n, int32 m',
+                'raw T a, int32 k, int32 n, int32 sz',
                 '',
                 '''
+                    int m = n / sz;
                     for (int j = i; j < k; j += 32) {
-                        for (int t = j + k, s = j + m; s < n; t += k, s += m) {
-                            T tmp = a[s];
-                            a[s] = a[t];
-                            a[t] = tmp;
+                        for (int s = 1; s < sz; ++s) {
+                            T tmp = a[s * m + j];
+                            a[s * m + j] = a[s * k + j];
+                            a[s * k + j] = tmp;
                         }
                     }
+                    for (int j = i; j < n % sz; j += 32) {
+                        T tmp = a[k * sz + j];
+                        a[k * sz + j] = a[m * sz + j];
+                        a[m * sz + j] = tmp;
+                    }
                 '''
-            )(self, max_k, self.size, self.size // sz, size=32)
-            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz,))
+            )(self, max_k, self.size, sz, size=32)
+            thrust.sort(self.dtype, self.data.ptr, 0, (max_k * sz + self.size % sz,))
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
