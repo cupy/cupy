@@ -418,12 +418,21 @@ def _nvcc_gencode_options(cuda_version):
     if cuda_version >= 8000:
         arch_list += ['compute_60']
 
+    if cuda_version >= 9000:
+        arch_list = [('compute_35', 'sm_35'),
+                     ('compute_50', 'sm_50'),
+                     ('compute_52', 'sm_52'),
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     'compute_70']
+
     options = []
     for arch in arch_list:
         if type(arch) is tuple:
             virtual_arch, real_arch = arch
-            options.append('--generate-code=arch={},code={},{}'.format(
-                virtual_arch, real_arch, virtual_arch))
+            options.append('--generate-code=arch={},code={}'.format(
+                virtual_arch, real_arch))
         else:
             options.append('--generate-code=arch={},code={}'.format(
                 arch, arch))
