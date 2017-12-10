@@ -256,6 +256,9 @@ def einsum_core(*operands):
 def _compute_size_by_dict(indices, idx_dict, broadcasted_dims, operand_idx=()):
     """Compute computation cost.
 
+    If '@' exists in indices we evaluate it as max dims of broadcasted dims in
+    operand_idx.
+
     Args:
         indices (str): Indexes which will be contracted.
         idx_dict (dict): Dimension length for each index.
