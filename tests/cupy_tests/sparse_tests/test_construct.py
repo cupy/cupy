@@ -56,13 +56,14 @@ class TestSpdiags(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'random_method': ['random', 'rand'],
     'dtype': [numpy.float32, numpy.float64],
     'format': ['csr', 'csc', 'coo'],
 }))
 class TestRandom(unittest.TestCase):
 
     def test_random(self):
-        x = cupy.sparse.random(
+        x = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1,
             format=self.format, dtype=self.dtype)
         self.assertEqual(x.shape, (3, 4))
@@ -70,7 +71,7 @@ class TestRandom(unittest.TestCase):
         self.assertEqual(x.format, self.format)
 
     def test_random_with_seed(self):
-        x = cupy.sparse.random(
+        x = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1,
             format=self.format, dtype=self.dtype,
             random_state=1)
@@ -78,7 +79,7 @@ class TestRandom(unittest.TestCase):
         self.assertEqual(x.dtype, self.dtype)
         self.assertEqual(x.format, self.format)
 
-        y = cupy.sparse.random(
+        y = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1,
             format=self.format, dtype=self.dtype,
             random_state=1)
@@ -87,7 +88,7 @@ class TestRandom(unittest.TestCase):
 
     def test_random_with_state(self):
         state1 = cupy.random.RandomState(1)
-        x = cupy.sparse.random(
+        x = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1,
             format=self.format, dtype=self.dtype,
             random_state=state1)
@@ -96,7 +97,7 @@ class TestRandom(unittest.TestCase):
         self.assertEqual(x.format, self.format)
 
         state2 = cupy.random.RandomState(1)
-        y = cupy.sparse.random(
+        y = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1,
             format=self.format, dtype=self.dtype,
             random_state=state2)
@@ -104,8 +105,11 @@ class TestRandom(unittest.TestCase):
         self.assertTrue((x.toarray() == y.toarray()).all())
 
     def test_random_with_data_rvs(self):
+        if self.random_method == 'rand':
+            # cupy.sparse.rand does not support data_rvs
+            return
         data_rvs = mock.MagicMock(side_effect=cupy.zeros)
-        x = cupy.sparse.random(
+        x = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1, data_rvs=data_rvs,
             format=self.format, dtype=self.dtype)
         self.assertEqual(x.shape, (3, 4))
