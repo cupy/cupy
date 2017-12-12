@@ -393,9 +393,39 @@ class RandomState(object):
         if a.ndim == 0:
             raise TypeError('An array whose ndim is 0 is not supported')
 
-        sample = cupy.zeros((len(a)), dtype=numpy.int32)
-        curand.generate(self._generator, sample.data.ptr, sample.size)
-        a[:] = a[cupy.argsort(sample)]
+        a[:] = a[self.permutation(len(a))]
+
+    def permutation(self, num):
+        """Returns a permuted range."""
+        if not isinstance(num, six.integer_types):
+            raise TypeError('The data type of argument "num" must be integer')
+
+        sample = cupy.empty((num), dtype=numpy.int32)
+        curand.generate(self._generator, sample.data.ptr, num)
+        if 128 < num <= 32 * 1024 * 1024:
+            array = cupy.arange(num, dtype=numpy.int32)
+            # apply sort of cache blocking
+            block_size = 1 * 1024 * 1024
+            # The block size above is a value determined from the L2 cache size
+            # of GP100 (L2 cache size / size of int = 4MB / 4B = 1M). It may be
+            # better to change the value base on the L2 cache size of the GPU
+            # you use.
+            # When num > block_size, cupy kernel: _cupy_permutation is to be
+            # launched multiple times. However, it is observed that performance
+            # will be degraded if the launch count is too many. Therefore,
+            # the block size is adjusted so that launch count will not exceed
+            # twelve Note that this twelve is the value determined from
+            # measurement on GP100.
+            while num // block_size > 12:
+                block_size *= 2
+            for j_start in range(0, num, block_size):
+                j_end = j_start + block_size
+                _cupy_permutation()(array, sample, j_start, j_end, size=num)
+        else:
+            # When num > 32M, argsort is used, because it is faster than
+            # custom kernel. See https://github.com/cupy/cupy/pull/603.
+            array = cupy.argsort(sample)
+        return array
 
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.
@@ -441,6 +471,63 @@ class RandomState(object):
         x = self.interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
+
+
+def _cupy_permutation():
+    return core.ElementwiseKernel(
+        'raw int32 array, raw int32 sample, int32 j_start, int32 _j_end',
+        '',
+        '''
+            const int invalid = -1;
+            const int num = _ind.size();
+            int j = (sample[i] & 0x7fffffff) % num;
+            int j_end = _j_end;
+            if (j_end > num) j_end = num;
+            if (j == i || j < j_start || j >= j_end) continue;
+
+            // If a thread fails to do data swaping once, it changes j
+            // value using j_offset below and try data swaping again.
+            // This process is repeated until data swapping is succeeded.
+            // The j_offset is determined from the initial j
+            // (random number assigned to each thread) and the initial
+            // offset between j and i (ID of each thread).
+            // If a given number sequence in sample is really random,
+            // this j-update would not be necessary. This is work-around
+            // mainly to avoid potential eternal conflict when sample has
+            // rather synthetic number sequence.
+            int j_offset = ((2*j - i + num) % (num - 1)) + 1;
+
+            // A thread gives up to do data swapping if loop count exceed
+            // a threathod determined below. This is kind of safety
+            // mechanism to escape the eternal race condition, though I
+            // believe it never happens.
+            int loops = 256;
+
+            bool do_next = true;
+            while (do_next && loops > 0) {
+                // try to swap the contents of array[i] and array[j]
+                if (i != j) {
+                    int val_j = atomicExch(&array[j], invalid);
+                    if (val_j != invalid) {
+                        int val_i = atomicExch(&array[i], invalid);
+                        if (val_i != invalid) {
+                            array[i] = val_j;
+                            array[j] = val_i;
+                            do_next = false;
+                            // done
+                        }
+                        else {
+                            // restore array[j]
+                            array[j] = val_j;
+                        }
+                    }
+                }
+                j = (j + j_offset) % num;
+                loops--;
+            }
+        ''',
+        'cupy_permutation',
+    )
 
 
 def seed(seed=None):
