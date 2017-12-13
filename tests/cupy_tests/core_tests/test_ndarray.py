@@ -267,3 +267,42 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
         o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
         wrap_take(a, i, out=o)
+
+
+@testing.gpu
+class TestSize(unittest.TestCase):
+
+    @testing.numpy_cupy_equal()
+    def test_size_without_axis(self, xp):
+        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        return xp.size(x)
+
+    @testing.numpy_cupy_equal()
+    def test_size_with_axis(self, xp):
+        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        return xp.size(x, 0)
+
+    @testing.numpy_cupy_equal()
+    def test_size_with_negative_axis(self, xp):
+        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        return xp.size(x, -1)
+
+    @testing.numpy_cupy_equal()
+    def test_size_zero_dim_array(self, xp):
+        x = testing.shaped_arange((), xp, numpy.int32)
+        return xp.size(x)
+
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_size_axis_too_large(self, xp):
+        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        return xp.size(x, 3)
+
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_size_axis_too_small(self, xp):
+        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        return xp.size(x, -4)
+
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_size_zero_dim_array_with_axis(self, xp):
+        x = testing.shaped_arange((), xp, numpy.int32)
+        return xp.size(x, 0)
