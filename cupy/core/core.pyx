@@ -2434,7 +2434,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
     # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
     # other inputs the dimension must match exactly.
-    broadcast = False
+    cdef bint broadcast = False
     if isinstance(repeats, int):
         if repeats < 0:
             raise ValueError(
