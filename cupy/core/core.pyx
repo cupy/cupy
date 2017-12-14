@@ -2440,6 +2440,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
             raise ValueError(
                 "'repeats' should not be negative: {}".format(repeats))
         broadcast = True
+        repeats = [repeats]
     elif cpython.PySequence_Check(repeats):
         for rep in repeats:
             if rep < 0:
@@ -2447,7 +2448,6 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
                     "all elements of 'repeats' should not be negative: {}"
                     .format(repeats))
         if len(repeats) == 1:
-            repeats = repeats[0]
             broadcast = True
     else:
         raise ValueError(
@@ -2456,7 +2456,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     if axis is None:
         if broadcast:
             a = a.reshape((-1, 1))
-            ret = ndarray((a.size, repeats), dtype=a.dtype)
+            ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
             if ret.size:
                 ret[...] = a
             return ret.ravel()
@@ -2465,7 +2465,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
             axis = 0
 
     if broadcast:
-        repeats = [repeats] * a._shape[axis % a._shape.size()]
+        repeats = repeats * a._shape[axis % a._shape.size()]
     elif a.shape[axis] != len(repeats):
         raise ValueError(
             "'repeats' and 'axis' of 'a' should be same length: {} != {}"
