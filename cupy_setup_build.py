@@ -419,7 +419,8 @@ def _nvcc_gencode_options(cuda_version):
         arch_list += ['compute_60']
 
     if cuda_version >= 9000:
-        arch_list = [('compute_35', 'sm_35'),
+        arch_list = [('compute_30', 'sm_30'),
+                     ('compute_35', 'sm_35'),
                      ('compute_50', 'sm_50'),
                      ('compute_52', 'sm_52'),
                      ('compute_60', 'sm_60'),
