@@ -219,12 +219,14 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 3: gesvd returns matrix U and V^H
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
+
+    # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
-        x = a.astype(dtype, order='C', copy=False)
+        x = a.astype(dtype, order='C', copy=True)
         trans_flag = False
     else:
         m, n = a.shape
-        x = a.transpose().astype(dtype, order='C', copy=False)
+        x = a.transpose().astype(dtype, order='C', copy=True)
         trans_flag = True
     mn = min(m, n)
 
