@@ -48,6 +48,8 @@ class TestRepeat1D(unittest.TestCase):
     {'repeats': [-3, -3], 'axis': 0},
     {'repeats': [1, 2, 3], 'axis': None},
     {'repeats': [1, 2], 'axis': 1},
+    {'repeats': 2, 'axis': -4},
+    {'repeats': 2, 'axis': 3},
 )
 @testing.gpu
 class TestRepeatFailure(unittest.TestCase):
