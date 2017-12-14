@@ -59,7 +59,7 @@ class TestRepeatFailure(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_repeat_failure(self, xp):
         x = testing.shaped_arange((2, 3, 4), xp)
-        xp.repeat(x, -3)
+        xp.repeat(x, self.repeats, self.axis)
 
 
 @testing.parameterize(
