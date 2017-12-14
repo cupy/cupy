@@ -2463,6 +2463,10 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
         else:
             a = a.ravel()
             axis = 0
+    elif not (-a.ndim <= axis < a.ndim):
+        raise _AxisError(
+            'axis {} is out of bounds for array of dimension {}'.format(
+                axis, a.ndim))
 
     if broadcast:
         repeats = repeats * a._shape[axis % a._shape.size()]
