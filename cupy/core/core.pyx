@@ -2648,14 +2648,15 @@ cpdef int size(ndarray a, axis=None) except *:
         int: Number of elements along the given axis.
 
     """
-    cdef int index
+    cdef int index, ndim
     if axis is None:
         return a.size
     else:
         index = axis
+        ndim = a._shape.size()
         if index < 0:
-            index += a.ndim
-        if not 0 <= index < a.ndim:
+            index += ndim
+        if not 0 <= index < ndim:
             raise IndexError('index out of range')
         return a._shape[index]
 
