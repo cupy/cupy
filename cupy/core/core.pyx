@@ -895,7 +895,7 @@ cdef class ndarray:
 
         # The parameter t is the length of the list that stores elements to be
         # selected for each thread. We divide the array into sz subarrays.
-        # These parameters are determined from measurement on TITAN X.
+        # These parameters are determined from the measurement on TITAN X.
         t = 4
         sz = 128 if self.size <= 1 << 21 else 256
 
@@ -905,108 +905,14 @@ cdef class ndarray:
             # kth is ignored.
             self.sort(axis=axis)
         else:
-            ElementwiseKernel(
-                'raw T a, int32 k, int32 m, int32 t',
-                '',
-                '''
-                    // In this kernel, 32 threads handle one subarray. This
-                    // number equals to the warp size. The first k elements are
-                    // always sorted and the next 32 times t elements stored
-                    // values that have possibilities to be selected.
+            # For each subarray, we collect first k elements to the head.
+            kern = _partition_kernel(self.dtype)
+            kern(grid=(sz*32//256,), block=(256,), args=(
+                self, max_k, self.size, sz, t))
+            kern_collect = _partition_collect_kernel(self.dtype)
+            kern_collect(grid=(1,), block=(32,), args=(
+                self, max_k, self.size, sz, t))
 
-                    // This thread handles a[z:z+m].
-                    int z = i / 32 * m;
-                    int id = i % 32;
-                    int x = 0;
-
-                    bitonic_sort(a, z, k + z, id);
-
-                    for (int j = k + id + z; j < z + m; j += 32) {
-                        if (a[j] < a[k - 1 + z]) {
-                            T tmp = a[k + 32 * x + id + z];
-                            a[k + 32 * x + id + z] = a[j];
-                            a[j] = tmp;
-                            ++x;
-                        }
-
-                        // If at least one thread has found t values that can
-                        // be selected, we update the first k elements.
-                        if (__any_sync(0xffffffff, x >= t)) {
-                            bitonic_sort(a, k + z, 32 * t + k + z, id);
-                            merge(a, k, id, z, min(k / 32, t));
-                            x = 0;
-                        }
-                    }
-
-                    // Finally, we merge the first k elements and the
-                    // remainders to be stored.
-                    bitonic_sort(a, k + z, 32 * t + k + z, id);
-                    merge(a, k, id, z, min(k / 32, t));
-                ''',
-                preamble='''
-                    __device__ void bitonic_sort_step(CArray<T, 1> a,
-                            int x, int y, int i, int s, int w) {
-                        for (int j = i; j < (y - x) / 2; j += 32) {
-                            int n = j + (j & -w);
-                            T v = a[n + x], u = a[n + w + x];
-                            if (n & s ? v < u : v > u) {
-                                a[n + x] = u;
-                                a[n + w + x] = v;
-                            }
-                        }
-                    }
-
-                    // Sort a[x:y].
-                    __device__ void bitonic_sort(
-                            CArray<T, 1> a, int x, int y, int i) {
-                        for (int s = 2; s <= y - x; s *= 2) {
-                            for (int w = s / 2; w >= 1; w /= 2) {
-                                bitonic_sort_step(a, x, y, i, s, w);
-                            }
-                        }
-                    }
-
-                    // Merge first k elements and the next 32 times t elements.
-                    __device__ void merge(
-                            CArray<T, 1> a, int k, int i, int z, int t) {
-                        for (int s = i; s < 32 * t; s += 32) {
-                            if (a[k + z - s - 1] > a[k + z + s]) {
-                                T tmp = a[k + z - s - 1];
-                                a[k + z - s - 1] = a[k + z + s];
-                                a[k + z + s] = tmp;
-                            }
-                        }
-
-                        // After merge step, the first k elements are already
-                        // bitonic. Therefore, we do not need to fully sort.
-                        for (int w = k / 2; w >= 1; w /= 2) {
-                            bitonic_sort_step(a, z, k + z, i, k, w);
-                        }
-                    }
-                '''
-            )(self, max_k, self.size // sz, t, size=32*sz)
-            ElementwiseKernel(
-                'raw T a, int32 k, int32 n, int32 sz',
-                '',
-                '''
-                    // In this kernel, we collect the first k elements of each
-                    // subarray and the remainder to the head of the array.
-
-                    int m = n / sz;
-                    for (int j = i; j < k; j += 32) {
-                        for (int s = 1; s < sz; ++s) {
-                            T tmp = a[s * m + j];
-                            a[s * m + j] = a[s * k + j];
-                            a[s * k + j] = tmp;
-                        }
-                    }
-                    for (int j = i; j < n % sz; j += 32) {
-                        T tmp = a[k * sz + j];
-                        a[k * sz + j] = a[m * sz + j];
-                        a[m * sz + j] = tmp;
-                    }
-                '''
-            )(self, max_k, self.size, sz, size=32)
             # The elements that have possibilities to be selected are collected
             # in the head of the array. We sort them to get the smallest k
             # elements.
@@ -4378,3 +4284,123 @@ cpdef ndarray scan(ndarray a, ndarray out=None):
                  block=(2 * block_size - 1,),
                  args=(out,))
     return out
+
+
+# -----------------------------------------------------------------------------
+# partition
+# -----------------------------------------------------------------------------
+
+@util.memoize(for_each_device=True)
+def _partition_kernel(dtype):
+    name = 'partition_kernel'
+    dtype = _get_typename(dtype)
+    source = string.Template('''
+    __device__ void bitonic_sort_step(CArray<${dtype}, 1> a,
+            int x, int y, int i, int s, int w) {
+        for (int j = i; j < (y - x) / 2; j += 32) {
+            int n = j + (j & -w);
+            ${dtype} v = a[n + x], u = a[n + w + x];
+            if (n & s ? v < u : v > u) {
+                a[n + x] = u;
+                a[n + w + x] = v;
+            }
+        }
+    }
+
+    // Sort a[x:y].
+    __device__ void bitonic_sort(
+            CArray<${dtype}, 1> a, int x, int y, int i) {
+        for (int s = 2; s <= y - x; s *= 2) {
+            for (int w = s / 2; w >= 1; w /= 2) {
+                bitonic_sort_step(a, x, y, i, s, w);
+            }
+        }
+    }
+
+    // Merge first k elements and the next 32 times t elements.
+    __device__ void merge(
+            CArray<${dtype}, 1> a, int k, int i, int z, int t) {
+        for (int s = i; s < 32 * t; s += 32) {
+            if (a[k + z - s - 1] > a[k + z + s]) {
+                ${dtype} tmp = a[k + z - s - 1];
+                a[k + z - s - 1] = a[k + z + s];
+                a[k + z + s] = tmp;
+            }
+        }
+
+        // After merge step, the first k elements are already bitonic.
+        // Therefore, we do not need to fully sort.
+        for (int w = k / 2; w >= 1; w /= 2) {
+            bitonic_sort_step(a, z, k + z, i, k, w);
+        }
+    }
+
+    // In this function, 32 threads handle one subarray. This number equals to
+    // the warp size. The first k elements are always sorted and the next 32
+    // times t elements stored values that have possibilities to be selected.
+    extern "C" __global__ void ${name}(
+            CArray<${dtype}, 1>a, int k, int n, int sz, int t) {
+
+        // This thread handles a[z:z+m].
+        int m = n / sz;
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        int z = i / 32 * m;
+        int id = i % 32;
+        int x = 0;
+
+        bitonic_sort(a, z, k + z, id);
+
+        for (int j = k + id + z; j < z + m; j += 32) {
+            if (a[j] < a[k - 1 + z]) {
+                ${dtype} tmp = a[k + 32 * x + id + z];
+                a[k + 32 * x + id + z] = a[j];
+                a[j] = tmp;
+                ++x;
+            }
+
+            // If at least one thread int the warp has found t values that
+            // can be selected, we update the first k elements.
+            if (__any_sync(0xffffffff, x >= t)) {
+                bitonic_sort(a, k + z, 32 * t + k + z, id);
+                merge(a, k, id, z, min(k / 32, t));
+                x = 0;
+            }
+        }
+
+        // Finally, we merge the first k elements and the remainders to be
+        // stored.
+        bitonic_sort(a, k + z, 32 * t + k + z, id);
+        merge(a, k, id, z, min(k / 32, t));
+    }
+    ''').substitute(name=name, dtype=dtype)
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@util.memoize(for_each_device=True)
+def _partition_collect_kernel(dtype):
+    name = 'partition_collect_kernel'
+    dtype = _get_typename(dtype)
+    source = string.Template('''
+    // We collect the first k elements of each subarray and the
+    // remainder to the head of the array.
+    extern "C" __global__ void ${name}(
+            CArray<${dtype}, 1>a, int k, int n, int sz, int t) {
+        int m = n / sz;
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        for (int j = i; j < k; j += 32) {
+            for (int s = 1; s < sz; ++s) {
+                ${dtype} tmp = a[s * m + j];
+                a[s * m + j] = a[s * k + j];
+                a[s * k + j] = tmp;
+            }
+        }
+        for (int j = i; j < n % sz; j += 32) {
+            ${dtype} tmp = a[k * sz + j];
+            a[k * sz + j] = a[m * sz + j];
+            a[m * sz + j] = tmp;
+        }
+    }
+    ''').substitute(name=name, dtype=dtype)
+    module = compile_with_cache(source)
+    return module.get_function(name)
