@@ -4360,7 +4360,11 @@ def _partition_kernel(dtype):
 
             // If at least one thread int the warp has found t values that
             // can be selected, we update the first k elements.
+    #if __CUDACC_VER_MAJOR__ >= 9
             if (__any_sync(0xffffffff, x >= t)) {
+    #else
+            if (__any(x >= t)) {
+    #endif
                 bitonic_sort(a, k + z, 32 * t + k + z, id);
                 merge(a, k, id, z, min(k / 32, t));
                 x = 0;
