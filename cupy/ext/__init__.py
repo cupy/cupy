@@ -1,2 +1,2 @@
 # "NOQA" to suppress flake8 warning
-from cupy.ext import scatter  # NOQA
+from cupy.ext.scatter import scatter_add  # NOQA

@@ -5,4 +5,4 @@ External Functions
    :toctree: generated/
    :nosignatures:
 
-   cupy.scatter_add
+   cupy.ext.scatter_add

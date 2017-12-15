@@ -45,6 +45,11 @@ def scatter_add(a, slices, value):
         :func:`scatter_add` does not raise an error when indices exceed size of
         axes. Instead, it wraps indices.
 
+    .. note::
+        ``cupy.scatter_add`` is retained for backward compatibility, but it may
+        be removed in the future version.
+        Please use :func:`cupy.ext.scatter_add`.
+
     .. seealso:: :func:`numpy.add.at`.
 
     """
