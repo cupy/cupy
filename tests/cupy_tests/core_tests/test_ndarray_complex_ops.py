@@ -1,5 +1,7 @@
+import numpy
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -72,3 +74,19 @@ class TestRealImag(unittest.TestCase):
         x = testing.shaped_arange((2, 3), xp, dtype)
         x.imag = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return x
+
+
+@testing.gpu
+class TestScalarConversion(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.12.0')
+    def test_scalar_conversion(self, dtype):
+        scalar = 1 + 1j if numpy.dtype(dtype).kind == 'c' else 1
+        x_1d = cupy.array([scalar]).astype(dtype)
+        self.assertEqual(complex(x_1d), scalar)
+
+        x_0d = x_1d.reshape(())
+        self.assertEqual(complex(x_0d), scalar)
