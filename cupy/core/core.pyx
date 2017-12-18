@@ -2358,34 +2358,49 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
     """
     cdef ndarray ret
+
+    # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
+    # other inputs the dimension must match exactly.
+    cdef bint broadcast = False
     if isinstance(repeats, int):
         if repeats < 0:
             raise ValueError(
                 "'repeats' should not be negative: {}".format(repeats))
-        if axis is None:
-            a = a.reshape((-1, 1))
-            ret = ndarray((a.size, repeats), dtype=a.dtype)
-            if ret.size:
-                ret[...] = a
-            return ret.ravel()
-
-        repeats = [repeats] * a._shape[axis % a._shape.size()]
+        broadcast = True
+        repeats = [repeats]
     elif cpython.PySequence_Check(repeats):
         for rep in repeats:
             if rep < 0:
                 raise ValueError(
                     "all elements of 'repeats' should not be negative: {}"
                     .format(repeats))
-        if axis is None:
-            raise ValueError(
-                "'axis' should be specified if 'repeats' is sequence")
-        if a.shape[axis] != len(repeats):
-            raise ValueError(
-                "'repeats' and 'axis' of 'a' should be same length: {} != {}"
-                .format(a.shape[axis], len(repeats)))
+        if len(repeats) == 1:
+            broadcast = True
     else:
         raise ValueError(
             "'repeats' should be int or sequence: {}".format(repeats))
+
+    if axis is None:
+        if broadcast:
+            a = a.reshape((-1, 1))
+            ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
+            if ret.size:
+                ret[...] = a
+            return ret.ravel()
+        else:
+            a = a.ravel()
+            axis = 0
+    elif not (-a.ndim <= axis < a.ndim):
+        raise _AxisError(
+            'axis {} is out of bounds for array of dimension {}'.format(
+                axis, a.ndim))
+
+    if broadcast:
+        repeats = repeats * a._shape[axis % a._shape.size()]
+    elif a.shape[axis] != len(repeats):
+        raise ValueError(
+            "'repeats' and 'axis' of 'a' should be same length: {} != {}"
+            .format(a.shape[axis], len(repeats)))
 
     if axis < 0:
         axis += a.ndim
