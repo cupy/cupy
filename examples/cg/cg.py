@@ -26,12 +26,12 @@ def fit(A, b, tol, max_iter):
     r0 = b - xp.dot(A, x)
     p = r0
     for i in six.moves.range(max_iter):
-        a = xp.dot(r0.T, r0) / xp.dot(xp.dot(p.T, A), p)
+        a = xp.inner(r0, r0) / xp.inner(p, xp.dot(A, p))
         x = x + p * a
-        r1 = r0 - xp.dot(A * a, p)
+        r1 = r0 - xp.dot(A, p) * a
         if xp.linalg.norm(r1) < tol:
             return x
-        b = xp.dot(r1.T, r1) / xp.dot(r0.T, r0)
+        b = xp.inner(r1, r1) / xp.inner(r0, r0)
         p = r1 + b * p
         r0 = r1
     print('Failed to converge. Increase max-iter or tol.')
