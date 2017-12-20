@@ -77,9 +77,9 @@ cpdef inline check_status(int status):
 ###############################################################################
 
 cpdef size_t ctxGetCurrent() except *:
-    cdef Context* ctx
+    cdef Context ctx
     with nogil:
-        status = cuCtxGetCurrent(ctx)
+        status = cuCtxGetCurrent(&ctx)
     check_status(status)
     return <size_t>ctx
 
