@@ -897,27 +897,30 @@ cdef class ndarray:
         # selected for each thread. We divide the array into sz subarrays.
         # These parameters are determined from the measurement on TITAN X.
         t = 4
-        sz = 128 if self.size <= 1 << 21 else 256
+        sz = 512
+        while sz > 32 and self.size // sz < max_k + 32 * t:
+            sz //= 2
 
         # If the array size is small or k is large, we simply sort the array.
-        if (self.size // sz < max_k + 32 * t or max_k >= 256
-                or len(self.shape) > 1):
+        if sz <= 32 or max_k >= 1024 or len(self.shape) > 1:
             # kth is ignored.
             self.sort(axis=axis)
         else:
             # For each subarray, we collect first k elements to the head.
-            kern = _partition_kernel(self.dtype)
-            kern(grid=(sz*32//256,), block=(256,), args=(
-                self, max_k, self.size, sz, t))
-            kern_collect = _partition_collect_kernel(self.dtype)
-            kern_collect(grid=(1,), block=(32,), args=(
-                self, max_k, self.size, sz, t))
+            kern, merge_kern = _partition_kernel(self.dtype)
+            block_size = 256 if 32 * sz >= 256 else 32 * sz
+            grid_size = 32 * sz // block_size
+            kern(grid=(grid_size,), block=(block_size,), args=(
+                self, max_k, self.size, t, sz))
 
-            # The elements that have possibilities to be selected are collected
-            # in the head of the array. We sort them to get the smallest k
-            # elements.
-            thrust.sort(self.dtype, self.data.ptr, 0,
-                        (max_k * sz + self.size % sz,))
+            # Merge heads of subarrays.
+            s = 1
+            while s < sz:
+                block_size = 256 if 16 * sz // s >= 256 else 16 * sz // s
+                grid_size = 16 * sz // s // block_size
+                merge_kern(grid=(grid_size,), block=(block_size,), args=(
+                    self, max_k, self.size, sz, s))
+                s *= 2
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
@@ -4293,6 +4296,7 @@ cpdef ndarray scan(ndarray a, ndarray out=None):
 @util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
+    merge_kernel = 'partition_merge_kernel'
     dtype = _get_typename(dtype)
     source = string.Template('''
     __device__ void bitonic_sort_step(CArray<${dtype}, 1> a,
@@ -4319,38 +4323,39 @@ def _partition_kernel(dtype):
 
     // Merge first k elements and the next 32 times t elements.
     __device__ void merge(
-            CArray<${dtype}, 1> a, int k, int i, int z, int t) {
-        for (int s = i; s < 32 * t; s += 32) {
-            if (a[k + z - s - 1] > a[k + z + s]) {
-                ${dtype} tmp = a[k + z - s - 1];
-                a[k + z - s - 1] = a[k + z + s];
-                a[k + z + s] = tmp;
+            CArray<${dtype}, 1> a, int k, int i, int x, int z, int u) {
+        for (int s = i; s < u; s += 32) {
+            if (a[x + k - s - 1] > a[z + s]) {
+                ${dtype} tmp = a[x + k - s - 1];
+                a[x + k - s - 1] = a[z + s];
+                a[z + s] = tmp;
             }
         }
 
         // After merge step, the first k elements are already bitonic.
         // Therefore, we do not need to fully sort.
         for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step(a, z, k + z, i, k, w);
+            bitonic_sort_step(a, x, k + x, i, k, w);
         }
     }
 
+    extern "C" {
     // In this function, 32 threads handle one subarray. This number equals to
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
-    extern "C" __global__ void ${name}(
-            CArray<${dtype}, 1>a, int k, int n, int sz, int t) {
+    __global__ void ${name}(
+            CArray<${dtype}, 1>a, int k, int n, int t, int sz) {
 
-        // This thread handles a[z:z+m].
-        int m = n / sz;
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        int z = i / 32 * m;
+        // This thread handles a[z:m].
+        long long i = blockIdx.x * blockDim.x + threadIdx.x;
+        int z = i / 32 * n / sz;
+        int m = (i / 32 + 1) * n / sz;
         int id = i % 32;
         int x = 0;
 
         bitonic_sort(a, z, k + z, id);
 
-        for (int j = k + id + z; j < z + m; j += 32) {
+        for (int j = k + id + z; j < m; j += 32) {
             if (a[j] < a[k - 1 + z]) {
                 ${dtype} tmp = a[k + 32 * x + id + z];
                 a[k + 32 * x + id + z] = a[j];
@@ -4358,7 +4363,7 @@ def _partition_kernel(dtype):
                 ++x;
             }
 
-            // If at least one thread int the warp has found t values that
+            // If at least one thread in the warp has found t values that
             // can be selected, we update the first k elements.
     #if __CUDACC_VER_MAJOR__ >= 9
             if (__any_sync(0xffffffff, x >= t)) {
@@ -4366,7 +4371,7 @@ def _partition_kernel(dtype):
             if (__any(x >= t)) {
     #endif
                 bitonic_sort(a, k + z, 32 * t + k + z, id);
-                merge(a, k, id, z, min(k / 32, t));
+                merge(a, k, id, z, k + z, min(k, 32 * t));
                 x = 0;
             }
         }
@@ -4374,37 +4379,18 @@ def _partition_kernel(dtype):
         // Finally, we merge the first k elements and the remainders to be
         // stored.
         bitonic_sort(a, k + z, 32 * t + k + z, id);
-        merge(a, k, id, z, min(k / 32, t));
+        merge(a, k, id, z, k + z, min(k, 32 * t));
     }
-    ''').substitute(name=name, dtype=dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name)
 
-
-@util.memoize(for_each_device=True)
-def _partition_collect_kernel(dtype):
-    name = 'partition_collect_kernel'
-    dtype = _get_typename(dtype)
-    source = string.Template('''
-    // We collect the first k elements of each subarray and the
-    // remainder to the head of the array.
-    extern "C" __global__ void ${name}(
-            CArray<${dtype}, 1>a, int k, int n, int sz, int t) {
-        int m = n / sz;
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        for (int j = i; j < k; j += 32) {
-            for (int s = 1; s < sz; ++s) {
-                ${dtype} tmp = a[s * m + j];
-                a[s * m + j] = a[s * k + j];
-                a[s * k + j] = tmp;
-            }
-        }
-        for (int j = i; j < n % sz; j += 32) {
-            ${dtype} tmp = a[k * sz + j];
-            a[k * sz + j] = a[m * sz + j];
-            a[m * sz + j] = tmp;
-        }
+    __global__ void ${merge_kernel}(
+            CArray<${dtype}, 1>a, int k, int n, int sz, int s) {
+        long long i = blockIdx.x * blockDim.x + threadIdx.x;
+        int z = i / 32 * 2 * s * n / sz;
+        int m = (i / 32 * 2 + 1) * s * n / sz;
+        int id = i % 32;
+        merge(a, k, id, z, m, k);
     }
-    ''').substitute(name=name, dtype=dtype)
+    }
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
     module = compile_with_cache(source)
-    return module.get_function(name)
+    return module.get_function(name), module.get_function(merge_kernel)
