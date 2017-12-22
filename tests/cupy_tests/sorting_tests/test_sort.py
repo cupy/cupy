@@ -390,6 +390,16 @@ class TestPartition(unittest.TestCase):
         self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
         return x[:, :, kth:kth + 1]
 
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_partition_multi_dim_large(self, xp, dtype):
+        a = testing.shaped_random((10, 10, 1000), xp, dtype)
+        kth = 2
+        x = self.partition(a, kth)
+        self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
+        self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
+        return x[:, :, kth:kth + 1]
+
     # Test unsupported dtype
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])

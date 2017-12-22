@@ -872,6 +872,15 @@ cdef class ndarray:
             :meth:`numpy.ndarray.partition`
 
         """
+
+        if ndim == 0:
+            raise ValueError('Sorting arrays with the rank of zero is not '
+                             'supported')
+
+        if not self._c_contiguous:
+            raise NotImplementedError('Sorting non-contiguous array is not '
+                                      'supported.')
+
         ndim = self.ndim
         if axis < 0:
             axis += ndim
@@ -898,29 +907,35 @@ cdef class ndarray:
         # These parameters are determined from the measurement on TITAN X.
         t = 4
         sz = 512
-        while sz > 32 and self.size // sz < max_k + 32 * t:
+        while sz > 0 and length // sz < max_k + 32 * t:
             sz //= 2
+        sz *= self.size // length
 
         # If the array size is small or k is large, we simply sort the array.
-        if sz <= 32 or max_k >= 1024 or len(self.shape) > 1:
+        if sz <= 32 or max_k >= 1024:
             # kth is ignored.
             self.sort(axis=axis)
         else:
+            shape = self.shape
+            self = self.ravel()
+
             # For each subarray, we collect first k elements to the head.
             kern, merge_kern = _partition_kernel(self.dtype)
-            block_size = 256 if 32 * sz >= 256 else 32 * sz
-            grid_size = 32 * sz // block_size
+            block_size = 32
+            grid_size = sz
             kern(grid=(grid_size,), block=(block_size,), args=(
                 self, max_k, self.size, t, sz))
 
             # Merge heads of subarrays.
             s = 1
-            while s < sz:
-                block_size = 256 if 16 * sz // s >= 256 else 16 * sz // s
-                grid_size = 16 * sz // s // block_size
+            while s < sz // (self.size // length):
+                block_size = 32
+                grid_size = sz // s // 2
                 merge_kern(grid=(grid_size,), block=(block_size,), args=(
                     self, max_k, self.size, sz, s))
                 s *= 2
+
+            self.reshape(shape)
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
@@ -4344,7 +4359,7 @@ def _partition_kernel(dtype):
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
     __global__ void ${name}(
-            CArray<${dtype}, 1>a, int k, int n, int t, int sz) {
+            CArray<${dtype}, 1> a, int k, int n, int t, int sz) {
 
         // This thread handles a[z:m].
         long long i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -4354,8 +4369,8 @@ def _partition_kernel(dtype):
         int x = 0;
 
         bitonic_sort(a, z, k + z, id);
-
-        for (int j = k + id + z; j < m; j += 32) {
+        int j;
+        for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
             if (a[j] < a[k - 1 + z]) {
                 ${dtype} tmp = a[k + 32 * x + id + z];
                 a[k + 32 * x + id + z] = a[j];
@@ -4375,6 +4390,11 @@ def _partition_kernel(dtype):
                 x = 0;
             }
         }
+        if (j < m && a[j] < a[k - 1 + z]) {
+            ${dtype} tmp = a[k + 32 * x + id + z];
+            a[k + 32 * x + id + z] = a[j];
+            a[j] = tmp;
+        }
 
         // Finally, we merge the first k elements and the remainders to be
         // stored.
@@ -4383,7 +4403,7 @@ def _partition_kernel(dtype):
     }
 
     __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1>a, int k, int n, int sz, int s) {
+            CArray<${dtype}, 1> a, int k, int n, int sz, int s) {
         long long i = blockIdx.x * blockDim.x + threadIdx.x;
         int z = i / 32 * 2 * s * n / sz;
         int m = (i / 32 * 2 + 1) * s * n / sz;
