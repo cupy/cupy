@@ -2,6 +2,7 @@ import unittest
 
 import mock
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -106,8 +107,7 @@ class TestRandom(unittest.TestCase):
 
     def test_random_with_data_rvs(self):
         if self.random_method == 'rand':
-            # cupy.sparse.rand does not support data_rvs
-            return
+            pytest.skip('cupy.sparse.rand does not support data_rvs')
         data_rvs = mock.MagicMock(side_effect=cupy.zeros)
         x = getattr(cupy.sparse, self.random_method)(
             3, 4, density=0.1, data_rvs=data_rvs,
