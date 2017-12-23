@@ -42,7 +42,7 @@ def solve(a, b):
     util._assert_nd_squareness(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
-            a.shape[:-1] == b.shape[:a.ndim-1]):
+            a.shape[:-1] == b.shape[:a.ndim - 1]):
         raise ValueError(
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
