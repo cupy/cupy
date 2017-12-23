@@ -86,6 +86,11 @@ def random(m, n, density=0.01, format='coo', dtype=None,
            random_state=None, data_rvs=None):
     """Generates a random sparse matrix.
 
+    This function generates a random sparse matrix. First it selects non-zero
+    elements with given density ``density`` from ``(m, n)`` elements.
+    So the number of non-zero elements ``k`` is ``k = m * n * density``.
+    Value of each element is selected with ``data_rvs`` function.
+
     Args:
         m (int): Number of rows.
         n (int): Number of cols.
@@ -136,6 +141,8 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
     """Generates a random sparse matrix.
 
+    See ``cupy.sparse.random`` for detail.
+
     Args:
         m (int): Number of rows.
         n (int): Number of cols.
@@ -153,6 +160,7 @@ def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
         cupy.sparse.spmatrix: Generated matrix.
 
     .. seealso:: :func:`scipy.sparse.rand`
+    .. seealso:: :func:`cupy.sparse.random`
 
     """
     return random(m, n, density, format, dtype, random_state)
