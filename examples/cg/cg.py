@@ -39,7 +39,7 @@ def fit(A, b, tol, max_iter):
 
 
 def run(gpu_id, tol, max_iter):
-    '''CuPy Congugate gradient example
+    '''CuPy Conjugate gradient example
 
     Solve simultaneous linear equations, Ax = b.
     'A' and 'x' are created randomly and 'b' is computed by 'Ax' at first.
