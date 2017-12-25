@@ -30,9 +30,7 @@ cdef inline _ensure_context(int device_id):
     if not hasattr(thread_local, 'seen_devices'):
         thread_local.seen_devices = set()
     if device_id not in thread_local.seen_devices:
-        try:
-            driver.ctxGetCurrent()
-        except driver.CUDADriverError:
+        if driver.ctxGetCurrent() == 0:
             # Call Runtime API to establish context on this host thread.
             runtime.memGetInfo()
         thread_local.seen_devices.add(device_id)

@@ -404,11 +404,20 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, self.pool.used_bytes())
 
     def test_reuse_between_thread(self):
-        def job():
+        def job(self):
             cupy.arange(16)
+            self._error = False
 
+        # Run in main thread.
+        self._error = True
+        job(self)
+        self.assertFalse(self._error)
+
+        # Run in sub thread.
+        self._error = True
         with cupy.cuda.Device(0):
-            t = threading.Thread(target=job)
+            t = threading.Thread(target=job, args=(self,))
+            t.daemon = True
             t.start()
             t.join()
-            job()
+        self.assertFalse(self._error)
