@@ -63,6 +63,13 @@ class TestNdarrayOrder(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         self.assertTrue(not a.flags.c_contiguous)
 
+    def test_order_none(self):
+        a = core.ndarray(self.shape, order=None)
+        a_cpu = numpy.ndarray(self.shape, order=None)
+        self.assertEqual(a.flags.c_contiguous, a_cpu.flags.c_contiguous)
+        self.assertEqual(a.flags.f_contiguous, a_cpu.flags.f_contiguous)
+        self.assertTupleEqual(a.strides, a_cpu.strides)
+
 
 @testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
