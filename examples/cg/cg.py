@@ -27,8 +27,8 @@ def fit(A, b, tol, max_iter):
     p = r0
     for i in six.moves.range(max_iter):
         a = xp.inner(r0, r0) / xp.inner(p, xp.dot(A, p))
-        x = x + p * a
-        r1 = r0 - xp.dot(A, p) * a
+        x += a * p
+        r1 = r0 - a * xp.dot(A, p)
         if xp.linalg.norm(r1) < tol:
             return x
         b = xp.inner(r1, r1) / xp.inner(r0, r0)
