@@ -92,8 +92,11 @@ class TestSVD(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, array, xp, dtype):
         a = xp.asarray(array, dtype=dtype)
+        a_copy = a.copy()
         result = xp.linalg.svd(
             a, full_matrices=self.full_matrices, compute_uv=False)
+        # Check if the input matrix is not broken
+        assert (a == a_copy).all()
         return result
 
     def check_rank2(self, array):

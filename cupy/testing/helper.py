@@ -49,7 +49,11 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         self.fail('Only numpy raises error\n\n' + numpy_tb)
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
-    elif type(cupy_error) is not type(numpy_error):
+    elif not isinstance(cupy_error, type(numpy_error)):
+        # CuPy errors should be at least as explicit as the NumPy errors, i.e.
+        # allow CuPy errors to derive from NumPy errors but not the opposite.
+        # This ensures that try/except blocks that catch NumPy errors also
+        # catch CuPy errors.
         msg = '''Different types of errors occurred
 
 cupy
@@ -58,7 +62,8 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not isinstance(cupy_error, accept_error):
+    elif not (isinstance(cupy_error, accept_error) and
+              isinstance(numpy_error, accept_error)):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
@@ -408,7 +413,7 @@ def numpy_cupy_equal(name='xp', sp_name=None):
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
 
-    Decorated test fixture is required throw same errors
+    Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
@@ -443,6 +448,12 @@ def numpy_cupy_raises(name='xp', sp_name=None, accept_error=Exception):
          sp_name(str or None): Argument name whose value is either
              ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
+         accept_error(bool, Exception or tuple of Exception): Specify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.

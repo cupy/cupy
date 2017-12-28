@@ -49,3 +49,13 @@ Identifying sparse matrices
    cupy.sparse.isspmatrix_csr
    cupy.sparse.isspmatrix_coo
    cupy.sparse.isspmatrix_dia
+
+
+Linear Algebra
+~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.sparse.linalg.lsqr

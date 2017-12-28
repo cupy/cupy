@@ -104,6 +104,30 @@ class TestMatmulLarge(unittest.TestCase):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
-        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        shape1, shape2 = self.shape_pair
+        x1 = testing.shaped_arange(shape1, xp, dtype1)
+        x2 = testing.shaped_arange(shape2, xp, dtype2)
         return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape_pair': [
+            ((5, 3, 1), (3, 1, 4)),
+            ((3, 2, 3), (3, 2, 4)),
+            ((3, 2), ()),
+            ((), (3, 2)),
+            ((), ()),
+            ((3, 2), (1,)),
+        ],
+    }))
+@testing.gpu
+class TestMatmulInvalidShape(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_invalid_shape(self, xp):
+        shape1, shape2 = self.shape_pair
+        x1 = testing.shaped_arange(shape1, xp, numpy.float32)
+        x2 = testing.shaped_arange(shape2, xp, numpy.float32)
+        xp.matmul(x1, x2)

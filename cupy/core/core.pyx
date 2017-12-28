@@ -1040,7 +1040,7 @@ cdef class ndarray:
 
     # TODO(okuta): Implement ptp
 
-    cpdef ndarray clip(self, a_min, a_max, out=None):
+    cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
         """Returns an array with values limited to [a_min, a_max].
 
         .. seealso::
@@ -1048,6 +1048,18 @@ cdef class ndarray:
            :meth:`numpy.ndarray.clip`
 
         """
+        if a_min is None and a_max is None:
+            raise ValueError('array_clip: must set either max or min')
+        if a_min is None:
+            if issubclass(self.dtype.type, numpy.floating):
+                a_min = self.dtype.type('-inf')
+            elif issubclass(self.dtype.type, numpy.integer):
+                a_min = numpy.iinfo(self.dtype.type).min
+        if a_max is None:
+            if issubclass(self.dtype.type, numpy.floating):
+                a_max = self.dtype.type('inf')
+            elif issubclass(self.dtype.type, numpy.integer):
+                a_max = numpy.iinfo(self.dtype.type).max
         return _clip(self, a_min, a_max, out=out)
 
     # TODO(okuta): Implement round
@@ -1866,29 +1878,18 @@ include "reduction.pxi"
 
 cdef _id = 'out0 = in0'
 
-_elementwise_copy = create_ufunc(
+elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = out0_type(in0)')
+    'out0 = out0_type(in0)', default_casting='unsafe')
 # complex numbers requires out0 = complex<T>(in0)
 
-
-def elementwise_copy(*args, **kwargs):
-    kwargs['casting'] = 'unsafe'
-    return _elementwise_copy(*args, **kwargs)
-
-
-_elementwise_copy_where = create_ufunc(
+elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
-    'if (in1) out0 = in0')
-
-
-def elementwise_copy_where(*args, **kwargs):
-    kwargs['casting'] = 'unsafe'
-    return _elementwise_copy_where(*args, **kwargs)
+    'if (in1) out0 = in0', default_casting='unsafe')
 
 
 cdef _divmod_float = '''
@@ -2430,34 +2431,49 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
     """
     cdef ndarray ret
+
+    # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
+    # other inputs the dimension must match exactly.
+    cdef bint broadcast = False
     if isinstance(repeats, int):
         if repeats < 0:
             raise ValueError(
                 "'repeats' should not be negative: {}".format(repeats))
-        if axis is None:
-            a = a.reshape((-1, 1))
-            ret = ndarray((a.size, repeats), dtype=a.dtype)
-            if ret.size:
-                ret[...] = a
-            return ret.ravel()
-
-        repeats = [repeats] * a._shape[axis % a._shape.size()]
+        broadcast = True
+        repeats = [repeats]
     elif cpython.PySequence_Check(repeats):
         for rep in repeats:
             if rep < 0:
                 raise ValueError(
                     "all elements of 'repeats' should not be negative: {}"
                     .format(repeats))
-        if axis is None:
-            raise ValueError(
-                "'axis' should be specified if 'repeats' is sequence")
-        if a.shape[axis] != len(repeats):
-            raise ValueError(
-                "'repeats' and 'axis' of 'a' should be same length: {} != {}"
-                .format(a.shape[axis], len(repeats)))
+        if len(repeats) == 1:
+            broadcast = True
     else:
         raise ValueError(
             "'repeats' should be int or sequence: {}".format(repeats))
+
+    if axis is None:
+        if broadcast:
+            a = a.reshape((-1, 1))
+            ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
+            if ret.size:
+                ret[...] = a
+            return ret.ravel()
+        else:
+            a = a.ravel()
+            axis = 0
+    elif not (-a.ndim <= axis < a.ndim):
+        raise _AxisError(
+            'axis {} is out of bounds for array of dimension {}'.format(
+                axis, a.ndim))
+
+    if broadcast:
+        repeats = repeats * a._shape[axis % a._shape.size()]
+    elif a.shape[axis] != len(repeats):
+        raise ValueError(
+            "'repeats' and 'axis' of 'a' should be same length: {} != {}"
+            .format(a.shape[axis], len(repeats)))
 
     if axis < 0:
         axis += a.ndim
@@ -2634,6 +2650,30 @@ cdef _concatenate_kernel = ElementwiseKernel(
     reduce_dims=False
 )
 
+
+cpdef int size(ndarray a, axis=None) except *:
+    """Returns the number of elements along a given axis.
+
+    Args:
+        a (ndarray): Input data.
+        axis (int or None): Axis along which the elements are counted.
+            When it is ``None``, it returns the total number of elements.
+
+    Returns:
+        int: Number of elements along the given axis.
+
+    """
+    cdef int index, ndim
+    if axis is None:
+        return a.size
+    else:
+        index = axis
+        ndim = a._shape.size()
+        if index < 0:
+            index += ndim
+        if not 0 <= index < ndim:
+            raise IndexError('index out of range')
+        return a._shape[index]
 
 # -----------------------------------------------------------------------------
 # Binary operations
@@ -3423,6 +3463,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     cdef Py_ssize_t batchCount
     cdef ndarray ap, bp, outp
 
+    orig_a_shape = a.shape
+    orig_b_shape = b.shape
+    if len(orig_a_shape) == 0 or len(orig_b_shape) == 0:
+        raise ValueError('Scalar operands are not allowed, use \'*\' instead')
+
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
     dtype = numpy.find_common_type((ret_dtype, 'f'), ())
 
@@ -3508,9 +3553,16 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     *la, ka, n = a.shape
     *lb, m, kb = b.shape
 
-    assert ka == kb
+    if ka != kb:
+        raise ValueError(
+            'shapes ({}) and ({}) not aligned'.format(
+                ','.join([str(_) for _ in orig_a_shape]),
+                ','.join([str(_) for _ in orig_b_shape])))
     for la_, lb_ in zip(la, lb):
-        assert la_ == lb_ or la_ == 1 or lb_ == 1
+        if not (la_ == lb_ or la_ == 1 or lb_ == 1):
+            raise ValueError(
+                'operands could not be broadcast together with '
+                'remapped shapes')
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:

@@ -145,11 +145,12 @@ cpdef _create_convolution_descriptor(
     if _cudnn_version >= 5000:
         cudnn.setConvolution2dDescriptor_v5(
             desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
-        if _cudnn_version >= 7000 and use_tensor_core:
-            math_type = cudnn.CUDNN_TENSOR_OP_MATH
-            cudnn.setConvolutionMathType(desc, math_type)
+        if _cudnn_version >= 7000:
+            if use_tensor_core:
+                math_type = cudnn.CUDNN_TENSOR_OP_MATH
+                cudnn.setConvolutionMathType(desc, math_type)
             if group > 1:
-                cudnn.setConvolutionGroupCount(desc.value, group)
+                cudnn.setConvolutionGroupCount(desc, group)
     else:
         cudnn.setConvolution2dDescriptor_v4(desc, p0, p1, s0, s1, 1, 1, mode)
 
