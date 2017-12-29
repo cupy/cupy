@@ -74,6 +74,18 @@ class coo_matrix(sparse_data._data_matrix):
             copy = False
             has_canonical_format = True
 
+        elif _scipy_available and scipy.sparse.issparse(arg1):
+            # Convert scipy.sparse to cupy.sparse
+            x = arg1.tocoo()
+            data = cupy.array(x.data)
+            row = cupy.array(x.row, dtype='i')
+            col = cupy.array(x.col, dtype='i')
+            copy = False
+
+            if shape is None:
+                shape = arg1.shape
+            has_canonical_format = x.has_canonical_format
+
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
                 data, (row, col) = arg1
