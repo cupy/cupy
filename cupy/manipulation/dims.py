@@ -27,12 +27,9 @@ def _atleast_nd_helper(n, arys):
     res = []
     for a in arys:
         a = cupy.asarray(a)
-        if isinstance(a, cupy.ndarray):
-            if a.ndim < n:
-                new_shape = _atleast_nd_shape_map[(n, a.ndim)](a.shape)
-                a = a.reshape(*new_shape)
-        else:
-            raise TypeError('Unsupported type {}'.format(type(a)))
+        if a.ndim < n:
+            new_shape = _atleast_nd_shape_map[(n, a.ndim)](a.shape)
+            a = a.reshape(*new_shape)
         res.append(a)
 
     if len(res) == 1:
