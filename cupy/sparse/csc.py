@@ -97,7 +97,15 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
     # TODO(unno): Implement diagonal
-    # TODO(unno): Implement eliminate_zeros
+
+    def eliminate_zeros(self):
+        """Removes zero entories in place."""
+        t = self.T
+        t.eliminate_zeros()
+        compress = t.T
+        self.data = compress.data
+        self.indices = compress.indices
+        self.indptr = compress.indptr
 
     # TODO(unno): Implement max
     # TODO(unno): Implement maximum
