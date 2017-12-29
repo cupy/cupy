@@ -86,6 +86,11 @@ def random(m, n, density=0.01, format='coo', dtype=None,
            random_state=None, data_rvs=None):
     """Generates a random sparse matrix.
 
+    This function generates a random sparse matrix. First it selects non-zero
+    elements with given density ``density`` from ``(m, n)`` elements.
+    So the number of non-zero elements ``k`` is ``k = m * n * density``.
+    Value of each element is selected with ``data_rvs`` function.
+
     Args:
         m (int): Number of rows.
         n (int): Number of cols.
@@ -103,6 +108,8 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 
     Returns:
         cupy.sparse.spmatrix: Generated matrix.
+
+    .. seealso:: :func:`scipy.sparse.random`
 
     """
     if density < 0 or density > 1:
@@ -129,3 +136,31 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     vals = data_rvs(k).astype(dtype)
     return cupy.sparse.coo_matrix(
         (vals, (i, j)), shape=(m, n)).asformat(format)
+
+
+def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
+    """Generates a random sparse matrix.
+
+    See ``cupy.sparse.random`` for detail.
+
+    Args:
+        m (int): Number of rows.
+        n (int): Number of cols.
+        density (float): Ratio of non-zero entries.
+        format (str): Matrix format.
+        dtype (dtype): Type of the returned matrix values.
+        random_state (cupy.random.RandomState or int):
+            State of random number generator.
+            If an integer is given, the method makes a new state for random
+            number generator and uses it.
+            If it is not given, the default state is used.
+            This state is used to generate random indexes for nonzero entries.
+
+    Returns:
+        cupy.sparse.spmatrix: Generated matrix.
+
+    .. seealso:: :func:`scipy.sparse.rand`
+    .. seealso:: :func:`cupy.sparse.random`
+
+    """
+    return random(m, n, density, format, dtype, random_state)
