@@ -1,5 +1,20 @@
-import cupy
 from cupy import core
+
+
+_is_close = core.create_ufunc(
+    'cupy_is_close',
+    ('eeee?->?', 'ffff?->?', 'dddd?->?'),
+    '''
+    bool equal_nan = in4;
+    if (isfinite(in0) && isfinite(in1)) {
+      out0 = fabs(in0 - in1) <= in3 + in2 * fabs(in1);
+    } else if (equal_nan) {
+      out0 = (in0 == in1) || (isnan(in0) && isnan(in1));
+    } else {
+      out0 = (in0 == in1);
+    }
+    '''
+)
 
 
 # TODO(okuta): Implement allclose
@@ -29,29 +44,7 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
     .. seealso:: :func:`numpy.isclose`
 
     """
-    def within_tol(x, y):
-        return abs(x - y) <= atol + rtol * abs(y)
-
-    # When we use integer type, abs(MIN_INT) causes overflow.
-    x = cupy.asarray(a, dtype='d')
-    y = cupy.asarray(b, dtype='d')
-
-    xfin = cupy.isfinite(x)
-    yfin = cupy.isfinite(y)
-    if all(xfin) and all(yfin):
-        cond = within_tol(x, y)
-    else:
-        finite = xfin & yfin
-        cond = cupy.zeros_like(finite)
-        # For boolean indexing, we need to broadcast arrays.
-        x, y = cupy.broadcast_arrays(x, y)
-        cond[finite] = within_tol(x[finite], y[finite])
-        cond[~finite] = (x[~finite] == y[~finite])
-        if equal_nan:
-            both_nan = cupy.isnan(x) & cupy.isnan(y)
-            cond[both_nan] = both_nan[both_nan]
-
-    return cond
+    return _is_close(a, b, rtol, atol, equal_nan)
 
 
 # TODO(okuta): Implement array_equal
