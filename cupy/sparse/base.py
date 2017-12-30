@@ -364,7 +364,7 @@ class spmatrix(object):
             out[:] = ret
             return out
         elif dtype is not None:
-            return ret.astype(dtype)
+            return ret.astype(dtype, copy=False)
         else:
             return ret
 
