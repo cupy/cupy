@@ -347,7 +347,7 @@ class spmatrix(object):
         m, n = self.shape
 
         if axis is None:
-            return (self.dot(cupy.ones(n, dtype=self.dtype))).sum(
+            return self.dot(cupy.ones(n, dtype=self.dtype)).sum(
                 dtype=dtype, out=out)
 
         if axis < 0:
