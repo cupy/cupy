@@ -4,7 +4,7 @@ from cupy import core
 # TODO(okuta): Implement convolve
 
 
-def clip(a, a_min, a_max, out=None):
+def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
 
     This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
@@ -12,8 +12,10 @@ def clip(a, a_min, a_max, out=None):
 
     Args:
         a (cupy.ndarray): The source array.
-        a_min (scalar or cupy.ndarray): The left side of the interval.
-        a_max (scalar or cupy.ndarray): The right side of the interval.
+        a_min (scalar, cupy.ndarray or None): The left side of the interval.
+            When it is ``None``, it is ignored.
+        a_max (scalar, cupy.ndarray or None): The right side of the interval.
+            When it is ``None``, it is ignored.
         out (cupy.ndarray): Output array.
 
     Returns:
