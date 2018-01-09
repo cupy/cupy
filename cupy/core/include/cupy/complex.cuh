@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __HIPCC__
+#include <hip/hip_runtime.h>
+#endif
+
 #include <cupy/complex/complex.h>
 
 using thrust::complex;

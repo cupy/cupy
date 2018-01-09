@@ -92,7 +92,8 @@ sign = core.create_ufunc(
     ''')
 
 
-_float_maximum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : max(in0, in1)'
+_float_maximum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
+                  'out0_type(max(in0, in1))')
 maximum = core.create_ufunc(
     'cupy_maximum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -112,7 +113,8 @@ maximum = core.create_ufunc(
     ''')
 
 
-_float_minimum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : min(in0, in1)'
+_float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
+                  'out0_type(min(in0, in1))')
 minimum = core.create_ufunc(
     'cupy_minimum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',

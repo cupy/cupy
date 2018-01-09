@@ -2,10 +2,9 @@ from cpython cimport sequence
 from libc.stdint cimport int32_t
 
 from cupy.core cimport _routines_manipulation as _manipulation
+from cupy.cuda cimport runtime
 
 import string
-
-import numpy
 
 from cupy.core import _errors
 from cupy.cuda import compiler
@@ -273,9 +272,17 @@ class simple_reduction_function(object):
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
+
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
+
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size)
         return ret
+
+
+if runtime._is_hip_environment:
+    simple_reduction_function._block_size = 256
 
 
 @util.memoize(for_each_device=True)
@@ -446,6 +453,9 @@ class ReductionKernel(object):
             in_args, reduce_axis + out_axis, broad_shape, self.in_params,
             len(out_axis))
 
+        block_size = 512
+        if runtime._is_hip_environment:
+            block_size = 256
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         block_size, block_stride, out_block_num = _get_block_specs(
@@ -461,6 +471,10 @@ class ReductionKernel(object):
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
+
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
+
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret

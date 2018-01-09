@@ -3,11 +3,14 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
-#ifndef CUPY_NO_CUDA
-#  include <cuda.h>
-#  include <cusparse.h>
+#include "cupy_cuda.h"
 
-#else  // CUPY_NO_CUDA
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+
+#include <cuda.h>
+#include <cusparse.h>
+
+#else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 extern "C" {
 
 typedef enum {} cusparseIndexBase_t;
@@ -318,7 +321,7 @@ cusparseStatus_t cusparseXcscsort(...) {
 
 }  // extern "C"
 
-#endif  // CUPY_NO_CUDA
+#endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -327,7 +330,7 @@ cusparseStatus_t cusparseXcscsort(...) {
 
 extern "C" {
 
-#if defined(CUPY_NO_CUDA)
+#if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
 
 cusparseStatus_t cusparseSnnz_compress(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -361,7 +364,7 @@ cusparseStatus_t cusparseZcsr2csr_compress(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-#endif  // #if defined(CUPY_NO_CUDA)
+#endif  // #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
 
 }  // extern "C"
 

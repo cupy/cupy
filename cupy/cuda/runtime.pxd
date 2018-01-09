@@ -141,8 +141,9 @@ cpdef enum:
     cudaDevAttrMaxTexture2DLinearPitch = 72
     cudaDevAttrMaxTexture2DMipmappedWidth = 73
     cudaDevAttrMaxTexture2DMipmappedHeight = 74
-    cudaDevAttrComputeCapabilityMajor = 75
-    cudaDevAttrComputeCapabilityMinor = 76
+    # Use header version
+    # cudaDevAttrComputeCapabilityMajor = 75
+    # cudaDevAttrComputeCapabilityMinor = 76
     cudaDevAttrMaxTexture1DMipmappedWidth = 77
     cudaDevAttrStreamPrioritiesSupported = 78
     cudaDevAttrGlobalL1CacheSupported = 79
@@ -177,6 +178,13 @@ cpdef enum:
 cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
     int cudaErrorMemoryAllocation
     int cudaErrorInvalidValue
+
+###############################################################################
+# Const value
+###############################################################################
+cpdef bint _is_hip_environment
+cpdef int deviceAttributeComputeCapabilityMajor
+cpdef int deviceAttributeComputeCapabilityMinor
 
 
 ###############################################################################

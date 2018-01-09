@@ -29,9 +29,9 @@ cdef class PointerAttributes:
 # Extern
 ###############################################################################
 cdef extern from *:
-    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
-    ctypedef int MemoryAdvise 'enum cudaMemoryAdvise'
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
+    ctypedef int DeviceAttr 'cudaDeviceAttr'
+    ctypedef int MemoryAdvise 'cudaMemoryAdvise'
+    ctypedef int MemoryKind 'cudaMemcpyKind'
 
     ctypedef void StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
@@ -41,7 +41,7 @@ cdef extern from *:
 cdef extern from 'cupy_cuda.h' nogil:
 
     # Types
-    struct _PointerAttributes 'cudaPointerAttributes':
+    ctypedef struct _PointerAttributes 'cudaPointerAttributes':
         int device
         void* devicePointer
         void* hostPointer
@@ -115,6 +115,15 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaEventQuery(driver.Event event)
     int cudaEventRecord(driver.Event event, driver.Stream stream)
     int cudaEventSynchronize(driver.Event event)
+
+    bint hip_environment
+    int cudaDevAttrComputeCapabilityMajor
+    int cudaDevAttrComputeCapabilityMinor
+
+_is_hip_environment = hip_environment
+is_hip = hip_environment
+deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
+deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 
 ###############################################################################

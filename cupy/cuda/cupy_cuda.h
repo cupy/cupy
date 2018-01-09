@@ -5,11 +5,18 @@
 
 #include <stdint.h>
 
-#ifndef CUPY_NO_CUDA
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <cuda.h>
-#endif
 
-#ifndef CUPY_NO_CUDA
+#endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+
+
+#if CUPY_USE_HIP
+
+#include<cupy_hip.h>
+
+#elif !defined(CUPY_NO_CUDA)
+
 #include <cublas_v2.h>
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
@@ -19,6 +26,8 @@
 #endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
+
+bool hip_environment = false;
 
 #if CUDA_VERSION < 9000
 
@@ -45,6 +54,8 @@ cublasStatus_t cublasGetMathMode(...) {
 #define CUDA_VERSION 0
 
 extern "C" {
+
+bool hip_environment = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda.h
@@ -161,6 +172,11 @@ CUresult cuFuncSetAttribute(...) {
 // cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
 
+enum {
+    cudaDevAttrComputeCapabilityMajor = 75,
+    cudaDevAttrComputeCapabilityMinor = 76,
+};
+
 typedef enum {
     cudaSuccess = 0,
     cudaErrorInvalidValue = 1,
@@ -175,8 +191,6 @@ enum cudaMemcpyKind {};
 typedef void (*cudaStreamCallback_t)(
     cudaStream_t stream, cudaError_t status, void* userData);
 
-typedef cudaStreamCallback_t StreamCallback;
-
 
 struct cudaPointerAttributes{
     int device;
@@ -185,8 +199,6 @@ struct cudaPointerAttributes{
     int isManaged;
     int memoryType;
 };
-
-typedef cudaPointerAttributes _PointerAttributes;
 
 
 // Error handling
