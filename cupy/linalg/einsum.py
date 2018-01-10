@@ -425,9 +425,8 @@ def einsum(*operands):
             raise ValueError('einstein sum subscripts string contains too '
                              'many subscripts for operand {}'.format(i))
         if len(subscript) < ioperand.ndim:
-            raise ValueError('operand has more dimensions than subscripts'
-                             ' given in einstein sum, but no \'...\' ellipsis'
-                             ' provided to broadcast the extra dimensions.')
+            raise ValueError('operand {} has more dimensions than subscripts'
+                             ' given in einstein sum'.format(i))
         result, subscript = calc_single_view(ioperand, subscript)
         single_views.append((result, subscript))
 
