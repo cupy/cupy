@@ -38,11 +38,11 @@ The above kernel can be called on either scalars or arrays with broadcasting:
    >>> x = cp.arange(10, dtype=np.float32).reshape(2, 5)
    >>> y = cp.arange(5, dtype=np.float32)
    >>> squared_diff(x, y)
-   array([[  0.,   0.,   0.,   0.,   0.],
-          [ 25.,  25.,  25.,  25.,  25.]], dtype=float32)
+   array([[ 0.,  0.,  0.,  0.,  0.],
+          [25., 25., 25., 25., 25.]], dtype=float32)
    >>> squared_diff(x, 5)
-   array([[ 25.,  16.,   9.,   4.,   1.],
-          [  0.,   1.,   4.,   9.,  16.]], dtype=float32)
+   array([[25., 16.,  9.,  4.,  1.],
+          [ 0.,  1.,  4.,  9., 16.]], dtype=float32)
 
 Output arguments can be explicitly specified (next to the input arguments):
 
@@ -50,8 +50,8 @@ Output arguments can be explicitly specified (next to the input arguments):
 
    >>> z = cp.empty((2, 5), dtype=np.float32)
    >>> squared_diff(x, y, z)
-   array([[  0.,   0.,   0.,   0.,   0.],
-          [ 25.,  25.,  25.,  25.,  25.]], dtype=float32)
+   array([[ 0.,  0.,  0.,  0.,  0.],
+          [25., 25., 25., 25., 25.]], dtype=float32)
 
 
 Type-generic kernels
@@ -161,7 +161,7 @@ For example, L2 norm along specified axes can be written as follows:
    ... )
    >>> x = cp.arange(10, dtype='f').reshape(2, 5)
    >>> l2norm_kernel(x, axis=1)
-   array([  5.47722578,  15.96871948], dtype=float32)
+   array([ 5.477226 , 15.9687195], dtype=float32)
 
 .. note::
    ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
