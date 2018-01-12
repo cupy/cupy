@@ -873,6 +873,15 @@ cdef class ndarray:
 
         """
 
+        if self.dtype not in [numpy.int8, numpy.uint8, numpy.int16,
+                              numpy.uint16, numpy.int32, numpy.uint32,
+                              numpy.int64, numpy.uint64, numpy.float32,
+                              numpy.float64]:
+            raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
+                                      'not supported'.format(self.dtype))
+
+        cdef Py_ssize_t ndim = self.ndim
+
         if ndim == 0:
             raise ValueError('Sorting arrays with the rank of zero is not '
                              'supported')
@@ -881,11 +890,15 @@ cdef class ndarray:
             raise NotImplementedError('Sorting non-contiguous array is not '
                                       'supported.')
 
-        ndim = self.ndim
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
             raise _AxisError('Axis out of range')
+
+        if axis == ndim - 1:
+            data = self
+        else:
+            data = cupy.rollaxis(self, axis, ndim).copy()
 
         length = self.shape[axis]
         if isinstance(kth, int):
@@ -912,19 +925,19 @@ cdef class ndarray:
         sz *= self.size // length
 
         # If the array size is small or k is large, we simply sort the array.
-        if sz <= 32 or max_k >= 1024:
+        if length < 32 or sz <= 32 or max_k >= 1024:
             # kth is ignored.
-            self.sort(axis=axis)
+            data.sort(axis=-1)
         else:
-            shape = self.shape
-            self = self.ravel()
+            shape = data.shape
+            data = data.ravel()
 
             # For each subarray, we collect first k elements to the head.
             kern, merge_kern = _partition_kernel(self.dtype)
             block_size = 32
             grid_size = sz
             kern(grid=(grid_size,), block=(block_size,), args=(
-                self, max_k, self.size, t, sz))
+                data, max_k, self.size, t, sz))
 
             # Merge heads of subarrays.
             s = 1
@@ -932,10 +945,16 @@ cdef class ndarray:
                 block_size = 32
                 grid_size = sz // s // 2
                 merge_kern(grid=(grid_size,), block=(block_size,), args=(
-                    self, max_k, self.size, sz, s))
+                    data, max_k, self.size, sz, s))
                 s *= 2
 
-            self.reshape(shape)
+            data = data.reshape(shape)
+
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.

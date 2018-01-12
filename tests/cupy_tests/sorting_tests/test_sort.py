@@ -338,6 +338,7 @@ class TestMsort(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'external': [False, True],
+    'length': [10, 10000],
 }))
 @testing.gpu
 class TestPartition(unittest.TestCase):
@@ -363,17 +364,7 @@ class TestPartition(unittest.TestCase):
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_equal()
     def test_partition_one_dim(self, xp, dtype):
-        a = testing.shaped_random((10,), xp, dtype)
-        kth = 2
-        x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
-        self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
-        return x[kth]
-
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_equal()
-    def test_partition_one_dim_large(self, xp, dtype):
-        a = testing.shaped_random((100000,), xp, dtype)
+        a = testing.shaped_random((self.length,), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
         self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
@@ -383,17 +374,7 @@ class TestPartition(unittest.TestCase):
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_partition_multi_dim(self, xp, dtype):
-        a = testing.shaped_random((10, 10, 10), xp, dtype)
-        kth = 2
-        x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
-        self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
-        return x[:, :, kth:kth + 1]
-
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_partition_multi_dim_large(self, xp, dtype):
-        a = testing.shaped_random((10, 10, 1000), xp, dtype)
+        a = testing.shaped_random((10, 10, self.length), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
         self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
@@ -404,58 +385,61 @@ class TestPartition(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_partition_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
+        a = testing.shaped_random((self.length,), cupy, dtype)
         kth = 2
         with self.assertRaises(NotImplementedError):
             return self.partition(a, kth)
 
     # Test non-contiguous array
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_partition_non_contiguous(self, xp):
-        a = testing.shaped_random((10,), xp)[::2]
+        a = testing.shaped_random((self.length,), xp)[::2]
         kth = 2
         if not self.external:
             if xp is cupy:
                 with self.assertRaises(NotImplementedError):
                     return self.partition(a, kth)
-            return xp.array([])  # dummy
+            return 0  # dummy
         else:
-            return self.partition(a, kth)
+            x = self.partition(a, kth)
+            self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
+            self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
+            return x[kth]
 
     # Test kth
 
     @testing.numpy_cupy_equal()
     def test_partition_sequence_kth(self, xp):
-        a = testing.shaped_random((10,), xp)
+        a = testing.shaped_random((self.length,), xp)
         kth = (2, 4)
         x = self.partition(a, kth)
         return x[kth[0]], x[kth[1]]
 
     @testing.numpy_cupy_equal()
     def test_partition_negative_kth(self, xp):
-        a = testing.shaped_random((10,), xp)
+        a = testing.shaped_random((self.length,), xp)
         kth = -3
         x = self.partition(a, kth)
         return x[kth]
 
     @testing.numpy_cupy_raises()
     def test_partition_invalid_kth(self, xp):
-        a = testing.shaped_random((10,), xp)
-        kth = 10
+        a = testing.shaped_random((self.length,), xp)
+        kth = self.length
         return self.partition(a, kth)
 
     @testing.numpy_cupy_raises()
     def test_partition_invalid_negative_kth(self, xp):
-        a = testing.shaped_random((10,), xp)
-        kth = -11
+        a = testing.shaped_random((self.length,), xp)
+        kth = -self.length - 1
         return self.partition(a, kth)
 
     # Test axis
 
     @testing.numpy_cupy_array_equal()
     def test_partition_axis(self, xp):
-        a = testing.shaped_random((10, 10, 10), xp)
+        a = testing.shaped_random((self.length, 10, 10), xp)
         kth = 2
         axis = 0
         x = self.partition(a, kth, axis=axis)
@@ -463,7 +447,7 @@ class TestPartition(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_partition_negative_axis(self, xp):
-        a = testing.shaped_random((10, 10, 10), xp)
+        a = testing.shaped_random((10, 10, self.length), xp)
         kth = 2
         axis = -1
         x = self.partition(a, kth, axis=axis)
@@ -472,7 +456,7 @@ class TestPartition(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_partition_none_axis(self, xp):
         if self.external:
-            a = testing.shaped_random((2, 2), xp)
+            a = testing.shaped_random((2, self.length), xp)
             kth = 2
             axis = None
             x = self.partition(a, kth, axis=axis)
@@ -483,13 +467,13 @@ class TestPartition(unittest.TestCase):
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp)
+        a = testing.shaped_random((2, 2, self.length), xp)
         kth = 2
         axis = 3
         return self.partition(a, kth, axis=axis)
 
     def test_partition_invalid_axis2(self):
-        a = testing.shaped_random((2, 2, 2), cupy)
+        a = testing.shaped_random((2, 2, self.length), cupy)
         with self.assertRaises(cupy.core.core._AxisError):
             kth = 2
             axis = 3
@@ -498,13 +482,13 @@ class TestPartition(unittest.TestCase):
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp)
+        a = testing.shaped_random((2, 2, self.length), xp)
         kth = 2
         axis = -4
         return self.partition(a, kth, axis=axis)
 
     def test_partition_invalid_negative_axis2(self):
-        a = testing.shaped_random((2, 2, 2), cupy)
+        a = testing.shaped_random((2, 2, self.length), cupy)
         with self.assertRaises(cupy.core.core._AxisError):
             kth = 2
             axis = -4
