@@ -851,7 +851,7 @@ cdef class ndarray:
             return cupy.rollaxis(idx_array, -1, axis)
 
     def partition(self, kth, axis=-1):
-        """Partially sorts an array.
+        """Partitions an array.
 
         Args:
             kth (int or sequence of ints): Element index to partition by. If
@@ -860,12 +860,6 @@ cdef class ndarray:
 
             axis (int): Axis along which to sort. Default is -1, which means
                 sort along the last axis.
-
-        .. note::
-           For its implementation reason, :func:`cupy.ndarray.partition` fully
-           sorts the given array as :meth:`cupy.ndarray.sort` does. It also
-           does not support ``kind`` and ``order`` parameters that
-           :func:`numpy.partition` supports.
 
         .. seealso::
             :func:`cupy.partition` for full documentation,
