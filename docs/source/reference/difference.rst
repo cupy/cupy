@@ -77,7 +77,7 @@ last element among elements referencing duplicate locations.
   >>> v_cpu = np.arange(10000).astype(np.float)
   >>> a_cpu[i_cpu] = v_cpu
   >>> a_cpu
-  array([ 9998.,  9999.])
+  array([9998., 9999.])
 
 
 Reduction methods return zero-dimensional array
