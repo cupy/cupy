@@ -135,10 +135,6 @@ cdef extern from "cupy_cudnn.h" nogil:
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int dilation_h, int dilation_w, ConvolutionMode mode,
         DataType computeType)
-    int cudnnGetConvolution2dDescriptor_v5(
-        ConvolutionDescriptor convDesc, int *pad_h, int *pad_w, int *u,
-        int *v, int *dilation_h, int *dilation_w, ConvolutionMode *mode,
-        DataType *computeType)
     int cudnnSetConvolutionNdDescriptor_v3(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* dilationA, ConvolutionMode mode,
@@ -676,17 +672,6 @@ cpdef setConvolution2dDescriptor_v5(
         <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
         dilation_w, <ConvolutionMode>mode, <DataType>computeType)
     check_status(status)
-
-
-cpdef getConvolution2dDescriptor_v5(size_t convDesc):
-    cdef int pad_h, pad_w, u, v, dilation_h, dilation_w
-    cdef ConvolutionMode mode
-    cdef DataType computeType
-    status = cudnnGetConvolution2dDescriptor_v5(
-        <ConvolutionDescriptor>convDesc, &pad_h, &pad_w, &u, &v, &dilation_h,
-        &dilation_w, &mode, &computeType)
-    check_status(status)
-    return pad_h, pad_w, u, v, dilation_h, dilation_w, mode, computeType
 
 
 cpdef setConvolutionNdDescriptor_v3(

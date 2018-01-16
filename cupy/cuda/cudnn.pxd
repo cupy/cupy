@@ -167,7 +167,6 @@ cpdef setConvolution2dDescriptor_v4(
 cpdef setConvolution2dDescriptor_v5(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode, size_t computeType)
-cpdef getConvolution2dDescriptor_v5(size_t convDesc)
 cpdef setConvolutionNdDescriptor_v3(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t dilationA, int mode, int dataType)

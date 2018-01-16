@@ -341,10 +341,6 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolution2dDescriptor_v5(...) {
-    return CUDNN_STATUS_NOT_SUPPORTED;
-}
-
 cudnnStatus_t cudnnGetFilterNdDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -560,7 +556,6 @@ cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 #define cudnnSetConvolution2dDescriptor_v5 cudnnSetConvolution2dDescriptor
-#define cudnnGetConvolution2dDescriptor_v5 cudnnGetConvolution2dDescriptor
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
