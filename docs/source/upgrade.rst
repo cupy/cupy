@@ -57,8 +57,8 @@ Be sure to do this before any other CuPy operations.
 .. code-block:: py
 
    import cupy
-   cupy.cuda.set_allocator()
-   cupy.cuda.set_pinned_memory_allocator()
+   cupy.cuda.set_allocator(None)
+   cupy.cuda.set_pinned_memory_allocator(None)
 
 Compute Capability
 ------------------
