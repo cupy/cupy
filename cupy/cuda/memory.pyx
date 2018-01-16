@@ -439,17 +439,20 @@ cpdef MemoryPointer alloc(Py_ssize_t size):
     return _current_allocator(size)
 
 
-cpdef set_allocator(allocator=_malloc):
+cpdef set_allocator(allocator=None):
     """Sets the current allocator.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same
             interface as the :func:`cupy.cuda.alloc` function, which takes the
             buffer size as an argument and returns the device buffer of that
-            size.
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
 
     """
     global _current_allocator
+    if allocator is None:
+        allocator = _malloc
     _current_allocator = allocator
 
 

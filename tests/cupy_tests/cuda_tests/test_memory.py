@@ -502,3 +502,28 @@ class TestAllocator(unittest.TestCase):
             t.start()
             t.join()
         self.assertFalse(self._error)
+
+
+@testing.gpu
+class TestAllocatorDefault(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = cupy.get_default_memory_pool()
+
+    def tearDown(self):
+        memory.set_allocator(self.pool.malloc)
+
+    def _check_pool_not_used(self):
+        used_bytes = self.pool.used_bytes()
+        with cupy.cuda.Device(0):
+            arr = cupy.arange(128, dtype=cupy.int64)
+            self.assertEqual(0, self.pool.used_bytes() - used_bytes)
+            del arr
+
+    def test(self):
+        memory.set_allocator()
+        self._check_pool_not_used()
+
+    def test_none(self):
+        memory.set_allocator(None)
+        self._check_pool_not_used()
