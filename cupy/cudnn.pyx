@@ -211,6 +211,107 @@ def create_convolution_descriptor(pad, stride, dtype,
     return desc
 
 
+def check_convolution_forward_algorithm(algo, handle, xDesc, filterDesc,
+                                        convDesc, yDesc, workspace_size):
+    mathType = cudnn.getConvolutionMathType(convDesc.value)
+    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        return
+
+    supported_algos = [
+        cudnn.CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
+        cudnn.CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED,
+    ]
+    if algo in supported_algos:
+        return
+
+    required_size = cudnn.getConvolutionForwardWorkspaceSize(
+        handle, xDesc.value, filterDesc.value, convDesc.value, yDesc.value,
+        supported_algos[0])
+    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(xDesc.value)
+    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(yDesc.value)
+    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc.value)
+
+    msg = 'Tensor Core mode is set but the selected convolution forward '\
+          'algorithm(%d) is not Tensor Core enabled algo. '\
+          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
+          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
+          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+    if workspace_size < required_size:
+        msg += 'This might be because cuDNN workspace size is not large '\
+               'enough for Tensor Core enabled algorithm (current '\
+               'workspace size:%d, required size:%d).' % (
+                   workspace_size, required_size)
+    warnings.warn(msg, RuntimeWarning)
+
+
+def check_convolution_backward_data_algorithm(
+        algo, handle, filterDesc, gyDesc, convDesc, gxDesc, workspace_size):
+    mathType = cudnn.getConvolutionMathType(convDesc.value)
+    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        return
+
+    supported_algos = [
+        cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1,
+        cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED,
+    ]
+    if algo in supported_algos:
+        return
+
+    required_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
+        handle, filterDesc.value, gyDesc.value, convDesc.value, gxDesc.value,
+        supported_algos[0])
+
+    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(gxDesc.value)
+    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(gyDesc.value)
+    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc.value)
+
+    msg = 'Tensor Core mode is set but the selected convolution backward '\
+          'data algorithm(%d) is not Tensor Core enabled algo. '\
+          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
+          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
+          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+    if workspace_size < required_size:
+        msg += 'This might be because cuDNN workspace size is not large '\
+               'enough for Tensor Core enabled algorithm (current '\
+               'workspace size:%d, required size:%d).' % (
+                   workspace_size, required_size)
+    warnings.warn(msg, RuntimeWarning)
+
+
+def check_convolution_backward_filter_algorithm(
+        algo, handle, xDesc, gyDesc, convDesc, filterDesc, workspace_size):
+    mathType = cudnn.getConvolutionMathType(convDesc.value)
+    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        return
+
+    supported_algos = [
+        cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1,
+        cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED,
+    ]
+    if algo in supported_algos:
+        return
+
+    required_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
+        handle, xDesc.value, gyDesc.value, convDesc.value, filterDesc.value,
+        supported_algos[0])
+
+    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(xDesc.value)
+    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(gyDesc.value)
+    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc.value)
+
+    msg = 'Tensor Core mode is set but the selected convolution backward '\
+          'filter algorithm(%d) is not Tensor Core enabled algo. '\
+          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
+          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
+          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+    if workspace_size < required_size:
+        msg += 'This might be because cuDNN workspace size is not large '\
+               'enough for Tensor Core enabled algorithm (current '\
+               'workspace size:%d, required size:%d).' % (
+                   workspace_size, required_size)
+    warnings.warn(msg, RuntimeWarning)
+
+
 def create_pooling_descriptor(ksize, stride, pad, mode):
     cdef vector.vector[int] c_ksize, c_pad, c_stride
     ndim = len(ksize)

@@ -238,6 +238,10 @@ cudnnStatus_t cudnnSetFilter4dDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnGetFilter4dDescriptor_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 cudnnStatus_t cudnnSetFilterNdDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -334,6 +338,10 @@ typedef void* cudnnSamplerType_t;
 
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolution2dDescriptor_v5(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -508,6 +516,7 @@ cudnnStatus_t cudnnSetRNNDescriptor_v6(...) {
 // Following definitions are for compatibility with cuDNN v6 and higher.
 
 #define cudnnSetFilter4dDescriptor_v4 cudnnSetFilter4dDescriptor
+#define cudnnGetFilter4dDescriptor_v4 cudnnGetFilter4dDescriptor
 #define cudnnSetFilterNdDescriptor_v4 cudnnSetFilterNdDescriptor
 #define cudnnGetFilterNdDescriptor_v4 cudnnGetFilterNdDescriptor
 #define cudnnSetPooling2dDescriptor_v4 cudnnSetPooling2dDescriptor
@@ -551,6 +560,7 @@ cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 #define cudnnSetConvolution2dDescriptor_v5 cudnnSetConvolution2dDescriptor
+#define cudnnGetConvolution2dDescriptor_v5 cudnnGetConvolution2dDescriptor
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;

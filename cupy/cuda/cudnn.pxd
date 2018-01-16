@@ -128,6 +128,7 @@ cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
                               int n, int c, int h, int w, int nStride,
                               int cStride, int hStride, int wStride)
+cpdef getTensor4dDescriptor(size_t tensorDesc)
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
@@ -142,6 +143,7 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
 cpdef size_t createFilterDescriptor() except *
 cpdef setFilter4dDescriptor_v4(
     size_t filterDesc, int dataType, int format, int k, int c, int h, int w)
+cpdef getFilter4dDescriptor(size_t wDesc)
 cpdef setFilterNdDescriptor_v4(
     size_t filterDesc, int dataType, int format, int nbDims, size_t filterDimA)
 cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested)
@@ -165,6 +167,7 @@ cpdef setConvolution2dDescriptor_v4(
 cpdef setConvolution2dDescriptor_v5(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode, size_t computeType)
+cpdef getConvolution2dDescriptor_v5(size_t convDesc)
 cpdef setConvolutionNdDescriptor_v3(
     size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
     size_t dilationA, int mode, int dataType)

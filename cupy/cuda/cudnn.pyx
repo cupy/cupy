@@ -107,6 +107,9 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnSetFilter4dDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
         TensorFormat format, int k, int c, int h, int w)
+    int cudnnGetFilter4dDescriptor_v4(
+        FilterDescriptor wDesc, DataType *dataType,
+        TensorFormat* format, int* k, int *c, int *h, int *w)
     int cudnnSetFilterNdDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
         TensorFormat format, int nbDims, const int filterDimA[])
@@ -132,6 +135,10 @@ cdef extern from "cupy_cudnn.h" nogil:
         ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u,
         int v, int dilation_h, int dilation_w, ConvolutionMode mode,
         DataType computeType)
+    int cudnnGetConvolution2dDescriptor_v5(
+        ConvolutionDescriptor convDesc, int *pad_h, int *pad_w, int *u,
+        int *v, int *dilation_h, int *dilation_w, ConvolutionMode *mode,
+        DataType *computeType)
     int cudnnSetConvolutionNdDescriptor_v3(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* dilationA, ConvolutionMode mode,
@@ -576,6 +583,18 @@ cpdef setFilter4dDescriptor_v4(
     check_status(status)
 
 
+cpdef getFilter4dDescriptor(size_t wDesc):
+    cdef DataType dataType
+    cdef TensorFormat format
+    cdef int k, c, h, w
+
+    status = cudnnGetFilter4dDescriptor_v4(
+        <FilterDescriptor>wDesc, &dataType,
+        &format, &k, &c, &h, &w)
+    check_status(status)
+    return dataType, format, k, c, h, w
+
+
 cpdef setFilterNdDescriptor_v4(
         size_t filterDesc, int dataType,
         int format, int nbDims, size_t filterDimA):
@@ -657,6 +676,17 @@ cpdef setConvolution2dDescriptor_v5(
         <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, dilation_h,
         dilation_w, <ConvolutionMode>mode, <DataType>computeType)
     check_status(status)
+
+
+cpdef getConvolution2dDescriptor_v5(size_t convDesc):
+    cdef int pad_h, pad_w, u, v, dilation_h, dilation_w
+    cdef ConvolutionMode mode
+    cdef DataType computeType
+    status = cudnnGetConvolution2dDescriptor_v5(
+        <ConvolutionDescriptor>convDesc, &pad_h, &pad_w, &u, &v, &dilation_h,
+        &dilation_w, &mode, &computeType)
+    check_status(status)
+    return pad_h, pad_w, u, v, dilation_h, dilation_w, mode, computeType
 
 
 cpdef setConvolutionNdDescriptor_v3(
