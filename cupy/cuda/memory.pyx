@@ -446,8 +446,8 @@ cpdef set_allocator(allocator=None):
         allocator (function): CuPy memory allocator. It must have the same
             interface as the :func:`cupy.cuda.alloc` function, which takes the
             buffer size as an argument and returns the device buffer of that
-            size. When ``None`` is specified, the default memory allocator
-            is used (i.e., memory pool is disabled).
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
 
     """
     global _current_allocator

@@ -218,8 +218,8 @@ cpdef set_pinned_memory_allocator(allocator=None):
         allocator (function): CuPy pinned memory allocator. It must have the
             same interface as the :func:`cupy.cuda.alloc_alloc_pinned_memory`
             function, which takes the buffer size as an argument and returns
-            the device buffer of that size. When ``None`` is specified, the
-            default memory allocator is used (i.e., memory pool is disabled).
+            the device buffer of that size. When ``None`` is specified, raw
+            memory allocator is used (i.e., memory pool is disabled).
 
     """
     global _current_allocator
