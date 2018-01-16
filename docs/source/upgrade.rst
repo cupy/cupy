@@ -67,6 +67,15 @@ CuPy v4 now requires NVIDIA GPU with Compute Capability 3.0 or larger.
 See the `List of CUDA GPUs <https://developer.nvidia.com/cuda-gpus>`_ to check if your GPU supports Compute Capability 3.0.
 
 
+CUDA Stream
+-----------
+
+As CUDA Stream is fully supported in CuPy v4, ``cupy.cuda.RandomState.set_stream``, the function to change the stream used by the random number generator, has been removed.
+Please use :func:`cupy.cuda.Stream.use` instead.
+
+See the discussion in `#306 <https://github.com/cupy/cupy/pull/306>`_ for more details.
+
+
 CuPy v2
 =======
 
