@@ -518,6 +518,7 @@ class TestAllocatorDefault(unittest.TestCase):
         with cupy.cuda.Device(0):
             arr = cupy.arange(128, dtype=cupy.int64)
             self.assertEqual(0, self.pool.used_bytes() - used_bytes)
+            del arr
 
     def test(self):
         memory.set_allocator()
