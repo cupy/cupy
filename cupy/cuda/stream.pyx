@@ -1,6 +1,7 @@
 from cupy.cuda import runtime
 from cpython cimport pythread
 import threading
+import warnings
 import weakref
 
 
@@ -151,9 +152,10 @@ class Stream(object):
 
     def __init__(self, null=False, non_blocking=False):
         if null and Stream.null:
-            self.ptr = 0  # to avoid AttributeError on __del__
-            raise ValueError('Use cupy.cuda.Stream.null instead of creating '
-                             'a new cupy.cuda.Stream(null=True) object')
+            warnings.warn(
+                'Creation of new null stream object is deprecated. '
+                'Use cupy.cuda.Stream.null instead.',
+                DeprecationWarning)
         if null:
             self.ptr = 0
         elif non_blocking:
@@ -166,6 +168,12 @@ class Stream(object):
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
+
+    def __eq__(self, other):
+        # This operator is implemented to compare the singleton instance
+        # of null stream (Stream.null) can safely be compared with null
+        # stream instance created by a user.
+        return self.ptr == other.ptr
 
     def __enter__(self):
         if not hasattr(_thread_local, 'prev_stream_ref_stack'):
