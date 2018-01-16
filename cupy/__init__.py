@@ -554,28 +554,30 @@ cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
 
 
 def get_default_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for GPU memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.MemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_allocator()
+
+       >>> cupy.cuda.set_allocator(None)
 
     """
     return _default_memory_pool
 
 
 def get_default_pinned_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for pinned memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.PinnedMemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_pinned_memory_allocator()
+
+       >>> cupy.cuda.set_pinned_memory_allocator(None)
 
     """
     return _default_pinned_memory_pool
