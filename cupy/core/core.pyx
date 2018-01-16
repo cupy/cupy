@@ -2654,7 +2654,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
 )
 
 
-cpdef int size(ndarray a, axis=None) except *:
+cpdef Py_ssize_t size(ndarray a, axis=None) except *:
     """Returns the number of elements along a given axis.
 
     Args:
