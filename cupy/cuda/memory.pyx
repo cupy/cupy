@@ -440,7 +440,7 @@ cpdef MemoryPointer alloc(Py_ssize_t size):
 
 
 cpdef set_allocator(allocator=None):
-    """Sets the current allocator.
+    """Sets the current allocator for GPU memory.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same
@@ -883,7 +883,7 @@ cdef class SingleDeviceMemoryPool:
 
 cdef class MemoryPool(object):
 
-    """Memory pool for all devices on the machine.
+    """Memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
     Freed memory buffers are held by the memory pool as *free blocks*, and they
