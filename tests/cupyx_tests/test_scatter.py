@@ -3,8 +3,8 @@ import unittest
 import numpy
 
 import cupy
-import cupyx
 from cupy import testing
+import cupyx
 
 
 @testing.gpu
