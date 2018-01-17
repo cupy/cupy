@@ -101,6 +101,7 @@ setup(
         'cupy.sparse.linalg',
         'cupy.statistics',
         'cupy.testing',
+        'cupyx',
     ],
     package_data=package_data,
     zip_safe=False,
