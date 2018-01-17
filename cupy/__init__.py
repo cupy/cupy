@@ -35,6 +35,7 @@ __version__ = _version.__version__
 from cupy import binary  # NOQA
 from cupy.core import fusion  # NOQA
 from cupy import creation  # NOQA
+from cupy import ext  # NOQA
 from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
@@ -485,6 +486,7 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+# This import is left for backward compatibility.
 from cupy.ext.scatter import scatter_add  # NOQA
 
 
