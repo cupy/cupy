@@ -11,12 +11,13 @@ class TestStream(unittest.TestCase):
     @attr.gpu
     def test_eq(self):
         null0 = cuda.Stream.null
-        with testing.assert_warns(DeprecationWarning):
-            null1 = cuda.Stream(True)
-            null2 = cuda.Stream(True)
+        null1 = cuda.Stream(True)
+        null2 = cuda.Stream(True)
+        null3 = cuda.Stream()
 
         self.assertEqual(null0, null1)
         self.assertEqual(null1, null2)
+        self.assertNotEqual(null2, null3)
 
     @attr.gpu
     def test_del(self):
