@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+import argparse
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -398,21 +400,25 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    cupy_profile = '--cupy-profile' in sys.argv
-    if cupy_profile:
-        sys.argv.remove('--cupy-profile')
-    cupy_coverage = '--cupy-coverage' in sys.argv
-    if cupy_coverage:
-        sys.argv.remove('--cupy-coverage')
-    no_cuda = '--cupy-no-cuda' in sys.argv
-    if no_cuda:
-        sys.argv.remove('--cupy-no-cuda')
+    parser = argparse.ArgumentParser(add_help=False)
+
+    parser.add_argument(
+        '--cupy-profile', action='store_true', default=False,
+        help='enable profiling for Cython code')
+    parser.add_argument(
+        '--cupy-coverage', action='store_true', default=False,
+        help='enable coverage for Cython code')
+    parser.add_argument(
+        '--cupy-no-cuda', action='store_true', default=False,
+        help='build CuPy with stub header file')
+
+    opts, sys.argv = parser.parse_known_args(sys.argv)
 
     arg_options = {
-        'profile': cupy_profile,
-        'linetrace': cupy_coverage,
-        'annotate': cupy_coverage,
-        'no_cuda': no_cuda,
+        'profile': opts.cupy_profile,
+        'linetrace': opts.cupy_coverage,
+        'annotate': opts.cupy_coverage,
+        'no_cuda': opts.cupy_no_cuda,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
