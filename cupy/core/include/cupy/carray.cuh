@@ -293,7 +293,7 @@ private:
   ptrdiff_t strides_[ndim];
 
 public:
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
@@ -346,7 +346,7 @@ private:
 public:
   static const int ndim = 0;
 
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
@@ -424,7 +424,7 @@ private:
 public:
   static const int ndim = 0;
 
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
