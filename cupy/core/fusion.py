@@ -499,7 +499,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
     op_list = mem.op_list
     tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
 
-    in_params = ', '.join(_get_params(in_vars))
+    in_params = ', '.join(_get_params(in_vars[:nin]))
     out_params = ', '.join(_get_params(out_vars))
     operation = ''.join(_get_declaration_from_var(_) for _ in tmpvars)
     operation += ''.join(_get_declaration_from_op(_) for _ in op_list)
