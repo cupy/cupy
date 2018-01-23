@@ -237,7 +237,7 @@ def get_cuda_version(formatted=False):
     global _cuda_version
     if _cuda_version is None:
         msg = 'check_cuda_version() must be called first.'
-        raise Exception(msg)
+        raise RuntimeError(msg)
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
@@ -278,7 +278,7 @@ def get_cudnn_version(formatted=False):
     global _cudnn_version
     if _cudnn_version is None:
         msg = 'check_cudnn_version() must be called first.'
-        raise Exception(msg)
+        raise RuntimeError(msg)
     if formatted:
         return _format_cuda_version(_cudnn_version)
     return _cudnn_version
@@ -318,7 +318,7 @@ def get_nccl_version(formatted=False):
     global _nccl_version
     if _nccl_version is None:
         msg = 'check_nccl_version() must be called first.'
-        raise Exception(msg)
+        raise RuntimeError(msg)
     if formatted:
         if _nccl_version == 0:
             return '1.x'

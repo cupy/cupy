@@ -16,7 +16,7 @@ class TestCheckVersion(unittest.TestCase):
 
     @pytest.mark.gpu
     def test_check_cuda_version(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             build.get_cuda_version()
         self.assertTrue(build.check_cuda_version(
             self.compiler, self.settings))
@@ -26,7 +26,7 @@ class TestCheckVersion(unittest.TestCase):
     @pytest.mark.gpu
     @pytest.mark.cudnn
     def test_check_cudnn_version(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             build.get_cudnn_version()
         self.assertTrue(build.check_cudnn_version(
             self.compiler, self.settings))
