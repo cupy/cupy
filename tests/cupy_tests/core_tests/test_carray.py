@@ -45,3 +45,21 @@ class TestCArray(unittest.TestCase):
             'test_carray_getitem_idx',
         )(x, y)
         testing.assert_array_equal(y, x)
+
+
+@testing.parameterize(
+    {"size": 2 ** 32 + 1024},
+    {"size": 2 ** 32},
+    {"size": 2 ** 32 - 1024},
+    {"size": 2 ** 31 + 1024},
+    {"size": 2 ** 31},
+    {"size": 2 ** 31 - 1024},
+)
+@testing.slow
+class TestCArray32BitBoundary(unittest.TestCase):
+    def test(self):
+        # Elementwise
+        a = cupy.ones(self.size, dtype='b')
+        # Reduction
+        result = a.sum()
+        self.assertEqual(self.size, result)
