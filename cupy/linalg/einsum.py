@@ -198,7 +198,7 @@ def calc_combined_view(ioperands, subscripts):
     return result.reshape(a_shape_stack + b_shape_stack), subscript
 
 
-def parse_einsum_input(operands):
+def _parse_einsum_input(operands):
     """Parses einsum operands.
 
     This function is based on `numpy.core.einsumfunc._parse_einsum_input`
@@ -219,10 +219,10 @@ def parse_einsum_input(operands):
 
     >>> a = np.random.rand(4, 4)
     >>> b = np.random.rand(4, 4, 4)
-    >>> parse_einsum_input(('...a,...a->...', a, b))
+    >>> _parse_einsum_input(('...a,...a->...', a, b))
     ('za,xza', 'xz', [a, b])
 
-    >>> parse_einsum_input((a, [Ellipsis, 0], b, [Ellipsis, 0]))
+    >>> _parse_einsum_input((a, [Ellipsis, 0], b, [Ellipsis, 0]))
     ('za,xza', 'xz', [a, b])
     """
 
@@ -397,7 +397,7 @@ def einsum(*operands):
     # TODO(fukatani): Support 'out', 'order', 'dtype', 'casting', 'optimize'
 
     input_subscripts, output_subscript, ioperands = \
-        parse_einsum_input(operands)
+        _parse_einsum_input(operands)
     subscripts = '{}->{}'.format(input_subscripts, output_subscript)
 
     converted_inputs = []
