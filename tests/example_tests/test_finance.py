@@ -4,6 +4,8 @@ import six
 
 from example_tests import example_test
 
+from cupy import testing
+
 
 class TestBlackScholes(unittest.TestCase):
 
@@ -38,6 +40,7 @@ class TestMonteCarlo(unittest.TestCase):
 
 class TestMonteCarloWithMultiGPU(unittest.TestCase):
 
+    @testing.multi_gpu(2)
     def test_monte_carlo_multigpu(self):
         output = example_test.run_example(
             'finance/monte_carlo_multigpu.py', '--gpus', '0', '1',
