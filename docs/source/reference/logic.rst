@@ -32,7 +32,11 @@ Array type testing
    :nosignatures:
 
    cupy.isscalar
-
+   cupy.iscomplex
+   cupy.iscomplexobj
+   cupy.isfortran
+   cupy.isreal
+   cupy.isrealobj
 
 
 Logic operations
