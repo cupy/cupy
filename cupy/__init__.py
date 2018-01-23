@@ -320,6 +320,12 @@ from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
+from cupy.logic.type_test import iscomplex  # NOQA
+from cupy.logic.type_test import iscomplexobj  # NOQA
+from cupy.logic.type_test import isfortran  # NOQA
+from cupy.logic.type_test import isreal  # NOQA
+from cupy.logic.type_test import isrealobj  # NOQA
+
 
 def isscalar(num):
     """Returns True if the type of num is a scalar type.
