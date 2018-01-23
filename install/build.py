@@ -194,6 +194,8 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_cudnn_version = None
+_nccl_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -222,11 +224,13 @@ def check_cuda_version(compiler, settings):
 
     return True
 
+
 def _format_cuda_version(version):
     major = version // 1000
     minor = (version % 1000) // 100
     patch = (version % 100)
     return '{}.{}.{}'.format(major, minor, patch)
+
 
 def get_cuda_version(formatted=False):
     """Return CUDA Toolkit version cached in check_cuda_version()."""
@@ -261,11 +265,13 @@ def check_cudnn_version(compiler, settings):
         min_major = _format_cuda_version(minimum_cudnn_version)
         max_major = _format_cuda_version(maximum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: %s' % _format_cuda_version(_cudnn_version),
-            'cuDNN v%s= and <=v%s is required' % (min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(
+                _format_cuda_version(_cudnn_version)),
+            'cuDNN v{}= and <=v{} is required'.format(min_major, max_major))
         return False
 
     return True
+
 
 def get_cudnn_version(formatted=False):
     """Return cuDNN version cached in check_cudnn_version()."""

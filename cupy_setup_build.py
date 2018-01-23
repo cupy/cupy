@@ -203,8 +203,9 @@ def check_library(compiler, includes=(), libraries=(),
     return True
 
 
-def check_installed_modules(compiler, settings):
-    """
+def preconfigure_modules(compiler, settings):
+    """Returns a list of modules buildable in given environment and settings.
+
     For each module in MODULES list, this function checks if the module
     can be built in the current environment and reports it.
     Returns a list of module names available.
@@ -220,7 +221,8 @@ def check_installed_modules(compiler, settings):
         'Build Environment:',
         '  Include directories: {}'.format(str(settings['include_dirs'])),
         '  Library directories: {}'.format(str(settings['library_dirs'])),
-        '  nvcc command       : {}'.format(nvcc_path if nvcc_path else '(not found)'),
+        '  nvcc command       : {}'.format(
+            nvcc_path if nvcc_path else '(not found)'),
         '',
         'Environment Variables:',
     ]
@@ -238,7 +240,8 @@ def check_installed_modules(compiler, settings):
         (installed, status, errmsg) = (False, 'No', [])
 
         print('')
-        print('-------- Configuring Module: {} --------'.format(module['name']))
+        print('-------- Configuring Module: {} --------'.format(
+            module['name']))
         sys.stdout.flush()
         if not check_library(compiler,
                              includes=module['include'],
@@ -250,7 +253,8 @@ def check_installed_modules(compiler, settings):
                                library_dirs=settings['library_dirs']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        elif 'check_method' in module and not module['check_method'](compiler, settings):
+        elif ('check_method' in module and
+                not module['check_method'](compiler, settings)):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
@@ -346,12 +350,11 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
-
     available_modules = []
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules = check_installed_modules(compiler, settings)
+        available_modules = preconfigure_modules(compiler, settings)
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
