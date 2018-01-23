@@ -6,4 +6,4 @@ RUN apt-get update -y && \
     python-pip && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install cupy==4.0.0b2
+RUN pip install cupy==4.0.0b3
