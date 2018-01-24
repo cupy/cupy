@@ -1714,14 +1714,14 @@ cdef class ndarray:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
-        if stream is None:
-            stream_ptr = stream_module.get_current_stream_ptr()
-        else:
-            stream_ptr = stream.ptr
-        if stream_ptr == 0:
-            a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
-        else:
+        if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
+        else:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            if stream_ptr == 0:
+                a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+            else:
+                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1751,14 +1751,14 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.get_as_parameter()
-        if stream is None:
-            stream_ptr = stream_module.get_current_stream_ptr()
-        else:
-            stream_ptr = stream.ptr
-        if stream_ptr == 0:
-            self.data.copy_from_host(ptr, self.nbytes)
-        else:
+        if stream is not None:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
+        else:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            if stream_ptr == 0:
+                self.data.copy_from_host(ptr, self.nbytes)
+            else:
+                self.data.copy_from_host_async(ptr, self.nbytes)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
