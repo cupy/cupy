@@ -43,7 +43,7 @@ class TestIsFortran(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test(self, xp):
-        return xp.isfortran(self.value)
+        return xp.isfortran(xp.asarray(self.value))
 
 
 class TypeTestingTestBase(object):
