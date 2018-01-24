@@ -117,6 +117,17 @@ from numpy import float32  # NOQA
 from numpy import float64  # NOQA
 
 
+from numpy import complex_  # NOQA
+
+from numpy import complex64  # NOQA
+
+from numpy import complex128  # NOQA
+
+from numpy import csingle  # NOQA
+
+from numpy import clongfloat  # NOQA
+
+
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
