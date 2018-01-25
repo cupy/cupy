@@ -46,7 +46,11 @@ class TestIsFortran(unittest.TestCase):
         return xp.isfortran(xp.asarray(self.value))
 
 
-class TypeTestingTestBase(object):
+@testing.parameterize(
+    {'func': 'iscomplex'},
+    {'func': 'isreal'},
+)
+class TestTypeTestingFunctions(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -54,29 +58,13 @@ class TypeTestingTestBase(object):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
 
 
-class TypeTestingObjTestBase(object):
+@testing.parameterize(
+    {'func': 'iscomplexobj'},
+    {'func': 'isrealobj'},
+)
+class TestTypeTestingObjFunctions(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test(self, xp, dtype):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
-
-
-class TestIsComplex(TypeTestingTestBase, unittest.TestCase):
-
-    func = 'iscomplex'
-
-
-class TestIsComplexObj(TypeTestingObjTestBase, unittest.TestCase):
-
-    func = 'iscomplexobj'
-
-
-class TestIsReal(TypeTestingTestBase, unittest.TestCase):
-
-    func = 'isreal'
-
-
-class TestIsRealObj(TypeTestingObjTestBase, unittest.TestCase):
-
-    func = 'isrealobj'
