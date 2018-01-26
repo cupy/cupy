@@ -361,9 +361,12 @@ class TestPartition(unittest.TestCase):
         kth = 2
         return self.partition(a, kth)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_equal()
     def test_partition_one_dim(self, xp, dtype):
+        if self.length == 10 and dtype in [xp.float16, xp.bool_]:
+            return cupy.zeros(1)  # dummy
+
         a = testing.shaped_random((self.length,), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
@@ -371,9 +374,12 @@ class TestPartition(unittest.TestCase):
         self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
         return x[kth]
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_partition_multi_dim(self, xp, dtype):
+        if self.length == 10 and dtype in [xp.float16, xp.bool_]:
+            return cupy.zeros(1)  # dummy
+
         a = testing.shaped_random((10, 10, self.length), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
@@ -383,8 +389,12 @@ class TestPartition(unittest.TestCase):
 
     # Test unsupported dtype
 
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
+    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64,
+                         numpy.complex128])
     def test_partition_unsupported_dtype(self, dtype):
+        if self.length != 10 and not cupy.issubdtype(dtype, complex):
+            return
+
         a = testing.shaped_random((self.length,), cupy, dtype)
         kth = 2
         with self.assertRaises(NotImplementedError):

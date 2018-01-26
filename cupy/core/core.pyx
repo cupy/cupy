@@ -867,10 +867,7 @@ cdef class ndarray:
 
         """
 
-        if self.dtype not in [numpy.int8, numpy.uint8, numpy.int16,
-                              numpy.uint16, numpy.int32, numpy.uint32,
-                              numpy.int64, numpy.uint64, numpy.float32,
-                              numpy.float64]:
+        if cupy.issubdtype(self.dtype, complex):
             raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
                                       'not supported'.format(self.dtype))
 
