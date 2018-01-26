@@ -338,7 +338,7 @@ class TestMsort(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'external': [False, True],
-    'length': [10, 10000],
+    'length': [10, 20000],
 }))
 @testing.gpu
 class TestPartition(unittest.TestCase):
@@ -394,7 +394,7 @@ class TestPartition(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_partition_non_contiguous(self, xp):
-        a = testing.shaped_random((self.length,), xp)[::2]
+        a = testing.shaped_random((self.length,), xp)[::-1]
         kth = 2
         if not self.external:
             if xp is cupy:
