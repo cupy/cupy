@@ -4324,11 +4324,12 @@ def _partition_kernel(dtype):
     merge_kernel = 'partition_merge_kernel'
     dtype = _get_typename(dtype)
     source = string.Template('''
-    __device__ void bitonic_sort_step(CArray<${dtype}, 1> a,
+    template<typename T>
+    __device__ void bitonic_sort_step(CArray<T, 1> a,
             int x, int y, int i, int s, int w) {
         for (int j = i; j < (y - x) / 2; j += 32) {
             int n = j + (j & -w);
-            ${dtype} v = a[n + x], u = a[n + w + x];
+            T v = a[n + x], u = a[n + w + x];
             if (n & s ? v < u : v > u) {
                 a[n + x] = u;
                 a[n + w + x] = v;
@@ -4337,21 +4338,21 @@ def _partition_kernel(dtype):
     }
 
     // Sort a[x:y].
-    __device__ void bitonic_sort(
-            CArray<${dtype}, 1> a, int x, int y, int i) {
+    template<typename T>
+    __device__ void bitonic_sort(CArray<T, 1> a, int x, int y, int i) {
         for (int s = 2; s <= y - x; s *= 2) {
             for (int w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step(a, x, y, i, s, w);
+                bitonic_sort_step<T>(a, x, y, i, s, w);
             }
         }
     }
 
     // Merge first k elements and the next 32 times t elements.
-    __device__ void merge(
-            CArray<${dtype}, 1> a, int k, int i, int x, int z, int u) {
+    template<typename T>
+    __device__ void merge(CArray<T, 1> a, int k, int i, int x, int z, int u) {
         for (int s = i; s < u; s += 32) {
             if (a[x + k - s - 1] > a[z + s]) {
-                ${dtype} tmp = a[x + k - s - 1];
+                T tmp = a[x + k - s - 1];
                 a[x + k - s - 1] = a[z + s];
                 a[z + s] = tmp;
             }
@@ -4360,7 +4361,7 @@ def _partition_kernel(dtype):
         // After merge step, the first k elements are already bitonic.
         // Therefore, we do not need to fully sort.
         for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step(a, x, k + x, i, k, w);
+            bitonic_sort_step<T>(a, x, k + x, i, k, w);
         }
     }
 
@@ -4378,7 +4379,7 @@ def _partition_kernel(dtype):
         int id = i % 32;
         int x = 0;
 
-        bitonic_sort(a, z, k + z, id);
+        bitonic_sort<${dtype}>(a, z, k + z, id);
         int j;
         for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
             if (a[j] < a[k - 1 + z]) {
@@ -4395,8 +4396,8 @@ def _partition_kernel(dtype):
     #else
             if (__any(x >= t)) {
     #endif
-                bitonic_sort(a, k + z, 32 * t + k + z, id);
-                merge(a, k, id, z, k + z, min(k, 32 * t));
+                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
+                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
                 x = 0;
             }
         }
@@ -4408,8 +4409,8 @@ def _partition_kernel(dtype):
 
         // Finally, we merge the first k elements and the remainders to be
         // stored.
-        bitonic_sort(a, k + z, 32 * t + k + z, id);
-        merge(a, k, id, z, k + z, min(k, 32 * t));
+        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
+        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
     }
 
     __global__ void ${merge_kernel}(
@@ -4418,7 +4419,7 @@ def _partition_kernel(dtype):
         int z = i / 32 * 2 * s * n / sz;
         int m = (i / 32 * 2 + 1) * s * n / sz;
         int id = i % 32;
-        merge(a, k, id, z, m, k);
+        merge<${dtype}>(a, k, id, z, m, k);
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
