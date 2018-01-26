@@ -26,15 +26,17 @@ def rand(*size, **kwarg):
 
     .. admonition:: Example
 
-       >>> cupy.random.rand(3, 2)
-       array([[0.86476479, 0.05633727],   # random
-              [0.27283185, 0.38255354],   # random
-              [0.16592278, 0.75150313]])  # random
+       .. code-block:: python
 
-       >>> cupy.random.rand(3, 2, dtype=cupy.float32)
-       array([[0.9672306 , 0.9590486 ],                  # random
-              [0.6851264 , 0.70457625],                  # random
-              [0.22382522, 0.36055237]], dtype=float32)  # random
+          >>> cupy.random.rand(3, 2)
+          array([[0.86476479, 0.05633727],   # random
+                 [0.27283185, 0.38255354],   # random
+                 [0.16592278, 0.75150313]])  # random
+
+          >>> cupy.random.rand(3, 2, dtype=cupy.float32)
+          array([[0.9672306 , 0.9590486 ],                  # random
+                 [0.6851264 , 0.70457625],                  # random
+                 [0.22382522, 0.36055237]], dtype=float32)  # random
 
     """
     dtype = kwarg.pop('dtype', float)
@@ -64,15 +66,17 @@ def randn(*size, **kwarg):
 
     .. admonition:: Example
 
-       >>> cupy.random.randn(3, 2)
-       array([[0.41193321, 1.59579542],   # random
-              [0.47904589, 0.18566376],   # random
-              [0.59748424, 2.32602829]])  # random
+       .. code-block:: python
 
-       >>> cupy.random.randn(3, 2, dtype=cupy.float32)
-       array([[ 0.1373886 ,  2.403238  ],                  # random
-              [ 0.84020025,  1.5089266 ],                  # random
-              [-1.2268474 , -0.48219103]], dtype=float32)  # random
+          >>> cupy.random.randn(3, 2)
+          array([[0.41193321, 1.59579542],   # random
+                 [0.47904589, 0.18566376],   # random
+                 [0.59748424, 2.32602829]])  # random
+
+          >>> cupy.random.randn(3, 2, dtype=cupy.float32)
+          array([[ 0.1373886 ,  2.403238  ],                  # random
+                 [ 0.84020025,  1.5089266 ],                  # random
+                 [-1.2268474 , -0.48219103]], dtype=float32)  # random
 
     """
     dtype = kwarg.pop('dtype', float)
