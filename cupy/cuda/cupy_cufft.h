@@ -45,12 +45,24 @@ typedef int cufftHandle;
 typedef enum {} cufftType_t;
 
 // cuFFT Helper Function
+cufftResult_t cufftCreate(...) {
+    return CUFFT_SUCCESS;
+}
+
 cufftResult_t cufftDestroy(...) {
     return CUFFT_SUCCESS;
 }
 
+cufftResult_t cufftSetAutoAllocation(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftSetWorkArea(...) {
+    return CUFFT_SUCCESS;
+}
+
 // cuFFT Plan Function
-cufftResult_t cufftPlan1d(...) {
+cufftResult_t cufftMakePlan1d(...) {
     return CUFFT_SUCCESS;
 }
 
