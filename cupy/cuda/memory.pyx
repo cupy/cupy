@@ -516,10 +516,10 @@ class PooledMemory(Memory):
     __del__ = free
 
 
-cdef int _compaction_threshold = 512
+cdef int _index_compaction_threshold = 512
 
 
-cdef _compaction(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
+cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
     # need self._free_lock
     cdef list arena, new_arena
     cdef set free_list, keep_list
@@ -547,7 +547,6 @@ cdef _compaction(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
         new_arena.append(free_list)
     arena_index.swap(new_index)
     arena[:] = new_arena
-
 
 
 cdef class SingleDeviceMemoryPool:
@@ -633,6 +632,8 @@ cdef class SingleDeviceMemoryPool:
         try:
             arena = self._arena(stream_ptr)
             arena_index = self._arena_index(stream_ptr)
+            if arena_index.size() == 0:
+                return False
             index = algorithm.lower_bound(
                 arena_index.begin(), arena_index.end(),
                 bin_index) - arena_index.begin()
@@ -762,8 +763,8 @@ cdef class SingleDeviceMemoryPool:
                 chunk = free_list.pop()
                 if len(free_list) == 0:
                     arena[i] = None
-                if i - index >= _compaction_threshold:
-                    _compaction(self, stream_ptr, False)
+                if i - index >= _index_compaction_threshold:
+                    _compact_index(self, stream_ptr, False)
                 break
         finally:
             rlock.unlock_fastrlock(self._free_lock)
@@ -861,7 +862,7 @@ cdef class SingleDeviceMemoryPool:
         try:
             if _stream_ptr not in self._free:
                 return
-            _compaction(self, _stream_ptr, True)
+            _compact_index(self, _stream_ptr, True)
             arena = self._free[_stream_ptr]
             if len(arena) == 0:
                 self._index.erase(_stream_ptr)
