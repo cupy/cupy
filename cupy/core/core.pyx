@@ -2287,8 +2287,8 @@ def _has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
     return False
 
 
-cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
-        except *:
+cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(
+        axis, Py_ssize_t ndim) except *:
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
     Arguments `allow_duplicate` and `axis_name` are not supported.
@@ -2778,7 +2778,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
 )
 
 
-cpdef Py_ssize_t size(ndarray a, axis=None) except *:
+cpdef Py_ssize_t size(ndarray a, axis=None) except? -1:
     """Returns the number of elements along a given axis.
 
     Args:

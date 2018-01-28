@@ -621,7 +621,7 @@ cdef tuple _guess_routine_from_dtype(list ops, object dtype):
     return None
 
 
-cdef bint _check_should_use_min_scalar(list in_args) except *:
+cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars
     all_scalars = True

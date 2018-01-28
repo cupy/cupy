@@ -53,10 +53,10 @@ cpdef enum:
 # Context
 ###############################################################################
 
-cpdef size_t create() except *
-cpdef void destroy(size_t handle) except *
-cpdef int getVersion(size_t handle) except *
-cpdef int getPointerMode(size_t handle) except *
+cpdef size_t create() except? 0
+cpdef destroy(size_t handle)
+cpdef int getVersion(size_t handle) except? -1
+cpdef int getPointerMode(size_t handle) except? -1
 cpdef setPointerMode(size_t handle, int mode)
 
 
@@ -65,7 +65,7 @@ cpdef setPointerMode(size_t handle, int mode)
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle) except *
+cpdef size_t getStream(size_t handle) except? 0
 
 
 ###############################################################################
@@ -73,16 +73,16 @@ cpdef size_t getStream(size_t handle) except *
 ###############################################################################
 
 cpdef setMathMode(size_t handle, int mode)
-cpdef int getMathMode(size_t handle) except *
+cpdef int getMathMode(size_t handle) except? -1
 
 
 ###############################################################################
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx) except *
-cpdef int isamin(size_t handle, int n, size_t x, int incx) except *
-cpdef float sasum(size_t handle, int n, size_t x, int incx) except *
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0
 cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
@@ -99,7 +99,7 @@ cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
-cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0
 cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx)
 
 

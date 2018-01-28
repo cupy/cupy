@@ -138,14 +138,14 @@ cpdef inline check_status(int status):
 # Initialization
 ###############################################################################
 
-cpdef int driverGetVersion() except *:
+cpdef int driverGetVersion() except? -1:
     cdef int version
     status = cudaDriverGetVersion(&version)
     check_status(status)
     return version
 
 
-cpdef int runtimeGetVersion() except *:
+cpdef int runtimeGetVersion() except? -1:
     cdef int version
     status = cudaRuntimeGetVersion(&version)
     check_status(status)
@@ -156,21 +156,21 @@ cpdef int runtimeGetVersion() except *:
 # Device and context operations
 ###############################################################################
 
-cpdef int getDevice() except *:
+cpdef int getDevice() except? -1:
     cdef int device
     status = cudaGetDevice(&device)
     check_status(status)
     return device
 
 
-cpdef int deviceGetAttribute(int attrib, int device) except *:
+cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     cdef int ret
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
 
 
-cpdef int getDeviceCount() except *:
+cpdef int getDeviceCount() except? -1:
     cdef int count
     status = cudaGetDeviceCount(&count)
     check_status(status)
@@ -188,7 +188,7 @@ cpdef deviceSynchronize():
     check_status(status)
 
 
-cpdef int deviceCanAccessPeer(int device, int peerDevice) except *:
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
     cpdef int ret
     status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
     check_status(status)
@@ -204,7 +204,7 @@ cpdef deviceEnablePeerAccess(int peerDevice):
 # Memory management
 ###############################################################################
 
-cpdef size_t malloc(size_t size) except *:
+cpdef size_t malloc(size_t size) except? 0:
     cdef void* ptr
     with nogil:
         status = cudaMalloc(&ptr, size)
@@ -213,7 +213,7 @@ cpdef size_t malloc(size_t size) except *:
 
 
 cpdef size_t mallocManaged(size_t size,
-                           unsigned int flags=cudaMemAttachGlobal) except *:
+                           unsigned int flags=cudaMemAttachGlobal) except? 0:
     cdef void* ptr
     with nogil:
         status = cudaMallocManaged(&ptr, size, flags)
@@ -221,7 +221,7 @@ cpdef size_t mallocManaged(size_t size,
     return <size_t>ptr
 
 
-cpdef size_t hostAlloc(size_t size, unsigned int flags) except *:
+cpdef size_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
         status = cudaHostAlloc(&ptr, size, flags)
@@ -318,14 +318,14 @@ cpdef PointerAttributes pointerGetAttributes(size_t ptr):
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate() except *:
+cpdef size_t streamCreate() except? 0:
     cdef driver.Stream stream
     status = cudaStreamCreate(&stream)
     check_status(status)
     return <size_t>stream
 
 
-cpdef size_t streamCreateWithFlags(unsigned int flags) except *:
+cpdef size_t streamCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Stream stream
     status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
@@ -373,13 +373,13 @@ cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
     check_status(status)
 
 
-cpdef size_t eventCreate() except *:
+cpdef size_t eventCreate() except? 0:
     cdef driver.Event event
     status = cudaEventCreate(&event)
     check_status(status)
     return <size_t>event
 
-cpdef size_t eventCreateWithFlags(unsigned int flags) except *:
+cpdef size_t eventCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Event event
     status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
@@ -391,7 +391,7 @@ cpdef eventDestroy(size_t event):
     check_status(status)
 
 
-cpdef float eventElapsedTime(size_t start, size_t end) except *:
+cpdef float eventElapsedTime(size_t start, size_t end) except? 0:
     cdef float ms
     status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
