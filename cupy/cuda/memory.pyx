@@ -528,7 +528,7 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
     cdef size_t index
 
     if stream_ptr not in pool._free:
-         return
+        return
     new_arena = []
     arena = pool._free[stream_ptr]
     arena_index = &pool._index[stream_ptr]
