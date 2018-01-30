@@ -57,6 +57,9 @@ class TestCArray(unittest.TestCase):
 )
 @testing.slow
 class TestCArray32BitBoundary(unittest.TestCase):
+    # This test case is intended to confirm CArray indexing work correctly
+    # with arrays whose size is so large that it crosses the 32-bit boundary.
+    # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
     def test(self):
         # Elementwise
         a = cupy.ones(self.size, dtype='b')
