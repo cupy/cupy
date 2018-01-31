@@ -730,18 +730,17 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_sum_tuple_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.sum(axis=(0, 1))
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_sum_too_large_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.sum(axis=3)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
-        m = _make_duplicate(xp, sp, self.dtype)
-        self.assertFalse(m.has_canonical_format)
+        m = self.make(xp, sp, self.dtype)
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
         return m.toarray()
@@ -756,12 +755,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.transpose(axes=0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_eliminate_zeros(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
-        self.assertEqual(m.nnz, 3)
-        return m.toarray()
+        return m.nnz
 
 
 @testing.parameterize(*testing.product({
