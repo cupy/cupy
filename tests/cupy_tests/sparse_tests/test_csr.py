@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 try:
     import scipy.sparse
     scipy_available = True
@@ -756,10 +757,49 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_rmul_unsupported(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
+        if m.nnz == 0:
+            # When there is no element, a SciPy's sparse matrix does not raise
+            # an error when it is multiplied with None.
+            pytest.skip()
         None * m
 
-    # __pow__
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sort_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.sort_indices()
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.sum_duplicates()
+        self.assertTrue(m.has_canonical_format)
+        return m.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_transpose(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.transpose().toarray()
+
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    def test_transpose_axes_int(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.transpose(axes=0)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_eliminate_zeros(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.eliminate_zeros()
+        return m.nnz
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCsrMatrixPowScipyComparison(unittest.TestCase):
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
@@ -799,36 +839,6 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     def test_pow_list(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         m ** []
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sort_indices(self, xp, sp):
-        m = _make_unordered(xp, sp, self.dtype)
-        m.sort_indices()
-        return m.toarray()
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sum_duplicates(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        m.sum_duplicates()
-        self.assertTrue(m.has_canonical_format)
-        return m.toarray()
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_transpose(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.transpose().toarray()
-
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_transpose_axes_int(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        m.transpose(axes=0)
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_eliminate_zeros(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.eliminate_zeros()
-        self.assertEqual(m.nnz, 3)
-        return m.toarray()
 
 
 @testing.parameterize(*testing.product({
