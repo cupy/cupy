@@ -187,13 +187,7 @@ class TestJoin(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_stack_with_axis_over(self, xp):
         a = testing.shaped_arange((2, 3), xp)
-        try:
-            return xp.stack((a, a), axis=3)
-        except IndexError:
-            # For 'numpy<=1.12', catch both IndexError from NumPy and
-            # IndexOrValueError from CuPy. For 'numpy>=1.13', simply do not
-            # catch the AxisError.
-            raise IndexError()
+        return xp.stack((a, a), axis=3)
 
     def test_stack_with_axis_value(self):
         a = testing.shaped_arange((2, 3), cupy)

@@ -117,6 +117,17 @@ from numpy import float32  # NOQA
 from numpy import float64  # NOQA
 
 
+from numpy import complex_  # NOQA
+
+from numpy import complex64  # NOQA
+
+from numpy import complex128  # NOQA
+
+from numpy import csingle  # NOQA
+
+from numpy import clongfloat  # NOQA
+
+
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
@@ -320,6 +331,12 @@ from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
 
+from cupy.logic.type_test import iscomplex  # NOQA
+from cupy.logic.type_test import iscomplexobj  # NOQA
+from cupy.logic.type_test import isfortran  # NOQA
+from cupy.logic.type_test import isreal  # NOQA
+from cupy.logic.type_test import isrealobj  # NOQA
+
 
 def isscalar(num):
     """Returns True if the type of num is a scalar type.
@@ -471,6 +488,11 @@ from cupy.statistics.meanvar import var  # NOQA
 from cupy.statistics.histogram import bincount  # NOQA
 
 # -----------------------------------------------------------------------------
+# Undocumented functions
+# -----------------------------------------------------------------------------
+from cupy.core import size  # NOQA
+
+# -----------------------------------------------------------------------------
 # CuPy specific functions
 # -----------------------------------------------------------------------------
 
@@ -549,28 +571,30 @@ cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
 
 
 def get_default_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for GPU memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.MemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_allocator()
+
+       >>> cupy.cuda.set_allocator(None)
 
     """
     return _default_memory_pool
 
 
 def get_default_pinned_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for pinned memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.PinnedMemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_pinned_memory_allocator()
+
+       >>> cupy.cuda.set_pinned_memory_allocator(None)
 
     """
     return _default_pinned_memory_pool

@@ -485,11 +485,45 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, self.pool.used_bytes())
 
     def test_reuse_between_thread(self):
-        def job():
+        def job(self):
             cupy.arange(16)
+            self._error = False
 
+        # Run in main thread.
+        self._error = True
+        job(self)
+        self.assertFalse(self._error)
+
+        # Run in sub thread.
+        self._error = True
         with cupy.cuda.Device(0):
-            t = threading.Thread(target=job)
+            t = threading.Thread(target=job, args=(self,))
+            t.daemon = True
             t.start()
             t.join()
-            job()
+        self.assertFalse(self._error)
+
+
+@testing.gpu
+class TestAllocatorDefault(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = cupy.get_default_memory_pool()
+
+    def tearDown(self):
+        memory.set_allocator(self.pool.malloc)
+
+    def _check_pool_not_used(self):
+        used_bytes = self.pool.used_bytes()
+        with cupy.cuda.Device(0):
+            arr = cupy.arange(128, dtype=cupy.int64)
+            self.assertEqual(0, self.pool.used_bytes() - used_bytes)
+            del arr
+
+    def test(self):
+        memory.set_allocator()
+        self._check_pool_not_used()
+
+    def test_none(self):
+        memory.set_allocator(None)
+        self._check_pool_not_used()

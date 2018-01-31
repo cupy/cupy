@@ -770,6 +770,21 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m.sort_indices()
         return m.toarray()
 
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.sum(axis=(0, 1))
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_sum_str_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.sum(axis='test')
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_sum_too_large_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.sum(axis=3)
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -839,6 +854,36 @@ class TestCsrMatrixPowScipyComparison(unittest.TestCase):
     def test_pow_list(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         m ** []
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'ret_dtype': [None, numpy.float32, numpy.float64],
+    'axis': [None, 0, 1, -1, -2],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestCsrMatrixSum(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=self.axis, dtype=self.ret_dtype)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_with_out(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        if self.axis is None:
+            shape = ()
+        else:
+            shape = list(m.shape)
+            shape[self.axis] = 1
+            shape = tuple(shape)
+        out = xp.empty(shape, dtype=self.ret_dtype)
+        if xp is numpy:
+            # TODO(unno): numpy.matrix is used for scipy.sparse though
+            # cupy.ndarray is used for cupy.sparse.
+            out = xp.asmatrix(out)
+        return m.sum(axis=self.axis, dtype=self.ret_dtype, out=out)
 
 
 @testing.parameterize(*testing.product({

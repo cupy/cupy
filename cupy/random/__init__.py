@@ -26,6 +26,7 @@ from cupy.random.generator import RandomState  # NOQA
 from cupy.random.generator import reset_states  # NOQA
 from cupy.random.generator import seed  # NOQA
 from cupy.random.generator import set_random_state  # NOQA
+from cupy.random.permutations import permutation  # NOQA
 from cupy.random.permutations import shuffle  # NOQA
 from cupy.random.sample import choice  # NOQA
 from cupy.random.sample import multinomial  # NOQA
