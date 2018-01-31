@@ -290,6 +290,9 @@ def csrgemm(a, b, transa=False, transb=False):
 
     a, b = _cast_common_type(a, b)
 
+    if a.nnz == 0 or b.nnz == 0:
+        return cupy.sparse.csr_matrix((m, n), dtype=a.dtype)
+
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
 
@@ -385,9 +388,11 @@ def csrsort(x):
         x (cupy.sparse.csr_matrix): A sparse matrix to sort.
 
     """
+    nnz = x.nnz
+    if nnz == 0:
+        return
     handle = device.get_cusparse_handle()
     m, n = x.shape
-    nnz = x.nnz
 
     buffer_size = cusparse.xcsrsort_bufferSizeExt(
         handle, m, n, nnz, x.indptr.data.ptr,
@@ -411,9 +416,11 @@ def cscsort(x):
         x (cupy.sparse.csc_matrix): A sparse matrix to sort.
 
     """
+    nnz = x.nnz
+    if nnz == 0:
+        return
     handle = device.get_cusparse_handle()
     m, n = x.shape
-    nnz = x.nnz
 
     buffer_size = cusparse.xcscsort_bufferSizeExt(
         handle, m, n, nnz, x.indptr.data.ptr,
