@@ -379,7 +379,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_iter(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         rows = []
         for r in m:
             rows.append(r)
@@ -389,7 +389,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         return m.asfptype().toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -430,7 +430,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
@@ -442,7 +442,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
         self.assertIsNot(m.indices, n.indices)
@@ -456,7 +456,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
         self.assertIsNot(m.indices, n.indices)
@@ -808,8 +808,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
-        m = _make_duplicate(xp, sp, self.dtype)
-        self.assertFalse(m.has_canonical_format)
+        m = self.make(xp, sp, self.dtype)
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
         return m.toarray()
@@ -821,7 +820,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_transpose_axes_int(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.transpose(axes=0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
