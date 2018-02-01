@@ -68,38 +68,13 @@ def _execFft(a, direction, value_type, norm, axis, out_size=None):
     if axis % a.ndim != a.ndim - 1:
         a = a.swapaxes(axis, -1)
 
-    plan = cufft.plan1d(a.shape[-1] if out_size is None else out_size,
-                        fft_type, a.size // a.shape[-1])
-
     if a.base is not None:
         a = a.copy()
 
-    shape = list(a.shape)
-
-    if fft_type == cufft.CUFFT_C2C:
-        out = cupy.empty(shape, np.complex64)
-        cufft.execC2C(plan, a.data, out.data, direction)
-    elif fft_type == cufft.CUFFT_R2C:
-        shape[-1] = shape[-1] // 2 + 1
-        out = cupy.empty(shape, np.complex64)
-        cufft.execR2C(plan, a.data, out.data)
-    elif fft_type == cufft.CUFFT_C2R:
-        shape[-1] = out_size
-        out = cupy.empty(shape, np.float32)
-        cufft.execC2R(plan, a.data, out.data)
-    elif fft_type == cufft.CUFFT_Z2Z:
-        out = cupy.empty(shape, np.complex128)
-        cufft.execZ2Z(plan, a.data, out.data, direction)
-    elif fft_type == cufft.CUFFT_D2Z:
-        shape[-1] = shape[-1] // 2 + 1
-        out = cupy.empty(shape, np.complex128)
-        cufft.execD2Z(plan, a.data, out.data)
-    elif fft_type == cufft.CUFFT_Z2D:
-        shape[-1] = out_size
-        out = cupy.empty(shape, np.float64)
-        cufft.execZ2D(plan, a.data, out.data)
-
-    cufft.destroy(plan)
+    plan = cufft.Plan1d(a.shape[-1] if out_size is None else out_size,
+                        fft_type, a.size // a.shape[-1])
+    out = plan.get_output_array(a)
+    plan.fft(a, out, direction)
 
     sz = out.shape[-1]
     if fft_type == cufft.CUFFT_R2C or fft_type == cufft.CUFFT_D2Z:
