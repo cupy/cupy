@@ -313,6 +313,7 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # Linear algebra
 # -----------------------------------------------------------------------------
 from cupy.linalg.einsum import einsum  # NOQA
+from cupy.linalg.einsum import einsum_path  # NOQA
 
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
