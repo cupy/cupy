@@ -9,7 +9,6 @@ from distutils import unixccompiler
 import os
 from os import path
 import shutil
-import subprocess
 import sys
 
 import pkg_resources
