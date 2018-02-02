@@ -61,6 +61,11 @@ cufftResult_t cufftSetWorkArea(...) {
     return CUFFT_SUCCESS;
 }
 
+// cuFFT Stream Function
+cufftResult_t cufftSetStream(...) {
+    return CUFFT_SUCCESS;
+}
+
 // cuFFT Plan Function
 cufftResult_t cufftMakePlan1d(...) {
     return CUFFT_SUCCESS;

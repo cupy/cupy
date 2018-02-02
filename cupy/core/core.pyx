@@ -3442,12 +3442,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
     .. note::
-        Differences to numpy or missing features:
-
-        Currently the output must be real (float16, float32, uint8, ...),
-        complex64 and complex128 follow later. This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be real.
-
         The out array as input is currently not supported.
 
     Args:
