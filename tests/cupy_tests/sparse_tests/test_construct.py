@@ -1,5 +1,11 @@
 import unittest
 
+try:
+    import scipy.sparse  # NOQA
+    scipy_available = True
+except ImportError:
+    scipy_available = False
+
 import mock
 import numpy
 import pytest
@@ -15,7 +21,7 @@ from cupy import testing
     'n': [None, 3, 2],
     'k': [0, 1],
 }))
-@testing.with_requires('scipy')
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestEye(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -31,7 +37,7 @@ class TestEye(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'format': ['csr', 'csc', 'coo'],
 }))
-@testing.with_requires('scipy')
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestIdentity(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -45,7 +51,7 @@ class TestIdentity(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
-@testing.with_requires('scipy')
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestSpdiags(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -121,7 +127,7 @@ class TestRandom(unittest.TestCase):
         self.assertIsInstance(data_rvs.call_args[0][0], int)
 
 
-@testing.with_requires('scipy')
+@unittest.skipUnless(scipy_available, 'requires scipy')
 class TestRandomInvalidArgument(unittest.TestCase):
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
