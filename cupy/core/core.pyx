@@ -3435,12 +3435,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
     .. note::
-        Differences to numpy or missing features:
-
-        Currently the output must be real (float16, float32, uint8, ...),
-        complex64 and complex128 follow later. This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be real.
-
         The out array as input is currently not supported.
 
     Args:
@@ -3593,24 +3587,24 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             ap.data.ptr, lda,
             bp.data.ptr, ldb,
             0.0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex64:
-    #     cuda.cublas.cgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex128:
-    #     cuda.cublas.zgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
+    elif dtype == numpy.complex64:
+        cuda.cublas.cgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0, outp.data.ptr, ldout, batchCount)
+    elif dtype == numpy.complex128:
+        cuda.cublas.zgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0, outp.data.ptr, ldout, batchCount)
     else:
         raise TypeError(dtype, a.dtype, b.dtype)
 
