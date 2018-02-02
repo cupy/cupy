@@ -156,8 +156,15 @@ def module_extension_name(file):
 
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
-    ext = '.pyx' if use_cython else '.cpp'
-    pyx = path.join(*pyx.split('.')) + ext
+    base = path.join(*pyx.split('.'))
+    if use_cython:
+        pyx = base + '.pyx'
+        if not os.path.exists(pyx):
+            use_cython = False
+            print(
+                'NOTICE: Skipping cythonize as {} does not exist.'.format(pyx))
+    if not use_cython:
+        pyx = base + '.cpp'
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
     # and use stubs defined in header files.
