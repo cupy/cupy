@@ -144,6 +144,20 @@ cdef extern from 'cupy_cuda.h' nogil:
         const cuDoubleComplex** Barray, int ldb,
         const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
         int batchCount)
+    int cublasSgemmStridedBatched(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k, const float* alpha,
+        const float* A, int lda, long long strideA,
+        const float* B, int ldb, long long strideB,
+        const float* beta,
+        float* C, int ldc, long long strideC, int batchCount)
+    int cublasDgemmStridedBatched(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k, const double* alpha,
+        const double* A, int lda, long long strideA,
+        const double* B, int ldb, long long strideB,
+        const double* beta,
+        double* C, int ldc, long long strideC, int batchCount)
     int cublasStrsm(
         Handle handle, SideMode size, FillMode uplo, Operation trans,
         DiagType diag, int m, int n, const float* alpha, const float* A,
@@ -654,6 +668,46 @@ cpdef zgemmBatched(
             &a, <const cuDoubleComplex**>Aarray, lda,
             <const cuDoubleComplex**>Barray, ldb, &b,
             <cuDoubleComplex**>Carray, ldc, batchCount)
+
+
+cpdef sgemmStridedBatched(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        float alpha,
+        size_t A, int lda, int strideA,
+        size_t B, int ldb, int strideB,
+        float beta,
+        size_t C, int ldc, int strideC,
+        int batchCount):
+    with nogil:
+        status = cublasSgemmStridedBatched(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha,
+            <const float*>A, lda, <long long>strideA,
+            <const float*>B, ldb, <long long>strideB,
+            &beta,
+            <float*>C, ldc, <long long>strideC,
+            batchCount)
+    check_status(status)
+
+
+cpdef dgemmStridedBatched(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        double alpha,
+        size_t A, int lda, int strideA,
+        size_t B, int ldb, int strideB,
+        double beta,
+        size_t C, int ldc, int strideC,
+        int batchCount):
+    with nogil:
+        status = cublasDgemmStridedBatched(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            &alpha,
+            <const double*>A, lda, <long long>strideA,
+            <const double*>B, ldb, <long long>strideB,
+            &beta,
+            <double*>C, ldc, <long long>strideC,
+            batchCount)
+    check_status(status)
 
 
 cpdef strsm(

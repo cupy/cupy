@@ -3571,28 +3571,34 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     for i in la:
         batchCount *= i
 
-    ap = _mat_ptrs(a)
-    bp = _mat_ptrs(b)
-    outp = _mat_ptrs(out_view)
+    # ap = _mat_ptrs(a)
+    # bp = _mat_ptrs(b)
+    # outp = _mat_ptrs(out_view)
+
+    strideA = int(a.shape[-2] * a.shape[-1])
+    strideB = int(b.shape[-2] * b.shape[-1])
+    strideC = int(out_view.shape[-2] * out_view.shape[-1])
 
     if dtype == numpy.float32:
-        cuda.cublas.sgemmBatched(
+        cuda.cublas.sgemmStridedBatched(
             cuda.Device().cublas_handle,
             0,  # transa
             0,  # transb
             n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
+            a.data.ptr, lda, strideA,
+            b.data.ptr, ldb, strideB,
+            0.0, out_view.data.ptr, ldout, strideC,
+            batchCount)
     elif dtype == numpy.float64:
-        cuda.cublas.dgemmBatched(
+        cuda.cublas.dgemmStridedBatched(
             cuda.Device().cublas_handle,
             0,  # transa
             0,  # transb
             n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
+            a.data.ptr, lda, strideA,
+            b.data.ptr, ldb, strideB,
+            0.0, out_view.data.ptr, ldout, strideC,
+            batchCount)
     # elif dtype == numpy.complex64:
     #     cuda.cublas.cgemmBatched(
     #         cuda.Device().cublas_handle,
