@@ -177,6 +177,20 @@ cpdef dgemmStridedBatched(size_t handle, int transa, int transb,
                           double beta,
                           size_t C, int ldc, int strideC,
                           int batchCount)
+cpdef cgemmStridedBatched(size_t handle, int transa, int transb,
+                          int m, int n, int k, float complex alpha,
+                          size_t A, int lda, int strideA,
+                          size_t B, int ldb, int strideB,
+                          float complex beta,
+                          size_t C, int ldc, int strideC,
+                          int batchCount)
+cpdef zgemmStridedBatched(size_t handle, int transa, int transb,
+                          int m, int n, int k, double complex alpha,
+                          size_t A, int lda, int strideA,
+                          size_t B, int ldb, int strideB,
+                          double complex beta,
+                          size_t C, int ldc, int strideC,
+                          int batchCount)
 cpdef strsm(size_t handle, int side, int uplo, int trans, int diag,
             int m, int n, float alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)

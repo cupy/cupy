@@ -581,6 +581,14 @@ cublasStatus_t cublasDgemmStridedBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasCgemmStridedBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZgemmStridedBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgemmEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
