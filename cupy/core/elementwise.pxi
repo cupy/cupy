@@ -539,6 +539,7 @@ cdef class ElementwiseKernel:
 
         size = kwargs.pop('size', None)
         stream = kwargs.pop('stream', None)
+        thread_block_size = kwargs.pop('thread_block_size', 128)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -590,7 +591,7 @@ cdef class ElementwiseKernel:
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=128, stream=stream)
+                           block_max_size=thread_block_size, stream=stream)
         return ret
 
 
