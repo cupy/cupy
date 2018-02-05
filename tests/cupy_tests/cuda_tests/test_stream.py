@@ -7,12 +7,25 @@ from cupy.testing import attr
 
 
 class TestStream(unittest.TestCase):
+
+    @attr.gpu
+    def test_eq(self):
+        null0 = cuda.Stream.null
+        null1 = cuda.Stream(True)
+        null2 = cuda.Stream(True)
+        null3 = cuda.Stream()
+
+        self.assertEqual(null0, null1)
+        self.assertEqual(null1, null2)
+        self.assertNotEqual(null2, null3)
+
     @attr.gpu
     def test_del(self):
         stream = cuda.Stream().use()
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
+        self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
         # Want to test cudaStreamDestory is issued, but
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
         del stream_ptr

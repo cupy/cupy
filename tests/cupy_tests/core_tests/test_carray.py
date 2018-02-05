@@ -45,3 +45,24 @@ class TestCArray(unittest.TestCase):
             'test_carray_getitem_idx',
         )(x, y)
         testing.assert_array_equal(y, x)
+
+
+@testing.parameterize(
+    {"size": 2 ** 32 + 1024},
+    {"size": 2 ** 32},
+    {"size": 2 ** 32 - 1024},
+    {"size": 2 ** 31 + 1024},
+    {"size": 2 ** 31},
+    {"size": 2 ** 31 - 1024},
+)
+@testing.slow
+class TestCArray32BitBoundary(unittest.TestCase):
+    # This test case is intended to confirm CArray indexing work correctly
+    # with arrays whose size is so large that it crosses the 32-bit boundary.
+    # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
+    def test(self):
+        # Elementwise
+        a = cupy.ones(self.size, dtype='b')
+        # Reduction
+        result = a.sum()
+        self.assertEqual(self.size, result)

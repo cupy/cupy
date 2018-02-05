@@ -278,9 +278,10 @@ __device__ int signbit(float16 x) {return x.signbit();}
 
 // CArray
 #define CUPY_FOR(i, n) \
-    for (ptrdiff_t i = blockIdx.x * blockDim.x + threadIdx.x; \
+    for (ptrdiff_t i = \
+            static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x + threadIdx.x; \
          i < (n); \
-         i += blockDim.x * gridDim.x)
+         i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
 template <typename T, int _ndim>
 class CArray {
@@ -293,7 +294,7 @@ private:
   ptrdiff_t strides_[ndim];
 
 public:
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
@@ -346,7 +347,7 @@ private:
 public:
   static const int ndim = 0;
 
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 
@@ -424,7 +425,7 @@ private:
 public:
   static const int ndim = 0;
 
-  __device__ int size() const {
+  __device__ ptrdiff_t size() const {
     return size_;
   }
 

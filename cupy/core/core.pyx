@@ -1657,6 +1657,9 @@ cdef class ndarray:
     def __float__(self):
         return float(self.get())
 
+    def __complex__(self):
+        return complex(self.get())
+
     def __oct__(self):
         return oct(self.get())
 
@@ -1711,14 +1714,14 @@ cdef class ndarray:
             a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self.dtype)
         ptr = a_cpu.ctypes.get_as_parameter()
-        if stream is None:
-            stream_ptr = stream_module.get_current_stream_ptr()
-        else:
-            stream_ptr = stream.ptr
-        if stream_ptr == 0:
-            a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
-        else:
+        if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
+        else:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            if stream_ptr == 0:
+                a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+            else:
+                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1748,14 +1751,14 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.get_as_parameter()
-        if stream is None:
-            stream_ptr = stream_module.get_current_stream_ptr()
-        else:
-            stream_ptr = stream.ptr
-        if stream_ptr == 0:
-            self.data.copy_from_host(ptr, self.nbytes)
-        else:
+        if stream is not None:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
+        else:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            if stream_ptr == 0:
+                self.data.copy_from_host(ptr, self.nbytes)
+            else:
+                self.data.copy_from_host_async(ptr, self.nbytes)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
@@ -2651,7 +2654,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
 )
 
 
-cpdef int size(ndarray a, axis=None) except *:
+cpdef Py_ssize_t size(ndarray a, axis=None) except *:
     """Returns the number of elements along a given axis.
 
     Args:
@@ -3432,12 +3435,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
     .. note::
-        Differences to numpy or missing features:
-
-        Currently the output must be real (float16, float32, uint8, ...),
-        complex64 and complex128 follow later. This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be real.
-
         The out array as input is currently not supported.
 
     Args:
@@ -3590,24 +3587,24 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             ap.data.ptr, lda,
             bp.data.ptr, ldb,
             0.0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex64:
-    #     cuda.cublas.cgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex128:
-    #     cuda.cublas.zgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
+    elif dtype == numpy.complex64:
+        cuda.cublas.cgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0, outp.data.ptr, ldout, batchCount)
+    elif dtype == numpy.complex128:
+        cuda.cublas.zgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0, outp.data.ptr, ldout, batchCount)
     else:
         raise TypeError(dtype, a.dtype, b.dtype)
 

@@ -18,11 +18,15 @@ Memory management
    :toctree: generated/
    :nosignatures:
 
+   cupy.get_default_memory_pool
+   cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
    cupy.cuda.MemoryPointer
    cupy.cuda.alloc
    cupy.cuda.set_allocator
+   cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
+   cupy.cuda.PinnedMemoryPool
 
 
 Memory hook

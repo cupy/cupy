@@ -12,6 +12,7 @@ from cupy.sparse.dia import isspmatrix_dia  # NOQA
 
 from cupy.sparse.construct import eye  # NOQA
 from cupy.sparse.construct import identity  # NOQA
+from cupy.sparse.construct import rand  # NOQA
 from cupy.sparse.construct import random  # NOQA
 from cupy.sparse.construct import spdiags  # NOQA
 
@@ -28,7 +29,6 @@ from cupy.sparse.construct import spdiags  # NOQA
 # TODO(unno): implement bmat
 # TODO(unno): implement hstack
 # TODO(unno): implement vstack
-# TODO(unno): implement rand
 
 # TODO(unno): implement save_npz
 # TODO(unno): implement load_npz

@@ -1,6 +1,7 @@
 from cupy.cuda import runtime
 from cpython cimport pythread
 import threading
+import warnings
 import weakref
 
 
@@ -26,10 +27,7 @@ def get_current_stream():
     """
     if not hasattr(_thread_local, 'current_stream_ref'):
         _thread_local.current_stream_ref = weakref.ref(Stream.null)
-    stream = _thread_local.current_stream_ref()
-    if stream is None:
-        stream = Stream.null
-    return stream
+    return _thread_local.current_stream_ref()
 
 
 cpdef _set_current_stream(stream):
@@ -38,9 +36,12 @@ cpdef _set_current_stream(stream):
     Args:
         cupy.cuda.Stream: The current CUDA stream.
     """
+    cdef size_t stream_ptr
     if stream is None:
         stream = Stream.null
-    cdef size_t stream_ptr = stream.ptr
+        stream_ptr = 0
+    else:
+        stream_ptr = stream.ptr
     pythread.PyThread_delete_key_value(_current_stream_key)
     pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
     _thread_local.current_stream_ref = weakref.ref(stream)
@@ -136,8 +137,8 @@ class Stream(object):
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Otherwise, a plain new
-            stream is created. Users must not use this parameter, instead, use
-            ``Stream.null`` object to use the default stream.
+            stream is created. Note that you can also use ``Stream.null``
+            singleton object instead of creating new null stream object.
         non_blocking (bool): If ``True``, the stream does not synchronize with
             the NULL stream.
 
@@ -150,10 +151,6 @@ class Stream(object):
     null = None
 
     def __init__(self, null=False, non_blocking=False):
-        if null and Stream.null:
-            self.ptr = 0  # to avoid AttributeError on __del__
-            raise ValueError('Use cupy.cuda.Stream.null instead of creating '
-                             'a new cupy.cuda.Stream(null=True) object')
         if null:
             self.ptr = 0
         elif non_blocking:
@@ -163,9 +160,18 @@ class Stream(object):
 
     def __del__(self):
         if self.ptr:
+            current_ptr = get_current_stream_ptr()
+            if self.ptr == current_ptr:
+                _set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
+
+    def __eq__(self, other):
+        # This operator is implemented to compare the singleton instance
+        # of null stream (Stream.null) can safely be compared with null
+        # stream instance created by a user.
+        return self.ptr == other.ptr
 
     def __enter__(self):
         if not hasattr(_thread_local, 'prev_stream_ref_stack'):

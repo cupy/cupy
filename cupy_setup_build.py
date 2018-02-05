@@ -160,8 +160,15 @@ def module_extension_name(file):
 
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
-    ext = '.pyx' if use_cython else '.cpp'
-    pyx = path.join(*pyx.split('.')) + ext
+    base = path.join(*pyx.split('.'))
+    if use_cython:
+        pyx = base + '.pyx'
+        if not os.path.exists(pyx):
+            use_cython = False
+            print(
+                'NOTICE: Skipping cythonize as {} does not exist.'.format(pyx))
+    if not use_cython:
+        pyx = base + '.cpp'
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
     # and use stubs defined in header files.
@@ -414,16 +421,25 @@ def _nvcc_gencode_options(cuda_version):
     #
     #     arch_list = [('compute_61', 'sm_61')]
 
-    arch_list = ['compute_30', 'compute_50']
-    if cuda_version >= 8000:
-        arch_list += ['compute_60']
+    arch_list = ['compute_30',
+                 'compute_50']
+
+    if cuda_version >= 9000:
+        arch_list += [('compute_60', 'sm_60'),
+                      ('compute_61', 'sm_61'),
+                      ('compute_70', 'sm_70'),
+                      'compute_70']
+    elif cuda_version >= 8000:
+        arch_list += [('compute_60', 'sm_60'),
+                      ('compute_61', 'sm_61'),
+                      'compute_60']
 
     options = []
     for arch in arch_list:
         if type(arch) is tuple:
             virtual_arch, real_arch = arch
-            options.append('--generate-code=arch={},code={},{}'.format(
-                virtual_arch, real_arch, virtual_arch))
+            options.append('--generate-code=arch={},code={}'.format(
+                virtual_arch, real_arch))
         else:
             options.append('--generate-code=arch={},code={}'.format(
                 arch, arch))

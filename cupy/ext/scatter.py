@@ -24,7 +24,7 @@ def scatter_add(a, slices, value):
     >>> v = cupy.array([1., 1., 1.])
     >>> cupy.scatter_add(a, i, v);
     >>> a
-    array([ 1.,  2.,  0.,  0.,  0.,  0.], dtype=float32)
+    array([1., 2., 0., 0., 0., 0.], dtype=float32)
 
     Args:
         a (ndarray): An array that gets added.
