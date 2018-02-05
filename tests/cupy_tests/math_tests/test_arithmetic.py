@@ -97,9 +97,9 @@ class TestArithmeticUnary(unittest.TestCase):
                 y = xp.asarray(y)
 
             # TODO(niboshi): Fix this
-            # numpy.real and numpy.imag return Python int if the input is Python
-            # bool. CuPy should return an array of dtype.int64 in such cases,
-            # instead of an array of dtype.bool.
+            # numpy.real and numpy.imag return Python int if the input is
+            # Python bool. CuPy should return an array of dtype.int64 in such
+            # cases, instead of an array of dtype.bool.
             if (xp is cupy
                     and isinstance(arg1, bool)):
                 y = y.astype(numpy.int64)
@@ -195,7 +195,6 @@ class TestArithmeticBinary(unittest.TestCase):
                 and xp.asarray(arg1).dtype == numpy.bool_
                 and xp.asarray(arg2).dtype == numpy.bool_):
             return xp.array(True)
-
 
         func = getattr(xp, self.name)
         with testing.NumpyError(divide='ignore'):
