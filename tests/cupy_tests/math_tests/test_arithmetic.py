@@ -86,26 +86,22 @@ class TestArithmeticUnary(unittest.TestCase):
             arg1 = xp.asarray(arg1)
         y = getattr(xp, self.name)(arg1)
 
-        # From NumPy>=1.11, some functions return Python scalars for Python
-        # scalar inputs.
-        # We need to convert them to arrays to compare with CuPy outputs.
-        if xp is numpy:
+        if (numpy_satisfies('>=1.13.0')
+                and self.name in ('real', 'imag')):
 
-            # Note that Python `bool` is a subclass of `int`
-            if (isinstance(arg1, int)
-                    and self.name in ('real', 'imag')):
+            # From NumPy>=1.13, some functions return Python scalars for Python
+            # scalar inputs.
+            # We need to convert them to arrays to compare with CuPy outputs.
+            if (xp is numpy
+                    and isinstance(arg1, (bool, int, float, complex))):
                 y = xp.asarray(y)
 
-            elif (isinstance(arg1, (float, complex))
-                    and self.name in ('real', 'imag')):
-                y = xp.asarray(y)
-
-        # TODO(niboshi): Fix this
-        # numpy.real and numpy.imag return Python int if the input is Python
-        # bool. CuPy should return an array of dtype.int64 in such cases,
-        # instead of an array of dtype.bool.
-        if xp is cupy:
-            if (self.name in ('real', 'imag') and isinstance(arg1, bool)):
+            # TODO(niboshi): Fix this
+            # numpy.real and numpy.imag return Python int if the input is Python
+            # bool. CuPy should return an array of dtype.int64 in such cases,
+            # instead of an array of dtype.bool.
+            if (xp is cupy
+                    and isinstance(arg1, bool)):
                 y = y.astype(numpy.int64)
 
         return y
