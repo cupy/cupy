@@ -3572,56 +3572,99 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     for i in la:
         batchCount *= i
 
-    # ap = _mat_ptrs(a)
-    # bp = _mat_ptrs(b)
-    # outp = _mat_ptrs(out_view)
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    strideA = _get_stride_for_strided_batched_gemm(a)
-    strideB = _get_stride_for_strided_batched_gemm(b)
-    strideC = _get_stride_for_strided_batched_gemm(out_view)
-
-    if dtype == numpy.float32:
-        cuda.cublas.sgemmStridedBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            a.data.ptr, lda, strideA,
-            b.data.ptr, ldb, strideB,
-            0.0, out_view.data.ptr, ldout, strideC,
-            batchCount)
-    elif dtype == numpy.float64:
-        cuda.cublas.dgemmStridedBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            a.data.ptr, lda, strideA,
-            b.data.ptr, ldb, strideB,
-            0.0, out_view.data.ptr, ldout, strideC,
-            batchCount)
-    elif dtype == numpy.complex64:
-        cuda.cublas.cgemmStridedBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1,
-            a.data.ptr, lda, strideA,
-            b.data.ptr, ldb, strideB,
-            0, out_view.data.ptr, ldout, strideC,
-            batchCount)
-    elif dtype == numpy.complex128:
-        cuda.cublas.zgemmStridedBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1,
-            a.data.ptr, lda, strideA,
-            b.data.ptr, ldb, strideB,
-            0, out_view.data.ptr, ldout, strideC,
-            batchCount)
+    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
+    if _cuda_runtime_version >= 8000:
+        strideA = _get_stride_for_strided_batched_gemm(a)
+        strideB = _get_stride_for_strided_batched_gemm(b)
+        strideC = _get_stride_for_strided_batched_gemm(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
     else:
-        raise TypeError(dtype, a.dtype, b.dtype)
+        ap = _mat_ptrs(a)
+        bp = _mat_ptrs(b)
+        outp = _mat_ptrs(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
 
     if dtype == ret_dtype:
         return out
