@@ -2482,6 +2482,7 @@ cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     cdef int i
     cdef bint all_same_type, same_shape_and_contiguous
     cdef Py_ssize_t axis_size
+    # If arrays are large, Issuing each copy method is efficient.
     cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
 
     if len(arrays) > 8:
