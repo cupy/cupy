@@ -3505,9 +3505,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broatcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
 
-    out_shape = (*broatcast_pre_shape, *a_part_outshape, *b_part_outshape)
+    out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
     a = ascontiguousarray(a, dtype=dtype)
     b = ascontiguousarray(b, dtype=dtype)
@@ -3517,14 +3517,17 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     a_shape = list(a.shape)
     b_strides = list(b.strides)
     b_shape = list(b.shape)
+    use_broadcast = False
     for i in range(len(a_strides) - 2):
-        if a_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if a_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             a_strides[i] = 0
-            a_shape[i] = broatcast_pre_shape[i]
+            a_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
     for i in range(len(b_strides) - 2):
-        if b_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if b_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             b_strides[i] = 0
-            b_shape[i] = broatcast_pre_shape[i]
+            b_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
 
     view = a.view()
     view._set_shape_and_strides(a_shape, a_strides)
@@ -3577,7 +3580,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
-    if _cuda_runtime_version >= 8000:
+    if not use_broadcast and _cuda_runtime_version >= 8000:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(out_view)
