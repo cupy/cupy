@@ -15,7 +15,6 @@ class MockMemory(memory.Memory):
         self.ptr = MockMemory.cur_ptr
         MockMemory.cur_ptr += size
         self.size = size
-        self.device = None
 
     def __del__(self):
         self.ptr = 0

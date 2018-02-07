@@ -62,15 +62,18 @@ cdef class Memory:
     This class provides an RAII interface of the CUDA memory allocation.
 
     Args:
-        ~Memory.device (cupy.cuda.Device): Device whose memory the pointer
-            refers to.
-        ~Memory.size (int): Size of the memory allocation in bytes.
+        size (int): Size of the memory allocation in bytes.
 
+    Attributes:
+        ptr (int): Pointer to the place within the buffer.
+        size (int): Size of the memory allocation in bytes.
+        device (~cupy.cuda.Device): Device whose memory the pointer refers to.
     """
+
     cdef:
         public size_t ptr
         public Py_ssize_t size
-        public device.Device device
+        readonly device_mod.Device device
 
     def __init__(self, Py_ssize_t size):
         self.size = size
@@ -97,7 +100,6 @@ cdef class ManagedMemory(Memory):
     allocation.
 
     Args:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
         size (int): Size of the memory allocation in bytes.
 
     """
@@ -196,18 +198,18 @@ cdef class MemoryPointer:
     and a pointer to a place within this buffer.
 
     Args:
-        mem (Memory): The device memory buffer.
+        mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset from the head of the buffer to the place this
             pointer refers.
 
     Attributes:
-        ~MemoryPointer.device (cupy.cuda.Device): Device whose memory the
+        ~MemoryPointer.device (~cupy.cuda.Device): Device whose memory the
             pointer refers to.
-        mem (Memory): The device memory buffer.
+        mem (~cupy.cuda.Memory): The device memory buffer.
         ptr (size_t): Pointer to the place within the buffer.
     """
 
-    def __init__(self, mem, Py_ssize_t offset):
+    def __init__(self, Memory mem, Py_ssize_t offset):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
@@ -480,8 +482,9 @@ cdef class PooledMemory(Memory):
     should not instantiate it by hand.
 
     """
+
     cdef:
-        public object pool
+        readonly object pool
 
     def __init__(self, Chunk chunk, pool):
         self.device = chunk.device
