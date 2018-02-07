@@ -237,7 +237,9 @@ def preconfigure_modules(compiler, settings):
 
     ret = []
     for module in MODULES:
-        (installed, status, errmsg) = (False, 'No', [])
+        installed = False
+        status = 'No'
+        errmsg = []
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
