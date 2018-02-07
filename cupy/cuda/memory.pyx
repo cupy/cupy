@@ -1,4 +1,5 @@
 # distutils: language = c++
+import atexit
 import collections
 import ctypes
 import gc
@@ -13,9 +14,18 @@ from cupy.cuda import driver
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
+from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
+
+
+cdef bint _exit_mode = False
+
+
+@atexit.register
+def _exit():
+    _exit_mode = True
 
 
 thread_local = threading.local()
@@ -45,7 +55,7 @@ class OutOfMemoryError(MemoryError):
         super(OutOfMemoryError, self).__init__(msg)
 
 
-class Memory(object):
+cdef class Memory:
 
     """Memory allocation on a CUDA device.
 
@@ -57,6 +67,10 @@ class Memory(object):
         ~Memory.size (int): Size of the memory allocation in bytes.
 
     """
+    cdef:
+        public size_t ptr
+        public Py_ssize_t size
+        public device.Device device
 
     def __init__(self, Py_ssize_t size):
         self.size = size
@@ -66,7 +80,7 @@ class Memory(object):
             self.device = device.Device()
             self.ptr = runtime.malloc(size)
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             runtime.free(self.ptr)
 
@@ -75,7 +89,7 @@ class Memory(object):
         return self.ptr
 
 
-class ManagedMemory(Memory):
+cdef class ManagedMemory(Memory):
 
     """Managed memory (Unified memory) allocation on a CUDA device.
 
@@ -105,7 +119,7 @@ class ManagedMemory(Memory):
         runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
                                  stream.ptr)
 
-    def advise(self, int advise, device.Device device):
+    def advise(self, int advise, device_mod.Device device):
         """(experimental) Advise about the usage of this memory.
 
         Args:
@@ -458,7 +472,7 @@ cpdef set_allocator(allocator=None):
     _current_allocator = allocator
 
 
-class PooledMemory(Memory):
+cdef class PooledMemory(Memory):
 
     """Memory allocation for a memory pool.
 
@@ -466,6 +480,8 @@ class PooledMemory(Memory):
     should not instantiate it by hand.
 
     """
+    cdef:
+        public object pool
 
     def __init__(self, Chunk chunk, pool):
         self.device = chunk.device
@@ -473,14 +489,14 @@ class PooledMemory(Memory):
         self.size = chunk.size
         self.pool = pool
 
-    def free(self):
+    cpdef free(self):
         """Frees the memory buffer and returns it to the memory pool.
 
         This function actually does not free the buffer. It just returns the
         buffer to the memory pool for reuse.
 
         """
-        cdef Py_ssize_t ptr
+        cdef size_t ptr
         ptr = self.ptr
         if ptr == 0:
             return
@@ -513,8 +529,10 @@ class PooledMemory(Memory):
         else:
             pool.free(ptr, size)
 
-    __del__ = free
-
+    def __dealloc__(self):
+        if _exit_mode:
+            return  # To avoid error at exit
+        self.free()
 
 cdef int _index_compaction_threshold = 512
 
