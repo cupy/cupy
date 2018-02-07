@@ -126,7 +126,7 @@ cpdef _set_peer_access(int device, int peer):
         runtime.setDevice(current)
 
 
-cdef class Chunk:
+cdef class _Chunk:
 
     """A chunk points to a device memory.
 
@@ -151,7 +151,21 @@ cdef class Chunk:
         stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
     """
 
-    def __init__(self, Memory mem, Py_ssize_t offset,
+    cdef:
+        readonly object mem
+        readonly device.Device device
+        readonly size_t ptr
+        readonly Py_ssize_t offset
+        readonly Py_ssize_t size
+        public size_t stream_ptr
+        public _Chunk prev
+        public _Chunk next
+
+    def __init__(self, *args):
+        # For debug
+        self._init(*args)
+
+    def _init(self, Memory mem, Py_ssize_t offset,
                  Py_ssize_t size, stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
@@ -160,8 +174,32 @@ cdef class Chunk:
         self.offset = offset
         self.size = size
         self.stream_ptr = stream_ptr
-        self.prev = None
-        self.next = None
+
+    cpdef _Chunk split(self, Py_ssize_t size):
+        """Split contiguous block of a larger allocation"""
+        cdef _Chunk remaining
+        assert self.size >= size
+        if self.size == size:
+            return None
+        remaining = _Chunk.__new__(_Chunk)
+        remaining._init(self.mem, self.offset + size, self.size - size,
+                        self.stream_ptr)
+        self.size = size
+
+        if self.next is not None:
+            remaining.next = self.next
+            remaining.next.prev = remaining
+        self.next = remaining
+        remaining.prev = self
+        return remaining
+
+    cpdef merge(self, _Chunk remaining):
+        """Merge previously splitted block (chunk)"""
+        assert self.stream_ptr == remaining.stream_ptr
+        self.size += remaining.size
+        self.next = remaining.next
+        if remaining.next is not None:
+            self.next.prev = self
 
 
 cdef class MemoryPointer:
@@ -459,7 +497,7 @@ cdef class PooledMemory(Memory):
     cdef:
         readonly object pool
 
-    def __init__(self, Chunk chunk, pool):
+    def __init__(self, _Chunk chunk, pool):
         self.device = chunk.device
         self.ptr = chunk.ptr
         self.size = chunk.size
@@ -650,40 +688,6 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._free_lock)
         return False
 
-    cpdef tuple _split(self, Chunk chunk, Py_ssize_t size):
-        """Split contiguous block of a larger allocation"""
-        cdef Chunk head
-        cdef Chunk remaining
-        assert chunk.size >= size
-        if chunk.size == size:
-            return chunk, None
-        head = Chunk(chunk.mem, chunk.offset, size, chunk.stream_ptr)
-        remaining = Chunk(chunk.mem, chunk.offset + size, chunk.size - size,
-                          chunk.stream_ptr)
-        if chunk.prev is not None:
-            head.prev = chunk.prev
-            chunk.prev.next = head
-        if chunk.next is not None:
-            remaining.next = chunk.next
-            chunk.next.prev = remaining
-        head.next = remaining
-        remaining.prev = head
-        return head, remaining
-
-    cpdef Chunk _merge(self, Chunk head, Chunk remaining):
-        """Merge previously splitted block (chunk)"""
-        assert head.stream_ptr == remaining.stream_ptr
-        cdef Chunk merged
-        size = head.size + remaining.size
-        merged = Chunk(head.mem, head.offset, size, head.stream_ptr)
-        if head.prev is not None:
-            merged.prev = head.prev
-            merged.prev.next = merged
-        if remaining.next is not None:
-            merged.next = remaining.next
-            merged.next.prev = merged
-        return merged
-
     cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         hooks = memory_hook.get_memory_hooks()
         if hooks:
@@ -737,8 +741,8 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef set free_list
-        cdef Chunk chunk = None
-        cdef Chunk remaining = None
+        cdef _Chunk chunk = None
+        cdef _Chunk remaining
         cdef int bin_index, index, length
 
         if size == 0:
@@ -771,7 +775,10 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:
-            chunk, remaining = self._split(chunk, size)
+            remaining = chunk.split(size)
+            if remaining is not None:
+                self._append_to_free_list(remaining.size, remaining,
+                                          stream_ptr)
         else:
             # cudaMalloc if a cache is not found
             try:
@@ -794,7 +801,8 @@ cdef class SingleDeviceMemoryPool:
                         else:
                             total = size + self.total_bytes()
                             raise OutOfMemoryError(size, total)
-            chunk = Chunk(mem, 0, size, stream_ptr)
+            chunk = _Chunk.__new__(_Chunk)
+            chunk._init(mem, 0, size, stream_ptr)
 
         assert chunk.stream_ptr == stream_ptr
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
@@ -802,33 +810,32 @@ cdef class SingleDeviceMemoryPool:
             self._in_use[chunk.ptr] = chunk
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
-        if remaining is not None:
-            self._append_to_free_list(remaining.size, remaining, stream_ptr)
         pmem = PooledMemory(chunk, self._weakref)
         return MemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef set free_list
-        cdef Chunk chunk
+        cdef _Chunk chunk
 
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
-            chunk = self._in_use.pop(ptr, None)
+            chunk = self._in_use.pop(ptr)
+        except KeyError:
+            raise RuntimeError('Cannot free out-of-pool memory')
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
-        if chunk is None:
-            raise RuntimeError('Cannot free out-of-pool memory')
         stream_ptr = chunk.stream_ptr
 
         if chunk.next is not None:
             if self._remove_from_free_list(chunk.next.size, chunk.next,
                                            stream_ptr):
-                chunk = self._merge(chunk, chunk.next)
+                chunk.merge(chunk.next)
 
         if chunk.prev is not None:
             if self._remove_from_free_list(chunk.prev.size, chunk.prev,
                                            stream_ptr):
-                chunk = self._merge(chunk.prev, chunk)
+                chunk = chunk.prev
+                chunk.merge(chunk.next)
 
         self._append_to_free_list(chunk.size, chunk, stream_ptr)
 
@@ -868,7 +875,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef used_bytes(self):
         cdef Py_ssize_t size = 0
-        cdef Chunk chunk
+        cdef _Chunk chunk
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             for chunk in self._in_use.itervalues():
@@ -880,7 +887,7 @@ cdef class SingleDeviceMemoryPool:
     cpdef free_bytes(self):
         cdef Py_ssize_t size = 0
         cdef set free_list
-        cdef Chunk chunk
+        cdef _Chunk chunk
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
             for arena in self._free.itervalues():
