@@ -687,10 +687,10 @@ cpdef zgemmBatched(
 cpdef sgemmStridedBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         float alpha,
-        size_t A, int lda, int strideA,
-        size_t B, int ldb, int strideB,
+        size_t A, int lda, long long strideA,
+        size_t B, int ldb, long long strideB,
         float beta,
-        size_t C, int ldc, int strideC,
+        size_t C, int ldc, long long strideC,
         int batchCount):
     with nogil:
         status = cublasSgemmStridedBatched(
@@ -707,10 +707,10 @@ cpdef sgemmStridedBatched(
 cpdef dgemmStridedBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         double alpha,
-        size_t A, int lda, int strideA,
-        size_t B, int ldb, int strideB,
+        size_t A, int lda, long long strideA,
+        size_t B, int ldb, long long strideB,
         double beta,
-        size_t C, int ldc, int strideC,
+        size_t C, int ldc, long long strideC,
         int batchCount):
     with nogil:
         status = cublasDgemmStridedBatched(
@@ -727,10 +727,10 @@ cpdef dgemmStridedBatched(
 cpdef cgemmStridedBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         float complex alpha,
-        size_t A, int lda, int strideA,
-        size_t B, int ldb, int strideB,
+        size_t A, int lda, long long strideA,
+        size_t B, int ldb, long long strideB,
         float complex beta,
-        size_t C, int ldc, int strideC,
+        size_t C, int ldc, long long strideC,
         int batchCount):
     with nogil:
         status = cublasCgemmStridedBatched(
@@ -747,10 +747,10 @@ cpdef cgemmStridedBatched(
 cpdef zgemmStridedBatched(
         size_t handle, int transa, int transb, int m, int n, int k,
         double complex alpha,
-        size_t A, int lda, int strideA,
-        size_t B, int ldb, int strideB,
+        size_t A, int lda, long long strideA,
+        size_t B, int ldb, long long strideB,
         double complex beta,
-        size_t C, int ldc, int strideC,
+        size_t C, int ldc, long long strideC,
         int batchCount):
     with nogil:
         status = cublasZgemmStridedBatched(
