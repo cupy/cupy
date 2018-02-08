@@ -424,6 +424,10 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dyDesc, void* dy, void* grid,
         void* betaDgrid, void* dgrid)
 
+    # Build-time version
+    int CUDNN_VERSION
+
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -455,6 +459,14 @@ class CuDNNError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CuDNNError(status)
+
+
+###############################################################################
+# Build-time version
+###############################################################################
+
+def get_build_version():
+    return CUDNN_VERSION
 
 
 ###############################################################################
