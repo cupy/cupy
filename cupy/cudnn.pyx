@@ -239,7 +239,7 @@ cpdef core.ndarray _as4darray(core.ndarray arr):
     return arr.reshape(arr.shape[0], -1, 1, 1)
 
 
-def activation_forward(core.ndarray x, int mode, double coef = 0.0):
+def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
     cdef size_t zero, one
@@ -271,7 +271,7 @@ def activation_forward(core.ndarray x, int mode, double coef = 0.0):
 
 
 def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
-                        int mode, float coef = 0.0):
+                        int mode, float coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
     cdef size_t zero, one
