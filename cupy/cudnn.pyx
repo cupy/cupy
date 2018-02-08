@@ -239,7 +239,7 @@ cpdef core.ndarray _as4darray(core.ndarray arr):
     return arr.reshape(arr.shape[0], -1, 1, 1)
 
 
-def activation_forward(core.ndarray x, int mode):
+def activation_forward(core.ndarray x, int mode, double coef = 0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
     cdef size_t zero, one
@@ -260,7 +260,7 @@ def activation_forward(core.ndarray x, int mode):
     try:
         _create_tensor_descriptor(desc, x, cudnn.CUDNN_TENSOR_NCHW)
         cudnn.setActivationDescriptor(
-            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, coef)
         cudnn.activationForward_v4(
             handle, act_desc, one, desc, x.data.ptr,
             zero, desc, y.data.ptr)
@@ -271,7 +271,7 @@ def activation_forward(core.ndarray x, int mode):
 
 
 def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
-                        int mode):
+                        int mode, float coef = 0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
     cdef size_t zero, one
@@ -293,7 +293,7 @@ def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
     try:
         _create_tensor_descriptor(desc, y_mat, cudnn.CUDNN_TENSOR_NCHW)
         cudnn.setActivationDescriptor(
-            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, 0.0)
+            act_desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, coef)
         cudnn.activationBackward_v4(
             handle, act_desc, one, desc, y.data.ptr,
             desc, gy.data.ptr, desc, x.data.ptr,
