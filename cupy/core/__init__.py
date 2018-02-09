@@ -15,7 +15,6 @@ from cupy.core.core import bitwise_or  # NOQA
 from cupy.core.core import bitwise_xor  # NOQA
 from cupy.core.core import broadcast  # NOQA
 from cupy.core.core import broadcast_to  # NOQA
-from cupy.core.core import concatenate  # NOQA
 from cupy.core.core import concatenate_method  # NOQA
 from cupy.core.core import conj  # NOQA
 from cupy.core.core import create_comparison  # NOQA
