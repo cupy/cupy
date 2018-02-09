@@ -48,6 +48,7 @@ cdef extern from "cupy_nccl.h":
                                 size_t count, ncclDataType_t datatype,
                                 ncclComm_t comm, driver.Stream stream) nogil
 
+    # Build-time version
     int NCCL_VERSION
 
 

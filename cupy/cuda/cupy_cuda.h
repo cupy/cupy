@@ -105,7 +105,7 @@ cublasStatus_t cublasGetMathMode(...) {
 
 #else // #ifndef CUPY_NO_CUDA
 
-
+#define CUDA_VERSION 0
 
 extern "C" {
 

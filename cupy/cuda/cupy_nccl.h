@@ -15,6 +15,10 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#define NCCL_MAJOR 0
+#define NCCL_MINOR 0
+#define NCCL_PATCH 0
+
 extern "C" {
 
 typedef struct ncclComm* ncclComm_t;
