@@ -27,10 +27,7 @@ def get_current_stream():
     """
     if not hasattr(_thread_local, 'current_stream_ref'):
         _thread_local.current_stream_ref = weakref.ref(Stream.null)
-    stream = _thread_local.current_stream_ref()
-    if stream is None:
-        stream = Stream.null
-    return stream
+    return _thread_local.current_stream_ref()
 
 
 cpdef _set_current_stream(stream):
@@ -39,9 +36,12 @@ cpdef _set_current_stream(stream):
     Args:
         cupy.cuda.Stream: The current CUDA stream.
     """
+    cdef size_t stream_ptr
     if stream is None:
         stream = Stream.null
-    cdef size_t stream_ptr = stream.ptr
+        stream_ptr = 0
+    else:
+        stream_ptr = stream.ptr
     pythread.PyThread_delete_key_value(_current_stream_key)
     pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
     _thread_local.current_stream_ref = weakref.ref(stream)
@@ -160,6 +160,9 @@ class Stream(object):
 
     def __del__(self):
         if self.ptr:
+            current_ptr = get_current_stream_ptr()
+            if self.ptr == current_ptr:
+                _set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.

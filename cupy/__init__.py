@@ -117,6 +117,17 @@ from numpy import float32  # NOQA
 from numpy import float64  # NOQA
 
 
+from numpy import complex_  # NOQA
+
+from numpy import complex64  # NOQA
+
+from numpy import complex128  # NOQA
+
+from numpy import csingle  # NOQA
+
+from numpy import clongfloat  # NOQA
+
+
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
@@ -319,6 +330,12 @@ from cupy.linalg.norms import trace  # NOQA
 from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
+
+from cupy.logic.type_test import iscomplex  # NOQA
+from cupy.logic.type_test import iscomplexobj  # NOQA
+from cupy.logic.type_test import isfortran  # NOQA
+from cupy.logic.type_test import isreal  # NOQA
+from cupy.logic.type_test import isrealobj  # NOQA
 
 
 def isscalar(num):

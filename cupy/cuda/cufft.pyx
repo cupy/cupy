@@ -1,5 +1,12 @@
 cimport cython
 
+import cupy
+import numpy
+
+from cupy.cuda cimport driver
+from cupy.cuda cimport memory
+from cupy.cuda cimport stream as stream_module
+
 
 cdef extern from "cupy_cufft.h":
     ctypedef struct Complex 'cufftComplex':
@@ -9,10 +16,17 @@ cdef extern from "cupy_cufft.h":
         double x, y
 
     # cuFFT Helper Function
+    Result cufftCreate(Handle *plan)
     Result cufftDestroy(Handle plan)
+    Result cufftSetAutoAllocation(Handle plan, int autoAllocate)
+    Result cufftSetWorkArea(Handle plan, void *workArea)
+
+    # cuFFT Stream Function
+    Result cufftSetStream(Handle plan, driver.Stream streamId)
 
     # cuFFT Plan Function
-    Result cufftPlan1d(Handle *plan, int nx, Type type, int batch)
+    Result cufftMakePlan1d(Handle plan, int nx, Type type, int batch,
+                           size_t *workSize)
 
     # cuFFT Exec Function
     Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata,
@@ -59,16 +73,66 @@ cpdef inline check_result(int result):
         raise CuFftError(result)
 
 
-cpdef destroy(size_t plan):
-    result = cufftDestroy(plan)
-    check_result(result)
+cpdef setStream(size_t plan, size_t stream):
+    status = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+    check_result(status)
 
 
-cpdef plan1d(int nx, int type, int batch):
-    cdef Handle plan
-    result = cufftPlan1d(&plan, nx, <Type>type, batch)
-    check_result(result)
-    return plan
+class Plan1d(object):
+    def __init__(self, int nx, int fft_type, int batch):
+        cdef Handle plan
+        cdef size_t workSize
+        result = cufftCreate(&plan)
+        check_result(result)
+        setStream(plan, stream_module.get_current_stream_ptr())
+        result = cufftSetAutoAllocation(plan, 0)
+        check_result(result)
+        result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch, &workSize)
+        workArea = memory.alloc(workSize)
+        check_result(result)
+        result = cufftSetWorkArea(plan, <void *>(workArea.ptr))
+        check_result(result)
+        self.nx = nx
+        self.fft_type = fft_type
+        self.plan = plan
+        self.workArea = workArea
+
+    def __del__(self):
+        result = cufftDestroy(self.plan)
+        check_result(result)
+
+    def fft(self, a, out, direction):
+        if self.fft_type == CUFFT_C2C:
+            execC2C(self.plan, a.data, out.data, direction)
+        elif self.fft_type == CUFFT_R2C:
+            execR2C(self.plan, a.data, out.data)
+        elif self.fft_type == CUFFT_C2R:
+            execC2R(self.plan, a.data, out.data)
+        elif self.fft_type == CUFFT_Z2Z:
+            execZ2Z(self.plan, a.data, out.data, direction)
+        elif self.fft_type == CUFFT_D2Z:
+            execD2Z(self.plan, a.data, out.data)
+        else:
+            execZ2D(self.plan, a.data, out.data)
+
+    def get_output_array(self, a):
+        shape = list(a.shape)
+        if self.fft_type == CUFFT_C2C:
+            return cupy.empty(shape, numpy.complex64)
+        elif self.fft_type == CUFFT_R2C:
+            shape[-1] = shape[-1] // 2 + 1
+            return cupy.empty(shape, numpy.complex64)
+        elif self.fft_type == CUFFT_C2R:
+            shape[-1] = self.nx
+            return cupy.empty(shape, numpy.float32)
+        elif self.fft_type == CUFFT_Z2Z:
+            return cupy.empty(shape, numpy.complex128)
+        elif self.fft_type == CUFFT_D2Z:
+            shape[-1] = shape[-1] // 2 + 1
+            return cupy.empty(shape, numpy.complex128)
+        else:
+            shape[-1] = self.nx
+            return cupy.empty(shape, numpy.float64)
 
 
 cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):

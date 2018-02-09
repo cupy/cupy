@@ -2508,7 +2508,8 @@ cpdef ndarray concatenate_method(tup, int axis):
     ndim = -1
     dtype = None
     have_same_types = True
-    for o in tup:
+    arrays = list(tup)
+    for o in arrays:
         if not isinstance(o, ndarray):
             raise TypeError('Only cupy arrays can be concatenated')
         a = o
@@ -2540,92 +2541,108 @@ cpdef ndarray concatenate_method(tup, int axis):
         raise ValueError('Cannot concatenate from empty tuple')
 
     if not have_same_types:
-        dtype = numpy.find_common_type([a.dtype for a in tup], [])
-    return concatenate(tup, axis, shape, dtype)
+        dtype = numpy.find_common_type([a.dtype for a in arrays], [])
+    return _concatenate(arrays, axis, tuple(shape), dtype)
 
 
-cpdef ndarray concatenate(tup, axis, shape, dtype):
-    cdef ndarray a, x, ret
-    cdef int i, j, base, cum, ndim
-    cdef bint all_same_type, all_one_and_contiguous
-    cdef Py_ssize_t[:] ptrs
-    cdef int[:] cum_sizes
-    cdef int[:, :] x_strides
+cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
+    cdef ndarray a, ret
+    cdef int i
+    cdef bint all_same_type, same_shape_and_contiguous
+    cdef Py_ssize_t axis_size
+    # If arrays are large, Issuing each copy method is efficient.
+    cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
+
+    if len(arrays) > 8:
+        all_same_type = True
+        same_shape_and_contiguous = True
+        axis_size = shape[axis] // len(arrays)
+        total_bytes = 0
+        for a in arrays:
+            if a.dtype != dtype:
+                all_same_type = False
+                break
+            if same_shape_and_contiguous:
+                same_shape_and_contiguous = (
+                    a._c_contiguous and a._shape[axis] == axis_size)
+            total_bytes += a.size * a.dtype.itemsize
+
+        if all_same_type and total_bytes < threshold_size * len(arrays):
+            return _concatenate_single_kernel(
+                arrays, axis, shape, dtype, same_shape_and_contiguous)
 
     ret = ndarray(shape, dtype=dtype)
-
-    all_same_type = True
-    all_one_and_contiguous = True
-    any_contiguous_on_axis = False
-    total_bytes = 0
-    dtype = tup[0].dtype
-    for a in tup:
-        all_same_type = all_same_type and (a.dtype == dtype)
-        all_one_and_contiguous = (
-            all_one_and_contiguous and a._c_contiguous and
-            a._shape[axis] == 1)
-        any_contiguous_on_axis = (
-            any_contiguous_on_axis or
-            a._strides[axis] == a.itemsize)
-        total_bytes += a.size * a.itemsize
-
-    if ((not all_same_type or not any_contiguous_on_axis) and
-            (len(tup) < 256 or total_bytes / len(tup) > 524288)):
-        skip = (slice(None),) * axis
-        i = 0
-        for a in tup:
-            aw = a._shape[axis]
-            ret[skip + (slice(i, i + aw),)] = a
-            i += aw
-    else:
-        ptrs = numpy.ndarray(len(tup), numpy.int64)
-        for i, a in enumerate(tup):
-            ptrs[i] = a.data.ptr
-        x = array(ptrs)
-
-        if all_one_and_contiguous:
-            base = <int>internal.prod_ssize_t(shape[axis + 1:])
-            _concatenate_kernel_one(x, base, ret)
-        else:
-            ndim = tup[0].ndim
-            x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
-            cum_sizes = numpy.ndarray(len(tup), numpy.int32)
-            cum = 0
-            for i, a in enumerate(tup):
-                for j in range(ndim):
-                    x_strides[i, j] = <int>a._strides[j]
-                cum_sizes[i] = cum
-                cum += <int>a._shape[axis]
-
-            _concatenate_kernel(
-                x, axis, array(cum_sizes), array(x_strides), ret)
+    i = 0
+    slice_list = [slice(None)] * len(shape)
+    for a in arrays:
+        aw = a._shape[axis]
+        slice_list[axis] = slice(i, i + aw)
+        elementwise_copy(a, ret[tuple(slice_list)])
+        i += aw
     return ret
 
-cdef _concatenate_kernel_one = ElementwiseKernel(
-    'raw P x, int32 base',
+
+cpdef ndarray _concatenate_single_kernel(
+        list arrays, Py_ssize_t axis, tuple shape, dtype,
+        bint same_shape_and_contiguous):
+    cdef ndarray a, x, ret
+    cdef Py_ssize_t base, cum, ndim
+    cdef int i, j
+    cdef Py_ssize_t[:] ptrs
+    cdef Py_ssize_t[:] cum_sizes
+    cdef Py_ssize_t[:, :] x_strides
+
+    ptrs = numpy.ndarray(len(arrays), numpy.int64)
+    for i, a in enumerate(arrays):
+        ptrs[i] = a.data.ptr
+    x = array(ptrs)
+
+    ret = ndarray(shape, dtype=dtype)
+    if same_shape_and_contiguous:
+        base = internal.prod_ssize_t(shape[axis:]) // len(arrays)
+        _concatenate_kernel_same_size(x, base, ret)
+        return ret
+
+    ndim = len(shape)
+    x_strides = numpy.ndarray((len(arrays), ndim), numpy.int64)
+    cum_sizes = numpy.ndarray(len(arrays), numpy.int64)
+    cum = 0
+    for i, a in enumerate(arrays):
+        for j in range(ndim):
+            x_strides[i, j] = <int>a._strides[j]
+        cum_sizes[i] = cum
+        cum += <int>a._shape[axis]
+
+    _concatenate_kernel(
+        x, axis, array(cum_sizes), array(x_strides), ret)
+    return ret
+
+
+cdef _concatenate_kernel_same_size = ElementwiseKernel(
+    'raw P x, int64 base',
     'T y',
     '''
-    int middle = i / base;
-    int top = middle / x.size();
-    int array_ind = middle - top * x.size();
-    int offset = i + (top - middle) * base;
+    ptrdiff_t middle = i / base;
+    ptrdiff_t top = middle / x.size();
+    ptrdiff_t array_ind = middle - top * x.size();
+    ptrdiff_t offset = i + (top - middle) * base;
     y = reinterpret_cast<T*>(x[array_ind])[offset];
     ''',
-    'cupy_concatenate_one'
+    'cupy_concatenate_same_size'
 )
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, raw int32 cum_sizes,
-    raw int32 x_strides''',
+    '''raw P x, int32 axis, raw int64 cum_sizes,
+    raw int64 x_strides''',
     'T y',
     '''
-    int axis_ind = _ind.get()[axis];
-    int left = 0;
-    int right = cum_sizes.size();
+    ptrdiff_t axis_ind = _ind.get()[axis];
+    ptrdiff_t left = 0;
+    ptrdiff_t right = cum_sizes.size();
 
     while (left < right - 1) {
-      int m = (left + right) / 2;
+      ptrdiff_t m = (left + right) / 2;
       if (axis_ind < cum_sizes[m]) {
         right = m;
       } else {
@@ -2633,7 +2650,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
       }
     }
 
-    int array_ind = left;
+    ptrdiff_t array_ind = left;
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
     for (int j = _ind.ndim - 1; j >= 0; --j) {
@@ -3299,7 +3316,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
-    flattened_indexes = concatenate(
+    flattened_indexes = _concatenate(
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
@@ -3427,6 +3444,13 @@ cdef ndarray _mat_ptrs(ndarray a):
         return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
 
 
+cpdef int _get_stride_for_strided_batched_gemm(ndarray a):
+    if a.ndim > 2:
+        return a.strides[-3] / a.itemsize
+    else:
+        return a.shape[-2] * a.shape[-1]
+
+
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """ Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
@@ -3435,12 +3459,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
     .. note::
-        Differences to numpy or missing features:
-
-        Currently the output must be real (float16, float32, uint8, ...),
-        complex64 and complex128 follow later. This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be real.
-
         The out array as input is currently not supported.
 
     Args:
@@ -3504,9 +3522,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broatcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
 
-    out_shape = (*broatcast_pre_shape, *a_part_outshape, *b_part_outshape)
+    out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
     a = ascontiguousarray(a, dtype=dtype)
     b = ascontiguousarray(b, dtype=dtype)
@@ -3516,14 +3534,17 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     a_shape = list(a.shape)
     b_strides = list(b.strides)
     b_shape = list(b.shape)
+    use_broadcast = False
     for i in range(len(a_strides) - 2):
-        if a_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if a_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             a_strides[i] = 0
-            a_shape[i] = broatcast_pre_shape[i]
+            a_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
     for i in range(len(b_strides) - 2):
-        if b_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if b_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             b_strides[i] = 0
-            b_shape[i] = broatcast_pre_shape[i]
+            b_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
 
     view = a.view()
     view._set_shape_and_strides(a_shape, a_strides)
@@ -3571,48 +3592,99 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     for i in la:
         batchCount *= i
 
-    ap = _mat_ptrs(a)
-    bp = _mat_ptrs(b)
-    outp = _mat_ptrs(out_view)
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if dtype == numpy.float32:
-        cuda.cublas.sgemmBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
-    elif dtype == numpy.float64:
-        cuda.cublas.dgemmBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex64:
-    #     cuda.cublas.cgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex128:
-    #     cuda.cublas.zgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
+    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
+    if not use_broadcast and _cuda_runtime_version >= 8000:
+        strideA = _get_stride_for_strided_batched_gemm(a)
+        strideB = _get_stride_for_strided_batched_gemm(b)
+        strideC = _get_stride_for_strided_batched_gemm(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
     else:
-        raise TypeError(dtype, a.dtype, b.dtype)
+        ap = _mat_ptrs(a)
+        bp = _mat_ptrs(b)
+        outp = _mat_ptrs(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
 
     if dtype == ret_dtype:
         return out
@@ -4017,8 +4089,8 @@ divide = create_ufunc(
 
 power = create_ufunc(
     'cupy_power',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
+    ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+     'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
