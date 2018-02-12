@@ -12,14 +12,14 @@ cdef class Memory:
     cdef:
         public size_t ptr
         public Py_ssize_t size
-        readonly device.Device device
+        public int device_id
 
 
 cdef class MemoryPointer:
 
     cdef:
         readonly size_t ptr
-        readonly device.Device device
+        readonly int device_id
         readonly Memory mem
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)

@@ -407,17 +407,20 @@ cdef class ndarray:
         if self.size == 0:
             return self.astype(self.dtype, copy=True, order=order)
 
-        if (self.data.device is None or
-                self.data.device.id == device.get_device_id()):
+        dev_id = device.get_device_id()
+        if self.data.device_id == device.get_device_id():
             return self.astype(self.dtype, copy=True, order=order)
-        else:
-            # It need to make a contiguous copy for copying from another device
-            with self.device:
-                x = self.astype(self.dtype, copy=False, order=order)
-            newarray = ndarray(x.shape, dtype=x.dtype)
-            newarray._set_shape_and_strides(x._shape, x._strides)
-            newarray.data.copy_from_device(x.data, x.nbytes)
-            return newarray
+
+        # It need to make a contiguous copy for copying from another device
+        runtime.setDevice(self.data.device_id)
+        try:
+            x = self.astype(self.dtype, copy=False, order=order)
+        finally:
+            runtime.setDevice(dev_id)
+        newarray = ndarray(x.shape, dtype=x.dtype)
+        newarray._set_shape_and_strides(x._shape, x._strides)
+        newarray.data.copy_from_device(x.data, x.nbytes)
+        return newarray
 
     cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
@@ -1493,10 +1496,7 @@ cdef class ndarray:
         return self.copy()
 
     def __deepcopy__(self, memo):
-        if self.device is not None:
-            with self.device:
-                return self.copy()
-        else:
+        with self.device:
             return self.copy()
 
     def __reduce__(self):
@@ -2150,8 +2150,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         src = obj
         if dtype is None:
             dtype = src.dtype
-        dev = src.data.device
-        if dev is None or dev.id == device.get_device_id():
+        if src.data.device_id == device.get_device_id():
             a = src.astype(dtype, order=order, copy=copy)
         else:
             a = src.copy(order=order).astype(dtype, copy=False)
