@@ -63,7 +63,7 @@ class Event(object):
             processes.
 
     Attributes:
-        ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
+        ~Event.ptr (size_t): Raw stream handle. It can be passed to
             the CUDA Runtime API via ctypes.
 
     """
@@ -143,7 +143,7 @@ class Stream(object):
             the NULL stream.
 
     Attributes:
-        ptr (size_t): Raw stream handle. It can be passed to
+        ~Stream.ptr (size_t): Raw stream handle. It can be passed to
             the CUDA Runtime API via ctypes.
 
     """

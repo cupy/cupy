@@ -32,7 +32,6 @@ thread_local = threading.local()
 
 
 cdef inline _ensure_context(int device_id):
-
     """Ensure that CUcontext bound to the calling host thread exists.
 
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
@@ -56,7 +55,6 @@ class OutOfMemoryError(MemoryError):
 
 
 cdef class Memory:
-
     """Memory allocation on a CUDA device.
 
     This class provides an RAII interface of the CUDA memory allocation.
@@ -65,15 +63,11 @@ cdef class Memory:
         size (int): Size of the memory allocation in bytes.
 
     Attributes:
-        ptr (int): Pointer to the place within the buffer.
-        size (int): Size of the memory allocation in bytes.
-        device (~cupy.cuda.Device): Device whose memory the pointer refers to.
+        ~Memory.ptr (int): Pointer to the place within the buffer.
+        ~Memory.size (int): Size of the memory allocation in bytes.
+        ~Memory.device (~cupy.cuda.Device): Device whose memory the pointer
+            refers to.
     """
-
-    cdef:
-        public size_t ptr
-        public Py_ssize_t size
-        readonly device_mod.Device device
 
     def __init__(self, Py_ssize_t size):
         self.size = size
@@ -93,7 +87,6 @@ cdef class Memory:
 
 
 cdef class ManagedMemory(Memory):
-
     """Managed memory (Unified memory) allocation on a CUDA device.
 
     This class provides an RAII interface of the CUDA managed memory
@@ -162,14 +155,14 @@ cdef class Chunk:
     sorted by base address that must be contiguous.
 
     Args:
-        mem (Memory): The device memory buffer.
+        mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
         stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
 
     Attributes:
-        device (cupy.cuda.Device): Device whose memory the pointer refers to.
-        mem (Memory): The device memory buffer.
+        device (~cupy.cuda.Device): Device whose memory the pointer refers to.
+        mem (~cupy.cuda.Memory): The device memory buffer.
         ptr (size_t): Memory address.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
@@ -178,7 +171,8 @@ cdef class Chunk:
         stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
     """
 
-    def __init__(self, mem, Py_ssize_t offset, Py_ssize_t size, stream_ptr):
+    def __init__(self, Memory mem, Py_ssize_t offset,
+                 Py_ssize_t size, stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
@@ -191,7 +185,6 @@ cdef class Chunk:
 
 
 cdef class MemoryPointer:
-
     """Pointer to a point on a device memory.
 
     An instance of this class holds a reference to the original memory buffer
@@ -205,8 +198,8 @@ cdef class MemoryPointer:
     Attributes:
         ~MemoryPointer.device (~cupy.cuda.Device): Device whose memory the
             pointer refers to.
-        mem (~cupy.cuda.Memory): The device memory buffer.
-        ptr (size_t): Pointer to the place within the buffer.
+        ~MemoryPointer.mem (~cupy.cuda.Memory): The device memory buffer.
+        ~MemoryPointer.ptr (size_t): Pointer to the place within the buffer.
     """
 
     def __init__(self, Memory mem, Py_ssize_t offset):
@@ -536,6 +529,7 @@ cdef class PooledMemory(Memory):
         if _exit_mode:
             return  # To avoid error at exit
         self.free()
+
 
 cdef int _index_compaction_threshold = 512
 
