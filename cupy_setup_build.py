@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+import argparse
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -6,6 +8,7 @@ from distutils import sysconfig
 from distutils import unixccompiler
 import os
 from os import path
+import shutil
 import sys
 
 import pkg_resources
@@ -318,6 +321,15 @@ def preconfigure_modules(compiler, settings):
     return ret
 
 
+def _rpath_base():
+    if sys.platform.startswith('linux'):
+        return '$ORIGIN'
+    elif sys.platform.startswith('darwin'):
+        return '@loader_path'
+    else:
+        raise Exception('not supported on this platform')
+
+
 def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -330,15 +342,9 @@ def make_extensions(options, compiler, use_cython):
         x for x in include_dirs if path.exists(x)]
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
-    if sys.platform != 'win32':
-        settings['runtime_library_dirs'] = settings['library_dirs']
-    if sys.platform == 'darwin':
-        args = settings.setdefault('extra_link_args', [])
-        args.append(
-            '-Wl,' + ','.join('-rpath,' + p
-                              for p in settings['library_dirs']))
-        # -rpath is only supported when targetting Mac OS X 10.5 or later
-        args.append('-mmacosx-version-min=10.5')
+
+    # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
+    use_wheel_libs_rpath = 'wheel_libs' in options
 
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
@@ -389,6 +395,23 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('/openmp')
 
         for f in module['file']:
+            rpath = list(s['library_dirs'])  # copy
+            if use_wheel_libs_rpath:
+                modname = f[0] if isinstance(f, tuple) else f
+                depth = modname.count('.') - 1
+                rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
+
+            if sys.platform != 'win32':
+                s['runtime_library_dirs'] = rpath
+            if sys.platform == 'darwin':
+                args = s.setdefault('extra_link_args', [])
+                args.append(
+                    '-Wl,' + ','.join('-rpath,' + p
+                                      for p in s['library_dirs']))
+                # -rpath is only supported when targetting Mac OS X 10.5 or
+                # later
+                args.append('-mmacosx-version-min=10.5')
+
             name = module_extension_name(f)
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
@@ -398,21 +421,34 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    cupy_profile = '--cupy-profile' in sys.argv
-    if cupy_profile:
-        sys.argv.remove('--cupy-profile')
-    cupy_coverage = '--cupy-coverage' in sys.argv
-    if cupy_coverage:
-        sys.argv.remove('--cupy-coverage')
-    no_cuda = '--cupy-no-cuda' in sys.argv
-    if no_cuda:
-        sys.argv.remove('--cupy-no-cuda')
+    parser = argparse.ArgumentParser(add_help=False)
+
+    parser.add_argument(
+        '--cupy-package-name', type=str, default='cupy',
+        help='alternate package name')
+    parser.add_argument(
+        '--cupy-wheel-lib', type=str, action='append', default=[],
+        help='shared library to copy into the wheel '
+             '(can be specified for multiple times)')
+    parser.add_argument(
+        '--cupy-profile', action='store_true', default=False,
+        help='enable profiling for Cython code')
+    parser.add_argument(
+        '--cupy-coverage', action='store_true', default=False,
+        help='enable coverage for Cython code')
+    parser.add_argument(
+        '--cupy-no-cuda', action='store_true', default=False,
+        help='build CuPy with stub header file')
+
+    opts, sys.argv = parser.parse_known_args(sys.argv)
 
     arg_options = {
-        'profile': cupy_profile,
-        'linetrace': cupy_coverage,
-        'annotate': cupy_coverage,
-        'no_cuda': no_cuda,
+        'package_name': opts.cupy_package_name,
+        'wheel_libs': opts.cupy_wheel_lib,  # list
+        'profile': opts.cupy_profile,
+        'linetrace': opts.cupy_coverage,
+        'annotate': opts.cupy_coverage,
+        'no_cuda': opts.cupy_no_cuda,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -421,6 +457,32 @@ def parse_args():
 
 cupy_setup_options = parse_args()
 print('Options:', cupy_setup_options)
+
+
+def get_package_name():
+    return cupy_setup_options['package_name']
+
+
+def prepare_wheel_libs():
+    libs = []
+    libdir = 'cupy/_lib'
+
+    # Clean up the library directory.
+    if os.path.exists(libdir):
+        print("Removing directory: {}".format(libdir))
+        shutil.rmtree(libdir)
+    os.mkdir(libdir)
+
+    # Copy specified libraries to the library directory.
+    for lib in cupy_setup_options['wheel_libs']:
+        # Note: symlink is resolved by shutil.copy2.
+        print("Copying library for wheel: {}".format(lib))
+        libname = path.basename(lib)
+        libpath = '{}/{}'.format(libdir, libname)
+        shutil.copy2(lib, libpath)
+        libs.append('_lib/{}'.format(libname))
+    return libs
+
 
 try:
     import Cython

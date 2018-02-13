@@ -4,6 +4,14 @@ from libcpp cimport map
 from cupy.cuda cimport device
 
 
+cdef class Memory:
+
+    cdef:
+        public size_t ptr
+        public Py_ssize_t size
+        readonly device.Device device
+
+
 cdef class Chunk:
 
     cdef:
@@ -19,9 +27,9 @@ cdef class Chunk:
 cdef class MemoryPointer:
 
     cdef:
-        readonly device.Device device
-        readonly object mem
         readonly size_t ptr
+        readonly device.Device device
+        readonly Memory mem
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size,

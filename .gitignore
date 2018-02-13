@@ -18,3 +18,4 @@ dist/
 htmlcov/
 .idea/
 .cache/
+cupy/_lib/

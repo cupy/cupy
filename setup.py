@@ -29,6 +29,37 @@ install_requires = [
     'fastrlock>=0.3',
 ]
 
+package_data = {
+    'cupy': [
+        'core/include/cupy/complex/arithmetic.h',
+        'core/include/cupy/complex/catrig.h',
+        'core/include/cupy/complex/catrigf.h',
+        'core/include/cupy/complex/ccosh.h',
+        'core/include/cupy/complex/ccoshf.h',
+        'core/include/cupy/complex/cexp.h',
+        'core/include/cupy/complex/cexpf.h',
+        'core/include/cupy/complex/clog.h',
+        'core/include/cupy/complex/clogf.h',
+        'core/include/cupy/complex/complex.h',
+        'core/include/cupy/complex/complex_inl.h',
+        'core/include/cupy/complex/cpow.h',
+        'core/include/cupy/complex/cproj.h',
+        'core/include/cupy/complex/csinh.h',
+        'core/include/cupy/complex/csinhf.h',
+        'core/include/cupy/complex/csqrt.h',
+        'core/include/cupy/complex/csqrtf.h',
+        'core/include/cupy/complex/ctanh.h',
+        'core/include/cupy/complex/ctanhf.h',
+        'core/include/cupy/complex/math_private.h',
+        'core/include/cupy/carray.cuh',
+        'core/include/cupy/complex.cuh',
+        'cuda/cupy_thrust.cu',
+    ],
+}
+
+package_data['cupy'] += cupy_setup_build.prepare_wheel_libs()
+
+package_name = cupy_setup_build.get_package_name()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 sdist = cupy_setup_build.sdist_with_cython
@@ -38,7 +69,7 @@ __version__ = imp.load_source(
     '_version', os.path.join(here, 'cupy', '_version.py')).__version__
 
 setup(
-    name='cupy',
+    name=package_name,
     version=__version__,
     description='CuPy: NumPy-like API accelerated with CUDA',
     author='Seiya Tokui',
@@ -67,33 +98,7 @@ setup(
               'cupy.sparse.linalg',
               'cupy.statistics',
               'cupy.testing'],
-    package_data={
-        'cupy': [
-            'core/include/cupy/complex/arithmetic.h',
-            'core/include/cupy/complex/catrig.h',
-            'core/include/cupy/complex/catrigf.h',
-            'core/include/cupy/complex/ccosh.h',
-            'core/include/cupy/complex/ccoshf.h',
-            'core/include/cupy/complex/cexp.h',
-            'core/include/cupy/complex/cexpf.h',
-            'core/include/cupy/complex/clog.h',
-            'core/include/cupy/complex/clogf.h',
-            'core/include/cupy/complex/complex.h',
-            'core/include/cupy/complex/complex_inl.h',
-            'core/include/cupy/complex/cpow.h',
-            'core/include/cupy/complex/cproj.h',
-            'core/include/cupy/complex/csinh.h',
-            'core/include/cupy/complex/csinhf.h',
-            'core/include/cupy/complex/csqrt.h',
-            'core/include/cupy/complex/csqrtf.h',
-            'core/include/cupy/complex/ctanh.h',
-            'core/include/cupy/complex/ctanhf.h',
-            'core/include/cupy/complex/math_private.h',
-            'core/include/cupy/carray.cuh',
-            'core/include/cupy/complex.cuh',
-            'cuda/cupy_thrust.cu',
-        ],
-    },
+    package_data=package_data,
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,
