@@ -420,7 +420,7 @@ cpdef MemoryPointer malloc_managed(Py_ssize_t size):
     device attribute cudaDevAttrConcurrentManagedAccess.
     CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
 
-    Read more at: http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
+    Read more at: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
 
     Args:
         size (int): Size of the memory allocation in bytes.

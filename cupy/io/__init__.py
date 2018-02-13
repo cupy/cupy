@@ -1,5 +1,5 @@
 # Functions from the following NumPy document
-# http://docs.scipy.org/doc/numpy/reference/routines.io.html
+# https://docs.scipy.org/doc/numpy/reference/routines.io.html
 
 # "NOQA" to suppress flake8 warning
 from cupy.io import formatting  # NOQA
