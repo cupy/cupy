@@ -11,10 +11,15 @@ try:
         libcudnn.CUDNN_ACTIVATION_RELU,
         libcudnn.CUDNN_ACTIVATION_TANH,
     ]
+    coef_modes = [
+        libcudnn.CUDNN_ACTIVATION_CLIPPED_RELU,
+        libcudnn.CUDNN_ACTIVATION_ELU,
+    ]
     import cupy.cudnn
 except ImportError:
     cudnn_enabled = False
     modes = []
+    coef_modes = []
 from cupy import testing
 
 
@@ -35,6 +40,29 @@ class TestCudnnActivation(unittest.TestCase):
 
     def test_activation_backward(self):
         cupy.cudnn.activation_backward(self.x, self.y, self.g, self.mode)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'mode': coef_modes,
+}))
+@unittest.skipUnless(
+    cudnn_enabled and libcudnn.getVersion() >= 5000,
+    'cuDNN >= 5.0 is supported')
+class TestCudnnActivationCoef(unittest.TestCase):
+
+    def setUp(self):
+        self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
+        self.y = testing.shaped_arange((3, 4), cupy, self.dtype)
+        self.g = testing.shaped_arange((3, 4), cupy, self.dtype)
+        self.coef = self.dtype(0.75)
+
+    def test_activation_forward(self):
+        cupy.cudnn.activation_forward(self.x, self.mode, self.coef)
+
+    def test_activation_backward(self):
+        cupy.cudnn.activation_backward(self.x, self.y, self.g, self.mode,
+                                       self.coef)
 
 
 @testing.parameterize(*testing.product({
