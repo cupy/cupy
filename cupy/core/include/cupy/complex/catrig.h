@@ -6,7 +6,7 @@
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -90,7 +90,7 @@ __device__ inline complex<double> clog_for_large_values(complex<double> z);
  * and arccosine functions using exception handling" by T. E. Hull, Thomas F.
  * Fairgrieve, and Ping Tak Peter Tang, published in ACM Transactions on
  * Mathematical Software, Volume 23 Issue 3, 1997, Pages 299-335,
- * https://dl.acm.org/citation.cfm?id=275324.
+ * http://dl.acm.org/citation.cfm?id=275324.
  *
  * Throughout we use the convention z = x + I*y.
  *
