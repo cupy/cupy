@@ -166,7 +166,7 @@ cdef class _Chunk:
         self._init(*args)
 
     def _init(self, Memory mem, Py_ssize_t offset,
-                 Py_ssize_t size, stream_ptr):
+              Py_ssize_t size, stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
