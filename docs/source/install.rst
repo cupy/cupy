@@ -8,7 +8,7 @@ Recommended Environments
 
 We recommend these Linux distributions.
 
-* `Ubuntu <http://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
+* `Ubuntu <https://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
 The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.

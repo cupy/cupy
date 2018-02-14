@@ -308,7 +308,7 @@ def preconfigure_modules(compiler, settings):
             '',
         ] + lines + [
             'Please refer to the Installation Guide for details:',
-            'http://docs-cupy.chainer.org/en/stable/install.html',
+            'https://docs-cupy.chainer.org/en/stable/install.html',
             '',
         ]
 

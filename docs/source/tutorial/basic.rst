@@ -53,7 +53,7 @@ We can calculate it on GPU with CuPy in a similar way:
 CuPy implements many functions on :class:`cupy.ndarray` objects.
 See the :ref:`reference <cupy_reference>` for the supported subset of NumPy API.
 Understanding NumPy might help utilizing most features of CuPy.
-So, we recommend you to read the `NumPy documentation <http://docs.scipy.org/doc/numpy/index.html>`_.
+So, we recommend you to read the `NumPy documentation <https://docs.scipy.org/doc/numpy/index.html>`_.
 
 
 Current Device

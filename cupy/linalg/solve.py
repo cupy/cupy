@@ -35,7 +35,7 @@ def solve(a, b):
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
     #       we manually solve a linear system with QR decomposition.
     #       For details, please see the following:
-    #       http://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
+    #       https://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
