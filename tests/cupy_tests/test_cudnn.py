@@ -46,7 +46,9 @@ class TestCudnnActivation(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'mode': coef_modes,
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
+@unittest.skipUnless(
+    cudnn_enabled and libcudnn.getVersion() >= 5000,
+    'cuDNN >= 5.0 is supported')
 class TestCudnnActivationCoef(unittest.TestCase):
 
     def setUp(self):
