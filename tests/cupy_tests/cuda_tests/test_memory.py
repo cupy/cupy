@@ -1,4 +1,5 @@
 import ctypes
+import sys
 import threading
 import unittest
 
@@ -483,6 +484,8 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
+    @unittest.skipUnless(sys.version_info[0] >= 3,
+                         'Only for Python3 or higher')
     def test_reuse_between_thread(self):
         def job(self):
             cupy.arange(16)
