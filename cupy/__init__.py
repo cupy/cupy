@@ -137,7 +137,7 @@ from numpy import newaxis  # == None  # NOQA
 # Routines
 #
 # The order of these declarations are borrowed from the NumPy document:
-# http://docs.scipy.org/doc/numpy/reference/routines.html
+# https://docs.scipy.org/doc/numpy/reference/routines.html
 # =============================================================================
 
 # -----------------------------------------------------------------------------
