@@ -1416,170 +1416,26 @@ cdef class ndarray:
         # supports basic indexing (by slices, ints or Ellipsis) and
         # some parts of advanced indexing by integer or boolean arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
-        cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
-        cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
-        cdef vector.vector[Py_ssize_t] shape, strides
-        if isinstance(slices, tuple):
-            slices = list(slices)
-        elif isinstance(slices, list):
-            slices = list(slices)  # copy list
-            if all([isinstance(s, int) for s in slices]):
-                slices = [slices]
-        else:
-            slices = [slices]
+        cdef Py_ssize_t mask_i
+        cdef list slice_list, adv_mask, adv_slices
+        cdef bint advanced, mask_exists
 
-        # Expand ellipsis into empty slices
-        ellipsis = -1
-        n_newaxes = n_ellipses = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                n_newaxes += 1
-            elif s is Ellipsis:
-                n_ellipses += 1
-                ellipsis = i
-        ndim = self._shape.size()
-        noneslices = [slice(None)]
-        if n_ellipses > 0:
-            if n_ellipses > 1:
-                raise ValueError('Only one Ellipsis is allowed in index')
-            ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
-            slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
-
-        slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
-
-        # Check if advanced is true,
-        # and convert list/NumPy arrays to cupy.ndarray
-        advanced = False
-        mask_exists = False
-        for i, s in enumerate(slices):
-            is_list = False
-            if isinstance(s, (list, numpy.ndarray)):
-                is_list = isinstance(s, list)
-                s = array(s)
-                # handle the case when s is an empty list
-                if is_list and s.size == 0:
-                    s = s.astype(numpy.int32)
-                slices[i] = s
-            if isinstance(s, ndarray):
-                if issubclass(s.dtype.type, numpy.integer):
-                    advanced = True
-                elif issubclass(s.dtype.type, numpy.bool_):
-                    mask_exists = not is_list
-                else:
-                    raise IndexError(
-                        'arrays used as indices must be of integer or boolean '
-                        'type. (actual: {})'.format(s.dtype.type))
-
-        if not mask_exists and len(slices) > self.ndim + n_newaxes:
-            raise IndexError('too many indices for array')
+        slice_list, advanced, mask_exists = _prepare_slice_list(
+            slices, self._shape.size())
 
         if mask_exists:
-            n_not_slice_none = 0
-            mask_i = None
-            for i, s in enumerate(slices):
-                if not isinstance(s, slice) or s != slice(None):
-                    n_not_slice_none += 1
-                    if issubclass(s.dtype.type, numpy.bool_):
-                        mask_i = i
-            if n_not_slice_none != 1 and mask_i is not None:
-                raise ValueError('currently, CuPy only supports slices that '
-                                 'consist of one boolean array.')
-            return _getitem_mask_single(self, slices[mask_i], mask_i)
+            mask_i = _get_mask_index(slice_list)
+            return _getitem_mask_single(self, slice_list[mask_i], mask_i)
 
         if advanced:
-            # split slices that can be handled by basic-indexing
-            basic_slices = []
-            adv_slices = []
-            for i, s in enumerate(slices):
-                if type(s) is slice:
-                    basic_slices.append(s)
-                    adv_slices.append(slice(None))
-                elif s is None:
-                    basic_slices.append(None)
-                    adv_slices.append(slice(None))
-                elif (isinstance(s, ndarray) and
-                        issubclass(s.dtype.type, numpy.integer)):
-                    basic_slices.append(slice(None))
-                    adv_slices.append(s)
-                elif isinstance(s, int):
-                    basic_slices.append(slice(None))
-                    scalar_array = ndarray((), dtype=numpy.int64)
-                    scalar_array.fill(s)
-                    adv_slices.append(scalar_array)
-                else:
-                    raise IndexError(
-                        'only integers, slices (`:`), ellipsis (`...`),'
-                        'numpy.newaxis (`None`) and integer or '
-                        'boolean arrays are valid indices')
-
-            # check if this is a combination of basic and advanced indexing
-            a = self
-            for s in basic_slices:
-                if s is None or (isinstance(s, slice) and s != slice(None)):
-                    a = self[tuple(basic_slices)]
-                    break
-
-            arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
-            if sum(arr_slices_mask) == 1:
-                axis = arr_slices_mask.index(True)
+            a, adv_slices, adv_mask = _prepare_advanced_indexing(
+                self, slice_list)
+            if sum(adv_mask) == 1:
+                axis = adv_mask.index(True)
                 return a.take(adv_slices[axis], axis)
             return _getitem_multiple(a, adv_slices)
 
-        # Create new shape and stride
-        j = 0
-        offset = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                shape.push_back(1)
-                if j < ndim:
-                    strides.push_back(self._strides[j])
-                elif ndim > 0:
-                    strides.push_back(self._strides[ndim - 1])
-                else:
-                    strides.push_back(self.itemsize)
-            elif ndim <= j:
-                raise IndexError("too many indices for array")
-            elif isinstance(s, slice):
-                s = internal.complete_slice(s, self._shape[j])
-                s_start = s.start
-                s_stop = s.stop
-                s_step = s.step
-                if s_step > 0:
-                    dim = (s_stop - s_start - 1) // s_step + 1
-                else:
-                    dim = (s_stop - s_start + 1) // s_step + 1
-
-                if dim == 0:
-                    strides.push_back(self._strides[j])
-                else:
-                    strides.push_back(self._strides[j] * s_step)
-
-                if self.size > 0:
-                    offset += self._strides[j] * max(0, s_start)
-
-                shape.push_back(dim)
-
-                j += 1
-            elif numpy.isscalar(s):
-                ind = int(s)
-                if ind < 0:
-                    ind += self._shape[j]
-                if not (0 <= ind < self._shape[j]):
-                    msg = ('Index %s is out of bounds for axis %s with '
-                           'size %s' % (s, j, self._shape[j]))
-                    raise IndexError(msg)
-                if self.size > 0:
-                    offset += ind * self._strides[j]
-                j += 1
-            else:
-                raise TypeError('Invalid index type: %s' % type(slices[i]))
-
-        # TODO(niboshi): offset can be non-zero even if self.data is an empty
-        # pointer.
-        v = self.view()
-        v.data = self.data + offset
-        v._set_shape_and_strides(shape, strides)
-        return v
+        return _simple_getitem(self, slice_list)
 
     def __setitem__(self, slices, value):
         """x.__setitem__(slices, y) <==> x[slices] = y
@@ -2781,6 +2637,175 @@ right_shift = _create_bit_op(
 # Indexing routines
 # -----------------------------------------------------------------------------
 
+cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
+    cdef Py_ssize_t i, n_newaxes, axis
+    cdef list slice_list
+    cdef str kind
+
+    if isinstance(slices, tuple):
+        slice_list = list(slices)
+    elif isinstance(slices, list):
+        slice_list = list(slices)  # copy list
+        for s in slice_list:
+            if not isinstance(s, int):
+                break
+        else:
+            slice_list = [slice_list]
+    else:
+        slice_list = [slices]
+
+    slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
+
+    # Check if advanced is true,
+    # and convert list/NumPy arrays to cupy.ndarray
+    advanced = False
+    mask_exists = False
+    for i, s in enumerate(slice_list):
+        is_list = isinstance(s, list)
+        is_ndarray = False
+        if is_list or isinstance(s, numpy.ndarray):
+            # handle the case when s is an empty list
+            s = array(s)
+            if is_list and s.size == 0:
+                s = s.astype(numpy.int32)
+            slice_list[i] = s
+            is_ndarray = True
+        if is_ndarray or isinstance(s, ndarray):
+            kind = s.dtype.kind
+            if kind == 'i' or kind == 'u':
+                advanced = True
+            elif kind == 'b':
+                mask_exists = not is_list
+            else:
+                raise IndexError(
+                    'arrays used as indices must be of integer or boolean '
+                    'type. (actual: {})'.format(s.dtype.type))
+
+    if not mask_exists and len(slice_list) > ndim + n_newaxes:
+        raise IndexError('too many indices for array')
+    return slice_list, advanced, mask_exists
+
+
+cdef Py_ssize_t _get_mask_index(list slice_list) except *:
+    cdef Py_ssize_t i, n_not_slice_none, mask_i
+    n_not_slice_none = 0
+    mask_i = -1
+    for i, s in enumerate(slice_list):
+        if not isinstance(s, slice):
+            n_not_slice_none += 1
+            if isinstance(s, ndarray) and s.dtype == numpy.bool_:
+                mask_i = i
+    if n_not_slice_none != 1:
+        raise ValueError('currently, CuPy only supports slices that '
+                         'consist of one boolean array.')
+    return mask_i
+
+
+cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
+    cdef slice none_slice = slice(None)
+
+    # split slices that can be handled by basic-indexing
+    basic_slices = []
+    adv_slices = []
+    adv_mask = []
+    use_basic_indexing = False
+    for i, s in enumerate(slice_list):
+        if s is None:
+            basic_slices.append(None)
+            adv_slices.append(none_slice)
+            adv_mask.append(False)
+            use_basic_indexing = True
+        elif isinstance(s, slice):
+            basic_slices.append(s)
+            adv_slices.append(none_slice)
+            adv_mask.append(False)
+            if not use_basic_indexing:
+                use_basic_indexing = s != none_slice
+        elif isinstance(s, ndarray):
+            kind = s.dtype.kind
+            assert kind == 'i' or kind == 'u'
+            basic_slices.append(none_slice)
+            adv_slices.append(s)
+            adv_mask.append(True)
+        elif isinstance(s, int):
+            basic_slices.append(none_slice)
+            scalar_array = ndarray((), dtype=numpy.int64)
+            scalar_array.fill(s)
+            adv_slices.append(scalar_array)
+            adv_mask.append(True)
+        else:
+            raise IndexError(
+                'only integers, slices (`:`), ellipsis (`...`),'
+                'numpy.newaxis (`None`) and integer or '
+                'boolean arrays are valid indices')
+
+    # check if this is a combination of basic and advanced indexing
+    if use_basic_indexing:
+        a = _simple_getitem(a, basic_slices)
+
+    return a, adv_slices, adv_mask
+
+cdef ndarray _simple_getitem(ndarray a, list slice_list):
+    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef ndarray v
+    cdef Py_ssize_t i, j, offset, ndim
+    cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
+    cdef slice ss
+
+    # Create new shape and stride
+    j = 0
+    offset = 0
+    ndim = a._shape.size()
+    for i, s in enumerate(slice_list):
+        if s is None:
+            shape.push_back(1)
+            if j < ndim:
+                strides.push_back(a._strides[j])
+            elif ndim > 0:
+                strides.push_back(a._strides[ndim - 1])
+            else:
+                strides.push_back(a.itemsize)
+        elif ndim <= j:
+            raise IndexError("too many indices for array")
+        elif isinstance(s, slice):
+            ss = internal.complete_slice(s, a._shape[j])
+            s_start = ss.start
+            s_stop = ss.stop
+            s_step = ss.step
+            if s_step > 0:
+                dim = (s_stop - s_start - 1) // s_step + 1
+            else:
+                dim = (s_stop - s_start + 1) // s_step + 1
+
+            if dim == 0:
+                strides.push_back(a._strides[j])
+            else:
+                strides.push_back(a._strides[j] * s_step)
+
+            if s_start > 0:
+                offset += a._strides[j] * s_start
+            shape.push_back(dim)
+            j += 1
+        elif numpy.isscalar(s):
+            ind = int(s)
+            if ind < 0:
+                ind += a._shape[j]
+            if not (0 <= ind < a._shape[j]):
+                msg = ('Index %s is out of bounds for axis %s with '
+                       'size %s' % (s, j, a._shape[j]))
+                raise IndexError(msg)
+            offset += ind * a._strides[j]
+            j += 1
+        else:
+            raise TypeError('Invalid index type: %s' % type(slice_list[i]))
+
+    v = a.view()
+    if a.size != 0:
+        v.data = a.data + offset
+    v._set_shape_and_strides(shape, strides)
+    return v
+
+
 cdef _take_kernel = ElementwiseKernel(
     'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
     'T out',
@@ -3051,7 +3076,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
 
 
 cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
-    cdef ndarray mask_scanned
+    cdef ndarray mask_scanned, src
     cdef tuple masked_shape
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
@@ -3060,162 +3085,67 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         return
 
     if not isinstance(v, ndarray):
-        v = array(v, dtype=a.dtype)
-    v = v.astype(a.dtype)
-    # broadcast v to shape determined by the mask
-    v = broadcast_to(v, masked_shape)
+        src = array(v, dtype=a.dtype)
+    else:
+        src = v
+        src = src.astype(a.dtype, copy=False)
+    # broadcast src to shape determined by the mask
+    src = broadcast_to(src, masked_shape)
 
     if op == 'update':
-        _scatter_update_mask_kernel(v, mask, mask_scanned, a)
+        _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
-        _scatter_add_mask_kernel(v, mask, mask_scanned, a)
+        _scatter_add_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
 
 cpdef _scatter_op(ndarray a, slices, value, op):
-    cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
-    cdef Py_ssize_t n_not_slice_none, mask_i
-    cdef Py_ssize_t ellipsis_size
+    cdef Py_ssize_t i, li, ri
     cdef ndarray v, x, y, a_interm, reduced_idx
-    cdef Py_ssize_t li, ri
+    cdef list slice_list, adv_mask, adv_slices
 
-    if isinstance(slices, tuple):
-        slices = list(slices)
-    elif isinstance(slices, list):
-        slices = list(slices)  # copy list
-        if all([isinstance(s, int) for s in slices]):
-            slices = [slices]
-    else:
-        slices = [slices]
-
-    # Expand ellipsis into empty slices
-    ellipsis = -1
-    n_newaxes, n_ellipses = 0, 0
-    for i, s in enumerate(slices):
-        if s is None:
-            n_newaxes += 1
-        elif s is Ellipsis:
-            n_ellipses += 1
-            ellipsis = i
-    ndim = a._shape.size()
-    noneslices = [slice(None)]
-    if n_ellipses > 0:
-        if n_ellipses > 1:
-            raise ValueError('Only one Ellipsis is allowed in index')
-        ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
-        slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
-
-    slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
-
-    # Check if advanced is true,
-    # and convert list/NumPy arrays to cupy.ndarray
-    advanced = False
-    mask_exists = False
-    for i, s in enumerate(slices):
-        is_list = False
-        if isinstance(s, (list, numpy.ndarray)):
-            is_list = isinstance(s, list)
-            s = array(s)
-            # handle the case when s is an empty list
-            if is_list and s.size == 0:
-                s = s.astype(numpy.int32)
-            slices[i] = s
-        if isinstance(s, ndarray):
-            if issubclass(s.dtype.type, numpy.integer):
-                advanced = True
-            elif issubclass(s.dtype.type, numpy.bool_):
-                mask_exists = not is_list
-            else:
-                raise IndexError(
-                    'arrays used as indices must be of integer or boolean '
-                    'type. (actual: {})'.format(s.dtype.type))
-
-    if not mask_exists and len(slices) > a.ndim + n_newaxes:
-        raise IndexError('too many indices for array')
+    slice_list, advanced, mask_exists = _prepare_slice_list(
+        slices, a._shape.size())
 
     if mask_exists:
-        n_not_slice_none = 0
-        for i, s in enumerate(slices):
-            if not isinstance(s, slice) or s != slice(None):
-                n_not_slice_none += 1
-                if issubclass(s.dtype.type, numpy.bool_):
-                    mask_i = i
-        if n_not_slice_none != 1:
-            raise ValueError('currently, CuPy only supports slices that '
-                             'consist of one boolean array.')
-        _scatter_op_mask_single(a, slices[mask_i], value, mask_i, op)
+        mask_i = _get_mask_index(slice_list)
+        _scatter_op_mask_single(a, slice_list[mask_i], value, mask_i, op)
         return
 
     if advanced:
-        # split slices that can be handled by basic-indexing
-        basic_slices = []
-        adv_slices = []
-        for i, s in enumerate(slices):
-            if type(s) is slice:
-                basic_slices.append(s)
-                adv_slices.append(slice(None))
-            elif s is None:
-                basic_slices.append(None)
-                adv_slices.append(slice(None))
-            elif (isinstance(s, ndarray) and
-                    issubclass(s.dtype.type, numpy.integer)):
-                basic_slices.append(slice(None))
-                adv_slices.append(s)
-            elif isinstance(s, int):
-                basic_slices.append(slice(None))
-                scalar_array = ndarray((), dtype=numpy.int64)
-                scalar_array.fill(s)
-                adv_slices.append(scalar_array)
-            else:
-                raise IndexError(
-                    'only integers, slices (`:`), ellipsis (`...`),'
-                    'numpy.newaxis (`None`) and integer or '
-                    'boolean arrays are valid indices')
-
-        # check if this is a combination of basic and advanced indexing
-        for s in basic_slices:
-            if s is None or (isinstance(s, slice) and s != slice(None)):
-                # returns a view of a
-                a = a[tuple(basic_slices)]
-                break
-
-        arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
-        if sum(arr_slices_mask) == 1:
-            axis = arr_slices_mask.index(True)
-            _scatter_op_single(a, adv_slices[axis], value,
-                               li=axis, ri=axis, op=op)
+        a, adv_slices, adv_mask = _prepare_advanced_indexing(a, slice_list)
+        if sum(adv_mask) == 1:
+            axis = adv_mask.index(True)
+            _scatter_op_single(a, adv_slices[axis], value, axis, axis, op)
             return
 
         # scatter_op with multiple integer arrays
         a_interm, reduced_idx, li, ri =\
             _prepare_multiple_array_indexing(a, adv_slices)
-        _scatter_op_single(a_interm, reduced_idx, value, li=li, ri=ri, op=op)
+        _scatter_op_single(a_interm, reduced_idx, value, li, ri, op)
         return
 
+    y = _simple_getitem(a, slice_list)
     if op == 'update':
-        v = a[tuple(slices)]
-        if isinstance(value, ndarray):
-            y, x = broadcast(v, value).values
-            if (internal.vector_equal(y._shape, x._shape) and
-                    internal.vector_equal(y._strides, x._strides)):
-                if y.data.ptr == x.data.ptr:
-                    return  # Skip since x and y are the same array
-                elif y._c_contiguous and x.dtype == y.dtype:
-                    y.data.copy_from_device_async(x.data, x.nbytes,
-                                                  cuda.Stream.null)
-                    return
-            elementwise_copy(x, y)
-        else:
-            v.fill(value)
-    elif op == 'add':
-        v = a[tuple(slices)]
         if not isinstance(value, ndarray):
-            value = ndarray(value)
-        y, x = broadcast(v, value).values
-        elementwise_copy(x + y, y)
-    else:
-        raise ValueError('this op is not supported')
+            y.fill(value)
+            return
+        x = value
+        if (internal.vector_equal(y._shape, x._shape) and
+                internal.vector_equal(y._strides, x._strides)):
+            if y.data.ptr == x.data.ptr:
+                return  # Skip since x and y are the same array
+            elif y._c_contiguous and x.dtype == y.dtype:
+                y.data.copy_from_device_async(
+                    x.data, x.nbytes, cuda.Stream.null)
+                return
+        elementwise_copy(x, y)
+        return
+    if op == 'add':
+        add(y, value, y)
+        return
+    raise ValueError('this op is not supported')
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,

@@ -27,3 +27,4 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
     vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *
 
 cpdef slice complete_slice(slice slc, Py_ssize_t dim)
+cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
