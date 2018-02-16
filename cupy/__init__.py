@@ -5,7 +5,10 @@ import numpy
 import six
 
 from cupy import _version
+from cupy import _environment_check
 
+
+_environment_check.check()
 
 try:
     from cupy import core  # NOQA
