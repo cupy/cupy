@@ -8,7 +8,7 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
-cdef extern from "cupy_cufft.h":
+cdef extern from "cupy_cufft.h" nogil:
     ctypedef struct Complex 'cufftComplex':
         float x, y
 
@@ -74,7 +74,8 @@ cpdef inline check_result(int result):
 
 
 cpdef setStream(size_t plan, size_t stream):
-    status = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+    with nogil:
+        status = cufftSetStream(<Handle>plan, <driver.Stream>stream)
     check_result(status)
 
 
@@ -82,15 +83,20 @@ class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t workSize
-        result = cufftCreate(&plan)
+        with nogil:
+            result = cufftCreate(&plan)
         check_result(result)
         setStream(plan, stream_module.get_current_stream_ptr())
-        result = cufftSetAutoAllocation(plan, 0)
+        with nogil:
+            result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
-        result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch, &workSize)
+        with nogil:
+            result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                     &workSize)
         workArea = memory.alloc(workSize)
         check_result(result)
-        result = cufftSetWorkArea(plan, <void *>(workArea.ptr))
+        with nogil:
+            result = cufftSetWorkArea(plan, <void *>(workArea.ptr))
         check_result(result)
         self.nx = nx
         self.fft_type = fft_type
@@ -98,7 +104,9 @@ class Plan1d(object):
         self.workArea = workArea
 
     def __del__(self):
-        result = cufftDestroy(self.plan)
+        cdef Handle plan = self.plan
+        with nogil:
+            result = cufftDestroy(plan)
         check_result(result)
 
     def fft(self, a, out, direction):
@@ -136,31 +144,38 @@ class Plan1d(object):
 
 
 cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):
-    result = cufftExecC2C(plan, <Complex*>idata, <Complex*>odata, direction)
+    with nogil:
+        result = cufftExecC2C(plan, <Complex*>idata, <Complex*>odata,
+                              direction)
     check_result(result)
 
 
 cpdef execR2C(size_t plan, size_t idata, size_t odata):
-    result = cufftExecR2C(plan, <Float*>idata, <Complex*>odata)
+    with nogil:
+        result = cufftExecR2C(plan, <Float*>idata, <Complex*>odata)
     check_result(result)
 
 
 cpdef execC2R(size_t plan, size_t idata, size_t odata):
-    result = cufftExecC2R(plan, <Complex*>idata, <Float*>odata)
+    with nogil:
+        result = cufftExecC2R(plan, <Complex*>idata, <Float*>odata)
     check_result(result)
 
 
 cpdef execZ2Z(size_t plan, size_t idata, size_t odata, int direction):
-    result = cufftExecZ2Z(plan, <DoubleComplex*>idata, <DoubleComplex*>odata,
-                          direction)
+    with nogil:
+        result = cufftExecZ2Z(plan, <DoubleComplex*>idata,
+                              <DoubleComplex*>odata, direction)
     check_result(result)
 
 
 cpdef execD2Z(size_t plan, size_t idata, size_t odata):
-    result = cufftExecD2Z(plan, <Double*>idata, <DoubleComplex*>odata)
+    with nogil:
+        result = cufftExecD2Z(plan, <Double*>idata, <DoubleComplex*>odata)
     check_result(result)
 
 
 cpdef execZ2D(size_t plan, size_t idata, size_t odata):
-    result = cufftExecZ2D(plan, <DoubleComplex*>idata, <Double*>odata)
+    with nogil:
+        result = cufftExecZ2D(plan, <DoubleComplex*>idata, <Double*>odata)
     check_result(result)
