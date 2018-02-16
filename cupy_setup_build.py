@@ -427,6 +427,9 @@ def parse_args():
         '--cupy-package-name', type=str, default='cupy',
         help='alternate package name')
     parser.add_argument(
+        '--cupy-long-description', type=str, default=None,
+        help='path to the long description file')
+    parser.add_argument(
         '--cupy-wheel-lib', type=str, action='append', default=[],
         help='shared library to copy into the wheel '
              '(can be specified for multiple times)')
@@ -444,6 +447,7 @@ def parse_args():
 
     arg_options = {
         'package_name': opts.cupy_package_name,
+        'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
@@ -461,6 +465,14 @@ print('Options:', cupy_setup_options)
 
 def get_package_name():
     return cupy_setup_options['package_name']
+
+
+def get_long_description():
+    path = cupy_setup_options['long_description']
+    if path is None:
+        return None
+    with open(path) as f:
+        return f.read()
 
 
 def prepare_wheel_libs():
