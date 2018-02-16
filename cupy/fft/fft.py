@@ -118,8 +118,6 @@ def _fft(a, s, axes, norm, direction, value_type='C2C'):
         else:
             dim = len(s)
         axes = [i for i in six.moves.range(-dim, 0)]
-    elif isinstance(axes, np.compat.integer_types):
-        axes = (axes,)
     a = _cook_shape(a, s, axes, value_type)
 
     if value_type == 'C2C':
@@ -129,9 +127,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C'):
         a = _fft_c2c(a, direction, norm, axes[:-1])
     else:
         a = _fft_c2c(a, direction, norm, axes[:-1])
-        if isinstance(s, np.compat.integer_types):
-            out_size = s
-        elif (s is None) or (s[-1] is None):
+        if (s is None) or (s[-1] is None):
             out_size = a.shape[axes[-1]] * 2 - 2
         else:
             out_size = s[-1]
