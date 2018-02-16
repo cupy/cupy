@@ -867,7 +867,7 @@ cdef class ndarray:
 
         """
 
-        if cupy.issubdtype(self.dtype, complex):
+        if cupy.issubdtype(self.dtype, numpy.complexfloating):
             raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
                                       'not supported'.format(self.dtype))
 
