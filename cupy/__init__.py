@@ -4,8 +4,8 @@ import sys
 import numpy
 import six
 
-from cupy import _version
 from cupy import _environment_check
+from cupy import _version
 
 
 _environment_check.check()
@@ -30,7 +30,7 @@ If you are building CuPy from source, please check your environment, uninstall C
 Check the Installation Guide for details:
   https://docs-cupy.chainer.org/en/latest/install.html
 
-original error: {}'''.format(exc_info[1]))
+original error: {}'''.format(exc_info[1]))  # NOQA
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
