@@ -25,8 +25,6 @@ def _convert_dtype(a, value_type):
 def _cook_shape(a, s, axes, value_type):
     if s is None:
         return a
-    if not hasattr(s, '__iter__'):
-        s = (s,)
     if (value_type == 'C2R') and (s[-1] is not None):
         s = list(s)
         s[-1] = s[-1] // 2 + 1
