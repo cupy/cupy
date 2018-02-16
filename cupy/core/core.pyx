@@ -903,7 +903,9 @@ cdef class ndarray:
             if max_k < k:
                 max_k = k
 
-        # For simplicity, max_k is round up to the power of 2.
+        # For simplicity, max_k is round up to the power of 2. If max_k is
+        # already the power of 2, it is round up to the next power of 2 because
+        # we need to collect the first max(kth)+1 elements.
         max_k = max(32, 1 << max_k.bit_length())
 
         # The parameter t is the length of the list that stores elements to be
