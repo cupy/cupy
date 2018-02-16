@@ -82,6 +82,32 @@ We recommend to install CuPy via pip::
    After you update these libraries, please reinstall CuPy because you need to compile and link to the newer version of them.
 
 
+Install CuPy using wheel
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+We are experimentally providing wheels (precompiled binary packages) for Linux (x86_64) environment.
+Package names are different depending on the CUDA version you have installed on your host::
+
+  (For CUDA 7.0)
+  $ pip install cupy-cuda70
+
+  (For CUDA 7.5)
+  $ pip install cupy-cuda75
+
+  (For CUDA 8.0)
+  $ pip install cupy-cuda80
+
+  (For CUDA 9.0)
+  $ pip install cupy-cuda90
+
+When using wheels, please be careful not to install multiple CuPy packages at the same time.
+These packages and ``cupy`` package conflict to each other.
+
+.. note::
+
+   The latest version of cuDNN and NCCL are included in these wheels.
+
+
 Install CuPy from source
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -110,6 +136,10 @@ It may help you::
 
   $ pip install cupy -vvvv
 
+If you are using wheel, make sure that you don't have multiple CuPy packages installed.
+Only one cupy package (``cupy`` or ``cupy-cudaXX`` where XX is a CUDA version) can be installed::
+
+  $ pip freeze | grep cupy
 
 .. _install_cuda:
 
@@ -205,6 +235,9 @@ Use pip to uninstall CuPy::
    In this case, ``pip uninstall`` only removes the latest one.
    To ensure that Chainer is completely removed, run the above command repeatedly until ``pip`` returns an error.
 
+.. note::
+
+   If you installed CuPy using wheel, use ``pip uninstall cupy-cudaXX`` (where XX is a CUDA version number) instead.
 
 Upgrade CuPy
 ------------
