@@ -2662,24 +2662,23 @@ cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
     mask_exists = False
     for i, s in enumerate(slice_list):
         is_list = isinstance(s, list)
-        is_ndarray = False
         if is_list or isinstance(s, numpy.ndarray):
             # handle the case when s is an empty list
             s = array(s)
             if is_list and s.size == 0:
                 s = s.astype(numpy.int32)
             slice_list[i] = s
-            is_ndarray = True
-        if is_ndarray or isinstance(s, ndarray):
-            kind = s.dtype.kind
-            if kind == 'i' or kind == 'u':
-                advanced = True
-            elif kind == 'b':
-                mask_exists = not is_list
-            else:
-                raise IndexError(
-                    'arrays used as indices must be of integer or boolean '
-                    'type. (actual: {})'.format(s.dtype.type))
+        elif not isinstance(s, ndarray):
+            continue
+        kind = s.dtype.kind
+        if kind == 'i' or kind == 'u':
+            advanced = True
+        elif kind == 'b':
+            mask_exists = not is_list
+        else:
+            raise IndexError(
+                'arrays used as indices must be of integer or boolean '
+                'type. (actual: {})'.format(s.dtype.type))
 
     if not mask_exists and len(slice_list) > ndim + n_newaxes:
         raise IndexError('too many indices for array')
@@ -2688,14 +2687,15 @@ cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
 
 cdef Py_ssize_t _get_mask_index(list slice_list) except *:
     cdef Py_ssize_t i, n_not_slice_none, mask_i
+    cdef slice none_slice = slice(None)
     n_not_slice_none = 0
     mask_i = -1
     for i, s in enumerate(slice_list):
-        if not isinstance(s, slice):
+        if not isinstance(s, slice) or s != none_slice:
             n_not_slice_none += 1
             if isinstance(s, ndarray) and s.dtype == numpy.bool_:
                 mask_i = i
-    if n_not_slice_none != 1:
+    if n_not_slice_none != 1 or mask_i == -1:
         raise ValueError('currently, CuPy only supports slices that '
                          'consist of one boolean array.')
     return mask_i
@@ -2705,10 +2705,10 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
     cdef slice none_slice = slice(None)
 
     # split slices that can be handled by basic-indexing
-    basic_slices = []
-    adv_slices = []
-    adv_mask = []
-    use_basic_indexing = False
+    cdef list basic_slices = []
+    cdef list adv_slices = []
+    cdef list adv_mask = []
+    cdef bint use_basic_indexing = False
     for i, s in enumerate(slice_list):
         if s is None:
             basic_slices.append(None)
@@ -2719,8 +2719,7 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
             basic_slices.append(s)
             adv_slices.append(none_slice)
             adv_mask.append(False)
-            if not use_basic_indexing:
-                use_basic_indexing = s != none_slice
+            use_basic_indexing |= s != none_slice
         elif isinstance(s, ndarray):
             kind = s.dtype.kind
             assert kind == 'i' or kind == 'u'
