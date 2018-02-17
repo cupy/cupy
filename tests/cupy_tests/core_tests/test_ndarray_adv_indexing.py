@@ -192,28 +192,29 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (9, 16), 'indexes': (
-        numpy.array([8], dtype=numpy.int8),
+    {'shape': (2**3 + 1, 2**4), 'indexes': (
+        numpy.array([2**3], dtype=numpy.int8),
         numpy.array([1], dtype=numpy.int8))},
-    {'shape': (9, 3, 16), 'indexes': (
-        numpy.array([8], dtype=numpy.int8),
+    {'shape': (2**4 + 1, 2**4), 'indexes': (
+        numpy.array([2**4], dtype=numpy.uint8),
+        numpy.array([1], dtype=numpy.uint8))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int16))},
+    {'shape': (2**8 + 1, 2**8), 'indexes': (
+        numpy.array([2**8], dtype=numpy.uint16),
+        numpy.array([1], dtype=numpy.uint16))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int32))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int8))},
+    # Three-dimensional case
+    {'shape': (2**3 + 1, 3, 2**4), 'indexes': (
+        numpy.array([2**3], dtype=numpy.int8),
         slice(None),
         numpy.array([1], dtype=numpy.int8))},
-    {'shape': (17, 16), 'indexes': (
-        numpy.array([16], dtype=numpy.uint8),
-        numpy.array([1], dtype=numpy.uint8))},
-    {'shape': (129, 256), 'indexes': (
-        numpy.array([128], dtype=numpy.int16),
-        numpy.array([1], dtype=numpy.int16))},
-    {'shape': (257, 256), 'indexes': (
-        numpy.array([256], dtype=numpy.uint16),
-        numpy.array([1], dtype=numpy.uint16))},
-    {'shape': (129, 256), 'indexes': (
-        numpy.array([128], dtype=numpy.int16),
-        numpy.array([1], dtype=numpy.int32))},
-    {'shape': (129, 256), 'indexes': (
-        numpy.array([128], dtype=numpy.int16),
-        numpy.array([1], dtype=numpy.int8))}
 )
 @testing.gpu
 class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
