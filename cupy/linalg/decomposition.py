@@ -12,7 +12,7 @@ if cuda.cusolver_enabled:
 
 
 def cholesky(a):
-    '''Cholesky decomposition.
+    """Cholesky decomposition.
 
     Decompose a given two-dimensional square matrix into ``L * L.T``,
     where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
@@ -26,7 +26,7 @@ def cholesky(a):
         cupy.ndarray: The lower-triangular matrix.
 
     .. seealso:: :func:`numpy.linalg.cholesky`
-    '''
+    """
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
@@ -72,7 +72,7 @@ def cholesky(a):
 
 
 def qr(a, mode='reduced'):
-    '''QR decomposition.
+    """QR decomposition.
 
     Decompose a given two-dimensional matrix into ``Q * R``, where ``Q``
     is an orthonormal and ``R`` is an upper-triangular matrix.
@@ -92,7 +92,7 @@ def qr(a, mode='reduced'):
             For details, please see the document of :func:`numpy.linalg.qr`.
 
     .. seealso:: :func:`numpy.linalg.qr`
-    '''
+    """
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
@@ -181,7 +181,7 @@ def qr(a, mode='reduced'):
 
 
 def svd(a, full_matrices=True, compute_uv=True):
-    '''Singular Value Decomposition.
+    """Singular Value Decomposition.
 
     Factorizes the matrix ``a`` as ``u * np.diag(s) * v``, where ``u`` and
     ``v`` are unitary and ``s`` is an one-dimensional array of ``a``'s
@@ -200,7 +200,7 @@ def svd(a, full_matrices=True, compute_uv=True):
             A tuple of ``(u, s, v)`` such that ``a = u * np.diag(s) * v``.
 
     .. seealso:: :func:`numpy.linalg.svd`
-    '''
+    """
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
