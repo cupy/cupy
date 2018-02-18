@@ -128,7 +128,7 @@ def msort(a):
 
 
 def partition(a, kth, axis=-1):
-    """Returns a partially sorted copy of an array.
+    """Returns a partitioned copy of an array.
 
     Creates a copy of the array whose elements are rearranged such that the
     value of the element in k-th position would occur in that position in a
@@ -146,11 +146,6 @@ def partition(a, kth, axis=-1):
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
-
-    .. note::
-       For its implementation reason, :func:`cupy.partition` fully sorts the
-       given array as :func:`cupy.sort` does. It also does not support
-       ``kind`` and ``order`` parameters that :func:`numpy.partition` supports.
 
     .. seealso:: :func:`numpy.partition`
 
