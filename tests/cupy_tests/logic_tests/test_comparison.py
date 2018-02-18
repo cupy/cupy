@@ -39,16 +39,20 @@ class TestComparison(unittest.TestCase):
 
 class TestIsclose(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_is_close_finite(self, xp, dtype):
+        # In numpy<1.10 this test fails when dtype is bool
         a = xp.array([0.9e-5, 1.1e-5, 1000 + 1e-4, 1000 - 1e-4], dtype=dtype)
         b = xp.array([0, 0, 1000, 1000], dtype=dtype)
         return xp.isclose(a, b)
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_is_close_min_int(self, xp, dtype):
+        # In numpy<1.10 this test fails when dtype is bool
         a = xp.array([0], dtype=dtype)
         b = xp.array([numpy.iinfo('i').min], dtype=dtype)
         return xp.isclose(a, b)
