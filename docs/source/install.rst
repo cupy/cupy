@@ -88,12 +88,6 @@ Install CuPy using wheel
 We are experimentally providing wheels (precompiled binary packages) for Linux (x86_64) environment.
 Package names are different depending on the CUDA version you have installed on your host::
 
-  (For CUDA 7.0)
-  $ pip install cupy-cuda70
-
-  (For CUDA 7.5)
-  $ pip install cupy-cuda75
-
   (For CUDA 8.0)
   $ pip install cupy-cuda80
 
