@@ -13,8 +13,10 @@ try:
     ]
     coef_modes = [
         libcudnn.CUDNN_ACTIVATION_CLIPPED_RELU,
-        libcudnn.CUDNN_ACTIVATION_ELU,
     ]
+    if libcudnn.getVersion() >= 6000:
+        coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
+
     import cupy.cudnn
 except ImportError:
     cudnn_enabled = False
