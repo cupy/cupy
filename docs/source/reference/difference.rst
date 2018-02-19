@@ -13,14 +13,14 @@ The casting from a negative float to unsigned integer and infinity to integer is
 The behavior of NumPy depends on your CPU architecture.
 This is Intel CPU result.
 
-  >>> np.array([-1], dtype='f').astype('I')
+  >>> np.array([-1], dtype=np.float32).astype(np.uint32)
   array([4294967295], dtype=uint32)
-  >>> cupy.array([-1], dtype='f').astype('I')
+  >>> cupy.array([-1], dtype=np.float32).astype(np.uint32)
   array([0], dtype=uint32)
 
-  >>> np.array([float('inf')], dtype='f').astype('i')
+  >>> np.array([float('inf')], dtype=np.float32).astype(np.int32)
   array([-2147483648], dtype=int32)
-  >>> cupy.array([float('inf')], dtype='f').astype('i')
+  >>> cupy.array([float('inf')], dtype=np.float32).astype(np.int32)
   array([2147483647], dtype=int32)
 
 
@@ -30,11 +30,11 @@ Random methods support dtype argument
 NumPy's random value generator does not support dtype option and it always resturns a ``float32`` value.
 We support the option in CuPy because cuRAND, which is used in CuPy, supports any types of float values.
 
-  >>> np.random.randn(dtype='f')
+  >>> np.random.randn(dtype=np.float32)
   Traceback (most recent call last):
     File "<stdin>", line 1, in <module>
   TypeError: randn() got an unexpected keyword argument 'dtype'
-  >>> cupy.random.randn(dtype='f')    # doctest: +SKIP
+  >>> cupy.random.randn(dtype=np.float32)    # doctest: +SKIP
   array(0.10689262300729752, dtype=float32)
 
 
@@ -64,7 +64,7 @@ Here is an example of CuPy.
 
   >>> a = cupy.zeros((2,))
   >>> i = cupy.arange(10000) % 2
-  >>> v = cupy.arange(10000).astype(np.float)
+  >>> v = cupy.arange(10000).astype(np.float32)
   >>> a[i] = v
   >>> a  # doctest: +SKIP
   array([ 9150.,  9151.])
@@ -74,7 +74,7 @@ last element among elements referencing duplicate locations.
 
   >>> a_cpu = np.zeros((2,))
   >>> i_cpu = np.arange(10000) % 2
-  >>> v_cpu = np.arange(10000).astype(np.float)
+  >>> v_cpu = np.arange(10000).astype(np.float32)
   >>> a_cpu[i_cpu] = v_cpu
   >>> a_cpu
   array([9998., 9999.])
