@@ -646,9 +646,6 @@ def fuse(*args, **kwargs):
 
     This decorator makes `Fusion` class from the given function.
 
-    This API is currently experimental and the interface may be changed in
-    the future version.
-
     Args:
         input_num (int): Number of input arguments of the given function.
         reduce (function): The reduce function which is applied after
@@ -657,6 +654,11 @@ def fuse(*args, **kwargs):
             If not assigned, post_map step is skipped.
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
+
+    .. note::
+       This API is currently experimental and the interface may be changed in
+       the future version.
+
     """
 
     def wrapper(
