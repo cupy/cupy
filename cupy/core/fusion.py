@@ -13,7 +13,6 @@ from cupy import logic
 from cupy import math
 from cupy import sorting
 from cupy import statistics
-from cupy import util
 
 
 _thread_local = threading.local()
@@ -647,6 +646,9 @@ def fuse(*args, **kwargs):
 
     This decorator makes `Fusion` class from the given function.
 
+    This API is currently experimental and the interface may be changed in
+    the future version.
+
     Args:
         input_num (int): Number of input arguments of the given function.
         reduce (function): The reduce function which is applied after
@@ -656,7 +658,6 @@ def fuse(*args, **kwargs):
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
     """
-    util.experimental('cupy.core.fusion')
 
     def wrapper(
             f, input_num=None, reduce=None, post_map=lambda x: x,
