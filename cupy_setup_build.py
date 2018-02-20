@@ -48,7 +48,6 @@ MODULES = [
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
             'cupy.util',
-            'cupy._environment_check',
         ],
         'include': [
             'cublas_v2.h',
