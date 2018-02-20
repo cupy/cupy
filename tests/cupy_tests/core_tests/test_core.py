@@ -24,6 +24,9 @@ class TestGetStridesForNocopyReshape(unittest.TestCase):
 
 class TestSize(unittest.TestCase):
 
+    def tearDown(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_size(self, xp, dtype):
