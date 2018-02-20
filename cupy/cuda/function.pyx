@@ -7,6 +7,7 @@ cimport cpython
 from libcpp cimport vector
 
 from cupy.cuda cimport driver
+from cupy.cuda cimport runtime
 from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
 
@@ -124,6 +125,7 @@ cdef void _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
         pargs.append(cp)
         kargs.push_back(cp.ptr)
 
+    runtime._ensure_context()
     driver.launchKernel(
         func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
         <int>shared_mem, stream, <size_t>&(kargs[0]), <size_t>0)
@@ -172,9 +174,11 @@ cdef class Module:
             self.ptr = 0
 
     cpdef load_file(self, str filename):
+        runtime._ensure_context()
         self.ptr = driver.moduleLoad(filename)
 
     cpdef load(self, bytes cubin):
+        runtime._ensure_context()
         self.ptr = driver.moduleLoadData(cubin)
 
     cpdef get_global_var(self, str name):
