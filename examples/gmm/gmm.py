@@ -118,7 +118,7 @@ def draw(X, pred, means, covariances, output):
 
 
 def run(gpuid, num, dim, max_iter, tol, output):
-    '''CuPy Gaussian Mixture Model example
+    """CuPy Gaussian Mixture Model example
 
     Compute GMM parameters, weights, means and covariance matrix, depending on
     sampled data. There are two main components, e_step and m_step.
@@ -126,7 +126,7 @@ def run(gpuid, num, dim, max_iter, tol, output):
     weights, means and covariance matrix.
     In m_step, compute weights, means and covariance matrix by latest `resp`.
 
-    '''
+    """
     scale = np.ones(dim)
     train1 = np.random.normal(1, scale, size=(num, dim)).astype(np.float32)
     train2 = np.random.normal(-1, scale, size=(num, dim)).astype(np.float32)

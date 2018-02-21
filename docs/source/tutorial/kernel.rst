@@ -159,7 +159,7 @@ For example, L2 norm along specified axes can be written as follows:
    ...     '0',  # identity value
    ...     'l2norm'  # kernel name
    ... )
-   >>> x = cp.arange(10, dtype='f').reshape(2, 5)
+   >>> x = cp.arange(10, dtype=np.float32).reshape(2, 5)
    >>> l2norm_kernel(x, axis=1)
    array([ 5.477226 , 15.9687195], dtype=float32)
 

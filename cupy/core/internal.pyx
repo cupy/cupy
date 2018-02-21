@@ -199,3 +199,27 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
         stop = -1 if stop_none else max(-1, min(start, stop))
 
     return slice(start, stop, step)
+
+
+@cython.profile(False)
+cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
+    cdef Py_ssize_t i, n_newaxes, n_ellipses, ellipsis, n
+    slice_list = list(slice_list)  # copy list
+    # Expand ellipsis into empty slices
+    ellipsis = -1
+    n_newaxes = n_ellipses = 0
+    for i, s in enumerate(slice_list):
+        if s is None:
+            n_newaxes += 1
+        elif s is Ellipsis:
+            n_ellipses += 1
+            ellipsis = i
+    if n_ellipses > 1:
+        raise ValueError('Only one Ellipsis is allowed in index')
+
+    n = ndim - <Py_ssize_t>len(slice_list) + n_newaxes
+    if n_ellipses > 0:
+        slice_list[ellipsis:ellipsis + 1] = [slice(None)] * (n + 1)
+    elif n > 0:
+        slice_list += [slice(None)] * n
+    return slice_list, n_newaxes

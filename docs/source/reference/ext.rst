@@ -1,8 +1,10 @@
-External Functions
-==================
+CuPy-specific Functions
+=======================
+
+CuPy-specific functions are placed under ``cupyx`` namespace.
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
-   cupy.scatter_add
+   cupyx.scatter_add

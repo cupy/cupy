@@ -330,6 +330,7 @@ intersphinx_mapping = {
 doctest_global_setup = '''
 import numpy as np
 import cupy # TODO(okuta) : Remove this line
+import cupyx
 import cupy as cp
 np.random.seed(0)
 '''
