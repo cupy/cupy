@@ -19,7 +19,7 @@ CuPy is not correctly installed.
 
 If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
 Also, confirm that only one CuPy package is installed:
-  $ pip freeze | grep cupy
+  $ pip freeze
 
 If you are building CuPy from source, please check your environment, uninstall CuPy and reinstall it with:
   $ pip install cupy --no-cache-dir -vvvv
