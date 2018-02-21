@@ -48,6 +48,9 @@ cdef extern from "cupy_cuda.h" nogil:
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra)
 
+    # Build-time version
+    int CUDA_VERSION
+
 
 ###############################################################################
 # Error handling
@@ -70,6 +73,14 @@ class CUDADriverError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CUDADriverError(status)
+
+
+###############################################################################
+# Build-time version
+###############################################################################
+
+def get_build_version():
+    return CUDA_VERSION
 
 
 ###############################################################################

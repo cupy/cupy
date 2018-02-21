@@ -137,7 +137,7 @@ from numpy import newaxis  # == None  # NOQA
 # Routines
 #
 # The order of these declarations are borrowed from the NumPy document:
-# http://docs.scipy.org/doc/numpy/reference/routines.html
+# https://docs.scipy.org/doc/numpy/reference/routines.html
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -327,6 +327,8 @@ from cupy.linalg.norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
+from cupy.logic.comparison import isclose  # NOQA
+
 from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
@@ -502,6 +504,9 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+
+# The following function is left for backward compatibility.
+# New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
 
 

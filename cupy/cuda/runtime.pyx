@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 """Thin wrapper of CUDA Runtime API.
 
 There are four differences compared to the original C API.
@@ -12,6 +10,7 @@ There are four differences compared to the original C API.
 
 """
 cimport cpython
+from cpython cimport pythread
 cimport cython
 
 from cupy.cuda cimport driver
@@ -414,3 +413,23 @@ cpdef eventSynchronize(size_t event):
     with nogil:
         status = cudaEventSynchronize(<driver.Event>event)
     check_status(status)
+
+
+##############################################################################
+# util
+##############################################################################
+
+cdef int _context_initialized = pythread.PyThread_create_key()
+
+
+cdef _ensure_context():
+    """Ensure that CUcontext bound to the calling host thread exists.
+
+    See discussion on https://github.com/cupy/cupy/issues/72 for details.
+    """
+    cdef size_t status
+    status = <size_t>pythread.PyThread_get_key_value(_context_initialized)
+    if status == 0:
+        # Call Runtime API to establish context on this host thread.
+        memGetInfo()
+        pythread.PyThread_set_key_value(_context_initialized, <void *>1)

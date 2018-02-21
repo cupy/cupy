@@ -72,7 +72,7 @@ cdef class ndarray:
 
             .. seealso::
                `Data type objects (dtype) \
-               <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+               <https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
         ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
@@ -112,7 +112,7 @@ cdef class ndarray:
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
-    # http://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
+    # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
 
     # -------------------------------------------------------------------------
     # Memory layout
@@ -853,7 +853,7 @@ cdef class ndarray:
             return cupy.rollaxis(idx_array, -1, axis)
 
     def partition(self, kth, axis=-1):
-        """Partially sorts an array.
+        """Partitions an array.
 
         Args:
             kth (int or sequence of ints): Element index to partition by. If
@@ -863,34 +863,93 @@ cdef class ndarray:
             axis (int): Axis along which to sort. Default is -1, which means
                 sort along the last axis.
 
-        .. note::
-           For its implementation reason, :func:`cupy.ndarray.partition` fully
-           sorts the given array as :meth:`cupy.ndarray.sort` does. It also
-           does not support ``kind`` and ``order`` parameters that
-           :func:`numpy.partition` supports.
-
         .. seealso::
             :func:`cupy.partition` for full documentation,
             :meth:`numpy.ndarray.partition`
 
         """
-        ndim = self.ndim
+
+        if cupy.issubdtype(self.dtype, numpy.complexfloating):
+            raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
+                                      'not supported'.format(self.dtype))
+
+        cdef Py_ssize_t ndim = self.ndim
+
+        if ndim == 0:
+            raise ValueError('Sorting arrays with the rank of zero is not '
+                             'supported')
+
+        if not self._c_contiguous:
+            raise NotImplementedError('Sorting non-contiguous array is not '
+                                      'supported.')
+
         if axis < 0:
             axis += ndim
         if not (0 <= axis < ndim):
             raise _AxisError('Axis out of range')
 
+        if axis == ndim - 1:
+            data = self
+        else:
+            data = cupy.rollaxis(self, axis, ndim).copy()
+
         length = self.shape[axis]
         if isinstance(kth, int):
             kth = kth,
+        max_k = 0
         for k in kth:
             if k < 0:
                 k += length
             if not (0 <= k < length):
                 raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+            if max_k < k:
+                max_k = k
 
-        # kth is ignored.
-        self.sort(axis=axis)
+        # For simplicity, max_k is round up to the power of 2. If max_k is
+        # already the power of 2, it is round up to the next power of 2 because
+        # we need to collect the first max(kth)+1 elements.
+        max_k = max(32, 1 << max_k.bit_length())
+
+        # The parameter t is the length of the list that stores elements to be
+        # selected for each thread. We divide the array into sz subarrays.
+        # These parameters are determined from the measurement on TITAN X.
+        t = 4
+        sz = 512
+        while sz > 0 and length // sz < max_k + 32 * t:
+            sz //= 2
+        sz *= self.size // length
+
+        # If the array size is small or k is large, we simply sort the array.
+        if length < 32 or sz <= 32 or max_k >= 1024:
+            # kth is ignored.
+            data.sort(axis=-1)
+        else:
+            shape = data.shape
+            data = data.ravel()
+
+            # For each subarray, we collect first k elements to the head.
+            kern, merge_kern = _partition_kernel(self.dtype)
+            block_size = 32
+            grid_size = sz
+            kern(grid=(grid_size,), block=(block_size,), args=(
+                data, max_k, self.size, t, sz))
+
+            # Merge heads of subarrays.
+            s = 1
+            while s < sz // (self.size // length):
+                block_size = 32
+                grid_size = sz // s // 2
+                merge_kern(grid=(grid_size,), block=(block_size,), args=(
+                    data, max_k, self.size, sz, s))
+                s *= 2
+
+            data = data.reshape(shape)
+
+        if axis == ndim - 1:
+            pass
+        else:
+            data = cupy.rollaxis(data, -1, axis)
+            elementwise_copy(data, self)
 
     def argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
@@ -1416,170 +1475,26 @@ cdef class ndarray:
         # supports basic indexing (by slices, ints or Ellipsis) and
         # some parts of advanced indexing by integer or boolean arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
-        cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
-        cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
-        cdef vector.vector[Py_ssize_t] shape, strides
-        if isinstance(slices, tuple):
-            slices = list(slices)
-        elif isinstance(slices, list):
-            slices = list(slices)  # copy list
-            if all([isinstance(s, int) for s in slices]):
-                slices = [slices]
-        else:
-            slices = [slices]
+        cdef Py_ssize_t mask_i
+        cdef list slice_list, adv_mask, adv_slices
+        cdef bint advanced, mask_exists
 
-        # Expand ellipsis into empty slices
-        ellipsis = -1
-        n_newaxes = n_ellipses = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                n_newaxes += 1
-            elif s is Ellipsis:
-                n_ellipses += 1
-                ellipsis = i
-        ndim = self._shape.size()
-        noneslices = [slice(None)]
-        if n_ellipses > 0:
-            if n_ellipses > 1:
-                raise ValueError('Only one Ellipsis is allowed in index')
-            ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
-            slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
-
-        slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
-
-        # Check if advanced is true,
-        # and convert list/NumPy arrays to cupy.ndarray
-        advanced = False
-        mask_exists = False
-        for i, s in enumerate(slices):
-            is_list = False
-            if isinstance(s, (list, numpy.ndarray)):
-                is_list = isinstance(s, list)
-                s = array(s)
-                # handle the case when s is an empty list
-                if is_list and s.size == 0:
-                    s = s.astype(numpy.int32)
-                slices[i] = s
-            if isinstance(s, ndarray):
-                if issubclass(s.dtype.type, numpy.integer):
-                    advanced = True
-                elif issubclass(s.dtype.type, numpy.bool_):
-                    mask_exists = not is_list
-                else:
-                    raise IndexError(
-                        'arrays used as indices must be of integer or boolean '
-                        'type. (actual: {})'.format(s.dtype.type))
-
-        if not mask_exists and len(slices) > self.ndim + n_newaxes:
-            raise IndexError('too many indices for array')
+        slice_list, advanced, mask_exists = _prepare_slice_list(
+            slices, self._shape.size())
 
         if mask_exists:
-            n_not_slice_none = 0
-            mask_i = None
-            for i, s in enumerate(slices):
-                if not isinstance(s, slice) or s != slice(None):
-                    n_not_slice_none += 1
-                    if issubclass(s.dtype.type, numpy.bool_):
-                        mask_i = i
-            if n_not_slice_none != 1 and mask_i is not None:
-                raise ValueError('currently, CuPy only supports slices that '
-                                 'consist of one boolean array.')
-            return _getitem_mask_single(self, slices[mask_i], mask_i)
+            mask_i = _get_mask_index(slice_list)
+            return _getitem_mask_single(self, slice_list[mask_i], mask_i)
 
         if advanced:
-            # split slices that can be handled by basic-indexing
-            basic_slices = []
-            adv_slices = []
-            for i, s in enumerate(slices):
-                if type(s) is slice:
-                    basic_slices.append(s)
-                    adv_slices.append(slice(None))
-                elif s is None:
-                    basic_slices.append(None)
-                    adv_slices.append(slice(None))
-                elif (isinstance(s, ndarray) and
-                        issubclass(s.dtype.type, numpy.integer)):
-                    basic_slices.append(slice(None))
-                    adv_slices.append(s)
-                elif isinstance(s, int):
-                    basic_slices.append(slice(None))
-                    scalar_array = ndarray((), dtype=numpy.int64)
-                    scalar_array.fill(s)
-                    adv_slices.append(scalar_array)
-                else:
-                    raise IndexError(
-                        'only integers, slices (`:`), ellipsis (`...`),'
-                        'numpy.newaxis (`None`) and integer or '
-                        'boolean arrays are valid indices')
-
-            # check if this is a combination of basic and advanced indexing
-            a = self
-            for s in basic_slices:
-                if s is None or (isinstance(s, slice) and s != slice(None)):
-                    a = self[tuple(basic_slices)]
-                    break
-
-            arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
-            if sum(arr_slices_mask) == 1:
-                axis = arr_slices_mask.index(True)
+            a, adv_slices, adv_mask = _prepare_advanced_indexing(
+                self, slice_list)
+            if sum(adv_mask) == 1:
+                axis = adv_mask.index(True)
                 return a.take(adv_slices[axis], axis)
             return _getitem_multiple(a, adv_slices)
 
-        # Create new shape and stride
-        j = 0
-        offset = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                shape.push_back(1)
-                if j < ndim:
-                    strides.push_back(self._strides[j])
-                elif ndim > 0:
-                    strides.push_back(self._strides[ndim - 1])
-                else:
-                    strides.push_back(self.itemsize)
-            elif ndim <= j:
-                raise IndexError("too many indices for array")
-            elif isinstance(s, slice):
-                s = internal.complete_slice(s, self._shape[j])
-                s_start = s.start
-                s_stop = s.stop
-                s_step = s.step
-                if s_step > 0:
-                    dim = (s_stop - s_start - 1) // s_step + 1
-                else:
-                    dim = (s_stop - s_start + 1) // s_step + 1
-
-                if dim == 0:
-                    strides.push_back(self._strides[j])
-                else:
-                    strides.push_back(self._strides[j] * s_step)
-
-                if self.size > 0:
-                    offset += self._strides[j] * max(0, s_start)
-
-                shape.push_back(dim)
-
-                j += 1
-            elif numpy.isscalar(s):
-                ind = int(s)
-                if ind < 0:
-                    ind += self._shape[j]
-                if not (0 <= ind < self._shape[j]):
-                    msg = ('Index %s is out of bounds for axis %s with '
-                           'size %s' % (s, j, self._shape[j]))
-                    raise IndexError(msg)
-                if self.size > 0:
-                    offset += ind * self._strides[j]
-                j += 1
-            else:
-                raise TypeError('Invalid index type: %s' % type(slices[i]))
-
-        # TODO(niboshi): offset can be non-zero even if self.data is an empty
-        # pointer.
-        v = self.view()
-        v.data = self.data + offset
-        v._set_shape_and_strides(shape, strides)
-        return v
+        return _simple_getitem(self, slice_list)
 
     def __setitem__(self, slices, value):
         """x.__setitem__(slices, y) <==> x[slices] = y
@@ -2508,7 +2423,8 @@ cpdef ndarray concatenate_method(tup, int axis):
     ndim = -1
     dtype = None
     have_same_types = True
-    for o in tup:
+    arrays = list(tup)
+    for o in arrays:
         if not isinstance(o, ndarray):
             raise TypeError('Only cupy arrays can be concatenated')
         a = o
@@ -2540,92 +2456,108 @@ cpdef ndarray concatenate_method(tup, int axis):
         raise ValueError('Cannot concatenate from empty tuple')
 
     if not have_same_types:
-        dtype = numpy.find_common_type([a.dtype for a in tup], [])
-    return concatenate(tup, axis, shape, dtype)
+        dtype = numpy.find_common_type([a.dtype for a in arrays], [])
+    return _concatenate(arrays, axis, tuple(shape), dtype)
 
 
-cpdef ndarray concatenate(tup, axis, shape, dtype):
-    cdef ndarray a, x, ret
-    cdef int i, j, base, cum, ndim
-    cdef bint all_same_type, all_one_and_contiguous
-    cdef Py_ssize_t[:] ptrs
-    cdef int[:] cum_sizes
-    cdef int[:, :] x_strides
+cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
+    cdef ndarray a, ret
+    cdef int i
+    cdef bint all_same_type, same_shape_and_contiguous
+    cdef Py_ssize_t axis_size
+    # If arrays are large, Issuing each copy method is efficient.
+    cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
+
+    if len(arrays) > 8:
+        all_same_type = True
+        same_shape_and_contiguous = True
+        axis_size = shape[axis] // len(arrays)
+        total_bytes = 0
+        for a in arrays:
+            if a.dtype != dtype:
+                all_same_type = False
+                break
+            if same_shape_and_contiguous:
+                same_shape_and_contiguous = (
+                    a._c_contiguous and a._shape[axis] == axis_size)
+            total_bytes += a.size * a.dtype.itemsize
+
+        if all_same_type and total_bytes < threshold_size * len(arrays):
+            return _concatenate_single_kernel(
+                arrays, axis, shape, dtype, same_shape_and_contiguous)
 
     ret = ndarray(shape, dtype=dtype)
-
-    all_same_type = True
-    all_one_and_contiguous = True
-    any_contiguous_on_axis = False
-    total_bytes = 0
-    dtype = tup[0].dtype
-    for a in tup:
-        all_same_type = all_same_type and (a.dtype == dtype)
-        all_one_and_contiguous = (
-            all_one_and_contiguous and a._c_contiguous and
-            a._shape[axis] == 1)
-        any_contiguous_on_axis = (
-            any_contiguous_on_axis or
-            a._strides[axis] == a.itemsize)
-        total_bytes += a.size * a.itemsize
-
-    if ((not all_same_type or not any_contiguous_on_axis) and
-            (len(tup) < 256 or total_bytes / len(tup) > 524288)):
-        skip = (slice(None),) * axis
-        i = 0
-        for a in tup:
-            aw = a._shape[axis]
-            ret[skip + (slice(i, i + aw),)] = a
-            i += aw
-    else:
-        ptrs = numpy.ndarray(len(tup), numpy.int64)
-        for i, a in enumerate(tup):
-            ptrs[i] = a.data.ptr
-        x = array(ptrs)
-
-        if all_one_and_contiguous:
-            base = <int>internal.prod_ssize_t(shape[axis + 1:])
-            _concatenate_kernel_one(x, base, ret)
-        else:
-            ndim = tup[0].ndim
-            x_strides = numpy.ndarray((len(tup), ndim), numpy.int32)
-            cum_sizes = numpy.ndarray(len(tup), numpy.int32)
-            cum = 0
-            for i, a in enumerate(tup):
-                for j in range(ndim):
-                    x_strides[i, j] = <int>a._strides[j]
-                cum_sizes[i] = cum
-                cum += <int>a._shape[axis]
-
-            _concatenate_kernel(
-                x, axis, array(cum_sizes), array(x_strides), ret)
+    i = 0
+    slice_list = [slice(None)] * len(shape)
+    for a in arrays:
+        aw = a._shape[axis]
+        slice_list[axis] = slice(i, i + aw)
+        elementwise_copy(a, ret[tuple(slice_list)])
+        i += aw
     return ret
 
-cdef _concatenate_kernel_one = ElementwiseKernel(
-    'raw P x, int32 base',
+
+cpdef ndarray _concatenate_single_kernel(
+        list arrays, Py_ssize_t axis, tuple shape, dtype,
+        bint same_shape_and_contiguous):
+    cdef ndarray a, x, ret
+    cdef Py_ssize_t base, cum, ndim
+    cdef int i, j
+    cdef Py_ssize_t[:] ptrs
+    cdef Py_ssize_t[:] cum_sizes
+    cdef Py_ssize_t[:, :] x_strides
+
+    ptrs = numpy.ndarray(len(arrays), numpy.int64)
+    for i, a in enumerate(arrays):
+        ptrs[i] = a.data.ptr
+    x = array(ptrs)
+
+    ret = ndarray(shape, dtype=dtype)
+    if same_shape_and_contiguous:
+        base = internal.prod_ssize_t(shape[axis:]) // len(arrays)
+        _concatenate_kernel_same_size(x, base, ret)
+        return ret
+
+    ndim = len(shape)
+    x_strides = numpy.ndarray((len(arrays), ndim), numpy.int64)
+    cum_sizes = numpy.ndarray(len(arrays), numpy.int64)
+    cum = 0
+    for i, a in enumerate(arrays):
+        for j in range(ndim):
+            x_strides[i, j] = <int>a._strides[j]
+        cum_sizes[i] = cum
+        cum += <int>a._shape[axis]
+
+    _concatenate_kernel(
+        x, axis, array(cum_sizes), array(x_strides), ret)
+    return ret
+
+
+cdef _concatenate_kernel_same_size = ElementwiseKernel(
+    'raw P x, int64 base',
     'T y',
     '''
-    int middle = i / base;
-    int top = middle / x.size();
-    int array_ind = middle - top * x.size();
-    int offset = i + (top - middle) * base;
+    ptrdiff_t middle = i / base;
+    ptrdiff_t top = middle / x.size();
+    ptrdiff_t array_ind = middle - top * x.size();
+    ptrdiff_t offset = i + (top - middle) * base;
     y = reinterpret_cast<T*>(x[array_ind])[offset];
     ''',
-    'cupy_concatenate_one'
+    'cupy_concatenate_same_size'
 )
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, raw int32 cum_sizes,
-    raw int32 x_strides''',
+    '''raw P x, int32 axis, raw int64 cum_sizes,
+    raw int64 x_strides''',
     'T y',
     '''
-    int axis_ind = _ind.get()[axis];
-    int left = 0;
-    int right = cum_sizes.size();
+    ptrdiff_t axis_ind = _ind.get()[axis];
+    ptrdiff_t left = 0;
+    ptrdiff_t right = cum_sizes.size();
 
     while (left < right - 1) {
-      int m = (left + right) / 2;
+      ptrdiff_t m = (left + right) / 2;
       if (axis_ind < cum_sizes[m]) {
         right = m;
       } else {
@@ -2633,7 +2565,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
       }
     }
 
-    int array_ind = left;
+    ptrdiff_t array_ind = left;
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
     for (int j = _ind.ndim - 1; j >= 0; --j) {
@@ -2763,6 +2695,174 @@ right_shift = _create_bit_op(
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
+
+cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
+    cdef Py_ssize_t i, n_newaxes, axis
+    cdef list slice_list
+    cdef str kind
+
+    if isinstance(slices, tuple):
+        slice_list = list(slices)
+    elif isinstance(slices, list):
+        slice_list = list(slices)  # copy list
+        for s in slice_list:
+            if not isinstance(s, int):
+                break
+        else:
+            slice_list = [slice_list]
+    else:
+        slice_list = [slices]
+
+    slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
+
+    # Check if advanced is true,
+    # and convert list/NumPy arrays to cupy.ndarray
+    advanced = False
+    mask_exists = False
+    for i, s in enumerate(slice_list):
+        is_list = isinstance(s, list)
+        if is_list or isinstance(s, numpy.ndarray):
+            # handle the case when s is an empty list
+            s = array(s)
+            if is_list and s.size == 0:
+                s = s.astype(numpy.int32)
+            slice_list[i] = s
+        elif not isinstance(s, ndarray):
+            continue
+        kind = s.dtype.kind
+        if kind == 'i' or kind == 'u':
+            advanced = True
+        elif kind == 'b':
+            mask_exists = not is_list
+        else:
+            raise IndexError(
+                'arrays used as indices must be of integer or boolean '
+                'type. (actual: {})'.format(s.dtype.type))
+
+    if not mask_exists and len(slice_list) > ndim + n_newaxes:
+        raise IndexError('too many indices for array')
+    return slice_list, advanced, mask_exists
+
+
+cdef Py_ssize_t _get_mask_index(list slice_list) except *:
+    cdef Py_ssize_t i, n_not_slice_none, mask_i
+    cdef slice none_slice = slice(None)
+    n_not_slice_none = 0
+    mask_i = -1
+    for i, s in enumerate(slice_list):
+        if not isinstance(s, slice) or s != none_slice:
+            n_not_slice_none += 1
+            if isinstance(s, ndarray) and s.dtype == numpy.bool_:
+                mask_i = i
+    if n_not_slice_none != 1 or mask_i == -1:
+        raise ValueError('currently, CuPy only supports slices that '
+                         'consist of one boolean array.')
+    return mask_i
+
+
+cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
+    cdef slice none_slice = slice(None)
+
+    # split slices that can be handled by basic-indexing
+    cdef list basic_slices = []
+    cdef list adv_slices = []
+    cdef list adv_mask = []
+    cdef bint use_basic_indexing = False
+    for i, s in enumerate(slice_list):
+        if s is None:
+            basic_slices.append(None)
+            adv_slices.append(none_slice)
+            adv_mask.append(False)
+            use_basic_indexing = True
+        elif isinstance(s, slice):
+            basic_slices.append(s)
+            adv_slices.append(none_slice)
+            adv_mask.append(False)
+            use_basic_indexing |= s != none_slice
+        elif isinstance(s, ndarray):
+            kind = s.dtype.kind
+            assert kind == 'i' or kind == 'u'
+            basic_slices.append(none_slice)
+            adv_slices.append(s)
+            adv_mask.append(True)
+        elif isinstance(s, int):
+            basic_slices.append(none_slice)
+            scalar_array = ndarray((), dtype=numpy.int64)
+            scalar_array.fill(s)
+            adv_slices.append(scalar_array)
+            adv_mask.append(True)
+        else:
+            raise IndexError(
+                'only integers, slices (`:`), ellipsis (`...`),'
+                'numpy.newaxis (`None`) and integer or '
+                'boolean arrays are valid indices')
+
+    # check if this is a combination of basic and advanced indexing
+    if use_basic_indexing:
+        a = _simple_getitem(a, basic_slices)
+
+    return a, adv_slices, adv_mask
+
+cdef ndarray _simple_getitem(ndarray a, list slice_list):
+    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef ndarray v
+    cdef Py_ssize_t i, j, offset, ndim
+    cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
+    cdef slice ss
+
+    # Create new shape and stride
+    j = 0
+    offset = 0
+    ndim = a._shape.size()
+    for i, s in enumerate(slice_list):
+        if s is None:
+            shape.push_back(1)
+            if j < ndim:
+                strides.push_back(a._strides[j])
+            elif ndim > 0:
+                strides.push_back(a._strides[ndim - 1])
+            else:
+                strides.push_back(a.itemsize)
+        elif ndim <= j:
+            raise IndexError("too many indices for array")
+        elif isinstance(s, slice):
+            ss = internal.complete_slice(s, a._shape[j])
+            s_start = ss.start
+            s_stop = ss.stop
+            s_step = ss.step
+            if s_step > 0:
+                dim = (s_stop - s_start - 1) // s_step + 1
+            else:
+                dim = (s_stop - s_start + 1) // s_step + 1
+
+            if dim == 0:
+                strides.push_back(a._strides[j])
+            else:
+                strides.push_back(a._strides[j] * s_step)
+
+            if s_start > 0:
+                offset += a._strides[j] * s_start
+            shape.push_back(dim)
+            j += 1
+        elif numpy.isscalar(s):
+            ind = int(s)
+            if ind < 0:
+                ind += a._shape[j]
+            if not (0 <= ind < a._shape[j]):
+                msg = ('Index %s is out of bounds for axis %s with '
+                       'size %s' % (s, j, a._shape[j]))
+                raise IndexError(msg)
+            offset += ind * a._strides[j]
+            j += 1
+        else:
+            raise TypeError('Invalid index type: %s' % type(slice_list[i]))
+
+    v = a.view()
+    if a.size != 0:
+        v.data = a.data + offset
+    v._set_shape_and_strides(shape, strides)
+    return v
+
 
 cdef _take_kernel = ElementwiseKernel(
     'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
@@ -3034,7 +3134,7 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
 
 
 cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
-    cdef ndarray mask_scanned
+    cdef ndarray mask_scanned, src
     cdef tuple masked_shape
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
@@ -3043,162 +3143,67 @@ cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         return
 
     if not isinstance(v, ndarray):
-        v = array(v, dtype=a.dtype)
-    v = v.astype(a.dtype)
-    # broadcast v to shape determined by the mask
-    v = broadcast_to(v, masked_shape)
+        src = array(v, dtype=a.dtype)
+    else:
+        src = v
+        src = src.astype(a.dtype, copy=False)
+    # broadcast src to shape determined by the mask
+    src = broadcast_to(src, masked_shape)
 
     if op == 'update':
-        _scatter_update_mask_kernel(v, mask, mask_scanned, a)
+        _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
-        _scatter_add_mask_kernel(v, mask, mask_scanned, a)
+        _scatter_add_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
 
 cpdef _scatter_op(ndarray a, slices, value, op):
-    cdef Py_ssize_t i, ndim, n_newaxes, n_ellipses, ellipsis, axis
-    cdef Py_ssize_t n_not_slice_none, mask_i
-    cdef Py_ssize_t ellipsis_size
+    cdef Py_ssize_t i, li, ri
     cdef ndarray v, x, y, a_interm, reduced_idx
-    cdef Py_ssize_t li, ri
+    cdef list slice_list, adv_mask, adv_slices
 
-    if isinstance(slices, tuple):
-        slices = list(slices)
-    elif isinstance(slices, list):
-        slices = list(slices)  # copy list
-        if all([isinstance(s, int) for s in slices]):
-            slices = [slices]
-    else:
-        slices = [slices]
-
-    # Expand ellipsis into empty slices
-    ellipsis = -1
-    n_newaxes, n_ellipses = 0, 0
-    for i, s in enumerate(slices):
-        if s is None:
-            n_newaxes += 1
-        elif s is Ellipsis:
-            n_ellipses += 1
-            ellipsis = i
-    ndim = a._shape.size()
-    noneslices = [slice(None)]
-    if n_ellipses > 0:
-        if n_ellipses > 1:
-            raise ValueError('Only one Ellipsis is allowed in index')
-        ellipsis_size = ndim - (<Py_ssize_t>len(slices) - n_newaxes - 1)
-        slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
-
-    slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
-
-    # Check if advanced is true,
-    # and convert list/NumPy arrays to cupy.ndarray
-    advanced = False
-    mask_exists = False
-    for i, s in enumerate(slices):
-        is_list = False
-        if isinstance(s, (list, numpy.ndarray)):
-            is_list = isinstance(s, list)
-            s = array(s)
-            # handle the case when s is an empty list
-            if is_list and s.size == 0:
-                s = s.astype(numpy.int32)
-            slices[i] = s
-        if isinstance(s, ndarray):
-            if issubclass(s.dtype.type, numpy.integer):
-                advanced = True
-            elif issubclass(s.dtype.type, numpy.bool_):
-                mask_exists = not is_list
-            else:
-                raise IndexError(
-                    'arrays used as indices must be of integer or boolean '
-                    'type. (actual: {})'.format(s.dtype.type))
-
-    if not mask_exists and len(slices) > a.ndim + n_newaxes:
-        raise IndexError('too many indices for array')
+    slice_list, advanced, mask_exists = _prepare_slice_list(
+        slices, a._shape.size())
 
     if mask_exists:
-        n_not_slice_none = 0
-        for i, s in enumerate(slices):
-            if not isinstance(s, slice) or s != slice(None):
-                n_not_slice_none += 1
-                if issubclass(s.dtype.type, numpy.bool_):
-                    mask_i = i
-        if n_not_slice_none != 1:
-            raise ValueError('currently, CuPy only supports slices that '
-                             'consist of one boolean array.')
-        _scatter_op_mask_single(a, slices[mask_i], value, mask_i, op)
+        mask_i = _get_mask_index(slice_list)
+        _scatter_op_mask_single(a, slice_list[mask_i], value, mask_i, op)
         return
 
     if advanced:
-        # split slices that can be handled by basic-indexing
-        basic_slices = []
-        adv_slices = []
-        for i, s in enumerate(slices):
-            if type(s) is slice:
-                basic_slices.append(s)
-                adv_slices.append(slice(None))
-            elif s is None:
-                basic_slices.append(None)
-                adv_slices.append(slice(None))
-            elif (isinstance(s, ndarray) and
-                    issubclass(s.dtype.type, numpy.integer)):
-                basic_slices.append(slice(None))
-                adv_slices.append(s)
-            elif isinstance(s, int):
-                basic_slices.append(slice(None))
-                scalar_array = ndarray((), dtype=numpy.int64)
-                scalar_array.fill(s)
-                adv_slices.append(scalar_array)
-            else:
-                raise IndexError(
-                    'only integers, slices (`:`), ellipsis (`...`),'
-                    'numpy.newaxis (`None`) and integer or '
-                    'boolean arrays are valid indices')
-
-        # check if this is a combination of basic and advanced indexing
-        for s in basic_slices:
-            if s is None or (isinstance(s, slice) and s != slice(None)):
-                # returns a view of a
-                a = a[tuple(basic_slices)]
-                break
-
-        arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
-        if sum(arr_slices_mask) == 1:
-            axis = arr_slices_mask.index(True)
-            _scatter_op_single(a, adv_slices[axis], value,
-                               li=axis, ri=axis, op=op)
+        a, adv_slices, adv_mask = _prepare_advanced_indexing(a, slice_list)
+        if sum(adv_mask) == 1:
+            axis = adv_mask.index(True)
+            _scatter_op_single(a, adv_slices[axis], value, axis, axis, op)
             return
 
         # scatter_op with multiple integer arrays
         a_interm, reduced_idx, li, ri =\
             _prepare_multiple_array_indexing(a, adv_slices)
-        _scatter_op_single(a_interm, reduced_idx, value, li=li, ri=ri, op=op)
+        _scatter_op_single(a_interm, reduced_idx, value, li, ri, op)
         return
 
+    y = _simple_getitem(a, slice_list)
     if op == 'update':
-        v = a[tuple(slices)]
-        if isinstance(value, ndarray):
-            y, x = broadcast(v, value).values
-            if (internal.vector_equal(y._shape, x._shape) and
-                    internal.vector_equal(y._strides, x._strides)):
-                if y.data.ptr == x.data.ptr:
-                    return  # Skip since x and y are the same array
-                elif y._c_contiguous and x.dtype == y.dtype:
-                    y.data.copy_from_device_async(x.data, x.nbytes,
-                                                  cuda.Stream.null)
-                    return
-            elementwise_copy(x, y)
-        else:
-            v.fill(value)
-    elif op == 'add':
-        v = a[tuple(slices)]
         if not isinstance(value, ndarray):
-            value = ndarray(value)
-        y, x = broadcast(v, value).values
-        elementwise_copy(x + y, y)
-    else:
-        raise ValueError('this op is not supported')
+            y.fill(value)
+            return
+        x = value
+        if (internal.vector_equal(y._shape, x._shape) and
+                internal.vector_equal(y._strides, x._strides)):
+            if y.data.ptr == x.data.ptr:
+                return  # Skip since x and y are the same array
+            elif y._c_contiguous and x.dtype == y.dtype:
+                y.data.copy_from_device_async(
+                    x.data, x.nbytes, cuda.Stream.null)
+                return
+        elementwise_copy(x, y)
+        return
+    if op == 'add':
+        add(y, value, y)
+        return
+    raise ValueError('this op is not supported')
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
@@ -3299,7 +3304,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
-    flattened_indexes = concatenate(
+    flattened_indexes = _concatenate(
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
@@ -3427,6 +3432,13 @@ cdef ndarray _mat_ptrs(ndarray a):
         return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
 
 
+cpdef int _get_stride_for_strided_batched_gemm(ndarray a):
+    if a.ndim > 2:
+        return a.strides[-3] / a.itemsize
+    else:
+        return a.shape[-2] * a.shape[-1]
+
+
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """ Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
@@ -3435,12 +3447,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
     .. note::
-        Differences to numpy or missing features:
-
-        Currently the output must be real (float16, float32, uint8, ...),
-        complex64 and complex128 follow later. This means, that
-        numpy.result_type(a.dtype, b.dtype) have to be real.
-
         The out array as input is currently not supported.
 
     Args:
@@ -3504,9 +3510,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broatcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
 
-    out_shape = (*broatcast_pre_shape, *a_part_outshape, *b_part_outshape)
+    out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
     a = ascontiguousarray(a, dtype=dtype)
     b = ascontiguousarray(b, dtype=dtype)
@@ -3516,14 +3522,17 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     a_shape = list(a.shape)
     b_strides = list(b.strides)
     b_shape = list(b.shape)
+    use_broadcast = False
     for i in range(len(a_strides) - 2):
-        if a_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if a_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             a_strides[i] = 0
-            a_shape[i] = broatcast_pre_shape[i]
+            a_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
     for i in range(len(b_strides) - 2):
-        if b_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+        if b_shape[i] == 1 and broadcast_pre_shape[i] > 1:
             b_strides[i] = 0
-            b_shape[i] = broatcast_pre_shape[i]
+            b_shape[i] = broadcast_pre_shape[i]
+            use_broadcast = True
 
     view = a.view()
     view._set_shape_and_strides(a_shape, a_strides)
@@ -3571,48 +3580,99 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     for i in la:
         batchCount *= i
 
-    ap = _mat_ptrs(a)
-    bp = _mat_ptrs(b)
-    outp = _mat_ptrs(out_view)
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if dtype == numpy.float32:
-        cuda.cublas.sgemmBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
-    elif dtype == numpy.float64:
-        cuda.cublas.dgemmBatched(
-            cuda.Device().cublas_handle,
-            0,  # transa
-            0,  # transb
-            n, m, ka, 1.0,
-            ap.data.ptr, lda,
-            bp.data.ptr, ldb,
-            0.0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex64:
-    #     cuda.cublas.cgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
-    # elif dtype == numpy.complex128:
-    #     cuda.cublas.zgemmBatched(
-    #         cuda.Device().cublas_handle,
-    #         0,  # transa
-    #         0,  # transb
-    #         n, m, ka, 1,
-    #         ap.data.ptr, lda,
-    #         bp.data.ptr, ldb,
-    #         0, outp.data.ptr, ldout, batchCount)
+    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
+    if not use_broadcast and _cuda_runtime_version >= 8000:
+        strideA = _get_stride_for_strided_batched_gemm(a)
+        strideB = _get_stride_for_strided_batched_gemm(b)
+        strideC = _get_stride_for_strided_batched_gemm(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmStridedBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
     else:
-        raise TypeError(dtype, a.dtype, b.dtype)
+        ap = _mat_ptrs(a)
+        bp = _mat_ptrs(b)
+        outp = _mat_ptrs(out_view)
+        if dtype == numpy.float32:
+            cuda.cublas.sgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.float64:
+            cuda.cublas.dgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex64:
+            cuda.cublas.cgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex128:
+            cuda.cublas.zgemmBatched(
+                cuda.Device().cublas_handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
 
     if dtype == ret_dtype:
         return out
@@ -4017,8 +4077,8 @@ divide = create_ufunc(
 
 power = create_ufunc(
     'cupy_power',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
+    ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+     'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
@@ -4359,3 +4419,120 @@ cpdef ndarray scan(ndarray a, ndarray out=None):
                  block=(2 * block_size - 1,),
                  args=(out,))
     return out
+
+
+# -----------------------------------------------------------------------------
+# partition
+# -----------------------------------------------------------------------------
+
+@util.memoize(for_each_device=True)
+def _partition_kernel(dtype):
+    name = 'partition_kernel'
+    merge_kernel = 'partition_merge_kernel'
+    dtype = _get_typename(dtype)
+    source = string.Template('''
+    template<typename T>
+    __device__ void bitonic_sort_step(CArray<T, 1> a,
+            ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
+        for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
+            ptrdiff_t n = j + (j & -w);
+            T v = a[n + x], u = a[n + w + x];
+            if (n & s ? v < u : v > u) {
+                a[n + x] = u;
+                a[n + w + x] = v;
+            }
+        }
+    }
+
+    // Sort a[x:y].
+    template<typename T>
+    __device__ void bitonic_sort(
+            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
+        for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
+            for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
+                bitonic_sort_step<T>(a, x, y, i, s, w);
+            }
+        }
+    }
+
+    // Merge first k elements and the next 32 times t elements.
+    template<typename T>
+    __device__ void merge(
+            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+        for (int s = i; s < u; s += 32) {
+            if (a[x + k - s - 1] > a[z + s]) {
+                T tmp = a[x + k - s - 1];
+                a[x + k - s - 1] = a[z + s];
+                a[z + s] = tmp;
+            }
+        }
+
+        // After merge step, the first k elements are already bitonic.
+        // Therefore, we do not need to fully sort.
+        for (int w = k / 2; w >= 1; w /= 2) {
+            bitonic_sort_step<T>(a, x, k + x, i, k, w);
+        }
+    }
+
+    extern "C" {
+    // In this function, 32 threads handle one subarray. This number equals to
+    // the warp size. The first k elements are always sorted and the next 32
+    // times t elements stored values that have possibilities to be selected.
+    __global__ void ${name}(
+            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+
+        // This thread handles a[z:m].
+        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
+            + threadIdx.x;
+        ptrdiff_t z = i / 32 * n / sz;
+        ptrdiff_t m = (i / 32 + 1) * n / sz;
+        int id = i % 32;
+        int x = 0;
+
+        bitonic_sort<${dtype}>(a, z, k + z, id);
+        ptrdiff_t j;
+        for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
+            if (a[j] < a[k - 1 + z]) {
+                ${dtype} tmp = a[k + 32 * x + id + z];
+                a[k + 32 * x + id + z] = a[j];
+                a[j] = tmp;
+                ++x;
+            }
+
+            // If at least one thread in the warp has found t values that
+            // can be selected, we update the first k elements.
+    #if __CUDACC_VER_MAJOR__ >= 9
+            if (__any_sync(0xffffffff, x >= t)) {
+    #else
+            if (__any(x >= t)) {
+    #endif
+                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
+                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+                x = 0;
+            }
+        }
+        if (j < m && a[j] < a[k - 1 + z]) {
+            ${dtype} tmp = a[k + 32 * x + id + z];
+            a[k + 32 * x + id + z] = a[j];
+            a[j] = tmp;
+        }
+
+        // Finally, we merge the first k elements and the remainders to be
+        // stored.
+        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
+        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+    }
+
+    __global__ void ${merge_kernel}(
+            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
+        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
+            + threadIdx.x;
+        ptrdiff_t z = i / 32 * 2 * s * n / sz;
+        ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
+        int id = i % 32;
+        merge<${dtype}>(a, k, id, z, m, k);
+    }
+    }
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    module = compile_with_cache(source)
+    return module.get_function(name), module.get_function(merge_kernel)

@@ -322,14 +322,15 @@ autosummary_generate = True
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
-    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
     'chainer': ('https://docs.chainer.org/en/latest/', None),
 }
 
 doctest_global_setup = '''
 import numpy as np
 import cupy # TODO(okuta) : Remove this line
+import cupyx
 import cupy as cp
 np.random.seed(0)
 '''

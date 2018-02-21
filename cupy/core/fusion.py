@@ -13,7 +13,6 @@ from cupy import logic
 from cupy import math
 from cupy import sorting
 from cupy import statistics
-from cupy import util
 
 
 _thread_local = threading.local()
@@ -655,8 +654,12 @@ def fuse(*args, **kwargs):
             If not assigned, post_map step is skipped.
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
+
+    .. note::
+       This API is currently experimental and the interface may be changed in
+       the future version.
+
     """
-    util.experimental('cupy.core.fusion')
 
     def wrapper(
             f, input_num=None, reduce=None, post_map=lambda x: x,

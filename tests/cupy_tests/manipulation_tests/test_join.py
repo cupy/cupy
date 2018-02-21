@@ -61,7 +61,28 @@ class TestJoin(unittest.TestCase):
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         d = testing.shaped_arange((2, 3, 5), xp, dtype)
         e = testing.shaped_arange((2, 3, 2), xp, dtype)
-        return xp.concatenate((a, b, c, d, e), axis=-1)
+        return xp.concatenate((a, b, c, d, e) * 2, axis=-1)
+
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_large_3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 1), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3, 1), xp, dtype)
+        return xp.concatenate((a, b) * 10, axis=-1)
+
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_large_4(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
+        return xp.concatenate((a, b) * 10, axis=-1)
+
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_large_5(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3, 4), xp, 'i')
+        return xp.concatenate((a, b) * 10, axis=-1)
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
@@ -80,6 +101,12 @@ class TestJoin(unittest.TestCase):
         d = testing.shaped_arange((2, 3, 2), xp, dtype).T
         e = testing.shaped_arange((2, 3, 2), xp, dtype)
         return xp.concatenate((a, b, c, d, e), axis=-1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_many_multi_dptye(self, xp):
+        a = testing.shaped_arange((2, 1), xp, 'i')
+        b = testing.shaped_arange((2, 1), xp, 'f')
+        return xp.concatenate((a, b) * 1024, axis=1)
 
     def test_concatenate_wrong_ndim(self):
         a = cupy.empty((2, 3))

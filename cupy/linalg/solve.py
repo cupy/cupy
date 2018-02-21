@@ -15,7 +15,7 @@ if cuda.cusolver_enabled:
 
 
 def solve(a, b):
-    '''Solves a linear matrix equation.
+    """Solves a linear matrix equation.
 
     It computes the exact solution of ``x`` in ``ax = b``,
     where ``a`` is a square and full rank matrix.
@@ -31,11 +31,11 @@ def solve(a, b):
             ``(M, K)``.
 
     .. seealso:: :func:`numpy.linalg.solve`
-    '''
+    """
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
     #       we manually solve a linear system with QR decomposition.
     #       For details, please see the following:
-    #       http://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
+    #       https://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
@@ -106,7 +106,7 @@ def _check_status(dev_info):
 
 
 def tensorsolve(a, b, axes=None):
-    '''Solves tensor equations denoted by ``ax = b``.
+    """Solves tensor equations denoted by ``ax = b``.
 
     Suppose that ``b`` is equivalent to ``cupy.tensordot(a, x)``.
     This function computes tensor ``x`` from ``a`` and ``b``.
@@ -122,7 +122,7 @@ def tensorsolve(a, b, axes=None):
             The tensor with shape ``Q`` such that ``b.shape + Q == a.shape``.
 
     .. seealso:: :func:`numpy.linalg.tensorsolve`
-    '''
+    """
     if axes is not None:
         allaxes = list(six.moves.range(a.ndim))
         for k in axes:
@@ -143,7 +143,7 @@ def tensorsolve(a, b, axes=None):
 
 
 def inv(a):
-    '''Computes the inverse of a matrix.
+    """Computes the inverse of a matrix.
 
     This function computes matrix ``a_inv`` from n-dimensional regular matrix
     ``a`` such that ``dot(a, a_inv) == eye(n)``.
@@ -155,14 +155,13 @@ def inv(a):
         cupy.ndarray: The inverse of a matrix.
 
     .. seealso:: :func:`numpy.linalg.inv`
-    '''
+    """
+    if not cuda.cusolver_enabled:
+        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     util._assert_cupy_array(a)
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
-
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
@@ -202,7 +201,7 @@ def inv(a):
 
 
 def pinv(a, rcond=1e-15):
-    '''Compute the Moore-Penrose pseudoinverse of a matrix.
+    """Compute the Moore-Penrose pseudoinverse of a matrix.
 
     It computes a pseudoinverse of a matrix ``a``, which is a generalization
     of the inverse matrix with Singular Value Decomposition (SVD).
@@ -218,7 +217,7 @@ def pinv(a, rcond=1e-15):
         cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
 
     .. seealso:: :func:`numpy.linalg.pinv`
-    '''
+    """
     u, s, vt = decomposition.svd(a, full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
@@ -227,7 +226,7 @@ def pinv(a, rcond=1e-15):
 
 
 def tensorinv(a, ind=2):
-    '''Computes the inverse of a tensor.
+    """Computes the inverse of a tensor.
 
     This function computes tensor ``a_inv`` from tensor ``a`` such that
     ``tensordot(a_inv, a, ind) == I``, where ``I`` denotes the identity tensor.
@@ -245,7 +244,7 @@ def tensorinv(a, ind=2):
             ``a.shape[ind:] + a.shape[:ind]``.
 
     .. seealso:: :func:`numpy.linalg.tensorinv`
-    '''
+    """
     util._assert_cupy_array(a)
 
     if ind <= 0:

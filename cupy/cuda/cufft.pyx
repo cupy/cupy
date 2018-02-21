@@ -3,7 +3,9 @@ cimport cython
 import cupy
 import numpy
 
+from cupy.cuda cimport driver
 from cupy.cuda cimport memory
+from cupy.cuda cimport stream as stream_module
 
 
 cdef extern from "cupy_cufft.h":
@@ -18,6 +20,9 @@ cdef extern from "cupy_cufft.h":
     Result cufftDestroy(Handle plan)
     Result cufftSetAutoAllocation(Handle plan, int autoAllocate)
     Result cufftSetWorkArea(Handle plan, void *workArea)
+
+    # cuFFT Stream Function
+    Result cufftSetStream(Handle plan, driver.Stream streamId)
 
     # cuFFT Plan Function
     Result cufftMakePlan1d(Handle plan, int nx, Type type, int batch,
@@ -68,12 +73,18 @@ cpdef inline check_result(int result):
         raise CuFftError(result)
 
 
+cpdef setStream(size_t plan, size_t stream):
+    status = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+    check_result(status)
+
+
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t workSize
         result = cufftCreate(&plan)
         check_result(result)
+        setStream(plan, stream_module.get_current_stream_ptr())
         result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
         result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch, &workSize)

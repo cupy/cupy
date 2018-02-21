@@ -1,4 +1,5 @@
 import ctypes
+import sys
 import threading
 import unittest
 
@@ -15,7 +16,6 @@ class MockMemory(memory.Memory):
         self.ptr = MockMemory.cur_ptr
         MockMemory.cur_ptr += size
         self.size = size
-        self.device = None
 
     def __del__(self):
         self.ptr = 0
@@ -484,6 +484,8 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
+    @unittest.skipUnless(sys.version_info[0] >= 3,
+                         'Only for Python3 or higher')
     def test_reuse_between_thread(self):
         def job(self):
             cupy.arange(16)

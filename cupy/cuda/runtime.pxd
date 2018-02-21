@@ -142,3 +142,10 @@ cpdef float eventElapsedTime(size_t start, size_t end) except *
 cpdef eventQuery(size_t event)
 cpdef eventRecord(size_t event, size_t stream)
 cpdef eventSynchronize(size_t event)
+
+
+##############################################################################
+# util
+##############################################################################
+
+cdef _ensure_context()

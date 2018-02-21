@@ -20,7 +20,7 @@ This document mainly focuses on 1 and 2, though other contributions are also app
 Release and Milestone
 ---------------------
 
-We are using `GitHub Flow <http://scottchacon.com/2011/08/31/github-flow.html>`_ as our basic working process.
+We are using `GitHub Flow <https://scottchacon.com/2011/08/31/github-flow.html>`_ as our basic working process.
 In particular, we are using the master branch for our development, and releases are made as tags.
 
 Releases are classified into three groups: major, minor, and revision.
@@ -91,7 +91,7 @@ If you write a precise explanation about the PR, core developers and other contr
 Coding Guidelines
 -----------------
 
-We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
+We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
 To check your code, use ``autopep8`` and ``flake8`` command installed by ``hacking`` package::
 
