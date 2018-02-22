@@ -26,10 +26,29 @@ cpdef enum:
 
 
 ###############################################################################
+# Initialization
+###############################################################################
+
+cpdef void init() except *
+
+###############################################################################
+# Primary context management
+###############################################################################
+
+# def tuple devicePrimaryCtxGetState(Device dev)
+cpdef void devicePrimaryCtxSetFlags(Device dev, unsigned int flags) except *
+cpdef void devicePrimaryCtxRelease(Device dev) except *
+cpdef void devicePrimaryCtxReset(Device dev) except *
+cpdef size_t devicePrimaryCtxRetain(Device dev) except *
+
+###############################################################################
 # Context management
 ###############################################################################
 
 cpdef size_t ctxGetCurrent() except *
+cpdef void ctxSetCurrent(size_t ctx) except *
+cpdef size_t ctxCreate(Device dev) except *
+cpdef void ctxDestroy(size_t ctx) except *
 
 ###############################################################################
 # Module load and kernel execution
