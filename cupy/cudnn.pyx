@@ -74,10 +74,10 @@ cpdef int get_data_type(dtype) except? -1:
 
 
 cpdef _create_tensor_nd_descriptor(
-        size_t desc, core.ndarray arr, int data_type):
+        size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
     cdef Py_ssize_t itemsize, s
-    if data_type == -1:
+    if data_type == -1:  # `-1` is used instead of `None`
         data_type = get_data_type(arr.dtype)
     itemsize = arr.itemsize
     for s in arr._strides:
@@ -97,7 +97,7 @@ cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr, int format):
         data_type = get_data_type(arr.dtype)
         cudnn.setTensor4dDescriptor(desc, format, data_type, n, c, h, w)
     else:
-        _create_tensor_nd_descriptor(desc, arr, -1)
+        _create_tensor_nd_descriptor(desc, arr)
 
 
 cpdef _create_filter_descriptor(
