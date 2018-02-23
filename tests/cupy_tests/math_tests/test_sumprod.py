@@ -13,6 +13,7 @@ class TestSumprod(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def tearDown(self):
+        # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.get_default_pinned_memory_pool().free_all_blocks()
 
@@ -244,11 +245,13 @@ class TestCumprod(unittest.TestCase):
     @testing.slow
     def test_cumprod_huge_array(self):
         size = 2 ** 32
+        # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
         a = cupy.ones(size, 'b')
         result = cupy.cumprod(a, dtype='b')
         del a
         self.assertTrue((result == 1).all())
+        # Free huge memory for slow test
         del result
         cupy.get_default_memory_pool().free_all_blocks()
 

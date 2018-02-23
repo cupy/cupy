@@ -25,6 +25,7 @@ class TestGetStridesForNocopyReshape(unittest.TestCase):
 class TestSize(unittest.TestCase):
 
     def tearDown(self):
+        # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
