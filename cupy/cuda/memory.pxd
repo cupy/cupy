@@ -12,18 +12,6 @@ cdef class Memory:
         readonly device.Device device
 
 
-cdef class Chunk:
-
-    cdef:
-        readonly device.Device device
-        readonly object mem
-        readonly size_t ptr
-        readonly Py_ssize_t offset
-        readonly Py_ssize_t size
-        public object stream_ptr
-        public Chunk prev
-        public Chunk next
-
 cdef class MemoryPointer:
 
     cdef:
@@ -81,8 +69,6 @@ cdef class SingleDeviceMemoryPool:
     cpdef _append_to_free_list(self, Py_ssize_t size, chunk, size_t stream_ptr)
     cpdef bint _remove_from_free_list(self, Py_ssize_t size,
                                       chunk, size_t stream_ptr) except *
-    cpdef tuple _split(self, Chunk chunk, Py_ssize_t size)
-    cpdef Chunk _merge(self, Chunk head, Chunk remaining)
 
 cdef class MemoryPool:
 
