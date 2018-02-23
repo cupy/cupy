@@ -73,28 +73,22 @@ cpdef inline check_result(int result):
         raise CuFftError(result)
 
 
-cpdef setStream(size_t plan, size_t stream):
-    with nogil:
-        status = cufftSetStream(<Handle>plan, <driver.Stream>stream)
-    check_result(status)
-
-
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t workSize
+        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
+            if result == 0:
+                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            if result == 0:
+                result = cufftSetAutoAllocation(plan, 0)
+            if result == 0:
+                result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                         &workSize)
         check_result(result)
-        setStream(plan, stream_module.get_current_stream_ptr())
-        with nogil:
-            result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
-        with nogil:
-            result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
-                                     &workSize)
         workArea = memory.alloc(workSize)
-        check_result(result)
         with nogil:
             result = cufftSetWorkArea(plan, <void *>(workArea.ptr))
         check_result(result)
