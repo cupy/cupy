@@ -4,8 +4,7 @@ from cupy import core
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     """Creates an array on the current device.
 
-    This function currently does not support the ``order`` and ``subok``
-    options.
+    This function currently does not support the ``subok`` option.
 
     Args:
         obj: :class:`cupy.ndarray` object or any other object that can be
