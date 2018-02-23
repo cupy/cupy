@@ -19,7 +19,7 @@ cdef size_t get_current_stream_ptr():
     return <size_t>pythread.PyThread_get_key_value(_current_stream_key)
 
 
-def get_current_stream():
+cpdef get_current_stream():
     """Gets current CUDA stream.
 
     Returns:

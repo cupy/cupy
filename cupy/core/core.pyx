@@ -2037,7 +2037,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
                                    a_cpu.size).reshape(a_cpu.shape)
         src_cpu[...] = a_cpu
-        stream = cuda.Stream.null
+        stream = stream_module.get_current_stream()
         a.set(src_cpu, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
