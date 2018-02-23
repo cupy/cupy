@@ -129,7 +129,7 @@ cdef class NcclCommunicator:
     def __dealloc__(self):
         self.destroy()
 
-    def destroy(self):
+    cpdef destroy(self):
         if self._comm:
             ncclCommDestroy(self._comm)
             self._comm = <ncclComm_t>0
