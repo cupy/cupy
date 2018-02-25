@@ -64,7 +64,7 @@ class TestCudnnActivationCoef(unittest.TestCase):
 
     def test_activation_backward(self):
         cudnn.activation_backward(self.x, self.y, self.g, self.mode,
-                                       self.coef)
+                                  self.coef)
 
 
 @testing.parameterize(*testing.product({
@@ -274,9 +274,9 @@ class TestConvolutionBackwardData(unittest.TestCase):
         if ((self.dilate > 1 and version < 6000) or
                 (self.group > 1 and version < 7000)):
             self.err = ValueError
-        elif ((self.dilate > 1 and deterministic) or
-                  (ndim > 2 and deterministic and 5000 <= version < 6000) or
-                  (ndim > 2 and deterministic and self.dtype == numpy.float64)):
+        elif deterministic and (self.dilate > 1 or
+                                (ndim > 2 and 5000 <= version < 6000) or
+                                (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
 
     def test_call(self):
