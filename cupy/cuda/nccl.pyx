@@ -127,8 +127,12 @@ cdef class NcclCommunicator:
         check_status(status)
 
     def __dealloc__(self):
+        self.destroy()
+
+    cpdef destroy(self):
         if self._comm:
             ncclCommDestroy(self._comm)
+            self._comm = <ncclComm_t>0
 
     def device_id(self):
         cdef int device_id
