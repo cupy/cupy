@@ -750,12 +750,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         m.transpose(axes=0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_eliminate_zeros(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
+        m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
-        self.assertEqual(m.nnz, 3)
-        return m.toarray()
+        return m.nnz
 
 
 @testing.parameterize(*testing.product({
