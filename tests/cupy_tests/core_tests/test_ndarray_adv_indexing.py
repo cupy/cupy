@@ -192,6 +192,60 @@ class TestArrayAdvancedIndexingGetitemCupyIndices(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (2**3 + 1, 2**4), 'indexes': (
+        numpy.array([2**3], dtype=numpy.int8),
+        numpy.array([1], dtype=numpy.int8))},
+    {'shape': (2**4 + 1, 2**4), 'indexes': (
+        numpy.array([2**4], dtype=numpy.uint8),
+        numpy.array([1], dtype=numpy.uint8))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int16))},
+    {'shape': (2**8 + 1, 2**8), 'indexes': (
+        numpy.array([2**8], dtype=numpy.uint16),
+        numpy.array([1], dtype=numpy.uint16))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int32))},
+    {'shape': (2**7 + 1, 2**8), 'indexes': (
+        numpy.array([2**7], dtype=numpy.int16),
+        numpy.array([1], dtype=numpy.int8))},
+    # Three-dimensional case
+    {'shape': (2**3 + 1, 3, 2**4), 'indexes': (
+        numpy.array([2**3], dtype=numpy.int8),
+        slice(None),
+        numpy.array([1], dtype=numpy.int8))},
+)
+@testing.gpu
+class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
+
+    def test_getitem(self):
+        a = cupy.arange(numpy.prod(self.shape)).reshape(self.shape)
+        indexes_gpu = []
+        for s in self.indexes:
+            if isinstance(s, numpy.ndarray):
+                s = cupy.array(s)
+            indexes_gpu.append(s)
+        indexes_gpu = tuple(indexes_gpu)
+        b = a[indexes_gpu]
+        b_cpu = a.get()[self.indexes]
+        testing.assert_array_equal(b, b_cpu)
+
+    def test_setitem(self):
+        a_cpu = numpy.arange(numpy.prod(self.shape)).reshape(self.shape)
+        a = cupy.array(a_cpu)
+        indexes_gpu = []
+        for s in self.indexes:
+            if isinstance(s, numpy.ndarray):
+                s = cupy.array(s)
+            indexes_gpu.append(s)
+        indexes_gpu = tuple(indexes_gpu)
+        a[indexes_gpu] = -1
+        a_cpu[self.indexes] = -1
+        testing.assert_array_equal(a, a_cpu)
+
+
+@testing.parameterize(
     {'shape': (), 'indexes': (-1,)},
     {'shape': (), 'indexes': (0,)},
     {'shape': (), 'indexes': (1,)},
