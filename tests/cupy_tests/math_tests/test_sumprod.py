@@ -54,7 +54,7 @@ class TestSumprod(unittest.TestCase):
     def test_sum_axis_huge(self, xp):
         a = testing.shaped_random((2048, 1, 1024), xp, 'b')
         a = xp.broadcast_to(a, (2048, 1024, 1024))
-        return a.sum(axis=0)
+        return a.sum(axis=2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
