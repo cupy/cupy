@@ -66,3 +66,6 @@ class TestCArray32BitBoundary(unittest.TestCase):
         # Reduction
         result = a.sum()
         self.assertEqual(self.size, result)
+        # Free huge memory for slow test
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
