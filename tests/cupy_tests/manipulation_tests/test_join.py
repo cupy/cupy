@@ -100,7 +100,7 @@ class TestJoin(unittest.TestCase):
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         d = testing.shaped_arange((2, 3, 2), xp, dtype).T
         e = testing.shaped_arange((2, 3, 2), xp, dtype)
-        return xp.concatenate((a, b, c, d, e), axis=-1)
+        return xp.concatenate((a, b, c, d, e) * 2, axis=-1)
 
     @testing.numpy_cupy_array_equal()
     def test_concatenate_many_multi_dptye(self, xp):

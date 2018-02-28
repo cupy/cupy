@@ -143,7 +143,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
-cpdef int _extract_slice_element(x) except *:
+cpdef inline int _extract_slice_element(x) except *:
     try:
         return x.__index__()
     except AttributeError:
@@ -163,9 +163,8 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
             raise TypeError(
                 'slice.step must be int or None or have __index__ method: '
                 '{}'.format(slc))
-
-    if step == 0:
-        raise ValueError('Slice step must be nonzero.')
+        if step == 0:
+            raise ValueError('Slice step must be nonzero.')
 
     start_none = slc.start is None
     if not start_none:
