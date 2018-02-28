@@ -39,7 +39,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
-            ret = cupy.sqrt(cupy.sum(x.ravel() ** 2))
+            if issubclass(x.dtype.type, numpy.complexfloating):
+                s = abs(x.ravel())
+                s *= s
+                ret = cupy.sqrt(s.sum())
+            else:
+                ret = cupy.sqrt((x.ravel() ** 2).sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
@@ -70,14 +75,27 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = x ** 2
+            if issubclass(x.dtype.type, numpy.complexfloating):
+                s = abs(x)
+                s *= s
+            else:
+                s = x ** 2
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
                 float(ord)
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
-            absx = abs(x).astype('d')
+
+            # Mirror Numpy behavior of casting to double for non-complex
+            # dtypes, and to float32 or float64 for complex dtypes and
+            # no reduction over all axes.
+            cast_dtype = 'd'
+            if issubclass(x.dtype.type, numpy.complexfloating):
+                if keepdims or tuple(sorted(axis)) != tuple(range(nd)):
+                    cast_dtype = x.dtype.char.lower()  # 'D'->'d' and 'F'->'f'
+
+            absx = abs(x).astype(cast_dtype)
             absx **= ord
             ret = absx.sum(axis=axis, keepdims=keepdims)
             ret **= (1.0 / ord)
@@ -110,7 +128,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            ret = cupy.sqrt((x ** 2).sum(axis=axis))
+            if issubclass(x.dtype.type, numpy.complexfloating):
+                s = abs(x)
+                s *= s
+                ret = cupy.sqrt(s.sum(axis=axis))
+            else:
+                ret = cupy.sqrt((x ** 2).sum(axis=axis))
         else:
             raise ValueError("Invalid norm order for matrices.")
         if keepdims:
