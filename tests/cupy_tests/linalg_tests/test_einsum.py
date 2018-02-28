@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -272,3 +273,77 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype)
         c = testing.shaped_arange(self.shape_c, xp, dtype)
         return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
+
+
+@testing.parameterize(
+    # memory constraint
+    {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
+    {'subscript': 'acdf,jbje,gihb,hfac', 'opt': ('greedy', 0)},
+    # long paths
+    {'subscript': 'acdf,jbje,gihb,hfac,gfac,gifabc,hfac', 'opt': True},
+    {'subscript': 'chd,bde,agbc,hiad,bdi,cgh,agdb', 'opt': True},
+    # edge cases
+    {'subscript': 'eb,cb,fb->cef', 'opt': True},
+    {'subscript': 'dd,fb,be,cdb->cef', 'opt': True},
+    {'subscript': 'bca,cdb,dbf,afc->', 'opt': True},
+    {'subscript': 'dcc,fce,ea,dbf->ab', 'opt': True},
+    {'subscript': 'a,ac,ab,ad,cd,bd,bc->', 'opt': True},
+)
+@testing.with_requires('numpy==1.12')
+class TestEinSumPath(unittest.TestCase):
+
+    chars = 'abcdefghij'
+    sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
+    global_size_dict = {}
+    for size, char in zip(sizes, chars):
+        global_size_dict[char] = size
+
+    def build_operands(self, string, size_dict=global_size_dict):
+        # Builds views based off initial operands
+        operands = [string]
+        terms = string.split('->')[0].split(',')
+        for term in terms:
+            dims = [size_dict[x] for x in term]
+            operands.append(numpy.random.rand(*dims))
+
+        return operands
+
+    @testing.numpy_cupy_equal()
+    def test_einsum_path(self, xp):
+        outer_test = self.build_operands(self.subscript)
+        if xp is numpy:
+            return numpy.einsum_path(*outer_test, optimize=self.opt,
+                                     einsum_call=True)[1]
+        else:
+            return cupy.linalg.einsum.einsum_path(*outer_test,
+                                                  optimize=self.opt,
+                                                  einsum_call=True)[1]
+
+
+@testing.parameterize(
+    {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
+     'subscript': 'a...,...b,c...->abc...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
+     'subscript': 'a...,...,c...->ac...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (4, 3), 'shape_c': (2, 3, 4),
+     'subscript': 'a...,...b,c...->abc...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
+     'subscript': 'a...,...,c...->ac...'},
+)
+@testing.with_requires('numpy==1.12')
+class TestEinSumPathEllipsis(unittest.TestCase):
+
+    @testing.numpy_cupy_equal()
+    def test_einsum_path_ellipsis(self, xp):
+        a = testing.shaped_arange(self.shape_a, xp, dtype=numpy.float32)
+        b = testing.shaped_arange(self.shape_b, xp, dtype=numpy.float32)
+        c = testing.shaped_arange(self.shape_c, xp, dtype=numpy.float32)
+        # Check path only
+        if xp is numpy:
+            return numpy.einsum_path(self.subscript, a, b, c, optimize=True,
+                                     einsum_call=True)[1][0][:2]
+        else:
+            return cupy.linalg.einsum.einsum_path(self.subscript, a, b, c,
+                                                  optimize=True,
+                                                  einsum_call=True)[1][0][:2]
+
