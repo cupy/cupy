@@ -1,3 +1,15 @@
+branches:
+  # As AppVeyor test is slow, we only run AppVeyor against development and
+  # stable branches.
+  # To disable AppVeyor against Pull-Requests, disable Pull-Request event
+  # in web-hook configuration of GitHub settings.
+  only:
+    - master
+    - v2
+
+image:
+  - Visual Studio 2015
+
 environment:
   global:
     # SDK v7.0 MSVC Express 2008's SetEnv.cmd script will fail if the
@@ -11,28 +23,8 @@ environment:
     # a later point release.
     # See: https://www.appveyor.com/docs/installed-software#python
 
-    - PYTHON: "C:\\Miniconda"
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Miniconda-x64"
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "64"
-
-#    - PYTHON: "C:\\Miniconda3"
-#      PYTHON_VERSION: "3.4.x"
-#      PYTHON_ARCH: "32"
-
-#    - PYTHON: "C:\\Miniconda3-x64"
-#      PYTHON_VERSION: "3.4.x"
-#      PYTHON_ARCH: "64"
-
-    - PYTHON: "C:\\Miniconda35"
-      PYTHON_VERSION: "3.5.x"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Miniconda35-x64"
-      PYTHON_VERSION: "3.5.x"
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "64"
 
 install:
@@ -46,6 +38,12 @@ install:
   # not already installed.
   - ps: if (-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
 
+  # Install CUDA & cuDNN.
+  - ps: appveyor\install-cuda.ps1
+  - "SET CUDA_PATH=%ProgramFiles%\\NVIDIA GPU Computing Toolkit\\CUDA\\v9.1"
+  - "SET NVTOOLSEXT_PATH=%ProgramFiles%\\NVIDIA Corporation\\NvToolsExt"
+  - "SET PATH=%CUDA_PATH%\\bin;%NVTOOLSEXT_PATH%\\bin\\x64;%PATH%"
+
   # Prepend newly installed Python to the PATH of this build (this cannot be
   # done from inside the powershell script as it would require to restart
   # the parent CMD process).
@@ -55,18 +53,20 @@ install:
   - "python --version"
   - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
 
-  - "conda install -y -q setuptools"
-  - "conda install -y -q h5py"
+  - "python -m pip install -U pip"
+  - "pip install -U setuptools"
+  - "pip install -U Cython"
 
 build_script:
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build install -vvvv"
 
 test_script:
-  # Run the project tests
-  - "%CMD_IN_ENV% pip install -U -e .[appveyor]"
-  - "flake8"
-  # Avoid interuption confirmation of cmd.exe
-  - "echo SET CHAINER_TEST_GPU_LIMIT=0 > tmp.bat"
-  - "echo python -m pytest --timeout=60 -m \"not cudnn and not ideep and not slow\" tests >> tmp.bat"
-  - "call tmp.bat < nul"
+  # Installation test
+  - "%CMD_IN_ENV% pip install -U -e ."
+  # Import test
+  #- python -c "import cupy"
+  #- python -c "import cupy.cuda.nvtx"
+  #- python -c "import cupy.cuda.cudnn"
+  #- python -c "import cupy.cuda.cusolver"
+  #- python -c "import cupy.cuda.thrust"
