@@ -226,10 +226,7 @@ def check_cuda_version(compiler, settings):
 
 
 def _format_cuda_version(version):
-    major = version // 1000
-    minor = (version % 1000) // 100
-    patch = version % 100
-    return '{}.{}.{}'.format(major, minor, patch)
+    return str(version)
 
 
 def get_cuda_version(formatted=False):
