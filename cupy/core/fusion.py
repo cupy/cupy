@@ -228,6 +228,13 @@ class _FusionRef(object):
     def __bool__(self):
         raise Exception("Can't cast to bool")
 
+    def __setitem__(self, slices, value):
+        if slices is Ellipsis or (isinstance(slices, slice) and
+                                  slices == slice(None)):
+            copy(value, self)
+        else:
+            raise ValueError('The fusion supports `[...]` or `[:]`.')
+
     def copy(self):
         return copy(self)
 
