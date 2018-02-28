@@ -275,6 +275,13 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
 
 
+def xp_einsum_path(xp, *args, **kwargs):
+    if xp is numpy:
+        return numpy.einsum_path(*args, **kwargs)
+    else:
+        return cupy.linalg.einsum.einsum_path(*args, **kwargs)
+
+
 @testing.parameterize(
     # memory constraint
     {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
@@ -311,14 +318,8 @@ class TestEinSumPath(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_einsum_path(self, xp):
         outer_test = self.build_operands(self.subscript)
-        if xp is numpy:
-            return numpy.einsum_path(*outer_test, optimize=self.opt,
-                                     einsum_call=True)[1]
-        else:
-            return cupy.linalg.einsum.einsum_path(*outer_test,
-                                                  optimize=self.opt,
-                                                  einsum_call=True)[1]
-
+        return xp_einsum_path(xp, *outer_test, optimize=self.opt,
+                              einsum_call=True)[1]
 
 @testing.parameterize(
     {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
@@ -339,11 +340,6 @@ class TestEinSumPathEllipsis(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype=numpy.float32)
         c = testing.shaped_arange(self.shape_c, xp, dtype=numpy.float32)
         # Check path only
-        if xp is numpy:
-            return numpy.einsum_path(self.subscript, a, b, c, optimize=True,
-                                     einsum_call=True)[1][0][:2]
-        else:
-            return cupy.linalg.einsum.einsum_path(self.subscript, a, b, c,
-                                                  optimize=True,
-                                                  einsum_call=True)[1][0][:2]
+        return xp_einsum_path(xp, self.subscript, a, b, c, optimize=True,
+                              einsum_call=True)[1][0][:2]
 

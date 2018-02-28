@@ -459,7 +459,7 @@ def einsum_path(*operands, **kwargs):
 
     """
     # Make sure all keywords are valid
-    valid_contract_kwargs = ['optimize']
+    valid_contract_kwargs = ['optimize', 'einsum_call']
     unknown_kwargs = set(kwargs.keys()).difference(valid_contract_kwargs)
     if unknown_kwargs:
         raise TypeError('Did not understand the following kwargs:'
