@@ -154,7 +154,7 @@ Note that we are using pytest and mock package for testing, so install them befo
 
 In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
-  $ pip install .
+  $ pip install -e .
 
 .. note::
 
