@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 import tempfile
+import warnings
 
 import six
 
@@ -230,6 +231,9 @@ class _NVRTCProgram(object):
             return nvrtc.getPTX(self.ptr)
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
+            warnings.warn('Has the CUDA toolkit been installed? '
+                          'Install details are available at '
+                          'https://developer.nvidia.com/cuda-downloads')
             raise CompileException(log, self.src, self.name, options)
 
 
