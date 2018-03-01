@@ -586,12 +586,33 @@ class TestGetRandomState(unittest.TestCase):
 
 
 @testing.gpu
-class TestGetRandomStateThreadSafe(unittest.TestCase):
+class TestSetRandomState(unittest.TestCase):
+
+    def setUp(self):
+        self.rs_tmp = generator._random_states
+
+    def tearDown(self, *args):
+        generator._random_states = self.rs_tmp
+
+    def test_set_random_state(self):
+        rs = generator.RandomState()
+        generator.set_random_state(rs)
+        assert generator.get_random_state() is rs
+
+    def test_set_random_state_call_multiple_times(self):
+        generator.set_random_state(generator.RandomState())
+        rs = generator.RandomState()
+        generator.set_random_state(rs)
+        assert generator.get_random_state() is rs
+
+
+@testing.gpu
+class TestRandomStateThreadSafe(unittest.TestCase):
 
     def setUp(self):
         cupy.random.reset_states()
 
-    def test_thread_safe(self):
+    def test_get_random_state_thread_safe(self):
         seed = 10
         threads = [
             threading.Thread(target=lambda: cupy.random.seed(seed)),
@@ -612,6 +633,20 @@ class TestGetRandomStateThreadSafe(unittest.TestCase):
         cupy.random.seed(seed)
         expected = cupy.random.uniform()
         self.assertEqual(actual, expected)
+
+    def test_set_random_state_thread_safe(self):
+        rs = cupy.random.RandomState()
+        threads = [
+            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
+            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert cupy.random.get_random_state() is rs
 
 
 @testing.gpu
