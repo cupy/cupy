@@ -168,7 +168,7 @@ cpdef _create_convolution_descriptor(
         if groups > 1:
             cudnn.setConvolutionGroupCount(desc, groups)
     elif groups > 1:
-        raise ValueError('group must be one when cuDNN < 7.0')
+        raise ValueError('groups must be one when cuDNN < 7.0')
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
@@ -539,7 +539,7 @@ cpdef bint _should_use_tensor_core(
 
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int group,
+        tuple pad, tuple stride, tuple dilation, int groups,
         size_t max_workspace_size, bint auto_tune, str tensor_core):
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
@@ -576,7 +576,7 @@ def convolution_forward(
         _create_tensor_nd_descriptor(y_desc, y, -1)
         _create_filter_descriptor(filter_desc, W, cudnn.CUDNN_TENSOR_NCHW)
         _create_convolution_descriptor(
-            conv_desc, pad, stride, dilation, group, x.dtype,
+            conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
         workspace_size = max_workspace_size
@@ -622,7 +622,7 @@ def convolution_forward(
 
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
-        tuple pad, tuple stride, tuple dilation, int group,
+        tuple pad, tuple stride, tuple dilation, int groups,
         size_t max_workspace_size, bint deterministic, bint auto_tune,
         str tensor_core):
     cdef int dev_id = x.data.device.id
@@ -659,7 +659,7 @@ def convolution_backward_filter(
         _create_tensor_nd_descriptor(gy_desc, gy, -1)
         _create_filter_descriptor(filter_desc, gW, cudnn.CUDNN_TENSOR_NCHW)
         _create_convolution_descriptor(
-            conv_desc, pad, stride, dilation, group, x.dtype,
+            conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
         workspace_size = max_workspace_size
@@ -696,7 +696,7 @@ def convolution_backward_filter(
 
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int group,
+        tuple pad, tuple stride, tuple dilation, int groups,
         size_t max_workspace_size, bint deterministic, bint auto_tune,
         str tensor_core):
     cdef int dev_id = W.data.device.id
@@ -734,7 +734,7 @@ def convolution_backward_data(
         _create_tensor_nd_descriptor(y_desc, y, -1)
         _create_filter_descriptor(filter_desc, W, cudnn.CUDNN_TENSOR_NCHW)
         _create_convolution_descriptor(
-            conv_desc, pad, stride, dilation, group, x.dtype,
+            conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
         workspace_size = max_workspace_size
