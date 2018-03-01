@@ -1,0 +1,11 @@
+comment: false
+
+coverage:
+  status:
+    # Disable coverage measurement for overall codebase.
+    project: off
+    # Enable coverage measurement for diff introduced in the pull-request,
+    # but do not mark "X" on commit status for now.
+    patch:
+      default:
+        target: '0%'
