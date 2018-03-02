@@ -803,8 +803,17 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.transpose(axes=0)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eliminate_zeros(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.eliminate_zeros()
+        return m.toarray()
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    @unittest.skipUnless(
+        cupy.cuda.runtime.runtimeGetVersion() < 8000,
+        'CUDA <8 cannot keep number of non-zero entries ')
+    def test_eliminate_zeros_nnz(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
         return m.nnz

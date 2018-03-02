@@ -151,6 +151,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             coo = self.tocoo()
             coo.eliminate_zeros()
+            # Because tocsr sums duplicated entries, it cannot keep nnz
             compress = coo.tocsr()
         self.data = compress.data
         self.indices = compress.indices
