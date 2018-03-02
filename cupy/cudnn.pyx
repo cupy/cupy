@@ -114,7 +114,7 @@ cpdef _create_filter_descriptor(
 
 
 cpdef _create_convolution_descriptor(
-        desc, pad, stride, dtype, mode, dilation, int group,
+        desc, pad, stride, dtype, mode, dilation, int groups,
         bint use_tensor_core):
     cdef int d0, d1, p0, p1, s0, s1
     cdef vector.vector[int] c_pad, c_stride, c_dilation
@@ -149,8 +149,8 @@ cpdef _create_convolution_descriptor(
             if use_tensor_core:
                 math_type = cudnn.CUDNN_TENSOR_OP_MATH
                 cudnn.setConvolutionMathType(desc, math_type)
-            if group > 1:
-                cudnn.setConvolutionGroupCount(desc, group)
+            if groups > 1:
+                cudnn.setConvolutionGroupCount(desc, groups)
     else:
         cudnn.setConvolution2dDescriptor_v4(desc, p0, p1, s0, s1, 1, 1, mode)
 
@@ -203,11 +203,12 @@ def create_convolution_descriptor(pad, stride, dtype,
                                   mode=cudnn.CUDNN_CROSS_CORRELATION,
                                   dilation=(1, 1),
                                   use_tensor_core=False,
-                                  group=1):
+                                  groups=1):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       py_cudnn.destroyConvolutionDescriptor)
     _create_convolution_descriptor(
-        desc.value, pad, stride, dtype, mode, dilation, group, use_tensor_core)
+        desc.value, pad, stride, dtype, mode, dilation, groups,
+        use_tensor_core)
     return desc
 
 
