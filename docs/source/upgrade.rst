@@ -75,6 +75,14 @@ Please use :func:`cupy.cuda.Stream.use` instead.
 
 See the discussion in `#306 <https://github.com/cupy/cupy/pull/306>`_ for more details.
 
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 8.0 and cuDNN 6.0.
+This change was introduced because CUDA 7.5 does not support NVIDIA Pascal GPUs.
+
+To use these images, you may need to upgrade the NVIDIA driver on your host.
+See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
 
 CuPy v2
 =======
