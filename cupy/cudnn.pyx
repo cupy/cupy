@@ -49,6 +49,34 @@ cpdef dict _get_nd_tensor_cache():
     return _thread_local.cudnn_nd_tensor_cache
 
 
+cdef size_t _max_workspace_size = 8 * 1024 * 1024
+
+
+cpdef get_max_workspace_size():
+    """Gets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Returns:
+        int: The workspace size for cuDNN.
+
+    """
+    return _max_workspace_size
+
+
+cpdef set_max_workspace_size(size):
+    """Sets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Args:
+        size: The workspace size for cuDNN.
+
+    """
+    global _max_workspace_size
+    _max_workspace_size = size
+
+
 class Descriptor(object):
 
     def __init__(self, descriptor, destroyer):
