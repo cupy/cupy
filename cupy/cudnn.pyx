@@ -52,7 +52,7 @@ cpdef dict _get_nd_tensor_cache():
 cdef size_t _max_workspace_size = 8 * 1024 * 1024
 
 
-cpdef get_max_workspace_size():
+cpdef size_t get_max_workspace_size():
     """Gets the workspace size for cuDNN.
 
     Check "cuDNN Library User Guide" for detail.
@@ -251,7 +251,8 @@ def create_convolution_descriptor(pad, stride, dtype,
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       py_cudnn.destroyConvolutionDescriptor)
     _create_convolution_descriptor(
-        desc.value, pad, stride, dilation, groups, dtype, mode, use_tensor_core)
+        desc.value, pad, stride, dilation, groups,
+        dtype, mode, use_tensor_core)
     return desc
 
 
@@ -567,8 +568,9 @@ cpdef bint _should_use_tensor_core(
 
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int groups,
-        size_t max_workspace_size, bint auto_tune, str tensor_core):
+        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        bint auto_tune, str tensor_core):
+    assert len(args) == 0
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
     assert dev_id == y.data.device.id
@@ -586,6 +588,14 @@ def convolution_forward(
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
     cdef tuple conv_param = (pad, stride, x.dtype)
 
+    # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
+    # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
+    if use_tensor_core:
+        for i in dilation:
+            if i > 1:
+                use_tensor_core = False
+                break
+
     handle = get_handle()
     x = core.ascontiguousarray(x)
     W = core.ascontiguousarray(W)
@@ -598,6 +608,7 @@ def convolution_forward(
     cdef size_t conv_desc = cudnn.createConvolutionDescriptor()
 
     cdef int algo
+    cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size
     try:
         _create_tensor_nd_descriptor(x_desc, x, -1)
@@ -650,9 +661,9 @@ def convolution_forward(
 
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
-        tuple pad, tuple stride, tuple dilation, int groups,
-        size_t max_workspace_size, bint deterministic, bint auto_tune,
-        str tensor_core):
+        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        bint deterministic, bint auto_tune, str tensor_core):
+    assert len(args) == 0
     cdef int dev_id = x.data.device.id
     assert dev_id == gy.data.device.id
     assert dev_id == gW.data.device.id
@@ -681,6 +692,7 @@ def convolution_backward_filter(
     cdef size_t conv_desc = cudnn.createConvolutionDescriptor()
 
     cdef int algo
+    cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size
     try:
         _create_tensor_nd_descriptor(x_desc, x, -1)
@@ -724,9 +736,9 @@ def convolution_backward_filter(
 
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int groups,
-        size_t max_workspace_size, bint deterministic, bint auto_tune,
-        str tensor_core):
+        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        bint deterministic, bint auto_tune, str tensor_core):
+    assert len(args) == 0
     cdef int dev_id = W.data.device.id
     assert dev_id == x.data.device.id
     assert dev_id == y.data.device.id
@@ -744,6 +756,14 @@ def convolution_backward_data(
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
     cdef tuple conv_param = (pad, stride, x.dtype)
 
+    # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
+    # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
+    if use_tensor_core:
+        for i in dilation:
+            if i > 1:
+                use_tensor_core = False
+                break
+
     handle = get_handle()
     x = core.ascontiguousarray(x)
     W = core.ascontiguousarray(W)
@@ -756,6 +776,7 @@ def convolution_backward_data(
     cdef size_t conv_desc = cudnn.createConvolutionDescriptor()
 
     cdef int algo
+    cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size
     try:
         _create_tensor_nd_descriptor(x_desc, x, -1)

@@ -121,7 +121,7 @@ class TestCudnnDropout(unittest.TestCase):
     'tensor_core': ['always', 'auto', 'never'],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'dilate': [1, 2],
-    'group': [1, 2],
+    'groups': [1, 2],
     'ndim': [2],
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
@@ -135,8 +135,8 @@ class TestConvolutionForward(unittest.TestCase):
         batches = 2
         in_channels_a_group = 3
         out_channels_a_group = 2
-        in_channels = in_channels_a_group * self.group
-        out_channels = out_channels_a_group * self.group
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -156,29 +156,36 @@ class TestConvolutionForward(unittest.TestCase):
         version = libcudnn.getVersion()
         self.err = None
         if ((self.dilate > 1 and version < 6000) or
-                (self.group > 1 and version < 7000)):
+                (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif ndim > 2 and self.dilate > 1:
             self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_forward(
+            self.x, self.W, self.b, self.y,
+            self.pads, self.strides, self.dilations, self.groups,
+            auto_tune=self.auto_tune, tensor_core=self.tensor_core)
 
     def test_call(self):
-        args = (self.x, self.W, self.b, self.y,
-                self.pads, self.strides, self.dilations,
-                self.group, self.max_workspace_size, self.auto_tune,
-                self.tensor_core)
         if self.err is None:
-            cudnn.convolution_forward(*args)
+            self.call()
             self.assertTrue((self.y == 0).all())
         else:
             with self.assertRaises(self.err):
-                cudnn.convolution_forward(*args)
+                self.call()
 
 
 @testing.parameterize(*(testing.product({
     'tensor_core': ['always', 'auto', 'never'],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'dilate': [1, 2],
-    'group': [1, 2],
+    'groups': [1, 2],
     'ndim': [2, 3],
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
@@ -192,8 +199,8 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         batches = 2
         in_channels_a_group = 3
         out_channels_a_group = 2
-        in_channels = in_channels_a_group * self.group
-        out_channels = out_channels_a_group * self.group
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -211,31 +218,40 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         deterministic = self.deterministic
         self.err = None
         if ((self.dilate > 1 and version < 6000) or
-                (self.group > 1 and version < 7000)):
+                (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif ((self.dilate > 1 and deterministic and version < 7000) or
                 (ndim > 2 and deterministic and version < 6000) or
                 (ndim > 2 and deterministic and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_backward_filter(
+            self.x, self.gy, self.gW,
+            self.pads, self.strides, self.dilations, self.groups,
+            deterministic=self.deterministic,
+            auto_tune=self.auto_tune,
+            tensor_core=self.tensor_core)
 
     def test_call(self):
-        args = (self.x, self.gy, self.gW,
-                self.pads, self.strides, self.dilations,
-                self.group, self.max_workspace_size, self.deterministic,
-                self.auto_tune, self.tensor_core)
         if self.err is None:
-            cudnn.convolution_backward_filter(*args)
+            self.call()
             self.assertTrue((self.gW == 0).all())
         else:
             with self.assertRaises(self.err):
-                cudnn.convolution_backward_filter(*args)
+                self.call()
 
 
 @testing.parameterize(*(testing.product({
     'tensor_core': ['always', 'auto', 'never'],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'dilate': [1, 2],
-    'group': [1, 2],
+    'groups': [1, 2],
     'ndim': [2, 3],
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
@@ -250,8 +266,8 @@ class TestConvolutionBackwardData(unittest.TestCase):
         batches = 2
         in_channels_a_group = 3
         out_channels_a_group = 2
-        in_channels = in_channels_a_group * self.group
-        out_channels = out_channels_a_group * self.group
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -272,21 +288,30 @@ class TestConvolutionBackwardData(unittest.TestCase):
         deterministic = self.deterministic
         self.err = None
         if ((self.dilate > 1 and version < 6000) or
-                (self.group > 1 and version < 7000)):
+                (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif deterministic and (self.dilate > 1 or
                                 (ndim > 2 and 5000 <= version < 6000) or
                                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_backward_data(
+            self.W, self.gy, self.b, self.gx,
+            self.pads, self.strides, self.dilations, self.groups,
+            deterministic=self.deterministic,
+            auto_tune=self.auto_tune,
+            tensor_core=self.tensor_core)
 
     def test_call(self):
-        args = (self.W, self.gy, self.b, self.gx,
-                self.pads, self.strides, self.dilations,
-                self.group, self.max_workspace_size, self.deterministic,
-                self.auto_tune, self.tensor_core)
         if self.err is None:
-            cudnn.convolution_backward_data(*args)
+            self.call()
             self.assertTrue((self.gx == 0).all())
         else:
             with self.assertRaises(self.err):
-                cudnn.convolution_backward_data(*args)
+                self.call()
