@@ -1,8 +1,6 @@
 from cupy.random import generator
 import six
 
-# TODO(okuta): Implement permutation
-
 
 def shuffle(a):
     """Shuffles an array.
