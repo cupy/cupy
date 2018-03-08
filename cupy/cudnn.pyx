@@ -553,14 +553,14 @@ cpdef tuple _get_algorithm_bwd_data(
 
 
 cpdef bint _should_use_tensor_core(
-        str tensor_code_mode, object dtype) except *:
-    if tensor_code_mode == 'auto':
-        use_tensor_core = is_tensor_core_available(dtype)
-    elif tensor_code_mode == 'always':
+        str tensor_core_mode, object dtype) except *:
+    if tensor_core_mode == 'auto':
+        return is_tensor_core_available(dtype)
+    elif tensor_core_mode == 'always':
         # TODO(oktua): more strict condition
-        use_tensor_core = _cudnn_version >= 7000
-    elif tensor_code_mode == 'never':
-        use_tensor_core = False
+        return is_tensor_core_available(dtype)
+    elif tensor_core_mode == 'never':
+        return False
     else:
         raise ValueError(
             'tensor_code_mode must be either of "always", "auto", or "never".')
@@ -568,9 +568,8 @@ cpdef bint _should_use_tensor_core(
 
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        tuple pad, tuple stride, tuple dilation, int groups, *,
         bint auto_tune, str tensor_core):
-    assert len(args) == 0
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
     assert dev_id == y.data.device.id
@@ -618,7 +617,6 @@ def convolution_forward(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        workspace_size = max_workspace_size
         if use_tensor_core:
             # Only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
             # supports Tensor-Core in cuDNN7.
@@ -635,6 +633,8 @@ def convolution_forward(
                 handle, x_desc, filter_desc, conv_desc, y_desc,
                 cudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
                 max_workspace_size)
+            workspace_size = max_workspace_size
+
         # TODO(okuta): allocate best size memory
         workspace = memory.alloc(max_workspace_size)
 
@@ -643,14 +643,13 @@ def convolution_forward(
             conv_desc, algo, workspace.ptr, workspace_size, zero, y_desc,
             y.data.ptr)
 
-        if b is None:
-            return
-        assert dev_id == b.data.device.id
-        ndim = x.ndim - 2
-        b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
-        _create_tensor_nd_descriptor(b_desc, b, -1)
-        cudnn.addTensor_v3(handle, one, b_desc,
-                           b.data.ptr, one, y_desc, y.data.ptr)
+        if b is not None:
+            assert dev_id == b.data.device.id
+            ndim = x.ndim - 2
+            b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
+            _create_tensor_nd_descriptor(b_desc, b, -1)
+            cudnn.addTensor_v3(handle, one, b_desc,
+                               b.data.ptr, one, y_desc, y.data.ptr)
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(y_desc)
@@ -661,9 +660,8 @@ def convolution_forward(
 
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
-        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        tuple pad, tuple stride, tuple dilation, int groups, *,
         bint deterministic, bint auto_tune, str tensor_core):
-    assert len(args) == 0
     cdef int dev_id = x.data.device.id
     assert dev_id == gy.data.device.id
     assert dev_id == gW.data.device.id
@@ -702,7 +700,6 @@ def convolution_backward_filter(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        workspace_size = max_workspace_size
         if deterministic or use_tensor_core:
             # Only CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 supports
             # Tensor-Core in cuDNN7.
@@ -720,6 +717,7 @@ def convolution_backward_filter(
                 handle, x_desc, gy_desc, conv_desc, filter_desc,
                 cudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
                 max_workspace_size)
+            workspace_size = max_workspace_size
         # TODO(okuta): allocate best size memory
         workspace = memory.alloc(max_workspace_size)
 
@@ -736,9 +734,8 @@ def convolution_backward_filter(
 
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
-        tuple pad, tuple stride, tuple dilation, int groups, *args,
+        tuple pad, tuple stride, tuple dilation, int groups, *,
         bint deterministic, bint auto_tune, str tensor_core):
-    assert len(args) == 0
     cdef int dev_id = W.data.device.id
     assert dev_id == x.data.device.id
     assert dev_id == y.data.device.id
@@ -786,7 +783,6 @@ def convolution_backward_data(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        workspace_size = max_workspace_size
         if deterministic or use_tensor_core:
             # Only CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 supports
             # Tensor-Core in cuDNN7
@@ -804,6 +800,8 @@ def convolution_backward_data(
                 handle, filter_desc, x_desc, conv_desc, y_desc,
                 cudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
                 max_workspace_size)
+            workspace_size = max_workspace_size
+
         # TODO(okuta): allocate best size memory
         workspace = memory.alloc(max_workspace_size)
 
@@ -812,14 +810,13 @@ def convolution_backward_data(
             conv_desc, algo, workspace.ptr, workspace_size, zero, y_desc,
             y.data.ptr)
 
-        if b is None:
-            return
-        assert dev_id == b.data.device.id
-        ndim = x.ndim - 2
-        b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
-        _create_tensor_nd_descriptor(b_desc, b, -1)
-        cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
-                           y.data.ptr)
+        if b is not None:
+            assert dev_id == b.data.device.id
+            ndim = x.ndim - 2
+            b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
+            _create_tensor_nd_descriptor(b_desc, b, -1)
+            cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
+                               y.data.ptr)
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(y_desc)
