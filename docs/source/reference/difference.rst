@@ -9,7 +9,7 @@ Cast behavior from float to integer
 -----------------------------------
 
 Some casting behaviors from float to integer are not defined in C++ specification.
-The casting from a negative float to unsigned integer and infinity to integer is one of such eamples.
+The casting from a negative float to unsigned integer and infinity to integer is one of such examples.
 The behavior of NumPy depends on your CPU architecture.
 This is Intel CPU result.
 
