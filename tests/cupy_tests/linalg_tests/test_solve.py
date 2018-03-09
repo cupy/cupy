@@ -46,6 +46,10 @@ class TestSolve(unittest.TestCase):
         self.check_shape((3, 3), (2,))
         self.check_shape((3, 3), (2, 2))
         self.check_shape((3, 3, 4), (3,))
+
+    @testing.with_requires('numpy>=1.10')
+    def test_invalid_shape2(self):
+        # numpy 1.9 does not raise an error for this type of inputs
         self.check_shape((2, 3, 3), (3,))
 
 
