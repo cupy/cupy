@@ -21,14 +21,13 @@ def solve(a, b):
     where ``a`` is a square and full rank matrix.
 
     Args:
-        a (cupy.ndarray): The matrix with dimension ``(M, M)``
-        b (cupy.ndarray): The vector with ``M`` elements, or
-            the matrix with dimension ``(M, K)``
+        a (cupy.ndarray): The matrix with dimension ``(..., M, M)``.
+        b (cupy.ndarray): The matrix with dimension ``(...,M)`` or
+            ``(..., M, K)``.
 
     Returns:
         cupy.ndarray:
-            The vector with ``M`` elements, or the matrix with dimension
-            ``(M, K)``.
+            The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
@@ -39,28 +38,38 @@ def solve(a, b):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     util._assert_cupy_array(a, b)
-    util._assert_rank2(a)
     util._assert_nd_squareness(a)
-    if 2 < b.ndim:
-        raise linalg.LinAlgError(
-            '{}-dimensional array given. Array must be '
-            'one or two-dimensional'.format(b.ndim))
-    if len(a) != len(b):
-        raise linalg.LinAlgError(
-            'The number of rows of array a must be '
-            'the same as that of array b')
+
+    if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
+            a.shape[:-1] == b.shape[:a.ndim - 1]):
+        raise ValueError(
+            'a must have (..., M, M) shape and b must have (..., M) '
+            'or (..., M, K)')
 
     # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype.char
+        dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
 
+    a = a.astype(dtype)
+    b = b.astype(dtype)
+    if a.ndim == 2:
+        return _solve(a, b)
+    x = cupy.empty_like(b)
+    shape = a.shape[:-2]
+    for i in six.moves.range(numpy.prod(shape)):
+        index = numpy.unravel_index(i, shape)
+        x[index] = _solve(a[index], b[index])
+    return x
+
+
+def _solve(a, b):
+    a = cupy.asfortranarray(a)
+    b = cupy.asfortranarray(b)
+    dtype = a.dtype
     m, k = (b.size, 1) if b.ndim == 1 else b.shape
-    a = a.transpose().astype(dtype, order='C', copy=True)
-    b = b.transpose().astype(dtype, order='C', copy=True)
     cusolver_handle = device.get_cusolver_handle()
     cublas_handle = device.get_cublas_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -95,7 +104,7 @@ def solve(a, b):
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
         m, k, 1, a.data.ptr, m, b.data.ptr, m)
-    return b.transpose()
+    return b
 
 
 def _check_status(dev_info):
