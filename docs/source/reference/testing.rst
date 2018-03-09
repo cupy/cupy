@@ -65,6 +65,7 @@ combination of dtype(s).
    cupy.testing.for_signed_dtypes
    cupy.testing.for_unsigned_dtypes
    cupy.testing.for_int_dtypes
+   cupy.testing.for_complex_dtypes
    cupy.testing.for_dtypes_combination
    cupy.testing.for_all_dtypes_combination
    cupy.testing.for_signed_dtypes_combination

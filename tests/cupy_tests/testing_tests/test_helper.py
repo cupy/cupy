@@ -313,3 +313,38 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
             return xp.array(-1, dtype=dtype1)
         else:
             return xp.array(-2, dtype=dtype1)
+
+
+@testing.parameterize(
+    {'xp': numpy},
+    {'xp': cupy},
+)
+@testing.gpu
+class TestShapedRandom(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    def test_shape_and_dtype(self, dtype):
+        a = testing.shaped_random((2, 3), self.xp, dtype)
+        self.assertTrue(a.shape == (2, 3))
+        self.assertTrue(a.dtype == dtype)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    def test_value_range(self, dtype):
+        a = testing.shaped_random((2, 3), self.xp, dtype)
+        self.assertTrue(self.xp.all(0 <= a))
+        self.assertTrue(self.xp.all(a < 10))
+
+    def test_bool(self):
+        a = testing.shaped_random(10000, self.xp, numpy.bool_)
+        self.assertTrue(4000 < self.xp.sum(a) < 6000)
+
+    @testing.for_complex_dtypes()
+    def test_complex(self, dtype):
+        a = testing.shaped_random((2, 3), self.xp, dtype)
+        self.assertTrue(self.xp.all(0 <= a.real))
+        self.assertTrue(self.xp.all(a.real < 10))
+        self.assertTrue(self.xp.all(0 <= a.imag))
+        self.assertTrue(self.xp.all(a.imag < 10))
+        self.assertTrue(self.xp.any(a.imag))

@@ -18,6 +18,7 @@ from cupy.testing.helper import assert_warns  # NOQA
 from cupy.testing.helper import for_all_dtypes  # NOQA
 from cupy.testing.helper import for_all_dtypes_combination  # NOQA
 from cupy.testing.helper import for_CF_orders  # NOQA
+from cupy.testing.helper import for_complex_dtypes  # NOQA
 from cupy.testing.helper import for_dtypes  # NOQA
 from cupy.testing.helper import for_dtypes_combination  # NOQA
 from cupy.testing.helper import for_float_dtypes  # NOQA

@@ -680,6 +680,20 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
+def for_complex_dtypes(name='dtype'):
+    """Decorator that checks the fixture with all complex dtypes.
+
+    Args:
+         name(str): Argument name to which specified dtypes are passed.
+
+    dtypes to be tested are ``numpy.complex64`` and ``numpy.complex128``.
+
+    .. seealso:: :func:`cupy.testing.for_dtypes`,
+        :func:`cupy.testing.for_all_dtypes`
+    """
+    return for_dtypes(_complex_dtypes, name=name)
+
+
 def for_dtypes_combination(types, names=('dtype',), full=None):
     """Decorator that checks the fixture with a product set of dtypes.
 
