@@ -810,7 +810,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.toarray()
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    @unittest.skipUnless(
+    @unittest.skipIf(
         cupy.cuda.runtime.runtimeGetVersion() < 8000,
         'CUDA <8 cannot keep number of non-zero entries ')
     def test_eliminate_zeros_nnz(self, xp, sp):
