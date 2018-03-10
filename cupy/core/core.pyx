@@ -4,6 +4,7 @@ from __future__ import division
 import sys
 
 import numpy
+cimport numpy as np
 import six
 
 import cupy
@@ -50,7 +51,7 @@ except AttributeError:
     _AxisError = IndexOrValueError
 
 
-cdef class ndarray:
+cdef class ndarray(np.ndarray):
 
     """Multi-dimensional array on a CUDA device.
 
