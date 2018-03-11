@@ -41,7 +41,7 @@ class TestTranspose(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.11')
-    def test_moveaxis5(self, xp):
+    def test_moveaxis6(self, xp):
         a = testing.shaped_arange((2, 3, 4, 5, 6), xp)
         return xp.moveaxis(a, [0, 2, 1], [3, 4, 0])
 
