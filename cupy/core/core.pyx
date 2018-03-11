@@ -2137,9 +2137,8 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
         if not _has_element(src, n):
             order.push_back(n)
 
-    for i in range(len(src)):
-        n = <Py_ssize_t>i
-        order.insert(order.begin() + dest[n], src[n])
+    for d, s in sorted(zip(dest, src)):
+        order.insert(order.begin() + <Py_ssize_t>d, <Py_ssize_t>s)
 
     return a.transpose(order)
 
