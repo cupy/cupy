@@ -83,6 +83,22 @@ class TestTranspose(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 2, 0])
 
+    # Use the same axis twice
+    def test_moveaxis_invalid5_1(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [1, -1], [1, 3])
+
+    def test_moveaxis_invalid5_2(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [0, 1], [-1, 2])
+
+    def test_moveaxis_invalid5_3(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [0, 1], [1, 1])
+
     @testing.numpy_cupy_array_equal()
     def test_rollaxis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
