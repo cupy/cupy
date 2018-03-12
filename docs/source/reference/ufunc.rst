@@ -148,4 +148,4 @@ ufunc.at
 --------
 
 Currently, CuPy does not support ``at`` for ufuncs in general.
-However, :func:`cupy.scatter_add` can substitute ``add.at`` as both behave identically.
+However, :func:`cupyx.scatter_add` can substitute ``add.at`` as both behave identically.
