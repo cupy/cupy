@@ -349,7 +349,8 @@ class TestCscMatrixInit(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'make_method': [
-        '_make', '_make_unordered', '_make_empty', '_make_shape'],
+        '_make', '_make_unordered', '_make_empty', '_make_duplicate',
+        '_make_shape'],
     'dtype': [numpy.float32, numpy.float64],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -755,8 +756,17 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.transpose(axes=0)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eliminate_zeros(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m.eliminate_zeros()
+        return m.toarray()
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    @unittest.skipIf(
+        cupy.cuda.runtime.runtimeGetVersion() < 8000,
+        'CUDA <8 cannot keep number of non-zero entries ')
+    def test_eliminate_zeros_nnz(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
         return m.nnz
