@@ -54,7 +54,7 @@ The latest version of each package will automatically be installed if missing.
 * `Six <https://pythonhosted.org/six/>`_ 1.9+
 
 In addition, you need to install `CUDA <https://developer.nvidia.com/cuda-zone>`_.
-The following versions of CUDA can be used: 7.0, 7.5, 8.0 and 9.0.
+The following versions of CUDA can be used: 7.0, 7.5, 8.0, 9.0 and 9.1.
 You need a GPU with Compute Capability of at least 3.0.
 
 Optional Libraries
@@ -93,6 +93,9 @@ Package names are different depending on the CUDA version you have installed on 
 
   (For CUDA 9.0)
   $ pip install cupy-cuda90
+
+  (For CUDA 9.1)
+  $ pip install cupy-cuda91
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
 These packages and ``cupy`` package conflict to each other.

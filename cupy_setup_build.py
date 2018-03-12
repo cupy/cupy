@@ -666,7 +666,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             try:
                 self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
             except errors.DistutilsExecError as e:
-                raise errors.CompileError(e.message)
+                raise errors.CompileError(str(e))
 
         return objects
 

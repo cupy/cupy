@@ -31,8 +31,8 @@ cpdef _get_simple_reduction_kernel(
 
       int _J_offset = _tid / _block_stride;
       int _j_offset = _J_offset * _out_ind.size();
-      int _J_stride = ${block_size};
-      long long _j_stride = ${block_size}LL * _out_ind.size();
+      int _J_stride = ${block_size} / _block_stride;
+      long long _j_stride = (long long)_J_stride * _out_ind.size();
 
       for (int _i_base = blockIdx.x * _block_stride;
            _i_base < _out_ind.size();

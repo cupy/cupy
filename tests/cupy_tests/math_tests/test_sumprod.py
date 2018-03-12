@@ -12,6 +12,11 @@ class TestSumprod(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    def tearDown(self):
+        # Free huge memory for slow test
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_sum_all(self, xp, dtype):
@@ -54,7 +59,7 @@ class TestSumprod(unittest.TestCase):
     def test_sum_axis_huge(self, xp):
         a = testing.shaped_random((2048, 1, 1024), xp, 'b')
         a = xp.broadcast_to(a, (2048, 1024, 1024))
-        return a.sum(axis=0)
+        return a.sum(axis=2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -240,10 +245,15 @@ class TestCumprod(unittest.TestCase):
     @testing.slow
     def test_cumprod_huge_array(self):
         size = 2 ** 32
+        # Free huge memory for slow test
+        cupy.get_default_memory_pool().free_all_blocks()
         a = cupy.ones(size, 'b')
         result = cupy.cumprod(a, dtype='b')
         del a
         self.assertTrue((result == 1).all())
+        # Free huge memory for slow test
+        del result
+        cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')

@@ -146,7 +146,6 @@ class coo_matrix(sparse_data._data_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
-        self.sum_duplicates()
         ind = self.data != 0
         self.data = self.data[ind]
         self.row = self.row[ind]

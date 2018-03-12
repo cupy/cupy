@@ -10,6 +10,7 @@ import cupy
 from cupy.core import flags
 from cupy.cuda import device
 from cupy.cuda import stream
+
 try:
     from cupy.cuda import thrust
 except ImportError:
@@ -1623,7 +1624,7 @@ cdef class ndarray:
 
         """
         if self.size == 0:
-            return numpy.ndarray(self.shape, dtype=self.dtype)
+            return numpy.ndarray(self._shape, dtype=self.dtype)
 
         with self.device:
             a_gpu = ascontiguousarray(self)
@@ -1746,9 +1747,6 @@ cdef class ndarray:
         return CArray(self)
 
 
-cdef object newaxis = numpy.newaxis  # == None
-
-
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
         ndarray a, vector.vector[Py_ssize_t] & newshape) except *:
     cdef vector.vector[Py_ssize_t] newstrides
@@ -1794,7 +1792,7 @@ include "reduction.pxi"
 # Routines
 # =============================================================================
 
-cdef _id = 'out0 = in0'
+cdef str _id = 'out0 = in0'
 
 elementwise_copy = create_ufunc(
     'cupy_copy',
@@ -1809,8 +1807,7 @@ elementwise_copy_where = create_ufunc(
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
     'if (in1) out0 = in0', default_casting='unsafe')
 
-
-cdef _divmod_float = '''
+cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
     out0 = a;
     out1 = in0 - a * in1'''
@@ -2249,7 +2246,7 @@ cdef class broadcast:
         cdef vector.vector[Py_ssize_t] shape, strides, r_shape, r_strides
         cdef vector.vector[vector.vector[Py_ssize_t]] shape_arr
         cdef ndarray a, view
-        rev = slice(None, None, -1)
+        cdef slice rev = slice(None, None, -1)
 
         self.nd = 0
         for x in arrays:
@@ -2492,7 +2489,7 @@ cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        elementwise_copy(a, ret[tuple(slice_list)])
+        elementwise_copy(a, _simple_getitem(ret, slice_list))
         i += aw
     return ret
 
@@ -2548,8 +2545,7 @@ cdef _concatenate_kernel_same_size = ElementwiseKernel(
 
 
 cdef _concatenate_kernel = ElementwiseKernel(
-    '''raw P x, int32 axis, raw int64 cum_sizes,
-    raw int64 x_strides''',
+    '''raw P x, int32 axis, raw int64 cum_sizes, raw int64 x_strides''',
     'T y',
     '''
     ptrdiff_t axis_ind = _ind.get()[axis];
@@ -3045,7 +3041,7 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
                 raise TypeError('Output dtype mismatch')
             if out.shape != a.shape[1:]:
                 raise ValueError('Output shape mismatch')
-            out[()] = a[indices]
+            elementwise_copy(a[indices], out)
             return out
     elif not isinstance(indices, ndarray):
         indices = array(indices, dtype=int)
@@ -3095,7 +3091,8 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
 
     if not isinstance(v, ndarray):
         v = array(v, dtype=a.dtype)
-    v = v.astype(a.dtype)
+    else:
+        v = v.astype(a.dtype, copy=False)
 
     a_shape = a.shape
     li %= ndim
@@ -3195,8 +3192,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
             if y.data.ptr == x.data.ptr:
                 return  # Skip since x and y are the same array
             elif y._c_contiguous and x.dtype == y.dtype:
-                y.data.copy_from_device_async(
-                    x.data, x.nbytes, cuda.Stream.null)
+                y.data.copy_from_device_async(x.data, x.nbytes)
                 return
         elementwise_copy(x, y)
         return
@@ -3209,8 +3205,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
-    if (axis1 >= ndim or abs(axis2) >= ndim or
-            axis1 < - ndim or axis2 < - ndim):
+    if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
         raise ValueError('axis1(={0}) and axis2(={1}) must be within range '
                          '(ndim={2})'.format(axis1, axis2, ndim))
 
@@ -4215,8 +4210,7 @@ cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
     if not isinstance(axis, tuple):
         axis = (axis,)
 
-    if dtype is None and issubclass(a.dtype.type,
-                                    (numpy.integer, numpy.bool_)):
+    if dtype is None and a.dtype.kind in 'biu':
         dtype = 'd'
 
     shape = a.shape
