@@ -503,7 +503,9 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
     out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
-    tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
+    tmpvars = mem.var_list[len(in_vars):]
+    if nout > 0:
+        tmpvars = tmpvars[:-nout]
 
     in_params = ', '.join(_get_params(in_vars[:nin]))
     out_params = ', '.join(_get_params(out_vars))

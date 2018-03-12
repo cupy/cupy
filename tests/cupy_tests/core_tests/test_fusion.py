@@ -1355,3 +1355,15 @@ class TestFusionKernelName(unittest.TestCase):
             return func_a1(a, b, c)
 
         return self.check(xp, func, 'abc', False)
+
+
+@testing.gpu
+class TestFusionInputNum(unittest.TestCase):
+
+    def test_no_result(self):
+        @cupy.fuse(input_num=0)
+        def f(x):
+            pass
+
+        f(testing.shaped_arange((1,), numpy, 'f'))
+        f(testing.shaped_arange((1,), cupy, 'f'))
