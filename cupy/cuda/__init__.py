@@ -2,6 +2,7 @@ import contextlib
 
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
+from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
@@ -15,10 +16,10 @@ from cupy.cuda import stream  # NOQA
 _available = None
 
 
-try:
+if driver.get_build_version() >= 8000:
     from cupy.cuda import cusolver  # NOQA
     cusolver_enabled = True
-except ImportError:
+else:
     cusolver_enabled = False
 
 try:
