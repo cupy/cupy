@@ -119,3 +119,12 @@ class TestCopytoFromScalar(unittest.TestCase):
         dst = xp.ones(self.dst_shape, dtype=dtype)
         xp.copyto(dst, self.src)
         return dst
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto_where(self, xp, dtype):
+        dst = xp.ones(self.dst_shape, dtype=dtype)
+        mask = (testing.shaped_arange(
+            self.dst_shape, xp, dtype) % 2).astype(xp.bool_)
+        xp.copyto(dst, self.src, where=mask)
+        return dst
