@@ -93,3 +93,46 @@ If you want to use scalar values, cast the returned arrays explicitly.
   True
   >>> type(cupy.sum(cupy.arange(3))) == cupy.core.core.ndarray
   True
+
+
+Data types
+----------
+
+Data type of CuPy arrays cannot be non-numeric like strings and objects.
+
+
+Array creation from Python objects
+----------------------------------
+
+Currently, an array cannot be created from Python object containing CuPy array.
+For example, you cannot convert a list of CuPy arrays into CuPy array by :func:`cupy.array` or :func:`cupy.asarray`.
+Use :func:`cupy.stack` instead.
+
+  >>> data_cpu = [np.arange(10), np.arange(10)]
+  >>> np.asarray(data_cpu)
+  array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+
+  >>> data_gpu = [cupy.arange(10), cupy.arange(10)]
+  >>> cupy.asarray(data_gpu)
+  Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+  ValueError: Unsupported dtype object
+  >>> cupy.stack(data_gpu)
+  array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+
+
+Universal Functions only work with CuPy array or scalar
+-------------------------------------------------------
+
+Unlike NumPy, Universal Functions in CuPy only work with CuPy array or scalar.
+They do not accept objects (e.g., lists or :class:`numpy.ndarray`).
+
+  >>> np.power([np.arange(5)], 2)
+  array([[ 0,  1,  4,  9, 16]])
+
+  >>> cupy.power([cupy.arange(5)], 2)
+  Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+  TypeError: Unsupported type <class 'list'>
