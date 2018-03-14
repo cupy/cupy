@@ -995,6 +995,8 @@ cpdef poolingBackward(
 # Batch Normalization
 ###############################################################################
 
+CUDNN_BN_MIN_EPSILON = 1e-5
+
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):
     status = cudnnDeriveBNTensorDescriptor(
