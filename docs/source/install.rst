@@ -85,17 +85,15 @@ Install CuPy from source
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The tarball of the source tree is available via ``pip download cupy`` or from `the release notes page <https://github.com/cupy/cupy/releases>`_.
-You can use ``setup.py`` to install CuPy from the tarball::
+You can install CuPy from the tarball::
 
-  $ tar zxf cupy-x.x.x.tar.gz
-  $ cd cupy-x.x.x
-  $ python setup.py install
+  $ pip install cupy-x.x.x.tar.gz
 
 You can also install the development version of CuPy from a cloned Git repository::
 
   $ git clone https://github.com/cupy/cupy.git
   $ cd cupy
-  $ python setup.py install
+  $ pip install .
 
 
 .. _install_error:
