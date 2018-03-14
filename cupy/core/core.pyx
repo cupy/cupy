@@ -2018,6 +2018,11 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
+        concat_shape = _discover_dimensions(obj)
+        if concat_shape is not None:
+            return concatenate_method(
+                _flatten_list(obj), 0).reshape(concat_shape)
+
         if order == 'K':
             order = 'A'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
@@ -2038,6 +2043,38 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         a.set(src_cpu, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
+
+
+cpdef tuple _discover_dimensions(obj):
+    # Returns a final shape if the object can be converted to a single CuPy
+    # array by just concatenating it (i.e., the object is a (nested) list or
+    # tuple only containing CuPy array(s)). Returns None otherwise.
+    if not isinstance(obj, (list, tuple)):
+        return None
+
+    shape = None
+    for elem in obj:
+        shape2 = (elem.shape if isinstance(elem, ndarray) else
+            _discover_dimensions(elem))
+
+        # Use shape of the first element as the common shape.
+        if shape is None:
+            shape = shape2
+
+        # `elem` is not concatable or the shape does not match with siblings.
+        if shape2 is None or shape != shape2:
+            return None
+
+    return (len(obj),) + shape
+
+
+cpdef list _flatten_list(obj):
+    flat_elems = []
+    if isinstance(obj, (list, tuple)):
+        for elem in obj:
+            flat_elems += _flatten_list(elem)
+        return flat_elems
+    return [obj]
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
