@@ -2055,7 +2055,7 @@ cpdef tuple _discover_dimensions(obj):
     shape = None
     for elem in obj:
         shape2 = (elem.shape if isinstance(elem, ndarray) else
-            _discover_dimensions(elem))
+                  _discover_dimensions(elem))
 
         # Use shape of the first element as the common shape.
         if shape is None:
