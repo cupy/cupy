@@ -185,7 +185,19 @@ cusolverStatus_t cusolverSpScsrlsvqr(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpScsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverSpDcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpScsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
