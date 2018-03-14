@@ -99,13 +99,13 @@ Data types
 ----------
 
 Data type of CuPy arrays cannot be non-numeric like strings and objects.
+See :ref:`overview` for details.
 
 
 Array creation from Python objects
 ----------------------------------
 
-Currently, an array cannot be created from Python object containing CuPy array.
-For example, you cannot convert a list of CuPy arrays into CuPy array by :func:`cupy.array` or :func:`cupy.asarray`.
+Currently, :func:`cupy.array` or :func:`cupy.asarray` cannot create an array from Python object containing CuPy array (e.g., a list of CuPy arrays).
 Use :func:`cupy.stack` instead.
 
   >>> data_cpu = [np.arange(10), np.arange(10)]
@@ -127,7 +127,7 @@ Universal Functions only work with CuPy array or scalar
 -------------------------------------------------------
 
 Unlike NumPy, Universal Functions in CuPy only work with CuPy array or scalar.
-They do not accept objects (e.g., lists or :class:`numpy.ndarray`).
+They do not accept other objects (e.g., lists or :class:`numpy.ndarray`).
 
   >>> np.power([np.arange(5)], 2)
   array([[ 0,  1,  4,  9, 16]])
