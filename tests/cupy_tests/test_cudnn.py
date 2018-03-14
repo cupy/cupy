@@ -17,7 +17,7 @@ try:
     if libcudnn.getVersion() >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
-    import cupy.cudnn
+    from cupy import cudnn
 except ImportError:
     cudnn_enabled = False
     modes = []
@@ -38,10 +38,10 @@ class TestCudnnActivation(unittest.TestCase):
         self.g = testing.shaped_arange((3, 4), cupy, self.dtype)
 
     def test_activation_forward(self):
-        cupy.cudnn.activation_forward(self.x, self.mode)
+        cudnn.activation_forward(self.x, self.mode)
 
     def test_activation_backward(self):
-        cupy.cudnn.activation_backward(self.x, self.y, self.g, self.mode)
+        cudnn.activation_backward(self.x, self.y, self.g, self.mode)
 
 
 @testing.parameterize(*testing.product({
@@ -60,11 +60,11 @@ class TestCudnnActivationCoef(unittest.TestCase):
         self.coef = self.dtype(0.75)
 
     def test_activation_forward(self):
-        cupy.cudnn.activation_forward(self.x, self.mode, self.coef)
+        cudnn.activation_forward(self.x, self.mode, self.coef)
 
     def test_activation_backward(self):
-        cupy.cudnn.activation_backward(self.x, self.y, self.g, self.mode,
-                                       self.coef)
+        cudnn.activation_backward(self.x, self.y, self.g, self.mode,
+                                  self.coef)
 
 
 @testing.parameterize(*testing.product({
@@ -80,22 +80,19 @@ class TestCudnnDropout(unittest.TestCase):
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.gy = testing.shaped_arange((3, 4), cupy, self.dtype)
-        self.states = cupy.cudnn.DropoutStates(
-            cupy.cudnn.get_handle(), self.seed)
+        self.states = cudnn.DropoutStates(cudnn.get_handle(), self.seed)
 
     def test_dropout_forward(self):
-        _, y = self.states.forward(
-            cupy.cudnn.get_handle(), self.x, self.ratio)
+        _, y = self.states.forward(cudnn.get_handle(), self.x, self.ratio)
         if self.ratio == 0:
             self.assertTrue(cupy.all(self.x == y))
         else:
             self.assertTrue(cupy.all(self.x != y))
 
     def test_dropout_backward(self):
-        rspace, y = self.states.forward(
-            cupy.cudnn.get_handle(), self.x, self.ratio)
+        rspace, y = self.states.forward(cudnn.get_handle(), self.x, self.ratio)
         gx = self.states.backward(
-            cupy.cudnn.get_handle(), self.gy, self.ratio, rspace)
+            cudnn.get_handle(), self.gy, self.ratio, rspace)
 
         forward_mask = y / self.x
         backward_mask = gx / self.gy
@@ -104,10 +101,10 @@ class TestCudnnDropout(unittest.TestCase):
         self.assertTrue(cupy.all(forward_mask == backward_mask))
 
     def test_dropout_seed(self):
-        handle = cupy.cudnn.get_handle()
+        handle = cudnn.get_handle()
 
         # initialize Dropoutstates with the same seed
-        states2 = cupy.cudnn.DropoutStates(handle, self.seed)
+        states2 = cudnn.DropoutStates(handle, self.seed)
 
         rspace, y = self.states.forward(handle, self.x, self.ratio)
         rspace2, y2 = states2.forward(handle, self.x, self.ratio)
@@ -118,3 +115,203 @@ class TestCudnnDropout(unittest.TestCase):
         gx2 = states2.backward(handle, self.gy, self.ratio, rspace2)
         # backward results must be the same
         self.assertTrue(cupy.all(gx == gx2))
+
+
+@testing.parameterize(*(testing.product({
+    'tensor_core': ['always', 'auto', 'never'],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'dilate': [1, 2],
+    'groups': [1, 2],
+    'ndim': [2],
+    'max_workspace_size': [0, 2 ** 22],
+    'auto_tune': [True, False],
+    'bias': [True, False],
+})))
+class TestConvolutionForward(unittest.TestCase):
+
+    def setUp(self):
+        ndim = self.ndim
+        dtype = self.dtype
+        batches = 2
+        in_channels_a_group = 3
+        out_channels_a_group = 2
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
+        ksize = 3
+        stride = 2
+        pad = ksize // stride * self.dilate
+        self.strides = (stride,) * ndim
+        self.pads = (pad,) * ndim
+        self.dilations = (self.dilate,) * ndim
+        self.x = cupy.zeros(
+            (batches, in_channels) + (ksize,) * ndim, dtype)
+        self.W = cupy.zeros(
+            (out_channels, in_channels_a_group) + (ksize,) * ndim, dtype)
+        self.b = None
+        if self.bias:
+            self.b = cupy.zeros((out_channels,), dtype)
+
+        self.y = cupy.ones((batches, out_channels) + (2,) * ndim, dtype)
+
+        version = libcudnn.getVersion()
+        self.err = None
+        if ((self.dilate > 1 and version < 6000) or
+                (self.groups > 1 and version < 7000)):
+            self.err = ValueError
+        elif ndim > 2 and self.dilate > 1:
+            self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_forward(
+            self.x, self.W, self.b, self.y,
+            self.pads, self.strides, self.dilations, self.groups,
+            auto_tune=self.auto_tune, tensor_core=self.tensor_core)
+
+    def test_call(self):
+        if self.err is None:
+            self.call()
+            self.assertTrue((self.y == 0).all())
+        else:
+            with self.assertRaises(self.err):
+                self.call()
+
+
+@testing.parameterize(*(testing.product({
+    'tensor_core': ['always', 'auto', 'never'],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'dilate': [1, 2],
+    'groups': [1, 2],
+    'ndim': [2, 3],
+    'max_workspace_size': [0, 2 ** 22],
+    'auto_tune': [True, False],
+    'deterministic': [True, False],
+})))
+class TestConvolutionBackwardFilter(unittest.TestCase):
+
+    def setUp(self):
+        ndim = self.ndim
+        dtype = self.dtype
+        batches = 2
+        in_channels_a_group = 3
+        out_channels_a_group = 2
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
+        ksize = 3
+        stride = 2
+        pad = ksize // stride * self.dilate
+        self.strides = (stride,) * ndim
+        self.pads = (pad,) * ndim
+        self.dilations = (self.dilate,) * ndim
+        self.x = cupy.zeros(
+            (batches, in_channels) + (ksize,) * ndim, dtype)
+        self.gy = cupy.zeros((batches, out_channels) + (2,) * ndim, dtype)
+
+        self.gW = cupy.ones(
+            (out_channels, in_channels_a_group) + (ksize,) * ndim, dtype)
+
+        version = libcudnn.getVersion()
+        deterministic = self.deterministic
+        self.err = None
+        if ((self.dilate > 1 and version < 6000) or
+                (self.groups > 1 and version < 7000)):
+            self.err = ValueError
+        elif ((self.dilate > 1 and deterministic and version < 7000) or
+                (ndim > 2 and deterministic and version < 6000) or
+                (ndim > 2 and deterministic and self.dtype == numpy.float64)):
+            self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_backward_filter(
+            self.x, self.gy, self.gW,
+            self.pads, self.strides, self.dilations, self.groups,
+            deterministic=self.deterministic,
+            auto_tune=self.auto_tune,
+            tensor_core=self.tensor_core)
+
+    def test_call(self):
+        if self.err is None:
+            self.call()
+            self.assertTrue((self.gW == 0).all())
+        else:
+            with self.assertRaises(self.err):
+                self.call()
+
+
+@testing.parameterize(*(testing.product({
+    'tensor_core': ['always', 'auto', 'never'],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'dilate': [1, 2],
+    'groups': [1, 2],
+    'ndim': [2, 3],
+    'max_workspace_size': [0, 2 ** 22],
+    'auto_tune': [True, False],
+    'deterministic': [True, False],
+    'bias': [True, False],
+})))
+class TestConvolutionBackwardData(unittest.TestCase):
+
+    def setUp(self):
+        ndim = self.ndim
+        dtype = self.dtype
+        batches = 2
+        in_channels_a_group = 3
+        out_channels_a_group = 2
+        in_channels = in_channels_a_group * self.groups
+        out_channels = out_channels_a_group * self.groups
+        ksize = 3
+        stride = 2
+        pad = ksize // stride * self.dilate
+        self.strides = (stride,) * ndim
+        self.pads = (pad,) * ndim
+        self.dilations = (self.dilate,) * ndim
+        self.W = cupy.zeros(
+            (out_channels, in_channels_a_group) + (ksize,) * ndim, dtype)
+        self.gy = cupy.zeros((batches, out_channels) + (2,) * ndim, dtype)
+        self.b = None
+        if self.bias:
+            self.b = cupy.zeros((in_channels,), dtype)
+
+        self.gx = cupy.ones(
+            (batches, in_channels) + (ksize,) * ndim, dtype)
+
+        version = libcudnn.getVersion()
+        deterministic = self.deterministic
+        self.err = None
+        if ((self.dilate > 1 and version < 6000) or
+                (self.groups > 1 and version < 7000)):
+            self.err = ValueError
+        elif deterministic and (self.dilate > 1 or
+                                (ndim > 2 and 5000 <= version < 6000) or
+                                (ndim > 2 and self.dtype == numpy.float64)):
+            self.err = libcudnn.CuDNNError
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(self.max_workspace_size)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def call(self):
+        cudnn.convolution_backward_data(
+            self.W, self.gy, self.b, self.gx,
+            self.pads, self.strides, self.dilations, self.groups,
+            deterministic=self.deterministic,
+            auto_tune=self.auto_tune,
+            tensor_core=self.tensor_core)
+
+    def test_call(self):
+        if self.err is None:
+            self.call()
+            self.assertTrue((self.gx == 0).all())
+        else:
+            with self.assertRaises(self.err):
+                self.call()
