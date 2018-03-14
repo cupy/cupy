@@ -120,6 +120,10 @@ cpdef unicode getPTX(size_t prog):
     with nogil:
         status = nvrtcGetPTX(<Program>prog, ptx_ptr)
     check_status(status)
+
+    # Strip the trailing NULL.
+    assert ptx.endswith(b'\x00')
+    ptx = ptx[:-1]
     return ptx.decode('UTF-8')
 
 
@@ -135,4 +139,8 @@ cpdef unicode getProgramLog(size_t prog):
     with nogil:
         status = nvrtcGetProgramLog(<Program>prog, log_ptr)
     check_status(status)
+
+    # Strip the trailing NULL.
+    assert log.endswith(b'\x00')
+    log = log[:-1]
     return log.decode('UTF-8')
