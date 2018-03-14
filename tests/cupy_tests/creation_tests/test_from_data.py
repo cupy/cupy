@@ -130,6 +130,14 @@ class TestFromData(unittest.TestCase):
         self.assertEqual(b.shape, (2, 3, 2, 3, 4))
         return b
 
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_empty_list(self, xp):
+        b = xp.array([[[], []],
+                      [[], []],
+                      [[], []]])
+        self.assertEqual(b.shape, (3, 2, 0))
+        return b
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_asarray(self, xp, dtype):

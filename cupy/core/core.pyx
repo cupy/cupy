@@ -2019,7 +2019,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
         concat_shape = _discover_dimensions(obj)
-        if concat_shape is not None:
+        if concat_shape is not None and concat_shape[-1] != 0:
             return concatenate_method(
                 _flatten_list(obj), 0).reshape(concat_shape)
 
@@ -2065,7 +2065,10 @@ cpdef tuple _discover_dimensions(obj):
         if shape2 is None or shape != shape2:
             return None
 
-    return (len(obj),) + shape
+    final_shape = (len(obj),)
+    if shape is not None:
+        final_shape += shape
+    return final_shape
 
 
 cpdef list _flatten_list(obj):
