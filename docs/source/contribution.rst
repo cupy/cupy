@@ -154,11 +154,11 @@ Note that we are using pytest and mock package for testing, so install them befo
 
 In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
-  $ python setup.py develop
+  $ pip install -e .
 
 .. note::
 
-  When you modify ``*.pxd`` files, before running ``python setup.py develop``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
+  When you modify ``*.pxd`` files, before running ``pip install -e .``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
 
     $ git clean -fdx
 
