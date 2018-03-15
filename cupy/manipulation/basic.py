@@ -39,7 +39,7 @@ def copyto(dst, src, casting='same_kind', where=None):
     if dst.size == 0:
         return
 
-    if src_is_python_scalar:
+    if src_is_python_scalar and where is None:
         dst.fill(src)
         return
 
