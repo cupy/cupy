@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -37,6 +39,10 @@ class TestMatrix(unittest.TestCase):
     def test_diagflat3(self, xp):
         a = testing.shaped_arange((3, 3), xp)
         return xp.diagflat(a, -2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_numpy(self, xp):
+        return xp.diagflat(numpy.ones((3, 3)))
 
     @testing.numpy_cupy_array_equal()
     def test_diagflat_from_range(self, xp):
