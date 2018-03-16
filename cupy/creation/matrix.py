@@ -48,7 +48,7 @@ def diagflat(v, k=0):
     if isinstance(v, cupy.ndarray):
         return cupy.diag(v.ravel(), k)
     else:
-        return cupy.diag(numpy.ndarray(v).ravel(), k)
+        return cupy.diag(numpy.array(v).ravel(), k)
 
 
 # TODO(okuta): Implement tri
