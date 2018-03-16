@@ -12,7 +12,7 @@ python gmm.py [--gpu-id GPU_ID] [--num NUM] [--dim DIM]
               [--max-iter MAX_ITER] [--tol TOL] [--output-image OUTPUT]
 ```
 
-If you run this script on Linux, setting the environmental variable `MPLBACKEND` to `Agg` may be required to use `matplotlib`. For example,
+If you run this script on environment without matplotlib renderers (e.g., non-GUI environment), setting the environmental variable `MPLBACKEND` to `Agg` may be required to use `matplotlib`. For example,
 
 ```
 MPLBACKEND=Agg python gmm.py ...
