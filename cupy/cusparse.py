@@ -46,6 +46,8 @@ def _call_cusparse(name, dtype, *args):
         prefix = 's'
     elif dtype == 'd':
         prefix = 'd'
+    elif dtype == 'F':
+        prefix = 'c'
     else:
         raise TypeError
     f = getattr(cusparse, prefix + name)
@@ -345,7 +347,7 @@ def csr2dense(x, out=None):
 
     """
     dtype = x.dtype
-    assert dtype == 'f' or dtype == 'd'
+    assert dtype == 'f' or dtype == 'd' or dtype == 'F' or dtype == 'F'
     if out is None:
         out = cupy.empty(x.shape, dtype=dtype, order='F')
     else:
@@ -374,7 +376,7 @@ def csc2dense(x, out=None):
 
     """
     dtype = x.dtype
-    assert dtype == 'f' or dtype == 'd'
+    assert dtype == 'f' or dtype == 'd' or dtype == 'F'
     if out is None:
         out = cupy.empty(x.shape, dtype=dtype, order='F')
     else:
