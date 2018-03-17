@@ -349,7 +349,7 @@ def csr2dense(x, out=None):
 
     """
     dtype = x.dtype
-    assert dtype == 'f' or dtype == 'd' or dtype == 'F' or dtype == 'F'
+    assert dtype == 'f' or dtype == 'd' or dtype == 'F' or dtype == 'D'
     if out is None:
         out = cupy.empty(x.shape, dtype=dtype, order='F')
     else:
@@ -378,7 +378,7 @@ def csc2dense(x, out=None):
 
     """
     dtype = x.dtype
-    assert dtype == 'f' or dtype == 'd' or dtype == 'F'
+    assert dtype == 'f' or dtype == 'd' or dtype == 'F' or dtype == 'D'
     if out is None:
         out = cupy.empty(x.shape, dtype=dtype, order='F')
     else:
@@ -603,7 +603,7 @@ def dense2csr(x):
 
 
 def csr2csr_compress(x, tol):
-    assert x.dtype == 'f' or x.dtype == 'd'
+    assert x.dtype == 'f' or x.dtype == 'd' or dtype == 'F' or dtype == 'D'
 
     handle = device.get_cusparse_handle()
     m, n = x.shape
