@@ -48,6 +48,8 @@ def _call_cusparse(name, dtype, *args):
         prefix = 'd'
     elif dtype == 'F':
         prefix = 'c'
+    elif dtype == 'D':
+        prefix = 'z'
     else:
         raise TypeError
     f = getattr(cusparse, prefix + name)
