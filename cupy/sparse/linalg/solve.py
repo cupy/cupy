@@ -74,7 +74,7 @@ def lsqr(A, b):
 
 
 def lschol(A, b):
-    """Solves linear system with chol decomposition.
+    """Solves linear system with cholesky decomposition.
 
     Find the solution to a large, sparse, linear system of equations.
     The function solves ``Ax = b``. Given two-dimensional matrix ``A`` is
@@ -93,7 +93,6 @@ def lschol(A, b):
             You can easily calculate the fourth element by ``norm(b - Ax)``
             and the ninth element by ``norm(x)``.
 
-    .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
 
     if not cuda.cusolver_enabled:
@@ -133,4 +132,3 @@ def lschol(A, b):
     x = x.astype(numpy.float64)
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
-
