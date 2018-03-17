@@ -603,7 +603,7 @@ def dense2csr(x):
 
 
 def csr2csr_compress(x, tol):
-    assert x.dtype == 'f' or x.dtype == 'd' or dtype == 'F' or dtype == 'D'
+    assert x.dtype == 'f' or x.dtype == 'd' or x.dtype == 'F' or x.dtype == 'D'
 
     handle = device.get_cusparse_handle()
     m, n = x.shape
