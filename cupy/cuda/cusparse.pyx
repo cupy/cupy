@@ -36,13 +36,15 @@ cdef extern from "cupy_cusparse.h":
         IndexBase idxBase)
 
     Status cusparseCgthr(
-        Handle handle, int nnz, const cuComplex *y, cuComplex *xVal, const int *xInd,
+        Handle handle, int nnz, const cuComplex *y, cuComplex *xVal,
+        const int *xInd,
         IndexBase idxBase)
 
     Status cusparseZgthr(
-        Handle handle, int nnz, const cuDoubleComplex *y, cuDoubleComplex *xVal, const int *xInd,
+        Handle handle, int nnz, const cuDoubleComplex *y,
+        cuDoubleComplex *xVal, const int *xInd,
         IndexBase idxBase)
-    
+
     # cuSPARSE Level2 Function
     Status cusparseScsrmv(
         Handle handle, Operation transA, int m, int n, int nnz,
@@ -58,15 +60,18 @@ cdef extern from "cupy_cusparse.h":
 
     Status cusparseCcsrmv(
         Handle handle, Operation transA, int m, int n, int nnz,
-        const cuComplex *alpha, MatDescr descrA, const cuComplex *csrSortedValA,
+        const cuComplex *alpha, MatDescr descrA,
+        const cuComplex *csrSortedValA,
         const int *csrSortedRowPtrA, const int *csrSortedColIndA,
         const cuComplex *x, const cuComplex *beta, cuComplex *y)
 
     Status cusparseZcsrmv(
         Handle handle, Operation transA, int m, int n, int nnz,
-        const cuDoubleComplex *alpha, MatDescr descrA, const cuDoubleComplex *csrSortedValA,
+        const cuDoubleComplex *alpha, MatDescr descrA,
+        const cuDoubleComplex *csrSortedValA,
         const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const cuDoubleComplex *x, const cuDoubleComplex *beta, cuDoubleComplex *y)
+        const cuDoubleComplex *x, const cuDoubleComplex *beta,
+        cuDoubleComplex *y)
 
     # cuSPARSE Level3 Function
     Status cusparseScsrmm(
@@ -84,15 +89,19 @@ cdef extern from "cupy_cusparse.h":
 
     Status cusparseCcsrmm(
         Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const cuComplex *alpha, const MatDescr descrA, const cuComplex *csrSortedValA,
+        const cuComplex *alpha, const MatDescr descrA,
+        const cuComplex *csrSortedValA,
         const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C, int ldc)
+        const cuComplex *B, int ldb, const cuComplex *beta,
+        cuComplex *C, int ldc)
 
     Status cusparseZcsrmm(
         Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const cuDoubleComplex *alpha, const MatDescr descrA, const cuDoubleComplex *csrSortedValA,
+        const cuDoubleComplex *alpha, const MatDescr descrA,
+        const cuDoubleComplex *csrSortedValA,
         const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
+        const cuDoubleComplex *B, int ldb,
+        const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
 
     Status cusparseScsrmm2(
         Handle handle, Operation transA, Operation transB, int m, int n, int k,
@@ -110,13 +119,16 @@ cdef extern from "cupy_cusparse.h":
         Handle handle, Operation transA, Operation transB, int m, int n, int k,
         int nnz, const cuComplex *alpha, const MatDescr descrA,
         const cuComplex *csrValA, const int *csrRowPtrA, const int *csrColIndA,
-        const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C, int ldc)
+        const cuComplex *B, int ldb, const cuComplex *beta,
+        cuComplex *C, int ldc)
 
     Status cusparseZcsrmm2(
         Handle handle, Operation transA, Operation transB, int m, int n, int k,
         int nnz, const cuDoubleComplex *alpha, const MatDescr descrA,
-        const cuDoubleComplex *csrValA, const int *csrRowPtrA, const int *csrColIndA,
-        const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
+        const cuDoubleComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+        cuDoubleComplex *C, int ldc)
 
     # cuSPARSE Extra Function
     Status cusparseXcsrgeamNnz(
@@ -143,7 +155,8 @@ cdef extern from "cupy_cusparse.h":
         int *csrRowPtrC, int *csrColIndC)
 
     Status cusparseCcsrgeam(
-        Handle handle, int m, int n, const cuComplex *alpha, const MatDescr descrA,
+        Handle handle, int m, int n, const cuComplex *alpha,
+        const MatDescr descrA,
         int nnzA, const cuComplex *csrValA, const int *csrRowPtrA,
         const int *csrColIndA, const cuComplex *beta, const MatDescr descrB,
         int nnzB, const cuComplex *csrValB, const int *csrRowPtrB,
@@ -151,12 +164,14 @@ cdef extern from "cupy_cusparse.h":
         int *csrRowPtrC, int *csrColIndC)
 
     Status cusparseZcsrgeam(
-        Handle handle, int m, int n, const cuDoubleComplex *alpha, const MatDescr descrA,
+        Handle handle, int m, int n, const cuDoubleComplex *alpha,
+        const MatDescr descrA,
         int nnzA, const cuDoubleComplex *csrValA, const int *csrRowPtrA,
-        const int *csrColIndA, const cuDoubleComplex *beta, const MatDescr descrB,
+        const int *csrColIndA, const cuDoubleComplex *beta,
+        const MatDescr descrB,
         int nnzB, const cuDoubleComplex *csrValB, const int *csrRowPtrB,
-        const int *csrColIndB, const MatDescr descrC, cuDoubleComplex *csrValC,
-        int *csrRowPtrC, int *csrColIndC)
+        const int *csrColIndB, const MatDescr descrC,
+        cuDoubleComplex *csrValC, int *csrRowPtrC, int *csrColIndC)
 
     Status cusparseXcsrgemmNnz(
         Handle handle, Operation transA, Operation transB, int m, int n, int k,
@@ -326,10 +341,11 @@ cdef extern from "cupy_cusparse.h":
         int *cscColPtrA)
 
     Status cusparseZdense2csc(
-        Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex *A,
-        int lda, const int *nnzPerCol, cuDoubleComplex *cscValA, int *cscRowIndA,
-        int *cscColPtrA)
-        
+        Handle handle, int m, int n, const MatDescr descrA,
+        const cuDoubleComplex *A,
+        int lda, const int *nnzPerCol, cuDoubleComplex *cscValA,
+        int *cscRowIndA, int *cscColPtrA)
+
     Status cusparseSdense2csr(
         Handle handle, int m, int n, const MatDescr descrA,
         const float *A, int lda, const int *nnzPerRow, float *csrValA,
@@ -347,7 +363,8 @@ cdef extern from "cupy_cusparse.h":
 
     Status cusparseZdense2csr(
         Handle handle, int m, int n, const MatDescr descrA,
-        const cuDoubleComplex *A, int lda, const int *nnzPerRow, cuDoubleComplex *csrValA,
+        const cuDoubleComplex *A, int lda, const int *nnzPerRow,
+        cuDoubleComplex *csrValA,
         int *csrRowPtrA, int *csrColIndA)
 
     Status cusparseSnnz(
@@ -368,7 +385,6 @@ cdef extern from "cupy_cusparse.h":
         Handle handle, Direction dirA, int m, int n, const MatDescr descrA,
         const cuDoubleComplex *A, int lda, int *nnzPerRowColumn,
         int *nnzTotalDevHostPtr)
-
 
     Status cusparseCreateIdentityPermutation(
         Handle handle, int n, int *p)
@@ -513,8 +529,8 @@ cpdef zgthr(size_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
             int idxBase):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZgthr(
-        <Handle>handle, nnz, <const cuDoubleComplex *>y, <cuDoubleComplex *>xVal,
-        <const int *>xInd, <IndexBase>idxBase)
+        <Handle>handle, nnz, <const cuDoubleComplex *>y,
+        <cuDoubleComplex *>xVal, <const int *>xInd, <IndexBase>idxBase)
     check_status(status)
 
 ########################################
@@ -554,7 +570,8 @@ cpdef ccsrmv(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
-        <const cuComplex *>alpha, <MatDescr>descrA, <const cuComplex *>csrSortedValA,
+        <const cuComplex *>alpha, <MatDescr>descrA,
+        <const cuComplex *>csrSortedValA,
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
         <const cuComplex *>x, <const cuComplex *>beta, <cuComplex *>y)
     check_status(status)
@@ -567,9 +584,11 @@ cpdef zcsrmv(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
-        <const cuDoubleComplex *>alpha, <MatDescr>descrA, <const cuDoubleComplex *>csrSortedValA,
+        <const cuDoubleComplex *>alpha, <MatDescr>descrA,
+        <const cuDoubleComplex *>csrSortedValA,
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
-        <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta, <cuDoubleComplex *>y)
+        <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta,
+        <cuDoubleComplex *>y)
     check_status(status)
 
 ########################################
@@ -609,9 +628,11 @@ cpdef ccsrmm(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
-        <const cuComplex *>alpha, <MatDescr>descrA, <const cuComplex *>csrSortedValA,
+        <const cuComplex *>alpha, <MatDescr>descrA,
+        <const cuComplex *>csrSortedValA,
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
-        <const cuComplex *>B, ldb, <const cuComplex *>beta, <cuComplex *>C, ldc)
+        <const cuComplex *>B, ldb, <const cuComplex *>beta,
+        <cuComplex *>C, ldc)
     check_status(status)
 
 cpdef zcsrmm(
@@ -622,9 +643,11 @@ cpdef zcsrmm(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
-        <const cuDoubleComplex *>alpha, <MatDescr>descrA, <const cuDoubleComplex *>csrSortedValA,
+        <const cuDoubleComplex *>alpha, <MatDescr>descrA,
+        <const cuDoubleComplex *>csrSortedValA,
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
-        <const cuDoubleComplex *>B, ldb, <const cuDoubleComplex *>beta, <cuDoubleComplex *>C, ldc)
+        <const cuDoubleComplex *>B, ldb,
+        <const cuDoubleComplex *>beta, <cuDoubleComplex *>C, ldc)
     check_status(status)
 
 cpdef scsrmm2(
@@ -663,7 +686,8 @@ cpdef ccsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
         <const cuComplex *>alpha, <MatDescr>descrA, <const cuComplex *>csrValA,
         <const int *>csrRowPtrA, <const int *>csrColIndA,
-        <const cuComplex *>B, ldb, <const cuComplex *>beta, <cuComplex *>C, ldc)
+        <const cuComplex *>B, ldb, <const cuComplex *>beta,
+        <cuComplex *>C, ldc)
     check_status(status)
 
 cpdef zcsrmm2(
@@ -674,9 +698,11 @@ cpdef zcsrmm2(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
-        <const cuDoubleComplex *>alpha, <MatDescr>descrA, <const cuDoubleComplex *>csrValA,
+        <const cuDoubleComplex *>alpha, <MatDescr>descrA,
+        <const cuDoubleComplex *>csrValA,
         <const int *>csrRowPtrA, <const int *>csrColIndA,
-        <const cuDoubleComplex *>B, ldb, <const cuDoubleComplex *>beta, <cuDoubleComplex *>C, ldc)
+        <const cuDoubleComplex *>B, ldb,
+        <const cuDoubleComplex *>beta, <cuDoubleComplex *>C, ldc)
     check_status(status)
 
 ########################################
@@ -744,7 +770,8 @@ cpdef ccsrgeam(
     status = cusparseCcsrgeam(
         <Handle>handle, m, n, <const cuComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuComplex *>csrValA,
-        <const int *>csrRowPtrA, <const int *>csrColIndA, <const cuComplex *>beta,
+        <const int *>csrRowPtrA, <const int *>csrColIndA,
+        <const cuComplex *>beta,
         <const MatDescr>descrB, nnzB, <const cuComplex *>csrValB,
         <const int *>csrRowPtrB, <const int *>csrColIndB,
         <const MatDescr>descrC, <cuComplex *>csrValC, <int *>csrRowPtrC,
@@ -762,7 +789,8 @@ cpdef zcsrgeam(
     status = cusparseZcsrgeam(
         <Handle>handle, m, n, <const cuDoubleComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrValA,
-        <const int *>csrRowPtrA, <const int *>csrColIndA, <const cuDoubleComplex *>beta,
+        <const int *>csrRowPtrA, <const int *>csrColIndA,
+        <const cuDoubleComplex *>beta,
         <const MatDescr>descrB, nnzB, <const cuDoubleComplex *>csrValB,
         <const int *>csrRowPtrB, <const int *>csrColIndB,
         <const MatDescr>descrC, <cuDoubleComplex *>csrValC, <int *>csrRowPtrC,
@@ -966,7 +994,8 @@ cpdef zcsr2csc(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsr2csc(
         <Handle>handle, m, n, nnz, <const cuDoubleComplex *>csrVal,
-        <const int *>csrRowPtr, <const int *>csrColInd, <cuDoubleComplex *>cscVal,
+        <const int *>csrRowPtr, <const int *>csrColInd,
+        <cuDoubleComplex *>cscVal,
         <int *>cscRowInd, <int *>cscColPtr, <Action>copyValues,
         <IndexBase>idxBase)
     check_status(status)
@@ -981,7 +1010,7 @@ cpdef scsr2dense(
         <const float *>csrSortedValA, <const int *>csrSortedRowPtrA,
         <const int *>csrSortedColIndA, <float *>A, lda)
     check_status(status)
-    
+
 cpdef dcsr2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
@@ -1107,7 +1136,8 @@ cpdef zcsr2csr_compress(
         size_t outRowPtr, cuDoubleComplex tol):
     status = cusparseZcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
-        <const cuDoubleComplex *>inVal, <const int *>inColInd, <const int *>inRowPtr,
+        <const cuDoubleComplex *>inVal, <const int *>inColInd,
+        <const int *>inRowPtr,
         inNnz, <int *>nnzPerRow, <cuDoubleComplex *>outVal, <int *>outColInd,
         <int *>outRowPtr, tol)
     check_status(status)
@@ -1161,8 +1191,8 @@ cpdef cdense2csr(
         size_t csrRowPtrA, size_t csrColIndA):
     status = cusparseCdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
-        <const cuComplex *>A, lda, <const int *>nnzPerRow, <cuComplex *>csrValA,
-        <int *>csrRowPtrA, <int *>csrColIndA)
+        <const cuComplex *>A, lda, <const int *>nnzPerRow,
+        <cuComplex *>csrValA, <int *>csrRowPtrA, <int *>csrColIndA)
     check_status(status)
 
 cpdef zdense2csr(
@@ -1171,8 +1201,8 @@ cpdef zdense2csr(
         size_t csrRowPtrA, size_t csrColIndA):
     status = cusparseZdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
-        <const cuDoubleComplex *>A, lda, <const int *>nnzPerRow, <cuDoubleComplex *>csrValA,
-        <int *>csrRowPtrA, <int *>csrColIndA)
+        <const cuDoubleComplex *>A, lda, <const int *>nnzPerRow,
+        <cuDoubleComplex *>csrValA, <int *>csrRowPtrA, <int *>csrColIndA)
     check_status(status)
 
 cpdef snnz(
