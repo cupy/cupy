@@ -1033,12 +1033,12 @@ cpdef ccsr2dense(
         <const int *>csrSortedColIndA, <cuComplex *>A, lda)
     check_status(status)
 
-cpdef xcsr2dense(
+cpdef zcsr2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
         size_t csrSortedColIndA, size_t A, int lda):
     setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseXcsr2dense(
+    status = cusparseZcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA,
         <const int *>csrSortedColIndA, <cuDoubleComplex *>A, lda)
@@ -1163,6 +1163,27 @@ cpdef ddense2csc(
         <int *>cscColPtrA)
     check_status(status)
 
+cpdef cdense2csc(
+        size_t handle, int m, int n, size_t descrA, size_t A,
+        int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
+        size_t cscColPtrA):
+    status = cusparseCdense2csc(
+        <Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex *>A,
+        lda, <const int *>nnzPerCol, <cuComplex *>cscValA, <int *>cscRowIndA,
+        <int *>cscColPtrA)
+    check_status(status)
+
+cpdef zdense2csc(
+        size_t handle, int m, int n, size_t descrA, size_t A,
+        int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
+        size_t cscColPtrA):
+    status = cusparseZdense2csc(
+        <Handle>handle, m, n,
+        <const MatDescr>descrA, <const cuDoubleComplex *>A,
+        lda, <const int *>nnzPerCol,
+        <cuDoubleComplex *>cscValA, <int *>cscRowIndA,
+        <int *>cscColPtrA)
+    check_status(status)
 
 cpdef sdense2csr(
         size_t handle, int m, int n, size_t descrA,
