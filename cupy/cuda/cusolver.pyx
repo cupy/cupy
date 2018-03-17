@@ -569,8 +569,8 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
 # sparse LAPACK Functions
 ###############################################################################
 cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
-                int reorder, size_t x, size_t singularity):
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity):
     cdef int status
     with nogil:
         status = cusolverSpScsrlsvchol(
@@ -581,8 +581,8 @@ cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
     check_status(status)
 
 cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
-                int reorder, size_t x, size_t singularity):
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity):
     cdef int status
     with nogil:
         status = cusolverSpDcsrlsvchol(
