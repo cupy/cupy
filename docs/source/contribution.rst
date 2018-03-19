@@ -122,7 +122,7 @@ In addition, we restrict the usage of *shortcut symbols* in our code base.
 They are symbols imported by packages and sub-packages of ``cupy``.
 For example, ``cupy.cuda.Device`` is a shortcut of ``cupy.cuda.device.Device``.
 **It is not allowed to use such shortcuts in the ``cupy`` library implementation**.
-Note that you can still use them in ``tests`` and ``examples`` directories.
+Note that you can still use them in :tree:`tests` and :tree:`examples` directories.
 
 Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/cupy/cupy/>`_.
 The reviewing process starts after the check passes.
@@ -193,11 +193,11 @@ For example, if you have only one GPU, launch ``pytest`` by the following comman
   $ export CUPY_TEST_GPU_LIMIT=1
   $ python -m pytest path/to/gpu/test.py
 
-Tests are put into the ``tests/cupy_tests`` and ``tests/install_tests`` directories.
-These have the same structure as that of ``cupy`` and ``install`` directories, respectively.
+Tests are put into the :tree:`tests/cupy_tests` and :tree:`tests/install_tests` directories.
+These have the same structure as that of :tree:`cupy` and :tree:`install` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
 
-* The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
+* The name of each subdirectory of :tree:`tests` must end with the ``_tests`` suffix.
 * The name of each test script must start with the ``test_`` prefix.
 
 Following this naming convention, you can run all the tests by running the following command at the repository root::
@@ -211,7 +211,7 @@ Or you can also specify a root directory to search test scripts from::
 
 If you modify the code related to existing unit tests, you must run appropriate commands.
 
-There are many examples of unit tests under the ``tests`` directory.
+There are many examples of unit tests under the :tree:`tests` directory.
 They simply use the ``unittest`` package of the standard library.
 
 Even if your patch includes GPU-related code, your tests should not fail without GPU capability.
@@ -249,7 +249,7 @@ Since Travis-CI does not support CUDA, we cannot run unit tests automatically.
 The reviewing process starts after the automatic check passes.
 Note that reviewers will test your code without the option to check CUDA-related code.
 
-We leverage doctest as well. You can run doctest by typing ``make doctest`` at the ``docs`` directory::
+We leverage doctest as well. You can run doctest by typing ``make doctest`` at the :tree:`docs` directory::
 
   $ cd docs
   $ make doctest
