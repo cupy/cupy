@@ -12,7 +12,7 @@
 | [**Docs**](https://docs-cupy.chainer.org/en/stable/)
 | [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
 | [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
-| **Examples** ([Official](https://github.com/cupy/cupy/blob/master/examples))
+| **Examples** ([Official](https://github.com/cupy/cupy/tree/master/examples))
 | **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.

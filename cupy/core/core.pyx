@@ -1551,7 +1551,7 @@ cdef class ndarray:
         """Adds given values to specified elements of an array.
 
         .. seealso::
-            :func:`cupy.scatter_add` for full documentation.
+            :func:`cupyx.scatter_add` for full documentation.
 
         """
         _scatter_op(self, slices, value, 'add')
