@@ -127,6 +127,7 @@ class TestCudnnDropout(unittest.TestCase):
     'auto_tune': [True, False],
     'bias': [True, False],
 })))
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionForward(unittest.TestCase):
 
     def setUp(self):
@@ -191,6 +192,7 @@ class TestConvolutionForward(unittest.TestCase):
     'auto_tune': [True, False],
     'deterministic': [True, False],
 })))
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionBackwardFilter(unittest.TestCase):
 
     def setUp(self):
@@ -258,6 +260,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
     'deterministic': [True, False],
     'bias': [True, False],
 })))
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionBackwardData(unittest.TestCase):
 
     def setUp(self):
