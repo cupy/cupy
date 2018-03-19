@@ -2143,7 +2143,7 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
             order.push_back(n)
 
     cdef Py_ssize_t d, s
-    for d, s in sorted(six.moves.zip(dest, src)):
+    for d, s in sorted(zip(dest, src)):
         order.insert(order.begin() + d, s)
 
     return a.transpose(order)
