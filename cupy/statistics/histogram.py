@@ -3,7 +3,42 @@ import numpy
 import cupy
 
 
-# TODO(okuta): Implement histogram
+def histogram(x, bins):
+    """Compute the histogram of a set of data
+
+    Args:
+        x (cupy.ndarray): Input array.
+        bins (sequence of scalars): Bin edges
+
+    Returns:
+        cupy.ndarray: hist
+        The values of the histogram.
+        cupy.ndarray: bin_edges
+        The bin edges
+
+    .. seealso:: :func:`numpy.histogram`
+    """
+
+    y = cupy.zeros(bins.size-1, dtype=cupy.int32)
+    cupy.ElementwiseKernel(
+        'S x, raw T bins, int32 n_bins',
+        'raw int32 y',
+        """
+        int high = n_bins-1;
+        int low = 0;
+
+        while(high-low > 1) {
+            int mid = (int)(low + (high-low) / 2);
+            if(bins[mid] <= x) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        atomicAdd(&y[low], 1);
+        """
+    )(x, bins, bins.size, y)
+    return y, bins
 
 
 # TODO(okuta): Implement histogram2d
