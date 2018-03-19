@@ -4,17 +4,16 @@ import cupy
 
 
 def histogram(x, bins):
-    """Compute the histogram of a set of data
+    """Computes the histogram of a set of data.
 
     Args:
         x (cupy.ndarray): Input array.
-        bins (sequence of scalars): Bin edges
+        bins (cupy.ndarray): Bin edges.
 
     Returns:
-        cupy.ndarray: hist
-        The values of the histogram.
-        cupy.ndarray: bin_edges
-        The bin edges
+        tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
+        storing the values of the histogram, and ``bin_edges`` is a
+        :class:`cupy.ndarray` storing the bin edges.
 
     .. seealso:: :func:`numpy.histogram`
     """
