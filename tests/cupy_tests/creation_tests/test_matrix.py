@@ -41,9 +41,5 @@ class TestMatrix(unittest.TestCase):
         return xp.diagflat(a, -2)
 
     @testing.numpy_cupy_array_equal()
-    def test_diagflat_from_numpy(self, xp):
-        return xp.diagflat(numpy.ones((3, 3)))
-
-    @testing.numpy_cupy_array_equal()
-    def test_diagflat_from_range(self, xp):
-        return xp.diagflat(range(10))
+    def test_diagflat_from_scalar(self, xp):
+        return xp.diagflat(3)
