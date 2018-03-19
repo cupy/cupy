@@ -18,17 +18,17 @@ def histogram(x, bins):
     .. seealso:: :func:`numpy.histogram`
     """
 
-    y = cupy.zeros(bins.size-1, dtype=cupy.int32)
+    y = cupy.zeros(bins.size - 1, dtype=cupy.int32)
     cupy.ElementwiseKernel(
         'S x, raw T bins, int32 n_bins',
         'raw int32 y',
         """
-        int high = n_bins-1;
+        int high = n_bins - 1;
         int low = 0;
 
-        while(high-low > 1) {
-            int mid = (int)(low + (high-low) / 2);
-            if(bins[mid] <= x) {
+        while (high - low > 1) {
+            int mid = (high + low) / 2;
+            if (bins[mid] <= x) {
                 low = mid;
             } else {
                 high = mid;
