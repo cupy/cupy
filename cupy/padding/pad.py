@@ -45,11 +45,11 @@ def _prepend_edge(arr, pad_amt, axis=-1):
         return arr
 
     edge_slice = tuple(slice(None) if i != axis else 0
-                       for (i, x) in enumerate(arr.shape))
+                       for i, x in enumerate(arr.shape))
 
     # Shape to restore singleton dimension after slicing
     pad_singleton = tuple(x if i != axis else 1
-                          for (i, x) in enumerate(arr.shape))
+                          for i, x in enumerate(arr.shape))
     edge_arr = arr[edge_slice].reshape(pad_singleton)
     return cupy.concatenate((edge_arr.repeat(pad_amt, axis=axis), arr),
                             axis=axis)
@@ -78,11 +78,11 @@ def _append_edge(arr, pad_amt, axis=-1):
         return arr
 
     edge_slice = tuple(slice(None) if i != axis else arr.shape[axis] - 1
-                       for (i, x) in enumerate(arr.shape))
+                       for i, x in enumerate(arr.shape))
 
     # Shape to restore singleton dimension after slicing
     pad_singleton = tuple(x if i != axis else 1
-                          for (i, x) in enumerate(arr.shape))
+                          for i, x in enumerate(arr.shape))
     edge_arr = arr[edge_slice].reshape(pad_singleton)
     return cupy.concatenate((arr, edge_arr.repeat(pad_amt, axis=axis)),
                             axis=axis)
@@ -128,20 +128,20 @@ def _pad_ref(arr, pad_amt, method, axis=-1):
 
     # Slice off a reverse indexed chunk from near edge to pad `arr` before
     ref_slice = tuple(slice(None) if i != axis else slice(pad_amt[0], 0, -1)
-                      for (i, x) in enumerate(arr.shape))
+                      for i, x in enumerate(arr.shape))
 
     ref_chunk1 = arr[ref_slice]
 
     # Shape to restore singleton dimension after slicing
     pad_singleton = tuple(x if i != axis else 1
-                          for (i, x) in enumerate(arr.shape))
+                          for i, x in enumerate(arr.shape))
     if pad_amt[0] == 1:
         ref_chunk1 = ref_chunk1.reshape(pad_singleton)
 
     # Memory/computationally more expensive, only do this if `method='odd'`
     if 'odd' in method and pad_amt[0] > 0:
         edge_slice1 = tuple(slice(None) if i != axis else 0
-                            for (i, x) in enumerate(arr.shape))
+                            for i, x in enumerate(arr.shape))
         edge_chunk = arr[edge_slice1].reshape(pad_singleton)
         ref_chunk1 = 2 * edge_chunk - ref_chunk1
         del edge_chunk
@@ -153,9 +153,9 @@ def _pad_ref(arr, pad_amt, method, axis=-1):
     start = arr.shape[axis] - pad_amt[1] - 1
     end = arr.shape[axis] - 1
     ref_slice = tuple(slice(None) if i != axis else slice(start, end)
-                      for (i, x) in enumerate(arr.shape))
+                      for i, x in enumerate(arr.shape))
     rev_idx = tuple(slice(None) if i != axis else slice(None, None, -1)
-                    for (i, x) in enumerate(arr.shape))
+                    for i, x in enumerate(arr.shape))
     ref_chunk2 = arr[ref_slice][rev_idx]
 
     if pad_amt[1] == 1:
@@ -163,7 +163,7 @@ def _pad_ref(arr, pad_amt, method, axis=-1):
 
     if 'odd' in method:
         edge_slice2 = tuple(slice(None) if i != axis else -1
-                            for (i, x) in enumerate(arr.shape))
+                            for i, x in enumerate(arr.shape))
         edge_chunk = arr[edge_slice2].reshape(pad_singleton)
         ref_chunk2 = 2 * edge_chunk - ref_chunk2
         del edge_chunk
