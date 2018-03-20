@@ -26,20 +26,10 @@ cpdef enum:
 
 
 ###############################################################################
-# Initialization
-###############################################################################
-
-cpdef void init() except *
-
-###############################################################################
 # Primary context management
 ###############################################################################
 
-# def tuple devicePrimaryCtxGetState(Device dev)
-cpdef void devicePrimaryCtxSetFlags(Device dev, unsigned int flags) except *
 cpdef void devicePrimaryCtxRelease(Device dev) except *
-cpdef void devicePrimaryCtxReset(Device dev) except *
-cpdef size_t devicePrimaryCtxRetain(Device dev) except *
 
 ###############################################################################
 # Context management

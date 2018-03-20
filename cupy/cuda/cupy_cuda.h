@@ -137,11 +137,6 @@ typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
 
-// Initialization
-CUresult cuInit(...) {
-    return CUDA_SUCCESS;
-}
-
 // Error handling
 CUresult cuGetErrorName(...) {
     return CUDA_SUCCESS;
@@ -152,23 +147,7 @@ CUresult cuGetErrorString(...) {
 }
 
 // Primary context management
-CUresult cuDevicePrimaryCtxGetState(...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuDevicePrimaryCtxSetFlags(...) {
-    return CUDA_SUCCESS;
-}
-
 CUresult cuDevicePrimaryCtxRelease(...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuDevicePrimaryCtxReset(...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuDevicePrimaryCtxRetain(...) {
     return CUDA_SUCCESS;
 }
 

@@ -23,16 +23,8 @@ cdef extern from "cupy_cuda.h" nogil:
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)
 
-    # Initialization
-    int cuInit(unsigned int flags)
-
     # Primary context management
-    int cuDevicePrimaryCtxGetState(Device dev, unsigned int* flags,
-                                   int* active)
-    int cuDevicePrimaryCtxSetFlags(Device dev, unsigned int flags)
     int cuDevicePrimaryCtxRelease(Device dev)
-    int cuDevicePrimaryCtxReset(Device dev)
-    int cuDevicePrimaryCtxRetain(Context* pctx, Device dev)
 
     # Context management
     int cuCtxGetCurrent(Context* pctx)
@@ -98,50 +90,13 @@ def get_build_version():
 
 
 ###############################################################################
-# Initialization
-###############################################################################
-
-cpdef void init() except *:
-    cdef unsigned int flags = 0
-    with nogil:
-        status = cuInit(flags)
-    check_status(status)
-
-
-###############################################################################
 # Primary context management
 ###############################################################################
-
-def devicePrimaryCtxGetState(Device dev):
-    cdef unsigned int flags
-    cdef int active
-    with nogil:
-        status = cuDevicePrimaryCtxGetState(dev, &flags, &active)
-    check_status(status)
-    return flags, active
-
-cpdef void devicePrimaryCtxSetFlags(Device dev, unsigned int flags) except *:
-    with nogil:
-        status = cuDevicePrimaryCtxSetFlags(dev, flags)
-    check_status(status)
 
 cpdef void devicePrimaryCtxRelease(Device dev) except *:
     with nogil:
         status = cuDevicePrimaryCtxRelease(dev)
     check_status(status)
-
-cpdef void devicePrimaryCtxReset(Device dev) except *:
-    with nogil:
-        status = cuDevicePrimaryCtxReset(dev)
-    check_status(status)
-
-cpdef size_t devicePrimaryCtxRetain(Device dev) except *:
-    cdef Context ctx
-    with nogil:
-        status = cuDevicePrimaryCtxRetain(&ctx, dev)
-    check_status(status)
-    return <size_t>ctx
-
 
 ###############################################################################
 # Context management
