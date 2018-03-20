@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python3-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install cupy-cuda80==4.0.0b4
+RUN pip3 install cupy-cuda80==4.0.0rc1
