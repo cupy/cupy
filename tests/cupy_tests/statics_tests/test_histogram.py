@@ -40,6 +40,49 @@ class TestHistogram(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        y, bin_edges = xp.histogram(x)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_same_value(self, xp, dtype):
+        x = xp.zeros(10, dtype)
+        y, bin_edges = xp.histogram(x, 3)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_empty(self, xp, dtype):
+        x = xp.array([], dtype)
+        y, bin_edges = xp.histogram(x)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_int_bins(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        y, bin_edges = xp.histogram(x, 4)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_array_bins(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        bins = testing.shaped_arange((3,), xp, dtype)
+        y, bin_edges = xp.histogram(x, bins)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_histogram_bins_not_ordered(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        bins = xp.array([1, 3, 2], dtype)
+        xp.histogram(x, bins)
+
     @for_all_dtypes_bincount()
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_bincount(self, xp, dtype):
