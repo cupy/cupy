@@ -23,6 +23,9 @@ def histogram(x, bins):
         'S x, raw T bins, int32 n_bins',
         'raw int32 y',
         '''
+        if (x < bins[0] or bins[n_bins - 1] < x) {
+            return;
+        }
         int high = n_bins - 1;
         int low = 0;
 
