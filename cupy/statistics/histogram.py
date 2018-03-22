@@ -22,7 +22,7 @@ def histogram(x, bins):
     cupy.ElementwiseKernel(
         'S x, raw T bins, int32 n_bins',
         'raw int32 y',
-        """
+        '''
         int high = n_bins - 1;
         int low = 0;
 
@@ -35,7 +35,7 @@ def histogram(x, bins):
             }
         }
         atomicAdd(&y[low], 1);
-        """
+        '''
     )(x, bins, bins.size, y)
     return y, bins
 
