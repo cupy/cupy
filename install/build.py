@@ -194,6 +194,8 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_cudnn_version = None
+_nccl_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -223,16 +225,23 @@ def check_cuda_version(compiler, settings):
     return True
 
 
-def get_cuda_version():
+def _format_cuda_version(version):
+    return str(version)
+
+
+def get_cuda_version(formatted=False):
     """Return CUDA Toolkit version cached in check_cuda_version()."""
     global _cuda_version
     if _cuda_version is None:
         msg = 'check_cuda_version() must be called first.'
-        raise Exception(msg)
+        raise RuntimeError(msg)
+    if formatted:
+        return _format_cuda_version(_cuda_version)
     return _cuda_version
 
 
 def check_cudnn_version(compiler, settings):
+    global _cudnn_version
     try:
         out = build_and_run(compiler, '''
         #include <cudnn.h>
@@ -247,26 +256,47 @@ def check_cudnn_version(compiler, settings):
         utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
         return False
 
-    cudnn_version = int(out)
+    _cudnn_version = int(out)
 
-    if not minimum_cudnn_version <= cudnn_version <= maximum_cudnn_version:
-        min_major = minimum_cudnn_version // 1000
-        max_major = maximum_cudnn_version // 1000
+    if not minimum_cudnn_version <= _cudnn_version <= maximum_cudnn_version:
+        min_major = _format_cuda_version(minimum_cudnn_version)
+        max_major = _format_cuda_version(maximum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: %d' % cudnn_version,
-            'cuDNN v%d<= and <=v%d is required' % (min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(
+                _format_cuda_version(_cudnn_version)),
+            'cuDNN v{}= and <=v{} is required'.format(min_major, max_major))
         return False
 
     return True
 
 
+def get_cudnn_version(formatted=False):
+    """Return cuDNN version cached in check_cudnn_version()."""
+    global _cudnn_version
+    if _cudnn_version is None:
+        msg = 'check_cudnn_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return _format_cuda_version(_cudnn_version)
+    return _cudnn_version
+
+
 def check_nccl_version(compiler, settings):
-    # NCCL does not provide version information.
-    # It only check whether there is nccl.h.
+    global _nccl_version
+
+    # NCCL 1.x does not provide version information.
     try:
-        build_and_run(compiler, '''
+        out = build_and_run(compiler, '''
         #include <nccl.h>
+        #include <stdio.h>
+        #ifdef NCCL_MAJOR
+        #  define NCCL_VERSION \
+                (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+        #else
+        #  define NCCL_VERSION 0
+        #endif
         int main(int argc, char* argv[]) {
+          printf("%d", NCCL_VERSION);
           return 0;
         }
         ''', include_dirs=settings['include_dirs'])
@@ -275,7 +305,22 @@ def check_nccl_version(compiler, settings):
         utils.print_warning('Cannot include NCCL\n{0}'.format(e))
         return False
 
+    _nccl_version = int(out)
+
     return True
+
+
+def get_nccl_version(formatted=False):
+    """Return NCCL version cached in check_nccl_version()."""
+    global _nccl_version
+    if _nccl_version is None:
+        msg = 'check_nccl_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        if _nccl_version == 0:
+            return '1.x'
+        return _format_cuda_version(_nccl_version)
+    return _nccl_version
 
 
 def check_cusolver_version(compiler, settings):

@@ -1,9 +1,11 @@
-FROM nvidia/cuda:7.5-cudnn5-devel
+FROM nvidia/cuda:8.0-cudnn6-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
     python-dev \
-    python-pip && \
+    python-pip \
+    python-wheel \
+    python-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install cupy==4.0.0b2
+RUN pip install cupy-cuda80==4.0.0rc1

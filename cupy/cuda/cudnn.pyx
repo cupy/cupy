@@ -427,37 +427,34 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dyDesc, void* dy, void* grid,
         void* betaDgrid, void* dgrid)
 
+    # Build-time version
+    int CUDNN_VERSION
+
+
 ###############################################################################
 # Error handling
 ###############################################################################
-
-cdef dict STATUS = {
-    0: 'CUDNN_STATUS_SUCCESS',
-    1: 'CUDNN_STATUS_NOT_INITIALIZED',
-    2: 'CUDNN_STATUS_ALLOC_FAILED',
-    3: 'CUDNN_STATUS_BAD_PARAM',
-    4: 'CUDNN_STATUS_INTERNAL_ERROR',
-    5: 'CUDNN_STATUS_INVALID_VALUE',
-    6: 'CUDNN_STATUS_ARCH_MISMATCH',
-    7: 'CUDNN_STATUS_MAPPING_ERROR',
-    8: 'CUDNN_STATUS_EXECUTION_FAILED',
-    9: 'CUDNN_STATUS_NOT_SUPPORTED',
-    10: 'CUDNN_STATUS_LICENSE_ERROR',
-}
-
 
 class CuDNNError(RuntimeError):
 
     def __init__(self, int status):
         self.status = status
         msg = cudnnGetErrorString(<Status>status)
-        super(CuDNNError, self).__init__('%s: %s' % (STATUS[status], msg))
+        super(CuDNNError, self).__init__(msg.decode())
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
         raise CuDNNError(status)
+
+
+###############################################################################
+# Build-time version
+###############################################################################
+
+def get_build_version():
+    return CUDNN_VERSION
 
 
 ###############################################################################
@@ -997,6 +994,8 @@ cpdef poolingBackward(
 ###############################################################################
 # Batch Normalization
 ###############################################################################
+
+CUDNN_BN_MIN_EPSILON = 1e-5
 
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):

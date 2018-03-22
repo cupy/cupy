@@ -8,7 +8,7 @@ Recommended Environments
 
 We recommend these Linux distributions.
 
-* `Ubuntu <http://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
+* `Ubuntu <https://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
 The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
@@ -54,7 +54,7 @@ The latest version of each package will automatically be installed if missing.
 * `Six <https://pythonhosted.org/six/>`_ 1.9+
 
 In addition, you need to install `CUDA <https://developer.nvidia.com/cuda-zone>`_.
-The following versions of CUDA can be used: 7.0, 7.5, 8.0 and 9.0.
+The following versions of CUDA can be used: 7.0, 7.5, 8.0, 9.0 and 9.1.
 You need a GPU with Compute Capability of at least 3.0.
 
 Optional Libraries
@@ -82,21 +82,42 @@ We recommend to install CuPy via pip::
    After you update these libraries, please reinstall CuPy because you need to compile and link to the newer version of them.
 
 
+Install CuPy using wheel
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+We are experimentally providing wheels (precompiled binary packages) for Linux (x86_64) environment.
+Package names are different depending on the CUDA version you have installed on your host::
+
+  (For CUDA 8.0)
+  $ pip install cupy-cuda80
+
+  (For CUDA 9.0)
+  $ pip install cupy-cuda90
+
+  (For CUDA 9.1)
+  $ pip install cupy-cuda91
+
+When using wheels, please be careful not to install multiple CuPy packages at the same time.
+These packages and ``cupy`` package conflict to each other.
+
+.. note::
+
+   The latest version of cuDNN and NCCL are included in these wheels.
+
+
 Install CuPy from source
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The tarball of the source tree is available via ``pip download cupy`` or from `the release notes page <https://github.com/cupy/cupy/releases>`_.
-You can use ``setup.py`` to install CuPy from the tarball::
+You can install CuPy from the tarball::
 
-  $ tar zxf cupy-x.x.x.tar.gz
-  $ cd cupy-x.x.x
-  $ python setup.py install
+  $ pip install cupy-x.x.x.tar.gz
 
 You can also install the development version of CuPy from a cloned Git repository::
 
   $ git clone https://github.com/cupy/cupy.git
   $ cd cupy
-  $ python setup.py install
+  $ pip install .
 
 
 .. _install_error:
@@ -110,6 +131,10 @@ It may help you::
 
   $ pip install cupy -vvvv
 
+If you are using wheel, make sure that you don't have multiple CuPy packages installed.
+Only one cupy package (``cupy`` or ``cupy-cudaXX`` where XX is a CUDA version) can be installed::
+
+  $ pip freeze | grep cupy
 
 .. _install_cuda:
 
@@ -205,6 +230,9 @@ Use pip to uninstall CuPy::
    In this case, ``pip uninstall`` only removes the latest one.
    To ensure that Chainer is completely removed, run the above command repeatedly until ``pip`` returns an error.
 
+.. note::
+
+   If you installed CuPy using wheel, use ``pip uninstall cupy-cudaXX`` (where XX is a CUDA version number) instead.
 
 Upgrade CuPy
 ------------

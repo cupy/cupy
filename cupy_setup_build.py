@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+import argparse
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -6,6 +8,7 @@ from distutils import sysconfig
 from distutils import unixccompiler
 import os
 from os import path
+import shutil
 import sys
 
 import pkg_resources
@@ -68,6 +71,7 @@ MODULES = [
             'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
+        'version_method': build.get_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -82,6 +86,7 @@ MODULES = [
             'cudnn',
         ],
         'check_method': build.check_cudnn_version,
+        'version_method': build.get_cudnn_version,
     },
     {
         'name': 'nccl',
@@ -95,6 +100,7 @@ MODULES = [
             'nccl',
         ],
         'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
     },
     {
         'name': 'cusolver',
@@ -160,8 +166,15 @@ def module_extension_name(file):
 
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
-    ext = '.pyx' if use_cython else '.cpp'
-    pyx = path.join(*pyx.split('.')) + ext
+    base = path.join(*pyx.split('.'))
+    if use_cython:
+        pyx = base + '.pyx'
+        if not os.path.exists(pyx):
+            use_cython = False
+            print(
+                'NOTICE: Skipping cythonize as {} does not exist.'.format(pyx))
+    if not use_cython:
+        pyx = base + '.cpp'
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
     # and use stubs defined in header files.
@@ -195,8 +208,126 @@ def check_library(compiler, includes=(), libraries=(),
                           include_dirs, library_dirs)
     except Exception as e:
         print(e)
+        sys.stdout.flush()
         return False
     return True
+
+
+def preconfigure_modules(compiler, settings):
+    """Returns a list of modules buildable in given environment and settings.
+
+    For each module in MODULES list, this function checks if the module
+    can be built in the current environment and reports it.
+    Returns a list of module names available.
+    """
+
+    nvcc_path = build.get_nvcc_path()
+    summary = [
+        '',
+        '************************************************************',
+        '* CuPy Configuration Summary                               *',
+        '************************************************************',
+        '',
+        'Build Environment:',
+        '  Include directories: {}'.format(str(settings['include_dirs'])),
+        '  Library directories: {}'.format(str(settings['library_dirs'])),
+        '  nvcc command       : {}'.format(
+            nvcc_path if nvcc_path else '(not found)'),
+        '',
+        'Environment Variables:',
+    ]
+
+    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CUDA_PATH', 'NVCC']:
+        summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
+
+    summary += [
+        '',
+        'Modules:',
+    ]
+
+    ret = []
+    for module in MODULES:
+        installed = False
+        status = 'No'
+        errmsg = []
+
+        print('')
+        print('-------- Configuring Module: {} --------'.format(
+            module['name']))
+        sys.stdout.flush()
+        if not check_library(compiler,
+                             includes=module['include'],
+                             include_dirs=settings['include_dirs']):
+            errmsg = ['Include files not found: %s' % module['include'],
+                      'Check your CFLAGS environment variable.']
+        elif not check_library(compiler,
+                               libraries=module['libraries'],
+                               library_dirs=settings['library_dirs']):
+            errmsg = ['Cannot link libraries: %s' % module['libraries'],
+                      'Check your LDFLAGS environment variable.']
+        elif ('check_method' in module and
+                not module['check_method'](compiler, settings)):
+            # Fail on per-library condition check (version requirements etc.)
+            installed = True
+            errmsg = ['The library is installed but not supported.']
+        elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
+        else:
+            installed = True
+            status = 'Yes'
+            ret.append(module['name'])
+
+        if installed and 'version_method' in module:
+            status += ' (version {})'.format(module['version_method'](True))
+
+        summary += [
+            '  {:<10}: {}'.format(module['name'], status)
+        ]
+
+        # If error message exists...
+        if len(errmsg) != 0:
+            summary += ['    -> {}'.format(m) for m in errmsg]
+
+            # Skip checking other modules when CUDA is unavailable.
+            if module['name'] == 'cuda':
+                break
+
+    if len(ret) != len(MODULES):
+        if 'cuda' in ret:
+            lines = [
+                'WARNING: Some modules could not be configured.',
+                'CuPy will be installed without these modules.',
+            ]
+        else:
+            lines = [
+                'ERROR: CUDA could not be found on your system.',
+            ]
+        summary += [
+            '',
+        ] + lines + [
+            'Please refer to the Installation Guide for details:',
+            'https://docs-cupy.chainer.org/en/stable/install.html',
+            '',
+        ]
+
+    summary += [
+        '************************************************************',
+        '',
+    ]
+
+    print('\n'.join(summary))
+    return ret
+
+
+def _rpath_base():
+    if sys.platform.startswith('linux'):
+        return '$ORIGIN'
+    elif sys.platform.startswith('darwin'):
+        return '@loader_path'
+    else:
+        raise Exception('not supported on this platform')
 
 
 def make_extensions(options, compiler, use_cython):
@@ -211,15 +342,9 @@ def make_extensions(options, compiler, use_cython):
         x for x in include_dirs if path.exists(x)]
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
-    if sys.platform != 'win32':
-        settings['runtime_library_dirs'] = settings['library_dirs']
-    if sys.platform == 'darwin':
-        args = settings.setdefault('extra_link_args', [])
-        args.append(
-            '-Wl,' + ','.join('-rpath,' + p
-                              for p in settings['library_dirs']))
-        # -rpath is only supported when targetting Mac OS X 10.5 or later
-        args.append('-mmacosx-version-min=10.5')
+
+    # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
+    use_wheel_libs_rpath = 0 < len(options['wheel_libs'])
 
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
@@ -240,40 +365,19 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
+    available_modules = []
+    if no_cuda:
+        available_modules = [m['name'] for m in MODULES]
+    else:
+        available_modules = preconfigure_modules(compiler, settings)
+        if 'cuda' not in available_modules:
+            raise Exception('Your CUDA environment is invalid. '
+                            'Please check above error log.')
+
     ret = []
     for module in MODULES:
-        print('Include directories:', settings['include_dirs'])
-        print('Library directories:', settings['library_dirs'])
-
-        if not no_cuda:
-            err = False
-            if not check_library(compiler,
-                                 includes=module['include'],
-                                 include_dirs=settings['include_dirs']):
-                utils.print_warning(
-                    'Include files not found: %s' % module['include'],
-                    'Skip installing %s support' % module['name'],
-                    'Check your CFLAGS environment variable')
-                err = True
-            elif not check_library(compiler,
-                                   libraries=module['libraries'],
-                                   library_dirs=settings['library_dirs']):
-                utils.print_warning(
-                    'Cannot link libraries: %s' % module['libraries'],
-                    'Skip installing %s support' % module['name'],
-                    'Check your LDFLAGS environment variable')
-                err = True
-            elif('check_method' in module and
-                 not module['check_method'](compiler, settings)):
-                err = True
-
-            if err:
-                if module['name'] == 'cuda':
-                    raise Exception('Your CUDA environment is invalid. '
-                                    'Please check above error log.')
-                else:
-                    # Other modules are optional. They are skipped.
-                    continue
+        if module['name'] not in available_modules:
+            continue
 
         s = settings.copy()
         if not no_cuda:
@@ -290,14 +394,24 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
-        if not no_cuda and module['name'] == 'thrust':
-            if build.get_nvcc_path() is None:
-                utils.print_warning(
-                    'Cannot find nvcc in PATH.',
-                    'Skip installing thrust support.')
-                continue
-
         for f in module['file']:
+            rpath = list(s['library_dirs'])  # copy
+            if use_wheel_libs_rpath:
+                modname = f[0] if isinstance(f, tuple) else f
+                depth = modname.count('.') - 1
+                rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
+
+            if sys.platform != 'win32':
+                s['runtime_library_dirs'] = rpath
+            if sys.platform == 'darwin':
+                args = s.setdefault('extra_link_args', [])
+                args.append(
+                    '-Wl,' + ','.join('-rpath,' + p
+                                      for p in s['library_dirs']))
+                # -rpath is only supported when targetting Mac OS X 10.5 or
+                # later
+                args.append('-mmacosx-version-min=10.5')
+
             name = module_extension_name(f)
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
@@ -307,21 +421,38 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    cupy_profile = '--cupy-profile' in sys.argv
-    if cupy_profile:
-        sys.argv.remove('--cupy-profile')
-    cupy_coverage = '--cupy-coverage' in sys.argv
-    if cupy_coverage:
-        sys.argv.remove('--cupy-coverage')
-    no_cuda = '--cupy-no-cuda' in sys.argv
-    if no_cuda:
-        sys.argv.remove('--cupy-no-cuda')
+    parser = argparse.ArgumentParser(add_help=False)
+
+    parser.add_argument(
+        '--cupy-package-name', type=str, default='cupy',
+        help='alternate package name')
+    parser.add_argument(
+        '--cupy-long-description', type=str, default=None,
+        help='path to the long description file')
+    parser.add_argument(
+        '--cupy-wheel-lib', type=str, action='append', default=[],
+        help='shared library to copy into the wheel '
+             '(can be specified for multiple times)')
+    parser.add_argument(
+        '--cupy-profile', action='store_true', default=False,
+        help='enable profiling for Cython code')
+    parser.add_argument(
+        '--cupy-coverage', action='store_true', default=False,
+        help='enable coverage for Cython code')
+    parser.add_argument(
+        '--cupy-no-cuda', action='store_true', default=False,
+        help='build CuPy with stub header file')
+
+    opts, sys.argv = parser.parse_known_args(sys.argv)
 
     arg_options = {
-        'profile': cupy_profile,
-        'linetrace': cupy_coverage,
-        'annotate': cupy_coverage,
-        'no_cuda': no_cuda,
+        'package_name': opts.cupy_package_name,
+        'long_description': opts.cupy_long_description,
+        'wheel_libs': opts.cupy_wheel_lib,  # list
+        'profile': opts.cupy_profile,
+        'linetrace': opts.cupy_coverage,
+        'annotate': opts.cupy_coverage,
+        'no_cuda': opts.cupy_no_cuda,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -330,6 +461,40 @@ def parse_args():
 
 cupy_setup_options = parse_args()
 print('Options:', cupy_setup_options)
+
+
+def get_package_name():
+    return cupy_setup_options['package_name']
+
+
+def get_long_description():
+    path = cupy_setup_options['long_description']
+    if path is None:
+        return None
+    with open(path) as f:
+        return f.read()
+
+
+def prepare_wheel_libs():
+    libs = []
+    libdir = 'cupy/_lib'
+
+    # Clean up the library directory.
+    if os.path.exists(libdir):
+        print("Removing directory: {}".format(libdir))
+        shutil.rmtree(libdir)
+    os.mkdir(libdir)
+
+    # Copy specified libraries to the library directory.
+    for lib in cupy_setup_options['wheel_libs']:
+        # Note: symlink is resolved by shutil.copy2.
+        print("Copying library for wheel: {}".format(lib))
+        libname = path.basename(lib)
+        libpath = '{}/{}'.format(libdir, libname)
+        shutil.copy2(lib, libpath)
+        libs.append('_lib/{}'.format(libname))
+    return libs
+
 
 try:
     import Cython
@@ -501,7 +666,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             try:
                 self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
             except errors.DistutilsExecError as e:
-                raise errors.CompileError(e.message)
+                raise errors.CompileError(str(e))
 
         return objects
 

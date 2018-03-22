@@ -13,7 +13,6 @@ from cupy import logic
 from cupy import math
 from cupy import sorting
 from cupy import statistics
-from cupy import util
 
 
 _thread_local = threading.local()
@@ -228,6 +227,13 @@ class _FusionRef(object):
 
     def __bool__(self):
         raise Exception("Can't cast to bool")
+
+    def __setitem__(self, slices, value):
+        if slices is Ellipsis or (isinstance(slices, slice) and
+                                  slices == slice(None)):
+            copy(value, self)
+        else:
+            raise ValueError('The fusion supports `[...]` or `[:]`.')
 
     def copy(self):
         return copy(self)
@@ -497,7 +503,9 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
     out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
-    tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
+    tmpvars = mem.var_list[len(in_vars):]
+    if nout > 0:
+        tmpvars = tmpvars[:-nout]
 
     in_params = ', '.join(_get_params(in_vars[:nin]))
     out_params = ', '.join(_get_params(out_vars))
@@ -655,8 +663,12 @@ def fuse(*args, **kwargs):
             If not assigned, post_map step is skipped.
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
+
+    .. note::
+       This API is currently experimental and the interface may be changed in
+       the future version.
+
     """
-    util.experimental('cupy.core.fusion')
 
     def wrapper(
             f, input_num=None, reduce=None, post_map=lambda x: x,

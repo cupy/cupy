@@ -4,24 +4,20 @@ from libcpp cimport map
 from cupy.cuda cimport device
 
 
-cdef class Chunk:
+cdef class Memory:
 
     cdef:
+        public size_t ptr
+        public Py_ssize_t size
         readonly device.Device device
-        readonly object mem
-        readonly size_t ptr
-        readonly Py_ssize_t offset
-        readonly Py_ssize_t size
-        public object stream_ptr
-        public Chunk prev
-        public Chunk next
+
 
 cdef class MemoryPointer:
 
     cdef:
-        readonly device.Device device
-        readonly object mem
         readonly size_t ptr
+        readonly device.Device device
+        readonly Memory mem
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size,
@@ -60,7 +56,7 @@ cdef class SingleDeviceMemoryPool:
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
     cpdef MemoryPointer _malloc(self, Py_ssize_t size)
     cpdef free(self, size_t ptr, Py_ssize_t size)
-    cpdef free_all_blocks(self, stream=?, stream_ptr=?)
+    cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)
     cpdef used_bytes(self)
@@ -73,8 +69,6 @@ cdef class SingleDeviceMemoryPool:
     cpdef _append_to_free_list(self, Py_ssize_t size, chunk, size_t stream_ptr)
     cpdef bint _remove_from_free_list(self, Py_ssize_t size,
                                       chunk, size_t stream_ptr) except *
-    cpdef tuple _split(self, Chunk chunk, Py_ssize_t size)
-    cpdef Chunk _merge(self, Chunk head, Chunk remaining)
 
 cdef class MemoryPool:
 
@@ -82,7 +76,7 @@ cdef class MemoryPool:
         object _pools
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
-    cpdef free_all_blocks(self, stream=?, stream_ptr=?)
+    cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)
     cpdef used_bytes(self)

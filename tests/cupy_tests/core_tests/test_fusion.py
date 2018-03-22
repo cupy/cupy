@@ -667,6 +667,38 @@ class TestFusionUfunc(unittest.TestCase):
         ret1 = f(*data)  # Fused
         numpy.testing.assert_array_almost_equal(ret0.get(), ret1.get())
 
+    def test_setitem_ellipsis(self):
+        def func(x, y):
+            y[...] = x
+            return y
+
+        ret = self._check(
+            func, 2, self.random_int, ((2, 3),) * 2,
+            True, error_types=(TypeError,))
+        is_err, (arrs_n, arrs_f) = ret
+
+        if not is_err:
+            # The returned array must equal to z
+            ret, x, y = arrs_f
+            testing.assert_array_equal(x, ret)
+            testing.assert_array_equal(x, y)
+
+    def test_setitem_none_slice(self):
+        def func(x, y):
+            y[:] = x
+            return y
+
+        ret = self._check(
+            func, 2, self.random_int, ((2, 3),) * 2,
+            True, error_types=(TypeError,))
+        is_err, (arrs_n, arrs_f) = ret
+
+        if not is_err:
+            # The returned array must equal to z
+            ret, x, y = arrs_f
+            testing.assert_array_equal(x, ret)
+            testing.assert_array_equal(x, y)
+
     @testing.for_all_dtypes_combination(
         names=['src_dtype', 'dst_dtype'], full=True, no_complex=True)
     def test_out_arg(self, src_dtype, dst_dtype):
@@ -1323,3 +1355,15 @@ class TestFusionKernelName(unittest.TestCase):
             return func_a1(a, b, c)
 
         return self.check(xp, func, 'abc', False)
+
+
+@testing.gpu
+class TestFusionInputNum(unittest.TestCase):
+
+    def test_no_result(self):
+        @cupy.fuse(input_num=0)
+        def f(x):
+            pass
+
+        f(testing.shaped_arange((1,), numpy, 'f'))
+        f(testing.shaped_arange((1,), cupy, 'f'))

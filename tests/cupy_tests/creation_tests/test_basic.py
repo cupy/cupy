@@ -24,12 +24,18 @@ class TestBasic(unittest.TestCase):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(123)
         self.assertTrue((a == 123).all())
+        # Free huge memory for slow test
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
     def test_empty_huge_size_fill0(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(0)
         self.assertTrue((a == 0).all())
+        # Free huge memory for slow test
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -52,12 +58,18 @@ class TestBasic(unittest.TestCase):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(123)
         self.assertTrue((a == 123).all())
+        # Free huge memory for slow test
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
     def test_empty_int_huge_size_fill0(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(0)
         self.assertTrue((a == 0).all())
+        # Free huge memory for slow test
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

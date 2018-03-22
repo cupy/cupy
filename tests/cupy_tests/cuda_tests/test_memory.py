@@ -1,4 +1,5 @@
 import ctypes
+import sys
 import threading
 import unittest
 
@@ -15,7 +16,6 @@ class MockMemory(memory.Memory):
         self.ptr = MockMemory.cur_ptr
         MockMemory.cur_ptr += size
         self.size = size
-        self.device = None
 
     def __del__(self):
         self.ptr = 0
@@ -122,81 +122,91 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def test_split(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory.Chunk(mem, 0, mem.size, self.stream_ptr)
-        head, tail = self.pool._split(chunk, self.unit * 2)
-        self.assertEqual(head.ptr, chunk.ptr)
-        self.assertEqual(head.offset, 0)
-        self.assertEqual(head.size, self.unit * 2)
-        self.assertEqual(head.prev, None)
-        self.assertEqual(head.next.ptr, tail.ptr)
-        self.assertEqual(head.stream_ptr, self.stream_ptr)
-        self.assertEqual(tail.ptr, chunk.ptr + self.unit * 2)
+        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ptr)
+        tail = chunk.split(self.unit * 2)
+        self.assertEqual(chunk.ptr, mem.ptr)
+        self.assertEqual(chunk.offset, 0)
+        self.assertEqual(chunk.size, self.unit * 2)
+        self.assertEqual(chunk.prev, None)
+        self.assertEqual(chunk.next.ptr, tail.ptr)
+        self.assertEqual(chunk.stream_ptr, self.stream_ptr)
+        self.assertEqual(tail.ptr, mem.ptr + self.unit * 2)
         self.assertEqual(tail.offset, self.unit * 2)
         self.assertEqual(tail.size, self.unit * 2)
-        self.assertEqual(tail.prev.ptr, head.ptr)
+        self.assertEqual(tail.prev.ptr, chunk.ptr)
         self.assertEqual(tail.next, None)
         self.assertEqual(tail.stream_ptr, self.stream_ptr)
 
-        head_of_head, tail_of_head = self.pool._split(head, self.unit)
-        self.assertEqual(head_of_head.ptr, chunk.ptr)
-        self.assertEqual(head_of_head.offset, 0)
-        self.assertEqual(head_of_head.size, self.unit)
-        self.assertEqual(head_of_head.prev, None)
-        self.assertEqual(head_of_head.next.ptr, tail_of_head.ptr)
-        self.assertEqual(head_of_head.stream_ptr, self.stream_ptr)
-        self.assertEqual(tail_of_head.ptr, chunk.ptr + self.unit)
+        tail_of_head = chunk.split(self.unit)
+        self.assertEqual(chunk.ptr, mem.ptr)
+        self.assertEqual(chunk.offset, 0)
+        self.assertEqual(chunk.size, self.unit)
+        self.assertEqual(chunk.prev, None)
+        self.assertEqual(chunk.next.ptr, tail_of_head.ptr)
+        self.assertEqual(chunk.stream_ptr, self.stream_ptr)
+        self.assertEqual(tail_of_head.ptr, mem.ptr + self.unit)
         self.assertEqual(tail_of_head.offset, self.unit)
         self.assertEqual(tail_of_head.size, self.unit)
-        self.assertEqual(tail_of_head.prev.ptr, head_of_head.ptr)
+        self.assertEqual(tail_of_head.prev.ptr, chunk.ptr)
         self.assertEqual(tail_of_head.next.ptr, tail.ptr)
         self.assertEqual(tail_of_head.stream_ptr, self.stream_ptr)
 
-        head_of_tail, tail_of_tail = self.pool._split(tail, self.unit)
-        self.assertEqual(head_of_tail.ptr, chunk.ptr + self.unit * 2)
-        self.assertEqual(head_of_tail.offset, self.unit * 2)
-        self.assertEqual(head_of_tail.size, self.unit)
-        self.assertEqual(head_of_tail.prev.ptr, tail_of_head.ptr)
-        self.assertEqual(head_of_tail.next.ptr, tail_of_tail.ptr)
-        self.assertEqual(head_of_tail.stream_ptr, self.stream_ptr)
-        self.assertEqual(tail_of_tail.ptr, chunk.ptr + self.unit * 3)
+        tail_of_tail = tail.split(self.unit)
+        self.assertEqual(tail.ptr, chunk.ptr + self.unit * 2)
+        self.assertEqual(tail.offset, self.unit * 2)
+        self.assertEqual(tail.size, self.unit)
+        self.assertEqual(tail.prev.ptr, tail_of_head.ptr)
+        self.assertEqual(tail.next.ptr, tail_of_tail.ptr)
+        self.assertEqual(tail.stream_ptr, self.stream_ptr)
+        self.assertEqual(tail_of_tail.ptr, mem.ptr + self.unit * 3)
         self.assertEqual(tail_of_tail.offset, self.unit * 3)
         self.assertEqual(tail_of_tail.size, self.unit)
-        self.assertEqual(tail_of_tail.prev.ptr, head_of_tail.ptr)
+        self.assertEqual(tail_of_tail.prev.ptr, tail.ptr)
         self.assertEqual(tail_of_tail.next, None)
         self.assertEqual(tail_of_tail.stream_ptr, self.stream_ptr)
 
     def test_merge(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory.Chunk(mem, 0, mem.size, self.stream_ptr)
+        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ptr)
+        chunk_ptr = chunk.ptr
+        chunk_offset = chunk.offset
+        chunk_size = chunk.size
 
-        head, tail = self.pool._split(chunk, self.unit * 2)
-        head_ptr, tail_ptr = head.ptr, tail.ptr
-        head_of_head, tail_of_head = self.pool._split(head, self.unit)
-        head_of_tail, tail_of_tail = self.pool._split(tail, self.unit)
+        tail = chunk.split(self.unit * 2)
+        head = chunk
+        head_ptr = head.ptr
+        head_offset = head.offset
+        head_size = head.size
+        tail_ptr = tail.ptr
+        tail_offset = tail.offset
+        tail_size = tail.size
 
-        merged_head = self.pool._merge(head_of_head, tail_of_head)
-        self.assertEqual(merged_head.ptr, head.ptr)
-        self.assertEqual(merged_head.offset, head.offset)
-        self.assertEqual(merged_head.size, head.size)
-        self.assertEqual(merged_head.prev, None)
-        self.assertEqual(merged_head.next.ptr, tail_ptr)
-        self.assertEqual(merged_head.stream_ptr, self.stream_ptr)
+        tail_of_head = head.split(self.unit)
+        tail_of_tail = tail.split(self.unit)
 
-        merged_tail = self.pool._merge(head_of_tail, tail_of_tail)
-        self.assertEqual(merged_tail.ptr, tail.ptr)
-        self.assertEqual(merged_tail.offset, tail.offset)
-        self.assertEqual(merged_tail.size, tail.size)
-        self.assertEqual(merged_tail.prev.ptr, head_ptr)
-        self.assertEqual(merged_tail.next, None)
-        self.assertEqual(merged_tail.stream_ptr, self.stream_ptr)
+        head.merge(tail_of_head)
+        self.assertEqual(head.ptr, head_ptr)
+        self.assertEqual(head.offset, head_offset)
+        self.assertEqual(head.size, head_size)
+        self.assertEqual(head.prev, None)
+        self.assertEqual(head.next.ptr, tail_ptr)
+        self.assertEqual(head.stream_ptr, self.stream_ptr)
 
-        merged = self.pool._merge(merged_head, merged_tail)
-        self.assertEqual(merged.ptr, chunk.ptr)
-        self.assertEqual(merged.offset, chunk.offset)
-        self.assertEqual(merged.size, chunk.size)
-        self.assertEqual(merged.prev, None)
-        self.assertEqual(merged.next, None)
-        self.assertEqual(merged.stream_ptr, self.stream_ptr)
+        tail.merge(tail_of_tail)
+        self.assertEqual(tail.ptr, tail_ptr)
+        self.assertEqual(tail.offset, tail_offset)
+        self.assertEqual(tail.size, tail_size)
+        self.assertEqual(tail.prev.ptr, head_ptr)
+        self.assertEqual(tail.next, None)
+        self.assertEqual(tail.stream_ptr, self.stream_ptr)
+
+        head.merge(tail)
+        self.assertEqual(head.ptr, chunk_ptr)
+        self.assertEqual(head.offset, chunk_offset)
+        self.assertEqual(head.size, chunk_size)
+        self.assertEqual(head.prev, None)
+        self.assertEqual(head.next, None)
+        self.assertEqual(head.stream_ptr, self.stream_ptr)
 
     def test_alloc(self):
         p1 = self.pool.malloc(self.unit * 4)
@@ -484,6 +494,8 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
+    @unittest.skipUnless(sys.version_info[0] >= 3,
+                         'Only for Python3 or higher')
     def test_reuse_between_thread(self):
         def job(self):
             cupy.arange(16)
@@ -502,3 +514,28 @@ class TestAllocator(unittest.TestCase):
             t.start()
             t.join()
         self.assertFalse(self._error)
+
+
+@testing.gpu
+class TestAllocatorDefault(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = cupy.get_default_memory_pool()
+
+    def tearDown(self):
+        memory.set_allocator(self.pool.malloc)
+
+    def _check_pool_not_used(self):
+        used_bytes = self.pool.used_bytes()
+        with cupy.cuda.Device(0):
+            arr = cupy.arange(128, dtype=cupy.int64)
+            self.assertEqual(0, self.pool.used_bytes() - used_bytes)
+            del arr
+
+    def test(self):
+        memory.set_allocator()
+        self._check_pool_not_used()
+
+    def test_none(self):
+        memory.set_allocator(None)
+        self._check_pool_not_used()

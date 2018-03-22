@@ -11,6 +11,8 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#define CUDNN_VERSION 0
+
 extern "C" {
 
 typedef enum {

@@ -48,6 +48,7 @@ cdef extern from "cupy_nccl.h":
                                 size_t count, ncclDataType_t datatype,
                                 ncclComm_t comm, driver.Stream stream) nogil
 
+    # Build-time version
     int NCCL_VERSION
 
 
@@ -126,8 +127,12 @@ cdef class NcclCommunicator:
         check_status(status)
 
     def __dealloc__(self):
+        self.destroy()
+
+    cpdef destroy(self):
         if self._comm:
             ncclCommDestroy(self._comm)
+            self._comm = <ncclComm_t>0
 
     def device_id(self):
         cdef int device_id

@@ -64,5 +64,5 @@ If the ketyword argument ``norm`` is ``"ortho"``, both transforms will be scaled
 
 Code compatibility features
 ---------------------------
-FFT functions of Numpy alway return numpy.ndarray which type is ``numpy.complex128`` or ``numpy.float64``.
-Cupy functions do not follow the behavior, they will return ``numpy.complex64`` or ``numpy.float32`` if the type of the input is ``numpy.float16``, ``numpy.float32``, or ``numpy.complex64``.
+FFT functions of NumPy alway return numpy.ndarray which type is ``numpy.complex128`` or ``numpy.float64``.
+CuPy functions do not follow the behavior, they will return ``numpy.complex64`` or ``numpy.float32`` if the type of the input is ``numpy.float16``, ``numpy.float32``, or ``numpy.complex64``.

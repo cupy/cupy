@@ -211,17 +211,20 @@ cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size):
     return _current_allocator(size)
 
 
-cpdef set_pinned_memory_allocator(allocator=_malloc):
-    """Sets the current allocator.
+cpdef set_pinned_memory_allocator(allocator=None):
+    """Sets the current allocator for the pinned memory.
 
     Args:
         allocator (function): CuPy pinned memory allocator. It must have the
-            same interface as the :func:`cupy.cuda.alloc_alloc_pinned_memory`
+            same interface as the :func:`cupy.cuda.alloc_pinned_memory`
             function, which takes the buffer size as an argument and returns
-            the device buffer of that size.
+            the device buffer of that size. When ``None`` is specified, raw
+            memory allocator is used (i.e., memory pool is disabled).
 
     """
     global _current_allocator
+    if allocator is None:
+        allocator = _malloc
     _current_allocator = allocator
 
 
@@ -257,7 +260,7 @@ class PooledPinnedMemory(PinnedMemory):
 
 cdef class PinnedMemoryPool:
 
-    """Memory pool on the host.
+    """Memory pool for pinned memory on the host.
 
     Note that it preserves all allocated memory buffers even if the user
     explicitly release the one. Those released memory buffers are held by the

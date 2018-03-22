@@ -140,7 +140,7 @@ cpdef void Mark(str message, int id_color=-1) except *:
 
 cpdef void RangePushC(str message, uint32_t color=0) except *:
     """
-    Starts a nestead range.
+    Starts a nested range.
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
@@ -169,7 +169,7 @@ cpdef void RangePushC(str message, uint32_t color=0) except *:
 
 cpdef void RangePush(str message, int id_color=-1) except *:
     """
-    Starts a nestead range.
+    Starts a nested range.
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding
@@ -190,7 +190,7 @@ cpdef void RangePush(str message, int id_color=-1) except *:
 
 cpdef void RangePop() except *:
     """
-    Ends a nestead range.
+    Ends a nested range.
 
     Ranges are used to describe events over a time span during execution of
     the application. The duration of a range is defined by the corresponding

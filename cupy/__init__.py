@@ -14,10 +14,20 @@ except ImportError:
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
     exc_info = sys.exc_info()
-    msg = ('CuPy is not correctly installed. Please check your environment, '
-           'uninstall CuPy and reinstall it with `pip install cupy '
-           '--no-cache-dir -vvvv`.\n\n'
-           'original error: {}'.format(exc_info[1]))
+    msg = ('''\
+CuPy is not correctly installed.
+
+If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
+Also, confirm that only one CuPy package is installed:
+  $ pip freeze
+
+If you are building CuPy from source, please check your environment, uninstall CuPy and reinstall it with:
+  $ pip install cupy --no-cache-dir -vvvv
+
+Check the Installation Guide for details:
+  https://docs-cupy.chainer.org/en/latest/install.html
+
+original error: {}'''.format(exc_info[1]))  # NOQA
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
@@ -117,6 +127,17 @@ from numpy import float32  # NOQA
 from numpy import float64  # NOQA
 
 
+from numpy import complex_  # NOQA
+
+from numpy import complex64  # NOQA
+
+from numpy import complex128  # NOQA
+
+from numpy import csingle  # NOQA
+
+from numpy import clongfloat  # NOQA
+
+
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
@@ -126,7 +147,7 @@ from numpy import newaxis  # == None  # NOQA
 # Routines
 #
 # The order of these declarations are borrowed from the NumPy document:
-# http://docs.scipy.org/doc/numpy/reference/routines.html
+# https://docs.scipy.org/doc/numpy/reference/routines.html
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -316,9 +337,17 @@ from cupy.linalg.norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
+from cupy.logic.comparison import isclose  # NOQA
+
 from cupy.core.fusion import isfinite  # NOQA
 from cupy.core.fusion import isinf  # NOQA
 from cupy.core.fusion import isnan  # NOQA
+
+from cupy.logic.type_test import iscomplex  # NOQA
+from cupy.logic.type_test import iscomplexobj  # NOQA
+from cupy.logic.type_test import isfortran  # NOQA
+from cupy.logic.type_test import isreal  # NOQA
+from cupy.logic.type_test import isrealobj  # NOQA
 
 
 def isscalar(num):
@@ -485,6 +514,9 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+
+# The following function is left for backward compatibility.
+# New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
 
 
@@ -554,28 +586,30 @@ cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
 
 
 def get_default_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for GPU memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.MemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_allocator()
+
+       >>> cupy.cuda.set_allocator(None)
 
     """
     return _default_memory_pool
 
 
 def get_default_pinned_memory_pool():
-    """Returns CuPy default memory pool.
+    """Returns CuPy default memory pool for pinned memory.
 
     Returns:
-        cupy.cuda.MemoryPool: it is memory pool object.
+        cupy.cuda.PinnedMemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
-       >>> cupy.cuda.set_pinned_memory_allocator()
+
+       >>> cupy.cuda.set_pinned_memory_allocator(None)
 
     """
     return _default_pinned_memory_pool
