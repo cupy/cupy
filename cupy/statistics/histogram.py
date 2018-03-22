@@ -37,7 +37,7 @@ def histogram(x, bins):
         atomicAdd(&y[low], 1);
         '''
     )(x, bins, bins.size, y)
-    return y, bins
+    return y.astype('l'), bins
 
 
 # TODO(okuta): Implement histogram2d
