@@ -498,6 +498,7 @@ from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
+from cupy.statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
