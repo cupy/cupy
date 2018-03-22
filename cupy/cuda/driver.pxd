@@ -29,16 +29,16 @@ cpdef enum:
 # Primary context management
 ###############################################################################
 
-cpdef void devicePrimaryCtxRelease(Device dev) except *
+cpdef devicePrimaryCtxRelease(Device dev)
 
 ###############################################################################
 # Context management
 ###############################################################################
 
 cpdef size_t ctxGetCurrent() except *
-cpdef void ctxSetCurrent(size_t ctx) except *
+cpdef ctxSetCurrent(size_t ctx)
 cpdef size_t ctxCreate(Device dev) except *
-cpdef void ctxDestroy(size_t ctx) except *
+cpdef ctxDestroy(size_t ctx)
 
 ###############################################################################
 # Module load and kernel execution

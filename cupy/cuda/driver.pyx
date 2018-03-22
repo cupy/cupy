@@ -93,7 +93,7 @@ def get_build_version():
 # Primary context management
 ###############################################################################
 
-cpdef void devicePrimaryCtxRelease(Device dev) except *:
+cpdef devicePrimaryCtxRelease(Device dev):
     with nogil:
         status = cuDevicePrimaryCtxRelease(dev)
     check_status(status)
@@ -109,7 +109,7 @@ cpdef size_t ctxGetCurrent() except *:
     check_status(status)
     return <size_t>ctx
 
-cpdef void ctxSetCurrent(size_t ctx) except *:
+cpdef ctxSetCurrent(size_t ctx):
     with nogil:
         status = cuCtxSetCurrent(<Context>ctx)
     check_status(status)
@@ -122,7 +122,7 @@ cpdef size_t ctxCreate(Device dev) except *:
     check_status(status)
     return <size_t>ctx
 
-cpdef void ctxDestroy(size_t ctx) except *:
+cpdef ctxDestroy(size_t ctx):
     with nogil:
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
