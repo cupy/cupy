@@ -41,3 +41,11 @@ class TestMatrix(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_diagflat_from_scalar(self, xp):
         return xp.diagflat(3)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_scalar_with_k0(self, xp):
+        return xp.diagflat(3, 0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_scalar_with_k1(self, xp):
+        return xp.diagflat(3, 1)
