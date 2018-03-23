@@ -484,7 +484,7 @@ def fftshift(x, axes=None):
     """Shift the zero-frequency component to the center of the spectrum.
 
     Args:
-        x (cumpy.adarray): Input array.
+        x (cupy.ndarray): Input array.
         axes (int or tuple of ints): Axes over which to shift. Default is
             ``None``, which shifts all axes.
 
@@ -507,7 +507,7 @@ def ifftshift(x, axes=None):
     """The inverse of :meth:`fftshift`.
 
     Args:
-        x (cumpy.adarray): Input array.
+        x (cupy.ndarray): Input array.
         axes (int or tuple of ints): Axes over which to shift. Default is
             ``None``, which shifts all axes.
 

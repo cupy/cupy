@@ -166,10 +166,10 @@ We can also use :meth:`cupy.ndarray.get()`:
 
 .. note::
 
-   If you work with Chainer, you can also use :func:`~chainer.cuda.to_cpu` and
-   :func:`~chainer.cuda.to_gpu` to move arrays back and forth between
+   If you work with Chainer, you can also use :func:`~chainer.backends.cuda.to_cpu` and
+   :func:`~chainer.backends.cuda.to_gpu` to move arrays back and forth between
    a device and a host, or between different devices.
-   Note that :func:`~chainer.cuda.to_gpu` has ``device`` option to specify
+   Note that :func:`~chainer.backends.cuda.to_gpu` has ``device`` option to specify
    the device which arrays are transferred.
 
 How to write CPU/GPU agnostic code
