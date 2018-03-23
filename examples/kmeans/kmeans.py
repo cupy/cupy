@@ -2,8 +2,6 @@ import argparse
 import contextlib
 import time
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import six

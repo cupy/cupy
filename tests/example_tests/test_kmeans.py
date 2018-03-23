@@ -10,6 +10,9 @@ from cupy import testing
 from example_tests import example_test
 
 
+os.environ['MPLBACKEND'] = 'Agg'
+
+
 @testing.with_requires('matplotlib')
 class TestKmeans(unittest.TestCase):
 
