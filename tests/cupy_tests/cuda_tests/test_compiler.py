@@ -40,7 +40,12 @@ class TestNvrtcArch(unittest.TestCase):
         # This test is intended to detect specification change in NVRTC API.
 
         # It should not fail.
-        self._compile('compute_53')
+        self._compile('compute_52')
+
+        # It should not fail (`compute_53` is valid according to the API
+        # Reference), but actually it fails.
+        self.assertRaises(
+            compiler.CompileException, self._compile, 'compute_53')
 
         # It should fail.
         self.assertRaises(
