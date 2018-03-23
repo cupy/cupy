@@ -22,16 +22,16 @@ def diag(v, k=0):
     .. seealso:: :func:`numpy.diag`
 
     """
-    if isinstance(v, cupy.ndarray):
-        if v.ndim == 1:
-            size = v.size + abs(k)
-            ret = cupy.zeros((size, size), dtype=v.dtype)
-            ret.diagonal(k)[:] = v
-            return ret
-        else:
-            return v.diagonal(k)
-    else:
+    if numpy.isscalar(v):
         return cupy.array(numpy.diag(v, k))
+
+    if v.ndim == 1:
+        size = v.size + abs(k)
+        ret = cupy.zeros((size, size), dtype=v.dtype)
+        ret.diagonal(k)[:] = v
+        return ret
+    else:
+        return v.diagonal(k)
 
 
 def diagflat(v, k=0):
@@ -45,10 +45,10 @@ def diagflat(v, k=0):
         cupy.ndarray: A 2-D diagonal array with the diagonal copied from ``v``.
 
     """
-    if isinstance(v, cupy.ndarray):
-        return cupy.diag(v.ravel(), k)
-    else:
-        return cupy.diag(numpy.ndarray(v).ravel(), k)
+    if numpy.isscalar(v):
+        return cupy.array(numpy.diagflat(v, k))
+
+    return cupy.diag(v.ravel(), k)
 
 
 # TODO(okuta): Implement tri
