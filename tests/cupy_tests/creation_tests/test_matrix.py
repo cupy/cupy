@@ -37,3 +37,15 @@ class TestMatrix(unittest.TestCase):
     def test_diagflat3(self, xp):
         a = testing.shaped_arange((3, 3), xp)
         return xp.diagflat(a, -2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_scalar(self, xp):
+        return xp.diagflat(3)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_scalar_with_k0(self, xp):
+        return xp.diagflat(3, 0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_diagflat_from_scalar_with_k1(self, xp):
+        return xp.diagflat(3, 1)
