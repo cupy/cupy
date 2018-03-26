@@ -2108,6 +2108,8 @@ cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
         except *:
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
+    Arguments `allow_duplicate` and `axis_name` are not supported.
+
     """
     if numpy.isscalar(axis):
         axis = (axis,)
@@ -2117,7 +2119,10 @@ cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
         if ax >= ndim or ax < -ndim:
             raise _AxisError('axis {} is out of bounds for array of '
                              'dimension {}'.format(ax, ndim))
+        if _has_element(ret, ax):
+            raise _AxisError('repeated axis')
         ret.push_back(ax % ndim)
+
     return ret
 
 
@@ -2137,9 +2142,9 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
         if not _has_element(src, n):
             order.push_back(n)
 
-    for i in range(len(src)):
-        n = <Py_ssize_t>i
-        order.insert(order.begin() + dest[n], src[n])
+    cdef Py_ssize_t d, s
+    for d, s in sorted(zip(dest, src)):
+        order.insert(order.begin() + d, s)
 
     return a.transpose(order)
 
