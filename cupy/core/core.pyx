@@ -2355,7 +2355,10 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
     # other inputs the dimension must match exactly.
     cdef bint broadcast = False
-    if isinstance(repeats, int):
+    # numpy.issubdtype(1, numpy.integer) fails with old numpy like 1.13.3.
+    if (isinstance(repeats, int) or
+            (hasattr(repeats, 'dtype') and
+             numpy.issubdtype(repeats, numpy.integer))):
         if repeats < 0:
             raise ValueError(
                 "'repeats' should not be negative: {}".format(repeats))
