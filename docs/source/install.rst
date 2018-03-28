@@ -295,3 +295,21 @@ If you are hacking CuPy source code, we recommend you to use ``pip`` with ``-e``
   $ pip install -e .
 
 Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files)
+
+CuPy always raises ``cupy.cuda.compiler.CompileException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If CuPy does not work at all with ``CompileException``, it is possible that CuPy cannot detect CUDA installed on your system correctly.
+The followings are error messages commonly observed in such case.
+
+* ``nvrtc: error: failed to load builtins``
+* ``error: cannot overload functions distinguished by return type alone``
+* ``error: identifier "__half_raw" is undefined``
+
+Please try setting ``LD_LIBRARY_PATH`` and ``CUDA_PATH`` environment variable.
+For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
+
+  export CUDA_PATH=/usr/local/cuda-9.0
+  export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
+
+Also see :ref:`install_cuda`.
