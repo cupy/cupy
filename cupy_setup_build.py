@@ -395,8 +395,15 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('/openmp')
 
         for f in module['file']:
-            rpath = list(s['library_dirs'])  # copy
+            rpath = []
+            if not options['no_rpath']:
+                # Add library directories (e.g., `/usr/local/cuda/lib64`) to
+                # RPATH.
+                rpath += s['library_dirs']
+
             if use_wheel_libs_rpath:
+                # Add `cupy/_lib` (where shared libraries included in wheels
+                # reside) to RPATH.
                 modname = f[0] if isinstance(f, tuple) else f
                 depth = modname.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
@@ -434,6 +441,9 @@ def parse_args():
         help='shared library to copy into the wheel '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-no-rpath', action='store_true', default=False,
+        help='disable adding default library directories to RPATH')
+    parser.add_argument(
         '--cupy-profile', action='store_true', default=False,
         help='enable profiling for Cython code')
     parser.add_argument(
@@ -449,6 +459,7 @@ def parse_args():
         'package_name': opts.cupy_package_name,
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
+        'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
