@@ -76,9 +76,11 @@ class TestHistogram(unittest.TestCase):
         y, bin_edges = xp.histogram(x, bins)
         return y, bin_edges
 
+    @testing.with_requires('numpy>=1.13.2')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_histogram_bins_not_ordered(self, xp, dtype):
+        # numpy 1.13.1 does not check this error correctly with unsigned int.
         x = testing.shaped_arange((10,), xp, dtype)
         bins = xp.array([1, 3, 2], dtype)
         xp.histogram(x, bins)
