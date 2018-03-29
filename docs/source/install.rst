@@ -303,6 +303,7 @@ If CuPy does not work at all with ``CompileException``, it is possible that CuPy
 The followings are error messages commonly observed in such case.
 
 * ``nvrtc: error: failed to load builtins``
+* ``catastrophic error: cannot open source file "cuda_fp16.h"``
 * ``error: cannot overload functions distinguished by return type alone``
 * ``error: identifier "__half_raw" is undefined``
 
