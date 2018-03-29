@@ -92,6 +92,11 @@ class TestMemoryPool(unittest.TestCase):
         self.assertIsInstance(p, cupy.cuda.pinned_memory.PinnedMemoryPool)
 
 
+class TestShowConfig(unittest.TestCase):
+
+    def test_show_config(self):
+        cupy.show_config()
+
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
 if __name__ == '__main__':
