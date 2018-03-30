@@ -102,6 +102,7 @@ setup(
         'cupy.statistics',
         'cupy.testing',
         'cupyx',
+        'cupyx.scipy',
         'cupyx.scipy.ndimage',
     ],
     package_data=package_data,
