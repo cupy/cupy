@@ -35,9 +35,9 @@ def _get_output(output, input, shape=None):
 
 def _check_parameter(func_name, order, mode):
     if order is None:
-        warnings.warn('In the current feature the default order of {} is 1. It'
-                      'is different from scipy.ndimage and can change in the'
-                      'future'.format(func_name))
+        warnings.warn('In the current feature the default order of {} is 1. '
+                      'It is different from scipy.ndimage and can change in '
+                      'the future.'.format(func_name))
     elif order < 0 or 5 < order:
         raise RuntimeError('spline order not supported')
     elif 1 < order:
