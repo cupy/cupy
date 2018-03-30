@@ -306,7 +306,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
     .. seealso:: :func:`scipy.ndimage.rotate`
     """
 
-    _check_parameter('affine_transform', order, mode)
+    _check_parameter('rotate', order, mode)
 
     if mode == 'opencv':
         mode = '_opencv_edge'
@@ -399,7 +399,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
     .. seealso:: :func:`scipy.ndimage.shift`
     """
 
-    _check_parameter('affine_transform', order, mode)
+    _check_parameter('shift', order, mode)
 
     if mode == 'opencv':
         mode = '_opencv_edge'
@@ -444,7 +444,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
     .. seealso:: :func:`scipy.ndimage.zoom`
     """
 
-    _check_parameter('affine_transform', order, mode)
+    _check_parameter('zoom', order, mode)
 
     if not hasattr(zoom, '__iter__') and type(zoom) is not cupy.ndarray:
         zoom = [zoom] * input.ndim
