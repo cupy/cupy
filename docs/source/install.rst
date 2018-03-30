@@ -6,28 +6,15 @@ Installation Guide
 Recommended Environments
 ------------------------
 
-We recommend these Linux distributions.
+We recommend the following Linux distributions.
 
-* `Ubuntu <https://www.ubuntu.com/>`_ 14.04/16.04 LTS 64bit
-* `CentOS <https://www.centos.org/>`_ 7 64bit
-
-The following versions of Python can be used: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
-
-.. warning::
-
-   If you are using certain versions of conda, it may fail to build CuPy with error
-   ``g++: error: unrecognized command line option ‘-R’``.
-   This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
-   If you encounter this problem, please downgrade or upgrade it.
+* `Ubuntu <https://www.ubuntu.com/>`_ 14.04 / 16.04 LTS (64-bit)
+* `CentOS <https://www.centos.org/>`_ 7 (64-bit)
 
 .. note::
 
-   We are testing CuPy automatically with Jenkins, where all the *recommended* environments above are tested.
+   We are automatically testing CuPy on all the recommended environments above.
    We cannot guarantee that CuPy works on other environments including Windows and macOS, even if CuPy looks running correctly.
-
-Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
-
-  $ pip install -U setuptools pip
 
 
 Requirements
@@ -41,9 +28,15 @@ You need to have the following components to use CuPy.
     * Supported Versions: 7.0, 7.5, 8.0, 9.0 and 9.1.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installation automatically.
       See :ref:`install_cuda` for details.
+* `Python <https://python.org/>`_
+    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
 * `NumPy <http://www.numpy.org/>`_
     * Supported Versions: 1.9, 1.10, 1.11, 1.12 and 1.13.
     * NumPy will be installed automatically during the installation of CuPy.
+
+Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
+
+  $ pip install -U setuptools pip
 
 Optional Libraries
 ~~~~~~~~~~~~~~~~~~
@@ -226,6 +219,10 @@ If you are using ``sudo`` to install CuPy, note that ``sudo`` command does not p
 If you need to pass environment variable (e.g., ``CUDA_PATH``), you need to specify them inside ``sudo`` like this::
 
   $ sudo CUDA_PATH=/opt/nvidia/cuda pip install cupy
+
+If you are using certain versions of conda, it may fail to build CuPy with error ``g++: error: unrecognized command line option ‘-R’``.
+This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
+If you encounter this problem, please downgrade or upgrade it.
 
 .. _install_cudnn:
 
