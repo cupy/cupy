@@ -5,9 +5,11 @@ import sys
 import tempfile
 import unittest
 
+import mock
 
 import cupy
 from cupy import testing
+import cupyx
 
 
 def _run_script(code):
@@ -95,7 +97,9 @@ class TestMemoryPool(unittest.TestCase):
 class TestShowConfig(unittest.TestCase):
 
     def test_show_config(self):
-        cupy.show_config()
+        with mock.patch('sys.stdout.write') as write_func:
+            cupy.show_config()
+        write_func.assert_called_once_with(str(cupyx.get_runtime_info()))
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
