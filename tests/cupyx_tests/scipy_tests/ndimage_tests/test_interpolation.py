@@ -165,7 +165,6 @@ class TestAffineTransformOpenCV(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(10, 100), (99, 9), (9, 10, 11)],
     'angle': [-10, 1000],
     'axes': [(1, 0)],
     'reshape': [False, True],
@@ -203,7 +202,7 @@ class TestRotate(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_rotate_float(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp, dtype)
+        a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, a)
 
     @testing.for_int_dtypes(no_bool=True)
@@ -215,12 +214,35 @@ class TestRotate(unittest.TestCase):
             elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
                 dtype = numpy.uint64
 
-        a = testing.shaped_random(self.shape, xp, dtype)
+        a = testing.shaped_random((10, 10), xp, dtype)
         out = self._rotate(xp, a)
         float_out = self._rotate(xp, a.astype(xp.float64)) % 1
         half = xp.full_like(float_out, 0.5)
         out[xp.isclose(float_out, half, atol=1e-5)] = 0
         return out
+
+
+@testing.parameterize(
+    {'axes': (-1, -2)},
+    {'axes': (0, 1)},
+    {'axes': (2, 0)},
+    {'axes': (-2, 2)},
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class TestRotateAxes(unittest.TestCase):
+
+    _multiprocess_can_split = True
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_rotate_axes(self, xp, dtype):
+        a = testing.shaped_random((10, 10, 10), xp, dtype)
+        if xp == cupy:
+            rotate = cupyx.scipy.ndimage.rotate
+        else:
+            rotate = scipy.ndimage.rotate
+        return rotate(a, 1, self.axes, order=1)
 
 
 @testing.gpu

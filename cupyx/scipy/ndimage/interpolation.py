@@ -311,6 +311,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
     if mode == 'opencv':
         mode = '_opencv_edge'
 
+    axes = list(axes)
     if axes[0] < 0:
         axes[0] += input.ndim
     if axes[1] < 0:
