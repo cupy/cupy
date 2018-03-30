@@ -56,6 +56,12 @@ class TestMapCoordinates(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_map_coordinates_int(self, xp, dtype):
+        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
+            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+                dtype = numpy.int64
+            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+                dtype = numpy.uint64
+
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
         out = self._map_coordinates(xp, a, coordinates)
@@ -83,6 +89,10 @@ class TestAffineTransform(unittest.TestCase):
     _multiprocess_can_split = True
 
     def _affine_transform(self, xp, a, matrix):
+        if (numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0'
+                and matrix.ndim == 2 and matrix.shape[1] == 3):
+            return xp.empty(0)
+
         if matrix.shape == (3, 3):
             matrix[-1, 0:-1] = 0
             matrix[-1, -1] = 1
@@ -113,6 +123,12 @@ class TestAffineTransform(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_affine_transform_int(self, xp, dtype):
+        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
+            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+                dtype = numpy.int64
+            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+                dtype = numpy.uint64
+
         a = testing.shaped_random((100, 100), xp, dtype)
         matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
         out = self._affine_transform(xp, a, matrix)
@@ -188,6 +204,12 @@ class TestRotate(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_rotate_int(self, xp, dtype):
+        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
+            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+                dtype = numpy.int64
+            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+                dtype = numpy.uint64
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = self._rotate(xp, a)
         float_out = self._rotate(xp, a.astype(xp.float64)) % 1
@@ -252,6 +274,12 @@ class TestShift(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_shift_int(self, xp, dtype):
+        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
+            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+                dtype = numpy.int64
+            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+                dtype = numpy.uint64
+
         a = testing.shaped_random((100, 100), xp, dtype)
         out = self._shift(xp, a)
         float_out = self._shift(xp, a.astype(xp.float64)) % 1
@@ -318,6 +346,12 @@ class TestZoom(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_zoom_int(self, xp, dtype):
+        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
+            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+                dtype = numpy.int64
+            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+                dtype = numpy.uint64
+
         a = testing.shaped_random((100, 100), xp, dtype)
         out = self._zoom(xp, a)
         float_out = self._zoom(xp, a.astype(xp.float64)) % 1
