@@ -101,6 +101,7 @@ class TestShowConfig(unittest.TestCase):
             cupy.show_config()
         write_func.assert_called_once_with(str(cupyx.get_runtime_info()))
 
+
 # This is copied from chainer/testing/__init__.py, so should be replaced in
 # some way.
 if __name__ == '__main__':
