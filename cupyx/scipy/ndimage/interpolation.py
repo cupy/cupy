@@ -117,12 +117,12 @@ def map_coordinates(input, coordinates, output=None, order=None,
                     coordinates[i], None, length) - coordinates[i]
 
     if cupy.issubdtype(input.dtype, cupy.integer):
-        input = input.astype(cupy.float64)
+        input = input.astype(cupy.float32)
 
     if order == 0:
-        out = input[list(cupy.rint(coordinates).astype(cupy.int64))]
+        out = input[list(cupy.rint(coordinates).astype(cupy.int32))]
     else:
-        coordinates_floor = cupy.floor(coordinates).astype(cupy.int64)
+        coordinates_floor = cupy.floor(coordinates).astype(cupy.int32)
         coordinates_ceil = coordinates_floor + 1
 
         sides = []
@@ -133,13 +133,13 @@ def map_coordinates(input, coordinates, output=None, order=None,
             else:
                 sides.append([0, 1])
 
-        if cupy.issubdtype(input.dtype, numpy.complexfloating):
-            out = cupy.zeros(coordinates.shape[1], dtype=input.dtype)
-        else:
-            out = cupy.zeros(coordinates.shape[1])
+        out = cupy.zeros(coordinates.shape[1], dtype=input.dtype)
         for side in itertools.product(*sides):
             ind = []
-            weight = cupy.ones(coordinates.shape[1])
+            if input.dtype in (cupy.float64, cupy.complex128):
+                weight = cupy.ones(coordinates.shape[1], dtype=cupy.float64)
+            else:
+                weight = cupy.ones(coordinates.shape[1], dtype=cupy.float32)
             for i in six.moves.range(input.ndim):
                 if side[i] == 0:
                     ind.append(coordinates_floor[i])
@@ -150,7 +150,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
             out += input[ind] * weight
 
     if mode == 'constant':
-        mask = cupy.ones(coordinates.shape[1])
+        mask = cupy.ones(coordinates.shape[1], dtype=bool)
         for i in six.moves.range(input.ndim):
             mask *= 0 <= coordinates[i]
             mask *= coordinates[i] <= input.shape[i] - 1
@@ -408,7 +408,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
     if not hasattr(shift, '__iter__') and type(shift) is not cupy.ndarray:
         shift = [shift] * input.ndim
 
-    return affine_transform(input, cupy.ones(input.ndim),
+    return affine_transform(input, cupy.ones(input.ndim, input.dtype),
                             cupy.negative(cupy.asarray(shift)), None, output,
                             order, mode, cval, prefilter)
 

@@ -52,14 +52,14 @@ class TestMapCoordinates(unittest.TestCase):
                                    self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_map_coordinates_float(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
         return self._map_coordinates(xp, a, coordinates)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_map_coordinates_int(self, xp, dtype):
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
@@ -119,14 +119,14 @@ class TestAffineTransform(unittest.TestCase):
                                     self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_affine_transform_float(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
         return self._affine_transform(xp, a, matrix)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_affine_transform_int(self, xp, dtype):
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
@@ -200,13 +200,13 @@ class TestRotate(unittest.TestCase):
                           self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_rotate_float(self, xp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, a)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_rotate_int(self, xp, dtype):
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
@@ -235,7 +235,7 @@ class TestRotateAxes(unittest.TestCase):
     _multiprocess_can_split = True
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(1e-5)
     def test_rotate_axes(self, xp, dtype):
         a = testing.shaped_random((10, 10, 10), xp, dtype)
         if xp == cupy:
@@ -293,13 +293,13 @@ class TestShift(unittest.TestCase):
                          self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_shift_float(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._shift(xp, a)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(1e-5)
     def test_shift_int(self, xp, dtype):
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
@@ -365,13 +365,13 @@ class TestZoom(unittest.TestCase):
                         self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_zoom_float(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._zoom(xp, a)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_zoom_int(self, xp, dtype):
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
