@@ -309,7 +309,7 @@ class TestShiftOpenCV(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'zoom': [0.1, 10, (0.1, 10)],
-    'output': [None, numpy.float64, 'f', float, 'empty'],
+    'output': [None, numpy.float64, 'empty'],
     'order': [0, 1],
     'mode': ['constant', 'nearest', 'mirror'],
     'cval': [1.0],

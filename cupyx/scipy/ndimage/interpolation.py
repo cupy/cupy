@@ -22,7 +22,7 @@ def _get_output(output, input, shape=None):
     elif type(output) in [type(type), type(cupy.zeros((4,)).dtype)]:
         output = cupy.zeros(shape, dtype=output)
         return_value = output
-    elif type(output) is string_type:
+    elif isinstance(output, string_type):
         output = numpy.typeDict[output]
         output = cupy.zeros(shape, dtype=output)
         return_value = output
