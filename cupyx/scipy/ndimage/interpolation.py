@@ -71,8 +71,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
         input (cupy.ndarray): The input array.
         coordinates (array_like): The coordinates at which ``input`` is
             evaluated.
-        output (cupy.ndarray or dtype): The array in which to place the output,
-            or the dtype of the returned array.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array.
         order (int): The order of the spline interpolation. If it is not given,
             order 1 is used. It is different from :mod:`scipy.ndimage` and can
             change in the future. Currently it supports only order 0 and 1.
@@ -196,8 +196,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             axis. If a sequence, ``offset`` should contain one value for each
             axis.
         output_shape (tuple of ints): Shape tuple.
-        output (cupy.ndarray or dtype): The array in which to place the output,
-            or the dtype of the returned array.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array.
         order (int): The order of the spline interpolation. If it is not given,
             order 1 is used. It is different from :mod:`scipy.ndimage` and can
             change in the future. Currently it supports only order 0 and 1.
@@ -285,8 +285,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
         reshape (bool): If ``reshape`` is True, the output shape is adapted so
             that the input array is contained completely in the output. Default
             is True.
-        output (cupy.ndarray or dtype): The array in which to place the output,
-            or the dtype of the returned array.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array.
         order (int): The order of the spline interpolation. If it is not given,
             order 1 is used. It is different from :mod:`scipy.ndimage` and can
             change in the future. Currently it supports only order 0 and 1.
@@ -378,8 +378,8 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
         shift (float or sequence): The shift along the axes. If a float,
             ``shift`` is the same for each axis. If a sequence, ``shift``
             should contain one value for each axis.
-        output (cupy.ndarray or dtype): The array in which to place the output,
-            or the dtype of the returned array.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array.
         order (int): The order of the spline interpolation. If it is not given,
             order 1 is used. It is different from :mod:`scipy.ndimage` and can
             change in the future. Currently it supports only order 0 and 1.
@@ -423,8 +423,8 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         zoom (float or sequence): The zoom factor along the axes. If a float,
             ``zoom`` is the same for each axis. If a sequence, ``zoom`` should
             contain one value for each axis.
-        output (cupy.ndarray or dtype): The array in which to place the output,
-            or the dtype of the returned array.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array.
         order (int): The order of the spline interpolation. If it is not given,
             order 1 is used. It is different from :mod:`scipy.ndimage` and can
             change in the future. Currently it supports only order 0 and 1.
