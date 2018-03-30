@@ -53,8 +53,8 @@ class _RuntimeInfo(object):
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
         s = six.StringIO()
-        for r in records:
-            s.write(fmt.format(*r))
+        for k, v in records:
+            s.write(fmt.format(k, v))
 
         return s.getvalue()
 
