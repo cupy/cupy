@@ -130,6 +130,16 @@ cdef extern from 'cupy_cusolver.h' nogil:
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
 
+    int cusolverSpScsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const float* b, float tol, int reorder, float* x, int* singularity)
+
+    int cusolverSpDcsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const double* b, double tol, int reorder, double* x, int* singularity)
+
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
@@ -558,6 +568,29 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
 ###############################################################################
 # sparse LAPACK Functions
 ###############################################################################
+cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpScsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const float*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const float*> b,
+            tol, reorder, <float*> x, <int*> singularity)
+    check_status(status)
+
+cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpDcsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const double*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const double*> b,
+            tol, reorder, <double*> x, <int*> singularity)
+    check_status(status)
 
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
