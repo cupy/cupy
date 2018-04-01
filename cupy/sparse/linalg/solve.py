@@ -78,7 +78,7 @@ def lschol(A, b):
 
     Find the solution to a large, sparse, linear system of equations.
     The function solves ``Ax = b``. Given two-dimensional matrix ``A`` is
-    decomposed into ``Q * R``.
+    decomposed into ``L * L^*``.
 
     Args:
         A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
