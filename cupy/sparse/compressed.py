@@ -101,7 +101,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
 
         if dtype != 'f' and dtype != 'd' and dtype != 'F' and dtype != 'D':
             raise ValueError(
-                'Only float32, float64, complex64 and complex128 are supported')
+                'Only float32, float64, complex64 and complex128 '
+                'are supported')
 
         data = data.astype(dtype, copy=copy)
         sparse_data._data_matrix.__init__(self, data)
