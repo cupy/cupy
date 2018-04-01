@@ -49,6 +49,7 @@ fix = core.create_ufunc(
     'out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)',
     doc='''If given value x is positive, it return floor(x).
     Else, it return ceil(x).
-    .. seealso:: :data:`numpy.fix`
+
+    .. seealso:: :func:`numpy.fix`
 
     ''')

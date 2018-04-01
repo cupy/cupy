@@ -21,12 +21,16 @@ Memory management
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
+   cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
+   cupy.cuda.PinnedMemoryPointer
    cupy.cuda.alloc
+   cupy.cuda.alloc_pinned_memory
    cupy.cuda.set_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
    cupy.cuda.PinnedMemoryPool
+   cupy.cuda.SingleDeviceMemoryPool
 
 
 Memory hook

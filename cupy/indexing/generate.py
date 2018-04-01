@@ -108,7 +108,7 @@ Args:
 Returns:
     cupy.ndarray: Joined array.
 
-.. seealso:: :func:`numpy.c_`
+.. seealso:: :obj:`numpy.c_`
 
 Examples
 --------
@@ -147,7 +147,7 @@ Args:
 Returns:
     cupy.ndarray: Joined array.
 
-.. seealso:: :func:`numpy.r_`
+.. seealso:: :obj:`numpy.r_`
 
 Examples
 --------
