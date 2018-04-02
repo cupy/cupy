@@ -6,50 +6,49 @@ from libc.stdint cimport uint64_t
 from cupy.core.core cimport ndarray
 
 
-cdef extern from "dlpack.h" nogil:
+ctypedef enum DLDeviceType:
+    kDLCPU = 1
+    kDLGPU = 2
+    kDLCPUPinned = 3
+    kDLOpenCL = 4
+    kDLMetal = 8
+    kDLVPI = 9
+    kDLROCM = 10
 
-    ctypedef enum DLDeviceType:
-        kDLCPU
-        kDLGPU
-        kDLCPUPinned
-        kDLOpenCL
-        kDLMetal
-        kDLVPI
-        kDLROCM
 
-    ctypedef struct DLContext 'DLContext':
-        DLDeviceType device_type
-        int device_id
+ctypedef struct DLContext 'DLContext':
+    DLDeviceType device_type
+    int device_id
 
-    ctypedef enum DLDataTypeCode:
-        kDLInt
-        kDLUInt
-        kDLFloat
 
-    ctypedef struct DLDataType 'DLDataType':
-        uint8_t code
-        uint8_t bits
-        uint16_t lanes
+ctypedef enum DLDataTypeCode:
+    kDLInt = 0
+    kDLUInt = 1
+    kDLFloat = 2
 
-    ctypedef struct DLTensor 'DLTensor':
-        void* data
-        DLContext ctx
-        int ndim
-        DLDataType dtype
-        int64_t* shape
-        int64_t* strides
-        uint64_t byte_offset
 
-    ctypedef struct DLManagedTensor 'DLManagedTensor':
-        DLTensor dl_tensor
-        void* manager_ctx
-        void (*deleter)(DLManagedTensor*)
+ctypedef struct DLDataType 'DLDataType':
+    uint8_t code
+    uint8_t bits
+    uint16_t lanes
+
+
+ctypedef struct DLTensor 'DLTensor':
+    void* data
+    DLContext ctx
+    int ndim
+    DLDataType dtype
+    int64_t* shape
+    int64_t* strides
+    uint64_t byte_offset
+
+
+ctypedef struct DLManagedTensor 'DLManagedTensor':
+    DLTensor dl_tensor
+    void* manager_ctx
+    void (*deleter)(DLManagedTensor*)
 
 
 cdef void deleter(DLManagedTensor* tensor)
-
-
 cdef object toDLPack(ndarray array)
-
-
 cdef ndarray fromDLPack(DLManagedTensor* tensor)
