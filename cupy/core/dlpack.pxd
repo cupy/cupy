@@ -1,3 +1,5 @@
+# DLPACK_VERSION: 010
+
 from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
 from libc.stdint cimport int64_t
