@@ -54,6 +54,7 @@ package_data = {
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
         'cuda/cupy_thrust.cu',
+        'core/include/dlpack/dlpack.h',
     ],
 }
 

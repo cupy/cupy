@@ -21,6 +21,7 @@ cimport cpython
 cimport cython
 from libcpp cimport vector
 
+from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
@@ -1745,6 +1746,9 @@ cdef class ndarray:
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
+
+    cpdef object toDLPack(self):
+        return dlpack.toDLPack(self)
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
