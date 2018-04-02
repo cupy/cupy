@@ -608,7 +608,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
-    """Decorator that checks the fixture with all float dtypes.
+    """Decorator that checks the fixture with float dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -643,7 +643,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with all dtypes.
+    """Decorator that checks the fixture with unsinged dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -681,7 +681,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
 
 def for_complex_dtypes(name='dtype'):
-    """Decorator that checks the fixture with all complex dtypes.
+    """Decorator that checks the fixture with complex dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.

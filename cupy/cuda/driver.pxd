@@ -26,10 +26,19 @@ cpdef enum:
 
 
 ###############################################################################
+# Primary context management
+###############################################################################
+
+cpdef devicePrimaryCtxRelease(Device dev)
+
+###############################################################################
 # Context management
 ###############################################################################
 
 cpdef size_t ctxGetCurrent() except *
+cpdef ctxSetCurrent(size_t ctx)
+cpdef size_t ctxCreate(Device dev) except *
+cpdef ctxDestroy(size_t ctx)
 
 ###############################################################################
 # Module load and kernel execution

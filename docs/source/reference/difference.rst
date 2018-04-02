@@ -27,7 +27,7 @@ This is Intel CPU result.
 Random methods support dtype argument
 -------------------------------------
 
-NumPy's random value generator does not support dtype option and it always resturns a ``float32`` value.
+NumPy's random value generator does not support dtype option and it always returns a ``float32`` value.
 We support the option in CuPy because cuRAND, which is used in CuPy, supports any types of float values.
 
   >>> np.random.randn(dtype=np.float32)
