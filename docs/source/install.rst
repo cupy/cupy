@@ -311,3 +311,11 @@ For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
   export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
+
+If you are installing CuPy on Anaconda environment, also make sure that the following packages are not installed.
+
+* `cudatoolkit <https://anaconda.org/anaconda/cudatoolkit>`_
+* `cudnn <https://anaconda.org/anaconda/cudnn>`_
+* `nccl <https://anaconda.org/anaconda/nccl>`_
+
+Use ``conda uninstall cudatoolkit cudnn nccl`` to remove these package.
