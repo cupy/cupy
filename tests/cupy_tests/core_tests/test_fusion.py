@@ -571,6 +571,13 @@ class TestFusionUfunc(unittest.TestCase):
                                      scale=(higher - lower),
                                      seed=seed) + lower
 
+    def random_imag(self, lower=-1000, higher=1000, seed=0):
+        return testing.shaped_random((3, 3),
+                                     xp=cupy,
+                                     dtype=numpy.complex128,
+                                     scale=(higher - lower),
+                                     seed=seed) + lower
+
     def check(self, func, n, gen, args=None):
         if args is None:
             args = ((),) * n
@@ -817,6 +824,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.add, 2, self.random_real)
         self.check(cupy.reciprocal, 1, self.random_real)
         self.check(cupy.negative, 1, self.random_real)
+        self.check(cupy.angle, 1, self.random_imag)
+        self.check(cupy.conj, 1, self.random_imag)
+        self.check(cupy.real, 1, self.random_imag)
+        self.check(cupy.imag, 1, self.random_imag)
         self.check(cupy.multiply, 2, self.random_real)
         self.check(cupy.divide, 2, self.random_real)
         self.check(cupy.power, 2, self.random_real, ((0, 10),) * 2)

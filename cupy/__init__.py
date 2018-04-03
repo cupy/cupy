@@ -441,11 +441,10 @@ from cupy.core.fusion import remainder as mod  # NOQA
 from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
-# TODO(okuta): implement fusion function
-from cupy.core import angle  # NOQA
-from cupy.core import conj  # NOQA
-from cupy.core import imag  # NOQA
-from cupy.core import real  # NOQA
+from cupy.core.fusion import angle  # NOQA
+from cupy.core.fusion import conj  # NOQA
+from cupy.core.fusion import imag  # NOQA
+from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
