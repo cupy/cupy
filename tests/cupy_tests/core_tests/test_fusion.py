@@ -1378,3 +1378,18 @@ class TestFusionInputNum(unittest.TestCase):
 
         f(testing.shaped_arange((1,), numpy, 'f'))
         f(testing.shaped_arange((1,), cupy, 'f'))
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'dtype': [int, float, bool, complex],
+}))
+class TestFusionPythonConstant(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_python_scalar(self, xp):
+        dtype = self.dtype
+        @cupy.fuse()
+        def f(x):
+            return x * dtype(1)
+        return f(testing.shaped_arange((1,), xp, dtype))
