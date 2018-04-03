@@ -395,10 +395,21 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('/openmp')
 
         for f in module['file']:
-            rpath = list(s['library_dirs'])  # copy
+            name = module_extension_name(f)
+
+            rpath = []
+            if not options['no_rpath']:
+                # Add library directories (e.g., `/usr/local/cuda/lib64`) to
+                # RPATH.
+                rpath += s['library_dirs']
+
             if use_wheel_libs_rpath:
-                modname = f[0] if isinstance(f, tuple) else f
-                depth = modname.count('.') - 1
+                # Add `cupy/_lib` (where shared libraries included in wheels
+                # reside) to RPATH.
+                # The path is resolved relative to the module, e.g., use
+                # `$ORIGIN/_lib` for `cupy/cudnn.so` and `$ORIGIN/../_lib` for
+                # `cupy/cuda/cudnn.so`.
+                depth = name.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
 
             if sys.platform != 'win32':
@@ -412,7 +423,6 @@ def make_extensions(options, compiler, use_cython):
                 # later
                 args.append('-mmacosx-version-min=10.5')
 
-            name = module_extension_name(f)
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
             ret.append(extension)
@@ -434,6 +444,9 @@ def parse_args():
         help='shared library to copy into the wheel '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-no-rpath', action='store_true', default=False,
+        help='disable adding default library directories to RPATH')
+    parser.add_argument(
         '--cupy-profile', action='store_true', default=False,
         help='enable profiling for Cython code')
     parser.add_argument(
@@ -449,6 +462,7 @@ def parse_args():
         'package_name': opts.cupy_package_name,
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
+        'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
