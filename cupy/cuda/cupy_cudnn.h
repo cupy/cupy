@@ -121,6 +121,10 @@ cudnnStatus_t cudnnGetConvolutionForwardAlgorithm(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
 cudnnStatus_t cudnnGetConvolutionForwardWorkspaceSize(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -165,23 +169,27 @@ typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef enum {} cudnnDeterminism_t;
 typedef struct {
   cudnnConvolutionFwdAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
 } cudnnConvolutionFwdAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdFilterAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
 } cudnnConvolutionBwdFilterAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdDataAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
 } cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {
@@ -208,6 +216,10 @@ cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 cudnnStatus_t cudnnConvolutionBackwardData_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -217,6 +229,10 @@ cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithm(...) {
 }
 
 cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v7(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -544,6 +560,18 @@ cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
 }
 
 cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v7(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
