@@ -259,7 +259,7 @@ class coo_matrix(sparse_data._data_matrix):
         Returns:
             cupy.ndarray: Dense array representing the same value.
 
-        .. seealso:: :meth:`cupy.sparse.coo_matrix.toarray`
+        .. seealso:: :meth:`scipy.sparse.coo_matrix.toarray`
 
         """
         return self.tocsr().toarray(order=order, out=out)
