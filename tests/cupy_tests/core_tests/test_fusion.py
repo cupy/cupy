@@ -1389,6 +1389,7 @@ class TestFusionPythonConstant(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_python_scalar(self, xp):
         dtype = self.dtype
+
         @cupy.fuse()
         def f(x):
             return x * dtype(1)
