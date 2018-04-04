@@ -19,7 +19,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
     _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
         'if (ind == minor) atomicAdd(&answer[0], d);',
-        'compress_getitem', preamble=util._preamble_atomic_add)
+        'compress_getitem')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
