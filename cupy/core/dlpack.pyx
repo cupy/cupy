@@ -2,7 +2,7 @@ import cupy
 
 
 cdef void deleter(DLManagedTensor* tensor):
-    pass
+    del tensor.manager_ctx
 
 
 cdef object toDLPack(ndarray array):
@@ -21,7 +21,7 @@ cdef object toDLPack(ndarray array):
     dtype.lanes = 1
 
     cdef DLTensor dl_tensor
-    dl_tensor.data = <void *>array.data.ptr
+    dl_tensor.data = <void *><size_t>array.data.ptr
     dl_tensor.ctx = ctx
     dl_tensor.ndim = array.ndim
     dl_tensor.dtype = dtype
@@ -31,7 +31,7 @@ cdef object toDLPack(ndarray array):
 
     cdef DLManagedTensor dlm_tensor
     dlm_tensor.dl_tensor = dl_tensor
-    dlm_tensor.manager_ctx = &dl_tensor
+    dlm_tensor.manager_ctx = array
     dlm_tensor.deleter = deleter
 
     return pycapsule.PyCapsule_New(&dlm_tensor, 'dltensor', NULL)
