@@ -6,6 +6,9 @@ from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
 
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport device as device_mod
+from cupy.cuda cimport memory
+from cpython cimport pycapsule
 
 
 ctypedef enum DLDeviceType:
@@ -53,4 +56,4 @@ ctypedef struct DLManagedTensor 'DLManagedTensor':
 
 cdef void deleter(DLManagedTensor* tensor)
 cdef object toDLPack(ndarray array)
-cdef ndarray fromDLPack(DLManagedTensor* tensor)
+cpdef ndarray fromDLPack(object tensor)

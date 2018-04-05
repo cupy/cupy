@@ -81,7 +81,6 @@ cdef class ndarray:
 
             .. seealso:: :attr:`numpy.ndarray.size`
 
-
     """
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
