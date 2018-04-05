@@ -73,8 +73,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
+        other = other.tocsr()
         other.sum_duplicates()
-        return cusparse.csrgeam(self, other.tocsr(), alpha, beta)
+        return cusparse.csrgeam(self, other, alpha, beta)
 
     def __eq__(self, other):
         raise NotImplementedError
@@ -96,19 +97,27 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def __mul__(self, other):
         if cupy.isscalar(other):
+            self.sum_duplicates()
             return self._with_data(self.data * other)
         elif isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
             return cusparse.csrgemm(self, other)
         elif csc.isspmatrix_csc(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
             return cusparse.csrgemm(self, other.T, transb=True)
         elif base.isspmatrix(other):
-            return cusparse.csrgemm(self, other.tocsr())
+            return self * other.tocsr()
         elif base.isdense(other):
             if other.ndim == 0:
+                self.sum_duplicates()
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
+                self.sum_duplicates()
                 return cusparse.csrmv(self, cupy.asfortranarray(other))
             elif other.ndim == 2:
+                self.sum_duplicates()
                 return cusparse.csrmm2(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
@@ -142,6 +151,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             coo = self.tocoo()
             coo.eliminate_zeros()
+            # Because tocsr sums duplicated entries, it cannot keep nnz
             compress = coo.tocsr()
         self.data = compress.data
         self.indices = compress.indices
@@ -181,7 +191,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupy.ndarray: Dense array representing the same matrix.
 
-        .. seealso:: :func:`cupy.sparse.csr_array.toarray`
+        .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
         if order is None:

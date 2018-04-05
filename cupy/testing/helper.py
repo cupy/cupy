@@ -608,7 +608,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
-    """Decorator that checks the fixture with all float dtypes.
+    """Decorator that checks the fixture with float dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -643,7 +643,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with all dtypes.
+    """Decorator that checks the fixture with unsinged dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -678,6 +678,20 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_dtypes, name=name)
     else:
         return for_dtypes(_int_bool_dtypes, name=name)
+
+
+def for_complex_dtypes(name='dtype'):
+    """Decorator that checks the fixture with complex dtypes.
+
+    Args:
+         name(str): Argument name to which specified dtypes are passed.
+
+    dtypes to be tested are ``numpy.complex64`` and ``numpy.complex128``.
+
+    .. seealso:: :func:`cupy.testing.for_dtypes`,
+        :func:`cupy.testing.for_all_dtypes`
+    """
+    return for_dtypes(_complex_dtypes, name=name)
 
 
 def for_dtypes_combination(types, names=('dtype',), full=None):
@@ -971,8 +985,12 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     with specified dtype.
     """
     numpy.random.seed(seed)
-    if numpy.dtype(dtype).type == numpy.bool_:
+    dtype = numpy.dtype(dtype)
+    if dtype == '?':
         return xp.asarray(numpy.random.randint(2, size=shape).astype(dtype))
+    elif dtype.kind == 'c':
+        a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
+        return xp.asarray((a * scale).astype(dtype))
     else:
         return xp.asarray((numpy.random.rand(*shape) * scale).astype(dtype))
 

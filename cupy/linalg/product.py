@@ -146,7 +146,6 @@ def tensordot(a, b, axes=2):
             - If it is a pair of sequences of integers, then these two
               sequences specify the list of axes for ``a`` and ``b``. The
               corresponding axes are paired for sum-product.
-        out (cupy.ndarray): Output array.
 
     Returns:
         cupy.ndarray: The tensor dot product of ``a`` and ``b`` along the

@@ -21,6 +21,30 @@ class TestTranspose(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, 1, -1)
 
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
+    def test_moveaxis3(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, [0, 2], [1, 0])
+
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
+    def test_moveaxis4(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, [2, 0], [1, 0])
+
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
+    def test_moveaxis5(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return xp.moveaxis(a, [2, 0], [0, 1])
+
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.11')
+    def test_moveaxis6(self, xp):
+        a = testing.shaped_arange((2, 3, 4, 5, 6), xp)
+        return xp.moveaxis(a, [0, 2, 1], [3, 4, 0])
+
     # dim is too large
     @testing.numpy_cupy_raises()
     @testing.with_requires('numpy>=1.13')
@@ -58,6 +82,22 @@ class TestTranspose(unittest.TestCase):
     def test_moveaxis_invalid4(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.moveaxis(a, [0, 1], [1, 2, 0])
+
+    # Use the same axis twice
+    def test_moveaxis_invalid5_1(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [1, -1], [1, 3])
+
+    def test_moveaxis_invalid5_2(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [0, 1], [-1, 2])
+
+    def test_moveaxis_invalid5_3(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        with self.assertRaises(cupy.core.core._AxisError):
+            return cupy.moveaxis(a, [0, 1], [1, 1])
 
     @testing.numpy_cupy_array_equal()
     def test_rollaxis(self, xp):

@@ -27,20 +27,30 @@ class TestSolve(unittest.TestCase):
         self.assertEqual(result_cpu.dtype, result_gpu.dtype)
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
 
-    def check_shape(self, a_shape, b_shape):
-        a = cupy.random.rand(*a_shape)
-        b = cupy.random.rand(*b_shape)
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.solve(a, b)
-
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
+        self.check_x((2, 4, 4), (2, 4,))
+        self.check_x((2, 5, 5), (2, 5, 2))
+        self.check_x((2, 3, 2, 2), (2, 3, 2,))
+        self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+
+    @testing.numpy_cupy_raises()
+    def check_shape(self, a_shape, b_shape, xp):
+        a = xp.random.rand(*a_shape)
+        b = xp.random.rand(*b_shape)
+        xp.linalg.solve(a, b)
 
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,))
         self.check_shape((3, 3), (2,))
+        self.check_shape((3, 3), (2, 2))
         self.check_shape((3, 3, 4), (3,))
+
+    @testing.with_requires('numpy>=1.10')
+    def test_invalid_shape2(self):
+        # numpy 1.9 does not raise an error for this type of inputs
+        self.check_shape((2, 3, 3), (3,))
 
 
 @testing.parameterize(*testing.product({

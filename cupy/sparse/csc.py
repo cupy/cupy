@@ -72,20 +72,28 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     def __mul__(self, other):
         if cupy.isscalar(other):
+            self.sum_duplicates()
             return self._with_data(self.data * other)
         elif cupy.sparse.isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
             return cusparse.csrgemm(self.T, other, transa=True)
         elif isspmatrix_csc(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
             return cusparse.csrgemm(self.T, other.T, transa=True, transb=True)
         elif cupy.sparse.isspmatrix(other):
-            return cusparse.csrgemm(self.T, other.tocsr(), transa=True)
+            return self * other.tocsr()
         elif cupy.sparse.base.isdense(other):
             if other.ndim == 0:
+                self.sum_duplicates()
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
+                self.sum_duplicates()
                 return cusparse.csrmv(
                     self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
+                self.sum_duplicates()
                 return cusparse.csrmm2(
                     self.T, cupy.asfortranarray(other), transa=True)
             else:
@@ -130,7 +138,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupy.ndarray: Dense array representing the same matrix.
 
-        .. seealso:: :func:`cupy.sparse.csc_array.toarray`
+        .. seealso:: :meth:`scipy.sparse.csc_matrix.toarray`
 
         """
         if order is None:
@@ -151,8 +159,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
+        other = other.tocsc().T
         other.sum_duplicates()
-        return cusparse.csrgeam(self.T, other.tocsc().T, alpha, beta).T
+        return cusparse.csrgeam(self.T, other, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 
@@ -221,8 +230,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        return cupy.sparse.csr_matrix(
+        trans = cupy.sparse.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
+        trans._has_canonical_format = self._has_canonical_format
+        return trans
 
 
 def isspmatrix_csc(x):

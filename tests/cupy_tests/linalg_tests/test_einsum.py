@@ -244,8 +244,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 
 
 def _target_dtype(dtype):
-    if (dtype == numpy.complex64 or dtype == numpy.complex128 or
-            dtype == numpy.complex256):
+    if (dtype == numpy.complex64 or dtype == numpy.complex128):
         return numpy.complex64
     else:
         return numpy.float32

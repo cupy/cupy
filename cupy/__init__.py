@@ -14,10 +14,20 @@ except ImportError:
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
     exc_info = sys.exc_info()
-    msg = ('CuPy is not correctly installed. Please check your environment, '
-           'uninstall CuPy and reinstall it with `pip install cupy '
-           '--no-cache-dir -vvvv`.\n\n'
-           'original error: {}'.format(exc_info[1]))
+    msg = ('''\
+CuPy is not correctly installed.
+
+If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
+Also, confirm that only one CuPy package is installed:
+  $ pip freeze
+
+If you are building CuPy from source, please check your environment, uninstall CuPy and reinstall it with:
+  $ pip install cupy --no-cache-dir -vvvv
+
+Check the Installation Guide for details:
+  https://docs-cupy.chainer.org/en/latest/install.html
+
+original error: {}'''.format(exc_info[1]))  # NOQA
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
 
@@ -489,6 +499,7 @@ from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
+from cupy.statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------
 # Undocumented functions

@@ -49,8 +49,8 @@ cdef class PinnedMemoryPointer:
             pointer refers.
 
     Attributes:
-        mem (PinnedMemory): The device memory buffer.
-        ptr (int): Pointer to the place within the buffer.
+        ~PinnedMemoryPointer.mem (PinnedMemory): The device memory buffer.
+        ~PinnedMemoryPointer.ptr (int): Pointer to the place within the buffer.
     """
 
     def __init__(self, mem, Py_ssize_t offset):
