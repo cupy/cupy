@@ -134,7 +134,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     Args:
         a (cupy.ndarray): Input array.
         axis (int): Axis along which the cumulative sum is taken. If it is not
-        specified, the input is flattened.
+            specified, the input is flattened.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
 
@@ -177,7 +177,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     Args:
         a (cupy.ndarray): Input array.
         axis (int): Axis along which the cumulative product is taken. If it is
-        not specified, the input is flattened.
+            not specified, the input is flattened.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
 

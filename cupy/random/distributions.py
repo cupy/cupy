@@ -40,7 +40,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the Gumbel destribution.
 
     .. seealso::
-        :func:`cupy.RandomState.gumbel`
+        :func:`cupy.random.RandomState.gumbel`
         :func:`numpy.random.gumbel`
     """
     rs = generator.get_random_state()

@@ -307,7 +307,7 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.choice` for full document,
-            :meth:`numpy.random.choice`
+            :func:`numpy.random.choice`
 
         """
         if a is None:
@@ -384,7 +384,7 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.shuffle` for full document,
-            :meth:`numpy.random.shuffle`
+            :func:`numpy.random.shuffle`
 
         """
         if not isinstance(a, cupy.ndarray):
