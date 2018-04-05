@@ -2467,7 +2467,7 @@ cpdef ndarray concatenate_method(tup, int axis):
 
 cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     cdef ndarray a, ret
-    cdef int i
+    cdef Py_ssize_t i
     cdef bint all_same_type, same_shape_and_contiguous
     cdef Py_ssize_t axis_size
     # If arrays are large, Issuing each copy method is efficient.
