@@ -11,10 +11,10 @@ cdef object toDLPack(ndarray array):
     ctx.device_id = array.device.id
 
     cdef DLDataType dtype
-    if cupy.issubdtype(array.dtype, cupy.integer):
-        dtype.code = DLDataTypeCode.kDLInt
-    elif cupy.issubdtype(array.dtype, cupy.unsignedinteger):
+    if cupy.issubdtype(array.dtype, cupy.unsignedinteger):
         dtype.code = DLDataTypeCode.kDLUInt
+    elif cupy.issubdtype(array.dtype, cupy.integer):
+        dtype.code = DLDataTypeCode.kDLInt
     elif cupy.issubdtype(array.dtype, cupy.floating):
         dtype.code = DLDataTypeCode.kDLFloat
     dtype.bits = array.dtype.itemsize * 8
@@ -44,7 +44,6 @@ cpdef ndarray fromDLPack(object tensor):
     # to prevent allocating any memory
     cdef memory.Memory mem = memory.Memory(0)
     mem.device = device_mod.Device(dlm_tensor.dl_tensor.ctx.device_id)
-    mem.ptr = <size_t>dlm_tensor.dl_tensor.data
 
     # Calculates the size in bytes
     cdef int size = dlm_tensor.dl_tensor.shape[0]
@@ -54,6 +53,8 @@ cpdef ndarray fromDLPack(object tensor):
     mem.size = dlm_tensor.dl_tensor.dtype.bits / 8 * size
 
     cdef memory.MemoryPointer mem_ptr = memory.MemoryPointer(mem, 0)
+    mem_ptr.ptr = <size_t>dlm_tensor.dl_tensor.data
+    mem_ptr.mem.ptr = None
     if dlm_tensor.dl_tensor.dtype.code == DLDataTypeCode.kDLUInt:
         if dlm_tensor.dl_tensor.dtype.bits == 8:
             dtype = cupy.uint8
@@ -86,7 +87,7 @@ cpdef ndarray fromDLPack(object tensor):
         else:
             raise TypeError('float{} is not supported.'.format(dlm_tensor.dl_tensor.dtype.bits))
     else:
-        raise TypeError('Unsupported dtype.')
+        raise TypeError('Unsupported dtype. dtype code: {}'.format(dlm_tensor.dl_tensor.dtype.code))
 
     cdef int ndim = dlm_tensor.dl_tensor.ndim
     cdef int64_t[:] shape = <int64_t[:ndim]>dlm_tensor.dl_tensor.shape
