@@ -14,19 +14,14 @@ from cupy import testing
 class TestDLPackConversion(unittest.TestCase):
 
     def setUp(self):
-        print(self.dtype)
         if cupy.issubdtype(self.dtype, cupy.unsignedinteger):
             self.array = cupy.random.randint(0, 10, size=(2, 3)).astype(self.dtype)
         elif cupy.issubdtype(self.dtype, cupy.integer):
             self.array = cupy.random.randint(-10, 10, size=(2, 3)).astype(self.dtype)
         elif cupy.issubdtype(self.dtype, cupy.floating):
             self.array = cupy.random.rand(2, 3).astype(self.dtype)
-        print(self.array.data.ptr)
 
     def test_conversion(self):
-        print('a')
         tensor = self.array.toDLPack()
         array = cupy.fromDLPack(tensor)
         testing.assert_array_equal(self.array, array)
-        print(self.array.data.ptr)
-        print(array.data.ptr)

@@ -40,8 +40,8 @@ cdef object toDLPack(ndarray array):
 cpdef ndarray fromDLPack(object tensor):
     cdef DLManagedTensor* dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(tensor, 'dltensor')
 
-    # Give 0 to size argument of the constructor of Memory
-    # to prevent allocating any memory
+    # Give 0 to 'size' argument of the constructor of Memory
+    # to prevent allocating a new memory region
     cdef memory.Memory mem = memory.Memory(0)
     mem.device = device_mod.Device(dlm_tensor.dl_tensor.ctx.device_id)
 
@@ -54,7 +54,7 @@ cpdef ndarray fromDLPack(object tensor):
 
     cdef memory.MemoryPointer mem_ptr = memory.MemoryPointer(mem, 0)
     mem_ptr.ptr = <size_t>dlm_tensor.dl_tensor.data
-    mem_ptr.mem.ptr = None
+    mem_ptr.mem.ptr = False
     if dlm_tensor.dl_tensor.dtype.code == DLDataTypeCode.kDLUInt:
         if dlm_tensor.dl_tensor.dtype.bits == 8:
             dtype = cupy.uint8
