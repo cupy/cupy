@@ -485,6 +485,9 @@ from cupy.sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
+from cupy.statistics.correlation import corrcoef  # NOQA
+from cupy.statistics.correlation import cov  # NOQA
+
 from cupy.core.fusion import amax  # NOQA
 from cupy.core.fusion import amax as max  # NOQA
 from cupy.core.fusion import amin  # NOQA
