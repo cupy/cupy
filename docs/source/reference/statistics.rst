@@ -34,3 +34,14 @@ Histograms
    :nosignatures:
 
    cupy.bincount
+
+
+Correlations
+------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.corrcoef
+   cupy.cov
