@@ -65,8 +65,7 @@ class TimeRangeDecorator(object):
             processing on GPU before calling :func:`cupy.cuda.nvtx.RangePush()`
             or :func:`cupy.cuda.nvtx.RangePop()`
 
-    .. seealso:: :func:`cupy.nvtx.range`
-        :func:`cupy.cuda.nvtx.RangePush`
+    .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
 
