@@ -44,10 +44,12 @@ class TestNvrtcArch(unittest.TestCase):
         self._compile('compute_52')
 
         # It should fail.
+        # (`compute_60` and `compute_61` are not supported by NVRTC in CUDA 8
+        #  but it does not raise error when used.)
         self.assertRaises(
             compiler.CompileException, self._compile, 'compute_54')
         self.assertRaises(
-            compiler.CompileException, self._compile, 'compute_60')
+            compiler.CompileException, self._compile, 'compute_70')
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
     def test_compile_cuda9(self):
