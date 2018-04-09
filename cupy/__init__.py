@@ -175,8 +175,6 @@ from numpy import csingle  # NOQA
 
 from numpy import complex_  # NOQA
 
-from numpy import clongfloat  # NOQA
-
 from numpy import complex64  # NOQA
 
 from numpy import complex128  # NOQA
@@ -184,6 +182,7 @@ from numpy import complex128  # NOQA
 # Not supported by CuPy:
 # from numpy import complex192
 # from numpy import complex256
+# from numpy import clongfloat
 
 # -----------------------------------------------------------------------------
 # Any Python object
