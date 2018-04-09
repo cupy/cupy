@@ -563,6 +563,7 @@ cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpScsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
@@ -575,6 +576,7 @@ cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpDcsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,

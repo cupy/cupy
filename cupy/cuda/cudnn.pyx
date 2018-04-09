@@ -1178,6 +1178,7 @@ cpdef dropoutForward(
         size_t srcDesc, size_t srcData,
         size_t dstDesc, size_t dstData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cudnnDropoutForward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,
@@ -1192,6 +1193,7 @@ cpdef dropoutBackward(
         size_t dyDesc, size_t dyData,
         size_t dxDesc, size_t dxData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cudnnDropoutBackward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,
