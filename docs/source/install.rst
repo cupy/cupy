@@ -275,13 +275,13 @@ For example, you can tell CuPy to use non-default CUDA directory by ``CUDA_PATH`
 Using custom ``nvcc`` command during installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to use a custom ``nvcc`` compiler (for example, to use ``ccache`` ), please set ``NVCC`` environment variables before installing CuPy::
+If you want to use a custom ``nvcc`` compiler (for example, to use ``ccache``) to build CuPy, please set ``NVCC`` environment variables before installing CuPy::
 
   export NVCC='ccache nvcc'
 
 .. note::
 
-   Setting ``NVCC`` environment variable does not affect at runtime, as CuPy does not use ``nvcc`` command at runtime.
+   During runtime, you don't need to set this environment variable since CuPy doesn't use the nvcc command.
 
 Installation for Developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
