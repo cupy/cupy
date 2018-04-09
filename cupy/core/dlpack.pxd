@@ -55,4 +55,4 @@ ctypedef struct DLManagedTensor 'DLManagedTensor':
 
 
 cdef void deleter(DLManagedTensor* tensor)
-cdef object toDLPack(ndarray array)
+cdef object toDlpack(ndarray array)

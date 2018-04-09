@@ -1746,8 +1746,8 @@ cdef class ndarray:
     cdef function.CPointer get_pointer(self):
         return CArray(self)
 
-    cpdef object toDLPack(self):
-        return dlpack.toDLPack(self)
+    cpdef object toDlpack(self):
+        return dlpack.toDlpack(self)
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(

@@ -5,7 +5,7 @@ cdef void deleter(DLManagedTensor* tensor):
     del tensor.manager_ctx
 
 
-cdef object toDLPack(ndarray array):
+cdef object toDlpack(ndarray array):
     cdef DLContext ctx
     ctx.device_type = DLDeviceType.kDLGPU
     ctx.device_id = array.device.id

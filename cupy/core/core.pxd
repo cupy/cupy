@@ -64,7 +64,7 @@ cdef class ndarray:
                                  vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity=*)
     cdef CPointer get_pointer(self)
-    cpdef object toDLPack(self)
+    cpdef object toDlpack(self)
 
 
 cdef class Indexer:
