@@ -14,7 +14,7 @@ We recommend the following Linux distributions.
 .. note::
 
    We are automatically testing CuPy on all the recommended environments above.
-   We cannot guarantee that CuPy works on other environments including Windows and macOS, even if CuPy looks running correctly.
+   We cannot guarantee that CuPy works on other environments including Windows and macOS, even if CuPy may seem to be running correctly.
 
 
 Requirements
@@ -26,10 +26,10 @@ You need to have the following components to use CuPy.
     * Compute Capability of the GPU must be at least 3.0.
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-zone>`_
     * Supported Versions: 7.0, 7.5, 8.0, 9.0 and 9.1.
-    * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installation automatically.
+    * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
-    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+, and 3.6.0+.
+    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+ and 3.6.0+.
 * `NumPy <http://www.numpy.org/>`_
     * Supported Versions: 1.9, 1.10, 1.11, 1.12 and 1.13.
     * NumPy will be installed automatically during the installation of CuPy.
@@ -138,7 +138,7 @@ Use pip to uninstall CuPy::
 
 .. note::
 
-   When you upgrade Chainer, ``pip`` sometimes install the new version without removing the old one in ``site-packages``.
+   When you upgrade Chainer, ``pip`` sometimes installs the new version without removing the old one in ``site-packages``.
    In this case, ``pip uninstall`` only removes the latest one.
    To ensure that CuPy is completely removed, run the above command repeatedly until ``pip`` returns an error.
 
@@ -291,13 +291,13 @@ If you are hacking CuPy source code, we recommend you to use ``pip`` with ``-e``
   $ cd /path/to/cupy/source
   $ pip install -e .
 
-Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files)
+Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files).
 
 CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If CuPy does not work at all with ``CompileException``, it is possible that CuPy cannot detect CUDA installed on your system correctly.
-The followings are error messages commonly observed in such case.
+The followings are error messages commonly observed in such cases.
 
 * ``nvrtc: error: failed to load builtins``
 * ``catastrophic error: cannot open source file "cuda_fp16.h"``
