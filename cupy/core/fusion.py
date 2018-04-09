@@ -399,6 +399,10 @@ def _get_declaration_from_var(var):
             _const_to_str(var.const))
 
 
+def _copy_var(var_from, var_to):
+    return 'v%d = v%d;\n' % (var_to.num, var_from.num)
+
+
 def _get_declaration_from_op(op):
     return ''.join('%s v%d_%d;\n' % (_dtype_to_ctype[t], op.num, j)
                    for j, t in enumerate(op.types))
@@ -493,6 +497,7 @@ def _get_fix_code(data_type, fixed_type, operation):
 
 
 def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
+    ninout = len(input_types) - nin
     in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
     mem = _FusionMem(in_vars)
     in_refs = [_FusionRef(_, mem) for _ in in_vars]
@@ -503,13 +508,15 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types, name):
     out_vars = [_normalize_arg(copy(_), mem) for _ in out_refs]
     nout = len(out_vars)
     op_list = mem.op_list
-    tmpvars = mem.var_list[len(in_vars):]
+    tmpvars = mem.var_list[nin:]
     if nout > 0:
         tmpvars = tmpvars[:-nout]
 
     in_params = ', '.join(_get_params(in_vars[:nin]))
     out_params = ', '.join(_get_params(out_vars))
     operation = ''.join(_get_declaration_from_var(_) for _ in tmpvars)
+    copy_to, copy_from = (in_vars[nin:], out_vars[:ninout])
+    operation += ''.join(_copy_var(*_) for _ in zip(copy_from, copy_to))
     operation += ''.join(_get_declaration_from_op(_) for _ in op_list)
     operation += '\n'.join(_get_operation_code(_) for _ in op_list)
 
