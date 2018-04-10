@@ -13,7 +13,7 @@ def _get_output(output, input, shape=None):
         output = input.dtype
     if isinstance(output, cupy.ndarray):
         if output.shape != tuple(shape):
-            raise RuntimeError("output shape not correct")
+            raise RuntimeError("output shape is not correct")
         return_value = None
     else:
         output = cupy.zeros(shape, dtype=output)
@@ -27,12 +27,12 @@ def _check_parameter(func_name, order, mode):
                       'It is different from scipy.ndimage and can change in '
                       'the future.'.format(func_name))
     elif order < 0 or 5 < order:
-        raise RuntimeError('spline order not supported')
+        raise RuntimeError('spline order is not supported')
     elif 1 < order:
         # SciPy supports order 0-5, but CuPy supports only order 0 and 1. Other
         # orders will be implemented, therefore it raises NotImplementedError
         # instead of RuntimeError.
-        raise NotImplementedError('spline order not supported')
+        raise NotImplementedError('spline order is not supported')
 
     if mode in ('reflect', 'wrap'):
         raise NotImplementedError('\'{}\' mode is not supported. See '
@@ -40,7 +40,7 @@ def _check_parameter(func_name, order, mode):
                                   .format(mode))
     elif mode not in ('constant', 'nearest', 'mirror', 'opencv',
                       '_opencv_edge'):
-        raise RuntimeError('boundary mode not supported')
+        raise RuntimeError('boundary mode is not supported')
 
 
 def map_coordinates(input, coordinates, output=None, order=None,
