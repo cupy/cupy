@@ -29,9 +29,9 @@ cdef extern from "dlpack/dlpack.h":
 
 
     ctypedef enum DLDataTypeCode:
-        kDLInt = 0
-        kDLUInt = 1
-        kDLFloat = 2
+        kDLInt = <unsigned int>0
+        kDLUInt = <unsigned int>1
+        kDLFloat = <unsigned int>2
 
 
     ctypedef struct DLDataType 'DLDataType':
@@ -57,4 +57,4 @@ cdef extern from "dlpack/dlpack.h":
 
 
 cdef void deleter(DLManagedTensor* tensor)
-cdef object toDlpack(ndarray array)
+cpdef object toDlpack(ndarray array) except +
