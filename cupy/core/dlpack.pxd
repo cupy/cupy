@@ -27,9 +27,9 @@ ctypedef struct DLContext 'DLContext':
 
 
 ctypedef enum DLDataTypeCode:
-    kDLInt = 0
-    kDLUInt = 1
-    kDLFloat = 2
+    kDLInt = <unsigned int>0
+    kDLUInt = <unsigned int>1
+    kDLFloat = <unsigned int>2
 
 
 ctypedef struct DLDataType 'DLDataType':
@@ -51,7 +51,7 @@ ctypedef struct DLTensor 'DLTensor':
 ctypedef struct DLManagedTensor 'DLManagedTensor':
     DLTensor dl_tensor
     void* manager_ctx
-    void (*deleter)(DLManagedTensor*)
+    void(*deleter)(DLManagedTensor*)
 
 
 cdef void deleter(DLManagedTensor* tensor)
