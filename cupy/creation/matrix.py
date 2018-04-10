@@ -25,12 +25,21 @@ def diag(v, k=0):
     if numpy.isscalar(v):
         return cupy.array(numpy.diag(v, k))
 
-    if v.ndim == 1:
+    if isinstance(v, cupy.ndarray):
+        ndim = v.ndim
+    else:
+        ndim = numpy.ndim(v)
+        # to save bandwidth, don't copy non-diag elements to GPU
+        xp = cupy if ndim == 1 else numpy
+        v = xp.array(v)
+
+    if ndim == 1:
         size = v.size + abs(k)
         ret = cupy.zeros((size, size), dtype=v.dtype)
         ret.diagonal(k)[:] = v
         return ret
     else:
+        # its okay to cupy.diag(numpy.eye(2)) returns NumPy instead of CuPy?
         return v.diagonal(k)
 
 
