@@ -61,6 +61,7 @@ from cupy import util  # NOQA
 
 # import class and function
 from cupy.core import ndarray  # NOQA
+from cupy.core import fromDLPack  # NOQA
 
 # dtype short cuts
 from numpy import floating  # NOQA
