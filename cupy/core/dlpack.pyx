@@ -3,6 +3,7 @@ import cupy
 from cupy.core.core cimport ndarray
 from cupy.cuda.runtime cimport free
 
+
 cdef void deleter(DLManagedTensor* tensor):
     free(<size_t>tensor.manager_ctx)
 

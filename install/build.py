@@ -114,6 +114,11 @@ def get_compiler_setting():
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    # Add header dirs of TensorComprehensions
+    include_dirs.append(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'cupy', 'core', 'include'))
+
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
@@ -346,6 +351,14 @@ def check_cusolver_version(compiler, settings):
         return False
 
     return True
+
+
+def check_tc_version(compiler, settings):
+    return True
+
+
+def get_tc_version(formatted=False):
+    return '0.1.1'
 
 
 def build_shlib(compiler, source, libraries=(),

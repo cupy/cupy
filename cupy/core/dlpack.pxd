@@ -11,47 +11,49 @@ from cupy.cuda cimport memory
 from cpython cimport pycapsule
 
 
-ctypedef enum DLDeviceType:
-    kDLCPU = 1
-    kDLGPU = 2
-    kDLCPUPinned = 3
-    kDLOpenCL = 4
-    kDLMetal = 8
-    kDLVPI = 9
-    kDLROCM = 10
+cdef extern from "dlpack/dlpack.h":
+
+    ctypedef enum DLDeviceType:
+        kDLCPU = 1
+        kDLGPU = 2
+        kDLCPUPinned = 3
+        kDLOpenCL = 4
+        kDLMetal = 8
+        kDLVPI = 9
+        kDLROCM = 10
 
 
-ctypedef struct DLContext 'DLContext':
-    DLDeviceType device_type
-    int device_id
+    ctypedef struct DLContext 'DLContext':
+        DLDeviceType device_type
+        int device_id
 
 
-ctypedef enum DLDataTypeCode:
-    kDLInt = 0
-    kDLUInt = 1
-    kDLFloat = 2
+    ctypedef enum DLDataTypeCode:
+        kDLInt = 0
+        kDLUInt = 1
+        kDLFloat = 2
 
 
-ctypedef struct DLDataType 'DLDataType':
-    uint8_t code
-    uint8_t bits
-    uint16_t lanes
+    ctypedef struct DLDataType 'DLDataType':
+        uint8_t code
+        uint8_t bits
+        uint16_t lanes
 
 
-ctypedef struct DLTensor 'DLTensor':
-    void* data
-    DLContext ctx
-    int ndim
-    DLDataType dtype
-    int64_t* shape
-    int64_t* strides
-    uint64_t byte_offset
+    ctypedef struct DLTensor 'DLTensor':
+        void* data
+        DLContext ctx
+        int ndim
+        DLDataType dtype
+        int64_t* shape
+        int64_t* strides
+        uint64_t byte_offset
 
 
-ctypedef struct DLManagedTensor 'DLManagedTensor':
-    DLTensor dl_tensor
-    void* manager_ctx
-    void (*deleter)(DLManagedTensor*)
+    ctypedef struct DLManagedTensor 'DLManagedTensor':
+        DLTensor dl_tensor
+        void* manager_ctx
+        void (*deleter)(DLManagedTensor*)
 
 
 cdef void deleter(DLManagedTensor* tensor)
