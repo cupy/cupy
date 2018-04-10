@@ -101,8 +101,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
                 coordinates[i] = 0
             else:
                 coordinates[i] = cupy.remainder(coordinates[i], 2 * length)
-                coordinates[i] = 2 * cupy.clip(
-                    coordinates[i], None, length) - coordinates[i]
+                coordinates[i] = 2 * cupy.minimum(
+                    coordinates[i], length) - coordinates[i]
 
     if cupy.issubdtype(input.dtype, cupy.integer):
         input = input.astype(cupy.float32)
