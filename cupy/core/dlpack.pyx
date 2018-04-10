@@ -1,8 +1,10 @@
 import cupy
 
+from cupy.core.core cimport ndarray
+from cupy.cuda.runtime cimport free
 
 cdef void deleter(DLManagedTensor* tensor):
-    del tensor.manager_ctx
+    free(<size_t>tensor.manager_ctx)
 
 
 cdef object toDlpack(ndarray array):
@@ -31,7 +33,7 @@ cdef object toDlpack(ndarray array):
 
     cdef DLManagedTensor dlm_tensor
     dlm_tensor.dl_tensor = dl_tensor
-    dlm_tensor.manager_ctx = &array
+    dlm_tensor.manager_ctx = array.get_pointer().ptr
     dlm_tensor.deleter = deleter
 
     return pycapsule.PyCapsule_New(&dlm_tensor, 'dltensor', NULL)
