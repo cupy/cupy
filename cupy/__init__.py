@@ -520,6 +520,8 @@ from cupy.core import ReductionKernel  # NOQA
 # New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
 
+import cupyx
+
 
 def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
@@ -614,3 +616,9 @@ def get_default_pinned_memory_pool():
 
     """
     return _default_pinned_memory_pool
+
+
+def show_config():
+    """Prints the current runtime configuration to standard output."""
+    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.flush()
