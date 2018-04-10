@@ -1,35 +1,23 @@
 import itertools
 import math
-import sys
 import warnings
 
 import cupy
-import numpy
 import six
 
 
 def _get_output(output, input, shape=None):
-    if sys.version_info[0] == 3:
-        string_type = str
-    else:
-        string_type = basestring  # NOQA
-
     if shape is None:
         shape = input.shape
     if output is None:
-        output = cupy.zeros(shape, dtype=input.dtype.name)
-        return_value = output
-    elif type(output) in [type(type), type(cupy.zeros((4,)).dtype)]:
-        output = cupy.zeros(shape, dtype=output)
-        return_value = output
-    elif isinstance(output, string_type):
-        output = numpy.typeDict[output]
-        output = cupy.zeros(shape, dtype=output)
-        return_value = output
-    else:
-        if list(output.shape) != list(shape):
+        output = input.dtype
+    if isinstance(output, cupy.ndarray):
+        if output.shape != tuple(shape):
             raise RuntimeError("output shape not correct")
         return_value = None
+    else:
+        output = cupy.zeros(shape, dtype=output)
+        return_value = output
     return output, return_value
 
 
