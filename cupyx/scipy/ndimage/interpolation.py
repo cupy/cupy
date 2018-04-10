@@ -84,7 +84,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
     _check_parameter('map_coordinates', order, mode)
 
     if mode == 'opencv' or mode == '_opencv_edge':
-        input = cupy.pad(input, [[1, 1]] * input.ndim, 'constant',
+        input = cupy.pad(input, [(1, 1)] * input.ndim, 'constant',
                          constant_values=cval)
         coordinates = cupy.add(coordinates, 1)
         mode = 'constant'
@@ -108,7 +108,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         input = input.astype(cupy.float32)
 
     if order == 0:
-        out = input[list(cupy.rint(coordinates).astype(cupy.int32))]
+        out = input[tuple(cupy.rint(coordinates).astype(cupy.int32))]
     else:
         coordinates_floor = cupy.floor(coordinates).astype(cupy.int32)
         coordinates_ceil = coordinates_floor + 1
