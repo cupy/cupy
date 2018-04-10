@@ -1,4 +1,5 @@
 import contextlib
+import os
 
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
@@ -14,6 +15,7 @@ from cupy.cuda import stream  # NOQA
 
 
 _available = None
+_cuda_path = None
 
 
 if driver.get_build_version() >= 8000:
@@ -46,6 +48,28 @@ def is_available():
                     'cudaErrorNoDevice: no CUDA-capable device is detected'):
                 raise
     return _available
+
+
+def get_cuda_path():
+    global _cuda_path
+    if _cuda_path is None:
+        _cuda_path = os.getenv('CUDA_PATH', None)
+        if _cuda_path is not None:
+            return _cuda_path
+
+        for p in os.getenv('PATH', '').split(os.pathsep):
+            for cmd in ('nvcc', 'nvcc.exe'):
+                nvcc_path = os.path.join(p, cmd)
+                if not os.path.exists(nvcc_path):
+                    continue
+                nvcc_dir = os.path.dirname(os.path.abspath(nvcc_path))
+                _cuda_path = os.path.normpath(os.path.join(nvcc_dir, '..'))
+                return _cuda_path
+
+        if os.path.exists('/usr/local/cuda'):
+            _cuda_path = '/usr/local/cuda'
+
+    return _cuda_path
 
 
 # import class and function
