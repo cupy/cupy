@@ -314,8 +314,8 @@ Also see :ref:`install_cuda`.
 
 If you are installing CuPy on Anaconda environment, also make sure that the following packages are not installed.
 
-* `cudatoolkit <https://anaconda.org/anaconda/cudatoolkit>`_
-* `cudnn <https://anaconda.org/anaconda/cudnn>`_
-* `nccl <https://anaconda.org/anaconda/nccl>`_
+* `cudatoolkit <https://anaconda.org/anaconda/cudatoolkit>`__
+* `cudnn <https://anaconda.org/anaconda/cudnn>`__
+* `nccl <https://anaconda.org/anaconda/nccl>`__
 
 Use ``conda uninstall cudatoolkit cudnn nccl`` to remove these package.
