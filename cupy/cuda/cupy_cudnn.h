@@ -169,27 +169,23 @@ typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
-typedef enum {} cudnnDeterminism_t;
 typedef struct {
   cudnnConvolutionFwdAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
-  cudnnDeterminism_t determinism;
 } cudnnConvolutionFwdAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdFilterAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
-  cudnnDeterminism_t determinism;
 } cudnnConvolutionBwdFilterAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdDataAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
-  cudnnDeterminism_t determinism;
 } cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {

@@ -26,7 +26,6 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
     ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
     ctypedef int ConvolutionBwdFilterPreference \
         'cudnnConvolutionBwdFilterPreference_t'
@@ -36,7 +35,6 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
     ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
     ctypedef struct ConvolutionFwdAlgoPerf 'cudnnConvolutionFwdAlgoPerf_t':
@@ -44,7 +42,6 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
     ctypedef int MathType 'cudnnMathType_t'
