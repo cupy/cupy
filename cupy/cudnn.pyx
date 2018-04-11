@@ -592,7 +592,7 @@ cpdef tuple _get_algorithm_bwd_filter(
             cudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = max_workspace_size
-    return (algo, workspace_size)
+    return algo, workspace_size
 
 
 cpdef tuple _find_algorithm_bwd_data(
@@ -639,7 +639,7 @@ cpdef tuple _get_algorithm_bwd_data(
             cudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = max_workspace_size
-    return (algo, workspace_size)
+    return algo, workspace_size
 
 
 cpdef bint _should_use_tensor_core(
