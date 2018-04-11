@@ -114,11 +114,6 @@ def get_compiler_setting():
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    # Add header dirs of TensorComprehensions
-    include_dirs.append(
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'cupy', 'core', 'include'))
-
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,

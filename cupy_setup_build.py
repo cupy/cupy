@@ -10,6 +10,7 @@ import os
 from os import path
 import shutil
 import sys
+import subprocess
 
 import pkg_resources
 import setuptools
@@ -145,8 +146,11 @@ MODULES = [
         'file': [
             'cupy.core.tc',
         ],
-        'include': [
-            'tc/core/execution_engine.h'
+        'include_dirs': [
+            'third_party/TensorComprehensions/include',
+            # 'third_party/TensorComprehensions/third-party/ATen/src',
+            # 'third_party/TensorComprehensions/third-party/ATen/doc',
+            'third_party/TensorComprehensions/third-party/dlpack/include',
         ],
         'libraries': [
             'tc_autotuner',
@@ -272,8 +276,7 @@ def preconfigure_modules(compiler, settings):
         errmsg = []
 
         print('')
-        print('-------- Configuring Module: {} --------'.format(
-            module['name']))
+        print('-------- Configuring Module: {} --------'.format(module['name']))
         sys.stdout.flush()
         if module['name'] == 'tc':
             library_dirs = list(filter(None, os.environ['LIBRARY_PATH'].split(':')))
@@ -286,6 +289,14 @@ def preconfigure_modules(compiler, settings):
                 installed = True
                 status = 'Yes'
                 ret.append(module['name'])
+                settings['include_dirs'] += module['include_dirs']
+                proto_path = 'third_party/TensorComprehensions/' \
+                             'src/proto/mapping_options.proto'
+                pb_h_path = 'third_party/TensorComprehensions/include'
+                subprocess.call(
+                    'protoc --proto_path={} --cpp_out={} {}'.format(
+                        os.path.dirname(proto_path), pb_h_path, proto_path),
+                    shell=True)
             else:
                 errmsg = ['Could not find TensorComprehensions']
         elif not check_library(compiler,
