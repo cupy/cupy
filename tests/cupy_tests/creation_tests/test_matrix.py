@@ -56,6 +56,10 @@ class TestMatrix(unittest.TestCase):
         self.assertIsInstance(r, xp.ndarray)
         return r
 
+    @testing.numpy_cupy_raises()
+    def test_diag_scaler(self, xp):
+        return xp.diag(1)
+
     @testing.numpy_cupy_array_equal()
     def test_diagflat1(self, xp):
         a = testing.shaped_arange((3, 3), xp)

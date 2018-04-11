@@ -22,24 +22,25 @@ def diag(v, k=0):
     .. seealso:: :func:`numpy.diag`
 
     """
-    if numpy.isscalar(v):
-        return cupy.array(numpy.diag(v, k))
-
     if isinstance(v, cupy.ndarray):
         ndim = v.ndim
     else:
         ndim = numpy.ndim(v)
-        # to save bandwidth, don't copy non-diag elements to GPU
-        xp = cupy if ndim == 1 else numpy
-        v = xp.array(v)
+        if ndim == 1:
+            v = cupy.array(v)
+        if ndim == 2:
+            # to save bandwidth, don't copy non-diag elements to GPU
+            v = numpy.array(v)
 
     if ndim == 1:
         size = v.size + abs(k)
         ret = cupy.zeros((size, size), dtype=v.dtype)
         ret.diagonal(k)[:] = v
         return ret
-    else:
+    elif ndim == 2:
         return cupy.array(v.diagonal(k))
+    else:
+        raise ValueError("Input must be 1- or 2-d.")
 
 
 def diagflat(v, k=0):
@@ -54,7 +55,7 @@ def diagflat(v, k=0):
 
     """
     if numpy.isscalar(v):
-        return cupy.array(numpy.diagflat(v, k))
+        v = numpy.asarray(v)
 
     return cupy.diag(v.ravel(), k)
 
