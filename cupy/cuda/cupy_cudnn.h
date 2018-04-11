@@ -117,7 +117,7 @@ cudnnStatus_t cudnnDestroyConvolutionDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnGetConvolutionForwardAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v6(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
@@ -212,7 +212,7 @@ cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v6(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -228,7 +228,7 @@ cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v6(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -588,6 +588,16 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
+// TODO: check function names when cuDNN 8 is released.
+
+#define cudnnGetConvolutionForwardAlgorithm_v6 cudnnGetConvolutionForwardAlgorithm
+#define cudnnGetConvolutionBackwardFilterAlgorithm_v6 cudnnGetConvolutionBackwardFilterAlgorithm
+#define cudnnGetConvolutionBackwardDataAlgorithm_v6 cudnnGetConvolutionBackwardDataAlgorithm
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 
 } // extern "C"
 
