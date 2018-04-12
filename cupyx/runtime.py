@@ -13,6 +13,16 @@ except ImportError:
     nccl = None
 
 
+def _eval_or_error(func, errors):
+    # Evaluates `func` and return the result.
+    # If an error specified by `errors` occured, it returns a string
+    # representing the error.
+    try:
+        return func()
+    except errors as e:
+        return repr(e)
+
+
 class _RuntimeInfo(object):
 
     cupy_version = None
@@ -29,8 +39,12 @@ class _RuntimeInfo(object):
 
         self.cuda_path = cupy.cuda.get_cuda_path()
         self.cuda_build_version = cupy.cuda.driver.get_build_version()
-        self.cuda_driver_version = cupy.cuda.runtime.driverGetVersion()
-        self.cuda_runtime_version = cupy.cuda.runtime.runtimeGetVersion()
+        self.cuda_driver_version = _eval_or_error(
+            cupy.cuda.runtime.driverGetVersion,
+            cupy.cuda.runtime.CUDARuntimeError)
+        self.cuda_runtime_version = _eval_or_error(
+            cupy.cuda.runtime.runtimeGetVersion,
+            cupy.cuda.runtime.CUDARuntimeError)
 
         if cudnn is not None:
             self.cudnn_build_version = cudnn.get_build_version()
