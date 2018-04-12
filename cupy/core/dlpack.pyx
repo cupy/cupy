@@ -1,14 +1,16 @@
 from libc.stdlib cimport malloc
+from libc.stdlib cimport free
 from cython.operator cimport dereference
 
 import cupy
 
 from cupy.core.core cimport ndarray
-from cupy.cuda.runtime cimport free
 
 
 cdef void deleter(DLManagedTensor* tensor):
-    free(<size_t>tensor.manager_ctx)
+    free(&tensor.dl_tensor.ctx)
+    free(&tensor.dl_tensor.dtype)
+    free(&tensor.dl_tensor)
 
 
 cpdef object toDlpack(ndarray array):

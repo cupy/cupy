@@ -44,7 +44,6 @@ __version__ = _version.__version__
 
 from cupy import binary  # NOQA
 from cupy.core import fusion  # NOQA
-from cupy.core import tc  # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
@@ -515,7 +514,7 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
-
+from cupy.core import TCKernel  # NOQA
 
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.

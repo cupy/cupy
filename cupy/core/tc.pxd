@@ -9,10 +9,16 @@ from cupy.core.dlpack cimport DLTensor
 cdef extern from "<chrono>" namespace "std::chrono::high_resolution_clock":
 
     cppclass duration:
-        ctypedef rep '_Rep'
-        rep count()
         pass
 
+
+cdef extern from "tc/core/execution_engine.h" namespace "tc::ExecutionEngine":
+
+    cppclass ExecutorInfo:
+        pass
+
+ctypedef bool f(const ExecutorInfo*)
+ctypedef function[f] prunning_ftype
 
 cdef extern from "tc/core/execution_engine.h" namespace "tc":
 
@@ -31,12 +37,30 @@ cdef extern from "tc/core/execution_engine.h" namespace "tc":
             size_t handle,
             const vector[const DLTensor*]& inputs,
             const vector[DLTensor*]& outputs,
-            bool profile)
+            bool profile,
+            prunning_ftype prunningFunction)
 
 
 cdef extern from "tc/core/mapping_options.h" namespace "tc":
 
     cdef cppclass MappingOptions:
 
+        MappingOptions(const string& str)
+
         @staticmethod
         MappingOptions makeNaiveMappingOptions()
+        
+        @staticmethod
+        MappingOptions makeSingleThreadMappingOptions()
+        
+        @staticmethod
+        MappingOptions makePointwiseMappingOptions()
+        
+        @staticmethod
+        MappingOptions makeMlpMappingOptions()
+        
+        @staticmethod
+        MappingOptions makeConvolutionMappingOptions()
+
+        @staticmethod
+        MappingOptions makeGroupConvolutionMappingOptions()

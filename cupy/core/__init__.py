@@ -58,4 +58,4 @@ from cupy.core.core import true_divide  # NOQA
 from cupy.core.core import ufunc  # NOQA
 from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA
-from cupy.core import tc  # NOQA
+from cupy.core.tc import TCKernel  # NOQA
