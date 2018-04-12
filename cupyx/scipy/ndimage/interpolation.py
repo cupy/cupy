@@ -289,7 +289,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
             with :mod:`scipy.ndimage`.
 
     Returns:
-        cupy.ndarray or None
+        cupy.ndarray or None:
             The rotated input.
 
     .. seealso:: :func:`scipy.ndimage.rotate`
@@ -428,7 +428,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             with :mod:`scipy.ndimage`.
 
     Returns:
-        zoom : cupy.ndarray or None
+        cupy.ndarray or None:
             The zoomed input.
 
     .. seealso:: :func:`scipy.ndimage.zoom`
