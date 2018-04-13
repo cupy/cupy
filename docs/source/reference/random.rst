@@ -64,3 +64,4 @@ Permutations
    :nosignatures:
 
    cupy.random.shuffle
+   cupy.random.permutation
