@@ -1,6 +1,3 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
-
 # class s_(object):
 
 import numpy
@@ -253,14 +250,16 @@ def ix_(*args):
 
 
 def unravel_index(indices, dims, order='C'):
-    """Converts a flat index or array of flat indices into a tuple of coordinate arrays.
+    """Converts array of flat indices into a tuple of coordinate arrays.
 
     Args:
         indices (cupy.ndarray): An integer array whose elements are indices
             into the flattened version of an array of dimensions :obj:`dims`.
-        dims (tuple of ints): The shape of the array to use for unraveling indices.
-        order ('C' or 'F'): Determines whether the indices should be viewed as indexing
-            in row-major (C-style) or column-major (Fortran-style) order.
+        dims (tuple of ints): The shape of the array to use for unraveling
+            indices.
+        order ('C' or 'F'): Determines whether the indices should be viewed as
+            indexing in row-major (C-style) or column-major (Fortran-style)
+            order.
 
     Returns: tuple of ndarrays:
         Each array in the tuple has the same shape as the indices array.
