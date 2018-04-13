@@ -17,8 +17,8 @@ def shuffle(a):
 
 def permutation(a):
     """Returns a permuted range or shuffles an array."""
+    rs = generator.get_random_state()
     if isinstance(a, six.integer_types):
-        rs = generator.get_random_state()
         return rs.permutation(a)
     else:
-        return shuffle(a)
+        return a[rs.permutation(len(a))]
