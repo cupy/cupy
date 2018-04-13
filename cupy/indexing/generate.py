@@ -93,17 +93,14 @@ class CClass(AxisConcatenator):
 c_ = CClass()
 """Translates slice objects to concatenation along the second axis.
 
-This is a CuPy object that corresponds to :func:`cupy.r_`, which is
+This is a CuPy object that corresponds to :obj:`cupy.r_`, which is
 useful because of its common occurrence. In particular, arrays will be
 stacked along their last axis after being upgraded to at least 2-D with
 1's post-pended to the shape (column vectors made out of 1-D arrays).
 
-For detailed documentation, see :func:`r_`.
+For detailed documentation, see :obj:`r_`.
 
 This implementation is partially borrowed from NumPy's one.
-
-Args:
-    Not a function, so takes no parameters
 
 Returns:
     cupy.ndarray: Joined array.
@@ -140,9 +137,6 @@ or using string integers like '-1') are not implemented yet
 compared with NumPy.
 
 This implementation is partially borrowed from NumPy's one.
-
-Args:
-    Not a function, so takes no parameters
 
 Returns:
     cupy.ndarray: Joined array.
