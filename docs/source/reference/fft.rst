@@ -1,3 +1,5 @@
+.. module:: cupy.fft
+
 FFT Functions
 =============
 

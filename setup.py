@@ -53,6 +53,7 @@ package_data = {
         'core/include/cupy/complex/math_private.h',
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
+        'core/include/cupy/atomics.cuh',
         'cuda/cupy_thrust.cu',
     ],
 }
@@ -102,6 +103,8 @@ setup(
         'cupy.statistics',
         'cupy.testing',
         'cupyx',
+        'cupyx.scipy',
+        'cupyx.scipy.ndimage',
     ],
     package_data=package_data,
     zip_safe=False,

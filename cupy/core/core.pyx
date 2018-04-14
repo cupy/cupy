@@ -1389,7 +1389,9 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            return real(self)
+            view = self.view(self.dtype.char.lower())
+            view._set_shape_and_strides(self.shape, self.strides)
+            return view
         return self
 
     @real.setter
@@ -1402,7 +1404,10 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            return imag(self)
+            view = self.view(self.dtype.char.lower())
+            view._set_shape_and_strides(self.shape, self.strides)
+            view.data = view.data + self.itemsize // 2
+            return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
         return new_array
@@ -2467,7 +2472,7 @@ cpdef ndarray concatenate_method(tup, int axis):
 
 cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     cdef ndarray a, ret
-    cdef int i
+    cdef Py_ssize_t i
     cdef bint all_same_type, same_shape_and_contiguous
     cdef Py_ssize_t axis_size
     # If arrays are large, Issuing each copy method is efficient.

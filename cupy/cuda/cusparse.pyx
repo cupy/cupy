@@ -548,6 +548,7 @@ cpdef scsc2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseScsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -559,6 +560,7 @@ cpdef dcsc2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -631,6 +633,7 @@ cpdef snnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         float tol):
     cdef int nnz_total
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const float *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -644,6 +647,7 @@ cpdef dnnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         double tol):
     cdef int nnz_total
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const double *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -657,6 +661,7 @@ cpdef scsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, float tol):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseScsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -670,6 +675,7 @@ cpdef dcsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, float tol):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -682,6 +688,7 @@ cpdef sdense2csc(
         size_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const float *>A,
         lda, <const int *>nnzPerCol, <float *>cscValA, <int *>cscRowIndA,
@@ -693,6 +700,7 @@ cpdef ddense2csc(
         size_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const double *>A,
         lda, <const int *>nnzPerCol, <double *>cscValA, <int *>cscRowIndA,
@@ -704,6 +712,7 @@ cpdef sdense2csr(
         size_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>A, lda, <const int *>nnzPerRow, <float *>csrValA,
@@ -715,6 +724,7 @@ cpdef ddense2csr(
         size_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>A, lda, <const int *>nnzPerRow, <double *>csrValA,
@@ -725,6 +735,7 @@ cpdef ddense2csr(
 cpdef snnz(
         size_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const float *>A, lda, <int *>nnzPerRowColumn,
@@ -735,6 +746,7 @@ cpdef snnz(
 cpdef dnnz(
         size_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const double *>A, lda, <int *>nnzPerRowColumn,

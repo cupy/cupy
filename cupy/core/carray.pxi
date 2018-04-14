@@ -66,6 +66,7 @@ cdef class Indexer:
 cdef list _cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
+    'cupy/atomics.cuh',
 ]
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
@@ -121,31 +122,6 @@ cpdef str _get_header_source():
     return _header_source
 
 
-cdef str _cuda_path = None
-
-cpdef str _get_cuda_path():
-    global _cuda_path
-    if _cuda_path is None:
-        _cuda_path = os.getenv('CUDA_PATH', None)
-        if _cuda_path is not None:
-            return _cuda_path
-
-        for p in os.getenv('PATH', '').split(os.pathsep):
-            for cmd in ('nvcc', 'nvcc.exe'):
-                nvcc_path = os.path.join(p, cmd)
-                if not os.path.exists(nvcc_path):
-                    continue
-                nvcc_dir = os.path.dirname(
-                    os.path.abspath(nvcc_path))
-                _cuda_path = os.path.normpath(
-                    os.path.join(nvcc_dir, '..'))
-                return _cuda_path
-
-        if os.path.exists('/usr/local/cuda'):
-            _cuda_path = '/usr/local/cuda'
-
-    return _cuda_path
-
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
     source = _cupy_header + source
@@ -159,7 +135,7 @@ cpdef function.Module compile_with_cache(
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     if _cuda_runtime_version >= 9000:
-        cuda_path = _get_cuda_path()
+        cuda_path = cuda.get_cuda_path()
         if cuda_path is None:
             warnings.warn('Please set the CUDA path ' +
                           'to environment variable `CUDA_PATH`')

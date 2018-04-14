@@ -143,7 +143,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
-cpdef inline int _extract_slice_element(x) except *:
+cpdef inline Py_ssize_t _extract_slice_element(x) except *:
     try:
         return x.__index__()
     except AttributeError:
