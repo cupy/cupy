@@ -45,6 +45,8 @@ Numerical ranges
    cupy.linspace
    cupy.logspace
    cupy.meshgrid
+   cupy.mgrid
+   cupy.ogrid
 
 
 Matrix creation

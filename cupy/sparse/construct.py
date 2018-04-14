@@ -141,7 +141,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
     """Generates a random sparse matrix.
 
-    See ``cupy.sparse.random`` for detail.
+    See :func:`cupy.sparse.random` for detail.
 
     Args:
         m (int): Number of rows.
