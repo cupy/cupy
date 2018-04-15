@@ -48,7 +48,8 @@ class _RuntimeInfo(object):
 
         if cudnn is not None:
             self.cudnn_build_version = cudnn.get_build_version()
-            self.cudnn_version = cudnn.getVersion()
+            self.cudnn_version = _eval_or_error(
+                cudnn.getVersion, cudnn.CuDNNError)
 
         if nccl is not None:
             self.nccl_build_version = nccl.get_version()
