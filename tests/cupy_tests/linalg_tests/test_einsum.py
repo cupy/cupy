@@ -20,10 +20,6 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_raises()
-    def test_irregular_ellipsis4(self, xp):
-        xp.einsum('...->', xp.zeros((2, 2, 2)))
-
-    @testing.numpy_cupy_raises()
     def test_no_arguments(self, xp):
         xp.einsum()
 
@@ -156,6 +152,24 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_unary(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
+        a = testing.shaped_arange(self.shape_a, xp, dtype)
+        return xp.einsum(self.subscripts, a)
+
+
+@testing.parameterize(
+    {'shape_a': (2, 2, 2), 'subscripts': '...->'},
+    {'shape_a': (2, 2, 2), 'subscripts': 'i...j->ij'},
+)
+@testing.with_requires('numpy>=1.14.0')
+class TestEinSumUnaryOperationIgnoreBroadcastInput(unittest.TestCase):
+    # Avoid overflow
+    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         if dtype in self.skip_dtypes:
