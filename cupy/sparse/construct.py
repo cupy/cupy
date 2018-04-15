@@ -96,7 +96,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
         n (int): Number of cols.
         density (float): Ratio of non-zero entries.
         format (str): Matrix format.
-        dtype (dtype): Type of the returned matrix values.
+        dtype (~cupy.dtype): Type of the returned matrix values.
         random_state (cupy.random.RandomState or int):
             State of random number generator.
             If an integer is given, the method makes a new state for random
@@ -148,7 +148,7 @@ def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
         n (int): Number of cols.
         density (float): Ratio of non-zero entries.
         format (str): Matrix format.
-        dtype (dtype): Type of the returned matrix values.
+        dtype (~cupy.dtype): Type of the returned matrix values.
         random_state (cupy.random.RandomState or int):
             State of random number generator.
             If an integer is given, the method makes a new state for random
