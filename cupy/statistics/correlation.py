@@ -100,7 +100,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None):
         X = core.concatenate_method((X, y), axis=0)
 
     if ddof is None:
-        ddof = not bias
+        ddof = 0 if bias else 1
 
     fact = X.shape[1] - ddof
     X -= X.mean(axis=1)[:, None]
