@@ -36,14 +36,27 @@ class TestCorrelation(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_cov_empty(self, xp, dtype):
+        a = testing.shaped_arange((0, 1), xp, dtype)
+        return xp.cov(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_cov_y(self, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        y = testing.shaped_arange((2, 3), xp, dtype)
+        a = testing.shaped_arange((2,), xp, dtype)
+        y = testing.shaped_arange((2,), xp, dtype)
         return xp.cov(a, y=y)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cov_rowvar(self, xp, dtype):
+        a = testing.shaped_arange((1, 3), xp, dtype)
+        y = testing.shaped_arange((1, 3), xp, dtype)
+        return xp.cov(a, y=y, rowvar=False)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cov_rowvar_shape(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.cov(a, y=y, rowvar=False)
@@ -64,7 +77,7 @@ class TestCorrelation(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_cov_invalid_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return xp.cov(a, ddof=[])
+        return xp.cov(a, ddof=1.2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
