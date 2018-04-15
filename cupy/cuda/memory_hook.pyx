@@ -15,8 +15,7 @@ cpdef get_memory_hooks():
 class MemoryHook(object):
     """Base class of hooks for Memory allocations.
 
-    :class:`~cupy.cuda.MemoryHook` is an callback object
-    that is registered to :class:`~cupy.cuda.SingleDeviceMemoryPool`.
+    :class:`~cupy.cuda.MemoryHook` is an callback object.
     Registered memory hooks are invoked before and after
     memory is allocated from GPU device, and
     memory is retrieved from memory pool, and
@@ -40,13 +39,12 @@ class MemoryHook(object):
     Likewise, :meth:`~cupy.cuda.MemoryHook.malloc_preprocess`
     (resp. :meth:`~cupy.cuda.MemoryHook.malloc_postprocess`)
     of all memory hooks registered are called before (resp. after)
-    memory is retrieved from memory pool, that is,
-    :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` is invoked.
+    memory is retrieved from memory pool.
 
-    Below is a pseudo code to descirbe how
-    :meth:`~cupy.cuda.SingleDeviceMemoryPool.malloc` and hooks work.
-    Please note that ``alloc_preprocess`` and ``alloc_postprocess``
-    are not invoked if a cached free chunk is found::
+    Below is a pseudo code to descirbe how malloc and hooks work.
+    Please note that :meth:`~cupy.cuda.MemoryHook.alloc_preprocess` and
+    :meth:`~cupy.cuda.MemoryHook.alloc_postprocess` are not invoked if a cached
+    free chunk is found::
 
         def malloc(size):
             Call malloc_preprocess of all memory hooks
@@ -60,11 +58,9 @@ class MemoryHook(object):
     Moreover, :meth:`~cupy.cuda.MemoryHook.free_preprocess`
     (resp. :meth:`~cupy.cuda.MemoryHook.free_postprocess`)
     of all memory hooks registered are called before (resp. after)
-    memory is released to memory pool, that is,
-    :meth:`~cupy.cuda.memory.PooledMemory.free` is invoked.
+    memory is released to memory pool.
 
-    Below is a pseudo code to descirbe how
-    :meth:`~cupy.cuda.memory.PooledMemory.free` and hooks work::
+    Below is a pseudo code to descirbe how free and hooks work::
 
         def free(ptr):
             Call free_preprocess of all memory hooks
@@ -134,7 +130,7 @@ class MemoryHook(object):
             mem_size(int): Rounded memory bytesize allocated
             mem_ptr(int): Obtained memory pointer.
                 0 if an error occurred in ``malloc``.
-            pmem_id(int): PooledMemory object ID.
+            pmem_id(int): Pooled memory object ID.
                 0 if an error occurred in ``malloc``.
         """
         pass
@@ -146,7 +142,7 @@ class MemoryHook(object):
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free
-            pmem_id(int): PooledMemory object ID.
+            pmem_id(int): Pooled memory object ID.
         """
         pass
 
@@ -157,6 +153,6 @@ class MemoryHook(object):
             device_id(int): CUDA device ID
             mem_size(int): Memory bytesize
             mem_ptr(int): Memory pointer to free
-            pmem_id(int): PooledMemory object ID.
+            pmem_id(int): Pooled memory object ID.
         """
         pass
