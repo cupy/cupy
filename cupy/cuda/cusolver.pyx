@@ -18,7 +18,9 @@ cdef extern from 'cupy_cusolver.h' nogil:
 
     # Stream
     int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
+    int cusolverSpGetStream(SpHandle handle, driver.Stream* streamId)
     int cusolverDnSetStream(Handle handle, driver.Stream streamId)
+    int cusolverSpSetStream(SpHandle handle, driver.Stream streamId)
 
     # Linear Equations
     int cusolverDnSpotrf_bufferSize(Handle handle, FillMode uplo, int n,
@@ -214,6 +216,21 @@ cpdef size_t getStream(size_t handle) except *:
         status = cusolverDnGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
+
+
+cpdef spSetStream(size_t handle, size_t stream):
+    with nogil:
+        status = cusolverSpSetStream(<SpHandle>handle, <driver.Stream>stream)
+    check_status(status)
+
+
+cpdef size_t spGetStream(size_t handle) except *:
+    cdef driver.Stream stream
+    with nogil:
+        status = cusolverSpGetStream(<SpHandle>handle, &stream)
+    check_status(status)
+    return <size_t>stream
+
 
 ###############################################################################
 # dense LAPACK Functions
@@ -563,7 +580,7 @@ cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
-    setStream(handle, stream_module.get_current_stream_ptr())
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpScsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
@@ -576,7 +593,7 @@ cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
-    setStream(handle, stream_module.get_current_stream_ptr())
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpDcsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
