@@ -168,6 +168,9 @@ def inv(a):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
+    # to prevent `a` to be overwritten
+    a = a.copy()
+
     util._assert_cupy_array(a)
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
