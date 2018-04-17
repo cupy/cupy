@@ -6,6 +6,7 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
+import glob
 import os
 from os import path
 import shutil
@@ -148,8 +149,6 @@ MODULES = [
         ],
         'include_dirs': [
             'third_party/TensorComprehensions/include',
-            # 'third_party/TensorComprehensions/third-party/ATen/src',
-            # 'third_party/TensorComprehensions/third-party/ATen/doc',
             'third_party/TensorComprehensions/third-party/dlpack/include',
         ],
         'libraries': [
@@ -279,29 +278,62 @@ def preconfigure_modules(compiler, settings):
         print('-------- Configuring Module: {} --------'.format(module['name']))
         sys.stdout.flush()
         if module['name'] == 'tc':
+            # Search libtc_core.so
             library_dirs = list(filter(None, os.environ['LIBRARY_PATH'].split(':')))
-            tc_exist = False
+            tc_lib_found = False
             for library_dir in library_dirs:
                 if os.path.exists(os.path.join(library_dir, 'libtc_core.so')):
-                    tc_exist = True
+                    tc_lib_found = True
                     break
-            if tc_exist:
+
+            if tc_lib_found:
+                # Clone all submodules
+                subprocess.call(
+                    'git submodule update --init --recursive', shell=True)
+
+                # Fix the header file (for TensorComprehensions v0.1.1)
+                header_fn = 'third_party/TensorComprehensions/include/tc/' \
+                    'autotuner/genetic_autotuner.h'
+                header_content = open(header_fn).read()
+                header_content = header_content.replace(
+                    '#include "tc/autotuner/genetic_tuning_harness.h"',
+                    '#include "tc/autotuner/parameters.h"')
+                header_content = header_content.replace(
+                    '#include "tc/autotuner/utils/utils.h"', '')
+                with open(header_fn, 'w') as fp:
+                    fp.write(header_content)
+
+                header_fn = 'third_party/TensorComprehensions/include/tc/' \
+                    'autotuner/genetic_tuning_harness.h'
+                header_content = open(header_fn).read()
+                header_content = header_content.replace(
+                    '#include "tc/aten/aten_compiler.h"', '')
+                with open(header_fn, 'w') as fp:
+                    fp.write(header_content)
+
+                # Create headers of mapping_options
+                proto_path = 'third_party/TensorComprehensions/' \
+                    'src/proto/mapping_options.proto'
+                pb_h_path = 'third_party/TensorComprehensions/include'
+                subprocess.call(
+                    'protoc --proto_path={} --cpp_out={} {}'.format(
+                        os.path.dirname(proto_path), pb_h_path,
+                        proto_path), shell=True)
+
                 installed = True
                 status = 'Yes'
                 ret.append(module['name'])
                 settings['include_dirs'] += module['include_dirs']
-                proto_path = 'third_party/TensorComprehensions/' \
-                             'src/proto/mapping_options.proto'
-                pb_h_path = 'third_party/TensorComprehensions/include'
-                subprocess.call(
-                    'protoc --proto_path={} --cpp_out={} {}'.format(
-                        os.path.dirname(proto_path), pb_h_path, proto_path),
-                    shell=True)
+                settings['extra_compile_args'] = ['-std=c++11']
             else:
-                errmsg = ['Could not find TensorComprehensions']
+                errmsg = ['Could not find the libraries of Tensor '
+                          'Comprehensions.',
+                          'Please add the path to the directory which '
+                          'contains libtc_core.so to the LIBRARY_PATH '
+                          'environment variable.']
         elif not check_library(compiler,
-                             includes=module['include'],
-                             include_dirs=settings['include_dirs']):
+                               includes=module['include'],
+                               include_dirs=settings['include_dirs']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
         elif not check_library(compiler,
@@ -437,9 +469,6 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
-        
-        if module['name'] == 'tc':
-            s['extra_compile_args'] = ['-std=c++11']
 
         for f in module['file']:
             name = module_extension_name(f)
