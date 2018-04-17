@@ -22,15 +22,15 @@ class TestNvrtcArch(unittest.TestCase):
 
     @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
     def test_get_arch_cuda8(self):
-        self._check_get_arch('52', 'compute_52')
-        self._check_get_arch('53', 'compute_53')
-        self._check_get_arch('54', 'compute_53')
+        self._check_get_arch('37', 'compute_37')
+        self._check_get_arch('50', 'compute_50')
+        self._check_get_arch('52', 'compute_50')
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
     def test_get_arch_cuda9(self):
-        self._check_get_arch('71', 'compute_71')
-        self._check_get_arch('72', 'compute_72')
-        self._check_get_arch('73', 'compute_72')
+        self._check_get_arch('62', 'compute_62')
+        self._check_get_arch('70', 'compute_70')
+        self._check_get_arch('72', 'compute_70')
 
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
