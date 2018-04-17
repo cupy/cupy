@@ -32,10 +32,10 @@ def _get_arch():
         major, minor = _get_nvrtc_version()
         if major < 9:
             # CUDA 7.0 / 7.5 / 8.0
-            _nvrtc_max_compute_capability = '53'
+            _nvrtc_max_compute_capability = '50'
         else:
             # CUDA 9.0 / 9.1
-            _nvrtc_max_compute_capability = '72'
+            _nvrtc_max_compute_capability = '70'
     cc = min(device.Device().compute_capability, _nvrtc_max_compute_capability)
     return 'compute_%s' % cc
 
