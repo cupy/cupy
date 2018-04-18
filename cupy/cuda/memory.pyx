@@ -698,6 +698,9 @@ cdef class SingleDeviceMemoryPool:
             index = algorithm.lower_bound(
                 arena_index.begin(), arena_index.end(),
                 bin_index) - arena_index.begin()
+            if index == arena_index.size():
+                # Bin does not exist for the given chunk size.
+                return False
             if arena_index.at(index) != bin_index:
                 return False
             free_list = arena[index]
