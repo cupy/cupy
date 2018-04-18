@@ -320,6 +320,15 @@ def preconfigure_modules(compiler, settings):
                         os.path.dirname(proto_path), pb_h_path,
                         proto_path), shell=True)
 
+                # Create headers of compcache.proto
+                proto_path = 'third_party/TensorComprehensions/' \
+                    'src/proto/compcache.proto'
+                pb_h_path = 'third_party/TensorComprehensions/include'
+                subprocess.call(
+                    'protoc --proto_path={} --cpp_out={} {}'.format(
+                        os.path.dirname(proto_path), pb_h_path,
+                        proto_path), shell=True)
+
                 installed = True
                 status = 'Yes'
                 ret.append(module['name'])

@@ -1,8 +1,9 @@
 from cpython cimport pycapsule
 from cython.operator cimport dereference
+from libcpp.memory cimport unique_ptr
+from libcpp.pair cimport pair
 from libc.stdint cimport int64_t
 from libc.stdlib cimport free
-from libcpp.pair cimport pair
 
 import cupy
 
@@ -16,6 +17,7 @@ from cupy.core.tc cimport ExecutionEngine
 from cupy.core.tc cimport ExecutorInfo
 from cupy.core.tc cimport GeneticAutotuner
 from cupy.core.tc cimport MappingOptions
+from cupy.core.tc cimport MappingOptionsProto
 from cupy.core.tc cimport Optional
 from cupy.core.tc cimport parseGpus
 from cupy.core.tc cimport prunning_ftype
@@ -28,7 +30,9 @@ from cupy.core.tc cimport FLAGS_tuner_gen_generations
 from cupy.core.tc cimport FLAGS_tuner_gen_number_elites
 from cupy.core.tc cimport FLAGS_tuner_threads
 from cupy.core.tc cimport FLAGS_tuner_gpus
+from cupy.core.tc cimport FLAGS_tuner_print_best
 from cupy.core.tc cimport FLAGS_tuner_proto
+from cupy.core.tc cimport FLAGS_tuner_rng_restore
 from cupy.core.tc cimport FLAGS_tuner_gen_restore_from_proto
 from cupy.core.tc cimport FLAGS_tuner_gen_restore_number
 from cupy.core.tc cimport FLAGS_tuner_gen_log_generations
@@ -41,15 +45,17 @@ except ImportError:
     pass
 
 
-FLAGS_tuner_gen_pop_size = 10
+FLAGS_tuner_gen_pop_size = 100
 FLAGS_tuner_gen_crossover_rate = 80
 FLAGS_tuner_gen_mutation_rate = 7
-FLAGS_tuner_gen_generations = 2
-FLAGS_tuner_gen_number_elites = 1
+FLAGS_tuner_gen_generations = 25
+FLAGS_tuner_gen_number_elites = 10
 FLAGS_tuner_threads = 8
 FLAGS_tuner_gpus = "0"
+FLAGS_tuner_print_best = False
 FLAGS_tuner_proto = "/tmp/tuner.txt"
-FLAGS_tuner_gen_restore_from_proto = False
+FLAGS_tuner_rng_restore = ""
+FLAGS_tuner_gen_restore_from_proto = True
 FLAGS_tuner_gen_restore_number = 10
 FLAGS_tuner_gen_log_generations = False
 FLAGS_tuner_min_launch_total_threads = 64
@@ -67,12 +73,14 @@ cdef class TCKernel:
         self.compile(language, name, inputs, options=options)
 
     def __dealloc__(self):
-        free(self.engine_ptr)
+        pass
+        # free(self.engine_ptr)
 
     cdef string create_options(self, options):
         # TODO(mitmul): This function can return a dereferenced
         # MappingOptions when TC is updated (int the latest code,
         # MappingOptions class has a nullary constructor)
+        cdef string options_str
         if options == 'pointwise':
             return MappingOptions.makePointwiseMappingOptions().toProtobufSerializedString()
         elif options == 'mlp':
@@ -84,7 +92,8 @@ cdef class TCKernel:
         elif options == 'naive':
             return MappingOptions.makeNaiveMappingOptions().toProtobufSerializedString()
         elif isinstance(options, tc.Options):
-            return MappingOptions(options.serializeToProtobuf()).toProtobufSerializedString()
+            options_str = options.serializeToProtobuf().encode('utf-8')
+            return MappingOptions(options_str).toProtobufSerializedString()
         else:
             raise ValueError('Given options argument is invalid.')
 
@@ -165,12 +174,11 @@ cdef class TCKernel:
             tensors.push_back(&dlm_tensor.dl_tensor)
         return tensors
 
-    def autotune(self, inputs, cache_name, base_mapping, starting_points=None, pop_size=10,
+    def autotune(self, inputs, cache_file, base_mapping='naive', starting_points=None, pop_size=10,
                  crossover_rate=80, mutation_rate=7, generations=2,
                  number_elites=1, threads=8, gpus=[0], proto="/tmp/tuner.txt",
-                 restore_from_proto=False, restore_number=10, log_generations=False,
+                 restore_from_proto=False, restore_number=10, log_generations=True,
                  tuner_min_launch_total_threads=64):
-
         global FLAGS_tuner_gen_pop_size
         global FLAGS_tuner_gen_crossover_rate
         global FLAGS_tuner_gen_mutation_rate
@@ -196,8 +204,6 @@ cdef class TCKernel:
         FLAGS_tuner_gen_log_generations = log_generations
         FLAGS_tuner_min_launch_total_threads = tuner_min_launch_total_threads
 
-        cdef GeneticAutotuner* tuner_ptr = new GeneticAutotuner(self.language)
-
         cdef vector[size_t] available_gpus = parseGpus()
         cdef unordered_map[size_t, ConstDLTensorVec] inputsPerGpu
         cdef pair[size_t, ConstDLTensorVec] inputs_pair
@@ -208,25 +214,34 @@ cdef class TCKernel:
 
         for gpu in available_gpus:
             with cupy.cuda.Device(gpu):
+                per_gpu_inputs = []
                 for x in inputs:
-                    x = cupy.asarray(x)
+                    y = x.copy() if x.device.id != gpu else x
+                    per_gpu_inputs.append(y)
                 inputs_pair = pair[size_t, ConstDLTensorVec](
-                    gpu, self.toConstDlpackTensors(inputs))
+                    gpu, self.toConstDlpackTensors(per_gpu_inputs))
                 inputsPerGpu.insert(inputs_pair)
 
+                per_gpu_outputs = []
                 for y in outputs:
-                    y = cupy.asarray(y)
+                    z = y.copy() if y.device.id != gpu else y
+                    per_gpu_outputs.append(z)
                 outputs_pair = pair[size_t, DLTensorVec](
-                    gpu, self.toDlpackTensors(outputs))
+                    gpu, self.toDlpackTensors(per_gpu_outputs))
                 outputsPerGpu.insert(outputs_pair)
 
-        cdef MappingOptions* options_ptr = new MappingOptions(
-            self.create_options(base_mapping))
+        cdef string options_str = self.create_options(base_mapping)
+        cdef MappingOptions *options_ptr = new MappingOptions(options_str)
+
         cdef vector[MappingOptions] options_vec
-        options_vec.push_back(dereference(options_ptr))
+        if starting_points is None:
+            options_vec.push_back(dereference(options_ptr))
+
         cdef TuningParameterFixer* params = new TuningParameterFixer()
-        cdef Optional[MappingOptions] best_options = tuner_ptr.tune(
-            cache_name.encode('utf-8'),
+        cdef unique_ptr[GeneticAutotuner] tuner_ptr
+        tuner_ptr.reset(new GeneticAutotuner(self.language))
+        cdef Optional[MappingOptions] best_options = dereference(tuner_ptr).tune(
+            cache_file.encode('utf-8'),
             self.name,
             inputsPerGpu,
             outputsPerGpu,
@@ -234,6 +249,8 @@ cdef class TCKernel:
             options_vec,
             dereference(params)
         )
+        self.engine_ptr.compile(
+            self.name, self.toConstDlpackTensors(inputs), dereference(best_options.getPointer()))
 
     def __call__(self, *inputs, **kwargs):
         profile = kwargs.pop('profile') if 'profile' in kwargs else False

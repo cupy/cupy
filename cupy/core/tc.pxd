@@ -47,6 +47,16 @@ cdef extern from "tc/core/execution_engine.h" namespace "tc":
             prunning_ftype prunningFunction)
 
 
+cdef extern from "mapping_options.pb.h" namespace "tc":
+
+    cdef cppclass MappingOptionsProto:
+
+        MappingOptionsProto() except +
+        size_t ByteSizeLong()
+        string SerializeAsString()
+        bool IsInitialized()
+
+
 cdef extern from "tc/core/mapping_options.h" namespace "tc":
 
     cdef cppclass MappingOptions:
@@ -72,13 +82,15 @@ cdef extern from "tc/core/mapping_options.h" namespace "tc":
         @staticmethod
         MappingOptions makeGroupConvolutionMappingOptions()
 
+        MappingOptionsProto proto
+
 
 cdef extern from "llvm/ADT/Optional.h" namespace "llvm":
 
     cdef cppclass Optional[T]:
         
-        const T* getPointer()
-        const T& getValue()
+        T* getPointer()
+        T& getValue()
 
 
 cdef extern from "tc/autotuner/parameters.h" namespace "tc::autotune":
@@ -111,7 +123,7 @@ cdef extern from "tc/autotuner/genetic_autotuner.h" namespace "tc::autotune::det
             unordered_map[size_t, DLTensorVec]& outputs,
             MappingOptions baseMapping,
             vector[MappingOptions] startingPoints,
-            const TuningParameterFixer& fixedParams);
+            const TuningParameterFixer& fixedParams)
 
 
 cdef extern from "tc/core/flags.h" namespace "tc":
@@ -123,7 +135,9 @@ cdef extern from "tc/core/flags.h" namespace "tc":
     cdef uint32_t FLAGS_tuner_gen_number_elites
     cdef uint32_t FLAGS_tuner_threads
     cdef string FLAGS_tuner_gpus
+    cdef bool FLAGS_tuner_print_best
     cdef string FLAGS_tuner_proto
+    cdef string FLAGS_tuner_rng_restore
     cdef bool FLAGS_tuner_gen_restore_from_proto
     cdef uint32_t FLAGS_tuner_gen_restore_number
     cdef bool FLAGS_tuner_gen_log_generations
