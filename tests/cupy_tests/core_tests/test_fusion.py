@@ -487,9 +487,6 @@ class TestFusionArithmetic(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_binary_negative('divide')
 
-    def test_power(self):
-        self.check_binary('power')
-
     def test_power_negative(self):
         self.check_binary_negative_float('power')
 
@@ -543,6 +540,30 @@ class TestFusionArithmetic(unittest.TestCase):
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
             self.check_binary_negative('remainder')
+
+
+@testing.gpu
+class TestFusionArithmeticLargeTolerance(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    @fusion_default_array_equal()
+    def check_binary_no_complex(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype) + 1
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype) + 1
+        return a, b
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    @fusion_default_array_equal()
+    def check_binary_complex(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype) + 1
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype) + 1
+        return a, b
+
+    def test_power(self):
+        self.check_binary_no_complex('power')
+        self.check_binary_complex('power')
 
 
 class TestFusionUfunc(unittest.TestCase):
