@@ -104,9 +104,9 @@ cpdef _python_scalar_to_numpy_scalar(x):
     if isinstance(x, bool):
         numpy_type = numpy.bool_
     elif isinstance(x, six.integer_types):
-        if x >= 0x8000000000000000:
+        if 0x8000000000000000 <= x:
             numpy_type = numpy.uint64
-        elif x > _int_iinfo.max:
+        elif x < _int_iinfo.min or _int_iinfo.max < x:
             numpy_type = numpy.int64
         else:
             numpy_type = _int_iinfo.dtype.type
