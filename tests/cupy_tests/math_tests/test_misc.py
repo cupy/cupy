@@ -1,10 +1,9 @@
+import sys
 import unittest
 
 import numpy
 
 from cupy import testing
-
-import os
 
 
 @testing.gpu
@@ -47,7 +46,7 @@ class TestMisc(unittest.TestCase):
         return getattr(xp, name)(a, b)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
@@ -79,7 +78,7 @@ class TestMisc(unittest.TestCase):
         return a.clip(None, None)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip1(self, xp, dtype):
