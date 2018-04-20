@@ -38,6 +38,7 @@ Distributions
 
    cupy.random.gumbel
    cupy.random.lognormal
+   cupy.random.multinomial
    cupy.random.normal
    cupy.random.standard_normal
    cupy.random.uniform

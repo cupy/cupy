@@ -228,7 +228,7 @@ class nd_grid(object):
         sparse (bool, optional): Whether the grid is sparse or not.
             Default is False.
 
-    .. seealso:: :func:`numpy.mgrid` and `numpy.ogrid`
+    .. seealso:: :data:`numpy.mgrid` and :data:`numpy.ogrid`
 
     """
 
