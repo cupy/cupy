@@ -1,3 +1,5 @@
+import pkg_resources
+import sys
 import unittest
 
 import numpy
@@ -7,6 +9,16 @@ import cupy
 from cupy import core
 from cupy import cuda
 from cupy import testing
+
+
+def numpy_satisfies(version_range):
+    """Returns True if numpy version satisfies the specified criteria."""
+    spec = 'numpy{}'.format(version_range)
+    try:
+        pkg_resources.require(spec)
+    except pkg_resources.VersionConflict:
+        return False
+    return True
 
 
 @testing.gpu
@@ -75,6 +87,11 @@ class TestElementwiseInvalidArgument(unittest.TestCase):
 @testing.gpu
 class TestElementwiseType(unittest.TestCase):
 
+    # Skip this test due to NumPy bug on Windows (fixed in NumPy 1.14.0).
+    # https://github.com/numpy/numpy/pull/9778
+    @unittest.skipIf(
+        sys.platform == 'win32' and numpy_satisfies('<1.14'),
+        'This test requires 1.14.0 when running on Windows.')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_large_int_upper_1(self, xp, dtype):
