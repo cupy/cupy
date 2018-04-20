@@ -163,6 +163,23 @@ class TestAffineTransformOpenCV(unittest.TestCase):
         else:
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=0.3)
+    def test_affine_transform_opencv_eye(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        matrix = testing.shaped_random((2,), xp, dtype)
+        offset = testing.shaped_random((2,), xp, dtype)
+        if xp == cupy:
+            return cupyx.scipy.ndimage.affine_transform(
+                a, matrix, offset, order=1, mode='opencv')
+        else:
+            m = numpy.zeros((2, 3))
+            m[0, 0] = matrix[0]
+            m[1, 1] = matrix[1]
+            m[0, 2] = offset[0]
+            m[1, 2] = offset[1]
+            return cv2.warpAffine(a, m, (a.shape[1], a.shape[0]))
+
 
 @testing.parameterize(*testing.product({
     'angle': [-10, 1000],

@@ -3,6 +3,7 @@ import math
 import warnings
 
 import cupy
+import numpy
 import six
 
 
@@ -41,6 +42,87 @@ def _check_parameter(func_name, order, mode):
     elif mode not in ('constant', 'nearest', 'mirror', 'opencv',
                       '_opencv_edge'):
         raise ValueError('boundary mode is not supported')
+
+
+def _map_coordinates(input, coordinates, output=None, order=None,
+                     mode='constant', cval=0.0, prefilter=True, axes=None):
+    if mode == 'opencv' or mode == '_opencv_edge':
+        input = cupy.pad(input, [(1, 1)] * input.ndim, 'constant',
+                         constant_values=cval)
+        coordinates += 1
+        mode = 'constant'
+
+    output, return_value = _get_output(output, input, coordinates.shape[1:])
+
+    if mode == 'nearest':
+        for i in six.moves.range(input.ndim):
+            coordinates[i] = coordinates[i].clip(0, input.shape[i] - 1)
+    elif mode == 'mirror':
+        for i in six.moves.range(input.ndim):
+            length = input.shape[i] - 1
+            if length == 0:
+                coordinates[i] = 0
+            else:
+                coordinates[i] = cupy.remainder(coordinates[i], 2 * length)
+                coordinates[i] = 2 * cupy.minimum(
+                    coordinates[i], length) - coordinates[i]
+
+    if cupy.issubdtype(input.dtype, cupy.integer):
+        input = input.astype(cupy.float32)
+
+    if order == 0:
+        out = input[tuple(cupy.rint(coordinates).astype(cupy.int64))]
+    else:
+        coordinates_floor = coordinates.astype(cupy.int64)
+        if input.dtype in (cupy.float64, cupy.complex128):
+            floor_diff = coordinates - coordinates_floor
+        else:
+            floor_diff = cupy.empty_like(coordinates, dtype=cupy.float32)
+            cupy.subtract(coordinates, coordinates_floor, floor_diff)
+        ceil_diff = 1 - floor_diff
+
+        sides = []
+        for i in six.moves.range(input.ndim):
+            coordinates_floor[i] *= numpy.prod(input.shape[i + 1:],
+                                               dtype=numpy.int64)
+            if i in axes:
+                sides.append([0, 1])
+            else:
+                sides.append([0])
+
+        index = coordinates_floor.sum(axis=0)
+
+        out = cupy.zeros(coordinates.shape[1], dtype=input.dtype)
+        if input.dtype in (cupy.float64, cupy.complex128):
+            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float64)
+        else:
+            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float32)
+        for side in itertools.product(*sides):
+            weight.fill(1)
+            offset = 0
+            for i in six.moves.range(input.ndim):
+                if side[i] == 0:
+                    if i in axes:
+                        weight *= ceil_diff[i]
+                else:
+                    offset += numpy.prod(input.shape[i + 1:])
+                    weight *= floor_diff[i]
+            out += cupy.take(input.ravel()[offset:], index) * weight
+        del weight
+
+    if mode == 'constant':
+        mask = cupy.zeros(coordinates.shape[1], dtype=cupy.bool_)
+        for i in six.moves.range(input.ndim):
+            mask += coordinates[i] < 0
+            mask += coordinates[i] > input.shape[i] - 1
+        out[mask] = cval
+        del mask
+
+    if cupy.issubdtype(output.dtype, cupy.integer):
+        out = cupy.rint(out)
+
+    cupy.copyto(output, out.astype(output.dtype))
+    return return_value
 
 
 def map_coordinates(input, coordinates, output=None, order=None,
@@ -82,76 +164,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
     """
 
     _check_parameter('map_coordinates', order, mode)
-
-    if mode == 'opencv' or mode == '_opencv_edge':
-        input = cupy.pad(input, [(1, 1)] * input.ndim, 'constant',
-                         constant_values=cval)
-        coordinates = cupy.add(coordinates, 1)
-        mode = 'constant'
-
-    output, return_value = _get_output(output, input, coordinates.shape[1:])
-
-    if mode == 'nearest':
-        for i in six.moves.range(input.ndim):
-            coordinates[i] = coordinates[i].clip(0, input.shape[i] - 1)
-    elif mode == 'mirror':
-        for i in six.moves.range(input.ndim):
-            length = input.shape[i] - 1
-            if length == 0:
-                coordinates[i] = 0
-            else:
-                coordinates[i] = cupy.remainder(coordinates[i], 2 * length)
-                coordinates[i] = 2 * cupy.minimum(
-                    coordinates[i], length) - coordinates[i]
-
-    if cupy.issubdtype(input.dtype, cupy.integer):
-        input = input.astype(cupy.float32)
-
-    if order == 0:
-        out = input[tuple(cupy.rint(coordinates).astype(cupy.int32))]
-    else:
-        coordinates_floor = cupy.floor(coordinates).astype(cupy.int32)
-        coordinates_ceil = coordinates_floor + 1
-
-        sides = []
-        for i in six.moves.range(input.ndim):
-            # TODO(mizuno): Use array_equal after it is implemented
-            if cupy.all(coordinates[i] == coordinates_floor[i]):
-                sides.append([0])
-            else:
-                sides.append([0, 1])
-
-        out = cupy.zeros(coordinates.shape[1], dtype=input.dtype)
-        if input.dtype in (cupy.float64, cupy.complex128):
-            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float64)
-        else:
-            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float32)
-        for side in itertools.product(*sides):
-            weight.fill(1)
-            ind = []
-            for i in six.moves.range(input.ndim):
-                if side[i] == 0:
-                    ind.append(coordinates_floor[i])
-                    weight *= coordinates_ceil[i] - coordinates[i]
-                else:
-                    ind.append(coordinates_ceil[i])
-                    weight *= coordinates[i] - coordinates_floor[i]
-            out += input[ind] * weight
-        del weight
-
-    if mode == 'constant':
-        mask = cupy.zeros(coordinates.shape[1], dtype=cupy.bool_)
-        for i in six.moves.range(input.ndim):
-            mask += coordinates[i] < 0
-            mask += coordinates[i] > input.shape[i] - 1
-        out[mask] = cval
-        del mask
-
-    if cupy.issubdtype(output.dtype, cupy.integer):
-        out = cupy.rint(out)
-
-    cupy.copyto(output, out.astype(output.dtype))
-    return return_value
+    return _map_coordinates(input, coordinates, output, order, mode, cval,
+                            prefilter, tuple(six.moves.range(input.ndim)))
 
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
@@ -212,37 +226,52 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     output, return_value = _get_output(output, input, output_shape)
 
     if not hasattr(offset, '__iter__') and type(offset) is not cupy.ndarray:
-        offset = [offset] * input.ndim
-
-    if matrix.ndim == 1:
-        # TODO(mizuno): Implement zoom_shift
-        matrix = cupy.diag(matrix)
-    elif matrix.shape[0] == matrix.shape[1] - 1:
-        offset = matrix[:, -1]
-        matrix = matrix[:, :-1]
-    elif matrix.shape[0] == input.ndim + 1:
-        offset = matrix[:-1, -1]
-        matrix = matrix[:-1, :-1]
+        offset = cupy.full(input.ndim, offset)
 
     if output_shape is None:
         output_shape = input.shape
 
-    if mode == 'opencv':
-        m = cupy.zeros((input.ndim + 1, input.ndim + 1))
-        m[:-1, :-1] = matrix
-        m[:-1, -1] = offset
-        m[-1, -1] = 1
-        m = cupy.linalg.inv(m)
-        m[:2] = cupy.roll(m[:2], 1, axis=0)
-        m[:2, :2] = cupy.roll(m[:2, :2], 1, axis=1)
-        matrix = m[:-1, :-1]
-        offset = m[:-1, -1]
+    if matrix.ndim == 1 and mode != 'opencv':
+        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = coordinates.reshape((input.ndim, -1))
+        coordinates *= cupy.expand_dims(matrix, -1)
+        coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
+    else:
+        if matrix.ndim == 1:
+            matrix = cupy.diag(matrix)
+        elif matrix.shape[0] == matrix.shape[1] - 1:
+            offset = matrix[:, -1]
+            matrix = matrix[:, :-1]
+        elif matrix.shape[0] == input.ndim + 1:
+            offset = matrix[:-1, -1]
+            matrix = matrix[:-1, :-1]
 
-    coordinates = cupy.indices(output_shape, dtype=cupy.float64)
-    coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
-    coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
-    out = map_coordinates(input, coordinates, output.dtype, order, mode, cval,
-                          prefilter)
+        if mode == 'opencv':
+            m = cupy.zeros((input.ndim + 1, input.ndim + 1))
+            m[:-1, :-1] = matrix
+            m[:-1, -1] = offset
+            m[-1, -1] = 1
+            m = cupy.linalg.inv(m)
+            m[:2] = cupy.roll(m[:2], 1, axis=0)
+            m[:2, :2] = cupy.roll(m[:2, :2], 1, axis=1)
+            matrix = m[:-1, :-1]
+            offset = m[:-1, -1]
+
+        # cupy.dot becomes slow when matrix is view.
+        if matrix.base is not None:
+            matrix = matrix.copy()
+
+        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
+        coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
+
+    axes = []
+    for i in six.moves.range(input.ndim):
+        if cupy.sum(matrix[i] % 1) + offset[i] % 1 > 0:
+            axes.append(i)
+
+    out = _map_coordinates(input, coordinates, output.dtype, order, mode, cval,
+                           prefilter, axes)
     cupy.copyto(output, out.astype(output.dtype))
     return return_value
 
