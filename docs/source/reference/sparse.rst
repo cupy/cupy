@@ -34,6 +34,9 @@ Building sparse matrices
 
    cupy.sparse.eye
    cupy.sparse.identity
+   cupy.sparse.spdiags
+   cupy.sparse.rand
+   cupy.sparse.random
 
 
 Identifying sparse matrices
