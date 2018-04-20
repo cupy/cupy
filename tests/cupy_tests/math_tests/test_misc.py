@@ -65,6 +65,11 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(None, 3)
 
+    # Skip this test due to NumPy bug on Windows (fixed in NumPy 1.14.0).
+    # https://github.com/numpy/numpy/pull/9778
+    @unittest.skipIf(
+        sys.platform == 'win32' and testing.numpy_satisfies('<1.14'),
+        'This test requires 1.14.0 when running on Windows.')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip_max_none(self, xp, dtype):
