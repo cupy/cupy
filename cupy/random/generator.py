@@ -4,6 +4,7 @@ import functools
 import operator
 import os
 import time
+import warnings
 
 import numpy
 import six
@@ -99,6 +100,60 @@ class RandomState(object):
         else:
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
+
+    def multivariate_normal(self, mean, cov, size=None, check_valid='warn',
+                            tol=1e-8, dtype=float):
+        """Returns an array of multivariate nomally distributed samples.
+
+        .. seealso::
+            :func:`cupy.random.multivariate_normal` for full documentation,
+            :meth:`numpy.random.RandomState.multivariate_normal`
+
+        """
+        mean = cupy.array(mean)
+        cov = cupy.array(cov)
+        if size is None:
+            shape = []
+        elif isinstance(size, (int, cupy.integer)):
+            shape = [size]
+        else:
+            shape = size
+
+        if len(mean.shape) != 1:
+            raise ValueError("mean must be 1 dimensional")
+        if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
+            raise ValueError("cov must be 2 dimensional and square")
+        if mean.shape[0] != cov.shape[0]:
+            raise ValueError("mean and cov must have same length")
+        final_shape = list(shape[:])
+        final_shape.append(mean.shape[0])
+
+        x = self.standard_normal(size=final_shape, dtype=dtype)
+        x = x.reshape(-1, mean.shape[0])
+
+        (u, s, v) = cupy.linalg.svd(cov)
+
+        if check_valid != 'ignore':
+            if check_valid != 'warn' and check_valid != 'raise':
+                raise ValueError(
+                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+
+            a = cupy.dot(v.T * s, v)
+            b = cov
+            psd = cupy.all(cupy.abs(a-b) <= tol*(1+cupy.abs(b)))
+            if not psd:
+                if check_valid == 'warn':
+                    warnings.warn(
+                        "covariance is not symmetric positive-semidefinite.",
+                        RuntimeWarning)
+                else:
+                    raise ValueError(
+                        "covariance is not symmetric positive-semidefinite.")
+
+        x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
+        x += mean
+        x.shape = tuple(final_shape)
+        return x
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
