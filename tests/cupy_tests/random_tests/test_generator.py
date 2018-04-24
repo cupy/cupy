@@ -551,6 +551,24 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         self.assertEqual(numpy.unique(val).size, val.size)
 
 
+@testing.parameterize(
+    {'n': 5, 'p': 0.5},
+    {'n': 5, 'p': 0.0},
+    {'n': 5, 'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBinomial(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'binomial'
+
+    def test_laplace(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestGumbel(RandomGeneratorTestCase):

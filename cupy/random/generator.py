@@ -18,6 +18,27 @@ from cupy.cuda import device
 
 _gumbel_kernel = None
 _laplace_kernel = None
+_binomial_kernel = None
+
+
+# TODO: implementation of BTPE same as numpy
+def _get_binomial_kernel():
+    global _binomial_kernel
+    if _binomial_kernel is None:
+        _binomial_kernel = core.ElementwiseKernel(
+            'T x, T n, T p', 'T y',
+            '''
+            y = 0.;
+            T px = exp(n * log(1-p));
+            while(x > px){
+                y += 1.;
+                x -= px;
+                px = ((n-y+1) * p * px)/(y*(1-p));
+            }
+            ''',
+            'binomial_kernel'
+        )
+    return _binomial_kernel
 
 
 def _get_gumbel_kernel():
@@ -494,6 +515,18 @@ class RandomState(object):
             # custom kernel. See https://github.com/cupy/cupy/pull/603.
             array = cupy.argsort(sample)
         return array
+
+    def binomial(self, n, p, size=None, dtype=float):
+        """Returns an array of samples drawn from a Binomial distribution.
+
+        .. seealso::
+            :func:`cupy.random.binomial` for full documentation,
+            :meth:`numpy.random.RandomState.binomial`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        y = cupy.zeros_like(x, dtype=dtype)
+        _get_binomial_kernel()(x, n, p, y)
+        return y
 
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.
