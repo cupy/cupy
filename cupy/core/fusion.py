@@ -49,16 +49,17 @@ _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 class Submodule(object):
     """Submodule class.
 
-    ufunc or elementwise kernel with types
+    Ufunc or elementwise kernel with types.
 
     Attributes:
-       ufunc (cupy.fusion.ufunc): The ufunc.
+       name (str): The name of submodule
        in_params (list of tuples of dtype and str):
          The tuple of dtype and name of input parameters.
        out_params (list of tuples of dtype and str):
          The tuple of dtype and name of output parameters.
-       op (str): The string of operation code.
-       type (list of dtypes): The list of types of parameters.
+       op (str): The operation code.
+       preamble (str): The preamble code.
+       type (list of dtypes): The list of types of the parameters.
     """
 
     def __init__(self, ufunc, in_params, out_params, op):
@@ -100,11 +101,11 @@ class _FusionVarCUDA(object):
 
     """_FusionVarCUDA class.
 
-    TODO
+    Local variable in CUDA program.
 
     Attributes:
-        index (int): The name of variable located in GPU.
-        ty (dtype): The type in CUDA.
+        index (int): The name of the variable.
+        ty (dtype): The type of the variable.
         const (any of types): The constant value (or None)
     """
 
@@ -142,13 +143,13 @@ class FusionOp(object):
 
     """FusionOp class.
 
-    TODO
+    Function call with arguments in CUDA program.
 
     Attributes:
-        index (int): index of this op.
-        func (submodule): submodule.
-        args (list of _FusionVarCUDA): the arguments.
-        types (list of dtype): the types of parameters.
+        index (int): The index of this operation.
+        func (submodule): The submodules called in this operation.
+        args (list of _FusionVarCUDA): The arguments.
+        types (list of dtype): The types of parameters.
     """
 
     def __init__(self, index, func, args):
@@ -182,12 +183,12 @@ class _FusionHistory(object):
 
     """_FusionHistory class.
 
-    TODO
+    History of operation exectuted in the target function of fusion.
 
     Attributes:
         op_list (list of FusionOp): The list of operations.
-        param_list (list of _FusionVarCUDA): The list of parameters
-        local_list (list of _FusionVarCUDA): The list of variables.
+        param_list (list of _FusionVarCUDA): The list of parameters.
+        local_list (list of _FusionVarCUDA): The list of local variables.
         submodules (dictionary from str to submodule): submodules.
     """
 
@@ -263,12 +264,12 @@ class FusionVarPython(object):
 
     """FusionVarPython class.
 
-    TODO
+    The values of variables in target function of fusion.
 
     Attributes:
         dtype (dtype): The data type.
-        shape (tuple of ints): !! not supported !!
     """
+    #   shape (tuple of ints): !! not supported !!
 
     def __init__(self, var, history):
         self._var = var
@@ -434,18 +435,18 @@ class FusionVarPython(object):
 
 
 class ReducedVarPython(FusionVarPython):
+    """ReducedVarPython class.
 
-    """_ReducedVarPython class
-
-    TODO
+    The value of variables after the reduction phase.
 
     Attributes:
-        dtype (dtpe): The data type.
+        dtype (dtype): The data type.
     """
+    #   shape (tuple of ints): !! not supported !!
 
 
 def _normalize_arg(arg, mem, is_postmap):
-    """TODO
+    """This converts `arg` to _FusionVarCUDA data.
 
     Args:
        arg (FusionVarPython or a primitive type)
