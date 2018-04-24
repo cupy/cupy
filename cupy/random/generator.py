@@ -21,7 +21,7 @@ _laplace_kernel = None
 _binomial_kernel = None
 
 
-# TODO: implementation of BTPE same as numpy
+# TODO(YoshikawaMasashi): implementation of BTPE same as numpy
 def _get_binomial_kernel():
     global _binomial_kernel
     if _binomial_kernel is None:
