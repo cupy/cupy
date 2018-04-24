@@ -22,6 +22,7 @@ Means and variances
    :toctree: generated/
    :nosignatures:
 
+   cupy.average
    cupy.mean
    cupy.var
    cupy.std
