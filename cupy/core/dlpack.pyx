@@ -18,7 +18,7 @@ from cupy.cuda cimport memory
 from cpython cimport pycapsule
 
 
-ctypedef enum DLDeviceType:
+cdef enum DLDeviceType:
     kDLCPU = 1
     kDLGPU = 2
     kDLCPUPinned = 3
@@ -28,24 +28,24 @@ ctypedef enum DLDeviceType:
     kDLROCM = 10
 
 
-ctypedef struct DLContext 'DLContext':
+cdef struct DLContext:
     DLDeviceType device_type
     int device_id
 
 
-ctypedef enum DLDataTypeCode:
+cdef enum DLDataTypeCode:
     kDLInt = <unsigned int>0
     kDLUInt = <unsigned int>1
     kDLFloat = <unsigned int>2
 
 
-ctypedef struct DLDataType 'DLDataType':
+cdef struct DLDataType:
     uint8_t code
     uint8_t bits
     uint16_t lanes
 
 
-ctypedef struct DLTensor 'DLTensor':
+cdef struct DLTensor:
     void* data
     DLContext ctx
     int ndim
@@ -55,7 +55,7 @@ ctypedef struct DLTensor 'DLTensor':
     uint64_t byte_offset
 
 
-ctypedef struct DLManagedTensor 'DLManagedTensor':
+cdef struct DLManagedTensor:
     DLTensor dl_tensor
     void* manager_ctx
     void (*deleter)(DLManagedTensor*)
