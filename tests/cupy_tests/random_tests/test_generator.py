@@ -174,7 +174,8 @@ class TestNormal(RandomGeneratorTestCase):
 @testing.gpu
 @testing.parameterize(*[
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},
-    {'args': ([10., 10.], [[20., 10.], [10., 20.]]), 'size': None, 'tol': 1e-6},
+    {'args': ([10., 10.], [[20., 10.], [10., 20.]]),
+     'size': None, 'tol': 1e-6},
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 10, 'tol': 1e-6},
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (1, 2, 3), 'tol': 1e-6},
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 3, 'tol': 1e-6},
@@ -188,7 +189,7 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
 
     def check_multivariate_normal(self, dtype):
         vals = self.generate_many(
-            mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol, 
+            mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
             dtype=dtype, _count=10)
 
         shape = core.get_size(self.size)
