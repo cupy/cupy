@@ -12,6 +12,12 @@ _gumbel_kernel = core.ElementwiseKernel(
     'gumbel_kernel'
 )
 
+_laplace_kernel = core.ElementwiseKernel(
+    'T x, T loc, T scale', 'T y',
+    'y = (x < 0.5)? loc + scale * log(x + x): loc - scale * log(2.0 - x - x)',
+    'laplace_kernel'
+)
+
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     """Returns an array of samples drawn from a Gumbel distribution.
@@ -45,6 +51,37 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     """
     rs = generator.get_random_state()
     return rs.gumbel(loc, scale, size, dtype)
+
+
+def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
+    """Returns an array of samples drawn from a Laplace distribution.
+
+    The samples are drawn from a Laplace distribution with location ``loc``
+    and scale ``scale``.
+    Its probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{1}{2b}\\exp\\left(-\\frac{|x-\\mu|}{b}\\right),
+
+    where :math:`\\mu` is ``loc`` and :math:`\\b` is ``scale``.
+
+    Args:
+        loc (float): The location of the mode :math:`\\mu`.
+        scale (float): The scale parameter :math:`\\eta`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Laplace destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.laplace`
+        :func:`numpy.random.laplace`
+    """
+    rs = generator.get_random_state()
+    return rs.laplace(loc, scale, size, dtype)
 
 
 def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
