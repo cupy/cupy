@@ -389,14 +389,17 @@ def _get_declaration_from_var(var):
     if var.const is None:
         return '%s v%d;\n' % (_dtype_to_ctype[var.ty], var.num)
 
-    if isinstance(var.const, bool):
-        init = '= %s' % str(var.const).lower()
-    elif isinstance(var.const, complex):
-        init = '(%s, %s)' % (var.const.real, var.const.imag)
-    elif isinstance(var.const, (int, float)):
-        init = '= %s' % str(var.const)
+    c = var.const
+    val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
+
+    if isinstance(val, bool):
+        init = '= %s' % str(c).lower()
+    elif isinstance(val, complex):
+        init = '(%s, %s)' % (c.real, c.imag)
+    elif isinstance(val, (int, float)):
+        init = '= %s' % str(c)
     else:
-        raise TypeError('Invalid constant type: {}'.format(type(var.const)))
+        raise TypeError('Invalid constant type: {}'.format(type(c)))
     return 'const %s v%d %s;\n' % (_dtype_to_ctype[var.ty], var.num, init)
 
 
