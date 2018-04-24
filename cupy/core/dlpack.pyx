@@ -1,11 +1,9 @@
-from libc.stdlib cimport malloc
+from libc cimport stdlib
 from cython.operator cimport dereference
 
 import cupy
 
 from cupy.core.core cimport ndarray
-from cupy.cuda.runtime cimport free
-# DLPACK_VERSION: 010
 
 from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
@@ -15,6 +13,7 @@ from libc.stdint cimport uint64_t
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory
+cimport cpython
 from cpython cimport pycapsule
 
 
@@ -46,7 +45,7 @@ cdef struct DLDataType:
 
 
 cdef struct DLTensor:
-    void* data
+    size_t data  # Safer than "void *"
     DLContext ctx
     int ndim
     DLDataType dtype
@@ -61,52 +60,48 @@ cdef struct DLManagedTensor:
     void (*deleter)(DLManagedTensor*)
 
 
-cdef void deleter(DLManagedTensor* tensor):
-    free(&tensor.dl_tensor.ctx)
-    free(&tensor.dl_tensor.dtype)
-    free(&tensor.dl_tensor)
+cdef void deleter(DLManagedTensor* tensor) with gil:
+    stdlib.free(tensor.dl_tensor.shape)
+    cpython.Py_DECREF(<object>tensor.manager_ctx)
+    stdlib.free(tensor)
 
 
 cpdef object toDlpack(ndarray array):
-    cdef DLContext* ctx = <DLContext*>malloc(sizeof(DLContext))
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
+
+    cdef size_t ndim = array._shape.size()
+    cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+    dl_tensor.data = array.data.ptr
+    dl_tensor.ndim = ndim
+
+    cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(ndim * sizeof(int64_t) * 2)
+    for n in range(ndim):
+        shape_strides[n] = array._shape[n]
+    dl_tensor.shape = shape_strides
+    for n in range(ndim):
+        shape_strides[n + ndim] = array._strides[n]
+
+    dl_tensor.strides = shape_strides + ndim
+    dl_tensor.byte_offset = 0
+
+    cdef DLContext* ctx = &dl_tensor.ctx
     ctx.device_type = DLDeviceType.kDLGPU
     ctx.device_id = array.device.id
 
-    cdef DLDataType* dtype = <DLDataType*>malloc(sizeof(DLDataType))
-    if cupy.issubdtype(array.dtype, cupy.unsignedinteger):
+    cdef DLDataType* dtype = &dl_tensor.dtype
+    if array.dtype.kind == 'u':
         dtype.code = <uint8_t>DLDataTypeCode.kDLUInt
-    elif cupy.issubdtype(array.dtype, cupy.integer):
+    elif array.dtype.kind == 'i':
         dtype.code = <uint8_t>DLDataTypeCode.kDLInt
-    elif cupy.issubdtype(array.dtype, cupy.floating):
+    elif array.dtype.kind == 'f':
         dtype.code = <uint8_t>DLDataTypeCode.kDLFloat
     else:
         raise ValueError('Unknown dtype')
     dtype.bits = <uint8_t>(array.dtype.itemsize * 8)
     dtype.lanes = <uint16_t>1
 
-    cdef DLTensor* dl_tensor = <DLTensor*>malloc(sizeof(DLTensor))
-    cdef int ndim = array.ndim
-    dl_tensor.data = <void *><size_t>array.data.ptr
-    dl_tensor.ctx = dereference(ctx)
-    dl_tensor.ndim = ndim
-    dl_tensor.dtype = dereference(dtype)
-
-    cdef int64_t* shape = <int64_t*>malloc(ndim * sizeof(int64_t))
-    for n in range(ndim):
-        shape[n] = array._shape[n]
-    dl_tensor.shape = shape
-
-    cdef int n_strides = len(array._strides)
-    cdef int64_t* strides = <int64_t*>malloc(n_strides * sizeof(int64_t))
-    for n in range(n_strides):
-        strides[n] = array._strides[n]
-    dl_tensor.strides = strides
-
-    dl_tensor.byte_offset = 0
-
-    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>malloc(sizeof(DLManagedTensor))
-    dlm_tensor.dl_tensor = dereference(dl_tensor)
-    dlm_tensor.manager_ctx = array.get_pointer().ptr
+    dlm_tensor.manager_ctx = <void *>array
+    cpython.Py_INCREF(array)
     dlm_tensor.deleter = deleter
 
     return pycapsule.PyCapsule_New(dlm_tensor, 'dltensor', NULL)
