@@ -1,20 +1,9 @@
 import itertools
 import numpy
-import pkg_resources
 import unittest
 
 import cupy
 from cupy import testing
-
-
-def numpy_satisfies(version_range):
-    """Returns True if numpy version satisfies the specified criteria."""
-    spec = 'numpy{}'.format(version_range)
-    try:
-        pkg_resources.require(spec)
-    except pkg_resources.VersionConflict:
-        return False
-    return True
 
 
 float_types = [numpy.float16, numpy.float32, numpy.float64]
@@ -86,7 +75,7 @@ class TestArithmeticUnary(unittest.TestCase):
             arg1 = xp.asarray(arg1)
         y = getattr(xp, self.name)(arg1)
 
-        if (numpy_satisfies('>=1.13.0')
+        if (testing.numpy_satisfies('>=1.13.0')
                 and self.name in ('real', 'imag')):
 
             # From NumPy>=1.13, some functions return Python scalars for Python
@@ -191,7 +180,7 @@ class TestArithmeticBinary(unittest.TestCase):
         # NumPy>=1.13.0 does not support subtraction between booleans
         # TODO(niboshi): Write a separate test to check both NumPy and CuPy
         # raise TypeError.
-        if (numpy_satisfies('>=1.13.0')
+        if (testing.numpy_satisfies('>=1.13.0')
                 and self.name == 'subtract'
                 and xp.asarray(arg1).dtype == numpy.bool_
                 and xp.asarray(arg2).dtype == numpy.bool_):
