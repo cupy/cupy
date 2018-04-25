@@ -266,7 +266,7 @@ def einsum(*operands):
         raise ValueError('einstein sum subscripts string contains a \'.\' that'
                          'is not part of an ellipsis (\'...\')')
 
-    match = re.match('^([a-zA-Z@,]+)(->[a-zA-Z@]*)?$', subscripts)
+    match = re.match('^([a-zA-Z@,]*)(->[a-zA-Z@]*)?$', subscripts)
     if not match:
         raise ValueError('einstein sum subscript string does not contain '
                          'proper \'->\' output specified')
