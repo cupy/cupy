@@ -103,7 +103,7 @@ class TestArithmeticUnary(unittest.TestCase):
             # of an array of dtype.bool.
             if (xp is cupy
                     and isinstance(arg1, bool)):
-                y = y.astype(numpy.iinfo(int).dtype)
+                y = y.astype(int)
 
         return y
 
