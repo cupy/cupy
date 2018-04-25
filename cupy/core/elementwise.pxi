@@ -98,12 +98,25 @@ cdef dict _python_type_to_numpy_type = {
 }
 
 
+_int_iinfo = numpy.iinfo(int)
+cdef long long _int_min = _int_iinfo.min
+cdef long long _int_max = _int_iinfo.max
+cdef _int_type = _int_iinfo.dtype.type
+
+
 cpdef _python_scalar_to_numpy_scalar(x):
     # Note that isinstance(x, six_integer_types) matches with bool.
     if isinstance(x, bool):
         numpy_type = numpy.bool_
     elif isinstance(x, six.integer_types):
-        numpy_type = numpy.uint64 if x >= 0x8000000000000000 else numpy.int64
+        if 0x8000000000000000 <= x:
+            numpy_type = numpy.uint64
+        elif x < _int_min or _int_max < x:
+            numpy_type = numpy.int64
+        else:
+            # Generally `_int_type` is `numpy.int64`.
+            # On Windows, it is `numpy.int32`.
+            numpy_type = _int_type
     else:
         numpy_type = _python_type_to_numpy_type[type(x)]
     return numpy_type(x)
