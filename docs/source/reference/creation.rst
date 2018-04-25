@@ -58,3 +58,6 @@ Matrix creation
 
    cupy.diag
    cupy.diagflat
+   cupy.tri
+   cupy.tril
+   cupy.triu
