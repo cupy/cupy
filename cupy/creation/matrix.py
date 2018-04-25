@@ -51,13 +51,81 @@ def diagflat(v, k=0):
     return cupy.diag(v.ravel(), k)
 
 
-# TODO(okuta): Implement tri
+def tri(N, M=None, k=0, dtype=float):
+    """Creates an array with ones at and below the given diagonal and zeros
+    elsewhere.
+
+    Args:
+        N (int): Number of rows.
+        M (int): Number of columns. M == N by default.
+        k (int): The sub-diagonal at and below which the array is filled. Zero
+            is the main diagonal, a positive value is above it, and a negative
+            value is below.
+        dtype: Data type specifier.
+
+    Returns:
+        cupy.ndarray: An array with ones at and below the given diagonal and
+        zeros elsewhere.
+
+    .. seealso:: :func:`numpy.tri`
+
+    """
+    if M is None:
+        M = N
+    out = cupy.zeros((N, M), dtype=dtype)
+
+    return cupy.ElementwiseKernel(
+        'int32 m, int32 k',
+        'raw T out',
+        '''
+        int row = i % m;
+        int col = i / m;
+        if (row <= col + k) out[i] = 1;
+        ''',
+        'tri',
+    )(M, k, out, size=out.size)
 
 
-# TODO(okuta): Implement tril
+def tril(m, k=0):
+    """Returns a lower triangle of an array.
+
+    Args:
+        m (array-like): Array or array-like object.
+        k (int): The diagonal above which to zero elements. Zero is the main
+            diagonal, a positive value is above it, and a negative value is
+            below.
+
+    Returns:
+        cupy.ndarray: A lower triangle of an array.
+
+    .. seealso:: :func:`numpy.tril`
+
+    """
+    m = cupy.array(m)
+    mask = tri(*m.shape[-2:], k=k, dtype=bool)
+
+    return cupy.where(mask, m, cupy.zeros(1, m.dtype))
 
 
-# TODO(okuta): Implement triu
+def triu(m, k=0):
+    """Returns an upper triangle of an array.
+
+    Args:
+        m (array-like): Array or array-like object.
+        k (int): The diagonal above which to zero elements. Zero is the main
+            diagonal, a positive value is above it, and a negative value is
+            below.
+
+    Returns:
+        cupy.ndarray: An upper triangle of an array.
+
+    .. seealso:: :func:`numpy.triu`
+
+    """
+    m = cupy.array(m)
+    mask = tri(*m.shape[-2:], k=k-1, dtype=bool)
+
+    return cupy.where(mask, cupy.zeros(1, m.dtype), m)
 
 
 # TODO(okuta): Implement vander
