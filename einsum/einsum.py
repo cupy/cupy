@@ -56,11 +56,11 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
 
     >>> a = np.random.rand(4, 4)
     >>> b = np.random.rand(4, 4, 4)
-    >>> __parse_einsum_input(('...a,...a->...', a, b))
-    ('za,xza', 'xz', [a, b])
+    >>> _parse_einsum_input(('...a,...a->...', a, b))
+    (['@a, @a'], 'xz', [a, b])
 
     >>> __parse_einsum_input((a, [Ellipsis, 0], b, [Ellipsis, 0]))
-    ('za,xza', 'xz', [a, b])
+    (['@a, @a'], 'xz', [a, b])
     """
 
     if len(operands) == 0:
@@ -150,6 +150,8 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
 
 def einsum(*operands):
     input_subscripts, output_subscript, operands = _parse_einsum_input(operands)
+    assert isinstance(input_subscripts, list)
+    assert isinstance(operands, list)
 
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
