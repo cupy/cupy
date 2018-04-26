@@ -70,7 +70,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     if tensor.manager_ctx is NULL:
         return
     stdlib.free(tensor.dl_tensor.shape)
-    cpython.Py_DECREF(<object>tensor.manager_ctx)
+    cpython.Py_DECREF(<ndarray>tensor.manager_ctx)
     stdlib.free(tensor)
     tensor.manager_ctx = NULL
 
@@ -78,7 +78,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
 cpdef object toDlpack(ndarray array):
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
-
+    
     cdef size_t ndim = array._shape.size()
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = array.data.ptr
@@ -140,6 +140,10 @@ cdef class DLPackMemory(memory.Memory):
                 :self.dlm_tensor.dl_tensor.ndim]:
             n += s
         self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
+
+    def __dealloc__(self):
+        # DLPack tensor should be managed by the original creator
+        self.ptr = 0
 
 
 cpdef ndarray fromDlpack(object dltensor):
