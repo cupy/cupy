@@ -203,6 +203,24 @@ def einsum(*operands):
         for s in sub:
             assert sub.count(s) == 1, 'diag: sorry'
 
+    # TODO: unary sum
+    for num, sub in enumerate(input_subscripts):
+        other_subscripts = input_subscripts.copy()
+        other_subscripts[num] = output_subscript
+        other_subscripts = _concat(other_subscripts)
+        sum_axes = tuple(
+            i
+            for i, s in enumerate(sub)
+            if s not in other_subscripts
+        )
+        if sum_axes:
+            input_subscripts[num] = [
+                s
+                for i, s in enumerate(sub)
+                if i not in sum_axes
+            ]
+            operands[num] = operands[num].sum(axis=sum_axes)
+
     for num in range(len(operands)):
         op = operands[num]
         sub = input_subscripts[num]
@@ -214,14 +232,6 @@ def einsum(*operands):
         if squeeze_indices:
             sub = sub[_concat(sub.shape) != 1]
             operands[num] = xp.squeeze(op, axis=squeeze_indices)
-
-    # TODO: unary sum
-    for num, sub in enumerate(input_subscripts):
-        other_subscripts = input_subscripts.copy()
-        other_subscripts[num] = output_subscript
-        other_subscripts = _concat(other_subscripts)
-        for s in sub:
-            assert other_subscripts.count(s) >= 1, 'unary sum: sorry'
 
     """
     count_dict = {k: 0 for k in dimension_dict}
