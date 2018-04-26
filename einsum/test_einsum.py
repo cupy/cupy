@@ -6,6 +6,14 @@ import numpy
 import einsum
 
 
+def _from_str_subscript(subscript):
+    # subscript should be lower case (a-z)
+    return [
+        (Ellipsis if char == '@' else ord(char) - ord('a'))
+        for char in subscript.replace('...', '@')
+    ]
+
+
 @testing.parameterize(*testing.product_dict(
     [
         {'subscripts': 'ij,jk->ik', 'shapes': ((2, 3), (3, 4))},

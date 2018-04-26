@@ -1,4 +1,6 @@
+import functools
 import itertools
+import operator
 
 import numpy
 
@@ -12,6 +14,10 @@ einsum_symbols_set = set(einsum_symbols)
 
 def _concat(lists):
     return sum(lists, [])
+
+
+def _prod(xs):
+    return functools.reduce(operator.mul, xs, 1)
 
 
 def _parse_int_subscript(sub):
@@ -60,7 +66,7 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
 
     if isinstance(operands[0], str):
         subscripts = operands[0].replace(" ", "")
-        operands = operands[1:]
+        operands = list(operands[1:])
 
         # Ensure all characters are valid
         for s in subscripts:
@@ -97,9 +103,9 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
         operands = []
         input_subscripts = []
         while len(tmp_operands) >= 2:
-            operands.append(tmp_operands.popleft())
+            operands.append(tmp_operands.pop(0))
             input_subscripts.append(_parse_int_subscript(
-                tmp_operands.popleft()))
+                tmp_operands.pop(0)))
         if tmp_operands:
             output_subscript = _parse_int_subscript(tmp_operands[0])
         else:
@@ -272,7 +278,7 @@ def einsum(*operands):
     transpose_axes = []
     for s in output_subscript:
         try:
-            transpose_axes.append(sub0.find(s))
+            transpose_axes.append(sub0.index(s))
         except ValueError:
             pass
 
