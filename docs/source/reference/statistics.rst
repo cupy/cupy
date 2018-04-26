@@ -22,10 +22,19 @@ Means and variances
    :toctree: generated/
    :nosignatures:
 
+   cupy.average
    cupy.mean
    cupy.var
    cupy.std
 
+Correlating
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cov
 
 Histograms
 ----------
