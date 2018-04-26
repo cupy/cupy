@@ -155,6 +155,41 @@ cdef class DLPackMemory(memory.Memory):
 
 
 cpdef ndarray fromDlpack(object dltensor):
+    """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
+
+    DLPack is a open in memory tensor structure proposed in this repository:
+    `dmlc/dlpack <https://github.com/dmlc/dlpack>`_.
+
+    This function takes a :class:`PyCapsule` object which contains a pointer to
+    a DLPack tensor as input, and returns a :class:`~cupy.ndarray`. This
+    function does not copy the data in the DLPack tensor but both
+    DLPack tensor and :class:`~cupy.ndarray` have pointers which are pointing
+    to the same memory region for the data.
+
+    Args:
+        dltensor (:class:`PyCapsule`): Input DLPack tensor which is
+            encapsulated in a :class:`PyCapsule` object.
+
+    Returns:
+        array (:class:`~cupy.ndarray`): A CuPy ndarray.
+
+    .. seealso::
+
+        :meth:`cupy.ndarray.toDlpack` is a method for zero-copy conversion
+        from a :class:`~cupy.ndarray` to a DLPack tensor (which is encapsulated
+        in a :class:`PyCapsule` object).
+
+    .. admonition:: Example
+
+        >>> import cupy
+        >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
+        >>> dltensor = array1.toDlpack()
+        ... # doctest: +ELLIPSIS
+        <capsule object "dltensor" at ...>
+        >>> array2 = cupy.fromDlpack(dltensor)
+        >>> cupy.testing.assert_array_equal(array1, array2)
+
+    """
     mem = DLPackMemory(dltensor)
 
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
