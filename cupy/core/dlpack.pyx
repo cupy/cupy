@@ -64,7 +64,7 @@ cdef void pycapsule_deleter(object dltensor):
     try:
         dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'used_dltensor')
-    except:
+    except Exception:
         dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'dltensor')
     deleter(dlm_tensor)
