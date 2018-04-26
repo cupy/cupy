@@ -196,4 +196,8 @@ cpdef ndarray fromDlpack(object dltensor):
     strides_vec.assign(strides, strides + ndim)
     cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
     cupy_array._set_shape_and_strides(shape_vec, strides_vec)
+
+    # Make sure this capsule will never be used again.
+    pycapsule.PyCapsule_SetName(dltensor, 'used_dltensor')
+
     return cupy_array
