@@ -99,7 +99,8 @@ def tril(m, k=0):
     .. seealso:: :func:`numpy.tril`
 
     """
-    m = cupy.array(m)
+    if not isinstance(m, cupy.ndarray):
+        m = cupy.asarray(m)
     mask = tri(*m.shape[-2:], k=k, dtype=bool)
 
     return cupy.where(mask, m, cupy.zeros(1, m.dtype))
@@ -120,7 +121,8 @@ def triu(m, k=0):
     .. seealso:: :func:`numpy.triu`
 
     """
-    m = cupy.array(m)
+    if not isinstance(m, cupy.ndarray):
+        m = cupy.asarray(m)
     mask = tri(*m.shape[-2:], k=k-1, dtype=bool)
 
     return cupy.where(mask, cupy.zeros(1, m.dtype), m)
