@@ -3,8 +3,10 @@ einsum_symbols_set = set(einsum_symbols)
 
 
 def _parse_einsum_input(operands):
-    """
-    A reproduction of einsum c side einsum parsing in python.
+    """Parse einsum operands.
+
+    This function is based on `numpy.core.einsumfunc._parse_einsum_input`
+    function in NumPy 1.14.
 
     Returns
     -------
