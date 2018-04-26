@@ -1,3 +1,7 @@
+einsum_symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+einsum_symbols_set = set(einsum_symbols)
+
+
 def _parse_einsum_input(operands):
     """
     A reproduction of einsum c side einsum parsing in python.
