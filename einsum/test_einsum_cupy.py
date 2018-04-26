@@ -2,7 +2,7 @@ import unittest
 
 import numpy
 
-from cupy import testing
+import cupy_testing as testing
 
 
 class TestEinSumError(unittest.TestCase):
@@ -275,3 +275,6 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype)
         c = testing.shaped_arange(self.shape_c, xp, dtype)
         return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
+
+
+testing.run_module(__name__, __file__)
