@@ -2,10 +2,7 @@ import functools
 import itertools
 import operator
 
-import numpy
-
-
-xp = numpy
+import xp
 
 
 einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
