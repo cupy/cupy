@@ -198,12 +198,38 @@ def einsum(*operands):
 
     path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): optimize
 
-    # TODO: diag
-    for sub in input_subscripts:
-        for s in sub:
-            assert sub.count(s) == 1, 'diag: sorry'
+    # diagonal
+    for num, sub in enumerate(input_subscripts):
+        i = 0
+        while i < len(sub):
+            s = sub[i]
+            if sub.count(s) > 1:
+                indices = []
+                sub = []
+                for j, t in enumerate(input_subscripts[num]):
+                    if j == i:
+                        indices.append(j)
+                        sub.append(t)
+                    elif t == s:
+                        indices.append(j)
+                    else:
+                        sub.append(t)
+                input_subscripts[num] = sub
 
-    # TODO: unary sum
+                diag_ndim = len(indices)
+                op = operands[num]
+                dim = op.shape[i]
+                op = xp.moveaxis(
+                    op, 
+                    tuple(indices), tuple(range(diag_ndim))
+                )
+                operands[num] = xp.moveaxis(
+                    op[(xp.arange(dim),) * diag_ndim],
+                    0, i
+                )
+            i += 1
+
+    # unary sum
     for num, sub in enumerate(input_subscripts):
         other_subscripts = input_subscripts.copy()
         other_subscripts[num] = output_subscript
