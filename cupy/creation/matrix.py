@@ -52,8 +52,7 @@ def diagflat(v, k=0):
 
 
 def tri(N, M=None, k=0, dtype=float):
-    """Creates an array with ones at and below the given diagonal and zeros
-    elsewhere.
+    """Creates an array with ones at and below the given diagonal.
 
     Args:
         N (int): Number of rows.
@@ -64,8 +63,7 @@ def tri(N, M=None, k=0, dtype=float):
         dtype: Data type specifier.
 
     Returns:
-        cupy.ndarray: An array with ones at and below the given diagonal and
-        zeros elsewhere.
+        cupy.ndarray: An array with ones at and below the given diagonal.
 
     .. seealso:: :func:`numpy.tri`
 
@@ -112,7 +110,7 @@ def triu(m, k=0):
 
     Args:
         m (array-like): Array or array-like object.
-        k (int): The diagonal above which to zero elements. Zero is the main
+        k (int): The diagonal below which to zero elements. Zero is the main
             diagonal, a positive value is above it, and a negative value is
             below.
 
