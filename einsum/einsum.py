@@ -227,8 +227,9 @@ def einsum(*operands):
                     op[(xp.arange(dim),) * diag_ndim],
                     0, i
                 )
+            del s
             i += 1
-        del i, s
+        del i
 
     # unary sum
     for num, sub in enumerate(input_subscripts):
