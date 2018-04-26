@@ -603,7 +603,6 @@ from cupy.core import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy.core import fromDlpack  # NOQA
-from cupy.core import toDlpack  # NOQA
 
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.

@@ -136,8 +136,9 @@ cdef class DLPackMemory(memory.Memory):
         self.device = cupy.cuda.Device(self.dlm_tensor.dl_tensor.ctx.device_id)
         self.ptr = self.dlm_tensor.dl_tensor.data
         cdef int n = 0
-        for s in self.dlm_tensor.dl_tensor.shape[
-                :self.dlm_tensor.dl_tensor.ndim]:
+        cdef int ndim = self.dlm_tensor.dl_tensor.ndim
+        cdef int64_t* shape = self.dlm_tensor.dl_tensor.shape
+        for s in shape[:ndim]:
             n += s
         self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
 
@@ -186,14 +187,16 @@ cpdef ndarray fromDlpack(object dltensor):
 
     mem_ptr = memory.MemoryPointer(mem, mem.dlm_tensor.dl_tensor.byte_offset)
     cdef int64_t ndim = mem.dlm_tensor.dl_tensor.ndim
+
     cdef int64_t* shape = mem.dlm_tensor.dl_tensor.shape
-    cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
-    for i in range(ndim):
-        strides[i] = strides[i] * (dtype.bits // 8)
     cdef vector[Py_ssize_t] shape_vec
     shape_vec.assign(shape, shape + ndim)
+
+    cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
-    strides_vec.assign(strides, strides + ndim)
+    for i in range(ndim):
+        strides_vec.push_back(strides[i] * (dtype.bits // 8))
+
     cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
     cupy_array._set_shape_and_strides(shape_vec, strides_vec)
 

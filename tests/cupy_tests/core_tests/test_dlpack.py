@@ -27,3 +27,17 @@ class TestDLPackConversion(unittest.TestCase):
         tensor = self.array.toDlpack()
         array = cupy.fromDlpack(tensor)
         testing.assert_array_equal(self.array, array)
+
+
+class TestDLTensorMemory(unittest.TestCase):
+
+    def test_deleter(self):
+        pool = cupy.get_default_memory_pool()
+        pool.free_all_blocks()
+        array = cupy.empty(10)
+        tensor = array.toDlpack()
+        assert pool.n_free_blocks() == 0
+        del array
+        assert pool.n_free_blocks() == 0
+        del tensor
+        assert pool.n_free_blocks() == 1
