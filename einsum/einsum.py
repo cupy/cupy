@@ -130,8 +130,8 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
             return "Einstein sum subscript %s does not contain the correct number of indices " % subs
         return list(map(ord, sub))
     elif len(subs) == 2:
+        left_sub, right_sub = subs
         if ndim is not None:
-            left_sub, right_sub = subs
             ellipsis_len = ndim - (len(left_sub) + len(right_sub))
         if ellipsis_len < 0:
             # raise ValueError later
@@ -249,15 +249,16 @@ def einsum(*operands):
 
     for num in range(len(operands)):
         op = operands[num]
-        sub = input_subscripts[num]
-        squeeze_indices = [
-            i
-            for i, n in enumerate(op.shape)
-            if n == 1
-        ]
-        if squeeze_indices:
-            sub = sub[_concat(sub.shape) != 1]
-            operands[num] = xp.squeeze(op, axis=squeeze_indices)
+        if 1 in op.shape:
+            squeeze_indices = []
+            sub = []
+            for i, s in enumerate(input_subscripts[num]):
+                if op.shape[i] == 1:
+                    squeeze_indices.append(i)
+                else:
+                    sub.append(s)
+            input_subscripts[num] = sub
+            operands[num] = xp.squeeze(op, axis=tuple(squeeze_indices))
 
     """
     count_dict = {k: 0 for k in dimension_dict}
@@ -308,8 +309,6 @@ def einsum(*operands):
     # unary einsum at last
     op0, = operands
     sub0, = input_subscripts
-
-    assert len(sub0) == len(output_subscript)
 
     transpose_axes = []
     for s in output_subscript:
