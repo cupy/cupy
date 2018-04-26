@@ -187,7 +187,7 @@ def einsum(*operands):
         output_subscript = _parse_ellipsis_subscript(
             output_subscript,
             ellipsis_len=len(list(s for s in dimension_dict.keys() if s < 0))
-       )
+        )
 
         # Make sure output subscripts are in the input
         tmp_subscripts = set(_concat(input_subscripts))
@@ -220,7 +220,7 @@ def einsum(*operands):
                 op = operands[num]
                 dim = op.shape[i]
                 op = xp.moveaxis(
-                    op, 
+                    op,
                     tuple(indices), tuple(range(diag_ndim))
                 )
                 operands[num] = xp.moveaxis(
@@ -228,6 +228,7 @@ def einsum(*operands):
                     0, i
                 )
             i += 1
+        del i, s
 
     # unary sum
     for num, sub in enumerate(input_subscripts):
@@ -339,9 +340,9 @@ def _make_transpose_axes(sub, b_dims, c_dims):
         else:
             ts.append((s, i))
     return (
-        _tuple_sorted_by_0(bs), 
-        _tuple_sorted_by_0(cs), 
-        _tuple_sorted_by_0(ts), 
+        _tuple_sorted_by_0(bs),
+        _tuple_sorted_by_0(cs),
+        _tuple_sorted_by_0(ts),
     )
 """
     if position == 0:
