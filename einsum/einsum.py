@@ -68,7 +68,7 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
 
     if isinstance(operands[0], str):
         subscripts = operands[0].replace(" ", "")
-        operands = list(map(xp.asanyarray, operands[1:]))
+        operands = list(operands[1:])
 
         # Ensure all characters are valid
         for s in subscripts:
@@ -105,7 +105,7 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
         operands = []
         input_subscripts = []
         while len(tmp_operands) >= 2:
-            operands.append(xp.asanyarray(tmp_operands.pop(0)))
+            operands.append(tmp_operands.pop(0))
             input_subscripts.append(_parse_int_subscript(
                 tmp_operands.pop(0)))
         if tmp_operands:
