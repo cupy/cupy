@@ -154,8 +154,6 @@ def einsum(*operands, **kwargs):
     assert isinstance(operands, list)
 
     dtype = kwargs.pop('dtype', None)
-    assert dtype is None, "dtype arg: sorry"
-    dtype = xp.result_type(*operands)
 
     optimize = kwargs.pop('optimize', False)
     assert optimize is False, "optimize: sorry"
@@ -164,7 +162,8 @@ def einsum(*operands, **kwargs):
         raise TypeError("Did not understand the following kwargs: %s"
                         % list(kwargs.keys))
 
-    operands = list(map(xp.asanyarray, operands))
+    operands = [xp.asanyarray(arr, dtype=dtype) for arr in operands]
+    result_dtype = xp.result_type(*operands)
 
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
@@ -344,8 +343,9 @@ def einsum(*operands, **kwargs):
         dimension_dict[s]
         for s in output_subscript
     ])
-    # assert op_out.dtype == dtype
-    return op_out.astype(dtype)
+    if optimize is False:
+        op_out = op_out.astype(result_dtype)
+    return op_out
 
 
 def _tuple_sorted_by_0(zs):
