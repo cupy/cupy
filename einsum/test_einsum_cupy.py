@@ -246,13 +246,6 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
         return xp.asarray(xp.einsum('i,->', a, 4))
 
 
-def _target_dtype(dtype):
-    if (dtype == numpy.complex64 or dtype == numpy.complex128):
-        return numpy.complex64
-    else:
-        return numpy.float32
-
-
 @testing.parameterize(
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
      'subscripts': 'ij,jk,kl', 'skip_overflow': True},
@@ -274,7 +267,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         b = testing.shaped_arange(self.shape_b, xp, dtype)
         c = testing.shaped_arange(self.shape_c, xp, dtype)
-        return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
+        return xp.einsum(self.subscripts, a, b, c)
 
 
 testing.run_module(__name__, __file__)
