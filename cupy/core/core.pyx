@@ -4017,7 +4017,7 @@ angle = create_ufunc(
     'out0 = in0 >= 0 ? 0 : M_PI',
     doc='''Returns the angle of the complex argument.
 
-    .. seealso:: :data:`numpy.angle`
+    .. seealso:: :func:`numpy.angle`
 
     ''')
 
@@ -4031,7 +4031,7 @@ real = create_ufunc(
     'out0 = in0',
     doc='''Returns the real part of the elements of the array.
 
-    .. seealso:: :data:`numpy.real`
+    .. seealso:: :func:`numpy.real`
 
     ''')
 
@@ -4053,7 +4053,7 @@ imag = create_ufunc(
     'out0 = 0',
     doc='''Returns the imaginary part of the elements of the array.
 
-    .. seealso:: :data:`numpy.imag`
+    .. seealso:: :func:`numpy.imag`
 
     ''')
 

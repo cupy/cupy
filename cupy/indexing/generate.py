@@ -255,7 +255,8 @@ def unravel_index(indices, dims, order='C'):
             indexing in row-major (C-style) or column-major (Fortran-style)
             order.
 
-    Returns: tuple of ndarrays:
+    Returns:
+        tuple of ndarrays:
         Each array in the tuple has the same shape as the indices array.
 
     Examples
