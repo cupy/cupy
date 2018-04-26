@@ -39,5 +39,7 @@ class TestDLTensorMemory(unittest.TestCase):
         assert pool.n_free_blocks() == 0
         del array
         assert pool.n_free_blocks() == 0
+        reverted_array = cupy.fromDlpack(tensor)
+        del reverted_array
         del tensor
         assert pool.n_free_blocks() == 1
