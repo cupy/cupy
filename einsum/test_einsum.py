@@ -25,6 +25,7 @@ def _from_str_subscript(subscript):
         {'subscripts': 'i->', 'shapes': ((3,),)},
         {'subscripts': 'ii', 'shapes': ((2, 2),)},
         {'subscripts': 'ii->i', 'shapes': ((2, 2),)},
+        {'subscripts': 'ij', 'shapes': ((2, 3),)},
         {'subscripts': 'j,j', 'shapes': ((3,), (3))},
         {'subscripts': 'j,ij', 'shapes': ((3,), (2, 3))},
         {'subscripts': 'j,iij', 'shapes': ((3,), (2, 2, 3))},
@@ -65,19 +66,21 @@ class TestEinSum(unittest.TestCase):
         return numpy.random.uniform(_min, _max, shape).astype(dtype)
 
     def test_forward(self, atol=1e-4, rtol=1e-5):
-        forward_answer = numpy.einsum(*self._get_args(self.inputs))
-        out = einsum.einsum(*self._get_args(self.inputs))
+        inputs_ans = tuple(arr.copy() for arr in self.inputs)
+        forward_answer = numpy.einsum(*self._get_args(inputs_ans))
+        inputs = self.inputs
+        out = einsum.einsum(*self._get_args(inputs))
         testing.assert_allclose(out, forward_answer, atol, rtol)
 
         if isinstance(forward_answer, numpy.ndarray):  # not 0-dim
             # test views
             forward_answer[...] = 0
             out[...] = 0
-            testing.assert_allclose(out, forward_answer, atol, rtol)
+            testing.assert_allclose(inputs[0], inputs_ans[0], atol, rtol)
 
             forward_answer[...] = 1
             out[...] = 1
-            testing.assert_allclose(out, forward_answer, atol, rtol)
+            testing.assert_allclose(inputs[0], inputs_ans[0], atol, rtol)
 
 
 testing.run_module(__name__, __file__)
