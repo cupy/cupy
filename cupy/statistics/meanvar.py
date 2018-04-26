@@ -64,7 +64,7 @@ def average(a, axis=None, weights=None, returned=False):
 
     if returned:
         if scl.shape != avg.shape:
-            scl = cupy.broadcast_to(scl, avg.shape).copy()
+            scl = cupy.broadcast_to(cupy.array(scl), avg.shape).copy()
         return avg, scl
     else:
         return avg

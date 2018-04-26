@@ -52,6 +52,7 @@ class TestAverage(unittest.TestCase):
     def test_returned(self, dtype):
         a = testing.shaped_arange((2, 3), numpy, dtype)
         w = testing.shaped_arange((2, 3), numpy, dtype)
+        self.check_returned(a, axis=1, weights=None)
         self.check_returned(a, axis=None, weights=w)
         self.check_returned(a, axis=1, weights=w)
 
