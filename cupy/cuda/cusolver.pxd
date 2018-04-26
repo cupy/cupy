@@ -15,7 +15,7 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int FillMode 'cublasFillMode_t'
 
-    ctypedef int EigMode 'cusolverEigType_t'
+    ctypedef int EigType 'cusolverEigType_t'
     ctypedef int EigMode 'cusolverEigMode_t'
 
     ctypedef void* MatDescr 'cusparseMatDescr_t'
