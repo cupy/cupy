@@ -56,5 +56,7 @@ from cupy.core.core import subtract  # NOQA
 from cupy.core.core import tensordot_core  # NOQA
 from cupy.core.core import true_divide  # NOQA
 from cupy.core.core import ufunc  # NOQA
+from cupy.core.dlpack import fromDlpack  # NOQA
+from cupy.core.dlpack import toDlpack  # NOQA
 from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA

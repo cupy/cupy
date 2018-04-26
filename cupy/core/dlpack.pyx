@@ -8,6 +8,7 @@ from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
+from libcpp.vector cimport vector
 
 import cupy
 from cupy.core.core cimport ndarray
@@ -58,10 +59,20 @@ cdef struct DLManagedTensor:
     void (*deleter)(DLManagedTensor*)
 
 
+cdef void pycapsule_deleter(object dltensor):
+    cdef DLManagedTensor* dlm_tensor = \
+        <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+            dltensor, 'dltensor')
+    deleter(dlm_tensor)
+
+
 cdef void deleter(DLManagedTensor* tensor) with gil:
+    if tensor.manager_ctx is NULL:
+        return
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<object>tensor.manager_ctx)
     stdlib.free(tensor)
+    tensor.manager_ctx = NULL
 
 
 cpdef object toDlpack(ndarray array):
@@ -104,10 +115,7 @@ cpdef object toDlpack(ndarray array):
     cpython.Py_INCREF(array)
     dlm_tensor.deleter = deleter
 
-    return pycapsule.PyCapsule_New(dlm_tensor, 'dltensor', NULL)
-
-
-ctypedef void (*deleter_type)(DLManagedTensor*)
+    return pycapsule.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
 cdef class DLPackMemory(memory.Memory):
@@ -118,10 +126,11 @@ cdef class DLPackMemory(memory.Memory):
 
     """
 
-    cdef deleter_type deleter
     cdef DLManagedTensor* dlm_tensor
+    cdef object dltensor
 
     def __init__(self, object dltensor):
+        self.dltensor = dltensor
         self.dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'dltensor')
         self.device = cupy.cuda.Device(self.dlm_tensor.dl_tensor.ctx.device_id)
@@ -131,21 +140,55 @@ cdef class DLPackMemory(memory.Memory):
                 :self.dlm_tensor.dl_tensor.ndim]:
             n += s
         self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
-        self.deleter = self.dlm_tensor.deleter
 
-    cpdef free(self):
-        """Frees the dlpack tensor using its deleter.
-
-        This function just calls ``deleter`` method of the DLManagedTensor.
-
-        """
-        self.deleter(self.dlm_tensor)
-
-    def __dealloc__(self):
-        # WHAT THE FUCK IS THIS?
-        # if _exit_mode:
-        #     return  # To avoid error at exit
-        self.free()
 
 cpdef ndarray fromDlpack(object dltensor):
-    pass
+    mem = DLPackMemory(dltensor)
+
+    cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
+    if dtype.code == DLDataTypeCode.kDLUInt:
+        if dtype.bits == 8:
+            cp_dtype = cupy.uint8
+        elif dtype.bits == 16:
+            cp_dtype = cupy.uint16
+        elif dtype.bits == 32:
+            cp_dtype = cupy.uint32
+        elif dtype.bits == 64:
+            cp_dtype = cupy.uint64
+        else:
+            raise TypeError('uint{} is not supported.'.format(dtype.bits))
+    elif dtype.code == DLDataTypeCode.kDLInt:
+        if dtype.bits == 8:
+            cp_dtype = cupy.int8
+        elif dtype.bits == 16:
+            cp_dtype = cupy.int16
+        elif dtype.bits == 32:
+            cp_dtype = cupy.int32
+        elif dtype.bits == 64:
+            cp_dtype = cupy.int64
+        else:
+            raise TypeError('int{} is not supported.'.format(dtype.bits))
+    elif dtype.code == DLDataTypeCode.kDLFloat:
+        if dtype.bits == 16:
+            cp_dtype = cupy.float16
+        elif dtype.bits == 32:
+            cp_dtype = cupy.float32
+        elif dtype.bits == 64:
+            cp_dtype = cupy.float64
+        else:
+            raise TypeError('float{} is not supported.'.format(dtype.bits))
+    else:
+        raise TypeError('Unsupported dtype. dtype code: {}'.format(dtype.code))
+
+    mem_ptr = memory.MemoryPointer(mem, mem.dlm_tensor.dl_tensor.byte_offset)
+    cdef int64_t ndim = mem.dlm_tensor.dl_tensor.ndim
+    cdef int64_t* shape = mem.dlm_tensor.dl_tensor.shape
+    cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
+    cdef vector[Py_ssize_t] shape_vec
+    shape_vec.assign(shape, shape + ndim)
+    cdef vector[Py_ssize_t] strides_vec
+    strides_vec.assign(strides, strides + ndim)
+    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
+    cupy_array._set_shape_and_strides(shape_vec, strides_vec)
+    return cupy_array
+
