@@ -13,6 +13,29 @@ import cupy
 
 def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None,
         aweights=None):
+    """Returns a covariance matrix from a given data and weights.
+
+    Args:
+        m (cupy.ndarray): 1D or 2D array to compute the covariance matrix.
+        y (cupy.ndarray): An additional data to compute.
+        rowvar (bool): If ``True``, the function assumes that each row
+            represents a variable and each column corresponds to its
+            observation. Otherwise, the relationship is transposed.
+        bias (bool): If ``False``, the covariance matrix is normalized
+            by ``N - 1``, where ``N`` denotes the number of observations.
+            Otherwise, the matrix is normalized by ``N``.
+        ddof (int): Means Delta Degrees of Freedom. If specified, the divisor
+            used in computation is ``N - ddof``. Note that ``bias`` is not
+            used when using ``ddof``.
+        fweights (cupy.ndarray): 1D integer array containing frequency weights.
+        aweights (cupy.ndarray): 1D nonnegative array containing weights of
+            the observation vector.
+
+    Returns:
+        cupy.ndarray: The covariance matrix of the variables.
+
+    .. seealso:: :func:`numpy.cov`
+    """
     # Check inputs
     if ddof is not None and ddof != int(ddof):
         raise ValueError('ddof must be integer')

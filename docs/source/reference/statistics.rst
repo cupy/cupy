@@ -27,6 +27,14 @@ Means and variances
    cupy.var
    cupy.std
 
+Correlating
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cov
 
 Histograms
 ----------
