@@ -60,9 +60,13 @@ cdef struct DLManagedTensor:
 
 
 cdef void pycapsule_deleter(object dltensor):
-    cdef DLManagedTensor* dlm_tensor = \
-        <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+    cdef DLManagedTensor* dlm_tensor
+    try:
+        dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'used_dltensor')
+    except:
+        dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+            dltensor, 'dltensor')
     deleter(dlm_tensor)
 
 
