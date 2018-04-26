@@ -62,7 +62,7 @@ cdef struct DLManagedTensor:
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
-            dltensor, 'dltensor')
+            dltensor, 'used_dltensor')
     deleter(dlm_tensor)
 
 
