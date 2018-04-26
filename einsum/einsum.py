@@ -170,3 +170,25 @@ def _parse_einsum_input(operands):
                          "number of operands.")
 
     return (input_subscripts, output_subscript, operands)
+
+
+    # Get length of each unique dimension and ensure all dimensions are correct
+    dimension_dict = {}
+    for tnum, term in enumerate(input_list):
+        sh = operands[tnum].shape
+        if len(sh) != len(term):
+            raise ValueError("Einstein sum subscript %s does not contain the "
+                             "correct number of indices for operand %d."
+                             % (input_subscripts[tnum], tnum))
+        for cnum, char in enumerate(term):
+            dim = sh[cnum]
+            if char in dimension_dict.keys():
+                # For broadcasting cases we always want the largest dim size
+                if dimension_dict[char] == 1:
+                    dimension_dict[char] = dim
+                elif dim not in (1, dimension_dict[char]):
+                    raise ValueError("Size of label '%s' for operand %d (%d) "
+                                     "does not match previous terms (%d)."
+                                     % (char, tnum, dimension_dict[char], dim))
+            else:
+                dimension_dict[char] = dim
