@@ -79,6 +79,8 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     tensor.manager_ctx = NULL
 
 
+# The name of this function is following the framwork integration guid of
+# TensorComprehensions.
 cpdef object toDlpack(ndarray array):
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
@@ -154,6 +156,8 @@ cdef class DLPackMemory(memory.Memory):
         self.ptr = 0
 
 
+# The name of this function is following the framwork integration guid of
+# TensorComprehensions.
 cpdef ndarray fromDlpack(object dltensor):
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
 
