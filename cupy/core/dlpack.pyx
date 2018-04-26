@@ -1,20 +1,18 @@
-from libc cimport stdlib
 from cython.operator cimport dereference
 
-import cupy
+cimport cpython
+from cpython cimport pycapsule
 
-from cupy.core.core cimport ndarray
-
+from libc cimport stdlib
 from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
 
+import cupy
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory
-cimport cpython
-from cpython cimport pycapsule
 
 
 cdef enum DLDeviceType:
@@ -67,14 +65,16 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
 
 
 cpdef object toDlpack(ndarray array):
-    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
+    cdef DLManagedTensor* dlm_tensor = \
+        <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
     cdef size_t ndim = array._shape.size()
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = array.data.ptr
     dl_tensor.ndim = ndim
 
-    cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(ndim * sizeof(int64_t) * 2)
+    cdef int64_t* shape_strides = \
+        <int64_t*>stdlib.malloc(ndim * sizeof(int64_t) * 2)
     for n in range(ndim):
         shape_strides[n] = array._shape[n]
     dl_tensor.shape = shape_strides
@@ -105,3 +105,47 @@ cpdef object toDlpack(ndarray array):
     dlm_tensor.deleter = deleter
 
     return pycapsule.PyCapsule_New(dlm_tensor, 'dltensor', NULL)
+
+
+ctypedef void (*deleter_type)(DLManagedTensor*)
+
+
+cdef class DLPackMemory(memory.Memory):
+
+    """Memory object for a dlpack tensor.
+
+    This does not allocate any memory.
+
+    """
+
+    cdef deleter_type deleter
+    cdef DLManagedTensor* dlm_tensor
+
+    def __init__(self, object dltensor):
+        self.dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+            dltensor, 'dltensor')
+        self.device = cupy.cuda.Device(self.dlm_tensor.dl_tensor.ctx.device_id)
+        self.ptr = self.dlm_tensor.dl_tensor.data
+        cdef int n = 0
+        for s in self.dlm_tensor.dl_tensor.shape[
+                :self.dlm_tensor.dl_tensor.ndim]:
+            n += s
+        self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
+        self.deleter = self.dlm_tensor.deleter
+
+    cpdef free(self):
+        """Frees the dlpack tensor using its deleter.
+
+        This function just calls ``deleter`` method of the DLManagedTensor.
+
+        """
+        self.deleter(self.dlm_tensor)
+
+    def __dealloc__(self):
+        # WHAT THE FUCK IS THIS?
+        # if _exit_mode:
+        #     return  # To avoid error at exit
+        self.free()
+
+cpdef ndarray fromDlpack(object dltensor):
+    pass
