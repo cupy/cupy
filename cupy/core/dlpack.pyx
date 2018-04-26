@@ -90,7 +90,7 @@ cpdef object toDlpack(ndarray array):
         shape_strides[n] = array._shape[n]
     dl_tensor.shape = shape_strides
     for n in range(ndim):
-        shape_strides[n + ndim] = array._strides[n]
+        shape_strides[n + ndim] = array._strides[n] // array.dtype.itemsize
 
     dl_tensor.strides = shape_strides + ndim
     dl_tensor.byte_offset = 0
@@ -184,6 +184,8 @@ cpdef ndarray fromDlpack(object dltensor):
     cdef int64_t ndim = mem.dlm_tensor.dl_tensor.ndim
     cdef int64_t* shape = mem.dlm_tensor.dl_tensor.shape
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
+    for i in range(ndim):
+        strides[i] = strides[i] * (dtype.bits // 8)
     cdef vector[Py_ssize_t] shape_vec
     shape_vec.assign(shape, shape + ndim)
     cdef vector[Py_ssize_t] strides_vec
