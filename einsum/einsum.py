@@ -1,3 +1,11 @@
+import itertools
+
+import numpy
+
+
+xp = numpy
+
+
 einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 einsum_symbols_set = set(einsum_symbols)
 
@@ -122,7 +130,11 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
         if ellipsis_len < 0:
             # raise ValueError later
             return "Einstein sum subscript %s...%s does not contain the correct number of indices " % (left_sub, right_sub)
-        return list(map(ord, left_sub)) + list(range(-ellipsis_len, 0)) + list(map(ord, right_sub))
+        return list(itertools.chain(
+            map(ord, left_sub),
+            range(-ellipsis_len, 0),
+            map(ord, right_sub),
+        )
     else:
         # >= 2 ellipses for an operand
         raise ValueError("Invalid Ellipses.")
@@ -180,16 +192,22 @@ def einsum(*operands):
 
     path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): optimize
 
-    if len(operands) >= 2:
-        # We don't have to return a view
+    # TODO: diag
+
+
     for num in range(len(operands)):
         op = operands[num]
+        sub = input_subscripts[num]
         squeeze_indices = [
             i
             for i, n in enumerate(op.shape)
             if n == 1
         ]
         if squeeze_indices:
+            sub = sub[_concat(sub.shape) != 1]
+            operands[num] = xp.squeeze(op, axis=squeeze_indices)
+
+    # TODO: unary sum
 
 
     count_dict = {k: 0 for k in dimension_dict}
@@ -198,9 +216,80 @@ def einsum(*operands):
             count_dict[s] += 1
 
     for idx0, idx1 in path:
+        # repeat binary einsum
+        assert idx0 < idx1
+        sub1 = input_subscripts.pop(idx1)
+        op1 = operands.pop(idx1)
+        sub0 = input_subscripts.pop(idx0)
+        op0 = operands.pop(idx0)
 
-    input_subscripts = [sub.split("@") for sub in input_subscripts]
-    if any(len(sub) > 2 for sub in input_subscripts):
-        # Each subscript
-        raise ValueError("Invalid Ellipses.")
+        set0 = set(sub0)
+        set1 = set(sub1)
+        assert len(set0) == len(sub0)
+        assert len(set1) == len(sub1)
 
+        set_out = set(_concat([output_subscript] + input_subscripts))
+        shared = set0 & set1
+        batch_dims = shared & set_out
+        contract_dims = shared - batch_dims
+
+        bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
+        bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
+
+        batch_size = _prod([dimension_dict[s] for s in batch_dims])
+        contract_size = _prod([dimension_dict[s] for s in contract_dims])
+
+        tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(batch_size, -1, contract_size)
+        tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(batch_size, contract_size, -1)
+        tmp_out = xp.matmul(tmp0, tmp1)
+
+        sub_b = [sub0[i] for i in bs0]
+        assert sub_b == [sub1[i] for i in bs1]
+        sub_l = [sub0[i] for i in ts0]
+        sub_r = [sub1[i] for i in ts1]
+
+        sub_out = sub_b + sub_l + sub_r
+        op_out = tmp_out.reshape([dimension_dict[s] for s in sub_out])
+
+        input_subscripts.append(sub_out)
+        operands.append(op_out)
+
+    # unary einsum at last
+    op0, = operands
+    sub0, = input_subscripts
+
+    assert len(sub0) == len(output_subscript)
+
+    return op0.transpose([
+        sub0.find(s)
+        for s in output_subscript
+    ])
+
+
+def _tuple_sorted_by_0(zs):
+    return tuple(i for _, i in sorted(zs))
+
+
+def _make_transpose_axes(sub, b_dims, c_dims):
+    bs = []
+    cs = []
+    ts = []
+    for i, s in enumerate(sub):
+        if s in b_dims:
+            bs.append((s, i))
+        elif s in c_dims:
+            cs.append((s, i))
+        else:
+            ts.append((s, i))
+    return (
+        _tuple_sorted_by_0(bs), 
+        _tuple_sorted_by_0(cs), 
+        _tuple_sorted_by_0(ts), 
+    )
+"""
+    if position == 0:
+        it = itertools.chain(sorted(bs), sorted(ts), sorted(cs))
+    else:
+        it = itertools.chain(sorted(bs), sorted(cs), sorted(ts))
+    return tuple(i for _, i in it)
+"""
