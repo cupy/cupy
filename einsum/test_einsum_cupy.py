@@ -230,6 +230,7 @@ class TestEinSumBinaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b)
 
 
+#@unittest.skip
 class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)

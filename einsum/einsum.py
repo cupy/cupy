@@ -148,10 +148,21 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
         raise ValueError("Invalid Ellipses.")
 
 
-def einsum(*operands):
+def einsum(*operands, **kwargs):
     input_subscripts, output_subscript, operands = _parse_einsum_input(operands)
     assert isinstance(input_subscripts, list)
     assert isinstance(operands, list)
+
+    dtype = kwargs.pop('dtype', None)
+    assert dtype is None, "dtype arg: sorry"
+    dtype = xp.result_type(*operands)
+
+    optimize = kwargs.pop('optimize', False)
+    assert optimize is False, "optimize: sorry"
+
+    if kwargs:
+        raise TypeError("Did not understand the following kwargs: %s"
+                        % list(kwargs.keys))
 
     operands = list(map(xp.asanyarray, operands))
 
@@ -329,10 +340,12 @@ def einsum(*operands):
         except ValueError:
             pass
 
-    return op0.transpose(transpose_axes).reshape([
+    op_out = op0.transpose(transpose_axes).reshape([
         dimension_dict[s]
         for s in output_subscript
     ])
+    # assert op_out.dtype == dtype
+    return op_out.astype(dtype)
 
 
 def _tuple_sorted_by_0(zs):
