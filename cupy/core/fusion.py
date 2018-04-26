@@ -396,7 +396,7 @@ def _get_declaration_from_var(var):
         init = '= %s' % str(c).lower()
     elif isinstance(val, complex):
         init = '(%s, %s)' % (c.real, c.imag)
-    elif isinstance(val, (int, float)):
+    elif isinstance(val, six.integer_types + (float,)):
         init = '= %s' % str(c)
     else:
         raise TypeError('Invalid constant type: {}'.format(type(c)))
