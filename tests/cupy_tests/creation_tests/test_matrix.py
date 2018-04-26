@@ -54,7 +54,7 @@ class TestMatrix(unittest.TestCase):
 @testing.parameterize(
     {'shape': (2,)},
     {'shape': (3, 3)},
-    {'shape': (3, 4)},
+    {'shape': (4, 3)},
 )
 @testing.gpu
 class TestTri(unittest.TestCase):
@@ -68,13 +68,13 @@ class TestTri(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_tri_pos(self, xp, dtype):
-        return xp.tri(*self.shape, k=1, dtype=dtype)
+    def test_tri_nega(self, xp, dtype):
+        return xp.tri(*self.shape, k=-1, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_tri_neg(self, xp, dtype):
-        return xp.tri(*self.shape, k=-1, dtype=dtype)
+    def test_tri_posi(self, xp, dtype):
+        return xp.tri(*self.shape, k=1, dtype=dtype)
 
 
 @testing.parameterize(
@@ -84,7 +84,7 @@ class TestTri(unittest.TestCase):
     {'shape': (2, 3, 4)},
 )
 @testing.gpu
-class TestTril(unittest.TestCase):
+class TestTriLowerAndUpper(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
@@ -100,27 +100,15 @@ class TestTril(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_tril_neg(self, xp, dtype):
+    def test_tril_nega(self, xp, dtype):
         m = testing.shaped_arange(self.shape, xp, dtype)
         return xp.tril(m, -1)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_tril_pos(self, xp, dtype):
+    def test_tril_posi(self, xp, dtype):
         m = testing.shaped_arange(self.shape, xp, dtype)
         return xp.tril(m, 1)
-
-
-@testing.parameterize(
-    {'shape': (2,)},
-    {'shape': (3, 3)},
-    {'shape': (4, 3)},
-    {'shape': (2, 3, 4)},
-)
-@testing.gpu
-class TestTriu(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -134,12 +122,12 @@ class TestTriu(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_triu_neg(self, xp, dtype):
+    def test_triu_nega(self, xp, dtype):
         m = testing.shaped_arange(self.shape, xp, dtype)
         return xp.triu(m, -1)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_triu_pos(self, xp, dtype):
+    def test_triu_posi(self, xp, dtype):
         m = testing.shaped_arange(self.shape, xp, dtype)
         return xp.triu(m, 1)
