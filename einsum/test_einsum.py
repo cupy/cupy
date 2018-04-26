@@ -48,14 +48,6 @@ class TestEinSum(unittest.TestCase):
             self._setup_tensor(-1, 1, shape, self.dtype)
             for shape in self.shapes
         ])
-        self.forward_answer = numpy.einsum(*self._get_args(self.inputs))
-        self.g = self._setup_tensor(
-            -1, 1, self.forward_answer.shape, self.dtype)
-        self.gg_inputs = tuple([
-            self._setup_tensor(-1, 1, shape, self.dtype)
-            for shape in self.shapes
-        ])
-        self.op = lambda *xs: einsum.einsum(*self._get_args(xs))
 
     def _get_args(self, xs):
         if self.subscript_type == 'str':
@@ -72,12 +64,20 @@ class TestEinSum(unittest.TestCase):
     def _setup_tensor(self, _min, _max, shape, dtype):
         return numpy.random.uniform(_min, _max, shape).astype(dtype)
 
-    def check_forward(self, inputs_data, atol=1e-4, rtol=1e-5):
-        out = self.op(*inputs_data)
-        testing.assert_allclose(out, self.forward_answer, atol, rtol)
+    def test_forward(self, atol=1e-4, rtol=1e-5):
+        forward_answer = numpy.einsum(*self._get_args(self.inputs))
+        out = einsum.einsum(*self._get_args(self.inputs))
+        testing.assert_allclose(out, forward_answer, atol, rtol)
 
-    def test_forward_cpu(self):
-        self.check_forward(self.inputs)
+        if isinstance(forward_answer, numpy.ndarray):  # not 0-dim
+            # test views
+            forward_answer[...] = 0
+            out[...] = 0
+            testing.assert_allclose(out, forward_answer, atol, rtol)
+
+            forward_answer[...] = 1
+            out[...] = 1
+            testing.assert_allclose(out, forward_answer, atol, rtol)
 
 
 testing.run_module(__name__, __file__)
