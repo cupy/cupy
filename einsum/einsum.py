@@ -244,7 +244,8 @@ def einsum(*operands):
                 for i, s in enumerate(sub)
                 if i not in sum_axes
             ]
-            operands[num] = operands[num].sum(axis=sum_axes)
+            op = operands[num]
+            operands[num] = op.sum(axis=sum_axes).astype(op.dtype)
 
     for num in range(len(operands)):
         op = operands[num]
