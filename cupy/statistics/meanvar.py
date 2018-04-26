@@ -25,13 +25,17 @@ def average(a, axis=None, weights=None, returned=False):
 
     .. seealso:: :func:`numpy.average`
     """
-    a = cupy.asarray(a)
+    if not isinstance(a, cupy.ndarray):
+        a = cupy.asarray(a)
 
     if weights is None:
         avg = a.mean(axis)
         scl = avg.dtype.type(a.size / avg.size)
     else:
-        wgt = cupy.asarray(weights)
+        if isinstance(weights, cupy.ndarray):
+            wgt = weights
+        else:
+            wgt = cupy.asarray(weights)
 
         if issubclass(a.dtype.type, (numpy.integer, numpy.bool_)):
             result_dtype = numpy.result_type(a.dtype, wgt.dtype, 'f8')
