@@ -1,4 +1,4 @@
-einsum_symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 einsum_symbols_set = set(einsum_symbols)
 
 
@@ -33,9 +33,9 @@ def _parse_einsum_input(operands):
     if len(operands) == 0:
         raise ValueError("No input operands")
 
-    if isinstance(operands[0], basestring):
+    if isinstance(operands[0], str):
         subscripts = operands[0].replace(" ", "")
-        operands = [asanyarray(v) for v in operands[1:]]
+        operands = operands[1:]
 
         # Ensure all characters are valid
         for s in subscripts:
@@ -53,7 +53,7 @@ def _parse_einsum_input(operands):
             subscript_list.append(tmp_operands.pop(0))
 
         output_list = tmp_operands[-1] if len(tmp_operands) else None
-        operands = [asanyarray(v) for v in operand_list]
+        operands = operand_list
         subscripts = ""
         last = len(subscript_list) - 1
         for num, sub in enumerate(subscript_list):
