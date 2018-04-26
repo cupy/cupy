@@ -56,7 +56,7 @@ cdef struct DLTensor:
 cdef struct DLManagedTensor:
     DLTensor dl_tensor
     void* manager_ctx
-    void (*deleter)(DLManagedTensor*)
+    void(*deleter)(DLManagedTensor*)
 
 
 cdef void pycapsule_deleter(object dltensor):
@@ -78,7 +78,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
 cpdef object toDlpack(ndarray array):
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
-    
+
     cdef size_t ndim = array._shape.size()
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = array.data.ptr
@@ -197,4 +197,3 @@ cpdef ndarray fromDlpack(object dltensor):
     cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
     cupy_array._set_shape_and_strides(shape_vec, strides_vec)
     return cupy_array
-
