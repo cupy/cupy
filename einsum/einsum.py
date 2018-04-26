@@ -153,6 +153,8 @@ def einsum(*operands):
     assert isinstance(input_subscripts, list)
     assert isinstance(operands, list)
 
+    operands = list(map(xp.asanyarray, operands))
+
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
         for sub, arr in zip(input_subscripts, operands)
