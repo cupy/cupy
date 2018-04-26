@@ -134,7 +134,7 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
             map(ord, left_sub),
             range(-ellipsis_len, 0),
             map(ord, right_sub),
-        )
+        ))
     else:
         # >= 2 ellipses for an operand
         raise ValueError("Invalid Ellipses.")
@@ -193,7 +193,9 @@ def einsum(*operands):
     path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): optimize
 
     # TODO: diag
-
+    for sub in input_subscripts:
+        for s in sub:
+            assert sub.count(s) == 1, 'diag: sorry'
 
     for num in range(len(operands)):
         op = operands[num]
@@ -208,12 +210,19 @@ def einsum(*operands):
             operands[num] = xp.squeeze(op, axis=squeeze_indices)
 
     # TODO: unary sum
+    for num, sub in enumerate(input_subscripts):
+        other_subscripts = input_subscripts.copy()
+        other_subscripts[num] = output_subscript
+        other_subscripts = _concat(other_subscripts)
+        for s in sub:
+            assert other_subscripts.count(s) >= 1, 'unary sum: sorry'
 
-
+    """
     count_dict = {k: 0 for k in dimension_dict}
     for sub in input_subscripts:
         for s in sub:
             count_dict[s] += 1
+    """
 
     for idx0, idx1 in path:
         # repeat binary einsum
@@ -260,8 +269,15 @@ def einsum(*operands):
 
     assert len(sub0) == len(output_subscript)
 
-    return op0.transpose([
-        sub0.find(s)
+    transpose_axes = []
+    for s in output_subscript:
+        try:
+            transpose_axes.append(sub0.find(s))
+        except ValueError:
+            pass
+
+    return op0.transpose(transpose_axes).reshape([
+        dimension_dict[s]
         for s in output_subscript
     ])
 
