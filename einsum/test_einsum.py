@@ -16,6 +16,7 @@ def _from_str_subscript(subscript):
 
 @testing.parameterize(*testing.product_dict(
     [
+        {'subscripts': 'i', 'shapes': ((3,),)},
         {'subscripts': 'ij,jk->ik', 'shapes': ((2, 3), (3, 4))},
         {'subscripts': ',ij->i', 'shapes': ((), (3, 4),)},
         {'subscripts': 'kj,ji->ik', 'shapes': ((2, 3), (3, 4))},
@@ -38,7 +39,8 @@ def _from_str_subscript(subscript):
         {'subscripts': 'i...,i->...i', 'shapes': ((3, 2, 2), (3,))},
     ],
     testing.product({
-        'dtype': [numpy.float32, numpy.float64],
+        'input_dtype': [numpy.float32, numpy.float64],
+        'kwarg_dtype': [None, numpy.float64],  # don't test float32
         'subscript_type': ['str', 'int'],
     }),
 ))
@@ -46,7 +48,7 @@ class TestEinSum(unittest.TestCase):
 
     def setUp(self):
         self.inputs = tuple([
-            self._setup_tensor(-1, 1, shape, self.dtype)
+            self._setup_tensor(-1, 1, shape, self.input_dtype)
             for shape in self.shapes
         ])
 
@@ -67,9 +69,9 @@ class TestEinSum(unittest.TestCase):
 
     def test_forward(self, atol=1e-4, rtol=1e-5):
         inputs_ans = tuple(arr.copy() for arr in self.inputs)
-        forward_answer = numpy.einsum(*self._get_args(inputs_ans))
+        forward_answer = numpy.einsum(*self._get_args(inputs_ans), dtype=self.kwarg_dtype)
         inputs = self.inputs
-        out = einsum.einsum(*self._get_args(inputs))
+        out = einsum.einsum(*self._get_args(inputs), dtype=self.kwarg_dtype)
         testing.assert_allclose(out, forward_answer, atol, rtol)
 
         if isinstance(forward_answer, numpy.ndarray):  # not 0-dim
