@@ -328,10 +328,10 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
         'dtype_map': [(0, 0, 1), (0, 1, 0), (1, 0, 0)],
         'optimize': [
             False,
-            True,
-            # ['einsum_path', (0, 1), (0, 1)],
-            # ['einsum_path', (0, 2), (0, 1)],
-            # ['einsum_path', (1, 2), (0, 1)],
+            # True,
+            ['einsum_path', (0, 1), (0, 1)],
+            ['einsum_path', (0, 2), (0, 1)],
+            ['einsum_path', (1, 2), (0, 1)],
         ],
     }
 ), [
