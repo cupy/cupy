@@ -4,6 +4,7 @@
 *.pyo
 *.cpp
 *.so
+*.pyd
 build
 \#*\#
 .\#*
