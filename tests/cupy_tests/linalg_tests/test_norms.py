@@ -79,17 +79,21 @@ class TestMatrixRank(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    # matrix_rank of CuPy returns in dtype compatible with NumPy 1.14.
+    type_check = testing.numpy_satisfies('>=1.14')
+
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(type_check=type_check)
     def test_matrix_rank(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
         y = xp.linalg.matrix_rank(a, tol=self.tol)
         if xp is cupy:
-            # Note numpy returns int
             self.assertIsInstance(y, cupy.ndarray)
-            self.assertEqual(y.dtype, 'l')
             self.assertEqual(y.shape, ())
-        return xp.array(y)
+        else:
+            # Note numpy returns numpy scalar or python int
+            y = xp.array(y)
+        return y
 
 
 @unittest.skipUnless(

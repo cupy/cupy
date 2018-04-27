@@ -182,12 +182,12 @@ def matrix_rank(M, tol=None):
     .. seealso:: :func:`numpy.linalg.matrix_rank`
     """
     if M.ndim < 2:
-        return (M != 0).any().astype('l')
+        return (M != 0).any().astype(int)
     S = decomposition.svd(M, compute_uv=False)
     if tol is None:
         tol = (S.max(axis=-1, keepdims=True) * max(M.shape[-2:]) *
                numpy.finfo(S.dtype).eps)
-    return (S > tol).sum(axis=-1)
+    return (S > tol).sum(axis=-1).astype(numpy.intp)
 
 
 def slogdet(a):
