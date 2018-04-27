@@ -162,8 +162,11 @@ def einsum(*operands, **kwargs):
         raise TypeError("Did not understand the following kwargs: %s"
                         % list(kwargs.keys))
 
-    operands = [xp.asanyarray(arr, dtype=dtype) for arr in operands]
-    result_dtype = xp.result_type(*operands)
+    operands = [
+        xp.asanyarray(arr)
+        for arr in operands
+    ]
+    result_dtype = dtype or xp.result_type(*operands)
 
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
@@ -250,6 +253,8 @@ def einsum(*operands, **kwargs):
             i += 1
         del i
 
+    returns_view = len(operands) == 1  # and there's no sum
+
     # unary sum
     for num, sub in enumerate(input_subscripts):
         other_subscripts = input_subscripts.copy()
@@ -261,13 +266,16 @@ def einsum(*operands, **kwargs):
             if s not in other_subscripts
         )
         if sum_axes:
+            returns_view = False
             input_subscripts[num] = [
                 s
                 for i, s in enumerate(sub)
                 if i not in sum_axes
             ]
             op = operands[num]
-            operands[num] = op.sum(axis=sum_axes).astype(op.dtype)
+
+            # numpy.sum uses platform integer types by default
+            operands[num] = op.sum(axis=sum_axes, dtype=dtype or op.dtype)
 
     for num in range(len(operands)):
         op = operands[num]
@@ -315,6 +323,9 @@ def einsum(*operands, **kwargs):
 
         tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(batch_size, -1, contract_size)
         tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(batch_size, contract_size, -1)
+        if dtype and xp.result_type(tmp0, tmp1) != dtype:
+            tmp0 = tmp0.astype(dtype)
+            tmp1 = tmp1.astype(dtype)
         tmp_out = xp.matmul(tmp0, tmp1)
 
         sub_b = [sub0[i] for i in bs0]
@@ -344,7 +355,11 @@ def einsum(*operands, **kwargs):
         for s in output_subscript
     ])
     if optimize is False:
-        op_out = op_out.astype(result_dtype)
+        assert returns_view or op_out.dtype == result_dtype
+        """
+        if op_out.dtype != result_dtype:
+            op_out = op_out.astype(result_dtype)
+        """
     return op_out
 
 
