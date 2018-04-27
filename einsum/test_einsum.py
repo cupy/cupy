@@ -41,6 +41,8 @@ def _from_str_subscript(subscript):
         {'subscripts': 'ii...,...jj', 'shapes': ((2, 2, 4), (4, 3, 3))},
         {'subscripts': '...i,i', 'shapes': ((2, 2, 3), (3,))},
         {'subscripts': 'i...,i->...i', 'shapes': ((3, 2, 2), (3,))},
+        {'subscripts': 'i,i,i', 'shapes': ((3,), (3,), (3,))},
+        {'subscripts': 'i,i,i->i', 'shapes': ((3,), (3,), (3,))},
     ],
     testing.product({
         'input_dtype': [numpy.float32, numpy.float64],
