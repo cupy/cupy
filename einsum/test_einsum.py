@@ -16,6 +16,10 @@ def _from_str_subscript(subscript):
 
 @testing.parameterize(*testing.product_dict(
     [
+        # broadcasts
+        {'subscripts': 'ij,jk->ik', 'shapes': ((2, 1), (3, 4))},
+
+        # no broadcasts
         {'subscripts': 'i', 'shapes': ((3,),)},
         {'subscripts': 'ij,jk->ik', 'shapes': ((2, 3), (3, 4))},
         {'subscripts': ',ij->i', 'shapes': ((), (3, 4),)},

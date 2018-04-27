@@ -33,6 +33,22 @@ np.einsum('ij,jk,kl', a, b, c, optimize=True)
 """
 
 
+class TestB(unittest.TestCase):
+
+    shape_a = (3, 4, 2)
+    shape_b = (1, 1, 2)
+    subscripts = 'ijk,jil->kl'
+    # optimize = True
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'], no_bool=True)
+    # @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_np(self, dtype_a, dtype_b):
+        a = testing.shaped_arange(self.shape_a, numpy, dtype_a)
+        b = testing.shaped_arange(self.shape_b, numpy, dtype_b)
+        # c = testing.shaped_arange(self.shape_c, numpy, dtype_y)
+        return numpy.einsum(self.subscripts, a, b)
+
+
 def _dec_shape(shape, dec):
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
