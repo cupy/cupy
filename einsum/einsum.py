@@ -5,14 +5,13 @@ import operator
 import xp
 
 
-einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-einsum_symbols_set = set(einsum_symbols)
-
-
 options = {
     'sum_ellipsis': False,
     'broadcast_diagonal': False,
 }
+
+
+einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 
 def _concat(lists):
@@ -147,7 +146,6 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
     else:
         # >= 2 ellipses for an operand
         raise ValueError("Invalid Ellipses.")
-
 
 
 def _einsum_diagonals(input_subscripts, operands):
