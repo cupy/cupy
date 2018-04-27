@@ -221,7 +221,9 @@ def einsum(*operands, **kwargs):
     dtype = kwargs.pop('dtype', None)
 
     optimize = kwargs.pop('optimize', False)
-    assert optimize is False, "optimize: sorry"
+    # assert optimize is False, "optimize: sorry"
+    if optimize is True:
+        optimize = 'greedy'
 
     if kwargs:
         raise TypeError("Did not understand the following kwargs: %s"
@@ -283,8 +285,6 @@ def einsum(*operands, **kwargs):
                 raise ValueError(
                     "Output character %s did not appear in the input" % _chr(char))
 
-    path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): optimize
-
     _einsum_diagonals(input_subscripts, operands)
 
     # no raise after this
@@ -343,6 +343,15 @@ def einsum(*operands, **kwargs):
         for s in sub:
             count_dict[s] += 1
     """
+
+    if optimize is False:
+        path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): fix
+    # elif optimize == 'greedy':
+    #     assert False  # TODO(kataoka)
+    elif len(optimize) and (optimize[0] == 'einsum_path'):
+        path = optimize[1:]
+    else:
+        raise TypeError("Did not understand the path (optimize): %s" % str(optimize))
 
     for idx0, idx1 in path:
         # repeat binary einsum
