@@ -236,7 +236,8 @@ def preconfigure_modules(compiler, settings):
         'Environment Variables:',
     ]
 
-    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CUDA_PATH', 'NVCC']:
+    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
