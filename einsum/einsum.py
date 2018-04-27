@@ -10,7 +10,7 @@ einsum_symbols_set = set(einsum_symbols)
 
 
 options = {
-    'has_numpy_issue_10926': True,
+    'sum_ellipsis': False,
 }
 
 
@@ -203,7 +203,7 @@ def einsum(*operands, **kwargs):
             if s < 0 or tmp_subscripts.count(s) == 1
         ]
     else:
-        if options['has_numpy_issue_10926']:
+        if not options['sum_ellipsis']:
             if '@' not in output_subscript and -1 in dimension_dict:
                 raise ValueError("output had too few broadcast dimensions")
         output_subscript = _parse_ellipsis_subscript(
