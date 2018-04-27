@@ -11,6 +11,7 @@ einsum_symbols_set = set(einsum_symbols)
 
 options = {
     'sum_ellipsis': False,
+    'broadcast_diagonal': False,
 }
 
 
@@ -148,6 +149,57 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
         raise ValueError("Invalid Ellipses.")
 
 
+
+def _einsum_diagonals(input_subscripts, operands):
+    """Compute diagonal for each operand
+
+    This function mutates args.
+    """
+
+    for num, sub in enumerate(input_subscripts):
+        i = 0
+        while i < len(sub):
+            s = sub[i]
+            if sub.count(s) > 1:
+                op = operands[num]
+
+                indices = []
+                sub = []
+                for j, t in enumerate(input_subscripts[num]):
+                    if j == i:
+                        indices.append(j)
+                        sub.append(t)
+                    elif t == s:
+                        indices.append(j)
+                    else:
+                        sub.append(t)
+
+                if options['broadcast_diagonal']:
+                    assert False  # TODO(kataoka)
+                else:
+                    dims = list({op.shape[j] for j in indices})
+                    if len(dims) >= 2:
+                        raise ValueError(
+                            "dimensions in operand %d"
+                            " for collapsing index '%s' don't match (%d != %d)"
+                            % (num, _chr(s), dims[0], dims[1])
+                        )
+                    dim, = dims
+
+                input_subscripts[num] = sub
+
+                diag_ndim = len(indices)
+                op = xp.moveaxis(
+                    op,
+                    tuple(indices), tuple(range(diag_ndim))
+                )
+                operands[num] = xp.moveaxis(
+                    op[(xp.arange(dim),) * diag_ndim],
+                    0, i
+                )
+            i += 1
+
+
 def einsum(*operands, **kwargs):
     input_subscripts, output_subscript, operands = _parse_einsum_input(operands)
     assert isinstance(input_subscripts, list)
@@ -220,38 +272,7 @@ def einsum(*operands, **kwargs):
 
     path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): optimize
 
-    # diagonal
-    for num, sub in enumerate(input_subscripts):
-        i = 0
-        while i < len(sub):
-            s = sub[i]
-            if sub.count(s) > 1:
-                indices = []
-                sub = []
-                for j, t in enumerate(input_subscripts[num]):
-                    if j == i:
-                        indices.append(j)
-                        sub.append(t)
-                    elif t == s:
-                        indices.append(j)
-                    else:
-                        sub.append(t)
-                input_subscripts[num] = sub
-
-                diag_ndim = len(indices)
-                op = operands[num]
-                dim = op.shape[i]
-                op = xp.moveaxis(
-                    op,
-                    tuple(indices), tuple(range(diag_ndim))
-                )
-                operands[num] = xp.moveaxis(
-                    op[(xp.arange(dim),) * diag_ndim],
-                    0, i
-                )
-            del s
-            i += 1
-        del i
+    _einsum_diagonals(input_subscripts, operands)
 
     returns_view = len(operands) == 1  # and there's no sum
 
