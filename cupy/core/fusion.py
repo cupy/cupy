@@ -271,7 +271,7 @@ def _normalize_arg(arg, mem):
     arg_type = type(arg)
     if arg_type is _FusionRef:
         return arg._var
-    is_scalar = arg_type in [int, float, bool, complex]
+    is_scalar = arg_type in six.integer_types + (float, bool, complex)
     is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
     if is_scalar or is_ndarray:
         return mem.get_fresh(numpy.dtype(arg_type), const=arg)
