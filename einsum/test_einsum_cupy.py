@@ -344,7 +344,8 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
         'dtype_map': [(0, 0, 1), (0, 1, 0), (1, 0, 0)],
         'optimize': [
             False,
-            # True,
+            True,  # 'greedy'
+            'optimal',
             ['einsum_path', (0, 1), (0, 1)],
             ['einsum_path', (0, 2), (0, 1)],
             ['einsum_path', (1, 2), (0, 1)],
