@@ -188,6 +188,8 @@ def full(shape, fill_value, dtype=None):
 
     """
     # TODO(beam2d): Support ordering option
+    if dtype is None:
+        dtype = cupy.array(fill_value).dtype
     a = cupy.ndarray(shape, dtype=dtype)
     a.fill(fill_value)
     return a

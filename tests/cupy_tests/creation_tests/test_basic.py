@@ -143,6 +143,11 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_full_default_dtype(self, xp, dtype):
+        return xp.full((2, 3, 4), xp.array(1, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_full_like(self, xp, dtype):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.full_like(a, 1)
