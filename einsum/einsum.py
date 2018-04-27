@@ -339,6 +339,15 @@ def einsum(*operands, **kwargs):
         sub0 = input_subscripts.pop(idx0)
         op0 = operands.pop(idx0)
 
+        """
+        # This does not work because 0-dim array here might have been >=1-dim
+        # einsum.einsum(',i->', 3, np.array([1, 2], np.int16))
+        if op0.ndim == 0 and op1.ndim != 0:
+            op0 = op0.astype(op1.dtype)
+        elif op1.ndim == 0 and op0.ndim != 0:
+            op1 = op1.astype(op0.dtype)
+        """
+
         set0 = set(sub0)
         set1 = set(sub1)
         assert len(set0) == len(sub0)
@@ -389,11 +398,9 @@ def einsum(*operands, **kwargs):
         for s in output_subscript
     ])
     if optimize is False:
-        assert returns_view or op_out.dtype == result_dtype
-        """
-        if op_out.dtype != result_dtype:
+        if not returns_view and op_out.dtype != result_dtype:
+            # assert False  # TODO(kataoka)
             op_out = op_out.astype(result_dtype)
-        """
     return op_out
 
 
