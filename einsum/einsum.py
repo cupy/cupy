@@ -32,7 +32,7 @@ def _transpose_ex(a, axeses):
         axeses (list of list of ints)
 
     Returns:
-        p: a with its axes permutated. A writable view is returned whenever
+        p: a with its axes permutated. A writeable view is returned whenever
             possible.
     """
 
@@ -313,7 +313,7 @@ def einsum(*operands, **kwargs):
                 operands[num] = xp.squeeze(op, axis=tuple(squeeze_indices))
                 assert len(operands[num].shape) == len(input_subscripts[num])
 
-    # unary einsum without summation should return a (writable) view
+    # unary einsum without summation should return a (writeable) view
     returns_view = len(operands) == 1
 
     # unary sum
