@@ -71,7 +71,11 @@ def unique(ar, return_index=False, return_inverse=False,
     mask[0] = True
     mask[1:] = aux[1:] != aux[:-1]
 
-    ret = aux[mask],
+    ret = aux[mask]
+    if not return_index and not return_inverse and not return_counts:
+        return ret
+
+    ret = ret,
     if return_index:
         ret += perm[mask],
     if return_inverse:
@@ -80,10 +84,9 @@ def unique(ar, return_index=False, return_inverse=False,
         inv_idx[perm] = imask
         ret += inv_idx,
     if return_counts:
-        idx = cupy.concatenate(cupy.nonzero(mask) + (cupy.array([mask.size]),))
+        nonzero = cupy.nonzero(mask)[0]
+        idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
+        idx[:-1] = nonzero
+        idx[-1] = mask.size
         ret += idx[1:] - idx[:-1],
-
-    if return_index or return_inverse or return_counts:
-        return ret
-    else:
-        return ret[0]
+    return ret
