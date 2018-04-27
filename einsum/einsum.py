@@ -4,6 +4,8 @@ import operator
 
 import xp
 
+from einsum_opt import _greedy_path, _optimal_path
+
 
 options = {
     'sum_ellipsis': False,
@@ -224,7 +226,6 @@ def einsum(*operands, **kwargs):
     # assert optimize is False, "optimize: sorry"
     if optimize is True:
         optimize = 'greedy'
-
     if kwargs:
         raise TypeError("Did not understand the following kwargs: %s"
                         % list(kwargs.keys))
@@ -344,10 +345,18 @@ def einsum(*operands, **kwargs):
             count_dict[s] += 1
     """
 
+    optimize_algorithms = {
+        'greedy': _greedy_path,
+        'optimal': _optimal_path,
+    }
     if optimize is False:
         path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): fix
-    # elif optimize == 'greedy':
-    #     assert False  # TODO(kataoka)
+    elif isinstance(optimize, str) and optimize in optimize_algorithms.keys():
+        input_sets = [set(sub) for sub in input_subscripts]
+        output_set = set(output_subscript)
+        memory_arg = 1e99
+        algo = optimize_algorithms[optimize]
+        path = algo(input_sets, output_set, dimension_dict, memory_arg)
     elif len(optimize) and (optimize[0] == 'einsum_path'):
         path = optimize[1:]
     else:
