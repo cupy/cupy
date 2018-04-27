@@ -5,6 +5,10 @@ import numpy
 import cupy_testing as testing
 
 
+def _dec_shape(shape, dec):
+    return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
+
+
 class TestEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
@@ -122,6 +126,7 @@ class TestEinSumError(unittest.TestCase):
 
 
 @testing.parameterize(
+*testing.product_dict([{'shape_x': 0}, {'shape_x': 1}, {'shape_x': 2}, ], [
     {'shape_a': (2, 3), 'subscripts': 'ij'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': '...'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ji'},  # transpose
@@ -153,10 +158,14 @@ class TestEinSumError(unittest.TestCase):
 
     {'shape_a': (), 'subscripts': ''},  # do nothing
     {'shape_a': (), 'subscripts': '->'},  # do nothing
+])
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
+
+    def setUp(self):
+        self.shape_a = _dec_shape(self.shape_a, self.shape_x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -180,6 +189,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 
 
 @testing.parameterize(
+*testing.product_dict([{'shape_x': 0}, {'shape_x': 1}, {'shape_x': 2}, ], [
     # outer
     {'shape_a': (2,), 'shape_b': (3,),
      'subscripts': 'i,j'},
@@ -226,10 +236,15 @@ class TestEinSumUnaryOperation(unittest.TestCase):
      'subscripts': '...kl,k...'},
     {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
      'subscripts': '...lmn,lmno->...o'},
+])
 )
 class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
     skip_overflow = False
+
+    def setUp(self):
+        self.shape_a = _dec_shape(self.shape_a, self.shape_x)
+        self.shape_b = _dec_shape(self.shape_b, self.shape_x)
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -260,6 +275,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 
 
 @testing.parameterize(
+*testing.product_dict([{'shape_x': 0}, {'shape_x': 1}, {'shape_x': 2}, ], [
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
      'subscripts': 'ij,jk,kl', 'skip_overflow': True},
     {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
@@ -268,9 +284,14 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij,ki,i->jk', 'skip_overflow': False},
     {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
      'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
+])
 )
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
+
+    def setUp(self):
+        self.shape_a = _dec_shape(self.shape_a, self.shape_x)
+        self.shape_b = _dec_shape(self.shape_b, self.shape_x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
