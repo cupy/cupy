@@ -180,6 +180,10 @@ cpdef findConvolutionForwardAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
     size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
+cpdef findConvolutionForwardAlgorithmEx_v7(
+    size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
+    size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int preference, size_t memoryLimitInbytes) except *
@@ -204,6 +208,10 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
+cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
+    size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
+    size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, int preference, size_t memoryLimitInbytes) except *
@@ -222,6 +230,10 @@ cpdef findConvolutionBackwardDataAlgorithm(
     size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
     int requestedAlgoCount)
 cpdef findConvolutionBackwardDataAlgorithmEx(
+    size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
+    size_t convDesc, size_t dxDesc, size_t dx,
+    int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
+cpdef findConvolutionBackwardDataAlgorithmEx_v7(
     size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
     int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)

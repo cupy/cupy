@@ -9,6 +9,9 @@
 
 #include <cudnn.h>
 
+#if (CUDNN_VERSION < 7000)
+#endif
+
 #else // #ifndef CUPY_NO_CUDA
 
 #define CUDNN_VERSION 0
@@ -330,6 +333,18 @@ cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
@@ -594,41 +609,27 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
-#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+#if !defined(CUPY_NO_CUDA)
+#if (CUDNN_VERSION < 7000)
 
-#if (CUDNN_VERSION < 6000)
-typedef enum {} cudnnDeterminism_t;
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#else
+
+#define cudnnFindConvolutionForwardAlgorithmEx_v7 cudnnFindConvolutionForwardAlgorithmEx
+#define cudnnFindConvolutionBackwardFilterAlgorithmEx_v7 cudnnFindConvolutionBackwardFilterAlgorithmEx
+#define cudnnFindConvolutionBackwardDataAlgorithmEx_v7 cudnnFindConvolutionBackwardDataAlgorithmEx
+
 #endif
-typedef enum {} cudnnMathType_t;
-
-typedef struct {
-  cudnnConvolutionFwdAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionFwdAlgoPerf_t;
-
-typedef struct {
-  cudnnConvolutionBwdFilterAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionBwdFilterAlgoPerf_t;
-
-typedef struct {
-  cudnnConvolutionBwdDataAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionBwdDataAlgoPerf_t;
-
-#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+#endif // #if !defined(CUPY_NO_CUDA)
 
 
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)

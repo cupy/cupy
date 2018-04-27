@@ -520,9 +520,14 @@ cpdef tuple _find_algorithm_fwd(
     if key in _algorithm_fwd:
         return _algorithm_fwd[key]
     workspace = memory.alloc(max_workspace_size)
-    ret = cudnn.findConvolutionForwardAlgorithmEx(
-        handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc, y_desc,
-        y.data.ptr, 1, workspace.ptr, max_workspace_size)
+    if _cudnn_version >= 7000:
+        ret = cudnn.findConvolutionForwardAlgorithmEx_v7(
+            handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
+            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
+    else:
+        ret = cudnn.findConvolutionForwardAlgorithmEx(
+            handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
+            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_fwd[key] = algo
     if use_tensor_core and _cudnn_version >= 7000:
@@ -582,9 +587,14 @@ cpdef tuple _find_algorithm_bwd_filter(
     if key in _algorithm_bwd_filter:
         return _algorithm_bwd_filter[key]
     workspace = memory.alloc(max_workspace_size)
-    ret = cudnn.findConvolutionBackwardFilterAlgorithmEx(
-        handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
-        filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)
+    if _cudnn_version >= 7000:
+        ret = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
+            handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+            filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)
+    else:
+        ret = cudnn.findConvolutionBackwardFilterAlgorithmEx(
+            handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+            filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_bwd_filter[key] = algo
     if use_tensor_core and _cudnn_version >= 7000:
@@ -646,9 +656,14 @@ cpdef tuple _find_algorithm_bwd_data(
     if key in _algorithm_bwd_data:
         return _algorithm_bwd_data[key]
     workspace = memory.alloc(max_workspace_size)
-    ret = cudnn.findConvolutionBackwardDataAlgorithmEx(
-        handle, filter_desc, W.data.ptr, x_desc, x.data.ptr,
-        conv_desc, y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
+    if _cudnn_version >= 7000:
+        ret = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
+            handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
+    else:
+        ret = cudnn.findConvolutionBackwardDataAlgorithmEx(
+            handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_bwd_data[key] = algo
     if use_tensor_core and _cudnn_version >= 7000:
