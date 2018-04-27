@@ -30,7 +30,6 @@ cdef class PointerAttributes:
 # Extern
 ###############################################################################
 cdef extern from *:
-    ctypedef int Error 'cudaError_t'
     ctypedef int DeviceAttr 'enum cudaDeviceAttr'
     ctypedef int MemoryAdvise 'enum cudaMemoryAdvise'
     ctypedef int MemoryKind 'enum cudaMemcpyKind'

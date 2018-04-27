@@ -12,6 +12,43 @@ class TestPermutations(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    # Test ranks
+
+    @testing.numpy_cupy_raises()
+    def test_permutation_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        xp.random.permutation(a)
+
+    # Test same values
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    def test_permutation_sort_1dim(self, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        b = cupy.copy(a)
+        c = cupy.random.permutation(a)
+        testing.assert_allclose(a, b)
+        testing.assert_allclose(b, cupy.sort(c))
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    def test_permutation_sort_ndim(self, dtype):
+        a = cupy.arange(15, dtype=dtype).reshape(5, 3)
+        b = cupy.copy(a)
+        c = cupy.random.permutation(a)
+        testing.assert_allclose(a, b)
+        testing.assert_allclose(b, cupy.sort(c, axis=0))
+
+    # Test seed
+
+    @testing.for_all_dtypes()
+    def test_permutation_seed1(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype)
+        b = cupy.copy(a)
+        cupy.random.seed(0)
+        pa = cupy.random.permutation(a)
+        cupy.random.seed(0)
+        pb = cupy.random.permutation(b)
+        testing.assert_allclose(pa, pb)
+
 
 @testing.gpu
 class TestShuffle(unittest.TestCase):

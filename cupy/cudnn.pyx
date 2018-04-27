@@ -501,33 +501,20 @@ cdef dict _algorithm_bwd_filter = {}
 cdef dict _algorithm_bwd_data = {}
 
 
-cpdef _check_algorithm_fwd(
-        xDesc, filterDesc, convDesc, yDesc, perfResult):
-    mathType = cudnn.getConvolutionMathType(convDesc)
-    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-    if perfResult['mathType'] == cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-    cudnn.setConvolutionMathType(convDesc, cudnn.CUDNN_DEFAULT_MATH)
-
-    algo = perfResult['algo']
-    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(xDesc)
-    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(yDesc)
-    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc)
-
+cpdef _warn_algorithm_fwd(
+        core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param):
     msg = 'Tensor Core mode is set but the selected convolution forward '\
-          'algorithm(%d) is not Tensor Core enabled algo. '\
+          'algorithm is not a Tensor Core enabled algorithm. '\
           'This might be due to lack of workspace memory. '\
-          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
-          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
-          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+          'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'\
+          .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1])
     warnings.warn(msg, RuntimeWarning)
 
 
 cpdef tuple _find_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param,
         size_t handle, size_t x_desc, size_t filter_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
     key = (x.data.device.id, x.shape, W.shape, y.shape, conv_param,
            max_workspace_size)
     if key in _algorithm_fwd:
@@ -538,11 +525,14 @@ cpdef tuple _find_algorithm_fwd(
         y.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_fwd[key] = algo
-    _check_algorithm_fwd(x_desc, filter_desc, conv_desc, y_desc, ret[0])
+    if use_tensor_core and _cudnn_version >= 7000:
+        if ret[0]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_fwd(x, W, y, conv_param)
     return algo
 
 
 cpdef tuple _get_algorithm_fwd(
+        core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param,
         size_t handle, size_t x_desc, size_t filter_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
     cdef int algo
@@ -550,57 +540,43 @@ cpdef tuple _get_algorithm_fwd(
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
-        i = -1
-        for j in range(len(ret)):
-            if ret[j]['memory'] <= max_workspace_size:
-                i = j
+        for i in range(len(ret)):
+            if ret[i]['memory'] <= max_workspace_size:
                 break
-        if i < 0:
+        else:
             raise RuntimeError('No conv fwd algo available with workspace size'
                                ' less equal {}'.format(max_workspace_size))
         if i != 0:
-            msg = 'The best algo of conv fwd is not selected due to lack '\
-                  'of workspace size ({})'.format(max_workspace_size)
+            msg = 'The best algo of conv fwd might not be selected due to '\
+                  'lack of workspace size ({})'.format(max_workspace_size)
             warnings.warn(msg)
         algo = ret[i]['algo']
         workspace_size = ret[i]['memory']
-        _check_algorithm_fwd(
-            x_desc, filter_desc, conv_desc, y_desc, ret[i])
+        if ret[i]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_fwd(x, W, y, conv_param)
     else:
-        algo = cudnn.getConvolutionForwardAlgorithm(
+        algo = cudnn.getConvolutionForwardAlgorithm_v6(
             handle, x_desc, filter_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = max_workspace_size
-    return (algo, workspace_size)
+    return algo, workspace_size
 
 
-cpdef _check_algorithm_bwd_filter(
-        xDesc, gyDesc, convDesc, filterDesc, perfResult):
-    mathType = cudnn.getConvolutionMathType(convDesc)
-    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-    if perfResult['mathType'] == cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-
-    algo = perfResult['algo']
-    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(xDesc)
-    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(gyDesc)
-    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc)
-
+cpdef _warn_algorithm_bwd_filter(
+        core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param):
     msg = 'Tensor Core mode is set but the selected convolution backward '\
-          'filter algorithm(%d) is not Tensor Core enabled algo. '\
+          'filter algorithm is not a Tensor Core enabled algorithm. '\
           'This might be due to lack of workspace memory. '\
-          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
-          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
-          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+          'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'\
+          .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1])
     warnings.warn(msg, RuntimeWarning)
 
 
 cpdef tuple _find_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t dy_desc, size_t conv_desc,
-        size_t filter_desc, size_t max_workspace_size):
+        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
            max_workspace_size)
     if key in _algorithm_bwd_filter:
@@ -611,12 +587,14 @@ cpdef tuple _find_algorithm_bwd_filter(
         filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_bwd_filter[key] = algo
-    _check_algorithm_bwd_filter(x_desc, dy_desc, conv_desc, filter_desc,
-                                ret[0])
+    if use_tensor_core and _cudnn_version >= 7000:
+        if ret[0]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     return algo
 
 
 cpdef tuple _get_algorithm_bwd_filter(
+        core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t gy_desc, size_t conv_desc,
         size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
     cdef int algo
@@ -624,58 +602,45 @@ cpdef tuple _get_algorithm_bwd_filter(
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
-        i = -1
-        for j in range(len(ret)):
-            if ret[j]['memory'] <= max_workspace_size:
-                i = j
+        for i in range(len(ret)):
+            if ret[i]['memory'] <= max_workspace_size:
                 break
-        if i < 0:
-            raise RuntimeError('No conv bwd filter algo available with '
-                               'workspace size less equal {}'
-                               ''.format(max_workspace_size))
+        else:
+            msg = 'No conv bwd filter algo available with workspace size less '\
+                  'equal {}'.format(max_workspace_size)
+            raise RuntimeError(msg)
         if i != 0:
-            msg = 'The best algo of conv bwd filter is not selected due '\
-                  'to lack of workspace size ({})'.format(max_workspace_size)
+            msg = 'The best algo of conv bwd filter might not not selected '\
+                  'due to lack of workspace size ({})'\
+                  .format(max_workspace_size)
             warnings.warn(msg)
         algo = ret[i]['algo']
         workspace_size = ret[i]['memory']
-        _check_algorithm_bwd_filter(x_desc, gy_desc, conv_desc, filter_desc,
-                                    ret[i])
+        if ret[i]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
-        algo = cudnn.getConvolutionBackwardFilterAlgorithm(
+        algo = cudnn.getConvolutionBackwardFilterAlgorithm_v6(
             handle, x_desc, gy_desc, conv_desc, filter_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = max_workspace_size
-    return (algo, workspace_size)
+    return algo, workspace_size
 
 
-cpdef _check_algorithm_bwd_data(
-        filterDesc, gyDesc, convDesc, gxDesc, perfResult):
-    mathType = cudnn.getConvolutionMathType(convDesc)
-    if mathType != cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-    if perfResult['mathType'] == cudnn.CUDNN_TENSOR_OP_MATH:
-        return
-
-    algo = perfResult['algo']
-    _, xN, xC, xH, xW, _, _, _, _ = cudnn.getTensor4dDescriptor(gxDesc)
-    _, yN, yC, yH, yW, _, _, _, _ = cudnn.getTensor4dDescriptor(gyDesc)
-    _, _, _, _, kH, kW = cudnn.getFilter4dDescriptor(filterDesc)
-
+cpdef _warn_algorithm_bwd_data(
+        core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
     msg = 'Tensor Core mode is set but the selected convolution backward '\
-          'data algorithm(%d) is not Tensor Core enabled algo. '\
+          'filter algorithm is not a Tensor Core enabled algorithm. '\
           'This might be due to lack of workspace memory. '\
-          '(xN,xC,xH,xW)=(%d,%d,%d,%d), (kH,kW)=(%d,%d), '\
-          '(yN,yC,yH,yW)=(%d,%d,%d,%d). '\
-          % (algo, xN, xC, xH, xW, kH, kW, yN, yC, yH, yW)
+          'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'\
+          .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1])
     warnings.warn(msg, RuntimeWarning)
 
 
 cpdef tuple _find_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
     if key in _algorithm_bwd_data:
@@ -686,11 +651,14 @@ cpdef tuple _find_algorithm_bwd_data(
         conv_desc, y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)
     algo = (ret[0]['algo'], ret[0]['memory'])
     _algorithm_bwd_data[key] = algo
-    _check_algorithm_bwd_data(filter_desc, x_desc, conv_desc, y_desc, ret[0])
+    if use_tensor_core and _cudnn_version >= 7000:
+        if ret[0]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_bwd_data(W, x, y, conv_param)
     return algo
 
 
 cpdef tuple _get_algorithm_bwd_data(
+        core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
     cdef int algo
@@ -698,30 +666,28 @@ cpdef tuple _get_algorithm_bwd_data(
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
-        i = -1
-        for j in range(len(ret)):
-            if ret[j]['memory'] <= max_workspace_size:
-                i = j
+        for i in range(len(ret)):
+            if ret[i]['memory'] <= max_workspace_size:
                 break
-        if i < 0:
+        else:
             msg = 'No conv bwd data algo available with workspace size less '\
                   'equal {}'.format(max_workspace_size)
             raise RuntimeError(msg)
         if i != 0:
-            msg = 'The best algo of conv bwd data is not selected due to lack'\
-                  ' of workspace size ({})'.format(max_workspace_size)
+            msg = 'The best algo of conv bwd data might not not selected due '\
+                  'to lack of workspace size ({})'.format(max_workspace_size)
             warnings.warn(msg)
         algo = ret[i]['algo']
         workspace_size = ret[i]['memory']
-        _check_algorithm_bwd_data(filter_desc, x_desc, conv_desc, y_desc,
-                                  ret[i])
+        if ret[i]['mathType'] != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_bwd_data(W, x, y, conv_param)
     else:
-        algo = cudnn.getConvolutionBackwardDataAlgorithm(
+        algo = cudnn.getConvolutionBackwardDataAlgorithm_v6(
             handle, filter_desc, x_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = max_workspace_size
-    return (algo, workspace_size)
+    return algo, workspace_size
 
 
 cpdef bint _should_use_tensor_core(
@@ -792,11 +758,11 @@ def convolution_forward(
         if auto_tune and _cudnn_version >= 5000:
             algo, workspace_size = _find_algorithm_fwd(
                 x, W, y, conv_param, handle, x_desc, filter_desc,
-                conv_desc, y_desc, max_workspace_size)
+                conv_desc, y_desc, max_workspace_size, use_tensor_core)
         else:
             algo, workspace_size = _get_algorithm_fwd(
-                handle, x_desc, filter_desc, conv_desc, y_desc,
-                max_workspace_size, use_tensor_core)
+                x, W, y, conv_param, handle, x_desc, filter_desc,
+                conv_desc, y_desc, max_workspace_size, use_tensor_core)
 
         max_workspace_size = max(max_workspace_size, workspace_size)
         # TODO(okuta): allocate best size memory
@@ -872,11 +838,11 @@ def convolution_backward_filter(
         elif auto_tune and _cudnn_version >= 5000:
             algo, workspace_size = _find_algorithm_bwd_filter(
                 x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
-                filter_desc, max_workspace_size)
+                filter_desc, max_workspace_size, use_tensor_core)
         else:
             algo, workspace_size = _get_algorithm_bwd_filter(
-                handle, x_desc, gy_desc, conv_desc, filter_desc,
-                max_workspace_size, use_tensor_core)
+                x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
+                filter_desc, max_workspace_size, use_tensor_core)
 
         max_workspace_size = max(max_workspace_size, workspace_size)
         # TODO(okuta): allocate best size memory
@@ -952,11 +918,11 @@ def convolution_backward_data(
         elif auto_tune and _cudnn_version >= 5000:
             algo, workspace_size = _find_algorithm_bwd_data(
                 W, x, y, conv_param, handle, filter_desc, x_desc,
-                conv_desc, y_desc, max_workspace_size)
+                conv_desc, y_desc, max_workspace_size, use_tensor_core)
         else:
             algo, workspace_size = _get_algorithm_bwd_data(
-                handle, filter_desc, x_desc, conv_desc, y_desc,
-                max_workspace_size, use_tensor_core)
+                W, x, y, conv_param, handle, filter_desc, x_desc,
+                conv_desc, y_desc, max_workspace_size, use_tensor_core)
 
         max_workspace_size = max(max_workspace_size, workspace_size)
         # TODO(okuta): allocate best size memory

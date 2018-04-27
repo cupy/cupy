@@ -1389,7 +1389,9 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            return real(self)
+            view = self.view(self.dtype.char.lower())
+            view._set_shape_and_strides(self.shape, self.strides)
+            return view
         return self
 
     @real.setter
@@ -1402,7 +1404,10 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            return imag(self)
+            view = self.view(self.dtype.char.lower())
+            view._set_shape_and_strides(self.shape, self.strides)
+            view.data = view.data + self.itemsize // 2
+            return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
         return new_array
@@ -2108,6 +2113,8 @@ cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
         except *:
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
+    Arguments `allow_duplicate` and `axis_name` are not supported.
+
     """
     if numpy.isscalar(axis):
         axis = (axis,)
@@ -2117,7 +2124,10 @@ cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
         if ax >= ndim or ax < -ndim:
             raise _AxisError('axis {} is out of bounds for array of '
                              'dimension {}'.format(ax, ndim))
+        if _has_element(ret, ax):
+            raise _AxisError('repeated axis')
         ret.push_back(ax % ndim)
+
     return ret
 
 
@@ -2137,9 +2147,9 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
         if not _has_element(src, n):
             order.push_back(n)
 
-    for i in range(len(src)):
-        n = <Py_ssize_t>i
-        order.insert(order.begin() + dest[n], src[n])
+    cdef Py_ssize_t d, s
+    for d, s in sorted(zip(dest, src)):
+        order.insert(order.begin() + d, s)
 
     return a.transpose(order)
 
@@ -2350,7 +2360,10 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
     # other inputs the dimension must match exactly.
     cdef bint broadcast = False
-    if isinstance(repeats, int):
+    # numpy.issubdtype(1, numpy.integer) fails with old numpy like 1.13.3.
+    if (isinstance(repeats, int) or
+            (hasattr(repeats, 'dtype') and
+             numpy.issubdtype(repeats, numpy.integer))):
         if repeats < 0:
             raise ValueError(
                 "'repeats' should not be negative: {}".format(repeats))
@@ -2459,7 +2472,7 @@ cpdef ndarray concatenate_method(tup, int axis):
 
 cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     cdef ndarray a, ret
-    cdef int i
+    cdef Py_ssize_t i
     cdef bint all_same_type, same_shape_and_contiguous
     cdef Py_ssize_t axis_size
     # If arrays are large, Issuing each copy method is efficient.
@@ -4007,7 +4020,7 @@ angle = create_ufunc(
     'out0 = in0 >= 0 ? 0 : M_PI',
     doc='''Returns the angle of the complex argument.
 
-    .. seealso:: :data:`numpy.angle`
+    .. seealso:: :func:`numpy.angle`
 
     ''')
 
@@ -4021,7 +4034,7 @@ real = create_ufunc(
     'out0 = in0',
     doc='''Returns the real part of the elements of the array.
 
-    .. seealso:: :data:`numpy.real`
+    .. seealso:: :func:`numpy.real`
 
     ''')
 
@@ -4043,7 +4056,7 @@ imag = create_ufunc(
     'out0 = 0',
     doc='''Returns the imaginary part of the elements of the array.
 
-    .. seealso:: :data:`numpy.imag`
+    .. seealso:: :func:`numpy.imag`
 
     ''')
 

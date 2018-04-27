@@ -26,8 +26,8 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
-        int mathType
+        int determinism  # >= cuDNN 6.0
+        int mathType  # >= cuDNN 7.0
     ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
     ctypedef int ConvolutionBwdFilterPreference \
         'cudnnConvolutionBwdFilterPreference_t'
@@ -37,8 +37,8 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
-        int mathType
+        int determinism  # >= cuDNN 6.0
+        int mathType  # >= cuDNN 7.0
     ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
     ctypedef struct ConvolutionFwdAlgoPerf 'cudnnConvolutionFwdAlgoPerf_t':
@@ -46,8 +46,8 @@ cdef extern from "cupy_cudnn.h" nogil:
         int status
         float time
         size_t memory
-        int determinism
-        int mathType
+        int determinism  # >= cuDNN 6.0
+        int mathType  # >= cuDNN 7.0
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
     ctypedef int DataType 'cudnnDataType_t'
     ctypedef int MathType 'cudnnMathType_t'
@@ -113,9 +113,6 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnSetFilter4dDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
         TensorFormat format, int k, int c, int h, int w)
-    int cudnnGetFilter4dDescriptor_v4(
-        FilterDescriptor wDesc, DataType *dataType,
-        TensorFormat* format, int* k, int *c, int *h, int *w)
     int cudnnSetFilterNdDescriptor_v4(
         FilterDescriptor filterDesc, DataType dataType,
         TensorFormat format, int nbDims, const int filterDimA[])
@@ -157,7 +154,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor yDesc, void* y, int requestedAlgoCount,
         int* returnedAlgoCount, ConvolutionFwdAlgoPerf* perfResults,
         void* workSpace, size_t workSpaceSizeInBytes)
-    int cudnnGetConvolutionForwardAlgorithm(
+    int cudnnGetConvolutionForwardAlgorithm_v6(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
         TensorDescriptor destDesc, ConvolutionFwdPreference preference,
@@ -193,7 +190,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         FilterDescriptor dwDesc, void* dw, int requestedAlgoCount,
         int* returnedAlgoCount, ConvolutionBwdFilterAlgoPerf* perfResults,
         void* workSpace, size_t workSpaceSizeInBytes)
-    int cudnnGetConvolutionBackwardFilterAlgorithm(
+    int cudnnGetConvolutionBackwardFilterAlgorithm_v6(
         Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
         ConvolutionBwdFilterPreference preference,
@@ -214,7 +211,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
         FilterDescriptor gradDesc, void* gradData)
-    int cudnnGetConvolutionBackwardDataAlgorithm(
+    int cudnnGetConvolutionBackwardDataAlgorithm_v6(
         Handle handle, FilterDescriptor filterDesc,
         TensorDescriptor diffDesc,
         ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
@@ -597,18 +594,6 @@ cpdef setFilter4dDescriptor_v4(
     check_status(status)
 
 
-cpdef getFilter4dDescriptor(size_t wDesc):
-    cdef DataType dataType
-    cdef TensorFormat format
-    cdef int k, c, h, w
-
-    status = cudnnGetFilter4dDescriptor_v4(
-        <FilterDescriptor>wDesc, &dataType,
-        &format, &k, &c, &h, &w)
-    check_status(status)
-    return dataType, format, k, c, h, w
-
-
 cpdef setFilterNdDescriptor_v4(
         size_t filterDesc, int dataType,
         int format, int nbDims, size_t filterDimA):
@@ -741,11 +726,11 @@ cpdef findConvolutionForwardAlgorithmEx(
     return perfResults
 
 
-cpdef int getConvolutionForwardAlgorithm(
+cpdef int getConvolutionForwardAlgorithm_v6(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
         size_t destDesc, int preference, size_t memoryLimitInbytes) except *:
     cdef ConvolutionFwdAlgo algo
-    status = cudnnGetConvolutionForwardAlgorithm(
+    status = cudnnGetConvolutionForwardAlgorithm_v6(
         <Handle>handle, <TensorDescriptor>srcDesc,
         <FilterDescriptor>filterDesc, <ConvolutionDescriptor>convDesc,
         <TensorDescriptor>destDesc, <ConvolutionFwdPreference>preference,
@@ -844,11 +829,11 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
     return perfResults
 
 
-cpdef int getConvolutionBackwardFilterAlgorithm(
+cpdef int getConvolutionBackwardFilterAlgorithm_v6(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
         size_t filterDesc, int preference, size_t memoryLimitInbytes) except *:
     cdef ConvolutionBwdFilterAlgo algo
-    status = cudnnGetConvolutionBackwardFilterAlgorithm(
+    status = cudnnGetConvolutionBackwardFilterAlgorithm_v6(
         <Handle>handle, <TensorDescriptor>srcDesc,
         <TensorDescriptor>diffDesc, <ConvolutionDescriptor>convDesc,
         <FilterDescriptor>filterDesc,
@@ -936,12 +921,12 @@ cpdef findConvolutionBackwardDataAlgorithmEx(
     return perfResults
 
 
-cpdef int getConvolutionBackwardDataAlgorithm(
+cpdef int getConvolutionBackwardDataAlgorithm_v6(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, size_t preference,
         size_t memoryLimitInbytes) except *:
     cdef ConvolutionBwdDataAlgo algo
-    status = cudnnGetConvolutionBackwardDataAlgorithm(
+    status = cudnnGetConvolutionBackwardDataAlgorithm_v6(
         <Handle>handle, <FilterDescriptor>filterDesc,
         <TensorDescriptor>diffDesc, <ConvolutionDescriptor>convDesc,
         <TensorDescriptor>gradDesc, <ConvolutionBwdDataPreference>preference,
@@ -1261,6 +1246,7 @@ cpdef dropoutForward(
         size_t srcDesc, size_t srcData,
         size_t dstDesc, size_t dstData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cudnnDropoutForward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,
@@ -1275,6 +1261,7 @@ cpdef dropoutBackward(
         size_t dyDesc, size_t dyData,
         size_t dxDesc, size_t dxData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cudnnDropoutBackward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,

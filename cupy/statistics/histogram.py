@@ -3,7 +3,70 @@ import numpy
 import cupy
 
 
-# TODO(okuta): Implement histogram
+def histogram(x, bins=10):
+    """Computes the histogram of a set of data.
+
+    Args:
+        x (cupy.ndarray): Input array.
+        bins (int or cupy.ndarray): If ``bins`` is an int, it represents the
+            number of bins. If ``bins`` is an :class:`~cupy.ndarray`, it
+            represents a bin edges.
+
+    Returns:
+        tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
+        storing the values of the histogram, and ``bin_edges`` is a
+        :class:`cupy.ndarray` storing the bin edges.
+
+    .. seealso:: :func:`numpy.histogram`
+    """
+
+    if x.dtype.kind == 'c':
+        # TODO(unno): comparison between complex numbers is not implemented
+        raise NotImplementedError('complex number is not supported')
+
+    if isinstance(bins, int):
+        if x.size == 0:
+            min_value = 0.0
+            max_value = 1.0
+        else:
+            min_value = float(x.min())
+            max_value = float(x.max())
+        if min_value == max_value:
+            min_value -= 0.5
+            max_value += 0.5
+        bins = cupy.linspace(min_value, max_value, bins + 1)
+    elif isinstance(bins, cupy.ndarray):
+        if cupy.any(bins[:-1] > bins[1:]):
+            raise ValueError('bins must increase monotonically.')
+    else:
+        raise NotImplementedError('Only int or ndarray are supported for bins')
+
+    # atomicAdd only supports int32
+    y = cupy.zeros(bins.size - 1, dtype=cupy.int32)
+
+    # TODO(unno): use searchsorted
+    cupy.ElementwiseKernel(
+        'S x, raw T bins, int32 n_bins',
+        'raw int32 y',
+        '''
+        if (x < bins[0] or bins[n_bins - 1] < x) {
+            return;
+        }
+        int high = n_bins - 1;
+        int low = 0;
+
+        while (high - low > 1) {
+            int mid = (high + low) / 2;
+            if (bins[mid] <= x) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        atomicAdd(&y[low], 1);
+        '''
+    )(x, bins, bins.size, y)
+    return y.astype('l'), bins
 
 
 # TODO(okuta): Implement histogram2d

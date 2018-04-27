@@ -75,6 +75,25 @@ class TestRealImag(unittest.TestCase):
         x.imag = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return x
 
+    @testing.for_all_dtypes()
+    def test_real_inplace(self, dtype):
+        x = cupy.zeros((2, 3), dtype=dtype)
+        x.real[:] = 1
+        expected = cupy.ones((2, 3), dtype=dtype)
+        assert cupy.all(x == expected)
+
+    @testing.for_all_dtypes()
+    def test_imag_inplace(self, dtype):
+        x = cupy.zeros((2, 3), dtype=dtype)
+
+        # TODO(kmaehashi) The following line should raise error for real
+        # dtypes, but currently ignored silently.
+        x.imag[:] = 1
+
+        expected = cupy.zeros((2, 3), dtype=dtype) + (
+            1j if x.dtype.kind == 'c' else 0)
+        assert cupy.all(x == expected)
+
 
 @testing.gpu
 class TestScalarConversion(unittest.TestCase):

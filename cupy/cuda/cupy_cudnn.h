@@ -117,7 +117,11 @@ cudnnStatus_t cudnnDestroyConvolutionDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-cudnnStatus_t cudnnGetConvolutionForwardAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v6(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
@@ -165,23 +169,31 @@ typedef enum {} cudnnConvolutionBwdDataAlgo_t;
 typedef enum {} cudnnConvolutionBwdDataPreference_t;
 typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
 typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef enum {} cudnnDeterminism_t;
+typedef enum {} cudnnMathType_t;
 typedef struct {
   cudnnConvolutionFwdAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
 } cudnnConvolutionFwdAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdFilterAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
 } cudnnConvolutionBwdFilterAlgoPerf_t;
 typedef struct {
   cudnnConvolutionBwdDataAlgo_t algo;
   cudnnStatus_t status;
   float time;
   size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
 } cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {
@@ -204,7 +216,11 @@ cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v6(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v7(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -216,7 +232,11 @@ cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithm(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(...) {
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v6(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v7(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -237,10 +257,6 @@ typedef void* cudnnActivationDescriptor_t;
 
 
 cudnnStatus_t cudnnSetFilter4dDescriptor_v4(...) {
-    return CUDNN_STATUS_NOT_SUPPORTED;
-}
-
-cudnnStatus_t cudnnGetFilter4dDescriptor_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -514,7 +530,6 @@ cudnnStatus_t cudnnSetRNNDescriptor_v6(...) {
 // Following definitions are for compatibility with cuDNN v6 and higher.
 
 #define cudnnSetFilter4dDescriptor_v4 cudnnSetFilter4dDescriptor
-#define cudnnGetFilter4dDescriptor_v4 cudnnGetFilter4dDescriptor
 #define cudnnSetFilterNdDescriptor_v4 cudnnSetFilterNdDescriptor
 #define cudnnGetFilterNdDescriptor_v4 cudnnGetFilterNdDescriptor
 #define cudnnSetPooling2dDescriptor_v4 cudnnSetPooling2dDescriptor
@@ -552,6 +567,18 @@ cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
 
 
@@ -565,6 +592,53 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+#if (CUDNN_VERSION < 6000)
+typedef enum {} cudnnDeterminism_t;
+#endif
+typedef enum {} cudnnMathType_t;
+
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+} cudnnConvolutionFwdAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+} cudnnConvolutionBwdFilterAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+} cudnnConvolutionBwdDataAlgoPerf_t;
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
+// TODO: check function names when cuDNN 8 is released.
+
+#define cudnnGetConvolutionForwardAlgorithm_v6 cudnnGetConvolutionForwardAlgorithm
+#define cudnnGetConvolutionBackwardFilterAlgorithm_v6 cudnnGetConvolutionBackwardFilterAlgorithm
+#define cudnnGetConvolutionBackwardDataAlgorithm_v6 cudnnGetConvolutionBackwardDataAlgorithm
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 
 } // extern "C"
 

@@ -23,8 +23,14 @@ cdef extern from "cupy_cuda.h" nogil:
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)
 
+    # Primary context management
+    int cuDevicePrimaryCtxRelease(Device dev)
+
     # Context management
     int cuCtxGetCurrent(Context* pctx)
+    int cuCtxSetCurrent(Context ctx)
+    int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
+    int cuCtxDestroy(Context ctx)
 
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
@@ -84,6 +90,15 @@ def get_build_version():
 
 
 ###############################################################################
+# Primary context management
+###############################################################################
+
+cpdef devicePrimaryCtxRelease(Device dev):
+    with nogil:
+        status = cuDevicePrimaryCtxRelease(dev)
+    check_status(status)
+
+###############################################################################
 # Context management
 ###############################################################################
 
@@ -93,6 +108,24 @@ cpdef size_t ctxGetCurrent() except *:
         status = cuCtxGetCurrent(&ctx)
     check_status(status)
     return <size_t>ctx
+
+cpdef ctxSetCurrent(size_t ctx):
+    with nogil:
+        status = cuCtxSetCurrent(<Context>ctx)
+    check_status(status)
+
+cpdef size_t ctxCreate(Device dev) except *:
+    cdef Context ctx
+    cdef unsigned int flags = 0
+    with nogil:
+        status = cuCtxCreate(&ctx, flags, dev)
+    check_status(status)
+    return <size_t>ctx
+
+cpdef ctxDestroy(size_t ctx):
+    with nogil:
+        status = cuCtxDestroy(<Context>ctx)
+    check_status(status)
 
 
 ###############################################################################
