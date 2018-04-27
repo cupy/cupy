@@ -22,6 +22,32 @@ def _prod(xs):
     return functools.reduce(operator.mul, xs, 1)
 
 
+def _transpose_ex(a, axeses):
+    """Transpose and diagonal
+
+    Args:
+        a
+        axeses (list of list of ints)
+
+    Returns:
+        p: a with its axes permutated. A writable view is returned whenever
+            possible.
+    """
+
+    shape = []
+    strides = []
+    for axes in axeses:
+        dims = [a.shape[axis] for axis in axes]
+        dim = max(dims)  # TODO(kataoka): fix to dim=0
+        stride = sum(
+            0 if d == 1 else a.strides[axis]
+            for axis, d in zip(axes, dims)
+        )
+        shape.append(dim)
+        strides.append(stride)
+    return xp.set_shape_and_strides(a.view(), shape, strides)
+
+
 def _parse_int_subscript(sub):
     subscripts = ""
     for s in sub:
@@ -155,26 +181,21 @@ def _einsum_diagonals(input_subscripts, operands):
     """
 
     for num, sub in enumerate(input_subscripts):
-        i = 0
-        while i < len(sub):
-            s = sub[i]
-            if sub.count(s) > 1:
-                op = operands[num]
+        if len(set(sub)) < len(sub):
+            op = operands[num]
 
-                indices = []
-                sub = []
-                for j, t in enumerate(input_subscripts[num]):
-                    if j == i:
-                        indices.append(j)
-                        sub.append(t)
-                    elif t == s:
-                        indices.append(j)
-                    else:
-                        sub.append(t)
+            axes = {}
+            for i, s in enumerate(sub):
+                axes.setdefault(s, []).append(i)
 
-                if options['broadcast_diagonal']:
-                    assert False  # TODO(kataoka)
-                else:
+            axes = list(axes.items())
+            input_subscripts[num] = [
+                s
+                for s, _ in axes
+            ]
+
+            if not options['broadcast_diagonal']:
+                for s, indices in axes:
                     dims = list({op.shape[j] for j in indices})
                     if len(dims) >= 2:
                         raise ValueError(
@@ -182,20 +203,14 @@ def _einsum_diagonals(input_subscripts, operands):
                             " for collapsing index '%s' don't match (%d != %d)"
                             % (num, _chr(s), dims[0], dims[1])
                         )
-                    dim, = dims
 
-                input_subscripts[num] = sub
-
-                diag_ndim = len(indices)
-                op = xp.moveaxis(
-                    op,
-                    tuple(indices), tuple(range(diag_ndim))
-                )
-                operands[num] = xp.moveaxis(
-                    op[(xp.arange(dim),) * diag_ndim],
-                    0, i
-                )
-            i += 1
+            axes = [
+                indices
+                for _, indices in axes
+            ]
+            operands[num] = _transpose_ex(
+                op, axes
+            )
 
 
 def einsum(*operands, **kwargs):
