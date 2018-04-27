@@ -592,6 +592,13 @@ class TestFusionUfunc(unittest.TestCase):
                                      scale=(higher - lower),
                                      seed=seed) + lower
 
+    def random_imag(self, lower=-1000, higher=1000, seed=0):
+        return testing.shaped_random((3, 3),
+                                     xp=cupy,
+                                     dtype=numpy.complex128,
+                                     scale=(higher - lower),
+                                     seed=seed) + lower
+
     def check(self, func, n, gen, args=None):
         if args is None:
             args = ((),) * n
@@ -838,6 +845,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.add, 2, self.random_real)
         self.check(cupy.reciprocal, 1, self.random_real)
         self.check(cupy.negative, 1, self.random_real)
+        self.check(cupy.angle, 1, self.random_imag)
+        self.check(cupy.conj, 1, self.random_imag)
+        self.check(cupy.real, 1, self.random_imag)
+        self.check(cupy.imag, 1, self.random_imag)
         self.check(cupy.multiply, 2, self.random_real)
         self.check(cupy.divide, 2, self.random_real)
         self.check(cupy.power, 2, self.random_real, ((0, 10),) * 2)
@@ -1388,3 +1399,25 @@ class TestFusionInputNum(unittest.TestCase):
 
         f(testing.shaped_arange((1,), numpy, 'f'))
         f(testing.shaped_arange((1,), cupy, 'f'))
+
+
+@testing.gpu
+class TestFusionPythonConstant(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_python_scalar(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * numpy.asscalar(dtype(1))
+        return f(testing.shaped_arange((1,), xp, dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_numpy_scalar(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * dtype(1)
+        return f(testing.shaped_arange((1,), xp, dtype))
