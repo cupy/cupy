@@ -28,7 +28,7 @@ def unique(ar, return_index=False, return_inverse=False,
     * the number of times each unique value comes up in the input array
 
     Args:
-        ar(cupy.ndarray): Input array. This will be flattened if it is not
+        ar(array_like): Input array. This will be flattened if it is not
             already 1-D.
         return_index(bool, optional): If True, also return the indices of `ar`
             (along the specified axis, if provided, or in the flattened array)
@@ -59,7 +59,7 @@ def unique(ar, return_index=False, return_inverse=False,
     if axis is not None:
         raise NotImplementedError('axis option is not supported yet.')
 
-    ar = ar.flatten()
+    ar = cupy.asarray(ar).flatten()
 
     if return_index or return_inverse:
         perm = ar.argsort()
