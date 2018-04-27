@@ -295,6 +295,23 @@ def einsum(*operands, **kwargs):
             dtype=result_dtype
         )
 
+    if len(operands) >= 2:
+        # Don't squeeze if unary, because this affects later (in trivial sum)
+        # whether the return is a writeable view.
+        for num in range(len(operands)):
+            op = operands[num]
+            if 1 in op.shape:
+                squeeze_indices = []
+                sub = []
+                for i, s in enumerate(input_subscripts[num]):
+                    if op.shape[i] == 1:
+                        squeeze_indices.append(i)
+                    else:
+                        sub.append(s)
+                input_subscripts[num] = sub
+                operands[num] = xp.squeeze(op, axis=tuple(squeeze_indices))
+                assert len(operands[num].shape) == len(input_subscripts[num])
+
     # unary einsum without summation should return a (writable) view
     returns_view = len(operands) == 1
 
@@ -319,19 +336,6 @@ def einsum(*operands, **kwargs):
 
             # numpy.sum uses platform integer types by default
             operands[num] = op.sum(axis=sum_axes, dtype=dtype or op.dtype)
-
-    for num in range(len(operands)):
-        op = operands[num]
-        if 1 in op.shape:
-            squeeze_indices = []
-            sub = []
-            for i, s in enumerate(input_subscripts[num]):
-                if op.shape[i] == 1:
-                    squeeze_indices.append(i)
-                else:
-                    sub.append(s)
-            input_subscripts[num] = sub
-            operands[num] = xp.squeeze(op, axis=tuple(squeeze_indices))
 
     """
     count_dict = {k: 0 for k in dimension_dict}
