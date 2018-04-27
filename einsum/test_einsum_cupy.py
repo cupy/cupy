@@ -166,6 +166,18 @@ class TestEinSumUnaryOperation(unittest.TestCase):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         return xp.einsum(self.subscripts, a)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_unary_views(self, xp, dtype):
+        if dtype in self.skip_dtypes:
+            return xp.array([])
+        a = testing.shaped_arange(self.shape_a, xp, dtype)
+        b = xp.einsum(self.subscripts, a)
+
+        if b.ndim != 0:  # scalar is returned if numpy
+            b[...] = -testing.shaped_arange(b.shape, xp, dtype)
+        return a
+
 
 @testing.parameterize(
     # outer
