@@ -287,7 +287,16 @@ def einsum(*operands, **kwargs):
 
     _einsum_diagonals(input_subscripts, operands)
 
-    returns_view = len(operands) == 1  # and there's no sum
+    # no raise after this
+
+    if any(op.size == 0 for op in operands):
+        return xp.zeros(
+            tuple(dimension_dict[s] for s in output_subscript),
+            dtype=result_dtype
+        )
+
+    # unary einsum without summation should return a (writable) view
+    returns_view = len(operands) == 1
 
     # unary sum
     for num, sub in enumerate(input_subscripts):
