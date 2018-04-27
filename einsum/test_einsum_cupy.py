@@ -5,6 +5,34 @@ import numpy
 import cupy_testing as testing
 
 
+"""
+class TestA(unittest.TestCase):
+
+    shape_a = (1, 1)
+    shape_b = (3, 4)
+    shape_c = (1, 1)
+    subscripts = 'ij,jk,kl'
+    optimize = True
+
+    @testing.for_all_dtypes_combination(['dtype_x', 'dtype_y'], no_bool=True, no_float16=True)
+    # @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_ternary(self, dtype_x, dtype_y):
+        a = testing.shaped_arange(self.shape_a, numpy, dtype_x)
+        b = testing.shaped_arange(self.shape_b, numpy, dtype_x)
+        c = testing.shaped_arange(self.shape_c, numpy, dtype_y)
+        return numpy.einsum(self.subscripts, a, b, c, optimize=self.optimize)
+
+
+a = np.array([[1.+1.j]])
+b = np.array([[ 1. +1.j,  2. +2.j,  3. +3.j,  4. +4.j],
+       [ 5. +5.j,  6. +6.j,  7. +7.j,  8. +8.j],
+       [ 9. +9.j, 10.+10.j, 11.+11.j, 12.+12.j]])
+c = np.array([[1]], dtype=np.int32)
+np.einsum('ij,jk,kl', a, b, c, optimize=True)
+# This raises error, due to numpy issue #10930.
+"""
+
+
 def _dec_shape(shape, dec):
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
@@ -335,6 +363,10 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         a = testing.shaped_arange(self.shape_a, xp, dtypes[0])
         b = testing.shaped_arange(self.shape_b, xp, dtypes[1])
         c = testing.shaped_arange(self.shape_c, xp, dtypes[2])
+        # Avoid numpy issue #10930
+        a.ravel()[:1] = 1
+        b.ravel()[:1] = 1
+        c.ravel()[:1] = 1
         return xp.einsum(self.subscripts, a, b, c, optimize=self.optimize)
 
 
