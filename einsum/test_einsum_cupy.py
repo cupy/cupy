@@ -292,6 +292,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     def setUp(self):
         self.shape_a = _dec_shape(self.shape_a, self.shape_x)
         self.shape_b = _dec_shape(self.shape_b, self.shape_x)
+        self.shape_c = _dec_shape(self.shape_c, self.shape_x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
