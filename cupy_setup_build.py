@@ -17,7 +17,6 @@ from setuptools.command import build_ext
 from setuptools.command import sdist
 
 from install import build
-from install import utils
 
 
 required_cython_version = pkg_resources.parse_version('0.26.1')
