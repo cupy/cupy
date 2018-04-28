@@ -318,7 +318,7 @@ def einsum(*operands, **kwargs):
 
     # unary sum
     for num, sub in enumerate(input_subscripts):
-        other_subscripts = input_subscripts.copy()
+        other_subscripts = list(input_subscripts)
         other_subscripts[num] = output_subscript
         other_subscripts = _concat(other_subscripts)
         sum_axes = tuple(
