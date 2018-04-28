@@ -399,7 +399,7 @@ def einsum(*operands, **kwargs):
 
         tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(batch_size, -1, contract_size)
         tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(batch_size, contract_size, -1)
-        if dtype and xp.result_type(tmp0, tmp1) != dtype:
+        if dtype is not None and xp.result_type(tmp0, tmp1) != dtype:
             tmp0 = tmp0.astype(dtype)
             tmp1 = tmp1.astype(dtype)
         tmp_out = xp.matmul(tmp0, tmp1)
