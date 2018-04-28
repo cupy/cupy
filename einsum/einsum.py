@@ -234,7 +234,7 @@ def einsum(*operands, **kwargs):
         xp.asanyarray(arr)
         for arr in operands
     ]
-    result_dtype = dtype or xp.result_type(*operands)
+    result_dtype = xp.result_type(*operands) if dtype is None else dtype
 
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
@@ -336,7 +336,9 @@ def einsum(*operands, **kwargs):
             op = operands[num]
 
             # numpy.sum uses platform integer types by default
-            operands[num] = op.sum(axis=sum_axes, dtype=dtype or op.dtype)
+            operands[num] = op.sum(
+                axis=sum_axes,
+                dtype=op.dtype if dtype is None else dtype)
 
     """
     count_dict = {k: 0 for k in dimension_dict}
