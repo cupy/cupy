@@ -7,8 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestPacking(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()

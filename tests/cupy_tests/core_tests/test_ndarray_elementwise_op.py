@@ -11,8 +11,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayElementwiseOp(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'],
                                         no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
@@ -516,8 +514,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
 @testing.gpu
 class TestArrayIntElementwiseOp(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)

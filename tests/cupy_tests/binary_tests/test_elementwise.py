@@ -6,8 +6,6 @@ from cupy import testing
 @testing.gpu
 class TestElementwise(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
     def check_unary_int(self, name, xp, dtype):

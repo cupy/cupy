@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestSort(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     # Test ranks
 
     @testing.numpy_cupy_raises()
@@ -161,8 +159,6 @@ class TestSort(unittest.TestCase):
 @testing.gpu
 class TestLexsort(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     # Test ranks
 
     @testing.numpy_cupy_raises()
@@ -206,8 +202,6 @@ class TestLexsort(unittest.TestCase):
 }))
 @testing.gpu
 class TestArgsort(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def argsort(self, a, axis=-1):
         if self.external:
@@ -306,8 +300,6 @@ class TestArgsort(unittest.TestCase):
 @testing.gpu
 class TestMsort(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     # Test base cases
 
     @testing.numpy_cupy_raises()
@@ -342,8 +334,6 @@ class TestMsort(unittest.TestCase):
 }))
 @testing.gpu
 class TestPartition(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def partition(self, a, kth, axis=-1):
         if self.external:
@@ -510,8 +500,6 @@ class TestPartition(unittest.TestCase):
 }))
 @testing.gpu
 class TestArgpartition(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def argpartition(self, a, kth, axis=-1):
         if self.external:

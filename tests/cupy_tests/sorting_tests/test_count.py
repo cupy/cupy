@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestCount(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     def test_count_nonzero(self, dtype):
         def func(xp):
