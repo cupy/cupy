@@ -336,7 +336,7 @@ class spmatrix(object):
             cupy.ndarray: Summed array.
 
         .. seealso::
-           :func:`scipy.sparse.spmatrix.sum`
+           :meth:`scipy.sparse.spmatrix.sum`
 
         """
         util.validateaxis(axis)

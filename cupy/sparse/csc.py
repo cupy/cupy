@@ -138,7 +138,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupy.ndarray: Dense array representing the same matrix.
 
-        .. seealso:: :func:`cupy.sparse.csc_array.toarray`
+        .. seealso:: :meth:`scipy.sparse.csc_matrix.toarray`
 
         """
         if order is None:

@@ -24,7 +24,8 @@ def lsqr(A, b):
         b (cupy.ndarray): Right-hand side vector.
 
     Returns:
-        ret (tuple): Its length must be ten. It has same type elements
+        tuple:
+            Its length must be ten. It has same type elements
             as SciPy. Only the first element, the solution vector ``x``, is
             available and other elements are expressed as ``None`` because
             the implementation of cuSOLVER is different from the one of SciPy.

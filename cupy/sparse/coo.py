@@ -196,7 +196,7 @@ class coo_matrix(sparse_data._data_matrix):
         """Eliminate duplicate matrix entries by adding them together.
 
         .. seealso::
-           :func:`scipy.sparse.coo_matrix.sum_duplicates`
+           :meth:`scipy.sparse.coo_matrix.sum_duplicates`
 
         """
         if self._has_canonical_format:
@@ -242,8 +242,7 @@ class coo_matrix(sparse_data._data_matrix):
                 row[index] = src_row;
                 col[index] = src_col;
                 ''',
-                'sum_duplicates_assign',
-                preamble=util._preamble_atomic_add
+                'sum_duplicates_assign'
             )(src_data, src_row, src_col, index, data, row, col)
 
         self.data = data
@@ -261,7 +260,7 @@ class coo_matrix(sparse_data._data_matrix):
         Returns:
             cupy.ndarray: Dense array representing the same value.
 
-        .. seealso:: :func:`cupy.sparse.coo_array.toarray`
+        .. seealso:: :meth:`scipy.sparse.coo_matrix.toarray`
 
         """
         return self.tocsr().toarray(order=order, out=out)

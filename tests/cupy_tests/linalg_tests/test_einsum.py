@@ -150,6 +150,9 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (2, 3), 'subscripts': 'ij->...ij'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ij...->ij'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'i...j->ij'},  # do nothing
+
+    {'shape_a': (), 'subscripts': ''},  # do nothing
+    {'shape_a': (), 'subscripts': '->'},  # do nothing
 )
 class TestEinSumUnaryOperation(unittest.TestCase):
     # Avoid overflow
@@ -244,8 +247,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 
 
 def _target_dtype(dtype):
-    if (dtype == numpy.complex64 or dtype == numpy.complex128 or
-            dtype == numpy.complex256):
+    if (dtype == numpy.complex64 or dtype == numpy.complex128):
         return numpy.complex64
     else:
         return numpy.float32

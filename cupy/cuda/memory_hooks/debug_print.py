@@ -35,7 +35,7 @@ class DebugPrintHook(memory_hook.MemoryHook):
         ``size`` is the requested memory size to allocate, and
         ``mem_size`` is the rounded memory size to be allocated, and
         ``mem_ptr`` is the memory pointer, and
-        ``pmem_id`` is cupy.cuda.memory.PooledMemory object ID.
+        ``pmem_id`` is the pooled memory object ID.
 
     Attributes:
         file: Output file_like object that redirect to.

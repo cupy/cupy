@@ -608,7 +608,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
-    """Decorator that checks the fixture with all float dtypes.
+    """Decorator that checks the fixture with float dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -643,7 +643,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with all dtypes.
+    """Decorator that checks the fixture with unsinged dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -681,7 +681,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
 
 def for_complex_dtypes(name='dtype'):
-    """Decorator that checks the fixture with all complex dtypes.
+    """Decorator that checks the fixture with complex dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -908,6 +908,20 @@ def with_requires(*requirements):
 
     msg = 'requires: {}'.format(','.join(requirements))
     return unittest.skipIf(skip, msg)
+
+
+def numpy_satisfies(version_range):
+    """Returns True if numpy version satisfies the specified criteria.
+
+    Args:
+        version_range: A version specifier (e.g., `>=1.13.0`).
+    """
+    spec = 'numpy{}'.format(version_range)
+    try:
+        pkg_resources.require(spec)
+    except pkg_resources.VersionConflict:
+        return False
+    return True
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
