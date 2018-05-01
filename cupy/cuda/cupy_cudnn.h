@@ -168,37 +168,6 @@ cudnnStatus_t cudnnSoftmaxBackward(...) {
 }
 
 
-typedef enum {} cudnnConvolutionBwdDataAlgo_t;
-typedef enum {} cudnnConvolutionBwdDataPreference_t;
-typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
-typedef enum {} cudnnConvolutionBwdFilterPreference_t;
-typedef enum {} cudnnDeterminism_t;
-typedef enum {} cudnnMathType_t;
-typedef struct {
-  cudnnConvolutionFwdAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionFwdAlgoPerf_t;
-typedef struct {
-  cudnnConvolutionBwdFilterAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionBwdFilterAlgoPerf_t;
-typedef struct {
-  cudnnConvolutionBwdDataAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-  cudnnDeterminism_t determinism;
-  cudnnMathType_t mathType;
-} cudnnConvolutionBwdDataAlgoPerf_t;
-
 cudnnStatus_t cudnnAddTensor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -332,6 +301,33 @@ cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
 cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
+
+typedef enum {} cudnnConvolutionBwdDataAlgo_t;
+typedef enum {} cudnnConvolutionBwdDataPreference_t;
+typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
+typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef enum {} cudnnDeterminism_t;
+
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionFwdAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdFilterAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx_v7(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
