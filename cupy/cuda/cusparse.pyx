@@ -926,6 +926,7 @@ cpdef ccsc2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -936,6 +937,7 @@ cpdef zcsc2dense(
         size_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -1077,6 +1079,7 @@ cpdef cnnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         cuComplex tol):
     cdef int nnz_total
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const cuComplex *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -1089,6 +1092,7 @@ cpdef znnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         cuDoubleComplex tol):
     cdef int nnz_total
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const cuDoubleComplex *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -1128,6 +1132,7 @@ cpdef ccsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, cuComplex tol):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -1140,6 +1145,7 @@ cpdef zcsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, cuDoubleComplex tol):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>inVal, <const int *>inColInd,
@@ -1175,6 +1181,7 @@ cpdef cdense2csc(
         size_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex *>A,
         lda, <const int *>nnzPerCol, <cuComplex *>cscValA, <int *>cscRowIndA,
@@ -1185,6 +1192,7 @@ cpdef zdense2csc(
         size_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZdense2csc(
         <Handle>handle, m, n,
         <const MatDescr>descrA, <const cuDoubleComplex *>A,
@@ -1220,6 +1228,7 @@ cpdef cdense2csr(
         size_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>A, lda, <const int *>nnzPerRow,
@@ -1230,6 +1239,7 @@ cpdef zdense2csr(
         size_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>A, lda, <const int *>nnzPerRow,
@@ -1260,6 +1270,7 @@ cpdef dnnz(
 cpdef cnnz(
         size_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const cuComplex *>A, lda, <int *>nnzPerRowColumn,
@@ -1269,6 +1280,7 @@ cpdef cnnz(
 cpdef znnz(
         size_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
+    setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const cuDoubleComplex *>A, lda, <int *>nnzPerRowColumn,
