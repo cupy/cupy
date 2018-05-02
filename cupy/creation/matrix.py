@@ -39,8 +39,7 @@ def diag(v, k=0):
         ret.diagonal(k)[:] = v
         return ret
     else:
-        # its okay to cupy.diag(numpy.eye(2)) returns NumPy instead of CuPy?
-        return v.diagonal(k)
+        return cupy.array(v.diagonal(k))
 
 
 def diagflat(v, k=0):

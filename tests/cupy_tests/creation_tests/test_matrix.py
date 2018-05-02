@@ -27,14 +27,14 @@ class TestMatrix(unittest.TestCase):
     def test_diag_extraction_from_nested_list(self, xp):
         a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         r = xp.diag(a, 1)
-        # self.assertIsInstance(r, xp.ndarray)
+        self.assertIsInstance(r, xp.ndarray)
         return r
 
     @testing.numpy_cupy_array_equal()
     def test_diag_extraction_from_nested_tuple(self, xp):
         a = ((1, 2, 3), (4, 5, 6), (7, 8, 9))
         r = xp.diag(a, -1)
-        # self.assertIsInstance(r, xp.ndarray)
+        self.assertIsInstance(r, xp.ndarray)
         return r
 
     @testing.numpy_cupy_array_equal()
