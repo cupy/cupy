@@ -1,4 +1,3 @@
-import inspect
 import mock
 import numpy
 import six
@@ -8,54 +7,12 @@ import cupy
 from cupy import testing
 
 
-def _fuse_function(func, nin):
-
-    @cupy.fuse()
-    def f1(x):
-        return func(x)
-
-    @cupy.fuse()
-    def f2(x, y):
-        return func(x, y)
-
-    @cupy.fuse()
-    def f3(x, y, z):
-        return func(x, y, z)
-
-    @cupy.fuse()
-    def f5(x1, x2, x3, x4, x5):
-        return func(x1, x2, x3, x4, x5)
-
-    func_dict = {1: f1, 2: f2, 3: f3, 5: f5}
-    return func_dict[nin]
-
-
-def fuse_function(func):
-    if type(func) is cupy.fusion.ufunc:
-        return _fuse_function(func, func.nin)
-    else:
-        return cupy.fuse(func)
-
-
-def fuse_reduction(pre_map, reduce_func, post_map):
-    nin = None
-    if type(pre_map) is cupy.fusion.ufunc:
-        nin = pre_map.nin
-    else:
-        nin = len(inspect.signature(pre_map).parameters)
-
-    def func(*x):
-        return post_map(reduce_func(pre_map(*x)))
-
-    return _fuse_function(func, nin)
-
-
 def fusion_default_array_equal():
     def res_func(func):
         def res(xxx, name, xp, dtype):
             f = getattr(cupy, name)
             val = func(xxx, name, xp, dtype)
-            return fuse_function(f)(*val)
+            return cupy.fuse(f)(*val)
         return res
     return res_func
 
@@ -627,7 +584,7 @@ class TestFusionUfunc(unittest.TestCase):
         if error_types is None:
             error_types = ()
 
-        f = fuse_function(func)
+        f = cupy.fuse(func)
 
         # Prepare input arrays
         if not isinstance(gen, tuple):
@@ -698,7 +655,9 @@ class TestFusionUfunc(unittest.TestCase):
         self._check_reduce(func, n, reduce_f, gen, args)
 
     def _check_reduce(self, func, n, reduce_f, gen, args):
-        f = fuse_reduction(func, reduce_f, lambda x: x)
+        @cupy.fuse()
+        def f(*args):
+            return reduce_f(func(*args))
 
         data = [gen(*a) for a in args]
         ret0 = reduce_f(func(*data))  # Non-fused
@@ -1419,47 +1378,3 @@ class TestFusionPythonConstant(unittest.TestCase):
         def f(x):
             return x * dtype(1)
         return f(testing.shaped_arange((1,), xp, dtype))
-
-
-@testing.gpu
-class TestFusionInputNum(unittest.TestCase):
-
-    @testing.for_float_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_overwrite(self, xp, dtype):
-        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
-        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
-        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
-
-        @cupy.fuse()
-        def f(x, y):
-            return x + y
-
-        d = f(a, b, c)
-        return a + b * 10 + c * 100 + d * 1000
-
-    @testing.for_float_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_overwrite_x(self, xp, dtype):
-        a = xp.array([2, 2, 3, 3], dtype=dtype)
-        b = xp.array([2, 3, 2, 3], dtype=dtype)
-
-        @cupy.fuse()
-        def f(x, y):
-            return x + y
-
-        c = f(a, b, a)
-        return a + b * 10 + c * 100
-
-    @testing.for_float_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_overwrite_y(self, xp, dtype):
-        a = xp.array([2, 2, 3, 3], dtype=dtype)
-        b = xp.array([2, 3, 2, 3], dtype=dtype)
-
-        @cupy.fuse()
-        def f(x, y):
-            return x + y
-
-        c = f(a, b, b)
-        return a + b * 10 + c * 100
