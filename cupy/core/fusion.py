@@ -1,5 +1,4 @@
 import functools
-from inspect import signature
 import six
 from six.moves import builtins
 import string
@@ -626,8 +625,7 @@ def _postfix_code(data_type, fixed_type, operation):
     return module_code
 
 
-def _get_fusion_from_types(func, nin, types, name):
-    in_types = types[:nin]
+def _get_fusion_from_types(func, in_types, name):
     history = _FusionHistory()
     in_params = [history.fresh_param(t) for t in in_types]
     in_pvars = [FusionVarPython(_, history) for _ in in_params]
@@ -711,7 +709,6 @@ class Fusion(object):
     def __init__(self, func, name=None):
         self.func = func
         self.name = name or func.__name__
-        self.nin = len(signature(func).parameters)
         self._memo = {}
 
     def __repr__(self):
@@ -725,11 +722,6 @@ class Fusion(object):
             _thread_local.in_fusion = False
 
     def compile(self, *args, **kwargs):
-        if len(args) == 0:
-            raise Exception('number of arguments must be more than 0')
-        if len(args) < self.nin:
-            raise Exception('numof parameter : %d < num of arguments : %d'
-                            % (len(args), self.nin))
         if builtins.any(
                 not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic))
                 for _ in args):
@@ -744,30 +736,15 @@ class Fusion(object):
             key = tuple(types)
             if key not in self._memo:
                 self._memo[key] = _get_fusion_from_types(
-                    self.func, self.nin, types, self.name)
+                    self.func, types, self.name)
             return self._memo[key]
         else:
             if builtins.any(type(_) is core.ndarray for _ in args):
                 types = '.'.join(repr(type(_)) for _ in args)
                 message = "Can't fuse \n %s(%s)" % (self.name, types)
                 warnings.warn(message)
-            if len(args) == self.nin:
-                return (self.func, {})
             else:
-                def return_func(*args, **kwargs):
-                    result = self.func(*(args[:self.nin]), **kwargs)
-                    result_tup = result if type(result) == tuple else (result,)
-                    for param, value in zip(args[self.nin:], result_tup):
-                        if param.shape == value.shape:
-                            if isinstance(param, numpy.ndarray):
-                                numpy.copyto(param, value)
-                            else:
-                                param.data = value
-                        else:
-                            raise ValueError('Shape mismatch {} and {}'.format(
-                                param.shape, value.shape))
-                    return result
-                return (return_func, {})
+                return (self.func, {})
 
     def _call(self, *args, **kwargs):
         func, kw = self.compile(*args, **kwargs)
