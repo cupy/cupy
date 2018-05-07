@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestJoin(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()

@@ -14,8 +14,6 @@ from cupy import testing
 @testing.gpu
 class TestDistributions(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def check_distribution(self, dist_func, loc_dtype, scale_dtype, dtype):
         loc = cupy.ones(self.loc_shape, dtype=loc_dtype)
         scale = cupy.ones(self.scale_shape, dtype=scale_dtype)

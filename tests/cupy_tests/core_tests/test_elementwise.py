@@ -13,8 +13,6 @@ from cupy import testing
 @testing.gpu
 class TestElementwise(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def check_copy(self, dtype, src_id, dst_id):
         with cuda.Device(src_id):
             src = testing.shaped_arange((2, 3, 4), dtype=dtype)
@@ -65,8 +63,6 @@ class TestElementwise(unittest.TestCase):
 
 @testing.gpu
 class TestElementwiseInvalidArgument(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def test_invalid_kernel_name(self):
         with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):

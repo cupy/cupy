@@ -60,8 +60,6 @@ class TestAverage(unittest.TestCase):
 @testing.gpu
 class TestMeanVar(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_mean_all(self, xp, dtype):

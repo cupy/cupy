@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestIndices(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_indices_list0(self, xp, dtype):
@@ -33,8 +31,6 @@ class TestIndices(unittest.TestCase):
 @testing.gpu
 class TestIX_(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.numpy_cupy_array_list_equal()
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
@@ -55,8 +51,6 @@ class TestIX_(unittest.TestCase):
 
 @testing.gpu
 class TestR_(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -112,8 +106,6 @@ class TestR_(unittest.TestCase):
 @testing.gpu
 class TestC_(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_c_1(self, xp, dtype):
@@ -140,8 +132,6 @@ class TestC_(unittest.TestCase):
 @testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
             cupy.indexing.generate.AxisConcatenator.__init__()
@@ -153,8 +143,6 @@ class TestAxisConcatenator(unittest.TestCase):
 
 @testing.gpu
 class TestUnravelIndex(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
