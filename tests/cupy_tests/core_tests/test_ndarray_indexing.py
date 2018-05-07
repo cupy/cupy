@@ -73,8 +73,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_getitem(self, xp, dtype):
@@ -116,8 +114,6 @@ class TestArrayInvalidIndex(unittest.TestCase):
 
 @testing.gpu
 class TestArrayIndex(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

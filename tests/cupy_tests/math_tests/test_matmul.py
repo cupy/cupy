@@ -26,8 +26,6 @@ from cupy import testing
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
-    # _multiprocess_can_split_ = True
-
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     @testing.with_requires('numpy>=1.10')
@@ -67,8 +65,6 @@ class TestMatmul(unittest.TestCase):
     }))
 @testing.gpu
 class TestMatmulLarge(unittest.TestCase):
-
-    # _multiprocess_can_split_ = True
 
     # Avoid overflow
     skip_dtypes = {

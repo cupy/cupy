@@ -6,8 +6,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayContiguity(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def test_is_contiguous(self):
         a = testing.shaped_arange((2, 3, 4))
         self.assertTrue(a.flags.c_contiguous)

@@ -25,8 +25,6 @@ def fusion_default_array_equal():
 @testing.gpu
 class TestFusionElementwise(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
     @fusion_default_array_equal()
@@ -64,8 +62,6 @@ class TestFusionElementwise(unittest.TestCase):
 @testing.gpu
 class TestFusionComparison(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -95,8 +91,6 @@ class TestFusionComparison(unittest.TestCase):
 
 @testing.gpu
 class TestFusionContent(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -128,8 +122,6 @@ class TestFusionContent(unittest.TestCase):
 @testing.gpu
 class TestFusionOps(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -160,8 +152,6 @@ class TestFusionOps(unittest.TestCase):
 
 @testing.gpu
 class TestFusionTrigonometric(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -219,8 +209,6 @@ class TestFusionTrigonometric(unittest.TestCase):
 @testing.gpu
 class TestFusionHyperbolic(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -264,8 +252,6 @@ class TestFusionHyperbolic(unittest.TestCase):
 @testing.gpu
 class TestFusionRounding(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -301,8 +287,6 @@ class TestFusionRounding(unittest.TestCase):
 
 @testing.gpu
 class TestFusionExplog(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -352,8 +336,6 @@ class TestFusionExplog(unittest.TestCase):
 
 @testing.gpu
 class TestFusionFloating(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -412,8 +394,6 @@ class TestFusionFloating(unittest.TestCase):
 
 @testing.gpu
 class TestFusionArithmetic(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -895,8 +875,6 @@ class TestFusionUfunc(unittest.TestCase):
 @testing.gpu
 class TestFusionMisc(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
@@ -1005,8 +983,6 @@ class TestFusionMisc(unittest.TestCase):
 
 @testing.gpu
 class TestFusionFuse(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()

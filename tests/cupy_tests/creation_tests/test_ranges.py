@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestRanges(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_arange(self, xp, dtype):

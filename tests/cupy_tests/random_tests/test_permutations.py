@@ -10,13 +10,11 @@ import numpy
 @testing.gpu
 class TestPermutations(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
+    pass
 
 
 @testing.gpu
 class TestShuffle(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     # Test ranks
 
@@ -60,8 +58,6 @@ class TestShuffle(unittest.TestCase):
 @testing.gpu
 class TestPermutationSoundness(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def setUp(self):
         a = cupy.random.permutation(self.num)
         self.a = a.get()
@@ -81,7 +77,6 @@ class TestPermutationSoundness(unittest.TestCase):
 @testing.gpu
 class TestPermutationRandomness(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
     num = 256
 
     def setUp(self):
