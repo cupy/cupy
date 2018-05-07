@@ -6,8 +6,6 @@ from cupy import testing
 @testing.gpu
 class TestCorrelation(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_corrcoef(self, xp, dtype):

@@ -14,8 +14,6 @@ from cupy.testing import condition
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64])
@@ -40,8 +38,6 @@ class TestCholeskyDecomposition(unittest.TestCase):
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
     def check_mode(self, array, mode, dtype):
@@ -73,8 +69,6 @@ class TestQRDecomposition(unittest.TestCase):
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSVD(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
     def check_usv(self, array, dtype):

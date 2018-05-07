@@ -264,18 +264,14 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefd']
-
-
-def _const_to_str(val):
-    return str(val).lower() if type(val) is bool else str(val)
+_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 
 def _normalize_arg(arg, mem):
     arg_type = type(arg)
     if arg_type is _FusionRef:
         return arg._var
-    is_scalar = arg_type in [int, float, bool]
+    is_scalar = arg_type in six.integer_types + (float, bool, complex)
     is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
     if is_scalar or is_ndarray:
         return mem.get_fresh(numpy.dtype(arg_type), const=arg)
@@ -392,11 +388,19 @@ def _get_out_params(var_list):
 def _get_declaration_from_var(var):
     if var.const is None:
         return '%s v%d;\n' % (_dtype_to_ctype[var.ty], var.num)
+
+    c = var.const
+    val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
+
+    if isinstance(val, bool):
+        init = '= %s' % str(c).lower()
+    elif isinstance(val, complex):
+        init = '(%s, %s)' % (c.real, c.imag)
+    elif isinstance(val, six.integer_types + (float,)):
+        init = '= %s' % str(c)
     else:
-        return 'const %s v%d = %s;\n' % (
-            _dtype_to_ctype[var.ty],
-            var.num,
-            _const_to_str(var.const))
+        raise TypeError('Invalid constant type: {}'.format(type(c)))
+    return 'const %s v%d %s;\n' % (_dtype_to_ctype[var.ty], var.num, init)
 
 
 def _get_declaration_from_op(op):
@@ -796,6 +800,10 @@ nextafter = _create_ufunc(math.floating.nextafter, numpy.nextafter)
 add = _create_ufunc(math.arithmetic.add, numpy.add)
 reciprocal = _create_ufunc(math.arithmetic.reciprocal, numpy.reciprocal)
 negative = _create_ufunc(math.arithmetic.negative, numpy.negative)
+angle = _create_ufunc(math.arithmetic.angle, numpy.angle)
+conj = _create_ufunc(math.arithmetic.conj, numpy.conj)
+real = _create_ufunc(math.arithmetic.real, numpy.real)
+imag = _create_ufunc(math.arithmetic.imag, numpy.imag)
 multiply = _create_ufunc(math.arithmetic.multiply, numpy.multiply)
 divide = _create_ufunc(math.arithmetic.divide, numpy.divide)
 power = _create_ufunc(math.arithmetic.power, numpy.power)

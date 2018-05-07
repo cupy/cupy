@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayBoolOp(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     def test_bool_empty(self, dtype):
         self.assertFalse(bool(cupy.array((), dtype=dtype)))
@@ -42,8 +40,6 @@ class TestArrayBoolOp(unittest.TestCase):
 
 @testing.gpu
 class TestArrayUnaryOp(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -84,8 +80,6 @@ class TestArrayUnaryOp(unittest.TestCase):
 
 @testing.gpu
 class TestArrayIntUnaryOp(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()

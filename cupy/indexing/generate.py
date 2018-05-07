@@ -1,6 +1,3 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
-
 # class s_(object):
 
 import numpy
@@ -93,17 +90,14 @@ class CClass(AxisConcatenator):
 c_ = CClass()
 """Translates slice objects to concatenation along the second axis.
 
-This is a CuPy object that corresponds to :func:`cupy.r_`, which is
+This is a CuPy object that corresponds to :obj:`cupy.r_`, which is
 useful because of its common occurrence. In particular, arrays will be
 stacked along their last axis after being upgraded to at least 2-D with
 1's post-pended to the shape (column vectors made out of 1-D arrays).
 
-For detailed documentation, see :func:`r_`.
+For detailed documentation, see :obj:`r_`.
 
 This implementation is partially borrowed from NumPy's one.
-
-Args:
-    Not a function, so takes no parameters
 
 Returns:
     cupy.ndarray: Joined array.
@@ -140,9 +134,6 @@ or using string integers like '-1') are not implemented yet
 compared with NumPy.
 
 This implementation is partially borrowed from NumPy's one.
-
-Args:
-    Not a function, so takes no parameters
 
 Returns:
     cupy.ndarray: Joined array.
@@ -253,16 +244,19 @@ def ix_(*args):
 
 
 def unravel_index(indices, dims, order='C'):
-    """Converts a flat index or array of flat indices into a tuple of coordinate arrays.
+    """Converts array of flat indices into a tuple of coordinate arrays.
 
     Args:
         indices (cupy.ndarray): An integer array whose elements are indices
             into the flattened version of an array of dimensions :obj:`dims`.
-        dims (tuple of ints): The shape of the array to use for unraveling indices.
-        order ('C' or 'F'): Determines whether the indices should be viewed as indexing
-            in row-major (C-style) or column-major (Fortran-style) order.
+        dims (tuple of ints): The shape of the array to use for unraveling
+            indices.
+        order ('C' or 'F'): Determines whether the indices should be viewed as
+            indexing in row-major (C-style) or column-major (Fortran-style)
+            order.
 
-    Returns: tuple of ndarrays:
+    Returns:
+        tuple of ndarrays:
         Each array in the tuple has the same shape as the indices array.
 
     Examples
