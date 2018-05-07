@@ -49,6 +49,20 @@ class TestB(unittest.TestCase):
         return numpy.einsum(self.subscripts, a, b)
 
 
+class TestC(unittest.TestCase):
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test1(self, xp):
+        shape_a = (1, 1, 1, 1, 1, 1)
+        dtype_a = numpy.complex128
+        shape_b = (2, 3, 2, 2)
+        dtype_b = numpy.int8
+        subscripts = '...lmn,lmno->...o'
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.einsum(subscripts, a, b, optimize=False)
+
+
+"""
 def _dec_shape(shape, dec):
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
@@ -384,4 +398,5 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b, c, optimize=self.optimize)
 
 
+"""
 testing.run_module(__name__, __file__)
