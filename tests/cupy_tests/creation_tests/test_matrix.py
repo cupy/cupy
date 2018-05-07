@@ -59,8 +59,6 @@ class TestMatrix(unittest.TestCase):
 @testing.gpu
 class TestTri(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_tri(self, xp, dtype):
@@ -85,8 +83,6 @@ class TestTri(unittest.TestCase):
 )
 @testing.gpu
 class TestTriLowerAndUpper(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
