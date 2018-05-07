@@ -70,18 +70,18 @@ def tri(N, M=None, k=0, dtype=float):
     """
     if M is None:
         M = N
-    out = cupy.zeros((N, M), dtype=dtype)
+    out = cupy.empty((N, M), dtype=dtype)
 
     return cupy.ElementwiseKernel(
         'int32 m, int32 k',
-        'raw T out',
+        'T out',
         '''
         int row = i % m;
         int col = i / m;
-        if (row <= col + k) out[i] = 1;
+        out = (row <= col + k);
         ''',
         'tri',
-    )(M, k, out, size=out.size)
+    )(M, k, out)
 
 
 def tril(m, k=0):
@@ -99,11 +99,10 @@ def tril(m, k=0):
     .. seealso:: :func:`numpy.tril`
 
     """
-    if not isinstance(m, cupy.ndarray):
-        m = cupy.asarray(m)
+    m = cupy.asarray(m)
     mask = tri(*m.shape[-2:], k=k, dtype=bool)
 
-    return cupy.where(mask, m, cupy.zeros(1, m.dtype))
+    return cupy.where(mask, m, m.dtype.type(0))
 
 
 def triu(m, k=0):
@@ -121,11 +120,10 @@ def triu(m, k=0):
     .. seealso:: :func:`numpy.triu`
 
     """
-    if not isinstance(m, cupy.ndarray):
-        m = cupy.asarray(m)
+    m = cupy.asarray(m)
     mask = tri(*m.shape[-2:], k=k-1, dtype=bool)
 
-    return cupy.where(mask, cupy.zeros(1, m.dtype), m)
+    return cupy.where(mask, m.dtype.type(0), m)
 
 
 # TODO(okuta): Implement vander
