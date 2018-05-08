@@ -363,18 +363,6 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 
 
 @testing.parameterize(*augument_einsum_testcases(
-*testing.product_dict(testing.product(
-    {
-        'optimize': [
-            False,
-            True,  # 'greedy'
-            'optimal',
-            ['einsum_path', (0, 1), (0, 1)],
-            ['einsum_path', (0, 2), (0, 1)],
-            ['einsum_path', (1, 2), (0, 1)],
-        ],
-    }
-), [
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
      'subscripts': 'ij,jk,kl'},
     {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
@@ -383,7 +371,6 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij,ki,i->jk'},
     {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
      'subscripts': 'i...,i,...i->...i'},
-])
 ))
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
@@ -395,10 +382,21 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
         c = testing.shaped_arange(self.shape_c, xp, dtype_c)
 
-        # Avoid numpy issues #11059, #11060
-        optimize = False if xp is numpy else self.optimize
+        out = xp.einsum(self.subscripts, a, b, c, optimize=False)
 
-        return xp.einsum(self.subscripts, a, b, c, optimize=optimize)
+        if xp is not numpy:  # Avoid numpy issues #11059, #11060
+            for optimize in [
+                    False,
+                    True,  # 'greedy'
+                    'optimal',
+                    ['einsum_path', (0, 1), (0, 1)],
+                    ['einsum_path', (0, 2), (0, 1)],
+                    ['einsum_path', (1, 2), (0, 1)],
+            ]:
+                optimized_out = xp.einsum(
+                    self.subscripts, a, b, c, optimize=optimize)
+                testing.assert_allclose(optimized_out, out)
+        return out
 
 
 testing.run_module(__name__, __file__)
