@@ -386,7 +386,6 @@ class TestEinSumTernaryOperation(unittest.TestCase):
 
         if xp is not numpy:  # Avoid numpy issues #11059, #11060
             for optimize in [
-                    False,
                     True,  # 'greedy'
                     'optimal',
                     ['einsum_path', (0, 1), (0, 1)],
