@@ -47,7 +47,7 @@ def _transpose_ex(a, axeses):
         )
         shape.append(dim)
         strides.append(stride)
-    return xp.set_shape_and_strides(a.view(), shape, strides)
+    return xp.view_from_shape_and_strides(a, shape, strides)
 
 
 def _parse_int_subscript(sub):
@@ -212,6 +212,7 @@ def _einsum_diagonals(input_subscripts, operands):
                 indices
                 for _, indices in axes
             ]
+            # assert _transpose_ex(op, axes).base.base is op.view().base
             operands[num] = _transpose_ex(
                 op, axes
             )
@@ -375,7 +376,9 @@ def einsum(*operands, **kwargs):
                 .astype(result_dtype, copy=False)
             )
 
-    if not returns_view:
+    if returns_view:
+        operands = [arr.view() for arr in operands]
+    else:
         operands = [
             arr.astype(result_dtype, casting=casting, copy=False)
             for arr in operands
