@@ -295,13 +295,13 @@ def einsum(*operands, **kwargs):
 
     # no more raises
 
-    if any(op.size == 0 for op in operands):
-        return xp.zeros(
-            tuple(dimension_dict[s] for s in output_subscript),
-            dtype=result_dtype
-        )
-
     if len(operands) >= 2:
+        if any(op.size == 0 for op in operands):
+            return xp.zeros(
+                tuple(dimension_dict[s] for s in output_subscript),
+                dtype=result_dtype
+            )
+
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
         for num in range(len(operands)):
