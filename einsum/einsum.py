@@ -358,13 +358,6 @@ def einsum(*operands, **kwargs):
 
     # no more casts
 
-    """
-    count_dict = {k: 0 for k in dimension_dict}
-    for sub in input_subscripts:
-        for s in sub:
-            count_dict[s] += 1
-    """
-
     optimize_algorithms = {
         'greedy': _greedy_path,
         'optimal': _optimal_path,
@@ -391,15 +384,6 @@ def einsum(*operands, **kwargs):
         sub0 = input_subscripts.pop(idx0)
         op0 = operands.pop(idx0)
 
-        """
-        # This does not work because 0-dim array here might have been >=1-dim
-        # einsum.einsum(',i->', 3, np.array([1, 2], np.int16))
-        if op0.ndim == 0 and op1.ndim != 0:
-            op0 = op0.astype(op1.dtype)
-        elif op1.ndim == 0 and op0.ndim != 0:
-            op1 = op1.astype(op0.dtype)
-        """
-
         set0 = set(sub0)
         set1 = set(sub1)
         assert len(set0) == len(sub0)
@@ -420,11 +404,6 @@ def einsum(*operands, **kwargs):
             batch_size, -1, contract_size)
         tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(
             batch_size, contract_size, -1)
-        """
-        if dtype is not None and xp.result_type(tmp0, tmp1) != dtype:
-            tmp0 = tmp0.astype(dtype)
-            tmp1 = tmp1.astype(dtype)
-        """
         tmp_out = xp.matmul(tmp0, tmp1)
 
         sub_b = [sub0[i] for i in bs0]
@@ -452,12 +431,6 @@ def einsum(*operands, **kwargs):
         for s in output_subscript
     ])
     assert returns_view or op_out.dtype == result_dtype
-    """
-    if optimize is False:
-        if not returns_view and op_out.dtype != result_dtype:
-            # assert False  # TODO(kataoka)
-            op_out = op_out.astype(result_dtype)
-    """
     return op_out
 
 
@@ -481,10 +454,3 @@ def _make_transpose_axes(sub, b_dims, c_dims):
         _tuple_sorted_by_0(cs),
         _tuple_sorted_by_0(ts),
     )
-"""
-    if position == 0:
-        it = itertools.chain(sorted(bs), sorted(ts), sorted(cs))
-    else:
-        it = itertools.chain(sorted(bs), sorted(cs), sorted(ts))
-    return tuple(i for _, i in it)
-"""
