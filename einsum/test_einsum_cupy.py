@@ -262,7 +262,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         b = xp.einsum(self.subscripts, a)
 
-        return b.ndim ==0 or xp.shares_memory(a, b)
+        return b.ndim == 0 or xp.shares_memory(a, b)
 
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_out'],
