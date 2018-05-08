@@ -365,7 +365,6 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 @testing.parameterize(*augument_einsum_testcases(
 *testing.product_dict(testing.product(
     {
-        'dtype_map': [(0, 0, 1), (0, 1, 0), (1, 0, 0)],
         'optimize': [
             False,
             True,  # 'greedy'
@@ -388,14 +387,13 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 ))
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
-        ['dtype_x', 'dtype_y'],
+        ['dtype_a', 'dtype_b', 'dtype_c'],
         no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum_ternary(self, xp, dtype_x, dtype_y):
-        dtypes = [[dtype_x, dtype_y][self.dtype_map[i]] for i in range(3)]
-        a = testing.shaped_arange(self.shape_a, xp, dtypes[0])
-        b = testing.shaped_arange(self.shape_b, xp, dtypes[1])
-        c = testing.shaped_arange(self.shape_c, xp, dtypes[2])
+    def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
+        a = testing.shaped_arange(self.shape_a, xp, dtype_a)
+        b = testing.shaped_arange(self.shape_b, xp, dtype_b)
+        c = testing.shaped_arange(self.shape_c, xp, dtype_c)
 
         # Avoid numpy issues #11059, #11060
         optimize = False if xp is numpy else self.optimize
