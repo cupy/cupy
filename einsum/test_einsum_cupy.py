@@ -231,9 +231,9 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (2, 3, 4), 'subscripts': 'j...i->i...j'},  # swap axes
     {'shape_a': (3,), 'subscripts': 'i->'},  # sum
     {'shape_a': (3, 3), 'subscripts': 'ii'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
@@ -249,28 +249,30 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (), 'subscripts': '->'},  # do nothing
 ))
 class TestEinSumUnaryOperation(unittest.TestCase):
-    # Avoid overflow
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
-        if dtype in self.skip_dtypes:
-            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         return xp.einsum(self.subscripts, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_views(self, xp, dtype):
-        if dtype in self.skip_dtypes:
-            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         b = xp.einsum(self.subscripts, a)
 
         if b.ndim != 0:  # scalar is returned if numpy
-            b[...] = -testing.shaped_arange(b.shape, xp, dtype)
+            b[...] = 0
         return a
+
+    @testing.for_all_dtypes_combination(
+        ['dtype_a', 'dtype_out'],
+        no_complex=True)  # avoid ComplexWarning
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
+        a = testing.shaped_arange(self.shape_a, xp, dtype_a)
+        return xp.einsum(self.subscripts, a, dtype=dtype_out, casting='unsafe')
 
 
 class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
