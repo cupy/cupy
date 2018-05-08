@@ -423,7 +423,11 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
         c = testing.shaped_arange(self.shape_c, xp, dtype_c)
 
-        out = xp.einsum(self.subscripts, a, b, c, optimize=False)
+        try:
+            out = xp.einsum(self.subscripts, a, b, c, optimize=False)
+        except TypeError:
+            self.assertIs(xp, numpy)
+            out = xp.einsum(self.subscripts, a, b, c)
 
         if xp is not numpy:  # Avoid numpy issues #11059, #11060
             for optimize in [
