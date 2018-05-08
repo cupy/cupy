@@ -212,7 +212,6 @@ def _einsum_diagonals(input_subscripts, operands):
                 indices
                 for _, indices in axes
             ]
-            # assert _transpose_ex(op, axes).base.base is op.view().base
             operands[num] = _transpose_ex(
                 op, axes
             )
