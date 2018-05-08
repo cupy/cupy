@@ -201,6 +201,24 @@ class TestEinSumError(unittest.TestCase):
     def test_invalid_diagonal3(self, xp):
         xp.einsum('ii', xp.arange(3).reshape(1, 3))
 
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_char1(self, xp):
+        xp.einsum('i,i', xp.arange(2), xp.arange(3))
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis1(self, xp):
+        xp.einsum('...,...', xp.arange(2), xp.arange(3))
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis2(self, xp):
+        a = xp.arange(12).reshape(2, 3, 2)
+        xp.einsum('i...,...i', a, a)
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis3(self, xp):
+        a = xp.arange(12).reshape(2, 3, 2)
+        xp.einsum('...,...', a, a[:, :2])
+
     # invalid -> operator
     @testing.numpy_cupy_raises()
     def test_invalid_arrow1(self, xp):
@@ -329,6 +347,9 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
 
 
 @testing.parameterize(*augument_einsum_testcases(
+    # dot vecvec
+    {'shape_a': (3,), 'shape_b': (3,),
+     'subscripts': 'i,i'},
     # outer
     {'shape_a': (2,), 'shape_b': (3,),
      'subscripts': 'i,j'},
