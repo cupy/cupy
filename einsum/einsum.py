@@ -218,6 +218,30 @@ def _einsum_diagonals(input_subscripts, operands):
 
 
 def einsum(*operands, **kwargs):
+    """einsum(subscripts, *operands, dtype=False, casting='safe')
+
+    Evaluates the Einstein summation convention on the operands.
+    Using the Einstein summation convention, many common multi-dimensional
+    array operations can be represented in a simple fashion. This function
+    provides a way to compute such summations.
+
+    .. note::
+       Memory contiguity of calculation result is not always compatible with
+       `numpy.einsum`.
+       ``out`` and ``order`` options are not supported.
+
+    Args:
+        subscripts (str): Specifies the subscripts for summation.
+        operands (sequence of arrays): These are the arrays for the operation.
+
+    Returns:
+        cupy.ndarray:
+            The calculation based on the Einstein summation convention.
+
+    .. seealso:: :func:`numpy.einsum`
+
+    """
+
     input_subscripts, output_subscript, operands = \
         _parse_einsum_input(operands)
     assert isinstance(input_subscripts, list)
