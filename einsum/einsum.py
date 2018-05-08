@@ -413,17 +413,22 @@ def einsum(*operands, **kwargs):
     }
     if optimize is False:
         path = [tuple(range(len(operands)))]
-    elif isinstance(optimize, str) and optimize in optimize_algorithms.keys():
-        input_sets = [set(sub) for sub in input_subscripts]
-        output_set = set(output_subscript)
-        memory_arg = 1e99  # TODO(kataoka): fix
-        algo = optimize_algorithms[optimize]
-        path = algo(input_sets, output_set, dimension_dict, memory_arg)
     elif len(optimize) and (optimize[0] == 'einsum_path'):
         path = optimize[1:]
     else:
-        raise TypeError("Did not understand the path (optimize): %s"
-                        % str(optimize))
+        try:
+            if len(optimize) == 2 and isinstance(optimize[1], (int, float)):
+                algo = optimize_algorithms[optimize[0]]
+                memory_limit = int(optimize[1])
+            else:
+                algo = optimize_algorithms[optimize]
+                memory_limit = 2 ** 31  # TODO(kataoka): fix?
+        except (TypeError, KeyError):  # unhashable type or not found
+            raise TypeError("Did not understand the path (optimize): %s"
+                            % str(optimize))
+        input_sets = [set(sub) for sub in input_subscripts]
+        output_set = set(output_subscript)
+        path = algo(input_sets, output_set, dimension_dict, memory_limit)
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum
