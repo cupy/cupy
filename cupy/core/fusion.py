@@ -168,13 +168,12 @@ class FusionOp(object):
     def code(self):
         args_sub = ["v{}_{}".format(self.index, i)
                     for i in six.moves.range(len(self.args))]
+        args_list = list(zip(self.args, args_sub))
         code = "// op  # {}\n".format(self.index)
-        code += ''.join("{} = v{};\n".format(s, v.index)
-                        for v, s in zip(self.args, args_sub))
+        code += ''.join("{} = v{};\n".format(s, v.index) for v, s in args_list)
         code += self.func.fcall(args_sub)
         code += ''.join("v{} = {};\n".format(v.index, s)
-                        for v, s in zip(self.args, args_sub)
-                        if v.const is None)
+                        for v, s in args_list[len(self.func.in_params):])
         return code
 
 

@@ -1175,6 +1175,20 @@ class TestFusionFuse(unittest.TestCase):
 
         g(a, b)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_different_type_same_ufunc(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=numpy.int32)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=numpy.float32)
+
+        @cupy.fuse()
+        def g(x, y, z):
+            return (x + y, y + z, z + x)
+
+        s, t, u = g(a, b, c)
+        return s
+
     @unittest.skipUnless(six.PY2, 'Only for py2')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
