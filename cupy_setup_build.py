@@ -6,6 +6,7 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
+import glob
 import os
 from os import path
 import shutil
@@ -489,23 +490,34 @@ def get_long_description():
 
 
 def prepare_wheel_libs():
+    """Bundle shared libraries for wheels."""
     libs = []
-    libdir = 'cupy/_lib'
+    libdirname = None
 
-    # Clean up the library directory.
-    if os.path.exists(libdir):
-        print("Removing directory: {}".format(libdir))
-        shutil.rmtree(libdir)
-    os.mkdir(libdir)
+    if sys.platform.startswith('win32'):
+        libdirname = 'cuda'
+        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
+        # Clean up existing libraries.
+        for libfile in libfiles:
+            print("Removing file: {}".format(libfile))
+            os.remove(libfile)
+    else:
+        libdirname = '_lib'
+        libdir = 'cupy/{}'.format(libdirname)
+        # Clean up the library directory.
+        if os.path.exists(libdir):
+            print("Removing directory: {}".format(libdir))
+            shutil.rmtree(libdir)
+        os.mkdir(libdir)
 
     # Copy specified libraries to the library directory.
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
         print("Copying library for wheel: {}".format(lib))
         libname = path.basename(lib)
-        libpath = '{}/{}'.format(libdir, libname)
+        libpath = 'cupy/{}/{}'.format(libdirname, libname)
         shutil.copy2(lib, libpath)
-        libs.append('_lib/{}'.format(libname))
+        libs.append('{}/{}'.format(libdirname, libname))
     return libs
 
 
