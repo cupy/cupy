@@ -169,6 +169,10 @@ class TestEinSumError(unittest.TestCase):
     def test_invalid_char3(self, xp):
         xp.einsum('i->&', xp.array([0, 0]))
 
+    @testing.numpy_cupy_raises()
+    def test_invalid_char4(self, xp):
+        xp.einsum('i->j', xp.array([0, 0]))
+
     # output subscripts must appear in inumpy.t
     @testing.numpy_cupy_raises()
     def test_invalid_output_subscripts1(self, xp):
@@ -213,6 +217,45 @@ class TestEinSumError(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_invalid_arrow4(self, xp):
         xp.einsum('i-', xp.array([0, 0]))
+
+
+class TestListArgEinSumError(unittest.TestCase):
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub1(self, xp):
+        xp.einsum(xp.arange(2), [None])
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub2(self, xp):
+        xp.einsum(xp.arange(2), [0], [1])
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub3(self, xp):
+        xp.einsum(xp.arange(2), [Ellipsis, 0, Ellipsis])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch1(self, xp):
+        xp.einsum(xp.arange(2), [0], xp.arange(3), [0])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch2(self, xp):
+        xp.einsum(xp.arange(2), [0], xp.arange(3), [0], [0])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch3(self, xp):
+        xp.einsum(xp.arange(6).reshape(2, 3), [0, 0])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims1(self, xp):
+        xp.einsum(3, [0])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims2(self, xp):
+        xp.einsum(xp.arange(2), [0, 1])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims3(self, xp):
+        xp.einsum(xp.arange(6).reshape(2, 3), [Ellipsis, 0, 1, 2])
 
 
 @testing.parameterize(*augument_einsum_testcases(
