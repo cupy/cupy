@@ -14,7 +14,7 @@ class TestA(unittest.TestCase):
     subscripts = 'ij,jk,kl'
     optimize = True
 
-    @testing.for_all_dtypes_combination(['dtype_x', 'dtype_y'], no_bool=True, no_float16=True)
+    @testing.for_all_dtypes_combination(['dtype_x', 'dtype_y'], no_float16=True)
     # @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, dtype_x, dtype_y):
         a = testing.shaped_arange(self.shape_a, numpy, dtype_x)
@@ -40,7 +40,7 @@ class TestB(unittest.TestCase):
     subscripts = 'ijk,jil->kl'
     # optimize = True
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'], no_bool=True)
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     # @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_np(self, dtype_a, dtype_b):
         a = testing.shaped_arange(self.shape_a, numpy, dtype_a)
@@ -339,7 +339,9 @@ class TestEinSumBinaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
     skip_overflow = False
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'], no_bool=True)
+    @testing.for_all_dtypes_combination(
+        ['dtype_a', 'dtype_b'],
+        no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         if self.skip_overflow and (dtype_a in self.skip_dtypes or
@@ -393,7 +395,9 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 class TestEinSumTernaryOperation(unittest.TestCase):
     skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-    @testing.for_all_dtypes_combination(['dtype_x', 'dtype_y'], no_bool=True, no_float16=True)
+    @testing.for_all_dtypes_combination(
+        ['dtype_x', 'dtype_y'],
+        no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_x, dtype_y):
         if self.skip_overflow and (dtype_x in self.skip_dtypes or
