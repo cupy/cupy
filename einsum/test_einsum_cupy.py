@@ -443,4 +443,44 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return out
 
 
+@testing.parameterize(
+    # memory constraint
+    {'subscript': 'a,b,c->abc'},
+    {'subscript': 'acdf,jbje,gihb,hfac'},
+    # long paths
+    {'subscript': 'acdf,jbje,gihb,hfac,gfac,gifabc,hfac'},
+    {'subscript': 'chd,bde,agbc,hiad,bdi,cgh,agdb'},
+    # edge cases
+    {'subscript': 'eb,cb,fb->cef'},
+    {'subscript': 'dd,fb,be,cdb->cef'},
+    {'subscript': 'bca,cdb,dbf,afc->'},
+    {'subscript': 'dcc,fce,ea,dbf->ab'},
+    {'subscript': 'a,ac,ab,ad,cd,bd,bc->'},
+)
+@testing.with_requires('numpy>=1.12')
+class TestEinSumLarge(unittest.TestCase):
+
+    def setUp(self):
+        chars = 'abcdefghij'
+        sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
+        size_dict = {}
+        for size, char in zip(sizes, chars):
+            size_dict[char] = size
+
+        # Builds views based off initial operands
+        string = self.subscript
+        operands = [string]
+        terms = string.split('->')[0].split(',')
+        for term in terms:
+            dims = [size_dict[x] for x in term]
+            operands.append(numpy.random.rand(*dims))
+
+        self.operands = operands
+
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum(self, xp):
+        # I hope there's no problem with np.einsum for these cases...
+        return xp.einsum(*self.operands, optimize=True)
+
+
 testing.run_module(__name__, __file__)
