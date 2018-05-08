@@ -308,7 +308,7 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij...,ji...->i...'},
     # trace and tensordot and diagonal
     {'shape_a': (2, 3, 2, 4), 'shape_b': (3, 2, 2),
-     'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
+     'subscripts': 'ijil,jkk->kj'},
     {'shape_a': (2, 4, 2, 3), 'shape_b': (3, 2, 4),
      'subscripts': 'i...ij,ji...->...j'},
     # broadcast
@@ -327,26 +327,20 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
     {'shape_a': (4, 3), 'shape_b': (3, 2),
      'subscripts': 'ik,k...->i...'},
     {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
-     'subscripts': 'ijkl,k', 'skip_overflow': True},
+     'subscripts': 'ijkl,k'},
     {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
-     'subscripts': '...kl,k', 'skip_overflow': True},
+     'subscripts': '...kl,k'},
     {'shape_a': (2, 3, 4, 5), 'shape_b': (4,),
-     'subscripts': '...kl,k...', 'skip_overflow': True},
+     'subscripts': '...kl,k...'},
     {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
      'subscripts': '...lmn,lmno->...o'},
 ))
 class TestEinSumBinaryOperation(unittest.TestCase):
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
-    skip_overflow = False
-
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
         no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
-        if self.skip_overflow and (dtype_a in self.skip_dtypes or
-                                   dtype_b in self.skip_dtypes):
-            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
         return xp.einsum(self.subscripts, a, b)
