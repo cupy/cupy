@@ -62,7 +62,6 @@ class TestC(unittest.TestCase):
         return xp.einsum(subscripts, a, b, optimize=False)
 
 
-"""
 def _dec_shape(shape, dec):
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
@@ -274,6 +273,18 @@ class TestEinSumUnaryOperation(unittest.TestCase):
         return a
 
 
+class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_int(self, xp, dtype):
+        return xp.asarray(xp.einsum('', 2, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_float(self, xp, dtype):
+        return xp.asarray(xp.einsum('', 2.0, dtype=dtype))
+
+
 @testing.parameterize(*augument_einsum_testcases(
     # outer
     {'shape_a': (2,), 'shape_b': (3,),
@@ -337,7 +348,6 @@ class TestEinSumBinaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b)
 
 
-#@unittest.skip
 class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -398,5 +408,4 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b, c, optimize=self.optimize)
 
 
-"""
 testing.run_module(__name__, __file__)

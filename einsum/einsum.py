@@ -224,6 +224,7 @@ def einsum(*operands, **kwargs):
     assert isinstance(operands, list)
 
     dtype = kwargs.pop('dtype', None)
+    casting = kwargs.pop('casting', 'safe')
 
     optimize = kwargs.pop('optimize', False)
     # assert optimize is False, "optimize: sorry"
@@ -233,11 +234,11 @@ def einsum(*operands, **kwargs):
         raise TypeError("Did not understand the following kwargs: %s"
                         % list(kwargs.keys))
 
+    result_dtype = xp.result_type(*operands) if dtype is None else dtype
     operands = [
         xp.asanyarray(arr)
         for arr in operands
     ]
-    result_dtype = xp.result_type(*operands) if dtype is None else dtype
 
     input_subscripts = [
         _parse_ellipsis_subscript(sub, ndim=arr.ndim)
@@ -292,7 +293,7 @@ def einsum(*operands, **kwargs):
 
     _einsum_diagonals(input_subscripts, operands)
 
-    # no raise after this
+    # no more raises
 
     if any(op.size == 0 for op in operands):
         return xp.zeros(
@@ -337,14 +338,25 @@ def einsum(*operands, **kwargs):
                 for i, s in enumerate(sub)
                 if i not in sum_axes
             ]
-            op0 = operands[num]
 
-            # numpy.sum uses platform integer types by default
-            tmp_dtype = op0.dtype if dtype is None else dtype
-            op_out = op0.sum(axis=sum_axes, dtype=dtype)
-            if op_out.dtype != tmp_dtype:
-                op_out = op_out.astype(tmp_dtype)
-            operands[num] = op_out
+            # Cannot do the following in cupy (bug?)
+            # operands[num] = operands[num].sum(axis=sum_axes, dtype=result_dtype)
+
+            operands[num] = (
+                operands[num]
+                .astype(result_dtype, casting=casting, copy=False)
+                .sum(axis=sum_axes)
+                # .sum uses platform integer types by default
+                .astype(result_dtype, copy=False)
+            )
+
+    if not returns_view:
+        operands = [
+            arr.astype(result_dtype, casting=casting, copy=False)
+            for arr in operands
+        ]
+
+    # no more casts
 
     """
     count_dict = {k: 0 for k in dimension_dict}
@@ -408,9 +420,11 @@ def einsum(*operands, **kwargs):
             batch_size, -1, contract_size)
         tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(
             batch_size, contract_size, -1)
+        """
         if dtype is not None and xp.result_type(tmp0, tmp1) != dtype:
             tmp0 = tmp0.astype(dtype)
             tmp1 = tmp1.astype(dtype)
+        """
         tmp_out = xp.matmul(tmp0, tmp1)
 
         sub_b = [sub0[i] for i in bs0]
@@ -439,10 +453,13 @@ def einsum(*operands, **kwargs):
         dimension_dict[s]
         for s in output_subscript
     ])
+    assert returns_view or op_out.dtype == result_dtype
+    """
     if optimize is False:
         if not returns_view and op_out.dtype != result_dtype:
             # assert False  # TODO(kataoka)
             op_out = op_out.astype(result_dtype)
+    """
     return op_out
 
 
