@@ -195,6 +195,7 @@ class _FusionHistory(object):
         self.preamble_set = set()
         self.param_list = []
         self.local_list = []
+
         self.reduce_op = None
         self.reduce_identity = None
         self.reduce_kwargs = None
@@ -209,21 +210,21 @@ class _FusionHistory(object):
         return "<_FusionMem, op_list={}, var_list={}>".format(
             self.op_list, self.var_list)
 
+    def is_postmap(self):
+        return self.reduce_op is not None
+
+    def ndarray_type(self):
+        return ReducedVarPython if self.is_postmap() else FusionVarPython
+
     def fresh_index(self):
         res = self.count
         self.count += 1
         return res
 
-    def fresh_param(self, *args, **kwargs):
+    def fresh_premap_param(self, *args, **kwargs):
         index = self.fresh_index()
         var = _FusionVarCUDA(index, *args, **kwargs)
         self.param_list.append(var)
-        return var
-
-    def fresh_local(self, *args, **kwargs):
-        index = self.fresh_index()
-        var = _FusionVarCUDA(index, *args, **kwargs)
-        self.local_list.append(var)
         return var
 
     def fresh_postmap_param(self, *args, **kwargs):
@@ -232,13 +233,25 @@ class _FusionHistory(object):
         self.postmap_param_list.append(var)
         return var
 
-    def fresh_postmap_local(self, *args, **kwargs):
+    def _fresh_premap_local(self, *args, **kwargs):
+        index = self.fresh_index()
+        var = _FusionVarCUDA(index, *args, **kwargs)
+        self.local_list.append(var)
+        return var
+
+    def _fresh_postmap_local(self, *args, **kwargs):
         index = self.fresh_index()
         var = _FusionVarCUDA(index, *args, **kwargs)
         self.postmap_local_list.append(var)
         return var
 
-    def set_op(self, *args, **kwargs):
+    def fresh_local(self, *args, **kwargs):
+        if self.is_postmap():
+            return self._fresh_postmap_local(*args, **kwargs)
+        else:
+            return self._fresh_premap_local(*args, **kwargs)
+
+    def _set_premap_op(self, *args, **kwargs):
         op = FusionOp(len(self.op_list), *args, **kwargs)
         subm = op.func
         self.submodules[subm.key()] = subm
@@ -246,13 +259,19 @@ class _FusionHistory(object):
         self.preamble_set.add(subm.preamble)
         return op
 
-    def set_postmap_op(self, *args, **kwargs):
+    def _set_postmap_op(self, *args, **kwargs):
         op = FusionOp(len(self.postmap_op_list), *args, **kwargs)
         subm = op.func
         self.submodules[subm.key()] = subm
         self.postmap_op_list.append(op)
         self.preamble_set.add(subm.preamble)
         return op
+
+    def set_op(self, *args, **kwargs):
+        if self.is_postmap():
+            return self._set_postmap_op(*args, **kwargs)
+        else:
+            return self._set_premap_op(*args, **kwargs)
 
     def get_submodules(self):
         return '\n'.join([_.code() for _ in self.submodules.values()])
@@ -443,33 +462,23 @@ class ReducedVarPython(FusionVarPython):
     #   shape (tuple of ints): !! not supported !!
 
 
-def _normalize_arg(arg, mem, is_postmap):
+def _normalize_arg(arg, history):
     """This converts `arg` to _FusionVarCUDA data.
 
     Args:
        arg (FusionVarPython or a primitive type)
-       mem (_FusionHistory)
-       is_postmap (bool)
+       history (_FusionHistory)
     Return value: _FusionVarCUDA
     """
     arg_type = type(arg)
-    if is_postmap:
-        if arg_type is ReducedVarPython:
-            return arg._var
-        elif arg_type is FusionVarPython:
-            raise Exception("Pre-map after reducing")
-    else:
-        if arg_type is FusionVarPython:
-            return arg._var
-        elif arg_type is ReducedVarPython:
-            raise Exception("Pre-map after reducing")
+    if arg_type is history.ndarray_type():
+        return arg._var
+    elif arg_type in (FusionVarPython, ReducedVarPython):
+        raise Exception('Shape mismatch')
     is_scalar = arg_type in six.integer_types + (float, bool, complex)
     is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
     if is_scalar or is_ndarray:
-        if is_postmap:
-            return mem.fresh_postmap_local(numpy.dtype(arg_type), const=arg)
-        else:
-            return mem.fresh_local(numpy.dtype(arg_type), const=arg)
+        return history.fresh_local(numpy.dtype(arg_type), const=arg)
     raise Exception('Unsupported type %s' % arg_type)
 
 
@@ -522,14 +531,9 @@ def _convert_from_ufunc(ufunc):
 
     def func(*args, **kwargs):
         history = get_history(args)
-        is_postmap = history.reduce_op is not None
-        var_list = [_normalize_arg(_, history, is_postmap) for _ in args]
-        if is_postmap:
-            var_python, fresh = (ReducedVarPython, history.fresh_postmap_local)
-        else:
-            var_python, fresh = (FusionVarPython, history.fresh_local)
+        var_list = [_normalize_arg(_, history) for _ in args]
         if 'out' in kwargs:
-            var = _normalize_arg(kwargs.pop('out'), history, is_postmap)
+            var = _normalize_arg(kwargs.pop('out'), history)
             var_list.append(var)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
@@ -544,13 +548,13 @@ def _convert_from_ufunc(ufunc):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
-                        v = fresh(ty_outs[i])
+                        v = history.fresh_local(ty_outs[i])
                         out_vars.append(v)
-                        ret.append(var_python(v, history))
+                        ret.append(history.ndarray_type()(v, history))
                     elif numpy.can_cast(ty_outs[i], out_vars[i].ty,
                                         "same_kind"):
                         v = out_vars[i]
-                        ret.append(var_python(v, history))
+                        ret.append(history.ndarray_type()(v, history))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -563,10 +567,7 @@ def _convert_from_ufunc(ufunc):
                 out_params = [(ty_outs[i], 'out{}'.format(i))
                               for i, t in enumerate(out_vars)]
                 subm = Submodule(ufunc, in_params, out_params, op)
-                if is_postmap:
-                    history.set_postmap_op(subm, in_vars + out_vars)
-                else:
-                    history.set_op(subm, in_vars + out_vars)
+                history.set_op(subm, in_vars + out_vars)
                 return ret[0] if len(ret) == 1 else tuple(ret)
         raise TypeError('Invalid type cast in \'{}\': {} -> {}'.format(
             ufunc.name,
@@ -626,16 +627,15 @@ def _postfix_code(data_type, fixed_type, operation):
 
 def _get_fusion_from_types(func, in_types, name):
     history = _FusionHistory()
-    in_params = [history.fresh_param(t) for t in in_types]
+    in_params = [history.fresh_premap_param(t) for t in in_types]
     in_pvars = [FusionVarPython(_, history) for _ in in_params]
     out_pvars = func(*in_pvars)
     out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
     out_pvars = [_ for _ in out_pvars if _ is not None]
-    is_postmap = history.reduce_op is not None
-    out_cvars = [_normalize_arg(_, history, is_postmap) for _ in out_pvars]
+    out_cvars = [_normalize_arg(_, history) for _ in out_pvars]
 
     out_types = [_.dtype for _ in out_pvars]
-    out_params = [history.fresh_param(t) for t in out_types]
+    out_params = [history.fresh_premap_param(t) for t in out_types]
 
     in_params_code = ', '.join(var.declaration_param() for var in in_params)
     out_params_code = ', '.join(var.declaration_param() for var in out_params)
@@ -943,7 +943,7 @@ class reduction(object):
             for op in self._raw._ops:
                 if numpy.can_cast(dtype.type, op[0][0]):
                     return_type = numpy.dtype(op[1][0])
-                    history.premap_ret = _normalize_arg(arg, history, False)
+                    history.premap_ret = _normalize_arg(arg, history)
                     return_var = history.fresh_postmap_param(return_type)
                     history.reduce_op = op
                     history.reduce_identity = self.identity
