@@ -444,10 +444,8 @@ def einsum(*operands, **kwargs):
 
     transpose_axes = []
     for s in output_subscript:
-        try:
+        if s in sub0:
             transpose_axes.append(sub0.index(s))
-        except ValueError:
-            pass
 
     op_out = op0.transpose(transpose_axes).reshape([
         dimension_dict[s]
