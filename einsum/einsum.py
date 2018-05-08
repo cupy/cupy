@@ -217,6 +217,28 @@ def _einsum_diagonals(input_subscripts, operands):
             )
 
 
+def _iter_path_pairs(path):
+    """Decompose path into binary path
+
+    Args:
+        path (sequence of tuples of ints)
+    
+    Yields:
+        tuple of ints: pair (idx0, idx1) that represents the operation
+            {pop(idx0); pop(idx1); append();}
+    """
+
+    path_pairs = []
+    for indices in path:
+        assert all(idx >= 0 for idx in indices)
+        # [3, 1, 4, 9] -> [(9, 4), (-1, 3), (-1, 1)]
+        if len(indices) >= 2:
+            indices = list(sorted(indices, reverse=True))
+            yield indices[0], indices[1]
+            for idx in indices[2:]:
+                yield -1, idx
+
+
 def einsum(*operands, **kwargs):
     """einsum(subscripts, *operands, dtype=False, casting='safe')
 
@@ -390,7 +412,7 @@ def einsum(*operands, **kwargs):
         'optimal': _optimal_path,
     }
     if optimize is False:
-        path = [(0, 1)] * (len(operands) - 1)  # TODO(kataoka): fix
+        path = [tuple(range(len(operands)))]
     elif isinstance(optimize, str) and optimize in optimize_algorithms.keys():
         input_sets = [set(sub) for sub in input_subscripts]
         output_set = set(output_subscript)
@@ -403,13 +425,12 @@ def einsum(*operands, **kwargs):
         raise TypeError("Did not understand the path (optimize): %s"
                         % str(optimize))
 
-    for idx0, idx1 in path:
-        # repeat binary einsum
-        assert idx0 < idx1
-        sub1 = input_subscripts.pop(idx1)
-        op1 = operands.pop(idx1)
+    for idx0, idx1 in _iter_path_pairs(path):
+        # "reduced" binary einsum
         sub0 = input_subscripts.pop(idx0)
         op0 = operands.pop(idx0)
+        sub1 = input_subscripts.pop(idx1)
+        op1 = operands.pop(idx1)
 
         set0 = set(sub0)
         set1 = set(sub1)
