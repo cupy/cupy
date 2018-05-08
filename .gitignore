@@ -2,9 +2,9 @@
 *.egg/
 *.pyc
 *.pyo
+*.pyd
 *.cpp
 *.so
-*.pyd
 build
 \#*\#
 .\#*
