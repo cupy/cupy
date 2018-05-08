@@ -377,35 +377,30 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
     }
 ), [
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
-     'subscripts': 'ij,jk,kl', 'skip_overflow': True},
+     'subscripts': 'ij,jk,kl'},
     {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
-     'subscripts': 'ij,ik,i->ijk', 'skip_overflow': True},
+     'subscripts': 'ij,ik,i->ijk'},
     {'shape_a': (2, 4), 'shape_b': (3, 2), 'shape_c': (2,),
-     'subscripts': 'ij,ki,i->jk', 'skip_overflow': True},
+     'subscripts': 'ij,ki,i->jk'},
     {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
-     'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
+     'subscripts': 'i...,i,...i->...i'},
 ])
 ))
 class TestEinSumTernaryOperation(unittest.TestCase):
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
-
     @testing.for_all_dtypes_combination(
         ['dtype_x', 'dtype_y'],
         no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_x, dtype_y):
-        if self.skip_overflow and (dtype_x in self.skip_dtypes or
-                                   dtype_y in self.skip_dtypes):
-            return xp.array([])
         dtypes = [[dtype_x, dtype_y][self.dtype_map[i]] for i in range(3)]
         a = testing.shaped_arange(self.shape_a, xp, dtypes[0])
         b = testing.shaped_arange(self.shape_b, xp, dtypes[1])
         c = testing.shaped_arange(self.shape_c, xp, dtypes[2])
-        # Avoid numpy issue #10930
-        a.ravel()[:1] = 1
-        b.ravel()[:1] = 1
-        c.ravel()[:1] = 1
-        return xp.einsum(self.subscripts, a, b, c, optimize=self.optimize)
+
+        # Avoid numpy issues #11059, #11060
+        optimize = False if xp is numpy else self.optimize
+
+        return xp.einsum(self.subscripts, a, b, c, optimize=optimize)
 
 
 testing.run_module(__name__, __file__)
