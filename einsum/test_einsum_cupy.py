@@ -142,11 +142,11 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum(',', 0)
 
     @testing.numpy_cupy_raises()
-    def test_many_dimension1(self, xp):
+    def test_too_many_dimension1(self, xp):
         xp.einsum('i', 0)
 
     @testing.numpy_cupy_raises()
-    def test_many_dimension2(self, xp):
+    def test_too_many_dimension2(self, xp):
         xp.einsum('ij', xp.array([0, 0]))
 
     @testing.numpy_cupy_raises()
