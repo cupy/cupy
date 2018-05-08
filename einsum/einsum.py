@@ -58,8 +58,8 @@ def _parse_int_subscript(sub):
         elif isinstance(s, int):
             subscripts += einsum_symbols[s]
         else:
-            raise TypeError("For this input type lists must contain "
-                            "either int or Ellipsis")
+            raise ValueError("For this input type lists must contain "
+                             "either int or Ellipsis")
     return subscripts
 
 
