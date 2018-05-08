@@ -394,7 +394,7 @@ def einsum(*operands, **kwargs):
     elif isinstance(optimize, str) and optimize in optimize_algorithms.keys():
         input_sets = [set(sub) for sub in input_subscripts]
         output_set = set(output_subscript)
-        memory_arg = 1e99
+        memory_arg = 1e99  # TODO(kataoka): fix
         algo = optimize_algorithms[optimize]
         path = algo(input_sets, output_set, dimension_dict, memory_arg)
     elif len(optimize) and (optimize[0] == 'einsum_path'):
