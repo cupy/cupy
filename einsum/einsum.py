@@ -364,7 +364,8 @@ def einsum(*operands, **kwargs):
             ]
 
             # Cannot do the following in cupy (bug?)
-            # operands[num] = operands[num].sum(axis=sum_axes, dtype=result_dtype)
+            # operands[num] = operands[num].sum(
+            #     axis=sum_axes, dtype=result_dtype)
 
             operands[num] = (
                 operands[num]
