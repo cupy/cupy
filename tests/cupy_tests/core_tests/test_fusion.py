@@ -25,8 +25,6 @@ def fusion_default_array_equal():
 @testing.gpu
 class TestFusionElementwise(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
     @fusion_default_array_equal()
@@ -64,8 +62,6 @@ class TestFusionElementwise(unittest.TestCase):
 @testing.gpu
 class TestFusionComparison(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -95,8 +91,6 @@ class TestFusionComparison(unittest.TestCase):
 
 @testing.gpu
 class TestFusionContent(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -128,8 +122,6 @@ class TestFusionContent(unittest.TestCase):
 @testing.gpu
 class TestFusionOps(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -160,8 +152,6 @@ class TestFusionOps(unittest.TestCase):
 
 @testing.gpu
 class TestFusionTrigonometric(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -219,8 +209,6 @@ class TestFusionTrigonometric(unittest.TestCase):
 @testing.gpu
 class TestFusionHyperbolic(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -264,8 +252,6 @@ class TestFusionHyperbolic(unittest.TestCase):
 @testing.gpu
 class TestFusionRounding(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
@@ -301,8 +287,6 @@ class TestFusionRounding(unittest.TestCase):
 
 @testing.gpu
 class TestFusionExplog(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -352,8 +336,6 @@ class TestFusionExplog(unittest.TestCase):
 
 @testing.gpu
 class TestFusionFloating(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -412,8 +394,6 @@ class TestFusionFloating(unittest.TestCase):
 
 @testing.gpu
 class TestFusionArithmetic(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -487,9 +467,6 @@ class TestFusionArithmetic(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_binary_negative('divide')
 
-    def test_power(self):
-        self.check_binary('power')
-
     def test_power_negative(self):
         self.check_binary_negative_float('power')
 
@@ -545,6 +522,30 @@ class TestFusionArithmetic(unittest.TestCase):
             self.check_binary_negative('remainder')
 
 
+@testing.gpu
+class TestFusionArithmeticLargeTolerance(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    @fusion_default_array_equal()
+    def check_binary_no_complex(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype) + 1
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype) + 1
+        return a, b
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    @fusion_default_array_equal()
+    def check_binary_complex(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype) + 1
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype) + 1
+        return a, b
+
+    def test_power(self):
+        self.check_binary_no_complex('power')
+        self.check_binary_complex('power')
+
+
 class TestFusionUfunc(unittest.TestCase):
 
     @cupy.fuse()
@@ -568,6 +569,13 @@ class TestFusionUfunc(unittest.TestCase):
         return testing.shaped_random((3, 3),
                                      xp=cupy,
                                      dtype=numpy.float64,
+                                     scale=(higher - lower),
+                                     seed=seed) + lower
+
+    def random_imag(self, lower=-1000, higher=1000, seed=0):
+        return testing.shaped_random((3, 3),
+                                     xp=cupy,
+                                     dtype=numpy.complex128,
                                      scale=(higher - lower),
                                      seed=seed) + lower
 
@@ -817,6 +825,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.add, 2, self.random_real)
         self.check(cupy.reciprocal, 1, self.random_real)
         self.check(cupy.negative, 1, self.random_real)
+        self.check(cupy.angle, 1, self.random_imag)
+        self.check(cupy.conj, 1, self.random_imag)
+        self.check(cupy.real, 1, self.random_imag)
+        self.check(cupy.imag, 1, self.random_imag)
         self.check(cupy.multiply, 2, self.random_real)
         self.check(cupy.divide, 2, self.random_real)
         self.check(cupy.power, 2, self.random_real, ((0, 10),) * 2)
@@ -862,8 +874,6 @@ class TestFusionUfunc(unittest.TestCase):
 
 @testing.gpu
 class TestFusionMisc(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -973,8 +983,6 @@ class TestFusionMisc(unittest.TestCase):
 
 @testing.gpu
 class TestFusionFuse(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -1367,3 +1375,25 @@ class TestFusionInputNum(unittest.TestCase):
 
         f(testing.shaped_arange((1,), numpy, 'f'))
         f(testing.shaped_arange((1,), cupy, 'f'))
+
+
+@testing.gpu
+class TestFusionPythonConstant(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_python_scalar(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * numpy.asscalar(dtype(1))
+        return f(testing.shaped_arange((1,), xp, dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_numpy_scalar(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * dtype(1)
+        return f(testing.shaped_arange((1,), xp, dtype))

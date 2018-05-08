@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class SimpleReductionFunction(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def setUp(self):
         self.my_int8_sum = core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
@@ -60,8 +58,6 @@ class SimpleReductionFunction(unittest.TestCase):
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def setUp(self):
         self.my_sum = core.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
@@ -102,8 +98,6 @@ class TestReductionKernel(unittest.TestCase):
 
 @testing.gpu
 class TestReductionKernelInvalidArgument(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def test_invalid_kernel_name(self):
         with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):

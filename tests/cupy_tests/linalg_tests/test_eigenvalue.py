@@ -15,8 +15,6 @@ from cupy import testing
 @testing.gpu
 class TestEigenvalue(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigh(self, xp, dtype):

@@ -14,8 +14,6 @@ from cupy import testing
 @testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -64,8 +62,6 @@ class TestFft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -113,8 +109,6 @@ class TestFft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -148,8 +142,6 @@ class TestFftn(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestRfft(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
@@ -201,8 +193,6 @@ class TestRfft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfft2(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -253,8 +243,6 @@ class TestRfft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfftn(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -289,8 +277,6 @@ class TestRfftn(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestHfft(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_hfft(self, xp, dtype):
@@ -323,8 +309,6 @@ class TestHfft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFftfreq(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fftfreq(self, xp, dtype):
@@ -352,8 +336,6 @@ class TestFftfreq(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFftshift(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)

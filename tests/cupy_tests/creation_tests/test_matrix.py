@@ -6,8 +6,6 @@ from cupy import testing
 @testing.gpu
 class TestMatrix(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.numpy_cupy_array_equal()
     def test_diag1(self, xp):
         a = testing.shaped_arange((3, 3), xp)

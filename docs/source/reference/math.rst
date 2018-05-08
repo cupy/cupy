@@ -118,6 +118,19 @@ Arithmetic operations
    cupy.reciprocal
 
 
+Handling complex numbers
+------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.angle
+   cupy.real
+   cupy.imag
+   cupy.conj
+
+
 Miscellaneous
 -------------
 

@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestDims(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def check_atleast(self, func, xp):
         a = testing.shaped_arange((), xp)
         b = testing.shaped_arange((2,), xp)

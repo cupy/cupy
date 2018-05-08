@@ -67,7 +67,22 @@ from cupy.core import ufunc  # NOQA
 # =============================================================================
 # Constants (borrowed from NumPy)
 # =============================================================================
+from numpy import e  # NOQA
+from numpy import euler_gamma  # NOQA
+from numpy import Inf  # NOQA
+from numpy import inf  # NOQA
+from numpy import Infinity  # NOQA
+from numpy import infty  # NOQA
+from numpy import NAN  # NOQA
+from numpy import NaN  # NOQA
+from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
+from numpy import NINF  # NOQA
+from numpy import NZERO  # NOQA
+from numpy import pi  # NOQA
+from numpy import PINF  # NOQA
+from numpy import PZERO  # NOQA
+
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -511,11 +526,10 @@ from cupy.core.fusion import remainder as mod  # NOQA
 from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
-# TODO(okuta): implement fusion function
-from cupy.core import angle  # NOQA
-from cupy.core import conj  # NOQA
-from cupy.core import imag  # NOQA
-from cupy.core import real  # NOQA
+from cupy.core.fusion import angle  # NOQA
+from cupy.core.fusion import conj  # NOQA
+from cupy.core.fusion import imag  # NOQA
+from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
@@ -563,6 +577,7 @@ from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
 
+from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
