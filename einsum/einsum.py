@@ -1,6 +1,7 @@
 import functools
 import itertools
 import operator
+import warnings
 
 import xp
 
@@ -236,6 +237,7 @@ def _iter_path_pairs(path):
             indices = list(sorted(indices, reverse=True))
             yield indices[0], indices[1]
             for idx in indices[2:]:
+                warnings.warn(RuntimeWarning("memory limit might be ignored"))
                 yield -1, idx
 
 
