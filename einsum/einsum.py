@@ -239,6 +239,28 @@ def _iter_path_pairs(path):
                 yield -1, idx
 
 
+def _make_transpose_axes(sub, b_dims, c_dims):
+    bs = []
+    cs = []
+    ts = []
+    for i, s in enumerate(sub):
+        if s in b_dims:
+            bs.append((s, i))
+        elif s in c_dims:
+            cs.append((s, i))
+        else:
+            ts.append((s, i))
+    return (
+        _tuple_sorted_by_0(bs),
+        _tuple_sorted_by_0(cs),
+        _tuple_sorted_by_0(ts),
+    )
+
+
+def _tuple_sorted_by_0(zs):
+    return tuple(i for _, i in sorted(zs))
+
+
 def einsum(*operands, **kwargs):
     """einsum(subscripts, *operands, dtype=False, casting='safe')
 
@@ -485,25 +507,3 @@ def einsum(*operands, **kwargs):
     ])
     assert returns_view or op_out.dtype == result_dtype
     return op_out
-
-
-def _tuple_sorted_by_0(zs):
-    return tuple(i for _, i in sorted(zs))
-
-
-def _make_transpose_axes(sub, b_dims, c_dims):
-    bs = []
-    cs = []
-    ts = []
-    for i, s in enumerate(sub):
-        if s in b_dims:
-            bs.append((s, i))
-        elif s in c_dims:
-            cs.append((s, i))
-        else:
-            ts.append((s, i))
-    return (
-        _tuple_sorted_by_0(bs),
-        _tuple_sorted_by_0(cs),
-        _tuple_sorted_by_0(ts),
-    )
