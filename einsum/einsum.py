@@ -261,8 +261,7 @@ def _flatten_transpose(a, axeses):
     )
 
 
-def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
-    # TODO(kataoka): don't pass dimension_dict?
+def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others):
     set0 = set(sub0)
     set1 = set(sub1)
     assert len(set0) == len(sub0), "operand 0 should be reduced: diagonal"
@@ -517,7 +516,7 @@ def einsum(*operands, **kwargs):
         sub1 = input_subscripts.pop(idx1)
         sub_others = _concat([output_subscript] + input_subscripts)
         op_out, sub_out = reduced_binary_einsum(
-            op0, sub0, op1, sub1, sub_others, dimension_dict)
+            op0, sub0, op1, sub1, sub_others)
         operands.append(op_out)
         input_subscripts.append(sub_out)
 
