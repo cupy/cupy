@@ -30,7 +30,7 @@ def _transpose_ex(a, axeses):
 
     Args:
         a
-        axeses (list of list of ints)
+        axeses (sequence of sequences of ints)
 
     Returns:
         p: a with its axes permutated. A writeable view is returned whenever
@@ -239,6 +239,28 @@ def _iter_path_pairs(path):
                 yield -1, idx
 
 
+def _flatten_transpose(a, axeses):
+    """Transpose and flatten each
+
+    Args:
+        a
+        axeses (sequence of sequences of ints)
+
+    Returns:
+        aT: a with its axes permutated and flatten
+        shapes: flattened shapes
+    """
+
+    shapes = [
+        [a.shape[axis] for axis in axes]
+        for axes in axeses
+    ]
+    return (
+        a.transpose(sum(axeses, ())).reshape(tuple(map(_prod, shapes))),
+        shapes
+    )
+
+
 def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
     # TODO(kataoka): don't pass dimension_dict?
     set0 = set(sub0)
@@ -254,14 +276,11 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
     bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
     bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
 
-    batch_size = _prod([dimension_dict[s] for s in batch_dims])
-    contract_size = _prod([dimension_dict[s] for s in contract_dims])
-
-    tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(
-        batch_size, -1, contract_size)
-    tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(
-        batch_size, contract_size, -1)
-    tmp_out = xp.matmul(tmp0, tmp1)
+    tmp0, shapes0 = _flatten_transpose(op0, [bs0, ts0, cs0])
+    tmp1, shapes1 = _flatten_transpose(op1, [bs1, cs1, ts1])
+    shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
+    assert shapes0[0] == shapes1[0]
+    op_out = xp.matmul(tmp0, tmp1).reshape(shapes_out)
 
     sub_b = [sub0[i] for i in bs0]
     assert sub_b == [sub1[i] for i in bs1]
@@ -269,8 +288,8 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
     sub_r = [sub1[i] for i in ts1]
 
     sub_out = sub_b + sub_l + sub_r
-    op_out = tmp_out.reshape([dimension_dict[s] for s in sub_out])
     assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
+
     return op_out, sub_out
 
 
