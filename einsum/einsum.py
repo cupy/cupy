@@ -223,13 +223,12 @@ def _iter_path_pairs(path):
 
     Args:
         path (sequence of tuples of ints)
-    
+
     Yields:
         tuple of ints: pair (idx0, idx1) that represents the operation
             {pop(idx0); pop(idx1); append();}
     """
 
-    path_pairs = []
     for indices in path:
         assert all(idx >= 0 for idx in indices)
         # [3, 1, 4, 9] -> [(9, 4), (-1, 3), (-1, 1)]
@@ -238,6 +237,7 @@ def _iter_path_pairs(path):
             yield indices[0], indices[1]
             for idx in indices[2:]:
                 yield -1, idx
+
 
 def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
     # TODO(kataoka): don't pass dimension_dict?
