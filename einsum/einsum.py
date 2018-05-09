@@ -237,7 +237,6 @@ def _iter_path_pairs(path):
             indices = list(sorted(indices, reverse=True))
             yield indices[0], indices[1]
             for idx in indices[2:]:
-                warnings.warn(RuntimeWarning("memory limit might be ignored"))
                 yield -1, idx
 
 
@@ -453,6 +452,9 @@ def einsum(*operands, **kwargs):
         input_sets = [set(sub) for sub in input_subscripts]
         output_set = set(output_subscript)
         path = algo(input_sets, output_set, dimension_dict, memory_limit)
+        if any(len(indices) > 2 for indices in path):
+            warnings.warn(RuntimeWarning(
+                "memory efficient einsum is not supported yet"))
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum
