@@ -1,4 +1,5 @@
 import cupy
+import numpy
 
 
 def empty(shape, dtype=float, order='C'):
@@ -189,7 +190,10 @@ def full(shape, fill_value, dtype=None):
     """
     # TODO(beam2d): Support ordering option
     if dtype is None:
-        dtype = cupy.array(fill_value).dtype
+        if isinstance(fill_value, cupy.ndarray):
+            dtype = fill_value.dtype
+        else:
+            dtype = numpy.array(fill_value).dtype
     a = cupy.ndarray(shape, dtype=dtype)
     a.fill(fill_value)
     return a
