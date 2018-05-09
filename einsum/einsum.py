@@ -239,6 +239,39 @@ def _iter_path_pairs(path):
             for idx in indices[2:]:
                 yield -1, idx
 
+def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
+    # TODO(kataoka): don't pass dimension_dict?
+    set0 = set(sub0)
+    set1 = set(sub1)
+    assert len(set0) == len(sub0)
+    assert len(set1) == len(sub1)
+
+    set_out = set(sub_others)
+    shared = set0 & set1
+    batch_dims = shared & set_out
+    contract_dims = shared - batch_dims
+
+    bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
+    bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
+
+    batch_size = _prod([dimension_dict[s] for s in batch_dims])
+    contract_size = _prod([dimension_dict[s] for s in contract_dims])
+
+    tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(
+        batch_size, -1, contract_size)
+    tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(
+        batch_size, contract_size, -1)
+    tmp_out = xp.matmul(tmp0, tmp1)
+
+    sub_b = [sub0[i] for i in bs0]
+    assert sub_b == [sub1[i] for i in bs1]
+    sub_l = [sub0[i] for i in ts0]
+    sub_r = [sub1[i] for i in ts1]
+
+    sub_out = sub_b + sub_l + sub_r
+    op_out = tmp_out.reshape([dimension_dict[s] for s in sub_out])
+    return op_out, sub_out
+
 
 def _make_transpose_axes(sub, b_dims, c_dims):
     bs = []
@@ -458,43 +491,15 @@ def einsum(*operands, **kwargs):
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum
-        sub0 = input_subscripts.pop(idx0)
         op0 = operands.pop(idx0)
-        sub1 = input_subscripts.pop(idx1)
+        sub0 = input_subscripts.pop(idx0)
         op1 = operands.pop(idx1)
-
-        set0 = set(sub0)
-        set1 = set(sub1)
-        assert len(set0) == len(sub0)
-        assert len(set1) == len(sub1)
-
-        set_out = set(_concat([output_subscript] + input_subscripts))
-        shared = set0 & set1
-        batch_dims = shared & set_out
-        contract_dims = shared - batch_dims
-
-        bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
-        bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
-
-        batch_size = _prod([dimension_dict[s] for s in batch_dims])
-        contract_size = _prod([dimension_dict[s] for s in contract_dims])
-
-        tmp0 = op0.transpose(bs0 + ts0 + cs0).reshape(
-            batch_size, -1, contract_size)
-        tmp1 = op1.transpose(bs1 + cs1 + ts1).reshape(
-            batch_size, contract_size, -1)
-        tmp_out = xp.matmul(tmp0, tmp1)
-
-        sub_b = [sub0[i] for i in bs0]
-        assert sub_b == [sub1[i] for i in bs1]
-        sub_l = [sub0[i] for i in ts0]
-        sub_r = [sub1[i] for i in ts1]
-
-        sub_out = sub_b + sub_l + sub_r
-        op_out = tmp_out.reshape([dimension_dict[s] for s in sub_out])
-
-        input_subscripts.append(sub_out)
+        sub1 = input_subscripts.pop(idx1)
+        sub_others = _concat([output_subscript] + input_subscripts)
+        op_out, sub_out = reduced_binary_einsum(
+            op0, sub0, op1, sub1, sub_others, dimension_dict)
         operands.append(op_out)
+        input_subscripts.append(sub_out)
 
     # unary einsum at last
     op0, = operands
