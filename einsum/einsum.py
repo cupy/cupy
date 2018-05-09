@@ -243,12 +243,12 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
     # TODO(kataoka): don't pass dimension_dict?
     set0 = set(sub0)
     set1 = set(sub1)
-    assert len(set0) == len(sub0)
-    assert len(set1) == len(sub1)
+    assert len(set0) == len(sub0), "operand 0 should be reduced: diagonal"
+    assert len(set1) == len(sub1), "operand 1 should be reduced: diagonal"
 
-    set_out = set(sub_others)
+    set_others = set(sub_others)
     shared = set0 & set1
-    batch_dims = shared & set_out
+    batch_dims = shared & set_others
     contract_dims = shared - batch_dims
 
     bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
@@ -270,6 +270,7 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others, dimension_dict):
 
     sub_out = sub_b + sub_l + sub_r
     op_out = tmp_out.reshape([dimension_dict[s] for s in sub_out])
+    assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
     return op_out, sub_out
 
 
