@@ -3543,9 +3543,14 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2]) * numpy.minimum(a.shape[:-2], b.shape[:-2]).astype(numpy.bool_)
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
+
+    if a.size == 0 or b.size == 0:
+        ret = ndarray(out_shape, ret_dtype)
+        ret.data.memset_async(0, ret.nbytes)
+        return ret
 
     a = ascontiguousarray(a, dtype=dtype)
     b = ascontiguousarray(b, dtype=dtype)
