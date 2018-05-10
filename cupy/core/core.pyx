@@ -3543,7 +3543,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2]) * numpy.minimum(a.shape[:-2], b.shape[:-2]).astype(numpy.bool_)
+    broadcast_pre_shape = numpy.maximum(
+        numpy.array(a.shape[:-2], numpy.uint64) - 1,
+        numpy.array(b.shape[:-2], numpy.uint64) - 1
+    ) + 1
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
