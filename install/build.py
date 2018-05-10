@@ -348,6 +348,14 @@ def check_cusolver_version(compiler, settings):
     return True
 
 
+def check_tc_version(compiler, settings):
+    return True
+
+
+def get_tc_version(formatted=False):
+    return '0.1.1'
+
+
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=()):
     with _tempdir() as temp_dir:

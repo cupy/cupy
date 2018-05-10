@@ -2,7 +2,7 @@ from libcpp cimport vector
 from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
-
+from cupy.core.dlpack cimport DLManagedTensor
 
 cdef class ndarray:
     cdef:
@@ -64,6 +64,7 @@ cdef class ndarray:
                                  vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity=*)
     cdef CPointer get_pointer(self)
+    cpdef object toDlpack(self)
 
 
 cdef class Indexer:

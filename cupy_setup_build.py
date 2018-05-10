@@ -10,6 +10,7 @@ import os
 from os import path
 import shutil
 import sys
+import subprocess
 
 import pkg_resources
 import setuptools
@@ -30,6 +31,7 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core.core',
+            'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',
@@ -138,6 +140,28 @@ MODULES = [
             'cudart',
         ],
         'check_method': build.check_cuda_version,
+    },
+    {
+        'name': 'tc',
+        'file': [
+            'cupy.core.tc',
+        ],
+        'include_dirs': [
+            'third_party/TensorComprehensions/include',
+            # 'third_party/TensorComprehensions/third-party/ATen/src',
+            # 'third_party/TensorComprehensions/third-party/ATen/doc',
+            'third_party/TensorComprehensions/third-party/dlpack/include',
+        ],
+        'libraries': [
+            'tc_autotuner',
+            'tc_core',
+            'tc_lang',
+            'protobuf',
+            'glog',
+            'Halide',
+        ],
+        'check_method': build.check_tc_version,
+        'version_method': build.get_tc_version,
     }
 ]
 
@@ -252,10 +276,30 @@ def preconfigure_modules(compiler, settings):
         errmsg = []
 
         print('')
-        print('-------- Configuring Module: {} --------'.format(
-            module['name']))
+        print('-------- Configuring Module: {} --------'.format(module['name']))
         sys.stdout.flush()
-        if not check_library(compiler,
+        if module['name'] == 'tc':
+            library_dirs = list(filter(None, os.environ['LIBRARY_PATH'].split(':')))
+            tc_exist = False
+            for library_dir in library_dirs:
+                if os.path.exists(os.path.join(library_dir, 'libtc_core.so')):
+                    tc_exist = True
+                    break
+            if tc_exist:
+                installed = True
+                status = 'Yes'
+                ret.append(module['name'])
+                settings['include_dirs'] += module['include_dirs']
+                proto_path = 'third_party/TensorComprehensions/' \
+                             'src/proto/mapping_options.proto'
+                pb_h_path = 'third_party/TensorComprehensions/include'
+                subprocess.call(
+                    'protoc --proto_path={} --cpp_out={} {}'.format(
+                        os.path.dirname(proto_path), pb_h_path, proto_path),
+                    shell=True)
+            else:
+                errmsg = ['Could not find TensorComprehensions']
+        elif not check_library(compiler,
                              includes=module['include'],
                              include_dirs=settings['include_dirs']):
             errmsg = ['Include files not found: %s' % module['include'],
@@ -393,6 +437,9 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
+        
+        if module['name'] == 'tc':
+            s['extra_compile_args'] = ['-std=c++11']
 
         for f in module['file']:
             name = module_extension_name(f)
