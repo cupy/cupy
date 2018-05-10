@@ -17,6 +17,11 @@ def _get_gammaln_kernel():
 
 
 def gammaln(x):
+    """Logarithm of the absolute value of the Gamma function.
+
+    .. seealso:: :data:`scipy.special.gammaln`
+
+    """
     y = cupy.zeros_like(x)
     _get_gammaln_kernel()(x, y)
     return y

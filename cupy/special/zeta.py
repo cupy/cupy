@@ -100,6 +100,11 @@ def _get_zeta_kernel():
 
 
 def zeta(x, q):
+    """Hurwitz zeta function.
+
+    .. seealso:: :data:`scipy.special.zeta`
+
+    """
     y = cupy.zeros_like(x)
     _get_zeta_kernel()(x, q, y)
     return y

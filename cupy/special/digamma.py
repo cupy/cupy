@@ -154,6 +154,11 @@ def _get_digamma_kernel():
 
 
 def digamma(x):
+    """The digamma function.
+
+    .. seealso:: :data:`scipy.special.digamma`
+
+    """
     y = cupy.zeros_like(x)
     _get_digamma_kernel()(x, y)
     return y

@@ -17,6 +17,11 @@ def _get_gamma_kernel():
 
 
 def gamma(x):
+    """Gamma function.
+
+    .. seealso:: :data:`scipy.special.gamma`
+
+    """
     y = cupy.zeros_like(x)
     _get_gamma_kernel()(x, y)
     return y
