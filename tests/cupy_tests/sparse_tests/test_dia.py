@@ -91,28 +91,32 @@ class TestDiaMatrixInit(unittest.TestCase):
     def offsets(self, xp):
         return xp.array([0, -1], 'i')
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_shape_none(self, xp, sp):
         sp.dia_matrix(
             (self.data(xp), self.offsets(xp)), shape=None)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_large_rank_offset(self, xp, sp):
         sp.dia_matrix(
             (self.data(xp), self.offsets(xp)[None]), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_large_rank_data(self, xp, sp):
         sp.dia_matrix(
             (self.data(xp)[None], self.offsets(xp)), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_data_offsets_different_size(self, xp, sp):
         offsets = xp.array([0, -1, 1], 'i')
         sp.dia_matrix(
             (self.data(xp), offsets), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
     def test_duplicated_offsets(self, xp, sp):
         offsets = xp.array([1, 1], 'i')
         sp.dia_matrix(
@@ -130,78 +134,79 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def make(self):
         return globals()[self.make_method]
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(mod='sp', mod_name='sparse')
     def test_nnz_axis(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.nnz
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=NotImplementedError)
     def test_nnz_axis_not_none(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.getnnz(axis=0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.A
 
-    @testing.numpy_cupy_raises(sp_name='sp')
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse')
     def test_sum_tuple_axis(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.sum(axis=(0, 1))
 
-    @testing.numpy_cupy_raises(sp_name='sp')
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse')
     def test_sum_float_axis(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.sum(axis=0.0)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse')
     def test_sum_too_large_axis(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.sum(axis=3)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocoo().toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsc().toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsr().toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
         return n.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
@@ -215,12 +220,12 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixSum(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_sum(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.sum(axis=self.axis, dtype=self.ret_dtype)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
     def test_sum_with_out(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         if self.axis is None:
