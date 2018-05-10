@@ -60,23 +60,23 @@ cdef dict RESULT = {
 }
 
 
-class CuFftError(RuntimeError):
+class CuFFTError(RuntimeError):
 
     def __init__(self, int result):
         self.result = result
-        super(CuFftError, self).__init__('%s' % (RESULT[result]))
+        super(CuFFTError, self).__init__('%s' % (RESULT[result]))
 
 
 @cython.profile(False)
 cpdef inline check_result(int result):
     if result != 0:
-        raise CuFftError(result)
+        raise CuFFTError(result)
 
 
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
-        cdef size_t workSize
+        cdef size_t work_size
         stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
@@ -86,16 +86,16 @@ class Plan1d(object):
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
-                                         &workSize)
+                                         &work_size)
         check_result(result)
-        workArea = memory.alloc(workSize)
+        work_area = memory.alloc(work_size)
         with nogil:
-            result = cufftSetWorkArea(plan, <void *>(workArea.ptr))
+            result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
         check_result(result)
         self.nx = nx
         self.fft_type = fft_type
         self.plan = plan
-        self.workArea = workArea
+        self.work_area = work_area
 
     def __del__(self):
         cdef Handle plan = self.plan
