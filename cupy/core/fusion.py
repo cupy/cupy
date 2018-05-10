@@ -46,9 +46,7 @@ _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 
 class Submodule(object):
-    """Submodule class.
-
-    Ufunc or elementwise kernel with types.
+    """Ufunc or elementwise kernel with types.
 
     Attributes:
        name (str): The name of submodule
@@ -58,7 +56,7 @@ class Submodule(object):
          The tuple of dtype and name of output parameters.
        op (str): The operation code.
        preamble (str): The preamble code.
-       type (list of dtypes): The list of types of the parameters.
+       dtypes (list of dtypes): The list of dtypes of the parameters.
     """
 
     def __init__(self, ufunc, in_params, out_params, op):
@@ -67,22 +65,22 @@ class Submodule(object):
         self.out_params = out_params
         self.op = op
         self.preamble = ufunc._preamble
-        self.types = [ty for ty, _ in self.in_params + self.out_params]
+        self.dtypes = [dtype for dtype, _ in self.in_params + self.out_params]
 
     def __repr__(self):
-        return "<Submodule {}>".format(self.name)
+        return '<Submodule {}>'.format(self.name)
 
     def fcall(self, args):
         return self.name + '(' + ', '.join(args) + ');\n'
 
     def key(self):
-        return (self.name, tuple(self.types))
+        return (self.name, tuple(self.dtypes))
 
     def code(self):
-        params = ', '.join('%s &%s' % (_dtype_to_ctype[t], pname)
-                           for t, pname in self.in_params + self.out_params)
-        typedef = ''.join('typedef %s %s_type;\n' % (_dtype_to_ctype[t], pname)
-                          for t, pname in self.in_params + self.out_params)
+        params = ', '.join('{} &{}'.format(_dtype_to_ctype[t], s)
+                           for t, s in self.in_params + self.out_params)
+        typedef = ''.join('typedef {} {}_type;\n'.format(_dtype_to_ctype[t], s)
+                          for t, s in self.in_params + self.out_params)
         module_code = string.Template('''
         __device__ void ${name}(${parameters}) {
           ${typedef}
@@ -98,51 +96,47 @@ class Submodule(object):
 
 class _FusionVarCUDA(object):
 
-    """_FusionVarCUDA class.
-
-    Local variable in CUDA program.
+    """Local variable in CUDA program.
 
     Attributes:
         index (int): The name of the variable.
-        ty (dtype): The type of the variable.
-        const (any of types): The constant value (or None)
+        dtype (dtype): The dtype of the variable.
+        const (any of primitive types): The constant value (or None)
     """
 
-    def __init__(self, index, ty, const=None):
+    def __init__(self, index, dtype, const=None):
         self.index = index
-        self.ty = ty
+        self.dtype = dtype
         self.const = const
 
     def __repr__(self):
-        return "v{}".format(self.index)
+        return 'v{}'.format(self.index)
 
     def declaration(self):
         c = self.const
         val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
-        ctype = _dtype_to_ctype[self.ty]
+        ctype = _dtype_to_ctype[self.dtype]
 
         if self.const is None:
-            return "{} v{};\n".format(ctype, self.index)
+            return '{} v{};\n'.format(ctype, self.index)
 
         if isinstance(val, bool):
-            init = '= %s' % str(c).lower()
+            init = '= {}'.format(str(c).lower())
         elif isinstance(val, complex):
-            init = '(%s, %s)' % (c.real, c.imag)
+            init = '({}, {})'.format(c.real, c.imag)
         elif isinstance(val, six.integer_types + (float,)):
-            init = '= %s' % str(c)
+            init = '= {}'.format(c)
         else:
             raise TypeError('Invalid constant type: {}'.format(type(c)))
-        return 'const %s v%d %s;\n' % (ctype, self.index, init)
+        return 'const {} v{} {};\n'.format(ctype, self.index, init)
 
     def declaration_param(self):
-        return "{} v{}".format(self.ty, self.index)
+        return '{} v{}'.format(self.dtype, self.index)
 
 
 class FusionOp(object):
 
-    """FusionOp class.
-
-    Function call with arguments in CUDA program.
+    """Function call with arguments in CUDA program.
 
     Attributes:
         index (int): The index of this operation.
@@ -155,33 +149,31 @@ class FusionOp(object):
         self.index = index
         self.func = func
         self.args = args
-        self.types = func.types
+        self.dtypes = func.dtypes
 
     def __repr__(self):
-        return "<FusionOp #{}, {} types=[{}]>".format(
-            self.index, self.func.name, ', '.join(self.types))
+        return '<FusionOp #{}, {} types=[{}]>'.format(
+            self.index, self.func.name, ', '.join(self.dtypes))
 
     def declaration_args(self):
         return ' '.join('{} v{}_{};'.format(_dtype_to_ctype[t], self.index, j)
-                        for j, t in enumerate(self.types)) + '\n'
+                        for j, t in enumerate(self.dtypes)) + '\n'
 
     def code(self):
-        args_sub = ["v{}_{}".format(self.index, i)
+        args_sub = ['v{}_{}'.format(self.index, i)
                     for i in six.moves.range(len(self.args))]
         args_list = list(zip(self.args, args_sub))
-        code = "// op  # {}\n".format(self.index)
-        code += ''.join("{} = v{};\n".format(s, v.index) for v, s in args_list)
+        code = '// op  # {}\n'.format(self.index)
+        code += ''.join('{} = v{};\n'.format(s, v.index) for v, s in args_list)
         code += self.func.fcall(args_sub)
-        code += ''.join("v{} = {};\n".format(v.index, s)
+        code += ''.join('v{} = {};\n'.format(v.index, s)
                         for v, s in args_list[len(self.func.in_params):])
         return code
 
 
 class _FusionHistory(object):
 
-    """_FusionHistory class.
-
-    History of operation exectuted in the target function of fusion.
+    """History of operation exectuted in the target function of fusion.
 
     Attributes:
         op_list (list of FusionOp): The list of operations.
@@ -207,14 +199,11 @@ class _FusionHistory(object):
         self.count = 0
 
     def __repr__(self):
-        return "<_FusionMem, op_list={}, var_list={}>".format(
+        return '<_FusionMem, op_list={}, var_list={}>'.format(
             self.op_list, self.var_list)
 
     def is_postmap(self):
         return self.reduce_op is not None
-
-    def ndarray_type(self):
-        return ReducedVarPython if self.is_postmap() else FusionVarPython
 
     def fresh_index(self):
         res = self.count
@@ -267,11 +256,14 @@ class _FusionHistory(object):
         self.preamble_set.add(subm.preamble)
         return op
 
-    def set_op(self, *args, **kwargs):
+    def add_op(self, *args, **kwargs):
         if self.is_postmap():
             return self._set_postmap_op(*args, **kwargs)
         else:
             return self._set_premap_op(*args, **kwargs)
+
+    def add_preamble(self, preamble):
+        self.preamble_set.add(preamble)
 
     def get_submodules(self):
         return '\n'.join([_.code() for _ in self.submodules.values()])
@@ -279,22 +271,25 @@ class _FusionHistory(object):
 
 class FusionVarPython(object):
 
-    """FusionVarPython class.
-
-    The values of variables in target function of fusion.
+    """The values of variables in target function of fusion.
 
     Attributes:
         dtype (dtype): The data type.
     """
-    #   shape (tuple of ints): !! not supported !!
+    # shape (tuple of ints): !! not supported !!
+    # _var (_FusionVarCUDA)
+    # _history (_FusionHistory)
 
-    def __init__(self, var, history):
+    def __init__(self, var, history, is_postmap=None):
         self._var = var
-        self.dtype = var.ty
+        self.dtype = var.dtype
         self._history = history
+        self._is_postmap = is_postmap
+        if is_postmap is None:
+            self._is_postmap = history.is_postmap()
 
     def __repr__(self):
-        return "<FusionVarPython, dtype=%s>" % self.dtype
+        return '<FusionVarPython, dtype={}>'.format(self.dtype)
 
     def __neg__(self):
         return negative(self)
@@ -435,10 +430,10 @@ class FusionVarPython(object):
         return greater_equal(self, other)
 
     def __nonzero__(self):
-        raise Exception("Can't cast to bool")
+        raise Exception('Can\'t cast to bool')
 
     def __bool__(self):
-        raise Exception("Can't cast to bool")
+        raise Exception('Can\'t cast to bool')
 
     def __setitem__(self, slices, value):
         if slices is Ellipsis or (isinstance(slices, slice) and
@@ -451,35 +446,27 @@ class FusionVarPython(object):
         return copy(self)
 
 
-class ReducedVarPython(FusionVarPython):
-    """ReducedVarPython class.
-
-    The value of variables after the reduction phase.
-
-    Attributes:
-        dtype (dtype): The data type.
-    """
-    #   shape (tuple of ints): !! not supported !!
-
-
-def _normalize_arg(arg, history):
+def _get_cuda_var(arg, history):
     """This converts `arg` to _FusionVarCUDA data.
 
     Args:
-       arg (FusionVarPython or a primitive type)
-       history (_FusionHistory)
+        arg (FusionVarPython or a primitive type)
+        history (_FusionHistory)
+
     Return value: _FusionVarCUDA
     """
     arg_type = type(arg)
-    if arg_type is history.ndarray_type():
-        return arg._var
-    elif arg_type in (FusionVarPython, ReducedVarPython):
-        raise Exception('Shape mismatch')
+    if arg_type is FusionVarPython:
+        if arg._is_postmap is history.is_postmap():
+            return arg._var
+        else:
+            # Map operation between pre-map variable and post-map variable
+            raise Exception('Shape mismatch')
     is_scalar = arg_type in six.integer_types + (float, bool, complex)
     is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
     if is_scalar or is_ndarray:
         return history.fresh_local(numpy.dtype(arg_type), const=arg)
-    raise Exception('Unsupported type %s' % arg_type)
+    raise Exception('Unsupported type {}'.format(arg_type))
 
 
 def _convert(f):
@@ -487,15 +474,15 @@ def _convert(f):
         return _convert_from_ufunc(f)
     if type(f) is core.ElementwiseKernel:
         return _convert_from_elementwise(f)
-    raise Exception("Can't convert from %s to FusionOp" % type(f))
+    raise Exception('Can\'t convert from {} to FusionOp'.format(type(f)))
 
 
 def _should_use_min_scalar(in_args):
     max_array_kind = -2
     max_scalar_kind = -1
-    for i in in_args:
-        kind = _kind_score[i.ty.kind]
-        if i.const is None:
+    for arg in in_args:
+        kind = _kind_score[arg.dtype.kind]
+        if arg.const is None:
             max_array_kind = max(max_array_kind, kind)
         else:
             max_scalar_kind = max(max_scalar_kind, kind)
@@ -509,14 +496,14 @@ def _convert_from_ufunc(ufunc):
 
     def get_history(args):
         for elem in args:
-            if isinstance(elem, (FusionVarPython, ReducedVarPython)):
+            if isinstance(elem, FusionVarPython):
                 return elem._history
         raise Exception('number of ndarray arguments must be more than 0')
 
     def can_cast1(args, ty_ins):
         for i in six.moves.range(nin):
             if args[i].const is None:
-                if not numpy.can_cast(args[i].ty, ty_ins[i]):
+                if not numpy.can_cast(args[i].dtype, ty_ins[i]):
                     return False
             else:
                 if not numpy.can_cast(args[i].const, ty_ins[i]):
@@ -525,18 +512,18 @@ def _convert_from_ufunc(ufunc):
 
     def can_cast2(args, ty_ins):
         for i in six.moves.range(nin):
-            if not numpy.can_cast(args[i].ty, ty_ins[i]):
+            if not numpy.can_cast(args[i].dtype, ty_ins[i]):
                 return False
         return True
 
     def func(*args, **kwargs):
         history = get_history(args)
-        var_list = [_normalize_arg(_, history) for _ in args]
+        var_list = [_get_cuda_var(_, history) for _ in args]
         if 'out' in kwargs:
-            var = _normalize_arg(kwargs.pop('out'), history)
+            var = _get_cuda_var(kwargs.pop('out'), history)
             var_list.append(var)
         if kwargs:
-            raise TypeError('Wrong arguments %s' % kwargs)
+            raise TypeError('Wrong arguments {}'.format(kwargs))
         assert nin <= len(var_list) <= nin + nout
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
@@ -550,45 +537,45 @@ def _convert_from_ufunc(ufunc):
                     if i >= len(out_vars):
                         v = history.fresh_local(ty_outs[i])
                         out_vars.append(v)
-                        ret.append(history.ndarray_type()(v, history))
-                    elif numpy.can_cast(ty_outs[i], out_vars[i].ty,
-                                        "same_kind"):
+                        ret.append(FusionVarPython(v, history))
+                    elif numpy.can_cast(ty_outs[i], out_vars[i].dtype,
+                                        'same_kind'):
                         v = out_vars[i]
-                        ret.append(history.ndarray_type()(v, history))
+                        ret.append(FusionVarPython(v, history))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
                             'to provided output parameter (typecode \'{}\') '
                             'according to the casting rule '
                             '"same_kind"'.format(
-                                ty_outs[i].char, out_vars[i].ty.char))
+                                ty_outs[i].char, out_vars[i].dtype.char))
                 in_params = [(ty_ins[i], 'in{}'.format(i))
                              for i, t in enumerate(in_vars)]
                 out_params = [(ty_outs[i], 'out{}'.format(i))
                               for i, t in enumerate(out_vars)]
                 subm = Submodule(ufunc, in_params, out_params, op)
-                history.set_op(subm, in_vars + out_vars)
+                history.add_op(subm, in_vars + out_vars)
                 return ret[0] if len(ret) == 1 else tuple(ret)
         raise TypeError('Invalid type cast in \'{}\': {} -> {}'.format(
             ufunc.name,
-            [_.ty for _ in in_vars],
-            [_.ty for _ in out_vars]))
+            [_.dtype for _ in in_vars],
+            [_.dtype for _ in out_vars]))
     return func
 
 
 def _convert_from_elementwise(elem):
-    raise NotImplemented
+    raise NotImplementedError()
 
 
 def _premap_code(in_params, return_var, operation):
     module_code = string.Template('''
-    __device__ ${return_type} _pre_map(${in_params}) {
+    __device__ ${return_ctype} _pre_map(${in_params}) {
     ${operation};
     return ${return_var};
     }
     ''').substitute(
-        return_type=_dtype_to_ctype[return_var.ty],
-        in_params=', '.join('{} v{}'.format(_dtype_to_ctype[v.ty], v.index)
+        return_ctype=_dtype_to_ctype[return_var.dtype],
+        in_params=', '.join('{} v{}'.format(_dtype_to_ctype[v.dtype], v.index)
                             for v in in_params),
         operation=operation,
         return_var=return_var)
@@ -596,46 +583,61 @@ def _premap_code(in_params, return_var, operation):
 
 
 def _postmap_code(in_param, out_params, operation):
-    in_type = _dtype_to_ctype[in_param.ty]
+    in_ctype = _dtype_to_ctype[in_param.dtype]
     module_code = string.Template('''
-    __device__ void _post_map(${in_type} in, ${out_params}) {
+    __device__ void _post_map(${in_ctype} in, ${out_params}) {
     ${in_param} = in;
     ${operation};
     }
     ''').substitute(
-        in_type=in_type,
-        in_param="{} v{}".format(in_type, in_param.index),
-        out_params=', '.join('{} &v{}'.format(_dtype_to_ctype[v.ty], v.index)
+        in_ctype=in_ctype,
+        in_param='{} v{}'.format(in_ctype, in_param.index),
+        out_params=', '.join('{} &v{}'.format(_dtype_to_ctype[v.dtype],
+                                              v.index)
                              for v in out_params),
         operation=operation)
     return module_code
 
 
-def _postfix_code(data_type, fixed_type, operation):
+def _fix_code(reduce_ctype, fixed_dtype, operation):
     module_code = string.Template('''
-    __device__ ${fixed_type} _post_fix(${data_type} a) {
-      ${fixed_type} out0;
+    __device__ ${fixed_ctype} _post_fix(${reduce_ctype} a) {
+      ${fixed_ctype} out0;
       ${operation};
       return out0;
     }
     ''').substitute(
-        data_type=data_type,
-        fixed_type=_dtype_to_ctype[fixed_type],
+        reduce_ctype=reduce_ctype,
+        fixed_ctype=_dtype_to_ctype[fixed_dtype],
         operation=operation)
     return module_code
 
 
-def _get_fusion_from_types(func, in_types, name):
+def _get_fusion_from_types(func, in_dtypes, name):
+    """This generates CUDA kernel from the given function and dtypes.
+
+    This function generates ElementwiseKernel or ReductioKernel from the
+    given function and the list of dtypes of parameters.
+
+    Args:
+        func (function): The function to be fused.
+        in_types (list of dtypes): The list of dtypes of input parameters.
+        name (str): The name of the kernel.
+
+    Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
+        The second element of return values is kwargs that will give into
+        the elementwise kernel or reduction kernel.
+    """
     history = _FusionHistory()
-    in_params = [history.fresh_premap_param(t) for t in in_types]
+    in_params = [history.fresh_premap_param(t) for t in in_dtypes]
     in_pvars = [FusionVarPython(_, history) for _ in in_params]
     out_pvars = func(*in_pvars)
     out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
     out_pvars = [_ for _ in out_pvars if _ is not None]
-    out_cvars = [_normalize_arg(_, history) for _ in out_pvars]
+    out_cvars = [_get_cuda_var(_, history) for _ in out_pvars]
 
-    out_types = [_.dtype for _ in out_pvars]
-    out_params = [history.fresh_premap_param(t) for t in out_types]
+    out_dtypes = [_.dtype for _ in out_pvars]
+    out_params = [history.fresh_premap_param(t) for t in out_dtypes]
 
     in_params_code = ', '.join(var.declaration_param() for var in in_params)
     out_params_code = ', '.join(var.declaration_param() for var in out_params)
@@ -647,7 +649,7 @@ def _get_fusion_from_types(func, in_types, name):
     submodules = ''.join(history.preamble_set)
 
     if history.reduce_op is None:
-        operation += ' '.join("{} = {};".format(t, s)
+        operation += ' '.join('{} = {};'.format(t, s)
                               for s, t in zip(out_cvars, out_params))
         submodules += history.get_submodules()
         kernel = core.ElementwiseKernel(
@@ -656,39 +658,40 @@ def _get_fusion_from_types(func, in_types, name):
             name=name)
         return (kernel, {})
     else:
-        reduce_code = history.reduce_op[2][1]
-        rtype = history.reduce_op[2][3]
-        post_type = 'type_in0_raw' if rtype is None else rtype
-        reduce_type = numpy.dtype(history.reduce_op[1][0])
-        ctype = _dtype_to_ctype[reduce_type]
+        op = history.reduce_op
+        _, (fixed_type,), (_, reduce_code, fix_code, reduce_ctype) = op
+        if reduce_ctype is None:
+            reduce_ctype = 'type_in0_raw'
+
+        fixed_dtype = numpy.dtype(fixed_type)
+        fixed_ctype = _dtype_to_ctype[fixed_dtype]
 
         postmap = '// {} operations\n'.format(len(history.postmap_op_list))
         postmap += ''.join(v.declaration() for v in history.postmap_local_list)
         postmap += ''.join(op.declaration_args()
                            for op in history.postmap_op_list)
         postmap += ''.join(op.code() for op in history.postmap_op_list)
-        postmap += ' '.join("{} = {};".format(t, s)
+        postmap += ' '.join('{} = {};'.format(t, s)
                             for s, t in zip(out_cvars, out_params))
 
         submodules += history.get_submodules()
         submodules += _premap_code(in_params, history.premap_ret, operation)
-        submodules += "typedef {} type_in0_raw;\n".format(ctype)
-        submodules += "typedef {} type_out0_raw;\n".format(ctype)
-        submodules += _postfix_code(post_type,
-                                    reduce_type, history.reduce_op[2][2])
+        submodules += 'typedef {} type_in0_raw;\n'.format(fixed_ctype)
+        submodules += 'typedef {} type_out0_raw;\n'.format(fixed_ctype)
+        submodules += _fix_code(reduce_ctype, fixed_dtype, fix_code)
         submodules += _postmap_code(history.postmap_param_list[0],
                                     out_params, postmap)
 
         kernel = core.ReductionKernel(
             in_params_code,
             out_params_code,
-            '_pre_map({})'.format(', '.join([repr(_) for _ in in_params])),
+            '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
             reduce_code,
             '_post_map(_post_fix(a), {})'.format(
-                ', '.join([repr(_) for _ in out_params])),
+                ', '.join([repr(p) for p in out_params])),
             history.reduce_identity,
             name=name,
-            reduce_type=post_type,
+            reduce_type=reduce_ctype,
             preamble=submodules)
         return (kernel, history.reduce_kwargs)
 
@@ -711,7 +714,7 @@ class Fusion(object):
         self._memo = {}
 
     def __repr__(self):
-        return "<Fusion '%s'>" % self.name
+        return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
         _thread_local.in_fusion = True
@@ -731,16 +734,16 @@ class Fusion(object):
         def is_cupy_data(a):
             return isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
-            types = [_.dtype for _ in args]
-            key = tuple(types)
+            dtypes = [_.dtype for _ in args]
+            key = tuple(dtypes)
             if key not in self._memo:
                 self._memo[key] = _get_fusion_from_types(
-                    self.func, types, self.name)
+                    self.func, dtypes, self.name)
             return self._memo[key]
         else:
             if builtins.any(type(_) is core.ndarray for _ in args):
-                types = '.'.join(repr(type(_)) for _ in args)
-                message = "Can't fuse \n %s(%s)" % (self.name, types)
+                types_str = '.'.join(repr(type(_)) for _ in args)
+                message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
             else:
                 return (self.func, {})
@@ -780,6 +783,10 @@ def fuse(*args, **kwargs):
 
 
 class ufunc(core.ufunc):
+    # Args:
+    #   fusion_op (cupy.ufunc)
+    #   cupy_op (cupyu.ufunc or function)
+    #   numpy_op (numpy.ufunc or function)
 
     def __init__(self, fusion_op, cupy_op, numpy_op):
         self.name = fusion_op.name
@@ -804,8 +811,7 @@ class ufunc(core.ufunc):
     def __call__(self, *args, **kwargs):
         in_fusion = getattr(_thread_local, 'in_fusion', False)
         if in_fusion:
-            if builtins.any(isinstance(_, (FusionVarPython, ReducedVarPython))
-                            for _ in args):
+            if builtins.any(isinstance(_, FusionVarPython) for _ in args):
                 return _convert(self._fusion_op)(*args, **kwargs)
             elif builtins.any(isinstance(_, numpy.ndarray) for _ in args):
                 return self._numpy_op(*args, **kwargs)
@@ -924,7 +930,11 @@ fmin = _create_ufunc(math.misc.fmin, numpy.fmin)
 
 
 class reduction(object):
-
+    # Args:
+    #   cupy_op (function): The CuPy reduction function.
+    #   numpy_op (function): The NumPy reduction function.
+    #   raw (core.simple_reduction_function object):
+    #     This object must have identity, _preamble and _ops attributes
     def __init__(self, cupy_op, numpy_op, raw):
         self._cupy_op = cupy_op
         self._numpy_op = numpy_op
@@ -936,23 +946,27 @@ class reduction(object):
     def __call__(self, *args, **kwargs):
         arg = args[0]
         if isinstance(arg, FusionVarPython):
+            if arg._is_postmap:
+                # Multiple reduction
+                raise NotImplementedError()
             if len(args) != 1:
-                raise Exception("Can't reduce a tuple")
+                raise Exception('Can\'t reduce a tuple')
             dtype = arg.dtype
             history = arg._history
             for op in self._raw._ops:
-                if numpy.can_cast(dtype.type, op[0][0]):
-                    return_type = numpy.dtype(op[1][0])
-                    history.premap_ret = _normalize_arg(arg, history)
-                    return_var = history.fresh_postmap_param(return_type)
+                (input_type,), (output_type,), _ = op
+                if numpy.can_cast(dtype.type, input_type):
+                    return_dtype = numpy.dtype(output_type)
+                    history.premap_ret = _get_cuda_var(arg, history)
+                    return_var = history.fresh_postmap_param(return_dtype)
                     history.reduce_op = op
                     history.reduce_identity = self.identity
                     history.reduce_kwargs = kwargs
-                    history.preamble_set.add(self._preamble)
-                    return ReducedVarPython(return_var, history)
-            raise TypeError("Type is mismatched. {}(...), {}".format(
+                    history.add_preamble(self._preamble)
+                    return FusionVarPython(return_var, history)
+            raise TypeError('Type is mismatched. {}(...), {}'.format(
                 self._raw._ops.name, dtype.type))
-        if builtins.any(type(_) == numpy.ndarray for _ in args):
+        elif builtins.any(type(_) == numpy.ndarray for _ in args):
             return self._numpy_op(*args, **kwargs)
         else:
             return self._cupy_op(*args, **kwargs)
