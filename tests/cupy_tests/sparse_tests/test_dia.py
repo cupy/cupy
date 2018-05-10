@@ -116,7 +116,8 @@ class TestDiaMatrixInit(unittest.TestCase):
         sp.dia_matrix(
             (self.data(xp), offsets), shape=self.shape)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_duplicated_offsets(self, xp, sp):
         offsets = xp.array([1, 1], 'i')
         sp.dia_matrix(

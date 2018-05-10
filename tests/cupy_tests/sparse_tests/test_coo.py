@@ -420,7 +420,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return m.dot(x).toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_csr_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = sp.csr_matrix((5, 3), dtype=self.dtype)
@@ -450,7 +451,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_vector_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(5).astype(self.dtype)
@@ -462,13 +464,15 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_matrix_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(10).reshape(5, 2).astype(self.dtype)
         m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_ndim3(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
@@ -588,7 +592,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return (m * x).toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_mul_csr_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = sp.csr_matrix((5, 3), dtype=self.dtype)
@@ -618,7 +623,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m * x
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_mul_dense_vector_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(5).astype(self.dtype)
@@ -630,13 +636,15 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return (m * x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_mul_dense_matrix_invalid_shape(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(10).reshape(5, 2).astype(self.dtype)
         m * x
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_mul_dense_ndim3(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
@@ -720,7 +728,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make_square(xp, sp, self.dtype)
         return (m ** 3).toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_pow_neg(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         m ** -1
@@ -745,7 +754,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_transpose_axes_int(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         m.transpose(axes=0)

@@ -177,7 +177,8 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=TypeError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=TypeError)
     def test_init_dense_invalid_ndim(self, xp, sp):
         m = xp.zeros((1, 1, 1), dtype=self.dtype)
         sp.csc_matrix(m)
@@ -360,7 +361,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def make(self):
         return globals()[self.make_method]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=TypeError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=TypeError)
     def test_len(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         len(m)
@@ -391,7 +393,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         return a
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=TypeError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=TypeError)
     def test_toarray_unknown_order(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.toarray(order='#')
@@ -458,7 +461,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return m.dot(x).toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_csr_invalid_shape(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = sp.csr_matrix((5, 3), dtype=self.dtype)
@@ -488,25 +492,29 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_vector_invalid_shape(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(5).astype(self.dtype)
         m.dot(x)
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse', contiguous_check=False)
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse',
+                                 contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_matrix_invalid_shape(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(10).reshape(5, 2).astype(self.dtype)
         m.dot(x)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_dot_dense_ndim3(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
@@ -650,7 +658,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m * x
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse', contiguous_check=False)
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse',
+                                 contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -702,7 +711,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         x = xp.array(2, dtype=self.dtype)
         return (x * m).toarray()
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse', contiguous_check=False)
+    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse',
+                                 contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
@@ -751,7 +761,8 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose().toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_transpose_axes_int(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.transpose(axes=0)
@@ -913,19 +924,23 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_int_int_negative(self, xp, sp):
         self.assertEqual(_make(xp, sp, self.dtype)[-1, -2], 3)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_int_too_small_row(self, xp, sp):
         _make(xp, sp, self.dtype)[-4, 0]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_int_too_large_row(self, xp, sp):
         _make(xp, sp, self.dtype)[3, 0]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_int_too_small_col(self, xp, sp):
         _make(xp, sp, self.dtype)[0, -5]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_int_too_large_col(self, xp, sp):
         _make(xp, sp, self.dtype)[0, 4]
 
@@ -937,11 +952,13 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_negative_int(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, -1].toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_too_small(self, xp, sp):
         _make(xp, sp, self.dtype)[:, -5]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_too_large(self, xp, sp):
         _make(xp, sp, self.dtype)[:, 4]
 
@@ -953,23 +970,28 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_negative(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, -2:-1].toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_slice_start_too_small(self, xp, sp):
         _make(xp, sp, self.dtype)[:, -5:None]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_slice_start_too_large(self, xp, sp):
         _make(xp, sp, self.dtype)[:, 5:None]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_slice_stop_too_small(self, xp, sp):
         _make(xp, sp, self.dtype)[:, None:-5]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_slice_stop_too_large(self, xp, sp):
         _make(xp, sp, self.dtype)[:, None:5]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         _make(xp, sp, self.dtype)[:, 3:2]
 

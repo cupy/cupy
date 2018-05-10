@@ -191,7 +191,8 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=TypeError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=TypeError)
     def test_init_dense_invalid_ndim(self, xp, sp):
         m = xp.zeros((1, 1, 1), dtype=self.dtype)
         sp.csr_matrix(m)
@@ -657,7 +658,8 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return (m * x).toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=ValueError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=ValueError)
     def test_mul_csr_invalid_shape(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = sp.csr_matrix((5, 3), dtype=self.dtype)
@@ -1070,11 +1072,13 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_negative_int_none_slice(self, xp, sp):
         return _make(xp, sp, self.dtype)[-1, :].toarray()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_too_small_none_slice(self, xp, sp):
         _make(xp, sp, self.dtype)[-4, :]
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse', accept_error=IndexError)
+    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
+                               accept_error=IndexError)
     def test_getitem_int_too_large_none_slice(self, xp, sp):
         _make(xp, sp, self.dtype)[3, :]
 
