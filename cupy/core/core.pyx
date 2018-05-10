@@ -3547,11 +3547,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
-    if a.size == 0 or b.size == 0:
-        ret = ndarray(out_shape, ret_dtype)
-        ret.data.memset_async(0, ret.nbytes)
-        return ret
-
     a = ascontiguousarray(a, dtype=dtype)
     b = ascontiguousarray(b, dtype=dtype)
 
@@ -3613,6 +3608,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             raise ValueError(
                 'operands could not be broadcast together with '
                 'remapped shapes')
+
+    if a.size == 0 or b.size == 0:
+        ret = ndarray(out_shape, ret_dtype)
+        ret.data.memset_async(0, ret.nbytes)
+        return ret
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
