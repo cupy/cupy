@@ -3613,9 +3613,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 'remapped shapes')
 
     if a.size == 0 or b.size == 0:
-        ret = ndarray(out_shape, ret_dtype)
-        ret.data.memset_async(0, ret.nbytes)
-        return ret
+        return cupy.zeros(out_shape, ret_dtype)
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
