@@ -44,8 +44,8 @@ def _get_digamma_kernel():
             if(x <= 10. && x == floor(x)){
                 float EULER = 0.5772156649015329;
                 int n = (int)x;
-                for(int i = 1; i < n; i++){
-                    y += 1. / i;
+                for(int j = 1; j < n; j++){
+                    y += 1. / j;
                 }
                 y -= EULER;
                 return;
@@ -92,24 +92,24 @@ def _get_digamma_kernel():
                 g -= root3;
 
                 float u_polevl, d_polevl;
-                int i;
+                int j;
                 float *p;
 
                 p = P;
                 u_polevl = *p++;
-                i = 5;
+                j = 5;
 
                 do{
                     u_polevl = u_polevl * (x-1.) + *p++;
-                }while(--i);
+                }while(--j);
 
                 p = Q;
                 d_polevl = *p++;
-                i = 6;
+                j = 6;
 
                 do{
                     d_polevl = d_polevl * (x-1.) + *p++;
-                }while(--i);
+                }while(--j);
 
                 float r = u_polevl / d_polevl;
                 y += g * Y + g * r;
@@ -130,16 +130,16 @@ def _get_digamma_kernel():
             if (x < 1e17){
                 float z = 1.0 / (x * x);
 
-                int i;
+                int j;
                 float *p;
 
                 p = A;
                 w = *p++;
-                i = 6;
+                j = 6;
 
                 do{
                     w = w * z + *p++;
-                }while(--i);
+                }while(--j);
 
                 w *= z;
             }else{
