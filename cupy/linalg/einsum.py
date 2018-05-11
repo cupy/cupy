@@ -3,9 +3,9 @@ import itertools
 import operator
 import warnings
 
-import xp
-
-from einsum_opt import _greedy_path, _optimal_path
+import cupy
+from cupy.linalg.einsum_opt import _greedy_path
+from cupy.linalg.einsum_opt import _optimal_path
 
 
 options = {
@@ -48,7 +48,9 @@ def _transpose_ex(a, axeses):
         )
         shape.append(dim)
         strides.append(stride)
-    return xp.view_from_shape_and_strides(a, shape, strides)
+    a = a.view()
+    a._set_shape_and_strides(shape, strides)
+    return a
 
 
 def _parse_int_subscript(sub):
@@ -279,7 +281,7 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others):
     tmp1, shapes1 = _flatten_transpose(op1, [bs1, cs1, ts1])
     shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
     assert shapes0[0] == shapes1[0]
-    op_out = xp.matmul(tmp0, tmp1).reshape(shapes_out)
+    op_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
 
     sub_b = [sub0[i] for i in bs0]
     assert sub_b == [sub1[i] for i in bs1]
@@ -355,9 +357,9 @@ def einsum(*operands, **kwargs):
         raise TypeError("Did not understand the following kwargs: %s"
                         % list(kwargs.keys))
 
-    result_dtype = xp.result_type(*operands) if dtype is None else dtype
+    result_dtype = cupy.result_type(*operands) if dtype is None else dtype
     operands = [
-        xp.asanyarray(arr)
+        cupy.asanyarray(arr)
         for arr in operands
     ]
 
@@ -418,7 +420,7 @@ def einsum(*operands, **kwargs):
 
     if len(operands) >= 2:
         if any(op.size == 0 for op in operands):
-            return xp.zeros(
+            return cupy.zeros(
                 tuple(dimension_dict[s] for s in output_subscript),
                 dtype=result_dtype
             )
@@ -436,7 +438,7 @@ def einsum(*operands, **kwargs):
                     else:
                         sub.append(s)
                 input_subscripts[num] = sub
-                operands[num] = xp.squeeze(op, axis=tuple(squeeze_indices))
+                operands[num] = cupy.squeeze(op, axis=tuple(squeeze_indices))
                 assert len(operands[num].shape) == len(input_subscripts[num])
 
     # unary einsum without summation should return a (writeable) view
