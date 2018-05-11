@@ -32,7 +32,7 @@ def _get_zeta_kernel():
 
             T x = x_;
             T q = q_;
-            
+
             if(isnan(q)){
                 y = nanf("");
                 return;
