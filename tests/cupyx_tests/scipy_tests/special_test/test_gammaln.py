@@ -2,8 +2,8 @@ import unittest
 
 import cupy
 from cupy import testing
-import numpy
 import cupyx.scipy.special
+import numpy
 
 import scipy.special
 

@@ -2,8 +2,8 @@ import unittest
 
 import cupy
 from cupy import testing
-import numpy
 import cupyx.scipy.special
+import numpy
 
 import scipy.special
 
@@ -39,7 +39,8 @@ class TestPolygamma(unittest.TestCase):
     def test_scalar(self, xp, dtype):
         # polygamma in scipy returns numpy.float64 value when inputs scalar.
         # whatever type input is.
-        return self._get_xp_func(xp).polygamma(dtype(2.), dtype(1.5)).astype(numpy.float32)
+        return self._get_xp_func(xp).polygamma(
+            dtype(2.), dtype(1.5)).astype(numpy.float32)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3)
