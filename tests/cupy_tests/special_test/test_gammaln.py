@@ -15,7 +15,7 @@ class TestGammaln(unittest.TestCase):
         return sp.gammaln(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-4, mod='sp',
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, mod='sp',
                                  mod_name='special')
     def test_linspace(self, xp, dtype, sp):
         if (dtype == xp.dtype('B') or dtype == xp.dtype('H')
