@@ -791,6 +791,9 @@ log1p = _create_ufunc(math.explog.log1p, numpy.log1p)
 logaddexp = _create_ufunc(math.explog.logaddexp, numpy.logaddexp)
 logaddexp2 = _create_ufunc(math.explog.logaddexp2, numpy.logaddexp2)
 
+i0 = _create_ufunc(math.special.i0, numpy.i0)
+sinc = _create_ufunc(math.special.sinc, numpy.sinc)
+
 signbit = _create_ufunc(math.floating.signbit, numpy.signbit)
 copysign = _create_ufunc(math.floating.copysign, numpy.copysign)
 ldexp = _create_ufunc(math.floating.ldexp, numpy.ldexp)
