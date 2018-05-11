@@ -38,13 +38,16 @@ def augument_einsum_testcases(*params):
 
     """
     for dec in range(3):
-        for drop in [0, 0.2, 0.8]:
+        for drop in [False, True]:
+            prob = numpy.random.rand() if drop else 0.
             for param in params:
                 param_new = param.copy()
                 for k in param.keys():
                     if k.startswith('shape_'):
-                        param_new[k] = \
-                            _rand1_shape(_dec_shape(param[k], dec), drop)
+                        new_shape = _dec_shape(param[k], dec)
+                        if drop:
+                            new_shape = _rand1_shape(new_shape, drop)
+                        param_new[k] = new_shape
                 param_new['_raw_params'] = {
                     'orig': param,
                     'dec': dec,
