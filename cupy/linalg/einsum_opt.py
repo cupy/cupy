@@ -1,5 +1,6 @@
 def _compute_size_by_dict(indices, idx_dict):
-    """
+    """Copied from NumPy's _compute_size_by_dict
+
     Computes the product of the elements in indices based on the dictionary
     idx_dict.
 
@@ -28,7 +29,8 @@ def _compute_size_by_dict(indices, idx_dict):
 
 
 def _find_contraction(positions, input_sets, output_set):
-    """
+    """Copied from NumPy's _find_contraction
+
     Finds the contraction for a given set of input and output sets.
 
     Parameters
@@ -88,7 +90,8 @@ def _find_contraction(positions, input_sets, output_set):
 
 
 def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
-    """
+    """Copied from NumPy's _optimal_path
+
     Computes all possible pair contractions, sieves the results based
     on ``memory_limit`` and returns the lowest cost path. This algorithm
     scales factorial with respect to the elements in the list ``input_sets``.
@@ -169,7 +172,8 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
 
 
 def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
-    """
+    """Copied from NumPy's _greedy_path
+
     Finds the path by contracting the best pair until the input list is
     exhausted. The best pair is found by minimizing the tuple
     ``(-prod(indices_removed), cost)``.  What this amounts to is prioritizing
