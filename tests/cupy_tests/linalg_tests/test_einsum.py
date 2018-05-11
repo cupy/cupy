@@ -7,10 +7,13 @@ from cupy import testing
 
 
 def _dec_shape(shape, dec):
+    # Test smaller shape
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
 
 def _rand1_shape(shape, prob):
+    # Test broadcast
+    # If diagonals are "broadcasted" we can simply:
     # return tuple(1 if numpy.random.rand() < prob else s for s in shape)
     table = {}
     new_shape = []
