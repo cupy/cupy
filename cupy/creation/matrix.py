@@ -59,13 +59,79 @@ def diagflat(v, k=0):
     return cupy.diag(v.ravel(), k)
 
 
-# TODO(okuta): Implement tri
+def tri(N, M=None, k=0, dtype=float):
+    """Creates an array with ones at and below the given diagonal.
+
+    Args:
+        N (int): Number of rows.
+        M (int): Number of columns. M == N by default.
+        k (int): The sub-diagonal at and below which the array is filled. Zero
+            is the main diagonal, a positive value is above it, and a negative
+            value is below.
+        dtype: Data type specifier.
+
+    Returns:
+        cupy.ndarray: An array with ones at and below the given diagonal.
+
+    .. seealso:: :func:`numpy.tri`
+
+    """
+    if M is None:
+        M = N
+    out = cupy.empty((N, M), dtype=dtype)
+
+    return cupy.ElementwiseKernel(
+        'int32 m, int32 k',
+        'T out',
+        '''
+        int row = i % m;
+        int col = i / m;
+        out = (row <= col + k);
+        ''',
+        'tri',
+    )(M, k, out)
 
 
-# TODO(okuta): Implement tril
+def tril(m, k=0):
+    """Returns a lower triangle of an array.
+
+    Args:
+        m (array-like): Array or array-like object.
+        k (int): The diagonal above which to zero elements. Zero is the main
+            diagonal, a positive value is above it, and a negative value is
+            below.
+
+    Returns:
+        cupy.ndarray: A lower triangle of an array.
+
+    .. seealso:: :func:`numpy.tril`
+
+    """
+    m = cupy.asarray(m)
+    mask = tri(*m.shape[-2:], k=k, dtype=bool)
+
+    return cupy.where(mask, m, m.dtype.type(0))
 
 
-# TODO(okuta): Implement triu
+def triu(m, k=0):
+    """Returns an upper triangle of an array.
+
+    Args:
+        m (array-like): Array or array-like object.
+        k (int): The diagonal below which to zero elements. Zero is the main
+            diagonal, a positive value is above it, and a negative value is
+            below.
+
+    Returns:
+        cupy.ndarray: An upper triangle of an array.
+
+    .. seealso:: :func:`numpy.triu`
+
+    """
+    m = cupy.asarray(m)
+    mask = tri(*m.shape[-2:], k=k-1, dtype=bool)
+
+    return cupy.where(mask, m.dtype.type(0), m)
 
 
 # TODO(okuta): Implement vander
