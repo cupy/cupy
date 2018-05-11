@@ -49,8 +49,11 @@ class TestTrace(unittest.TestCase):
 @testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
+    # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
+    # with NumPy. We should remove `type_check=False` once NumPy is fixed.
+    # See https://github.com/cupy/cupy/pull/875 for details.
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
     def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
