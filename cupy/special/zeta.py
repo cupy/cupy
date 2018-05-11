@@ -12,9 +12,9 @@ def _get_zeta_kernel():
             'T x_, T q_', 'T y',
             """
             int j;
-            float a, b, k, s, t, w;
-            float MACHEP =  1.38777878078144567553E-17;
-            float A[] = {
+            T a, b, k, s, t, w;
+            T MACHEP =  1.38777878078144567553E-17;
+            T A[] = {
                 12.0,
                 -720.0,
                 30240.0,
@@ -30,8 +30,8 @@ def _get_zeta_kernel():
                     /*1.6938241367317436694528e27/236364091 */
             };
 
-            float x = x_;
-            float q = q_;
+            T x = x_;
+            T q = q_;
             if (x == 1.0){
                 y = 1.0 / 0.0;
                 return;
@@ -105,6 +105,18 @@ def zeta(x, q):
     .. seealso:: :data:`scipy.special.zeta`
 
     """
+    if (x.dtype == cupy.float16 or x.dtype == cupy.dtype('b') or
+            x.dtype == cupy.dtype('h') or x.dtype == cupy.dtype('B') or
+            x.dtype == cupy.dtype('H') or x.dtype == cupy.bool_):
+        x = x.astype(cupy.float32)
+        q = q.astype(cupy.float32)
+    elif (x.dtype == cupy.dtype('i') or x.dtype == cupy.dtype('l') or
+            x.dtype == cupy.dtype('q') or x.dtype == cupy.dtype('I') or
+            x.dtype == cupy.dtype('L') or x.dtype == cupy.dtype('Q')):
+        x = x.astype(cupy.float64)
+        q = q.astype(cupy.float64)
+    x, q = cupy.asarray(x), cupy.asarray(q)
+    x, q = cupy.broadcast_arrays(x, q)
     y = cupy.zeros_like(x)
     _get_zeta_kernel()(x, q, y)
     return y
