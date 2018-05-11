@@ -67,7 +67,22 @@ from cupy.core import ufunc  # NOQA
 # =============================================================================
 # Constants (borrowed from NumPy)
 # =============================================================================
+from numpy import e  # NOQA
+from numpy import euler_gamma  # NOQA
+from numpy import Inf  # NOQA
+from numpy import inf  # NOQA
+from numpy import Infinity  # NOQA
+from numpy import infty  # NOQA
+from numpy import NAN  # NOQA
+from numpy import NaN  # NOQA
+from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
+from numpy import NINF  # NOQA
+from numpy import NZERO  # NOQA
+from numpy import pi  # NOQA
+from numpy import PINF  # NOQA
+from numpy import PZERO  # NOQA
+
 
 # =============================================================================
 # Data types (borrowed from NumPy)
