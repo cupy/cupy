@@ -19,8 +19,8 @@ class TestGammaln(unittest.TestCase):
                                  mod_name='special')
     def test_linspace(self, xp, dtype, sp):
         if (dtype == xp.dtype('B') or dtype == xp.dtype('H')
-           or dtype == xp.dtype('I') or dtype == xp.dtype('L')
-           or dtype == xp.dtype('Q')):
+            or dtype == xp.dtype('I') or dtype == xp.dtype('L')
+                or dtype == xp.dtype('Q')):
             a = numpy.linspace(-30, 30, 1000, dtype=dtype)
             a = xp.asarray(a)
         else:
