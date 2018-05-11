@@ -45,39 +45,36 @@ class TestSpmatrix(unittest.TestCase):
         else:
             return DummySparseCPU
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=ValueError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_instantiation(self, xp, sp):
         sp.spmatrix()
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=TypeError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
     def test_len(self, xp, sp):
         s = self.dummy_class(sp)()
         len(s)
 
-    @testing.numpy_cupy_equal(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_bool_true(self, xp, sp):
         s = self.dummy_class(sp)(shape=(1, 1), nnz=1)
         return bool(s)
 
-    @testing.numpy_cupy_equal(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_bool_false(self, xp, sp):
         s = self.dummy_class(sp)(shape=(1, 1), nnz=0)
         return bool(s)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=ValueError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_bool_invalid(self, xp, sp):
         s = self.dummy_class(sp)(shape=(2, 1))
         bool(s)
 
-    @testing.numpy_cupy_equal(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_asformat_none(self, xp, sp):
         s = self.dummy_class(sp)()
         self.assertIs(s.asformat(None), s)
 
-    @testing.numpy_cupy_equal(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_equal(sp_name='sp')
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
         return s.getmaxprint()

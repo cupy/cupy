@@ -3,7 +3,6 @@ from __future__ import print_function
 
 import contextlib
 import functools
-import importlib
 import inspect
 import os
 import pkg_resources
@@ -18,7 +17,6 @@ import six
 import cupy
 from cupy import internal
 import cupy.sparse
-import cupy.special
 from cupy.testing import array
 from cupy.testing import parameterized
 
@@ -90,19 +88,19 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
-def _make_decorator(check_func, name, type_check, accept_error, mod=None,
-                    mod_name=None):
+def _make_decorator(check_func, name, type_check, accept_error, sp_name=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            if mod:
-                kw[mod] = cupy.__dict__[mod_name]
+            if sp_name:
+                kw[sp_name] = cupy.sparse
             kw[name] = cupy
             cupy_result, cupy_error, cupy_tb = _call_func(self, impl, args, kw)
 
             kw[name] = numpy
-            if mod:
-                kw[mod] = importlib.import_module('scipy.%s' % mod_name)
+            if sp_name:
+                import scipy.sparse
+                kw[sp_name] = scipy.sparse
             numpy_result, numpy_error, numpy_tb = \
                 _call_func(self, impl, args, kw)
 
@@ -140,7 +138,7 @@ def _make_decorator(check_func, name, type_check, accept_error, mod=None,
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        mod=None, mod_name=None, contiguous_check=True):
+                        sp_name=None, contiguous_check=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -158,10 +156,9 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
              this argument, the errors are ignored and not raised.
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
          contiguous_check(bool): If ``True``, consistency of contiguity is
              also checked.
 
@@ -201,13 +198,12 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                     'The state of f_contiguous flag is false. '
                     '(cupy_result:{} numpy_result:{})'.format(
                         c.flags.f_contiguous, n.flags.f_contiguous))
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
                                   name='xp', type_check=True,
-                                  accept_error=False, mod=None, mod_name=None):
+                                  accept_error=False, sp_name=None):
     """Decorator that checks NumPy results and CuPy ones are almost equal.
 
     Args:
@@ -224,10 +220,9 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
              this argument, the errors are ignored and not raised.
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal`
@@ -238,13 +233,11 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     def check_func(x, y):
         array.assert_array_almost_equal(
             x, y, decimal, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
-                                       accept_error=False, mod=None,
-                                       mod_name=None):
+                                       accept_error=False, sp_name=None):
     """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
 
     Args:
@@ -258,10 +251,9 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
              this argument, the errors are ignored and not raised.
              If it is ``True``, all error types are acceptable.
              If it is ``False``, no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal_nulp`
@@ -271,12 +263,11 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     """
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
-                             accept_error=False, mod=None, mod_name=None):
+                             accept_error=False, sp_name=None):
     """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.
 
     Args:
@@ -293,10 +284,9 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
              this argument, the errors are ignored and not raised.
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`assert_array_max_ulp`
@@ -307,13 +297,11 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
     """
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
-                           type_check=True, accept_error=False, mod=None,
-                           mod_name=None):
+                           type_check=True, accept_error=False, sp_name=None):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
@@ -329,10 +317,9 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
              this argument, the errors are ignored and not raised.
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`numpy_cupy_array_equal`
@@ -343,12 +330,11 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
 
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
 def numpy_cupy_array_list_equal(
-        err_msg='', verbose=True, name='xp', mod=None, mod_name=None):
+        err_msg='', verbose=True, name='xp', sp_name=None):
     """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
 
     Args:
@@ -357,10 +343,9 @@ def numpy_cupy_array_list_equal(
              to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same list of arrays
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
@@ -370,13 +355,14 @@ def numpy_cupy_array_list_equal(
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            if mod:
-                kw[mod] = cupy.__dict__[mod_name]
+            if sp_name:
+                kw[sp_name] = cupy.sparse
             kw[name] = cupy
             x = impl(self, *args, **kw)
 
-            if mod:
-                kw[mod] = importlib.import_module('scipy.%s' % mod_name)
+            if sp_name:
+                import scipy.sparse
+                kw[sp_name] = scipy.sparse
             kw[name] = numpy
             y = impl(self, *args, **kw)
             self.assertIsNotNone(x)
@@ -387,8 +373,7 @@ def numpy_cupy_array_list_equal(
 
 
 def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
-                          type_check=True, accept_error=False, mod=None,
-                          mod_name=None):
+                          type_check=True, accept_error=False, sp_name=None):
     """Decorator that checks the CuPy result is less than NumPy result.
 
     Args:
@@ -404,10 +389,9 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
              this argument, the errors are ignored and not raised.
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the smaller array
     when ``xp`` is ``cupy`` than the one when ``xp`` is ``numpy``.
@@ -416,20 +400,18 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     """
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, mod,
-                           mod_name)
+    return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
-def numpy_cupy_equal(name='xp', mod=None, mod_name=None):
+def numpy_cupy_equal(name='xp', sp_name=None):
     """Decorator that checks NumPy results are equal to CuPy ones.
 
     Args:
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
 
     Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
@@ -437,13 +419,14 @@ def numpy_cupy_equal(name='xp', mod=None, mod_name=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            if mod:
-                kw[mod] = cupy.__dict__[mod_name]
+            if sp_name:
+                kw[sp_name] = cupy.sparse
             kw[name] = cupy
             cupy_result = impl(self, *args, **kw)
 
-            if mod:
-                kw[mod] = importlib.import_module('scipy.%s' % mod_name)
+            if sp_name:
+                import scipy.sparse
+                kw[sp_name] = scipy.sparse
             kw[name] = numpy
             numpy_result = impl(self, *args, **kw)
 
@@ -456,17 +439,15 @@ numpy: %s''' % (str(cupy_result), str(numpy_result))
     return decorator
 
 
-def numpy_cupy_raises(name='xp', mod=None, mod_name=None,
-                      accept_error=Exception):
+def numpy_cupy_raises(name='xp', sp_name=None, accept_error=Exception):
     """Decorator that checks the NumPy and CuPy throw same errors.
 
     Args:
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         mod(str or None): Argument name whose value is either
-             ``scipy.xxx`` or ``cupy.xxx`` module. If ``None``, no
+         sp_name(str or None): Argument name whose value is either
+             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
              argument is given for the modules.
-         mod_name(str or None): Name of the module which `mod` is.
          accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
@@ -481,8 +462,8 @@ def numpy_cupy_raises(name='xp', mod=None, mod_name=None,
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            if mod:
-                kw[mod] = cupy.__dict__[mod_name]
+            if sp_name:
+                kw[sp_name] = cupy.sparse
             kw[name] = cupy
             try:
                 impl(self, *args, **kw)
@@ -492,8 +473,9 @@ def numpy_cupy_raises(name='xp', mod=None, mod_name=None,
                 cupy_error = e
                 cupy_tb = traceback.format_exc()
 
-            if mod:
-                kw[mod] = importlib.import_module('scipy.%s' % mod_name)
+            if sp_name:
+                import scipy.sparse
+                kw[sp_name] = scipy.sparse
             kw[name] = numpy
             try:
                 impl(self, *args, **kw)

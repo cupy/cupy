@@ -26,20 +26,20 @@ class TestLsqr(unittest.TestCase):
         self.A = scipy.sparse.random(50, 50, density=0.2, data_rvs=rvs)
         self.b = numpy.random.randint(15, size=50)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_raises(sp_name='sp')
     def test_size(self, xp, sp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = xp.array(numpy.append(self.b, [1]), dtype=self.dtype)
         sp.linalg.lsqr(A, b)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape(self, xp, sp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = xp.array(numpy.tile(self.b, (2, 1)), dtype=self.dtype)
         sp.linalg.lsqr(A, b)
 
     @condition.retry(10)
-    @testing.numpy_cupy_allclose(atol=1e-1, mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_csrmatrix(self, xp, sp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = xp.array(self.b, dtype=self.dtype)
@@ -47,7 +47,7 @@ class TestLsqr(unittest.TestCase):
         return x[0]
 
     @condition.retry(10)
-    @testing.numpy_cupy_allclose(atol=1e-1, mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
         A = xp.array(self.A.A, dtype=self.dtype)
         b = xp.array(self.b, dtype=self.dtype)

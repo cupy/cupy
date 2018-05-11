@@ -18,7 +18,7 @@ from cupy import testing
 @testing.with_requires('scipy')
 class TestEye(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eye(self, xp, sp):
         x = sp.eye(
             self.m, n=self.n, k=self.k, dtype=self.dtype, format=self.format)
@@ -34,7 +34,7 @@ class TestEye(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestIdentity(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eye(self, xp, sp):
         x = sp.identity(3, dtype=self.dtype, format=self.format)
         self.assertIsInstance(x, sp.spmatrix)
@@ -48,7 +48,7 @@ class TestIdentity(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestSpdiags(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(mod='sp', mod_name='sparse')
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_spdiags(self, xp, sp):
         data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
         diags = xp.array([0, -1, 2], dtype='i')
@@ -124,17 +124,14 @@ class TestRandom(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestRandomInvalidArgument(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=ValueError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_too_small_density(self, xp, sp):
         sp.random(3, 4, density=-0.1)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=ValueError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_too_large_density(self, xp, sp):
         sp.random(3, 4, density=1.1)
 
-    @testing.numpy_cupy_raises(mod='sp', mod_name='sparse',
-                               accept_error=NotImplementedError)
+    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
     def test_invalid_dtype(self, xp, sp):
         sp.random(3, 4, dtype='i')
