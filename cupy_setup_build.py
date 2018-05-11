@@ -17,7 +17,6 @@ from setuptools.command import build_ext
 from setuptools.command import sdist
 
 from install import build
-from install import utils
 
 
 required_cython_version = pkg_resources.parse_version('0.26.1')
@@ -43,7 +42,6 @@ MODULES = [
             'cupy.cuda.nvrtc',
             'cupy.cuda.pinned_memory',
             'cupy.cuda.profiler',
-            'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
@@ -58,7 +56,6 @@ MODULES = [
             'curand.h',
             'cusparse.h',
             'nvrtc.h',
-            'nvToolsExt.h',
         ],
         'libraries': [
             'cublas',
@@ -68,7 +65,6 @@ MODULES = [
             'curand',
             'cusparse',
             'nvrtc',
-            'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
@@ -116,6 +112,19 @@ MODULES = [
         'check_method': build.check_cusolver_version,
     },
     {
+        'name': 'nvtx',
+        'file': [
+            'cupy.cuda.nvtx',
+        ],
+        'include': [
+            'nvToolsExt.h',
+        ],
+        'libraries': [
+            'nvToolsExt' if not sys.platform == 'win32' else 'nvToolsExt64_1',
+        ],
+        'check_method': build.check_nvtx,
+    },
+    {
         # The value of the key 'file' is a list that contains extension names
         # or tuples of an extension name and a list of other souces files
         # required to build the extension such as .cpp files and .cu files.
@@ -140,17 +149,6 @@ MODULES = [
         'check_method': build.check_cuda_version,
     }
 ]
-
-if sys.platform == 'win32':
-    mod_cuda = MODULES[0]
-    mod_cuda['libraries'].remove('nvToolsExt')
-    if utils.search_on_path(['nvToolsExt64_1.dll']) is None:
-        mod_cuda['file'].remove('cupy.cuda.nvtx')
-        mod_cuda['include'].remove('nvToolsExt.h')
-        utils.print_warning(
-            'Cannot find nvToolsExt. nvtx was disabled.')
-    else:
-        mod_cuda['libraries'].append('nvToolsExt64_1')
 
 
 def ensure_module_file(file):
@@ -237,7 +235,8 @@ def preconfigure_modules(compiler, settings):
         'Environment Variables:',
     ]
 
-    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CUDA_PATH', 'NVCC']:
+    for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
