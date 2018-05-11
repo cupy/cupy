@@ -3540,7 +3540,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(
+        numpy.array(a.shape[:-2], numpy.uint64) - 1,
+        numpy.array(b.shape[:-2], numpy.uint64) - 1
+    ) + 1
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
@@ -3605,6 +3608,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             raise ValueError(
                 'operands could not be broadcast together with '
                 'remapped shapes')
+
+    if a.size == 0 or b.size == 0:
+        return cupy.zeros(out_shape, ret_dtype)
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
