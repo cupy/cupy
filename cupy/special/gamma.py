@@ -28,6 +28,7 @@ def gamma(x):
     .. seealso:: :data:`scipy.special.gamma`
 
     """
+    x = cupy.asarray(x)
     if (x.dtype == cupy.float16 or x.dtype == cupy.dtype('b') or
             x.dtype == cupy.dtype('h') or x.dtype == cupy.dtype('B') or
             x.dtype == cupy.dtype('H') or x.dtype == cupy.bool_):

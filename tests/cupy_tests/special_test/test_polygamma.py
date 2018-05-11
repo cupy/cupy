@@ -30,3 +30,9 @@ class TestPolygamma(unittest.TestCase):
             a = xp.tile(xp.arange(5), 200).astype(dtype)
             b = xp.linspace(-30, 30, 1000, dtype=dtype)
         return sp.polygamma(a, b)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, mod='sp',
+                                 mod_name='special')
+    def test_scalar(self, xp, dtype, sp):
+        return sp.polygamma(dtype(2.), dtype(1.5))
