@@ -5,63 +5,6 @@ import numpy
 import cupy_testing as testing
 
 
-"""
-class TestA(unittest.TestCase):
-
-    shape_a = (1, 1)
-    shape_b = (3, 4)
-    shape_c = (1, 1)
-    subscripts = 'ij,jk,kl'
-    optimize = True
-
-    @testing.for_all_dtypes_combination(['dtype_x', 'dtype_y'], no_float16=True)
-    # @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum_ternary(self, dtype_x, dtype_y):
-        a = testing.shaped_arange(self.shape_a, numpy, dtype_x)
-        b = testing.shaped_arange(self.shape_b, numpy, dtype_x)
-        c = testing.shaped_arange(self.shape_c, numpy, dtype_y)
-        return numpy.einsum(self.subscripts, a, b, c, optimize=self.optimize)
-
-
-a = np.array([[1.+1.j]])
-b = np.array([[ 1. +1.j,  2. +2.j,  3. +3.j,  4. +4.j],
-       [ 5. +5.j,  6. +6.j,  7. +7.j,  8. +8.j],
-       [ 9. +9.j, 10.+10.j, 11.+11.j, 12.+12.j]])
-c = np.array([[1]], dtype=np.int32)
-np.einsum('ij,jk,kl', a, b, c, optimize=True)
-# This raises error, due to numpy issue #10930.
-"""
-
-
-class TestB(unittest.TestCase):
-
-    shape_a = (3, 4, 2)
-    shape_b = (1, 1, 2)
-    subscripts = 'ijk,jil->kl'
-    # optimize = True
-
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
-    # @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum_np(self, dtype_a, dtype_b):
-        a = testing.shaped_arange(self.shape_a, numpy, dtype_a)
-        b = testing.shaped_arange(self.shape_b, numpy, dtype_b)
-        # c = testing.shaped_arange(self.shape_c, numpy, dtype_y)
-        return numpy.einsum(self.subscripts, a, b)
-
-
-class TestC(unittest.TestCase):
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test1(self, xp):
-        shape_a = (1, 1, 1, 1, 1, 1)
-        dtype_a = numpy.complex128
-        shape_b = (2, 3, 2, 2)
-        dtype_b = numpy.int8
-        subscripts = '...lmn,lmno->...o'
-        a = testing.shaped_arange(shape_a, xp, dtype_a)
-        b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.einsum(subscripts, a, b, optimize=False)
-
-
 def _dec_shape(shape, dec):
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
 
@@ -511,6 +454,3 @@ class TestEinSumLarge(unittest.TestCase):
     def test_einsum_memory_limit(self, xp):
         # I hope there's no problem with np.einsum for these cases...
         return xp.einsum(*self.operands, optimize=('optimal', 20))
-
-
-testing.run_module(__name__, __file__)
