@@ -19,20 +19,27 @@ class TestPolygamma(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, mod='sp',
                                  mod_name='special')
     def test_linspace(self, xp, dtype, sp):
-        if (dtype == xp.dtype('B') or dtype == xp.dtype('H')
-            or dtype == xp.dtype('I') or dtype == xp.dtype('L')
-                or dtype == xp.dtype('Q')):
-            a = numpy.tile(numpy.arange(5), 200).astype(dtype)
-            b = numpy.linspace(-30, 30, 1000, dtype=dtype)
-            a = xp.asarray(a)
-            b = xp.asarray(b)
-        else:
-            a = xp.tile(xp.arange(5), 200).astype(dtype)
-            b = xp.linspace(-30, 30, 1000, dtype=dtype)
+        a = numpy.tile(numpy.arange(5), 200).astype(dtype)
+        b = numpy.linspace(-30, 30, 1000, dtype=dtype)
+        a = xp.asarray(a)
+        b = xp.asarray(b)
         return sp.polygamma(a, b)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, mod='sp',
                                  mod_name='special')
     def test_scalar(self, xp, dtype, sp):
-        return sp.polygamma(dtype(2.), dtype(1.5))
+        # polygamma in scipy returns numpy.float64 value when inputs scalar.
+        # whatever type input is.
+        return sp.polygamma(dtype(2.), dtype(1.5)).astype(numpy.float32)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, mod='sp',
+                                 mod_name='special')
+    def test_inf_and_nan(self, xp, dtype, sp):
+        x = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
+        a = numpy.tile(x, 3)
+        b = numpy.repeat(x, 3)
+        a = xp.asarray(a)
+        b = xp.asarray(b)
+        return sp.polygamma(a, b)

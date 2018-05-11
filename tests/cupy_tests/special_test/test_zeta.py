@@ -19,16 +19,10 @@ class TestZeta(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, mod='sp',
                                  mod_name='special')
     def test_linspace(self, xp, dtype, sp):
-        if (dtype == xp.dtype('B') or dtype == xp.dtype('H')
-            or dtype == xp.dtype('I') or dtype == xp.dtype('L')
-                or dtype == xp.dtype('Q')):
-            a = numpy.linspace(-30, 30, 1000, dtype=dtype)
-            b = numpy.linspace(-30, 30, 1000, dtype=dtype)
-            a = xp.asarray(a)
-            b = xp.asarray(b)
-        else:
-            a = xp.linspace(-30, 30, 1000, dtype=dtype)
-            b = xp.linspace(-30, 30, 1000, dtype=dtype)
+        a = numpy.linspace(-30, 30, 1000, dtype=dtype)
+        b = numpy.linspace(-30, 30, 1000, dtype=dtype)
+        a = xp.asarray(a)
+        b = xp.asarray(b)
         return sp.zeta(a, b)
 
     @testing.for_all_dtypes(no_complex=True)
@@ -36,3 +30,14 @@ class TestZeta(unittest.TestCase):
                                  mod_name='special')
     def test_scalar(self, xp, dtype, sp):
         return sp.zeta(dtype(2.), dtype(1.5))
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, mod='sp',
+                                 mod_name='special')
+    def test_inf_and_nan(self, xp, dtype, sp):
+        x = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
+        a = numpy.tile(x, 3)
+        b = numpy.repeat(x, 3)
+        a = xp.asarray(a)
+        b = xp.asarray(b)
+        return sp.zeta(a, b)

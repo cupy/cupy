@@ -11,6 +11,10 @@ def _get_gamma_kernel():
         _gamma_kernel = core.ElementwiseKernel(
             'T x', 'T y',
             """
+            if(isinf(x) && x < 0){
+                y = - 1.0 / 0.0;
+                return;
+            }
             if(x < 0. && x == floor(x)){
                 y = 1.0 / 0.0;
                 return;

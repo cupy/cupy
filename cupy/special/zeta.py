@@ -32,6 +32,12 @@ def _get_zeta_kernel():
 
             T x = x_;
             T q = q_;
+            
+            if(isnan(q)){
+                y = nanf("");
+                return;
+            }
+
             if (x == 1.0){
                 y = 1.0 / 0.0;
                 return;

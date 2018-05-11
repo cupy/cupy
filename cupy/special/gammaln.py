@@ -10,7 +10,13 @@ def _get_gammaln_kernel():
     if _gammaln_kernel is None:
         _gammaln_kernel = core.ElementwiseKernel(
             'T x', 'T y',
-            'y = lgammaf(x)',
+            """
+            if(isinf(x) && x < 0){
+                y = - 1.0 / 0.0;
+                return;
+            }
+            y = lgammaf(x);
+            """,
             'gammaln_kernel'
         )
     return _gammaln_kernel
