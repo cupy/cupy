@@ -22,6 +22,14 @@ def gammaln(x):
     .. seealso:: :data:`scipy.special.gammaln`
 
     """
+    if (x.dtype == cupy.float16 or x.dtype == cupy.dtype('b') or
+        x.dtype == cupy.dtype('h') or x.dtype == cupy.dtype('B') or
+        x.dtype == cupy.dtype('H') or x.dtype == cupy.bool_):
+        x = x.astype(cupy.float32)
+    elif (x.dtype == cupy.dtype('i') or x.dtype == cupy.dtype('l') or
+          x.dtype == cupy.dtype('q') or x.dtype == cupy.dtype('I') or
+          x.dtype == cupy.dtype('L') or x.dtype == cupy.dtype('Q')):
+        x = x.astype(cupy.float64)
     y = cupy.zeros_like(x)
     _get_gammaln_kernel()(x, y)
     return y
