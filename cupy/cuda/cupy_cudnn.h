@@ -9,9 +9,6 @@
 
 #include <cudnn.h>
 
-#if (CUDNN_VERSION < 7000)
-#endif
-
 #else // #ifndef CUPY_NO_CUDA
 
 #define CUDNN_VERSION 0
