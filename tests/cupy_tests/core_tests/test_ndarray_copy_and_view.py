@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayCopyAndView(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.numpy_cupy_array_equal()
     def test_view(self, xp):
         a = testing.shaped_arange((4,), xp, dtype=numpy.float32)

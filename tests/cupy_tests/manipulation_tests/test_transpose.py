@@ -7,8 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestTranspose(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.11')
     def test_moveaxis1(self, xp):

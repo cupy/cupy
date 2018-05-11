@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestSearch(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmax_all(self, xp, dtype):

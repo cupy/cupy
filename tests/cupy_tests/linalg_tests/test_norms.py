@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestTrace(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_trace(self, xp, dtype):
@@ -51,10 +49,11 @@ class TestTrace(unittest.TestCase):
 @testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
+    # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
+    # with NumPy. We should remove `type_check=False` once NumPy is fixed.
+    # See https://github.com/cupy/cupy/pull/875 for details.
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
     def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
@@ -77,8 +76,6 @@ class TestNorm(unittest.TestCase):
 @testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_matrix_rank(self, xp, dtype):
@@ -96,8 +93,6 @@ class TestMatrixRank(unittest.TestCase):
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestDet(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
@@ -140,8 +135,6 @@ class TestDet(unittest.TestCase):
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSlogdet(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)

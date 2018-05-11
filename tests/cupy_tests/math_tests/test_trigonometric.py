@@ -6,8 +6,6 @@ from cupy import testing
 @testing.gpu
 class TestTrigonometric(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype):

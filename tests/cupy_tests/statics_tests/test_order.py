@@ -19,8 +19,6 @@ def for_all_interpolations(name='interpolation'):
 @testing.gpu
 class TestOrder(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @for_all_interpolations()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()

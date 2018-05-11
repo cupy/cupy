@@ -262,6 +262,9 @@ from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
+from cupy.creation.matrix import tri  # NOQA
+from cupy.creation.matrix import tril  # NOQA
+from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -302,6 +305,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
+
+from cupy.manipulation.add_remove import unique  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
@@ -524,11 +529,10 @@ from cupy.core.fusion import remainder as mod  # NOQA
 from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
-# TODO(okuta): implement fusion function
-from cupy.core import angle  # NOQA
-from cupy.core import conj  # NOQA
-from cupy.core import imag  # NOQA
-from cupy.core import real  # NOQA
+from cupy.core.fusion import angle  # NOQA
+from cupy.core.fusion import conj  # NOQA
+from cupy.core.fusion import imag  # NOQA
+from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
@@ -576,6 +580,7 @@ from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
 
+from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
