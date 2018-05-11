@@ -25,7 +25,18 @@ def _rand1_shape(shape, prob):
 
 
 def augument_einsum_testcases(*params):
-    # rs = numpy.random.RandomState()
+    """Modify shapes in einsum tests
+
+    Shape parameter should be starts with 'shape_'.
+    The original parameter is stored as '_raw_params'.
+
+    Args:
+        params (sequence of dicts)
+
+    Yields:
+        dict: parameter with modified shapes.
+
+    """
     for dec in range(3):
         for drop in [0, 0.2, 0.8]:
             for param in params:
