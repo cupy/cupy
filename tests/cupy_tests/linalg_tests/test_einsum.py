@@ -1,8 +1,9 @@
 import unittest
+import warnings
 
 import numpy
 
-import cupy_testing as testing
+from cupy import testing
 
 
 def _dec_shape(shape, dec):
@@ -264,21 +265,26 @@ class TestEinSumUnaryOperation(unittest.TestCase):
             testing.assert_allclose(optimized_out, out)
         return out
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         b = xp.einsum(self.subscripts, a)
 
-        return b.ndim == 0 or xp.shares_memory(a, b)
+        return b.ndim == 0 or b.base is a
 
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_out'],
         no_complex=True)  # avoid ComplexWarning
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
+        if not numpy.can_cast(dtype_a, dtype_out):
+            # skip this combination
+            return xp.array([])
+
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
-        return xp.einsum(self.subscripts, a, dtype=dtype_out, casting='unsafe')
+        return xp.einsum(self.subscripts, a, dtype=dtype_out)
 
 
 class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
@@ -380,6 +386,14 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
      'subscripts': 'ij,ki,i->jk'},
     {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
      'subscripts': 'i...,i,...i->...i'},
+    {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
+     'subscripts': 'a...,...b,c...->abc...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
+     'subscripts': 'a...,...,c...->ac...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (4, 3), 'shape_c': (2, 3, 4),
+     'subscripts': 'a...,...b,c...->abc...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
+     'subscripts': 'a...,...,c...->ac...'},
 ))
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
@@ -411,20 +425,22 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         return out
 
 
-@testing.parameterize(
+@testing.parameterize(*([
     # memory constraint
-    {'subscript': 'a,b,c->abc'},
-    {'subscript': 'acdf,jbje,gihb,hfac'},
+    {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
+    {'subscript': 'acdf,jbje,gihb,hfac', 'opt': ('greedy', 0)},
+] + testing.product({'subscript': [
     # long paths
-    {'subscript': 'acdf,jbje,gihb,hfac,gfac,gifabc,hfac'},
-    {'subscript': 'chd,bde,agbc,hiad,bdi,cgh,agdb'},
+    'acdf,jbje,gihb,hfac,gfac,gifabc,hfac',
+    'chd,bde,agbc,hiad,bdi,cgh,agdb',
     # edge cases
-    {'subscript': 'eb,cb,fb->cef'},
-    {'subscript': 'dd,fb,be,cdb->cef'},
-    {'subscript': 'bca,cdb,dbf,afc->'},
-    {'subscript': 'dcc,fce,ea,dbf->ab'},
-    {'subscript': 'a,ac,ab,ad,cd,bd,bc->'},
-)
+    'eb,cb,fb->cef',
+    'dd,fb,be,cdb->cef',
+    'bca,cdb,dbf,afc->',
+    'dcc,fce,ea,dbf->ab',
+    'a,ac,ab,ad,cd,bd,bc->',
+], 'opt': ['greedy', 'optimal'],
+})))
 @testing.with_requires('numpy>=1.12')
 class TestEinSumLarge(unittest.TestCase):
 
@@ -447,10 +463,14 @@ class TestEinSumLarge(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum(self, xp):
-        # I hope there's no problem with np.einsum for these cases...
-        return xp.einsum(*self.operands, optimize=True)
-
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum_memory_limit(self, xp):
-        # I hope there's no problem with np.einsum for these cases...
-        return xp.einsum(*self.operands, optimize=('optimal', 20))
+        # TODO(kataoka): support memory efficient cupy.einsum
+        with warnings.catch_warnings(record=True) as ws:
+            # I hope there's no problem with np.einsum for these cases...
+            out = xp.einsum(*self.operands, optimize=self.opt)
+            if xp is not numpy and \
+                    isinstance(self.opt, tuple):  # with memory limit
+                for w in ws:
+                    self.assertIn("memory", str(w.message))
+            else:
+                self.assertEqual(len(ws), 0)
+        return out
