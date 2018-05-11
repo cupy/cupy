@@ -262,6 +262,9 @@ from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
+from cupy.creation.matrix import tri  # NOQA
+from cupy.creation.matrix import tril  # NOQA
+from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -302,6 +305,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
+
+from cupy.manipulation.add_remove import unique  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
