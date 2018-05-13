@@ -910,6 +910,20 @@ def with_requires(*requirements):
     return unittest.skipIf(skip, msg)
 
 
+def numpy_satisfies(version_range):
+    """Returns True if numpy version satisfies the specified criteria.
+
+    Args:
+        version_range: A version specifier (e.g., `>=1.13.0`).
+    """
+    spec = 'numpy{}'.format(version_range)
+    try:
+        pkg_resources.require(spec)
+    except pkg_resources.VersionConflict:
+        return False
+    return True
+
+
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
     """Returns an array with given shape, array module, and dtype.
 

@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestConj(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_conj(self, xp, dtype):
@@ -28,8 +26,6 @@ class TestConj(unittest.TestCase):
 @testing.gpu
 class TestAngle(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_angle(self, xp, dtype):
@@ -39,8 +35,6 @@ class TestAngle(unittest.TestCase):
 
 @testing.gpu
 class TestRealImag(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
@@ -97,8 +91,6 @@ class TestRealImag(unittest.TestCase):
 
 @testing.gpu
 class TestScalarConversion(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.12.0')

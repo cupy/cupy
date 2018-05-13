@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestFloating(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_complex=False):

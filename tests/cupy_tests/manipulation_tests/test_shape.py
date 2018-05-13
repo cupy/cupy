@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestShape(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def test_reshape_strides(self):
         def func(xp):
             a = testing.shaped_arange((1, 1, 1, 2, 2), xp)

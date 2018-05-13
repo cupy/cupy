@@ -3543,7 +3543,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(
+        numpy.array(a.shape[:-2], numpy.uint64) - 1,
+        numpy.array(b.shape[:-2], numpy.uint64) - 1
+    ) + 1
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
@@ -3608,6 +3611,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             raise ValueError(
                 'operands could not be broadcast together with '
                 'remapped shapes')
+
+    if a.size == 0 or b.size == 0:
+        return cupy.zeros(out_shape, ret_dtype)
 
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
@@ -4020,7 +4026,7 @@ angle = create_ufunc(
     'out0 = in0 >= 0 ? 0 : M_PI',
     doc='''Returns the angle of the complex argument.
 
-    .. seealso:: :data:`numpy.angle`
+    .. seealso:: :func:`numpy.angle`
 
     ''')
 
@@ -4034,7 +4040,7 @@ real = create_ufunc(
     'out0 = in0',
     doc='''Returns the real part of the elements of the array.
 
-    .. seealso:: :data:`numpy.real`
+    .. seealso:: :func:`numpy.real`
 
     ''')
 
@@ -4056,7 +4062,7 @@ imag = create_ufunc(
     'out0 = 0',
     doc='''Returns the imaginary part of the elements of the array.
 
-    .. seealso:: :data:`numpy.imag`
+    .. seealso:: :func:`numpy.imag`
 
     ''')
 

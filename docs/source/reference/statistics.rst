@@ -12,6 +12,7 @@ Order statistics
    cupy.amax
    cupy.nanmin
    cupy.nanmax
+   cupy.percentile
 
 
 Means and variances
@@ -21,6 +22,7 @@ Means and variances
    :toctree: generated/
    :nosignatures:
 
+   cupy.average
    cupy.mean
    cupy.var
    cupy.std
@@ -33,4 +35,5 @@ Histograms
    :toctree: generated/
    :nosignatures:
 
+   cupy.histogram
    cupy.bincount

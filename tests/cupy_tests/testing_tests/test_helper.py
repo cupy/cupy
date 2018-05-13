@@ -322,8 +322,6 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 @testing.gpu
 class TestShapedRandom(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     def test_shape_and_dtype(self, dtype):
         a = testing.shaped_random((2, 3), self.xp, dtype)
