@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -275,3 +276,191 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         b = testing.shaped_arange(self.shape_b, xp, dtype)
         c = testing.shaped_arange(self.shape_c, xp, dtype)
         return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
+
+
+def xp_einsum_path(xp, *args, **kwargs):
+    if xp is numpy:
+        return numpy.einsum_path(*args, **kwargs)
+    else:
+        return cupy.linalg.einsum.einsum_path(*args, **kwargs)
+
+
+@testing.parameterize(
+    # memory constraint
+    {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
+    {'subscript': 'acdf,jbje,gihb,hfac', 'opt': ('greedy', 0)},
+    # long paths
+    {'subscript': 'acdf,jbje,gihb,hfac,gfac,gifabc,hfac', 'opt': True},
+    {'subscript': 'chd,bde,agbc,hiad,bdi,cgh,agdb', 'opt': True},
+    # edge cases
+    {'subscript': 'eb,cb,fb->cef', 'opt': True},
+    {'subscript': 'dd,fb,be,cdb->cef', 'opt': True},
+    {'subscript': 'bca,cdb,dbf,afc->', 'opt': True},
+    {'subscript': 'dcc,fce,ea,dbf->ab', 'opt': True},
+    {'subscript': 'a,ac,ab,ad,cd,bd,bc->', 'opt': True},
+)
+@testing.with_requires('numpy==1.12')
+class TestEinSumPath(unittest.TestCase):
+
+    chars = 'abcdefghij'
+    sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
+    global_size_dict = {}
+    for size, char in zip(sizes, chars):
+        global_size_dict[char] = size
+
+    def build_operands(self, string, size_dict=global_size_dict):
+        # Builds views based off initial operands
+        operands = [string]
+        terms = string.split('->')[0].split(',')
+        for term in terms:
+            dims = [size_dict[x] for x in term]
+            operands.append(numpy.random.rand(*dims))
+
+        return operands
+
+    @testing.numpy_cupy_equal()
+    def test_einsum_path(self, xp):
+        outer_test = self.build_operands(self.subscript)
+        return xp_einsum_path(xp, *outer_test, optimize=self.opt,
+                              einsum_call=True)[1]
+
+@testing.parameterize(
+    {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
+     'subscript': 'a...,...b,c...->abc...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
+     'subscript': 'a...,...,c...->ac...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (4, 3), 'shape_c': (2, 3, 4),
+     'subscript': 'a...,...b,c...->abc...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
+     'subscript': 'a...,...,c...->ac...'},
+)
+# numpy.einsum_path return format was changed in newer version.
+# So we test with 1.12 only.
+@testing.with_requires('numpy==1.12')
+class TestEinSumPathEllipsis(unittest.TestCase):
+
+    @testing.numpy_cupy_equal()
+    def test_einsum_path_ellipsis(self, xp):
+        a = testing.shaped_arange(self.shape_a, xp, dtype=numpy.float32)
+        b = testing.shaped_arange(self.shape_b, xp, dtype=numpy.float32)
+        c = testing.shaped_arange(self.shape_c, xp, dtype=numpy.float32)
+        # Check path only
+        return xp_einsum_path(xp, self.subscript, a, b, c, optimize=True,
+                              einsum_call=True)[1][0][:2]
+
+
+class TestEinSumErrorPath(unittest.TestCase):
+
+    def test_irregular_ellipsis1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('..', cupy.zeros((2, 2, 2)))
+
+    def test_irregular_ellipsis2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('...i...', cupy.zeros((2, 2, 2)))
+
+    def test_irregular_ellipsis3(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i...->...i...',
+                                           cupy.zeros((2, 2, 2)))
+
+    def test_no_arguments(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path()
+
+    def test_one_argument(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('')
+
+    def test_not_string_subject(self):
+        with self.assertRaises(TypeError):
+            cupy.linalg.einsum.einsum_path(0, 0)
+
+    def test_bad_argument(self):
+        with self.assertRaises(TypeError):
+            cupy.linalg.einsum.einsum_path('', 0, bad_arg=0)
+
+    def test_too_many_operands1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('', 0, 0)
+
+    def test_too_many_operands2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i,j', cupy.array([0, 0]),
+                                           cupy.array([0, 0]), cupy.array([0, 0]))
+
+    def test_too_few_operands1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path(',', 0)
+
+    def test_many_dimension1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i', 0)
+
+    def test_many_dimension2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ij', cupy.array([0, 0]))
+
+    def test_too_many_dimension3(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ijk...->...',
+                                           cupy.arange(6).reshape(2, 3))
+
+    def test_too_few_dimension(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i->i', cupy.arange(6).reshape(2, 3))
+
+    def test_invalid_char1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i%', cupy.array([0, 0]))
+
+    def test_invalid_char2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('j$', cupy.array([0, 0]))
+
+    def test_invalid_char3(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i->&', cupy.array([0, 0]))
+
+    # output subscripts must appear in inumpy.t
+    def test_invalid_output_subscripts1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i->ij', cupy.array([0, 0]))
+
+    # output subscripts may only be specified once
+    def test_invalid_output_subscripts2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ij->jij',
+                                           cupy.array([[0, 0], [0, 0]]))
+
+    # output subscripts must not incrudes comma
+    def test_invalid_output_subscripts3(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ij->i,j',
+                                           cupy.array([[0, 0], [0, 0]]))
+
+    # dimensions much match when being collapsed
+    def test_invalid_diagonal1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ii', cupy.arange(6).reshape(2, 3))
+
+    def test_invalid_diagonal2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('ii->', cupy.arange(6).reshape(2, 3))
+
+    # invalid -> operator
+    def test_invalid_arrow1(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i-i', cupy.array([0, 0]))
+
+    def test_invalid_arrow2(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i>i', cupy.array([0, 0]))
+
+    def test_invalid_arrow3(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i->->i', cupy.array([0, 0]))
+
+    def test_invalid_arrow4(self):
+        with self.assertRaises(ValueError):
+            cupy.linalg.einsum.einsum_path('i-', cupy.array([0, 0]))

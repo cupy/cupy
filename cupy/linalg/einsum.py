@@ -205,6 +205,391 @@ def get_dummy_labels(label_list):
     return dummy_label_set
 
 
+def _compute_size_by_dict(indices, idx_dict, broadcasted_dims, operand_idx=()):
+    """Compute computation cost.
+
+    If '@' exists in indices we evaluate it as max dims of broadcasted dims in
+    operand_idx.
+    Args:
+        indices (str): Indexes which will be contracted.
+        idx_dict (dict): Dimension length for each index.
+        broadcasted_dims (dict): Dimension length of broadcasted dims for each
+            operand sets.
+        operand_idx (tuple of ints): Indices of operands will be computated.
+            If (), all operands for einsum is considered.
+    Return:
+        int: computation cost for indices.
+    """
+    ret = 1
+    for i in indices:
+        if i == '@':
+            if operand_idx:
+                ret *= max([broadcasted_dims[oi] for oi in operand_idx])
+            else:
+                ret *= max(broadcasted_dims)
+        else:
+            ret *= idx_dict[i]
+    return ret
+
+
+def _find_contraction(positions, input_sets, output_set):
+    """Find which indexes contracted or remained.
+
+    Args:
+        positions (pair of ints): Indexes which input set will be contracted.
+        input_sets : before contraction.
+    Return:
+        new_result (set of chars): New input set produced by contraction.
+        remaining (list of sets of chars): Remained inpus sets.
+        idx_removed (set of chars): Removed indexes after calculation.
+        idx_contract: Contracted indexes.
+    """
+
+    idx_contract = set()
+    idx_remain = output_set.copy()
+    remaining = []
+    for ind, value in enumerate(input_sets):
+        if ind in positions:
+            idx_contract |= value
+        else:
+            remaining.append(value)
+            idx_remain |= value
+
+    new_result = idx_remain & idx_contract
+    idx_removed = (idx_contract - new_result)
+    remaining.append(new_result)
+
+    return new_result, remaining, idx_removed, idx_contract
+
+
+def _greedy_path(input_sets, output_set, dim_dict, broadcasted_dims,
+                 memory_limit):
+    """Finds the best path from all possible combinations.
+
+    """
+    if len(input_sets) == 1:
+        return [(0,)]
+
+    path = []
+    for iteration in six.moves.range(len(input_sets) - 1):
+        iteration_results = []
+        comb_iter = []
+
+        # Compute all unique pairs
+        for x in six.moves.range(len(input_sets)):
+            for y in six.moves.range(x + 1, len(input_sets)):
+                comb_iter.append((x, y))
+
+        for positions in comb_iter:
+            # Find the contraction
+            contract = _find_contraction(positions, input_sets, output_set)
+            idx_result, new_input_sets, idx_removed, idx_contract = contract
+
+            # Sieve the results based on memory_limit
+            if _compute_size_by_dict(idx_result, dim_dict, broadcasted_dims,
+                                     comb_iter) > memory_limit:
+                continue
+
+            # Build sort tuple
+            removed_size = _compute_size_by_dict(idx_removed, dim_dict,
+                                                 broadcasted_dims, comb_iter)
+            cost = _compute_size_by_dict(idx_contract, dim_dict,
+                                         broadcasted_dims, comb_iter)
+            sort = (-removed_size, cost)
+
+            # Add contraction to possible choices
+            iteration_results.append([sort, positions, new_input_sets])
+
+        # If we did not find a new contraction contract remaining
+        if not iteration_results:
+            path.append(tuple(six.moves.range(len(input_sets))))
+            break
+
+        # Sort based on first index
+        best = min(iteration_results, key=lambda x: x[0])
+        path.append(best[1])
+        input_sets = best[2]
+
+    return path
+
+
+def _parse_einsum_input(operands):
+    if not operands:
+        raise ValueError('must specify the einstein sum subscripts string and '
+                         'at least one operand, or at least one operand and '
+                         'its corresponding subscripts list')
+
+    subscripts = operands[0]
+    ioperands = list(operands[1:])
+
+    if not isinstance(subscripts, str):
+        raise TypeError('Current cupy einsum support only string subscripts')
+
+    num_input_subscripts = len(subscripts.split(','))
+    if num_input_subscripts < len(ioperands):
+        raise ValueError('fewer operands provided to einstein sum function '
+                         'than specified in the subscripts string')
+    if num_input_subscripts > len(ioperands):
+        raise ValueError('more operands provided to einstein sum function '
+                         'than specified in the subscripts string')
+
+    subscripts = subscripts.replace(' ', '')
+    irregular_chars = set(subscripts) - set(string.ascii_letters) - set('->,.')
+    if irregular_chars:
+        pickup = list(irregular_chars)[0]
+        raise ValueError('invalid subscript \'{}\' in einstein sum subscripts '
+                         'string, subscripts must be letters'.format(pickup))
+
+    # For simplicity of implementation of subscripts interpretation,
+    # All '...' is replaced to '@'.
+    subscripts = subscripts.replace('...', '@')
+    if '.' in subscripts:
+        raise ValueError('einstein sum subscripts string contains a \'.\' that'
+                         'is not part of an ellipsis (\'...\')')
+
+    match = re.match('^([a-zA-Z@,]+)(->[a-zA-Z@]*)?$', subscripts)
+    if not match:
+        raise ValueError('einstein sum subscript string does not contain '
+                         'proper \'->\' output specified')
+
+    input_subscripts = match.group(1)
+    if match.group(2):
+        output_subscript = match.group(2)[2:]
+
+        if output_subscript.count('@') >= 2:
+            raise ValueError(
+                'Two or more \'...\' ellipsis can\'t be used for'
+                'output subscript')
+
+        # For compatibility with numpy.
+        # numpy.einsum arrows inputs like 'i->i...'.
+        # In this case, `...` does not affect the einsum results.
+        if '@' not in input_subscripts and '@' in subscripts:
+            output_subscript = output_subscript.replace('@', '')
+
+        irregular_chars = set(output_subscript) - set(input_subscripts)
+        if irregular_chars:
+            pickup = list(irregular_chars)[0]
+            raise ValueError('einstein sum subscripts string included output '
+                             'subscript \'{}\' which never appeared in an '
+                             'input'.format(pickup))
+
+        count_dict = collections.Counter(output_subscript)
+        for key in count_dict:
+            if count_dict[key] == 1:
+                continue
+            raise ValueError('einstein sum subscripts string includes output '
+                             'subscript \'{}\' multiple times'.format(key))
+    else:
+        label_list = list(input_subscripts.replace(',', ''))
+        out_label_set = set(label_list) - get_dummy_labels(label_list)
+        out_label_list = sorted(list(out_label_set))
+        output_subscript = ''.join(out_label_list)
+
+    converted_ioperands = []
+    dtype = numpy.result_type(*ioperands)
+    for a in ioperands:
+        if isinstance(a, cupy.ndarray):
+            converted_ioperands.append(a.astype(dtype))
+        else:
+            converted_ioperands.append(cupy.asarray(a, dtype=dtype))
+
+    return input_subscripts, output_subscript, converted_ioperands
+
+
+def input_subscript_sanity_check(subscript, ioperand, index):
+    if len(subscript) - subscript.count('@') > ioperand.ndim:
+        raise ValueError('einstein sum subscripts string contains too '
+                         'many subscripts for operand {}'.format(index))
+    if '@' not in subscript and len(subscript) < ioperand.ndim:
+        raise ValueError('operand has more dimensions than subscripts'
+                         ' given in einstein sum, but no \'...\' ellipsis'
+                         ' provided to broadcast the extra dimensions.')
+    if subscript.count('@') >= 2:
+        raise ValueError('Two or more \'...\' ellipsis can\'t be used for '
+                         'one operand')
+
+
+def einsum_path(*operands, **kwargs):
+    """einsum_path(subscripts, *operands)
+
+    Evaluates the lowest cost contraction order for an einsum expression by
+    considering the creation of intermediate arrays.
+
+    .. seealso:: :func:`numpy.einsum_path`
+
+    .. note:: 'optimal' option is not supported. 'einsum_call' argument is also
+     not supported.
+
+    Args:
+        subscripts (str):
+            Specifies the subscripts for summation.
+        operands (sequence of arrays):
+            These are the arrays for the operation.
+        optimize (bool or list or tuple or 'greedy'):
+            Choose the type of path. If a tuple is provided, the second
+            argument is assumed to be the maximum intermediate size created. If
+            only a single argument is provided the largest input or output
+            array size is used as a maximum intermediate size.
+            * if a list is given that starts with ``einsum_path``, uses this as
+              the contraction path
+            * if False no optimization is taken
+            * if True defaults to the 'greedy' algorithm
+            * 'greedy' An algorithm that chooses the best pair contraction
+              at each step. Effectively, this algorithm searches the largest
+              inner, Hadamard, and then outer products at each step. Scales
+              cubically with the number of terms in the contraction. Equivalent
+              to the 'optimal' path for most contractions.
+            Default is 'greedy'.
+
+    Returns:
+        opearands:
+            Type unified operands.
+        contraction_list:
+            Contraction list including all contraction which choosed by this
+            function. Each element of list has ``contract_inds``,
+            ``idx_removed``, ``einsum_str`` and ``out_subscript``.
+            ``contract_inds`` indicates which ioperands will be contracted.
+            ``idx_removed`` is the set of the indexes which will be removed by
+            this contraction.
+            ``subscript`` equals input subscript.
+            ``out_subscript`` is subscript of contraction result.
+            First element is first contraction, second element is second
+            contraction, and so on.
+
+    """
+    # Make sure all keywords are valid
+    valid_contract_kwargs = ['optimize', 'einsum_call']
+    unknown_kwargs = set(kwargs.keys()).difference(valid_contract_kwargs)
+    if unknown_kwargs:
+        raise TypeError('Did not understand the following kwargs:'
+                        ' %s' % unknown_kwargs)
+
+    # Figure out what the path really is
+    path_type = kwargs.pop('optimize', True)
+    if path_type is True:
+        path_type = 'greedy'
+    if path_type is None:
+        path_type = False
+
+    memory_limit = None
+
+    # No optimization or a named path algorithm
+    if (path_type is False) or isinstance(path_type, str):
+        pass
+
+    # Path tuple with memory limit
+    elif isinstance(path_type, collections.Iterable) and \
+            (len(path_type) == 2) and isinstance(path_type[0], str) and \
+            isinstance(path_type[1], (int, float)):
+        memory_limit = int(path_type[1])
+        path_type = path_type[0]
+
+    else:
+        raise TypeError('Did not understand the path: %s' % str(path_type))
+
+    # Python side parsing
+    input_subscripts, output_subscript, operands = \
+        _parse_einsum_input(operands)
+
+    # Build a few useful list and sets
+    input_list = input_subscripts.split(',')
+    input_sets = [set(x) for x in input_list]
+    output_set = set(output_subscript)
+    indices = set(input_subscripts.replace(',', ''))
+
+    # Get length of each unique dimension and ensure all dimensions are correct
+    dim_dict = {}
+    broadcasted_dims = []
+    for i, subscript in enumerate(input_list):
+        ioperand = operands[i]
+        input_subscript_sanity_check(subscript, ioperand, i)
+        ellipsis_pos = subscript.find('@')
+        for cnum, char in enumerate(subscript):
+            if cnum == ellipsis_pos:
+                continue
+            if ellipsis_pos != -1 and cnum > ellipsis_pos:
+                cnum -= len(subscript)
+            dim = ioperand.shape[cnum]
+            if char in dim_dict:
+                if dim_dict[char] != dim:
+                    raise ValueError('Size of label \'%s\' for operand %d does'
+                                     ' not match previous terms.', char, i)
+            else:
+                dim_dict[char] = dim
+        if ellipsis_pos != -1:
+            dim = 1
+            upper = ellipsis_pos + ioperand.ndim - len(subscript) + 1
+            for j in six.moves.range(ellipsis_pos, upper):
+                dim *= ioperand.shape[j]
+            broadcasted_dims.append(dim)
+    if broadcasted_dims:
+        dim_dict['@'] = max(broadcasted_dims)
+
+    # Compute size of each input array plus the output array
+    size_list = []
+    for subscript in input_list + [output_subscript]:
+        size_list.append(_compute_size_by_dict(subscript, dim_dict,
+                                               broadcasted_dims))
+    max_size = max(size_list)
+
+    if memory_limit is None:
+        memory_arg = max_size
+    else:
+        memory_arg = memory_limit
+
+    # Compute the path
+    if not path_type or (len(input_list) in [1, 2]) or (indices == output_set):
+        # Nothing to be optimized, leave it to einsum
+        path = [tuple(six.moves.range(len(input_list)))]
+    elif path_type == 'greedy':
+        # Maximum memory should be at most out_size for this algorithm
+        memory_arg = min(memory_arg, max_size)
+        path = _greedy_path(input_sets, output_set, dim_dict, broadcasted_dims,
+                            memory_arg)
+    elif path_type[0] == 'einsum_path':
+        path = path_type[1:]
+    else:
+        raise KeyError('Path name %s not found', path_type)
+
+    cost_list, scale_list, size_list, contraction_list = [], [], [], []
+
+    # Build contraction tuple (positions, gemm, einsum_str, remaining)
+    for cnum, contract_inds in enumerate(path):
+        # Make sure we remove inds from right to left
+        contract_inds = tuple(sorted(list(contract_inds), reverse=True))
+
+        contract = _find_contraction(contract_inds, input_sets, output_set)
+        out_inds, input_sets, idx_removed, idx_contract = contract
+
+        cost = _compute_size_by_dict(idx_contract, dim_dict, broadcasted_dims)
+        if idx_removed:
+            cost *= 2
+        cost_list.append(cost)
+        scale_list.append(len(idx_contract))
+        size_list.append(_compute_size_by_dict(out_inds, dim_dict,
+                                               broadcasted_dims))
+
+        tmp_inputs = []
+        for x in contract_inds:
+            tmp_inputs.append(input_list.pop(x))
+
+        # Last contraction
+        if cnum == len(path) - 1:
+            idx_result = output_subscript
+        else:
+            sort_result = [(dim_dict[ind], ind) for ind in out_inds]
+            idx_result = ''.join([x[1] for x in sorted(sort_result)])
+
+        input_list.append(idx_result)
+        einsum_str = ','.join(tmp_inputs) + '->' + idx_result
+
+        contraction = (contract_inds, idx_removed, einsum_str, input_list[:])
+        contraction_list.append(contraction)
+
+    return operands, contraction_list
+
+
 def einsum(*operands):
     """einsum(subscripts, *operands)
 
