@@ -1144,6 +1144,12 @@ cdef class ndarray:
            :meth:`numpy.ndarray.sum`
 
         """
+        if dtype is None:
+            dtype_in = self.dtype
+            if dtype_in.char in '?bhi':
+                dtype = 'l'
+            elif dtype_in.char in 'BHI':
+                dtype = 'L'
         return _sum(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumsum
@@ -1190,6 +1196,12 @@ cdef class ndarray:
            :meth:`numpy.ndarray.prod`
 
         """
+        if dtype is None:
+            dtype_in = self.dtype
+            if dtype_in.char in '?bhi':
+                dtype = 'l'
+            elif dtype_in.char in 'BHI':
+                dtype = 'L'
         return _prod(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumprod
@@ -3968,7 +3980,7 @@ _any = create_reduction_func(
 
 _sum = create_reduction_func(
     'cupy_sum',
-    ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
@@ -3977,10 +3989,10 @@ _sum = create_reduction_func(
 
 _prod = create_reduction_func(
     'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'],
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
