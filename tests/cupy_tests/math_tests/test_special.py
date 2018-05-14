@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -17,3 +18,8 @@ class TestSpecial(unittest.TestCase):
     def test_sinc(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.sinc(a)
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    def test_sinc_zero(self, dtype):
+        a = cupy.sinc(cupy.zeros(1, dtype=dtype))
+        testing.assert_array_equal(a, cupy.ones(1, dtype=dtype))
