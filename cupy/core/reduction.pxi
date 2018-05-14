@@ -44,7 +44,7 @@ cpdef _get_simple_reduction_kernel(
              _j += _j_stride, _J += _J_stride) {
           _in_ind.set(_j);
           ${input_expr}
-          _type_reduce _a = ${pre_map_expr};
+          _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
           _s = REDUCE(_s, _a);
         }
         if (_block_stride < ${block_size}) {
