@@ -3347,7 +3347,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
-    reduced_idx = _sum_keep_dtype(flattened_indexes, axis=0)
+    reduced_idx = _sum_auto_dtype(flattened_indexes, axis=0)
 
     return a_interm, reduced_idx, li, ri
 
