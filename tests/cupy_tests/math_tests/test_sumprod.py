@@ -121,7 +121,9 @@ class TestSumprod(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
     def test_sum_dtype(self, xp, src_dtype, dst_dtype):
-        if not numpy.can_cast(src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype) \
+                or [xp.dtype(src_dtype).kind,
+                    xp.dtype(dst_dtype).kind].count('c') == 1:
             return xp.array([])  # skip
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.sum(dtype=dst_dtype)
@@ -172,7 +174,9 @@ class TestSumprod(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
     def test_prod_dtype(self, xp, src_dtype, dst_dtype):
-        if not numpy.can_cast(src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype) \
+                or [xp.dtype(src_dtype).kind,
+                    xp.dtype(dst_dtype).kind].count('c') == 1:
             return xp.array([])  # skip
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
