@@ -278,15 +278,11 @@ class FusionVarPython(object):
     """
     # shape (tuple of ints): !! not supported !!
     # _var (_FusionVarCUDA)
-    # _history (_FusionHistory)
 
-    def __init__(self, var, history, is_postmap=None):
+    def __init__(self, var):
         self._var = var
         self.dtype = var.dtype
-        self._history = history
-        self._is_postmap = is_postmap
-        if is_postmap is None:
-            self._is_postmap = history.is_postmap()
+        self._is_postmap = _thread_local.history.is_postmap()
 
     def __repr__(self):
         return '<FusionVarPython, dtype={}>'.format(self.dtype)
@@ -446,15 +442,15 @@ class FusionVarPython(object):
         return copy(self)
 
 
-def _get_cuda_var(arg, history):
+def _get_cuda_var(arg):
     """This converts `arg` to _FusionVarCUDA data.
 
     Args:
         arg (FusionVarPython or a primitive type)
-        history (_FusionHistory)
 
     Return value: _FusionVarCUDA
     """
+    history = _thread_local.history
     arg_type = type(arg)
     if arg_type is FusionVarPython:
         if arg._is_postmap is history.is_postmap():
@@ -494,12 +490,6 @@ def _convert_from_ufunc(ufunc):
     nin = ufunc.nin
     nout = ufunc.nout
 
-    def get_history(args):
-        for elem in args:
-            if isinstance(elem, FusionVarPython):
-                return elem._history
-        raise Exception('number of ndarray arguments must be more than 0')
-
     def can_cast1(args, ty_ins):
         for i in six.moves.range(nin):
             if args[i].const is None:
@@ -517,10 +507,10 @@ def _convert_from_ufunc(ufunc):
         return True
 
     def func(*args, **kwargs):
-        history = get_history(args)
-        var_list = [_get_cuda_var(_, history) for _ in args]
+        history = _thread_local.history
+        var_list = [_get_cuda_var(_) for _ in args]
         if 'out' in kwargs:
-            var = _get_cuda_var(kwargs.pop('out'), history)
+            var = _get_cuda_var(kwargs.pop('out'))
             var_list.append(var)
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
@@ -537,11 +527,11 @@ def _convert_from_ufunc(ufunc):
                     if i >= len(out_vars):
                         v = history.fresh_local(ty_outs[i])
                         out_vars.append(v)
-                        ret.append(FusionVarPython(v, history))
+                        ret.append(FusionVarPython(v))
                     elif numpy.can_cast(ty_outs[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
-                        ret.append(FusionVarPython(v, history))
+                        ret.append(FusionVarPython(v))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -628,13 +618,13 @@ def _get_fusion_from_types(func, in_dtypes, name):
         The second element of return values is kwargs that will give into
         the elementwise kernel or reduction kernel.
     """
-    history = _FusionHistory()
+    history = _thread_local.history
     in_params = [history.fresh_premap_param(t) for t in in_dtypes]
-    in_pvars = [FusionVarPython(_, history) for _ in in_params]
+    in_pvars = [FusionVarPython(_) for _ in in_params]
     out_pvars = func(*in_pvars)
     out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
     out_pvars = [_ for _ in out_pvars if _ is not None]
-    out_cvars = [_get_cuda_var(_, history) for _ in out_pvars]
+    out_cvars = [_get_cuda_var(_) for _ in out_pvars]
 
     out_dtypes = [_.dtype for _ in out_pvars]
     out_params = [history.fresh_premap_param(t) for t in out_dtypes]
@@ -718,10 +708,12 @@ class Fusion(object):
 
     def __call__(self, *args, **kwargs):
         _thread_local.in_fusion = True
+        _thread_local.history = _FusionHistory()
         try:
             return self._call(*args, **kwargs)
         finally:
             _thread_local.in_fusion = False
+            del _thread_local.history
 
     def compile(self, *args, **kwargs):
         if builtins.any(
@@ -952,18 +944,18 @@ class reduction(object):
             if len(args) != 1:
                 raise Exception('Can\'t reduce a tuple')
             dtype = arg.dtype
-            history = arg._history
+            history = _thread_local.history
             for op in self._raw._ops:
                 (input_type,), (output_type,), _ = op
                 if numpy.can_cast(dtype.type, input_type):
                     return_dtype = numpy.dtype(output_type)
-                    history.premap_ret = _get_cuda_var(arg, history)
+                    history.premap_ret = _get_cuda_var(arg)
                     return_var = history.fresh_postmap_param(return_dtype)
                     history.reduce_op = op
                     history.reduce_identity = self.identity
                     history.reduce_kwargs = kwargs
                     history.add_preamble(self._preamble)
-                    return FusionVarPython(return_var, history)
+                    return FusionVarPython(return_var)
             raise TypeError('Type is mismatched. {}(...), {}'.format(
                 self._raw._ops.name, dtype.type))
         elif builtins.any(type(_) == numpy.ndarray for _ in args):
