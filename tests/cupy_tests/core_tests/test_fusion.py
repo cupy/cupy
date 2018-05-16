@@ -814,6 +814,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.logaddexp, 2, self.random_real, ((0, 10),) * 2)
         self.check(cupy.logaddexp2, 2, self.random_real, ((0, 10),) * 2)
 
+    def test_special_func(self):
+        self.check(cupy.i0, 1, self.random_real)
+        self.check(cupy.sinc, 1, self.random_real)
+
     def test_floating(self):
         self.check(cupy.signbit, 1, self.random_real)
         self.check(cupy.copysign, 2, self.random_real)
