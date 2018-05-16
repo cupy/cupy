@@ -4,7 +4,10 @@ import cupy
 from cupy import testing
 import cupyx.scipy.special
 
-import scipy.special
+try:
+    import scipy.special
+except ImportError:
+    pass
 
 
 @testing.gpu
