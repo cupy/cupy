@@ -1565,6 +1565,39 @@ cdef class ndarray:
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__
 
+    # numpy/ufunc compat
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """
+        Apply unary or binary ufunc to this array
+
+        If binary, only allow if second argument is another cupy ndarray or
+        a number, i.e., raise ValueError instead of silently converting a
+        numpy array.
+        """
+        import cupy as cp  # top-level ufuncs
+        from numbers import Number
+        out = kwargs.get('out', ())
+        for x in inputs + out:
+            if not isinstance(x, (ndarray, Number)):
+                # do *not* pass any old ndarray-like
+                return NotImplemented
+
+        name = ufunc.__name__
+        if method == '__call__':
+            if ufunc.signature is not None:
+                return NotImplemented
+            try:
+                cp_ufunc = getattr(cp, ufunc.__name__)
+                return cp_ufunc(*inputs, **kwargs)
+            except AttributeError:
+                return NotImplemented
+        elif method =='at' and name == 'add':
+            # the only ufunc attribute currently
+            # http://docs-cupy.chainer.org/en/stable/reference/ufunc.html#ufunc-at
+            self.scatter_add(*inputs, **kwargs)
+        else:
+            return NotImplemented
+
     # Conversion:
 
     def __int__(self):
