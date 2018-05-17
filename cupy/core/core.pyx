@@ -1576,8 +1576,14 @@ cdef class ndarray:
         """
         import cupy as cp  # top-level ufuncs
         from numbers import Number
-        out = kwargs.get('out', ())
-        for x in inputs + out:
+        # pop because argument is already in inputs
+        if 'out' in kwargs:
+            # need to unfold tuple argument in kwargs
+            check = inputs + kwargs['out']
+            kwargs['out'] = kwargs['out'][0]
+        else:
+            check = inputs
+        for x in check:
             if not isinstance(x, (ndarray, Number)):
                 # do *not* pass any old ndarray-like
                 return NotImplemented
