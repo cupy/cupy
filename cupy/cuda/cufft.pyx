@@ -87,6 +87,15 @@ class Plan1d(object):
             if result == 0:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
                                          &workSize)
+
+        # cufftMakePlan1d uses large memory when nx has large divisor.
+        # See https://github.com/cupy/cupy/issues/1063
+        if result == 2:
+            cupy.get_default_memory_pool().free_all_blocks()
+            with nogil:
+                result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                         &workSize)
+
         check_result(result)
         workArea = memory.alloc(workSize)
         with nogil:

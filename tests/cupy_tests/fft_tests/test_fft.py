@@ -2,7 +2,10 @@ import unittest
 
 import numpy as np
 
+import cupy
 from cupy import testing
+
+import six
 
 
 @testing.parameterize(*testing.product({
@@ -40,6 +43,25 @@ class TestFft(unittest.TestCase):
             out = out.astype(np.complex64)
 
         return out
+
+
+@testing.gpu
+@testing.slow
+class TestFftAllocate(unittest.TestCase):
+
+    def test_fft_allocate(self):
+        # Check CuFFTError is not raised when the GPU memory is enough.
+        # See https://github.com/cupy/cupy/issues/1063
+        # TODO(mizuno): Simplify "a" after memory compaction is implemented.
+        a = []
+        for i in six.moves.range(10):
+            a.append(cupy.empty(100000000))
+        del a
+        b = cupy.empty(100000007, dtype=cupy.float32)
+        cupy.fft.fft(b)
+        # Free huge memory for slow test
+        del b
+        cupy.get_default_memory_pool().free_all_blocks()
 
 
 @testing.parameterize(
