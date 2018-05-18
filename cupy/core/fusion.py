@@ -140,20 +140,20 @@ class FusionOp(object):
 
     Attributes:
         index (int): The index of this operation.
-        func (submodule): The submodules called in this operation.
+        submodule (submodule): The submodules called in this operation.
         args (list of _FusionVarCUDA): The arguments.
         types (list of dtype): The types of parameters.
     """
 
-    def __init__(self, index, func, args):
+    def __init__(self, index, submodule, args):
         self.index = index
-        self.func = func
+        self.submodule = submodule
         self.args = args
-        self.dtypes = func.dtypes
+        self.dtypes = submodule.dtypes
 
     def __repr__(self):
         return '<FusionOp #{}, {} types=[{}]>'.format(
-            self.index, self.func.name, ', '.join(self.dtypes))
+            self.index, self.submodule.name, ', '.join(self.dtypes))
 
     def declaration_args(self):
         return ' '.join('{} v{}_{};'.format(_dtype_to_ctype[t], self.index, j)
@@ -165,9 +165,9 @@ class FusionOp(object):
         args_list = list(zip(self.args, args_sub))
         code = '// op  # {}\n'.format(self.index)
         code += ''.join('{} = v{};\n'.format(s, v.index) for v, s in args_list)
-        code += self.func.fcall(args_sub)
+        code += self.submodule.fcall(args_sub)
         code += ''.join('v{} = {};\n'.format(v.index, s)
-                        for v, s in args_list[len(self.func.in_params):])
+                        for v, s in args_list[len(self.submodule.in_params):])
         return code
 
 
@@ -242,7 +242,7 @@ class _FusionHistory(object):
 
     def _set_premap_op(self, *args, **kwargs):
         op = FusionOp(len(self.op_list), *args, **kwargs)
-        subm = op.func
+        subm = op.submodule
         self.submodules[subm.key()] = subm
         self.op_list.append(op)
         self.preamble_set.add(subm.preamble)
@@ -250,7 +250,7 @@ class _FusionHistory(object):
 
     def _set_postmap_op(self, *args, **kwargs):
         op = FusionOp(len(self.postmap_op_list), *args, **kwargs)
-        subm = op.func
+        subm = op.submodule
         self.submodules[subm.key()] = subm
         self.postmap_op_list.append(op)
         self.preamble_set.add(subm.preamble)
