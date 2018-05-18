@@ -468,7 +468,7 @@ class _FusionHistory(object):
         """
         arg_type = type(arg)
         if arg_type is FusionVarPython:
-            if arg._is_postmap is self.has_reduction():
+            if arg._is_postmap == self.has_reduction():
                 return arg._var
             else:
                 # Map operation between pre-map variable and post-map variable
@@ -657,7 +657,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
             in_params_code, out_params_code, operation,
             preamble=submodules,
             name=name)
-        return (kernel, {})
+        return kernel, {}
     else:
         op = history.reduce_op
         _, (fixed_type,), (_, reduce_code, fix_code, reduce_ctype) = op
@@ -693,7 +693,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
             name=name,
             reduce_type=reduce_ctype,
             preamble=submodules)
-        return (kernel, history.reduce_kwargs)
+        return kernel, history.reduce_kwargs
 
 
 class Fusion(object):
@@ -748,7 +748,7 @@ class Fusion(object):
                 message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
             else:
-                return (self.func, {})
+                return self.func, {}
 
     def _call(self, *args, **kwargs):
         func, kw = self.compile(*args, **kwargs)
