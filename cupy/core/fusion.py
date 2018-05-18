@@ -479,56 +479,41 @@ class _FusionHistory(object):
             return self.fresh_local(numpy.dtype(arg_type), const=arg)
         raise Exception('Unsupported type {}'.format(arg_type))
 
-    def get_submodules_code(self):
-        return '\n'.join([_.code() for _ in self.submodules.values()])
+    def call_ufunc(self, ufunc, args, kwargs):
+        nin = ufunc.nin
+        nout = ufunc.nout
 
+        def _should_use_min_scalar(in_args):
+            max_array_kind = -2
+            max_scalar_kind = -1
+            for arg in in_args:
+                kind = _kind_score[arg.dtype.kind]
+                if arg.const is None:
+                    max_array_kind = max(max_array_kind, kind)
+                else:
+                    max_scalar_kind = max(max_scalar_kind, kind)
+            return (max_scalar_kind != -1 and
+                    max_array_kind >= max_scalar_kind)
 
-def _convert(f):
-    if type(f) is core.ufunc:
-        return _convert_from_ufunc(f)
-    if type(f) is core.ElementwiseKernel:
-        return _convert_from_elementwise(f)
-    raise Exception('Can\'t convert from {} to FusionOp'.format(type(f)))
+        def can_cast1(args, ty_ins):
+            for i in six.moves.range(nin):
+                if args[i].const is None:
+                    if not numpy.can_cast(args[i].dtype, ty_ins[i]):
+                        return False
+                else:
+                    if not numpy.can_cast(args[i].const, ty_ins[i]):
+                        return False
+            return True
 
-
-def _should_use_min_scalar(in_args):
-    max_array_kind = -2
-    max_scalar_kind = -1
-    for arg in in_args:
-        kind = _kind_score[arg.dtype.kind]
-        if arg.const is None:
-            max_array_kind = max(max_array_kind, kind)
-        else:
-            max_scalar_kind = max(max_scalar_kind, kind)
-    return (max_scalar_kind != -1 and
-            max_array_kind >= max_scalar_kind)
-
-
-def _convert_from_ufunc(ufunc):
-    nin = ufunc.nin
-    nout = ufunc.nout
-
-    def can_cast1(args, ty_ins):
-        for i in six.moves.range(nin):
-            if args[i].const is None:
+        def can_cast2(args, ty_ins):
+            for i in six.moves.range(nin):
                 if not numpy.can_cast(args[i].dtype, ty_ins[i]):
                     return False
-            else:
-                if not numpy.can_cast(args[i].const, ty_ins[i]):
-                    return False
-        return True
+            return True
 
-    def can_cast2(args, ty_ins):
-        for i in six.moves.range(nin):
-            if not numpy.can_cast(args[i].dtype, ty_ins[i]):
-                return False
-        return True
-
-    def func(*args, **kwargs):
-        history = _thread_local.history
-        var_list = [history.get_cuda_var(_) for _ in args]
+        var_list = [self.get_cuda_var(_) for _ in args]
         if 'out' in kwargs:
-            var = history.get_cuda_var(kwargs.pop('out'))
+            var = self.get_cuda_var(kwargs.pop('out'))
             var_list.append(var)
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
@@ -543,7 +528,7 @@ def _convert_from_ufunc(ufunc):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
-                        v = history.fresh_local(ty_outs[i])
+                        v = self.fresh_local(ty_outs[i])
                         out_vars.append(v)
                         ret.append(FusionVarPython(v))
                     elif numpy.can_cast(ty_outs[i], out_vars[i].dtype,
@@ -562,17 +547,25 @@ def _convert_from_ufunc(ufunc):
                 out_params = [(ty_outs[i], 'out{}'.format(i))
                               for i, t in enumerate(out_vars)]
                 subm = Submodule(ufunc, in_params, out_params, op)
-                history.add_op(subm, in_vars + out_vars)
+                self.add_op(subm, in_vars + out_vars)
                 return ret[0] if len(ret) == 1 else tuple(ret)
+        in_dtypes = [_.dtype for _ in in_vars]
+        out_dtypes = [_.dtype for _ in out_vars]
         raise TypeError('Invalid type cast in \'{}\': {} -> {}'.format(
-            ufunc.name,
-            [_.dtype for _ in in_vars],
-            [_.dtype for _ in out_vars]))
-    return func
+            ufunc.name, in_dtypes, out_dtypes))
 
+    def call_elementwise(self, f, args, kwargs):
+        raise NotImplementedError()
 
-def _convert_from_elementwise(elem):
-    raise NotImplementedError()
+    def call(self, f, args, kwargs):
+        if type(f) is core.ufunc:
+            return self.call_ufunc(f, args, kwargs)
+        if type(f) is core.ElementwiseKernel:
+            return self.call_elementwise(f, args, kwargs)
+        raise Exception('Can\'t convert from {} to FusionOp'.format(type(f)))
+
+    def get_submodules_code(self):
+        return '\n'.join([_.code() for _ in self.submodules.values()])
 
 
 def _premap_code(in_params, return_var, operation):
@@ -821,7 +814,8 @@ class ufunc(core.ufunc):
         in_fusion = getattr(_thread_local, 'in_fusion', False)
         if in_fusion:
             if builtins.any(isinstance(_, FusionVarPython) for _ in args):
-                return _convert(self._fusion_op)(*args, **kwargs)
+                history = _thread_local.history
+                return history.call_ufunc(self._fusion_op, args, kwargs)
             elif builtins.any(isinstance(_, numpy.ndarray) for _ in args):
                 return self._numpy_op(*args, **kwargs)
 
