@@ -455,6 +455,19 @@ class _FusionHistory(object):
         else:
             return self._add_premap_op(*args, **kwargs)
 
+    def set_reduce_op(self, raw, arg, kwargs):
+        for op in raw._ops:
+            (input_type,), (output_type,), _ = op
+            if numpy.can_cast(arg.dtype.type, input_type):
+                return_dtype = numpy.dtype(output_type)
+                self.premap_ret = self.get_cuda_var(arg)
+                self.reduce_op = op
+                self.reduce_identity = raw.identity
+                self.reduce_kwargs = kwargs
+                self.add_preamble(raw._preamble)
+                return self.fresh_postmap_param(return_dtype)
+        return None
+
     def add_preamble(self, preamble):
         self.preamble_set.add(preamble)
 
@@ -952,8 +965,6 @@ class reduction(object):
         self._numpy_op = numpy_op
         self._raw = raw
         self.__doc__ = cupy_op.__doc__
-        self.identity = raw.identity
-        self._preamble = raw._preamble
 
     def __call__(self, *args, **kwargs):
         arg = args[0]
@@ -965,21 +976,13 @@ class reduction(object):
             if len(args) != 1:
                 mes = '{}() takes 1 positional argument but {} were given'
                 raise TypeError(mes.format(self._raw._ops.name, len(args)))
-            dtype = arg.dtype
-            history = _thread_local.history
-            for op in self._raw._ops:
-                (input_type,), (output_type,), _ = op
-                if numpy.can_cast(dtype.type, input_type):
-                    return_dtype = numpy.dtype(output_type)
-                    history.premap_ret = history.get_cuda_var(arg)
-                    return_var = history.fresh_postmap_param(return_dtype)
-                    history.reduce_op = op
-                    history.reduce_identity = self.identity
-                    history.reduce_kwargs = kwargs
-                    history.add_preamble(self._preamble)
-                    return FusionVarPython(return_var, True)
-            raise TypeError('Type is mismatched. {}(...), {}'.format(
-                self._raw._ops.name, dtype.type))
+            return_var = _thread_local.history.set_reduce_op(
+                self._raw, arg, kwargs)
+            if return_var:
+                return FusionVarPython(return_var, True)
+            else:
+                raise TypeError('Type is mismatched. {}(...), {}'.format(
+                    self._raw._ops.name, arg.dtype.type))
         elif builtins.any(type(_) == numpy.ndarray for _ in args):
             return self._numpy_op(*args, **kwargs)
         else:
