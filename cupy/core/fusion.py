@@ -285,6 +285,27 @@ class _FusionHistory(object):
     def add_preamble(self, preamble):
         self.preamble_set.add(preamble)
 
+    def get_cuda_var(self, arg):
+        """This converts `arg` to _FusionVarCUDA data.
+
+        Args:
+            arg (FusionVarPython or a primitive type)
+
+        Return value: _FusionVarCUDA
+        """
+        arg_type = type(arg)
+        if arg_type is FusionVarPython:
+            if arg._is_postmap is self.has_reduction():
+                return arg._var
+            else:
+                # Map operation between pre-map variable and post-map variable
+                raise Exception('Shape mismatch')
+        is_scalar = arg_type in six.integer_types + (float, bool, complex)
+        is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
+        if is_scalar or is_ndarray:
+            return self.fresh_local(numpy.dtype(arg_type), const=arg)
+        raise Exception('Unsupported type {}'.format(arg_type))
+
     def get_submodules_code(self):
         return '\n'.join([_.code() for _ in self.submodules.values()])
 
@@ -462,29 +483,6 @@ class FusionVarPython(object):
         return copy(self)
 
 
-def _get_cuda_var(arg):
-    """This converts `arg` to _FusionVarCUDA data.
-
-    Args:
-        arg (FusionVarPython or a primitive type)
-
-    Return value: _FusionVarCUDA
-    """
-    history = _thread_local.history
-    arg_type = type(arg)
-    if arg_type is FusionVarPython:
-        if arg._is_postmap is history.has_reduction():
-            return arg._var
-        else:
-            # Map operation between pre-map variable and post-map variable
-            raise Exception('Shape mismatch')
-    is_scalar = arg_type in six.integer_types + (float, bool, complex)
-    is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
-    if is_scalar or is_ndarray:
-        return history.fresh_local(numpy.dtype(arg_type), const=arg)
-    raise Exception('Unsupported type {}'.format(arg_type))
-
-
 def _convert(f):
     if type(f) is core.ufunc:
         return _convert_from_ufunc(f)
@@ -528,9 +526,9 @@ def _convert_from_ufunc(ufunc):
 
     def func(*args, **kwargs):
         history = _thread_local.history
-        var_list = [_get_cuda_var(_) for _ in args]
+        var_list = [history.get_cuda_var(_) for _ in args]
         if 'out' in kwargs:
-            var = _get_cuda_var(kwargs.pop('out'))
+            var = history.get_cuda_var(kwargs.pop('out'))
             var_list.append(var)
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
@@ -644,7 +642,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
     out_pvars = func(*in_pvars)
     out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
     out_pvars = [_ for _ in out_pvars if _ is not None]
-    out_cvars = [_get_cuda_var(_) for _ in out_pvars]
+    out_cvars = [history.get_cuda_var(_) for _ in out_pvars]
 
     out_dtypes = [_.dtype for _ in out_pvars]
     out_params = [history.fresh_premap_param(t) for t in out_dtypes]
@@ -968,7 +966,7 @@ class reduction(object):
                 (input_type,), (output_type,), _ = op
                 if numpy.can_cast(dtype.type, input_type):
                     return_dtype = numpy.dtype(output_type)
-                    history.premap_ret = _get_cuda_var(arg)
+                    history.premap_ret = history.get_cuda_var(arg)
                     return_var = history.fresh_postmap_param(return_dtype)
                     history.reduce_op = op
                     history.reduce_identity = self.identity
