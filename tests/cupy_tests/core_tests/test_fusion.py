@@ -652,7 +652,6 @@ class TestFusionUfunc(unittest.TestCase):
         if args is None:
             args = ((),) * n
         self._check_reduce(func, n, reduce_f, gen, args)
-        self._check_reduce(func, n, reduce_f, gen, args)
 
     def _check_reduce(self, func, n, reduce_f, gen, args):
         @cupy.fuse()
@@ -1212,7 +1211,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y, z):
-            return cupy.sum(x * y + z)
+            return xp.sum(x * y + z)
 
         return g(a, b, c)
 
@@ -1225,7 +1224,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y, z):
-            return cupy.sum(x * y + z, axis=0)
+            return xp.sum(x * y + z, axis=0)
 
         return g(a, b, c)
 
@@ -1238,7 +1237,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y, z):
-            return cupy.sum(x * y + z, axis=1)
+            return xp.sum(x * y + z, axis=1)
 
         return g(a, b, c)
 
@@ -1249,7 +1248,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.prod(x)
+            return xp.prod(x)
 
         return g(a)
 
@@ -1260,7 +1259,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.max(x, axis=0)
+            return xp.max(x, axis=0)
 
         return g(a)
 
@@ -1271,7 +1270,7 @@ class TestFusionFuse(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.min(x, axis=0)
+            return xp.min(x, axis=0)
 
         return g(a)
 
