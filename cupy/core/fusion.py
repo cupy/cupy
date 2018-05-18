@@ -567,133 +567,129 @@ class _FusionHistory(object):
     def get_submodules_code(self):
         return '\n'.join([_.code() for _ in self.submodules.values()])
 
+    def _premap_code(self, in_params, return_var, operation):
+        module_code = string.Template('''
+        __device__ ${return_ctype} _pre_map(${in_params}) {
+        ${operation};
+        return ${return_var};
+        }
+        ''').substitute(
+            return_ctype=_dtype_to_ctype[return_var.dtype],
+            in_params=', '.join('{} v{}'.format(_dtype_to_ctype[v.dtype],
+                                                v.index)
+                                for v in in_params),
+            operation=operation,
+            return_var=return_var)
+        return module_code
 
-def _premap_code(in_params, return_var, operation):
-    module_code = string.Template('''
-    __device__ ${return_ctype} _pre_map(${in_params}) {
-    ${operation};
-    return ${return_var};
-    }
-    ''').substitute(
-        return_ctype=_dtype_to_ctype[return_var.dtype],
-        in_params=', '.join('{} v{}'.format(_dtype_to_ctype[v.dtype], v.index)
-                            for v in in_params),
-        operation=operation,
-        return_var=return_var)
-    return module_code
+    def _postmap_code(self, in_param, out_params, operation):
+        in_ctype = _dtype_to_ctype[in_param.dtype]
+        module_code = string.Template('''
+        __device__ void _post_map(${in_ctype} in, ${out_params}) {
+        ${in_param} = in;
+        ${operation};
+        }
+        ''').substitute(
+            in_ctype=in_ctype,
+            in_param='{} v{}'.format(in_ctype, in_param.index),
+            out_params=', '.join('{} &v{}'.format(_dtype_to_ctype[v.dtype],
+                                                  v.index)
+                                 for v in out_params),
+            operation=operation)
+        return module_code
 
+    def _fix_code(self, reduce_ctype, fixed_dtype, operation):
+        module_code = string.Template('''
+        __device__ ${fixed_ctype} _post_fix(${reduce_ctype} a) {
+        ${fixed_ctype} out0;
+        ${operation};
+        return out0;
+        }
+        ''').substitute(
+            reduce_ctype=reduce_ctype,
+            fixed_ctype=_dtype_to_ctype[fixed_dtype],
+            operation=operation)
+        return module_code
 
-def _postmap_code(in_param, out_params, operation):
-    in_ctype = _dtype_to_ctype[in_param.dtype]
-    module_code = string.Template('''
-    __device__ void _post_map(${in_ctype} in, ${out_params}) {
-    ${in_param} = in;
-    ${operation};
-    }
-    ''').substitute(
-        in_ctype=in_ctype,
-        in_param='{} v{}'.format(in_ctype, in_param.index),
-        out_params=', '.join('{} &v{}'.format(_dtype_to_ctype[v.dtype],
-                                              v.index)
-                             for v in out_params),
-        operation=operation)
-    return module_code
+    def _get_fusion_from_types(self, func, in_dtypes, name):
+        """This generates CUDA kernel from the given function and dtypes.
 
+        This function generates ElementwiseKernel or ReductioKernel from the
+        given function and the list of dtypes of parameters.
 
-def _fix_code(reduce_ctype, fixed_dtype, operation):
-    module_code = string.Template('''
-    __device__ ${fixed_ctype} _post_fix(${reduce_ctype} a) {
-      ${fixed_ctype} out0;
-      ${operation};
-      return out0;
-    }
-    ''').substitute(
-        reduce_ctype=reduce_ctype,
-        fixed_ctype=_dtype_to_ctype[fixed_dtype],
-        operation=operation)
-    return module_code
+        Args:
+            func (function): The function to be fused.
+            in_types (list of dtypes): The list of dtypes of input parameters.
+            name (str): The name of the kernel.
 
+        Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
+            The second element of return values is kwargs that will give into
+            the elementwise kernel or reduction kernel.
+        """
+        in_params = [self.fresh_premap_param(t) for t in in_dtypes]
+        in_pvars = [FusionVarPython(_, self.has_reduction()) for _ in in_params]
+        out_pvars = func(*in_pvars)
+        out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
+        out_pvars = [_ for _ in out_pvars if _ is not None]
+        out_cvars = [self.get_cuda_var(_) for _ in out_pvars]
 
-def _get_fusion_from_types(func, in_dtypes, name):
-    """This generates CUDA kernel from the given function and dtypes.
+        out_dtypes = [_.dtype for _ in out_pvars]
+        out_params = [self.fresh_premap_param(t) for t in out_dtypes]
 
-    This function generates ElementwiseKernel or ReductioKernel from the
-    given function and the list of dtypes of parameters.
+        in_params_code = ', '.join(var.declaration_param() for var in in_params)
+        out_params_code = ', '.join(var.declaration_param() for var in out_params)
 
-    Args:
-        func (function): The function to be fused.
-        in_types (list of dtypes): The list of dtypes of input parameters.
-        name (str): The name of the kernel.
+        operation = '// {} operations\n'.format(len(self.op_list))
+        operation += ''.join(v.declaration() for v in self.local_list)
+        operation += ''.join(op.declaration_args() for op in self.op_list)
+        operation += ''.join(op.code() for op in self.op_list)
+        submodules = ''.join(self.preamble_set)
 
-    Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
-        The second element of return values is kwargs that will give into
-        the elementwise kernel or reduction kernel.
-    """
-    history = _thread_local.history
-    in_params = [history.fresh_premap_param(t) for t in in_dtypes]
-    in_pvars = [FusionVarPython(_, history.has_reduction()) for _ in in_params]
-    out_pvars = func(*in_pvars)
-    out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
-    out_pvars = [_ for _ in out_pvars if _ is not None]
-    out_cvars = [history.get_cuda_var(_) for _ in out_pvars]
+        if self.reduce_op is None:
+            operation += ' '.join('{} = {};'.format(t, s)
+                                  for s, t in zip(out_cvars, out_params))
+            submodules += self.get_submodules_code()
+            kernel = core.ElementwiseKernel(
+                in_params_code, out_params_code, operation,
+                preamble=submodules,
+                name=name)
+            return kernel, {}
+        else:
+            op = self.reduce_op
+            _, (fixed_type,), (_, reduce_code, fix_code, reduce_ctype) = op
+            if reduce_ctype is None:
+                reduce_ctype = 'type_in0_raw'
 
-    out_dtypes = [_.dtype for _ in out_pvars]
-    out_params = [history.fresh_premap_param(t) for t in out_dtypes]
+            fixed_dtype = numpy.dtype(fixed_type)
+            fixed_ctype = _dtype_to_ctype[fixed_dtype]
 
-    in_params_code = ', '.join(var.declaration_param() for var in in_params)
-    out_params_code = ', '.join(var.declaration_param() for var in out_params)
+            postmap = '// {} operations\n'.format(len(self.postmap_op_list))
+            postmap += ''.join(v.declaration() for v in self.postmap_local_list)
+            postmap += ''.join(op.declaration_args()
+                               for op in self.postmap_op_list)
+            postmap += ''.join(op.code() for op in self.postmap_op_list)
+            postmap += ' '.join('{} = {};'.format(t, s)
+                                for s, t in zip(out_cvars, out_params))
 
-    operation = '// {} operations\n'.format(len(history.op_list))
-    operation += ''.join(v.declaration() for v in history.local_list)
-    operation += ''.join(op.declaration_args() for op in history.op_list)
-    operation += ''.join(op.code() for op in history.op_list)
-    submodules = ''.join(history.preamble_set)
+            submodules += self.get_submodules_code()
+            submodules += self._premap_code(in_params, self.premap_ret, operation)
+            submodules += 'typedef {} type_in0_raw;\n'.format(fixed_ctype)
+            submodules += 'typedef {} type_out0_raw;\n'.format(fixed_ctype)
+            submodules += self._fix_code(reduce_ctype, fixed_dtype, fix_code)
+            submodules += self._postmap_code(self.postmap_param, out_params, postmap)
 
-    if history.reduce_op is None:
-        operation += ' '.join('{} = {};'.format(t, s)
-                              for s, t in zip(out_cvars, out_params))
-        submodules += history.get_submodules_code()
-        kernel = core.ElementwiseKernel(
-            in_params_code, out_params_code, operation,
-            preamble=submodules,
-            name=name)
-        return kernel, {}
-    else:
-        op = history.reduce_op
-        _, (fixed_type,), (_, reduce_code, fix_code, reduce_ctype) = op
-        if reduce_ctype is None:
-            reduce_ctype = 'type_in0_raw'
-
-        fixed_dtype = numpy.dtype(fixed_type)
-        fixed_ctype = _dtype_to_ctype[fixed_dtype]
-
-        postmap = '// {} operations\n'.format(len(history.postmap_op_list))
-        postmap += ''.join(v.declaration() for v in history.postmap_local_list)
-        postmap += ''.join(op.declaration_args()
-                           for op in history.postmap_op_list)
-        postmap += ''.join(op.code() for op in history.postmap_op_list)
-        postmap += ' '.join('{} = {};'.format(t, s)
-                            for s, t in zip(out_cvars, out_params))
-
-        submodules += history.get_submodules_code()
-        submodules += _premap_code(in_params, history.premap_ret, operation)
-        submodules += 'typedef {} type_in0_raw;\n'.format(fixed_ctype)
-        submodules += 'typedef {} type_out0_raw;\n'.format(fixed_ctype)
-        submodules += _fix_code(reduce_ctype, fixed_dtype, fix_code)
-        submodules += _postmap_code(history.postmap_param, out_params, postmap)
-
-        kernel = core.ReductionKernel(
-            in_params_code,
-            out_params_code,
-            '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
-            reduce_code,
-            '_post_map(_post_fix(a), {})'.format(
-                ', '.join([repr(p) for p in out_params])),
-            history.reduce_identity,
-            name=name,
-            reduce_type=reduce_ctype,
-            preamble=submodules)
-        return kernel, history.reduce_kwargs
+            kernel = core.ReductionKernel(
+                in_params_code,
+                out_params_code,
+                '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
+                reduce_code,
+                '_post_map(_post_fix(a), {})'.format(
+                    ', '.join([repr(p) for p in out_params])),
+                self.reduce_identity,
+                name=name,
+                reduce_type=reduce_ctype,
+                preamble=submodules)
+            return kernel, self.reduce_kwargs
 
 
 class Fusion(object):
@@ -739,7 +735,7 @@ class Fusion(object):
             dtypes = [_.dtype for _ in args]
             key = tuple(dtypes)
             if key not in self._memo:
-                self._memo[key] = _get_fusion_from_types(
+                self._memo[key] = _thread_local.history._get_fusion_from_types(
                     self.func, dtypes, self.name)
             return self._memo[key]
         else:
