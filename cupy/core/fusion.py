@@ -219,7 +219,7 @@ class _FusionHistory(object):
         return '<_FusionMem, op_list={}, var_list={}>'.format(
             self.op_list, self.var_list)
 
-    def is_postmap(self):
+    def has_reduction(self):
         return self.reduce_op is not None
 
     def fresh_index(self):
@@ -255,12 +255,12 @@ class _FusionHistory(object):
         return var
 
     def fresh_local(self, *args, **kwargs):
-        if self.is_postmap():
+        if self.has_reduction():
             return self._fresh_postmap_local(*args, **kwargs)
         else:
             return self._fresh_premap_local(*args, **kwargs)
 
-    def _set_premap_op(self, *args, **kwargs):
+    def _add_premap_op(self, *args, **kwargs):
         op = FusionOp(len(self.op_list), *args, **kwargs)
         subm = op.submodule
         self.submodules[subm.key()] = subm
@@ -268,7 +268,7 @@ class _FusionHistory(object):
         self.add_preamble(subm.preamble)
         return op
 
-    def _set_postmap_op(self, *args, **kwargs):
+    def _add_postmap_op(self, *args, **kwargs):
         op = FusionOp(len(self.postmap_op_list), *args, **kwargs)
         subm = op.submodule
         self.submodules[subm.key()] = subm
@@ -277,15 +277,15 @@ class _FusionHistory(object):
         return op
 
     def add_op(self, *args, **kwargs):
-        if self.is_postmap():
-            return self._set_postmap_op(*args, **kwargs)
+        if self.has_reduction():
+            return self._add_postmap_op(*args, **kwargs)
         else:
-            return self._set_premap_op(*args, **kwargs)
+            return self._add_premap_op(*args, **kwargs)
 
     def add_preamble(self, preamble):
         self.preamble_set.add(preamble)
 
-    def get_submodules(self):
+    def get_submodules_code(self):
         return '\n'.join([_.code() for _ in self.submodules.values()])
 
 
@@ -302,7 +302,7 @@ class FusionVarPython(object):
     def __init__(self, var):
         self._var = var
         self.dtype = var.dtype
-        self._is_postmap = _thread_local.history.is_postmap()
+        self._is_postmap = _thread_local.history.has_reduction()
 
     def __repr__(self):
         return '<FusionVarPython, dtype={}>'.format(self.dtype)
@@ -473,7 +473,7 @@ def _get_cuda_var(arg):
     history = _thread_local.history
     arg_type = type(arg)
     if arg_type is FusionVarPython:
-        if arg._is_postmap is history.is_postmap():
+        if arg._is_postmap is history.has_reduction():
             return arg._var
         else:
             # Map operation between pre-map variable and post-map variable
@@ -661,7 +661,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
     if history.reduce_op is None:
         operation += ' '.join('{} = {};'.format(t, s)
                               for s, t in zip(out_cvars, out_params))
-        submodules += history.get_submodules()
+        submodules += history.get_submodules_code()
         kernel = core.ElementwiseKernel(
             in_params_code, out_params_code, operation,
             preamble=submodules,
@@ -684,7 +684,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
         postmap += ' '.join('{} = {};'.format(t, s)
                             for s, t in zip(out_cvars, out_params))
 
-        submodules += history.get_submodules()
+        submodules += history.get_submodules_code()
         submodules += _premap_code(in_params, history.premap_ret, operation)
         submodules += 'typedef {} type_in0_raw;\n'.format(fixed_ctype)
         submodules += 'typedef {} type_out0_raw;\n'.format(fixed_ctype)
