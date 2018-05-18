@@ -176,27 +176,44 @@ class _FusionHistory(object):
     """History of operation exectuted in the target function of fusion.
 
     Attributes:
-        op_list (list of FusionOp): The list of operations.
-        param_list (list of _FusionVarCUDA): The list of parameters.
-        local_list (list of _FusionVarCUDA): The list of local variables.
-        submodules (dictionary from str to submodule): submodules.
+        preamble_set (set of str): The preambles of submodules.
+        submodules (dict from str to submodule): The submodules.
+        count (int): The number of variables in the fused function.
+
+        op_list (list of FusionOp): The map operations.
+        param_list (list of _FusionVarCUDA): The parameters
+        local_list (list of _FusionVarCUDA): The local variables.
+
+    Only when fusing the reduction, the following attributes are updated.
+
+        reduce_op (tuple): One of the element of reduction.***._raws._ops.
+        reduce_identity (any type): The identity value of the reduction.
+        reduce_kwargs (dict or None): kwargs of the reduction.
+
+        premap_ret (_FusionVarCUDA or None): The target of reduction
+        postmap_param (_FusionVarCUDA or None): The result of reduction
+        postmap_op_list (list of FuisonOp): The post-map operations.
+        postmap_local_list (list of _FusionVarCUDA): The local variables which
+    appears in the post-map operations
     """
 
     def __init__(self):
-        self.op_list = []
         self.preamble_set = set()
+        self.submodules = dict()
+        self.count = 0
+
+        self.op_list = []
         self.param_list = []
         self.local_list = []
 
         self.reduce_op = None
         self.reduce_identity = None
         self.reduce_kwargs = None
+
         self.postmap_op_list = []
         self.premap_ret = None
-        self.postmap_param_list = []
+        self.postmap_param = None
         self.postmap_local_list = []
-        self.submodules = {}
-        self.count = 0
 
     def __repr__(self):
         return '<_FusionMem, op_list={}, var_list={}>'.format(
@@ -217,9 +234,12 @@ class _FusionHistory(object):
         return var
 
     def fresh_postmap_param(self, *args, **kwargs):
+        if self.postmap_param is not None:
+            raise NotImplementedError(
+                'Multiple reduction is not implemented yet')
         index = self.fresh_index()
         var = _FusionVarCUDA(index, *args, **kwargs)
-        self.postmap_param_list.append(var)
+        self.postmap_param = var
         return var
 
     def _fresh_premap_local(self, *args, **kwargs):
@@ -245,7 +265,7 @@ class _FusionHistory(object):
         subm = op.submodule
         self.submodules[subm.key()] = subm
         self.op_list.append(op)
-        self.preamble_set.add(subm.preamble)
+        self.add_preamble(subm.preamble)
         return op
 
     def _set_postmap_op(self, *args, **kwargs):
@@ -253,7 +273,7 @@ class _FusionHistory(object):
         subm = op.submodule
         self.submodules[subm.key()] = subm
         self.postmap_op_list.append(op)
-        self.preamble_set.add(subm.preamble)
+        self.add_preamble(subm.preamble)
         return op
 
     def add_op(self, *args, **kwargs):
@@ -669,8 +689,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
         submodules += 'typedef {} type_in0_raw;\n'.format(fixed_ctype)
         submodules += 'typedef {} type_out0_raw;\n'.format(fixed_ctype)
         submodules += _fix_code(reduce_ctype, fixed_dtype, fix_code)
-        submodules += _postmap_code(history.postmap_param_list[0],
-                                    out_params, postmap)
+        submodules += _postmap_code(history.postmap_param, out_params, postmap)
 
         kernel = core.ReductionKernel(
             in_params_code,
