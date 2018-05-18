@@ -555,7 +555,8 @@ class _FusionHistory(object):
             ufunc.name, in_dtypes, out_dtypes))
 
     def call_elementwise(self, f, args, kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            'Fusion for elementwise-kernel is not implemented yet')
 
     def call(self, f, args, kwargs):
         if type(f) is core.ufunc:
@@ -959,9 +960,11 @@ class reduction(object):
         if isinstance(arg, FusionVarPython):
             if arg._is_postmap:
                 # Multiple reduction
-                raise NotImplementedError()
+                raise NotImplementedError(
+                    'Multiple reduction is not implemented yet')
             if len(args) != 1:
-                raise Exception('Can\'t reduce a tuple')
+                mes = '{}() takes 1 positional argument but {} were given'
+                raise TypeError(mes.format(self._raw._ops.name, len(args)))
             dtype = arg.dtype
             history = _thread_local.history
             for op in self._raw._ops:
