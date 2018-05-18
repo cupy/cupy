@@ -181,10 +181,10 @@ class FusionVarPython(object):
     # shape (tuple of ints): !! not supported !!
     # _var (_FusionVarCUDA)
 
-    def __init__(self, var):
+    def __init__(self, var, is_postmap):
         self._var = var
         self.dtype = var.dtype
-        self._is_postmap = _thread_local.history.has_reduction()
+        self._is_postmap = is_postmap
 
     def __repr__(self):
         return '<FusionVarPython, dtype={}>'.format(self.dtype)
@@ -530,11 +530,11 @@ class _FusionHistory(object):
                     if i >= len(out_vars):
                         v = self.fresh_local(ty_outs[i])
                         out_vars.append(v)
-                        ret.append(FusionVarPython(v))
+                        ret.append(FusionVarPython(v, self.has_reduction()))
                     elif numpy.can_cast(ty_outs[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
-                        ret.append(FusionVarPython(v))
+                        ret.append(FusionVarPython(v, self.has_reduction()))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -631,7 +631,7 @@ def _get_fusion_from_types(func, in_dtypes, name):
     """
     history = _thread_local.history
     in_params = [history.fresh_premap_param(t) for t in in_dtypes]
-    in_pvars = [FusionVarPython(_) for _ in in_params]
+    in_pvars = [FusionVarPython(_, history.has_reduction()) for _ in in_params]
     out_pvars = func(*in_pvars)
     out_pvars = list(out_pvars) if type(out_pvars) == tuple else [out_pvars]
     out_pvars = [_ for _ in out_pvars if _ is not None]
@@ -966,7 +966,7 @@ class reduction(object):
                     history.reduce_identity = self.identity
                     history.reduce_kwargs = kwargs
                     history.add_preamble(self._preamble)
-                    return FusionVarPython(return_var)
+                    return FusionVarPython(return_var, True)
             raise TypeError('Type is mismatched. {}(...), {}'.format(
                 self._raw._ops.name, dtype.type))
         elif builtins.any(type(_) == numpy.ndarray for _ in args):
