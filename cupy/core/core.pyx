@@ -1471,11 +1471,11 @@ cdef class ndarray:
            CuPy handles out-of-bounds indices differently from NumPy.
            NumPy handles them by raising an error, but CuPy wraps around them.
 
-           Examples
-           --------
-           >>> a = cupy.arange(3)
-           >>> a[[1, 3]]
-           array([1, 0])
+        Example:
+
+            >>> a = cupy.arange(3)
+            >>> a[[1, 3]]
+            array([1, 0])
 
         """
         # supports basic indexing (by slices, ints or Ellipsis) and
