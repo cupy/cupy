@@ -17,10 +17,10 @@ class TestArrayUfunc(unittest.TestCase):
         self.assertTrue(isinstance(outa, cupy.ndarray))
         b = a.get()
         outb = np.sin(b)
-        self.assertTrue(np.allclose(outa, outb))
+        self.assertTrue(np.allclose(outa.get(), outb))
 
     @testing.for_all_dtypes()
-    def test_binary_op(self, op, xp, dtype):
+    def test_binary_op(self, dtype):
         a1 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
         a2 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
         outa = np.add(a1, a2)
@@ -29,10 +29,10 @@ class TestArrayUfunc(unittest.TestCase):
         b1 = a1.get()
         b2 = a2.get()
         outb = np.add(b1, b2)
-        self.assertTrue(np.allclose(outa, outb))
+        self.assertTrue(np.allclose(outa.get(), outb))
 
     @testing.for_all_dtypes()
-    def test_binary_mixed_op(self, op, xp, dtype):
+    def test_binary_mixed_op(self, dtype):
         a1 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
         a2 = cupy.array(np.array([0, 1, 2]), dtype=dtype).get()
         with self.assertRaises(TypeError):
