@@ -1,4 +1,3 @@
-import operator
 import unittest
 
 import numpy as np
@@ -11,8 +10,8 @@ from cupy import testing
 class TestArrayUfunc(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    def check_unary_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
+    def test_unary_op(self, dtype):
+        a = cupy.array([0, 1, 2], dtype=dtype)
         outa = np.sin(a)
         # numpy operation produced a cupy array
         self.assertTrue(isinstance(outa, cupy.ndarray))
@@ -21,9 +20,9 @@ class TestArrayUfunc(unittest.TestCase):
         self.assertTrue(np.allclose(outa, outb))
 
     @testing.for_all_dtypes()
-    def check_binary_op(self, op, xp, dtype):
-        a1 = testing.shaped_arange((2, 3), xp, dtype)
-        a2 = testing.shaped_arange((2, 3), xp, dtype)
+    def test_binary_op(self, op, xp, dtype):
+        a1 = cupy.array([0, 1, 2], dtype=dtype)
+        a2 = cupy.array([0, 1, 2], dtype=dtype)
         outa = np.add(a1, a2)
         # numpy operation produced a cupy array
         self.assertTrue(isinstance(outa, cupy.ndarray))
@@ -33,9 +32,9 @@ class TestArrayUfunc(unittest.TestCase):
         self.assertTrue(np.allclose(outa, outb))
 
     @testing.for_all_dtypes()
-    def check_binary_mixed_op(self, op, xp, dtype):
-        a1 = testing.shaped_arange((2, 3), xp, dtype)
-        a2 = testing.shaped_arange((2, 3), xp, dtype).get()
+    def test_binary_mixed_op(self, op, xp, dtype):
+        a1 = cupy.array([0, 1, 2], dtype=dtype)
+        a2 = cupy.array([0, 1, 2], dtype=dtype).get()
         with self.assertRaises(TypeError):
             # attempt to add cupy and numpy arrays
             np.add(a1, a2)
