@@ -22,10 +22,11 @@ class TestArrayUfunc(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_unary_op_out(self, dtype):
         a = cupy.array(np.array([0, 1, 2]), dtype=dtype)
-        outa = cupy.array(np.array([0, 1, 2]), dtype=np.float64)
-        np.sin(a, out=outa)
         b = a.get()
         outb = np.sin(b)
+        # pre-make output with same type as input
+        outa = cupy.array(np.array([0, 1, 2]), dtype=outb.dtype)
+        np.sin(a, out=outa)
         self.assertTrue(np.allclose(outa.get(), outb))
 
     @testing.for_all_dtypes()
