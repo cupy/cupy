@@ -1583,14 +1583,11 @@ cdef class ndarray:
             kwargs['out'] = kwargs['out'][0]
         else:
             check = inputs
-        for x in check:
-            if not isinstance(x, (ndarray, Number)):
-                # do *not* pass any old ndarray-like
-                return NotImplemented
 
         name = ufunc.__name__
         if method == '__call__':
             if ufunc.signature is not None:
+                # we don't support generalised-ufuncs (gufuncs)
                 return NotImplemented
             try:
                 cp_ufunc = getattr(cp, ufunc.__name__)
