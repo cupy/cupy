@@ -1567,8 +1567,8 @@ cdef class ndarray:
 
     # numpy/ufunc compat
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """
-        Apply unary or binary ufunc to this array
+
+        """Apply unary or binary ufunc to this array
 
         If binary, only allow if second argument is another cupy ndarray or
         a number, i.e., raise ValueError instead of silently converting a
