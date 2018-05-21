@@ -108,10 +108,12 @@ rk_random(rk_state *state)
         }
         for (; i < N - 1; i++) {
             y = (state->key[i] & UPPER_MASK) | (state->key[i+1] & LOWER_MASK);
-            state->key[i] = state->key[i+(M-N)] ^ (y>>1) ^ (-(y & 1) & MATRIX_A);
+            state->key[i]
+                = state->key[i+(M-N)] ^ (y>>1) ^ (-(y & 1) & MATRIX_A);
         }
         y = (state->key[N - 1] & UPPER_MASK) | (state->key[0] & LOWER_MASK);
-        state->key[N - 1] = state->key[M - 1] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
+        state->key[N - 1]
+            = state->key[M - 1] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
 
         state->pos = 0;
     }
