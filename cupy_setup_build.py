@@ -347,7 +347,8 @@ def make_extensions(options, compiler, use_cython):
         x for x in settings['library_dirs'] if path.exists(x)]
 
     # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
-    use_wheel_libs_rpath = 0 < len(options['wheel_libs'])
+    use_wheel_libs_rpath = (
+        0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
 
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
