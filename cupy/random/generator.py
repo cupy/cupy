@@ -21,8 +21,58 @@ _binomial_kernel = None
 _chisquare_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
+_poisson_kernel = None
 _standard_gamma_kernel = None
 _standard_t_kernel = None
+
+
+loggam_difinition = '''
+/*
+ * log-gamma function to support some of these distributions. The
+ * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
+ * book "Computation of Special Functions", 1996, John Wiley & Sons, Inc.
+ */
+static __device__ double loggam(double x)
+{
+    double x0, x2, xp, gl, gl0;
+    long k, n;
+
+    static double a[10] = {8.333333333333333e-02,-2.777777777777778e-03,
+         7.936507936507937e-04,-5.952380952380952e-04,
+         8.417508417508418e-04,-1.917526917526918e-03,
+         6.410256410256410e-03,-2.955065359477124e-02,
+         1.796443723688307e-01,-1.39243221690590e+00};
+    x0 = x;
+    n = 0;
+    if ((x == 1.0) || (x == 2.0))
+    {
+        return 0.0;
+    }
+    else if (x <= 7.0)
+    {
+        n = (long)(7 - x);
+        x0 = x + n;
+    }
+    x2 = 1.0/(x0*x0);
+    xp = 2*M_PI;
+    gl0 = a[9];
+    for (k=8; k>=0; k--)
+    {
+        gl0 *= x2;
+        gl0 += a[k];
+    }
+    gl = gl0/x0 + 0.5*log(xp) + (x0-0.5)*log(x0) - x0;
+    if (x <= 7.0)
+    {
+        for (k=1; k<=n; k++)
+        {
+            gl -= log(x0-1.0);
+            x0 -= 1.0;
+        }
+    }
+    return gl;
+}
+'''
 
 
 rk_state_difinition = '''
@@ -301,6 +351,99 @@ __device__ double rk_standard_t(rk_state *state, double df)
 '''
 
 
+rk_poisson_mult_definition = '''
+__device__ long rk_poisson_mult(rk_state *state, double lam)
+{
+    long X;
+    double prod, U, enlam;
+
+    enlam = exp(-lam);
+    X = 0;
+    prod = 1.0;
+    while (1)
+    {
+        U = rk_double(state);
+        prod *= U;
+        if (prod > enlam)
+        {
+            X += 1;
+        }
+        else
+        {
+            return X;
+        }
+    }
+}
+'''
+
+
+rk_poisson_ptrs_definition = '''
+/*
+ * The transformed rejection method for generating Poisson random variables
+ * W. Hoermann
+ * Insurance: Mathematics and Economics 12, 39-45 (1993)
+ */
+#define LS2PI 0.91893853320467267
+#define TWELFTH 0.083333333333333333333333
+__device__ long rk_poisson_ptrs(rk_state *state, double lam)
+{
+    long k;
+    double U, V, slam, loglam, a, b, invalpha, vr, us;
+
+    slam = sqrt(lam);
+    loglam = log(lam);
+    b = 0.931 + 2.53*slam;
+    a = -0.059 + 0.02483*b;
+    invalpha = 1.1239 + 1.1328/(b-3.4);
+    vr = 0.9277 - 3.6224/(b-2);
+
+    while (1)
+    {
+        U = rk_double(state) - 0.5;
+        V = rk_double(state);
+        us = 0.5 - fabs(U);
+        k = (long)floor((2*a/us + b)*U + lam + 0.43);
+        if ((us >= 0.07) && (V <= vr))
+        {
+            return k;
+        }
+        if ((k < 0) ||
+            ((us < 0.013) && (V > us)))
+        {
+            continue;
+        }
+        if ((log(V) + log(invalpha) - log(a/(us*us)+b)) <=
+            (-lam + k*loglam - loggam(k+1)))
+        {
+            return k;
+        }
+
+
+    }
+
+}
+'''
+
+
+rk_poisson_definition = '''
+__device__ long rk_poisson(rk_state *state, double lam)
+{
+    if (lam >= 10)
+    {
+        return rk_poisson_ptrs(state, lam);
+    }
+    else if (lam == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return rk_poisson_mult(state, lam);
+    }
+}
+'''
+
+
 def _get_beta_kernel():
     global _beta_kernel
     if _beta_kernel is None:
@@ -384,6 +527,27 @@ def _get_laplace_kernel():
             'laplace_kernel'
         )
     return _laplace_kernel
+
+
+def _get_poisson_kernel():
+    global _poisson_kernel
+    if _poisson_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, loggam_difinition,
+             rk_poisson_mult_definition, rk_poisson_ptrs_definition,
+             rk_poisson_definition]
+        _poisson_kernel = core.ElementwiseKernel(
+            'T lam, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_poisson(&internal_state, lam);
+            ''',
+            'poisson_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _poisson_kernel
 
 
 def _get_standard_gamma_kernel():
@@ -978,6 +1142,21 @@ class RandomState(object):
         x = self.uniform(size=size, dtype=dtype)
         _get_laplace_kernel()(x, loc, scale, x)
         return x
+
+    def poisson(self, lam=1.0, size=None, dtype=int):
+        """Returns an array of samples drawn from a Poisson distribution.
+
+        .. seealso::
+            :func:`cupy.random.poisson` for full documentation,
+            :meth:`numpy.random.RandomState.poisson`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _get_poisson_kernel()(lam, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
 
     def standard_t(self, df, size=None, dtype=float):
         """Returns an array of samples drawn from a Standard Student’s t distribution.
