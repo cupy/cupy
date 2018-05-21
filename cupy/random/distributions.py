@@ -318,6 +318,27 @@ def standard_cauchy(size=None, dtype=float):
     return x
 
 
+def standard_exponential(size=None, dtype=float):
+    """Returns an array of samples drawn from the standard exponential
+    distribution.
+
+    Args:
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard exponential distribution.
+
+    .. seealso:: :func:`numpy.random.standard_exponential`
+
+    """
+    rs = generator.get_random_state()
+    x = rs.standard_exponential(size, dtype)
+    return x
+
+
 def standard_normal(size=None, dtype=float):
     """Returns an array of samples drawn from the standard normal distribution.
 

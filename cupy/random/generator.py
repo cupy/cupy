@@ -599,6 +599,21 @@ class RandomState(object):
             self.rk_seed += numpy.prod(size)
         return y
 
+    def standard_exponential(self, size=None, dtype=float):
+        """Returns an array of samples drawn from a Standard Exponential distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_exponential` for full documentation,
+            :meth:`numpy.random.RandomState.standard_exponential`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_exponential_kernel()(self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def standard_t(self, df, size=None, dtype=float):
         """Returns an array of samples drawn from a Standard Student’s t distribution.
 

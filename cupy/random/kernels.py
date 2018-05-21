@@ -7,6 +7,7 @@ _gumbel_kernel = None
 _laplace_kernel = None
 _poisson_kernel = None
 _standard_cauchy_kernel = None
+_standard_exponential_kernel = None
 _standard_gamma_kernel = None
 _standard_t_kernel = None
 
@@ -561,6 +562,25 @@ def _get_standard_cauchy_kernel():
             loop_prep="rk_state internal_state;"
         )
     return _standard_cauchy_kernel
+
+
+def _get_standard_exponential_kernel():
+    global _standard_exponential_kernel
+    if _standard_exponential_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_standard_exponential_definition]
+        _standard_exponential_kernel = core.ElementwiseKernel(
+            'T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_standard_exponential(&internal_state);
+            ''',
+            'standard_exponential_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _standard_exponential_kernel
 
 
 def _get_standard_gamma_kernel():
