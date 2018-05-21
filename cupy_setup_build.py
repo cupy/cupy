@@ -18,6 +18,9 @@ from setuptools.command import build_ext
 from setuptools.command import sdist
 
 from install import build
+from install.build import PLATFORM_DARWIN
+from install.build import PLATFORM_LINUX
+from install.build import PLATFORM_WIN32
 
 
 required_cython_version = pkg_resources.parse_version('0.26.1')
@@ -121,7 +124,7 @@ MODULES = [
             'nvToolsExt.h',
         ],
         'libraries': [
-            'nvToolsExt' if not sys.platform == 'win32' else 'nvToolsExt64_1',
+            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
     },
@@ -322,9 +325,9 @@ def preconfigure_modules(compiler, settings):
 
 
 def _rpath_base():
-    if sys.platform.startswith('linux'):
+    if PLATFORM_LINUX:
         return '$ORIGIN'
-    elif sys.platform.startswith('darwin'):
+    elif PLATFORM_DARWIN:
         return '@loader_path'
     else:
         raise Exception('not supported on this platform')
@@ -387,7 +390,7 @@ def make_extensions(options, compiler, use_cython):
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
-            if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
+            if compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
                 # In mac environment, openmp is not required.
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
@@ -412,9 +415,9 @@ def make_extensions(options, compiler, use_cython):
                 depth = name.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
 
-            if sys.platform != 'win32':
+            if not PLATFORM_WIN32:
                 s['runtime_library_dirs'] = rpath
-            if sys.platform == 'darwin':
+            if PLATFORM_DARWIN:
                 args = s.setdefault('extra_link_args', [])
                 args.append(
                     '-Wl,' + ','.join('-rpath,' + p
@@ -497,7 +500,7 @@ def prepare_wheel_libs():
     RUNPATH will be set to this directory later.
     """
     libdirname = None
-    if sys.platform.startswith('win32'):
+    if PLATFORM_WIN32:
         libdirname = 'cuda'
         # Clean up existing libraries.
         libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
@@ -743,7 +746,7 @@ class custom_build_ext(build_ext.build_ext):
                     try:
                         return func(*args, **kwargs)
                     except errors.DistutilsPlatformError:
-                        if not sys.platform == 'win32':
+                        if not PLATFORM_WIN32:
                             CCompiler = _UnixCCompiler
                         else:
                             CCompiler = _MSVCCompiler
