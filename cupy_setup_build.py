@@ -490,27 +490,31 @@ def get_long_description():
 
 
 def prepare_wheel_libs():
-    """Bundle shared libraries for wheels."""
-    libs = []
-    libdirname = None
+    """Prepare shared libraries for wheels.
 
+    On Windows, DLLs will be placed under `cupy/cuda`.
+    On other platforms, shared libraries are placed under `cupy/_libs` and
+    RUNPATH will be set to this directory later.
+    """
+    libdirname = None
     if sys.platform.startswith('win32'):
         libdirname = 'cuda'
-        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
         # Clean up existing libraries.
+        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
         for libfile in libfiles:
             print("Removing file: {}".format(libfile))
             os.remove(libfile)
     else:
         libdirname = '_lib'
-        libdir = 'cupy/{}'.format(libdirname)
         # Clean up the library directory.
+        libdir = 'cupy/{}'.format(libdirname)
         if os.path.exists(libdir):
             print("Removing directory: {}".format(libdir))
             shutil.rmtree(libdir)
         os.mkdir(libdir)
 
     # Copy specified libraries to the library directory.
+    libs = []
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
         print("Copying library for wheel: {}".format(lib))
