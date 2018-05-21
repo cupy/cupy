@@ -296,6 +296,31 @@ def standard_normal(size=None, dtype=float):
     return normal(size=size, dtype=dtype)
 
 
+def standard_t(df, size=None, dtype=float):
+    """Returns an array of samples drawn from a standard Student's t distribution.
+
+    Its probability density function is defined as
+
+    .. math::
+
+    Args:
+        df (float):
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard Student's t destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.standard_t`
+        :func:`numpy.random.standard_t`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_t(df, size, dtype)
+
+
 def uniform(low=0.0, high=1.0, size=None, dtype=float):
     """Returns an array of uniformly-distributed samples over an interval.
 

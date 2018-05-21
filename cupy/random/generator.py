@@ -22,6 +22,7 @@ _chisquare_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
 _standard_gamma_kernel = None
+_standard_t_kernel = None
 
 
 rk_state_difinition = '''
@@ -292,6 +293,13 @@ __device__ double rk_chisquare(rk_state *state, double df)
 }
 '''
 
+rk_standard_t_definition = '''
+__device__ double rk_standard_t(rk_state *state, double df)
+{
+    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
+}
+'''
+
 
 def _get_beta_kernel():
     global _beta_kernel
@@ -396,6 +404,27 @@ def _get_standard_gamma_kernel():
             loop_prep="rk_state internal_state;"
         )
     return _standard_gamma_kernel
+
+
+def _get_standard_t_kernel():
+    global _standard_t_kernel
+    if _standard_t_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_gauss_definition,
+             rk_standard_exponential_definition, rk_standard_gamma_definition,
+             rk_standard_t_definition]
+        _standard_t_kernel = core.ElementwiseKernel(
+            'T df, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_standard_t(&internal_state, df);
+            ''',
+            'standard_t_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _standard_t_kernel
 
 
 class RandomState(object):
@@ -949,6 +978,21 @@ class RandomState(object):
         x = self.uniform(size=size, dtype=dtype)
         _get_laplace_kernel()(x, loc, scale, x)
         return x
+
+    def standard_t(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from a Standard Student’s t distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_t` for full documentation,
+            :meth:`numpy.random.RandomState.standard_t`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _get_standard_t_kernel()(df, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
 
     def randint(self, low, high=None, size=None, dtype='l'):
         """Returns a scalar or an array of integer values over ``[low, high)``.
