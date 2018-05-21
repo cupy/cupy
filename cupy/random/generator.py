@@ -560,6 +560,21 @@ class RandomState(object):
             self.rk_seed += numpy.prod(size)
         return y
 
+    def geometric(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from a Geometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.geometric` for full documentation,
+            :meth:`numpy.random.RandomState.geometric`
+        """
+        y = cupy.zeros(shape=size, dtype=int)
+        kernels._get_geometric_kernel()(p, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.
 

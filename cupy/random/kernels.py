@@ -4,6 +4,7 @@ _beta_kernel = None
 _binomial_kernel = None
 _chisquare_kernel = None
 _f_kernel = None
+_geometric_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
 _poisson_kernel = None
@@ -447,6 +448,50 @@ __device__ double rk_standard_cauchy(rk_state *state)
 '''
 
 
+rk_geometric_search_definition = '''
+__device__ long rk_geometric_search(rk_state *state, double p)
+{
+    double U;
+    long X;
+    double sum, prod, q;
+
+    X = 1;
+    sum = prod = p;
+    q = 1.0 - p;
+    U = rk_double(state);
+    while (U > sum)
+    {
+        prod *= q;
+        sum += prod;
+        X++;
+    }
+    return X;
+}
+'''
+
+
+rk_geometric_inversion_definition = '''
+__device__ long rk_geometric_inversion(rk_state *state, double p)
+{
+    return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
+}
+'''
+
+
+rk_geometric_definition = '''
+__device__ long rk_geometric(rk_state *state, double p)
+{
+    if (p >= 0.333333333333333333333333)
+    {
+        return rk_geometric_search(state, p);
+    } else
+    {
+        return rk_geometric_inversion(state, p);
+    }
+}
+'''
+
+
 def _get_beta_kernel():
     global _beta_kernel
     if _beta_kernel is None:
@@ -530,6 +575,26 @@ def _get_f_kernel():
     return _f_kernel
 
 
+def _get_geometric_kernel():
+    global _geometric_kernel
+    if _geometric_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_geometric_search_definition,
+             rk_geometric_inversion_definition, rk_geometric_definition]
+        _geometric_kernel = core.ElementwiseKernel(
+            'float64 p, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_geometric(&internal_state, p);
+            ''',
+            'geometric_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _geometric_kernel
+
+
 def _get_gumbel_kernel():
     global _gumbel_kernel
     if _gumbel_kernel is None:
@@ -562,7 +627,7 @@ def _get_poisson_kernel():
              rk_poisson_mult_definition, rk_poisson_ptrs_definition,
              rk_poisson_definition]
         _poisson_kernel = core.ElementwiseKernel(
-            'T lam, T seed', 'T y',
+            'float64 lam, T seed', 'T y',
             '''
             rk_seed(seed + i, &internal_state);
             y = rk_poisson(&internal_state, lam);

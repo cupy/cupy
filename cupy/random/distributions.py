@@ -146,14 +146,39 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Chi-Squared destribution.
+        cupy.ndarray: Samples drawn from the Gamma destribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.chisquare`
-        :func:`numpy.random.chisquare`
+        :func:`cupy.random.RandomState.gamma`
+        :func:`numpy.random.gamma`
     """
     rs = generator.get_random_state()
     return rs.gamma(shape, scale, size, dtype)
+
+
+def geometric(p, size=None, dtype=int):
+    """Returns an array of samples drawn from a Geometric distribution.
+
+    Its probability mass function is defined as
+
+    .. math::
+
+    Args:
+        p (float):
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Geometric destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.geometric`
+        :func:`numpy.random.geometric`
+    """
+    rs = generator.get_random_state()
+    return rs.geometric(p, size, dtype)
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
