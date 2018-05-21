@@ -16,10 +16,11 @@ from cupy.cuda import curand
 from cupy.cuda import device
 
 
+_beta_kernel = None
+_binomial_kernel = None
+_chisquare_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
-_binomial_kernel = None
-_beta_kernel = None
 
 
 rk_state_difinition = '''
@@ -283,6 +284,13 @@ __device__ double rk_beta(rk_state *state, double a, double b)
 }
 '''
 
+rk_chisquare_definition = '''
+__device__ double rk_chisquare(rk_state *state, double df)
+{
+    return 2.0*rk_standard_gamma(state, df/2.0);
+}
+'''
+
 
 def _get_beta_kernel():
     global _beta_kernel
@@ -323,6 +331,27 @@ def _get_binomial_kernel():
             'binomial_kernel'
         )
     return _binomial_kernel
+
+
+def _get_chisquare_kernel():
+    global _chisquare_kernel
+    if _chisquare_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_gauss_definition,
+             rk_standard_exponential_definition, rk_standard_gamma_definition,
+             rk_chisquare_definition]
+        _chisquare_kernel = core.ElementwiseKernel(
+            'T df, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_chisquare(&internal_state, df);
+            ''',
+            'beta_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _chisquare_kernel
 
 
 def _get_gumbel_kernel():
@@ -823,6 +852,21 @@ class RandomState(object):
         """
         y = cupy.zeros(shape=size, dtype=dtype)
         _get_beta_kernel()(a, b, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def chisquare(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from a Chisquare distribution.
+
+        .. seealso::
+            :func:`cupy.random.chisquare` for full documentation,
+            :meth:`numpy.random.RandomState.chisquare`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _get_chisquare_kernel()(df, self.rk_seed, y)
         if size is None:
             self.rk_seed += 1
         else:
