@@ -1308,9 +1308,9 @@ class TestFusionDecorator(unittest.TestCase):
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):
-        a = xp.array([2, 3], 'f')
-        b = xp.array([2, 3], 'f')
-        c = xp.array([2, 3], 'f')
+        a = xp.arange(0, 12, dtype='d').reshape(3, 4)
+        b = xp.arange(5, 17, dtype='d').reshape(3, 4)
+        c = xp.arange(13, 25, dtype='d').reshape(3, 4)
 
         # Test kernel name (with mock)
         if xp is cupy:
@@ -1326,7 +1326,7 @@ class TestFusionKernelName(unittest.TestCase):
         # Test there's no error in computation (without mock)
         return func(a, b, c)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_elementwise(self, xp):
         def func(a, b, c):
             @cupy.fuse()
@@ -1337,7 +1337,7 @@ class TestFusionKernelName(unittest.TestCase):
 
         return self.check(xp, func, 'func_a1', True)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_elementwise_with_name(self, xp):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
@@ -1348,8 +1348,8 @@ class TestFusionKernelName(unittest.TestCase):
 
         return self.check(xp, func, 'abc', True)
 
-    @testing.numpy_cupy_array_equal()
-    def test_reduction(self, xp):
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_premap(self, xp):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x, y, z):
@@ -1359,7 +1359,7 @@ class TestFusionKernelName(unittest.TestCase):
 
         return self.check(xp, func, 'func_a1', False)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_with_name(self, xp):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
