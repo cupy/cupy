@@ -3982,7 +3982,7 @@ _sum_auto_dtype = create_reduction_func(
 
 
 _sum_keep_dtype = create_reduction_func(
-    'cupy_sum',
+    'cupy_sum_with_dtype',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
@@ -4000,7 +4000,7 @@ _prod_auto_dtype = create_reduction_func(
 
 
 _prod_keep_dtype = create_reduction_func(
-    'cupy_prod',
+    'cupy_prod_with_dtype',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
