@@ -7,6 +7,7 @@ _f_kernel = None
 _geometric_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
+_pareto_kernel = None
 _poisson_kernel = None
 _standard_cauchy_kernel = None
 _standard_exponential_kernel = None
@@ -492,6 +493,14 @@ __device__ long rk_geometric(rk_state *state, double p)
 '''
 
 
+rk_pareto_definition = '''
+__device__ double rk_pareto(rk_state *state, double a)
+{
+    return exp(rk_standard_exponential(state)/a) - 1;
+}
+'''
+
+
 def _get_beta_kernel():
     global _beta_kernel
     if _beta_kernel is None:
@@ -616,6 +625,26 @@ def _get_laplace_kernel():
             'laplace_kernel'
         )
     return _laplace_kernel
+
+
+def _get_pareto_kernel():
+    global _pareto_kernel
+    if _pareto_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_standard_exponential_definition,
+             rk_pareto_definition]
+        _pareto_kernel = core.ElementwiseKernel(
+            'T a, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_pareto(&internal_state, a);
+            ''',
+            'pareto_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _pareto_kernel
 
 
 def _get_poisson_kernel():

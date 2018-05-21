@@ -599,6 +599,21 @@ class RandomState(object):
         kernels._get_laplace_kernel()(x, loc, scale, x)
         return x
 
+    def pareto(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from a Pareto distribution.
+
+        .. seealso::
+            :func:`cupy.random.pareto_kernel` for full documentation,
+            :meth:`numpy.random.RandomState.pareto`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_pareto_kernel()(a, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def poisson(self, lam=1.0, size=None, dtype=int):
         """Returns an array of samples drawn from a Poisson distribution.
 

@@ -325,6 +325,27 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
+def pareto(a, size=None, dtype=float):
+    """Returns an array of samples drawn from a pareto distribution.
+
+    Args:
+        a (float):
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the pareto distribution.
+
+    .. seealso:: :func:`numpy.random.pareto`
+
+    """
+    rs = generator.get_random_state()
+    x = rs.pareto(a, size, dtype)
+    return x
+
+
 def poisson(lam=1.0, size=None, dtype=int):
     """Returns an array of samples drawn from a poisson distribution.
 
