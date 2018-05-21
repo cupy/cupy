@@ -3,6 +3,7 @@ from cupy import core
 _beta_kernel = None
 _binomial_kernel = None
 _chisquare_kernel = None
+_f_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
 _poisson_kernel = None
@@ -329,6 +330,14 @@ __device__ double rk_chisquare(rk_state *state, double df)
 }
 '''
 
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden)
+{
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
+}
+'''
+
 rk_standard_t_definition = '''
 __device__ double rk_standard_t(rk_state *state, double df)
 {
@@ -498,6 +507,27 @@ def _get_chisquare_kernel():
             loop_prep="rk_state internal_state;"
         )
     return _chisquare_kernel
+
+
+def _get_f_kernel():
+    global _f_kernel
+    if _f_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_gauss_definition,
+             rk_standard_exponential_definition, rk_standard_gamma_definition,
+             rk_chisquare_definition, rk_f_definition]
+        _f_kernel = core.ElementwiseKernel(
+            'T dfnum, T dfden, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_f(&internal_state, dfnum, dfden);
+            ''',
+            'f_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _f_kernel
 
 
 def _get_gumbel_kernel():

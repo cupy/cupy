@@ -81,29 +81,52 @@ def chisquare(df, size=None, dtype=float):
 
 
 def dirichlet(alpha, size=None, dtype=float):
-    """Returns an array of samples drawn from a Chi-Squared distribution.
+    """Returns an array of samples drawn from a Dirichlet distribution.
 
     Its probability density function is defined as
 
     .. math::
-       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}\mathrm{e}^{-x/2}
 
     Args:
-        df (int): Degree of freedom.
+        alpha (int):
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Chi-Squared destribution.
+        cupy.ndarray: Samples drawn from the Dirichret destribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.chisquare`
-        :func:`numpy.random.chisquare`
+        :func:`cupy.random.RandomState.dirichlet`
+        :func:`numpy.random.dirichlet`
     """
     rs = generator.get_random_state()
     return rs.dirichlet(alpha, size, dtype)
+
+
+def f(dfnum, dfden, size=None, dtype=float):
+    """Returns an array of samples drawn from the F distribution.
+
+    Its probability density function is defined as
+
+    .. math::
+
+    Args:
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the F destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.f`
+        :func:`numpy.random.f`
+    """
+    rs = generator.get_random_state()
+    return rs.f(dfnum, dfden, size, dtype)
 
 
 def gamma(shape, scale=1.0, size=None, dtype=float):
