@@ -1360,6 +1360,28 @@ class TestFusionKernelName(unittest.TestCase):
         return self.check(xp, func, 'func_a1', False)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_postmap(self, xp):
+        def func(a, b, c):
+            @cupy.fuse()
+            def func_a1(x):
+                return cupy.sqrt(cupy.sum(x) + 10)
+
+            return func_a1(a)
+
+        return self.check(xp, func, 'func_a1', False)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_01(self, xp):
+        def func(a, b, c):
+            @cupy.fuse()
+            def func_a1(x, y, z):
+                return cupy.sqrt(cupy.prod(x + y * z, axis=1) + 10)
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'func_a1', False)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_with_name(self, xp):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
