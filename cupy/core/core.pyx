@@ -1575,8 +1575,6 @@ cdef class ndarray:
         numpy array.
         """
         import cupy as cp  # top-level ufuncs
-        from numbers import Number
-        # pop because argument is already in inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
             check = inputs + kwargs['out']
@@ -1594,10 +1592,11 @@ cdef class ndarray:
                 return cp_ufunc(*inputs, **kwargs)
             except AttributeError:
                 return NotImplemented
-        elif method =='at' and name == 'add':
+        # Don't use for now, interface uncertain
+        # elif method =='at' and name == 'add':
             # the only ufunc attribute currently
             # http://docs-cupy.chainer.org/en/stable/reference/ufunc.html#ufunc-at
-            self.scatter_add(*inputs, **kwargs)
+            # self.scatter_add(*inputs, **kwargs)
         else:
             return NotImplemented
 
