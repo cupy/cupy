@@ -584,6 +584,21 @@ class RandomState(object):
             self.rk_seed += numpy.prod(size)
         return y
 
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from a Standard Cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_cauchy_kernel()(self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def standard_t(self, df, size=None, dtype=float):
         """Returns an array of samples drawn from a Standard Student’s t distribution.
 
@@ -632,6 +647,7 @@ class RandomState(object):
         return x
 
 
+# TODO: move to kernels.py
 def _cupy_permutation():
     return core.ElementwiseKernel(
         'raw int32 array, raw int32 sample, int32 j_start, int32 _j_end',

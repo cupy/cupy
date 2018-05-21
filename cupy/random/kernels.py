@@ -6,6 +6,7 @@ _chisquare_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
 _poisson_kernel = None
+_standard_cauchy_kernel = None
 _standard_gamma_kernel = None
 _standard_t_kernel = None
 
@@ -428,6 +429,14 @@ __device__ long rk_poisson(rk_state *state, double lam)
 '''
 
 
+rk_standard_cauchy_definition = '''
+__device__ double rk_standard_cauchy(rk_state *state)
+{
+    return rk_gauss(state) / rk_gauss(state);
+}
+'''
+
+
 def _get_beta_kernel():
     global _beta_kernel
     if _beta_kernel is None:
@@ -532,6 +541,26 @@ def _get_poisson_kernel():
             loop_prep="rk_state internal_state;"
         )
     return _poisson_kernel
+
+
+def _get_standard_cauchy_kernel():
+    global _standard_cauchy_kernel
+    if _standard_cauchy_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_gauss_definition,
+             rk_standard_cauchy_definition]
+        _standard_cauchy_kernel = core.ElementwiseKernel(
+            'T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_standard_cauchy(&internal_state);
+            ''',
+            'standard_gamma_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _standard_cauchy_kernel
 
 
 def _get_standard_gamma_kernel():
