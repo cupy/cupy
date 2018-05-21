@@ -21,6 +21,7 @@ _binomial_kernel = None
 _chisquare_kernel = None
 _gumbel_kernel = None
 _laplace_kernel = None
+_standard_gamma_kernel = None
 
 
 rk_state_difinition = '''
@@ -375,6 +376,26 @@ def _get_laplace_kernel():
             'laplace_kernel'
         )
     return _laplace_kernel
+
+
+def _get_standard_gamma_kernel():
+    global _standard_gamma_kernel
+    if _standard_gamma_kernel is None:
+        definitions = \
+            [rk_state_difinition, rk_seed_definition, rk_random_definition,
+             rk_double_definition, rk_gauss_definition,
+             rk_standard_exponential_definition, rk_standard_gamma_definition]
+        _standard_gamma_kernel = core.ElementwiseKernel(
+            'T shape, T seed', 'T y',
+            '''
+            rk_seed(seed + i, &internal_state);
+            y = rk_standard_gamma(&internal_state, shape);
+            ''',
+            'standard_gamma_kernel',
+            preamble=''.join(definitions),
+            loop_prep="rk_state internal_state;"
+        )
+    return _standard_gamma_kernel
 
 
 class RandomState(object):
@@ -867,6 +888,22 @@ class RandomState(object):
         """
         y = cupy.zeros(shape=size, dtype=dtype)
         _get_chisquare_kernel()(df, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def dirichlet(self, alpha, size=None, dtype=float):
+        """Returns an array of samples drawn from a Dirichlet distribution.
+
+        .. seealso::
+            :func:`cupy.random.dirichlet` for full documentation,
+            :meth:`numpy.random.RandomState.dirichlet`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _get_standard_gamma_kernel()(alpha, self.rk_seed, y)
+        y /= cupy.expand_dims(y.sum(axis=-1), axis=-1)
         if size is None:
             self.rk_seed += 1
         else:

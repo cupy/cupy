@@ -80,6 +80,32 @@ def chisquare(df, size=None, dtype=float):
     return rs.chisquare(df, size, dtype)
 
 
+def dirichlet(alpha, size=None, dtype=float):
+    """Returns an array of samples drawn from a Chi-Squared distribution.
+
+    Its probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}\mathrm{e}^{-x/2}
+
+    Args:
+        df (int): Degree of freedom.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Chi-Squared destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.chisquare`
+        :func:`numpy.random.chisquare`
+    """
+    rs = generator.get_random_state()
+    return rs.dirichlet(alpha, size, dtype)
+
+
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     """Returns an array of samples drawn from a Gumbel distribution.
 
