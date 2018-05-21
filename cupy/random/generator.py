@@ -910,6 +910,22 @@ class RandomState(object):
             self.rk_seed += numpy.prod(size)
         return y
 
+    def gamma(self, shape, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a Gamma distribution.
+
+        .. seealso::
+            :func:`cupy.random.gamma` for full documentation,
+            :meth:`numpy.random.RandomState.gamma`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _get_standard_gamma_kernel()(shape, self.rk_seed, y)
+        y *= scale
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.
 
