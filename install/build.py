@@ -348,6 +348,25 @@ def check_cusolver_version(compiler, settings):
     return True
 
 
+def check_nvtx(compiler, settings):
+    if sys.platform == 'win32':
+        path = os.environ.get('NVTOOLSEXT_PATH', None)
+        if path is None:
+            utils.print_warning(
+                'NVTX unavailable: NVTOOLSEXT_PATH is not set')
+        elif not os.path.exists(path):
+            utils.print_warning(
+                'NVTX unavailable: NVTOOLSEXT_PATH is set but the directory '
+                'does not exist')
+        elif utils.search_on_path(['nvToolsExt64_1.dll']) is None:
+            utils.print_warning(
+                'NVTX unavailable: nvToolsExt64_1.dll not found in PATH')
+        else:
+            return True
+        return False
+    return True
+
+
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=()):
     with _tempdir() as temp_dir:
