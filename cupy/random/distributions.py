@@ -449,14 +449,18 @@ def standard_normal(size=None, dtype=float):
 
 
 def standard_t(df, size=None, dtype=float):
-    """Returns an array of samples drawn from a standard Student's t distribution.
+    """Standard Student's t distribution.
 
-    Its probability density function is defined as
+    Returns an array of samples drawn from the standard Student's t
+    distribution. Its probability density function is defined as
 
     .. math::
+        f(x) = \\frac{\\Gamma(\\frac{\\nu+1}{2})} \
+            {\\sqrt{\\nu\\pi}\\Gamma(\\frac{\\nu}{2})} \
+            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})}
 
     Args:
-        df (float):
+        df (float): Degree of freedom :math:`\\nu`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and

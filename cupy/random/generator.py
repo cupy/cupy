@@ -636,7 +636,7 @@ class RandomState(object):
         return self.normal(size=size, dtype=dtype)
 
     def standard_t(self, df, size=None, dtype=float):
-        """Returns an array of samples drawn from a Standard Student’s t distribution.
+        """Returns an array of samples drawn from the standard t distribution.
 
         .. seealso::
             :func:`cupy.random.standard_t` for full documentation,
