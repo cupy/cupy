@@ -32,19 +32,25 @@ def beta(a, b, size=None, dtype=float):
     return rs.beta(a, b, size, dtype)
 
 
-def binomial(n, p, size=None, dtype=float):
-    """Returns an array of samples drawn from a Binomial distribution.
+def binomial(n, p, size=None, dtype=int):
+    """Binomial distribution.
+
+    Returns an array of samples drawn from the binomial distribution. Its
+    probability mass function is defined as
+
+    .. math::
+     f(x) = \\binom{n}{x}p^x(1-p)^{n-x}
 
     Args:
         n (int): Trial number of the binomial distribution.
         p (float): Success probability of the binomial distribution.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        dtype: Data type specifier. Only :class:`numpy.float32` and
-            :class:`numpy.float64` types are allowed.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Binomial destribution.
+        cupy.ndarray: Samples drawn from the binomial destribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.binomial`

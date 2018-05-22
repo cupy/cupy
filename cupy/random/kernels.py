@@ -747,7 +747,7 @@ def _get_binomial_kernel():
              rk_double_definition, rk_binomial_btpe_definition,
              rk_binomial_inversion_definition, rk_binomial_definition]
         _binomial_kernel = core.ElementwiseKernel(
-            'T n, T p, T seed', 'T y',
+            'T n, float64 p, T seed', 'T y',
             '''
             rk_seed(seed + i, &internal_state);
             y = rk_binomial(&internal_state, n, p);

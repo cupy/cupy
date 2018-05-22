@@ -89,7 +89,7 @@ class RandomState(object):
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
-        """Returns an array of samples drawn from a Binomial distribution.
+        """Returns an array of samples drawn from a binomial distribution.
 
         .. seealso::
             :func:`cupy.random.binomial` for full documentation,
@@ -342,7 +342,7 @@ class RandomState(object):
         return ret.reshape(size)
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from the Laplace distribution.
+        """Returns an array of samples drawn from the laplace distribution.
 
         .. seealso::
             :func:`cupy.random.laplace` for full documentation,
