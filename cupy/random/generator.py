@@ -437,7 +437,7 @@ class RandomState(object):
         return self._generate_normal(func, size, dtype, loc, scale)
 
     def pareto(self, a, size=None, dtype=float):
-        """Returns an array of samples drawn from a Pareto distribution.
+        """Returns an array of samples drawn from the pareto II distribution.
 
         .. seealso::
             :func:`cupy.random.pareto_kernel` for full documentation,
