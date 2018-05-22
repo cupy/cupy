@@ -407,9 +407,7 @@ class _FusionHistory(object):
         return var
 
     def _fresh_postmap_param(self, *args, **kwargs):
-        if self.postmap_param is not None:
-            raise NotImplementedError(
-                'Multiple reduction is not implemented yet')
+        assert self.postmap_param is None
         index = self._fresh_index()
         var = _FusionVarCUDA(index, *args, **kwargs)
         self.postmap_param = var
@@ -467,7 +465,8 @@ class _FusionHistory(object):
                 self.reduce_kwargs = kwargs
                 self._add_preamble(raw._preamble)
                 return self._fresh_postmap_param(return_dtype)
-        return None
+        raise TypeError('Type is mismatched. {}(...), {}'.format(
+            self.raw._ops.name, arg.dtype.type))
 
     def _add_preamble(self, preamble):
         self.preamble_set.add(preamble)
@@ -972,13 +971,9 @@ class reduction(object):
             if len(args) != 1:
                 mes = '{}() takes 1 positional argument but {} were given'
                 raise TypeError(mes.format(self._raw._ops.name, len(args)))
-            return_var = _thread_local.history.set_reduce_op(
-                self._raw, arg, kwargs)
-            if return_var:
-                return FusionVarPython(return_var, True)
-            else:
-                raise TypeError('Type is mismatched. {}(...), {}'.format(
-                    self._raw._ops.name, arg.dtype.type))
+            return FusionVarPython(
+                _thread_local.history.set_reduce_op(self._raw, arg, kwargs),
+                True)
         elif builtins.any(type(_) == numpy.ndarray for _ in args):
             return self._numpy_op(*args, **kwargs)
         else:
