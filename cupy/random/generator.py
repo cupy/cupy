@@ -196,7 +196,7 @@ class RandomState(object):
         return a[index]
 
     def dirichlet(self, alpha, size=None, dtype=float):
-        """Returns an array of samples drawn from a Dirichlet distribution.
+        """Returns an array of samples drawn from the dirichlet distribution.
 
         .. seealso::
             :func:`cupy.random.dirichlet` for full documentation,
