@@ -342,7 +342,7 @@ class RandomState(object):
         return ret.reshape(size)
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from a Laplace distribution.
+        """Returns an array of samples drawn from the Laplace distribution.
 
         .. seealso::
             :func:`cupy.random.laplace` for full documentation,
