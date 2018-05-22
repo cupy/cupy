@@ -228,7 +228,7 @@ cpdef ndarray fromDlpack(object dltensor):
         elif bits == 64:
             cp_dtype = cupy.float64
         else:
-            raise TypeError('float{} is not supported.'.format(dtype.bits))
+            raise TypeError('float{} is not supported.'.format(bits))
     else:
         raise TypeError('Unsupported dtype. dtype code: {}'.format(dtype.code))
 
@@ -242,7 +242,7 @@ cpdef ndarray fromDlpack(object dltensor):
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
-        strides_vec.push_back(strides[i] * (dtype.bits // 8))
+        strides_vec.push_back(strides[i] * (bits // 8))
 
     cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
     cupy_array._set_shape_and_strides(shape_vec, strides_vec)
