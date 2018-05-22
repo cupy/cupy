@@ -1574,24 +1574,20 @@ cdef class ndarray:
         a number, i.e., raise ValueError instead of silently converting a
         numpy array.
         """
-        import cupy as cp  # top-level ufuncs
+        import cupy  # top-level ufuncs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
-            check = inputs + kwargs['out']
             kwargs['out'] = kwargs['out'][0]
-        else:
-            check = inputs
 
-        name = ufunc.__name__
         if method == '__call__':
             if ufunc.signature is not None:
                 # we don't support generalised-ufuncs (gufuncs)
                 return NotImplemented
             try:
-                cp_ufunc = getattr(cp, ufunc.__name__)
-                return cp_ufunc(*inputs, **kwargs)
+                cp_ufunc = getattr(cupy, ufunc.__name__)
             except AttributeError:
                 return NotImplemented
+            return cp_ufunc(*inputs, **kwargs)
         # Don't use for now, interface uncertain
         # elif method =='at' and name == 'add':
             # the only ufunc attribute currently
