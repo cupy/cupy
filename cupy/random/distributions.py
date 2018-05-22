@@ -393,7 +393,13 @@ def poisson(lam=1.0, size=None, dtype=int):
 
 
 def standard_cauchy(size=None, dtype=float):
-    """Returns an array of samples drawn from the standard cauchy distribution.
+    """Standard cauchy distribution.
+
+    Returns an array of samples drawn from the standard cauchy distribution.
+    Its probability density function is defined as
+
+      .. math::
+         f(x) = \\frac{1}{\\pi(1+x^2)},
 
     Args:
         size (int or tuple of ints): The shape of the array. If ``None``, a

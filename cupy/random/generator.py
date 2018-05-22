@@ -596,7 +596,7 @@ class RandomState(object):
         a[:] = a[self.permutation(len(a))]
 
     def standard_cauchy(self, size=None, dtype=float):
-        """Returns an array of samples drawn from a Standard Cauchy distribution.
+        """Returns an array of samples drawn from the standard cauchy distribution.
 
         .. seealso::
             :func:`cupy.random.standard_cauchy` for full documentation,
