@@ -27,6 +27,7 @@ class TestDLPackConversion(unittest.TestCase):
         tensor = self.array.toDlpack()
         array = cupy.fromDlpack(tensor)
         testing.assert_array_equal(self.array, array)
+        testing.assert_array_equal(self.array.data.ptr, array.data.ptr)
 
 
 class TestDLTensorMemory(unittest.TestCase):

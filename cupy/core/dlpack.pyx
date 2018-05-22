@@ -197,34 +197,35 @@ cpdef ndarray fromDlpack(object dltensor):
     mem = DLPackMemory(dltensor)
 
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
+    cdef int bits = dtype.bits
     if dtype.code == DLDataTypeCode.kDLUInt:
-        if dtype.bits == 8:
+        if bits == 8:
             cp_dtype = cupy.uint8
-        elif dtype.bits == 16:
+        elif bits == 16:
             cp_dtype = cupy.uint16
-        elif dtype.bits == 32:
+        elif bits == 32:
             cp_dtype = cupy.uint32
-        elif dtype.bits == 64:
+        elif bits == 64:
             cp_dtype = cupy.uint64
         else:
-            raise TypeError('uint{} is not supported.'.format(dtype.bits))
+            raise TypeError('uint{} is not supported.'.format(bits))
     elif dtype.code == DLDataTypeCode.kDLInt:
-        if dtype.bits == 8:
+        if bits == 8:
             cp_dtype = cupy.int8
-        elif dtype.bits == 16:
+        elif bits == 16:
             cp_dtype = cupy.int16
-        elif dtype.bits == 32:
+        elif bits == 32:
             cp_dtype = cupy.int32
-        elif dtype.bits == 64:
+        elif bits == 64:
             cp_dtype = cupy.int64
         else:
-            raise TypeError('int{} is not supported.'.format(dtype.bits))
+            raise TypeError('int{} is not supported.'.format(bits))
     elif dtype.code == DLDataTypeCode.kDLFloat:
-        if dtype.bits == 16:
+        if bits == 16:
             cp_dtype = cupy.float16
-        elif dtype.bits == 32:
+        elif bits == 32:
             cp_dtype = cupy.float32
-        elif dtype.bits == 64:
+        elif bits == 64:
             cp_dtype = cupy.float64
         else:
             raise TypeError('float{} is not supported.'.format(dtype.bits))
