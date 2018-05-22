@@ -227,7 +227,7 @@ class RandomState(object):
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from a Gamma distribution.
+        """Returns an array of samples drawn from a gamma distribution.
 
         .. seealso::
             :func:`cupy.random.gamma` for full documentation,

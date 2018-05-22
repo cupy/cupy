@@ -143,23 +143,24 @@ def f(dfnum, dfden, size=None, dtype=float):
 
 
 def gamma(shape, scale=1.0, size=None, dtype=float):
-    """Returns an array of samples drawn from a Gamma distribution.
+    """Gamma distribution.
 
-    Its probability density function is defined as
+    Returns an array of samples drawn from the gamma distribution. Its
+    probability density function is defined as
 
     .. math::
-       f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}\\mathrm{e}^{-x/\\theta}
+       f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}e^{-x/\\theta}
 
     Args:
-        shape (float):
-        scale (float):
+        shape (float): Parameter of the gamma distribution :math:`k`.
+        scale (float): Parameter of the gamma distribution :math:`\\theta`
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Gamma destribution.
+        cupy.ndarray: Samples drawn from the gamma destribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.gamma`
