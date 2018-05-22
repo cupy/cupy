@@ -197,7 +197,6 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
             assert val.shape == shape + (2,)
-        # TODO(niboshi): Distribution test
 
     def test_multivariate_normal_float32(self):
         self.check_multivariate_normal(numpy.float32)
@@ -565,8 +564,23 @@ class TestBinomial(RandomGeneratorTestCase):
 
     target_method = 'binomial'
 
-    def test_laplace(self):
+    def test_binomial(self):
         self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 1.0, 'b': 3.0},
+    {'a': 3.0, 'b': 3.0},
+    {'a': 3.0, 'b': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBeta(RandomGeneratorTestCase):
+
+    target_method = 'beta'
+
+    def test_beta(self):
+        self.generate(a=self.a, b=self.b, size=(3, 2))
 
 
 @testing.gpu
