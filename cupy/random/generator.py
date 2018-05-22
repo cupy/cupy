@@ -611,7 +611,7 @@ class RandomState(object):
         return y
 
     def standard_exponential(self, size=None, dtype=float):
-        """Returns an array of samples drawn from a Standard Exponential distribution.
+        """Returns an array of samples drawn from the standard exp distribution.
 
         .. seealso::
             :func:`cupy.random.standard_exponential` for full documentation,

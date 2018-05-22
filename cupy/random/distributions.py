@@ -419,10 +419,13 @@ def standard_cauchy(size=None, dtype=float):
 
 
 def standard_exponential(size=None, dtype=float):
-    """Standard Exponential
+    """Standard exponential distribution.
 
     Returns an array of samples drawn from the standard exponential
-    distribution.
+    distribution. Its probability density function is defined as
+
+      .. math::
+         f(x) = e^{-x},
 
     Args:
         size (int or tuple of ints): The shape of the array. If ``None``, a
