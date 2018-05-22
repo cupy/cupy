@@ -388,7 +388,9 @@ def standard_cauchy(size=None, dtype=float):
 
 
 def standard_exponential(size=None, dtype=float):
-    """Returns an array of samples drawn from the standard exponential
+    """Standard Exponential
+
+    Returns an array of samples drawn from the standard exponential
     distribution.
 
     Args:

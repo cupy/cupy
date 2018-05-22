@@ -707,7 +707,7 @@ class RandomState(object):
         return x
 
 
-# TODO: move to kernels.py
+# TODO(YoshikawaMasashi): move to kernels.py
 def _cupy_permutation():
     return core.ElementwiseKernel(
         'raw int32 array, raw int32 sample, int32 j_start, int32 _j_end',
