@@ -85,6 +85,7 @@ cpdef enum:
 
     CUDNN_BATCHNORM_PER_ACTIVATION = 0
     CUDNN_BATCHNORM_SPATIAL = 1
+    CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
 
     CUDNN_RNN_RELU = 0
     CUDNN_RNN_TANH = 1
@@ -103,11 +104,25 @@ cpdef enum:
 
     CUDNN_SAMPLER_BILINEAR = 0
 
+    CUDNN_STATUS_SUCCESS = 0
+    CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING = 11
+    CUDNN_STATUS_RUNTIME_IN_PROGRESS = 12
+    CUDNN_STATUS_RUNTIME_FP_OVERFLOW = 13
+
+    CUDNN_ERRQUERY_RAWCODE = 0
+    CUDNN_ERRQUERY_NONBLOCKING = 1
+    CUDNN_ERRQUERY_BLOCKING = 2
+
 ###############################################################################
 # Version
 ###############################################################################
 
 cpdef size_t getVersion() except *
+
+###############################################################################
+# Runtime error checking
+###############################################################################
+cpdef queryRuntimeError(size_t handle, int mode)
 
 ###############################################################################
 # Initialization and CUDA cooperation

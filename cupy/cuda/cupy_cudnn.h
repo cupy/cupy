@@ -29,7 +29,8 @@ typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
 typedef enum {} cudnnSoftmaxMode_t;
 typedef enum {} cudnnTensorFormat_t;
-
+typedef enum {} cudnnErrQueryMode_t;
+typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
 typedef void* cudnnConvolutionDescriptor_t;
 typedef void* cudnnFilterDescriptor_t;
@@ -49,6 +50,10 @@ size_t cudnnGetVersion() {
     return CUDNN_STATUS_SUCCESS;
 }
 
+// Runtime error checking
+cudnnStatus_t cudnnQueryRuntimeError(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
 
 // Initialization and CUDA cooperation
 cudnnStatus_t cudnnCreate(...) {
@@ -594,6 +599,18 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 #define cudnnGetConvolutionBackwardDataAlgorithm_v6 cudnnGetConvolutionBackwardDataAlgorithm
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+typedef enum {} cudnnErrQueryMode_t;
+typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
+
+cudnnStatus_t cudnnQueryRuntimeError(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
 
 } // extern "C"
 

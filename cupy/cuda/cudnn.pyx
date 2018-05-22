@@ -55,6 +55,8 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
+    ctypedef int ErrQueryMode 'cudnnErrQueryMode_t'
+    ctypedef struct RuntimeTag 'cudnnRuntimeTag_t'
 
     ctypedef void* ActivationDescriptor 'cudnnActivationDescriptor_t'
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
@@ -74,6 +76,10 @@ cdef extern from "cupy_cudnn.h" nogil:
 
     # Version
     size_t cudnnGetVersion()
+
+    # Runtime error checking
+    int cudnnQueryRuntimeError(Handle handle, Status *rstatus,
+                               ErrQueryMode mode, RuntimeTag *tag)
 
     # Initialization and CUDA cooperation
     int cudnnCreate(Handle* handle)
@@ -475,6 +481,19 @@ def get_build_version():
 
 cpdef size_t getVersion() except *:
     return cudnnGetVersion()
+
+
+###############################################################################
+# Runtime error checking
+###############################################################################
+
+cpdef queryRuntimeError(size_t handle, int mode):
+    cdef Status rstatus
+    with nogil:
+        status = cudnnQueryRuntimeError(<Handle>handle, &rstatus,
+                                        <ErrQueryMode>mode, <RuntimeTag*>0)
+    check_status(status)
+    return rstatus
 
 
 ###############################################################################
