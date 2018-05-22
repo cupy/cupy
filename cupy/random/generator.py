@@ -74,7 +74,7 @@ class RandomState(object):
     # NumPy compatible functions
 
     def beta(self, a, b, size=None, dtype=float):
-        """Returns an array of samples drawn from a Beta distribution.
+        """Returns an array of samples drawn from the beta distribution.
 
         .. seealso::
             :func:`cupy.random.beta` for full documentation,
@@ -89,7 +89,7 @@ class RandomState(object):
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
-        """Returns an array of samples drawn from a binomial distribution.
+        """Returns an array of samples drawn from the binomial distribution.
 
         .. seealso::
             :func:`cupy.random.binomial` for full documentation,

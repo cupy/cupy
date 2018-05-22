@@ -6,12 +6,13 @@ from cupy.random import generator
 
 
 def beta(a, b, size=None, dtype=float):
-    """Returns an array of samples drawn from a Beta distribution.
+    """Beta distribution.
 
-    Its probability density function is defined as
+    Returns an array of samples drawn from the beta distribution. Its
+    probability density function is defined as
 
     .. math::
-       f(x) = \\frac{x^{\\alpha-1}(1-x)§{\\beta-1}}{B(\\alpha,\\beta)}
+       f(x) = \\frac{x^{\\alpha-1}(1-x)^{\\beta-1}}{B(\\alpha,\\beta)}
 
     Args:
         a (float): Parameter of the beta distribution :math:`\\alpha`.
@@ -22,7 +23,7 @@ def beta(a, b, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Beta destribution.
+        cupy.ndarray: Samples drawn from the beta destribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.beta`
@@ -39,7 +40,7 @@ def binomial(n, p, size=None, dtype=int):
     probability mass function is defined as
 
     .. math::
-     f(x) = \\binom{n}{x}p^x(1-p)^{n-x}
+        f(x) = \\binom{n}{x}p^x(1-p)^{n-x}
 
     Args:
         n (int): Trial number of the binomial distribution.
