@@ -179,21 +179,23 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
 
 
 def geometric(p, size=None, dtype=int):
-    """Returns an array of samples drawn from a Geometric distribution.
+    """Geometric distribution.
 
-    Its probability mass function is defined as
+    Returns an array of samples drawn from the geometric distribution. Its
+    probability mass function is defined as
 
     .. math::
+        f(x) = p(1-p)^{k-1},
 
     Args:
-        p (float):
+        p (float): Success probability of the geometric distribution.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        dtype: Data type specifier. Only :class:`numpy.float32` and
-            :class:`numpy.float64` types are allowed.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Geometric destribution.
+        cupy.ndarray: Samples drawn from the geometric distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.geometric`

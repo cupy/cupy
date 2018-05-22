@@ -243,7 +243,7 @@ class RandomState(object):
         return y
 
     def geometric(self, p, size=None, dtype=int):
-        """Returns an array of samples drawn from a Geometric distribution.
+        """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
             :func:`cupy.random.geometric` for full documentation,
