@@ -62,22 +62,23 @@ def binomial(n, p, size=None, dtype=int):
 
 
 def chisquare(df, size=None, dtype=float):
-    """Returns an array of samples drawn from a Chi-Squared distribution.
+    """Chi-square distribution.
 
-    Its probability density function is defined as
+    Returns an array of samples drawn from the chi-square distribution. Its
+    probability density function is defined as
 
     .. math::
-       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}\mathrm{e}^{-x/2}
+       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}
 
     Args:
-        df (int): Degree of freedom.
+        df (int): Degree of freedom :math:`k`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Chi-Squared destribution.
+        cupy.ndarray: Samples drawn from the chi-square distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.chisquare`

@@ -104,7 +104,7 @@ class RandomState(object):
         return y
 
     def chisquare(self, df, size=None, dtype=float):
-        """Returns an array of samples drawn from a Chisquare distribution.
+        """Returns an array of samples drawn from the chi-square distribution.
 
         .. seealso::
             :func:`cupy.random.chisquare` for full documentation,
