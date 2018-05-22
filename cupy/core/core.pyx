@@ -1577,7 +1577,11 @@ cdef class ndarray:
         import cupy  # top-level ufuncs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
-            kwargs['out'] = kwargs['out'][0]
+            out = kwargs['out']
+            if len(out) != 1:
+                raise ValueError("The 'out' parameter must have exactly one "
+                                 "array value")
+            kwargs['out'] = out[0]
 
         if method == '__call__':
             if ufunc.signature is not None:

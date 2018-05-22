@@ -68,3 +68,11 @@ class TestArrayUfunc(unittest.TestCase):
         with self.assertRaises(TypeError):
             # reject cupy output from numpy
             np.add(a2, a2, out=a1)
+        with self.assertRaises(ValueError):
+            # bad form for out=
+            # this is also an error with numpy array
+            np.sin(a1, out=())
+        with self.assertRaises(ValueError):
+            # bad form for out=
+            # this is also an error with numpy array
+            np.sin(a1, out=(a1, a1))
