@@ -471,16 +471,19 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
-    def binomial(self, n, p, size=None, dtype=float):
+    def binomial(self, n, p, size=None, dtype=int):
         """Returns an array of samples drawn from a Binomial distribution.
 
         .. seealso::
             :func:`cupy.random.binomial` for full documentation,
             :meth:`numpy.random.RandomState.binomial`
         """
-        x = self.uniform(size=size, dtype=dtype)
-        y = cupy.zeros_like(x, dtype=dtype)
-        kernels._get_binomial_kernel()(x, n, p, y)
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_binomial_kernel()(n, p, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
         return y
 
     def beta(self, a, b, size=None, dtype=float):
