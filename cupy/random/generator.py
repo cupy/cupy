@@ -484,7 +484,7 @@ class RandomState(object):
         return array
 
     def poisson(self, lam=1.0, size=None, dtype=int):
-        """Returns an array of samples drawn from a Poisson distribution.
+        """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
             :func:`cupy.random.poisson` for full documentation,

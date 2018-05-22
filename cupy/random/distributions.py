@@ -12,7 +12,7 @@ def beta(a, b, size=None, dtype=float):
     probability density function is defined as
 
     .. math::
-       f(x) = \\frac{x^{\\alpha-1}(1-x)^{\\beta-1}}{B(\\alpha,\\beta)}
+       f(x) = \\frac{x^{\\alpha-1}(1-x)^{\\beta-1}}{B(\\alpha,\\beta)},
 
     Args:
         a (float): Parameter of the beta distribution :math:`\\alpha`.
@@ -40,7 +40,7 @@ def binomial(n, p, size=None, dtype=int):
     probability mass function is defined as
 
     .. math::
-        f(x) = \\binom{n}{x}p^x(1-p)^{n-x}
+        f(x) = \\binom{n}{x}p^x(1-p)^{n-x},
 
     Args:
         n (int): Trial number of the binomial distribution.
@@ -68,7 +68,7 @@ def chisquare(df, size=None, dtype=float):
     probability density function is defined as
 
     .. math::
-       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}
+       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2},
 
     Args:
         df (int): Degree of freedom :math:`k`.
@@ -97,7 +97,7 @@ def dirichlet(alpha, size=None, dtype=float):
     .. math::
         f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
             {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
-            \\prod_{i=1}^Kx_i^{\\alpha_i-1}
+            \\prod_{i=1}^Kx_i^{\\alpha_i-1},
 
     Args:
         alpha (array): Parameters of the dirichlet distribution
@@ -149,7 +149,7 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     probability density function is defined as
 
     .. math::
-       f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}e^{-x/\\theta}
+       f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}e^{-x/\\theta},
 
     Args:
         shape (float): Parameter of the gamma distribution :math:`k`.
@@ -366,14 +366,20 @@ def pareto(a, size=None, dtype=float):
 
 
 def poisson(lam=1.0, size=None, dtype=int):
-    """Returns an array of samples drawn from a poisson distribution.
+    """Poisson distribution.
+
+    Returns an array of samples drawn from the poisson distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{\\lambda^xe^{-\\lambda}}{k!},
 
     Args:
-        lam (float):
+        lam (float): Parameter of the poisson distribution :math:`\\lambda`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        dtype: Data type specifier. Only :class:`numpy.float32` and
-            :class:`numpy.float64` types are allowed.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
 
     Returns:
         cupy.ndarray: Samples drawn from the poisson distribution.
@@ -457,7 +463,7 @@ def standard_t(df, size=None, dtype=float):
     .. math::
         f(x) = \\frac{\\Gamma(\\frac{\\nu+1}{2})} \
             {\\sqrt{\\nu\\pi}\\Gamma(\\frac{\\nu}{2})} \
-            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})}
+            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})},
 
     Args:
         df (float): Degree of freedom :math:`\\nu`.
