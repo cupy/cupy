@@ -32,8 +32,6 @@ from cupy import testing
 @testing.gpu
 class TestDot(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_dot(self, xp, dtype_a, dtype_b):
@@ -84,8 +82,6 @@ class TestDot(unittest.TestCase):
 @testing.gpu
 class TestDotFor0Dim(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_dot(self, xp, dtype_a, dtype_b):
@@ -103,8 +99,6 @@ class TestDotFor0Dim(unittest.TestCase):
 
 @testing.gpu
 class TestProduct(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
