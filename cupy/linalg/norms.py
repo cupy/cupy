@@ -176,7 +176,7 @@ def matrix_rank(M, tol=None):
     if tol is None:
         tol = (S.max(axis=-1, keepdims=True) * max(M.shape[-2:]) *
                numpy.finfo(S.dtype).eps)
-    return (S > tol).sum(axis=-1).astype(numpy.intp)
+    return (S > tol).sum(axis=-1, dtype=numpy.intp)
 
 
 def slogdet(a):
