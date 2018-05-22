@@ -480,18 +480,17 @@ class _FusionHistory(object):
 
         Return value: _FusionVarCUDA
         """
-        arg_type = type(arg)
-        if arg_type is FusionVarPython:
+        if isinstance(arg, FusionVarPython):
             if arg._is_postmap == self._has_reduction():
                 return arg._var
             else:
                 # Map operation between pre-map variable and post-map variable
                 raise Exception('Shape mismatch')
-        is_scalar = arg_type in six.integer_types + (float, bool, complex)
+        is_scalar = isinstance(arg, six.integer_types + (float, bool, complex))
         is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
         if is_scalar or is_ndarray:
-            return self._fresh_local(numpy.dtype(arg_type), const=arg)
-        raise Exception('Unsupported type {}'.format(arg_type))
+            return self._fresh_local(numpy.dtype(type(arg)), const=arg)
+        raise Exception('Unsupported type {}'.format(type(type)))
 
     def call_ufunc(self, ufunc, args, kwargs):
         nin = ufunc.nin
