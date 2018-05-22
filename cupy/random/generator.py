@@ -212,7 +212,7 @@ class RandomState(object):
         return y
 
     def f(self, dfnum, dfden, size=None, dtype=float):
-        """Returns an array of samples drawn from the F distribution.
+        """Returns an array of samples drawn from the f distribution.
 
         .. seealso::
             :func:`cupy.random.f` for full documentation,
