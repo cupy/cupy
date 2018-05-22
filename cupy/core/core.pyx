@@ -1144,7 +1144,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.sum`
 
         """
-        return _sum(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _sum_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _sum_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumsum
 
@@ -1190,7 +1193,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.prod`
 
         """
-        return _prod(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _prod_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _prod_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumprod
 
@@ -3341,7 +3347,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
-    reduced_idx = _sum(flattened_indexes, axis=0)
+    reduced_idx = _sum_auto_dtype(flattened_indexes, axis=0)
 
     return a_interm, reduced_idx, li, ri
 
@@ -3966,21 +3972,39 @@ _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-_sum = create_reduction_func(
+_sum_auto_dtype = create_reduction_func(
     'cupy_sum',
-    ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
-_prod = create_reduction_func(
-    'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+_sum_keep_dtype = create_reduction_func(
+    'cupy_sum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'],
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_prod_auto_dtype = create_reduction_func(
+    'cupy_prod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_prod_keep_dtype = create_reduction_func(
+    'cupy_prod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
