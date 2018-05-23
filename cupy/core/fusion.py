@@ -495,6 +495,8 @@ class _FusionHistory(object):
         nin = ufunc.nin
         nout = ufunc.nout
 
+        # Corresponds to _check_should_use_min_scalar in elementwise.pxi
+        # This function decides which typecast rule to use.
         def _should_use_min_scalar(in_args):
             max_array_kind = -2
             max_scalar_kind = -1
