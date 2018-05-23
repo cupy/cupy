@@ -1,5 +1,5 @@
 import cupy
-from cupy import special
+from cupyx.scipy import special
 
 
 def polygamma(n, x):

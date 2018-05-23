@@ -7,6 +7,8 @@ import numpy
 
 import scipy.special
 
+import warnings
+
 
 @testing.gpu
 @testing.with_requires('scipy')
@@ -50,4 +52,9 @@ class TestPolygamma(unittest.TestCase):
         b = numpy.repeat(x, 3)
         a = xp.asarray(a)
         b = xp.asarray(b)
-        return self._get_xp_func(xp).polygamma(a, b)
+        if xp is not cupy:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                return self._get_xp_func(xp).polygamma(a, b)
+        else:
+            return self._get_xp_func(xp).polygamma(a, b)

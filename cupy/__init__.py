@@ -54,7 +54,6 @@ from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
 from cupy import sparse  # NOQA
-from cupy import special  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
