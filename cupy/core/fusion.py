@@ -673,7 +673,15 @@ def fuse(*args, **kwargs):
        the future version.
 
     """
+    if 'func' in kwargs:
+        pass_kwargs = kwargs.copy()
+        del pass_kwargs['func']
+        return _fuse(kwargs['func'], *args, **pass_kwargs)
+    else:
+        return _fuse
 
+
+def _fuse(*args, **kwargs):
     def wrapper(
             f, input_num=None, reduce=None, post_map=lambda x: x,
             kernel_name=None):
