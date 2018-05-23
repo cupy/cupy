@@ -19,7 +19,7 @@ def _get_gamma_kernel():
                 y = 1.0 / 0.0;
                 return;
             }
-            y = tgammaf(x);
+            y = tgamma(x);
             """,
             'gamma_kernel'
         )

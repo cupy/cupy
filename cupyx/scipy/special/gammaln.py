@@ -15,7 +15,7 @@ def _get_gammaln_kernel():
                 y = - 1.0 / 0.0;
                 return;
             }
-            y = lgammaf(x);
+            y = lgamma(x);
             """,
             'gammaln_kernel'
         )
