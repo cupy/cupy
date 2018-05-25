@@ -81,7 +81,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
 
 # The name of this function is following the framwork integration guide of
 # TensorComprehensions.
-cpdef object toDlpack(ndarray array):
+cpdef object toDlpack(ndarray array) except +:
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
@@ -158,7 +158,7 @@ cdef class DLPackMemory(memory.Memory):
 
 # The name of this function is following the framwork integration guide of
 # TensorComprehensions.
-cpdef ndarray fromDlpack(object dltensor):
+cpdef ndarray fromDlpack(object dltensor) except +:
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
 
     DLPack is a open in memory tensor structure proposed in this repository:
