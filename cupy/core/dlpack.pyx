@@ -188,8 +188,6 @@ cpdef ndarray fromDlpack(object dltensor) except +:
         >>> import cupy
         >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
         >>> dltensor = array1.toDlpack()
-        ... # doctest: +ELLIPSIS
-        <capsule object "dltensor" at ...>
         >>> array2 = cupy.fromDlpack(dltensor)
         >>> cupy.testing.assert_array_equal(array1, array2)
 
