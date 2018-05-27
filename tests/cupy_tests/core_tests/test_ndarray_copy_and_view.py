@@ -87,12 +87,17 @@ class TestArrayCopyAndView(unittest.TestCase):
         return b
 
     @testing.for_orders(['C', 'F', 'A', 'K', None])
-    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
+    @testing.for_all_dtypes(name='src_dtype')
     @testing.for_all_dtypes(name='dst_dtype')
     @testing.numpy_cupy_array_equal()
     def test_astype(self, xp, src_dtype, dst_dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
-        return a.astype(dst_dtype, order=order)
+        if (numpy.dtype(src_dtype).kind == 'c' and
+                numpy.dtype(dst_dtype).kind not in ['b', 'c']):
+            with testing.assert_warns(numpy.ComplexWarning):
+                return a.astype(dst_dtype, order=order)
+        else:
+            return a.astype(dst_dtype, order=order)
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes(name='src_dtype', no_complex=True)
