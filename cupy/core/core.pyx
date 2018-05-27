@@ -350,7 +350,9 @@ cdef class ndarray:
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=order)
 
-        if self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
+        if self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
+            cupy.not_equal(self, 0j, out=newarray)
+        elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
