@@ -21,6 +21,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         'if (ind == minor) atomicAdd(&answer[0], d);',
         'compress_getitem')
 
+    _compress_getitem_complex_kern = core.ElementwiseKernel(
+        'T real, T imag, S ind, int32 minor',
+        'raw T answer_real, raw T answer_imag',
+        '''
+        if (ind == minor) {
+          atomicAdd(&answer_real[0], real);
+          atomicAdd(&answer_imag[0], imag);
+        }
+        ''',
+        'compress_getitem_complex')
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
             raise ValueError(
@@ -232,8 +243,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         start = self.indptr[major]
         end = self.indptr[major + 1]
         answer = cupy.zeros((), self.dtype)
-        self._compress_getitem_kern(
-            self.data[start:end], self.indices[start:end], minor, answer)
+        data = self.data[start:end]
+        indices = self.indices[start:end]
+        if self.dtype.kind == 'c':
+            self._compress_getitem_complex_kern(
+                data.real, data.imag, indices, minor, answer.real, answer.imag)
+        else:
+            self._compress_getitem_kern(
+                data, indices, minor, answer)
         return answer[()]
 
     def _get_major_slice(self, major):
