@@ -9,7 +9,7 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'format': ['csr', 'csc', 'coo'],
     'm': [3],
     'n': [None, 3, 2],
@@ -28,7 +28,7 @@ class TestEye(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'format': ['csr', 'csc', 'coo'],
 }))
 @testing.with_requires('scipy')
@@ -43,7 +43,7 @@ class TestIdentity(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
 class TestSpdiags(unittest.TestCase):
