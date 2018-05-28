@@ -32,4 +32,19 @@ template<typename T> __device__ bool isfinite(complex<T> x) {
     return isfinite(x.real()) && isfinite(x.imag());
 }
 
+template<typename T> __device__ complex<T> log1p(complex<T> x) {
+    x += 1;
+    return log(x);
+}
+template<typename T> __device__ complex<T> log2(complex<T> x) {
+    complex<T> y = log(x);
+    y /= log(T(2));
+    return y;
+}
+template<typename T> __device__ complex<T> expm1(complex<T> x) {
+    complex<T> y = exp(x);
+    y -= 1;
+    return y;
+}
+
 // ToDo: assignment operator for complex<T> = T2 for T2 all types
