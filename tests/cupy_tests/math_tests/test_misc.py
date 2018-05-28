@@ -9,7 +9,7 @@ from cupy import testing
 @testing.gpu
 class TestMisc(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
@@ -26,12 +26,14 @@ class TestMisc(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            a += (a * 1j).astype(dtype)
         return getattr(xp, name)(a)
 
     @testing.for_float_dtypes()
