@@ -23,7 +23,7 @@ floor = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.floor`
 
-    ''')
+    ''', support_complex=False)
 
 
 ceil = ufunc.create_math_ufunc(
@@ -32,7 +32,7 @@ ceil = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.ceil`
 
-    ''')
+    ''', support_complex=False)
 
 
 trunc = ufunc.create_math_ufunc(
@@ -41,7 +41,7 @@ trunc = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.trunc`
 
-    ''')
+    ''', support_complex=False)
 
 
 fix = core.create_ufunc(
@@ -52,4 +52,4 @@ fix = core.create_ufunc(
 
     .. seealso:: :func:`numpy.fix`
 
-    ''')
+    ''', support_complex=False)
