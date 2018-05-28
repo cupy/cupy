@@ -7,8 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestRoll(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_roll(self, xp, dtype):
@@ -87,8 +85,6 @@ class TestRoll(unittest.TestCase):
 @testing.gpu
 class TestFliplr(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_fliplr_2(self, xp, dtype):
@@ -110,8 +106,6 @@ class TestFliplr(unittest.TestCase):
 
 @testing.gpu
 class TestFlipud(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -135,8 +129,6 @@ class TestFlipud(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.12')
 class TestFlip(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -195,8 +187,6 @@ class TestFlip(unittest.TestCase):
 
 @testing.gpu
 class TestRot90(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

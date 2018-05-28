@@ -13,7 +13,6 @@ from cupy.testing import hypothesis
 
 @testing.gpu
 class TestRandint(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def test_lo_hi_reversed(self):
         with self.assertRaises(ValueError):
@@ -99,8 +98,6 @@ class TestRandintDtype(unittest.TestCase):
 @testing.gpu
 class TestRandomIntegers(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def test_normal(self):
         with mock.patch('cupy.random.sample_.randint') as m:
             random.random_integers(3, 5)
@@ -120,8 +117,6 @@ class TestRandomIntegers(unittest.TestCase):
 @testing.fix_random()
 @testing.gpu
 class TestRandomIntegers2(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
@@ -159,8 +154,6 @@ class TestRandomIntegers2(unittest.TestCase):
 
 @testing.gpu
 class TestChoice(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     def setUp(self):
         self.rs_tmp = random.generator._random_states
@@ -251,8 +244,6 @@ class TestRandomSample(unittest.TestCase):
 @testing.fix_random()
 @testing.gpu
 class TestMultinomial(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @condition.repeat(3, 10)
     @testing.for_float_dtypes()

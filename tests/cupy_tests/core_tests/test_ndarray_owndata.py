@@ -7,8 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayOwndata(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def setUp(self):
         self.a = core.ndarray(())
 

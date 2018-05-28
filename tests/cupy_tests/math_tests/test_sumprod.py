@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestSumprod(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def tearDown(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
@@ -187,8 +185,6 @@ axes = [0, 1, 2]
 @testing.gpu
 class TestCumsum(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum(self, xp, dtype):
@@ -237,8 +233,6 @@ class TestCumsum(unittest.TestCase):
 
 @testing.gpu
 class TestCumprod(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()

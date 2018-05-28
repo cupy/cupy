@@ -10,8 +10,6 @@ from numpy import testing as np_testing
 @testing.gpu
 class TestArrayGet(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def setUp(self):
         self.stream = cuda.Stream.null
 
