@@ -831,6 +831,7 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.imag, 1, self.random_imag)
         self.check(cupy.multiply, 2, self.random_real)
         self.check(cupy.divide, 2, self.random_real)
+        self.check(cupy.divmod, 2, self.random_real)
         self.check(cupy.power, 2, self.random_real, ((0, 10),) * 2)
         self.check(cupy.subtract, 2, self.random_real)
         self.check(cupy.true_divide, 2, self.random_int, ((1, 1000),) * 2)
