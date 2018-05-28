@@ -32,14 +32,14 @@ class TestArrayCopyAndView(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_view_0d_raise(self, xp, dtype):
         a = xp.array(3, dtype=numpy.int32)
-        b = a.view(dtype=dtype)
+        a.view(dtype=dtype)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
     @testing.numpy_cupy_raises()
     def test_view_non_contiguous_raise(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.int32).transpose(
             0, 2, 1)
-        b = a.view(dtype=dtype)
+        a.view(dtype=dtype)
 
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
