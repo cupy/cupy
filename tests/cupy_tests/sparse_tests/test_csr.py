@@ -942,7 +942,11 @@ class TestCsrMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_astype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.astype('d').toarray()
+        if numpy.dtype(self.dtype).kind == 'c':
+            t = 'D'
+        else:
+            t = 'd'
+        return m.astype(t).toarray()
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_count_nonzero(self, xp, sp):
@@ -957,7 +961,11 @@ class TestCsrMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_power_with_dtype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.power(2, 'd').toarray()
+        if numpy.dtype(self.dtype).kind == 'c':
+            t = 'D'
+        else:
+            t = 'd'
+        return m.power(2, t).toarray()
 
 
 @testing.parameterize(*testing.product({
