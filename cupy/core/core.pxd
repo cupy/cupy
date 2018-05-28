@@ -3,7 +3,6 @@ from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
 
-
 cdef class ndarray:
     cdef:
         readonly Py_ssize_t size
@@ -64,6 +63,7 @@ cdef class ndarray:
                                  vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity=*)
     cdef CPointer get_pointer(self)
+    cpdef object toDlpack(self)
 
 
 cdef class Indexer:
