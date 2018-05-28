@@ -1,3 +1,6 @@
+# This source code contains SciPy's code.
+# https://github.com/scipy/scipy/blob/master/scipy/special/cephes/psi.c
+
 import cupy
 from cupy import core
 
@@ -5,19 +8,17 @@ from cupy import core
 _digamma_kernel = None
 
 polevl_definition = '''
-static __device__ double polevl(double x, double coef[], int N)
+template<int N> static __device__ double polevl(double x, double coef[])
 {
     double ans;
-    int i;
     double *p;
 
     p = coef;
     ans = *p++;
-    i = N;
 
-    do
-    ans = ans * x + *p++;
-    while (--i);
+    for (int i = 0; i < N; ++i){
+        ans = ans * x + *p++;
+    }
 
     return (ans);
 }
@@ -25,7 +26,7 @@ static __device__ double polevl(double x, double coef[], int N)
 
 
 psi_definition = '''
-static __device__ double A[] = {
+__constant__ double A[] = {
     8.33333333333333333333E-2,
     -2.10927960927960927961E-2,
     7.57575757575757575758E-3,
@@ -35,8 +36,8 @@ static __device__ double A[] = {
     8.33333333333333333333E-2
 };
 
-static __device__ double PI = 3.141592653589793;
-static __device__ double EULER = 0.5772156649015329;
+__constant__ double PI = 3.141592653589793;
+__constant__ double EULER = 0.5772156649015329;
 
 static __device__ double digamma_imp_1_2(double x)
 {
@@ -62,29 +63,27 @@ static __device__ double digamma_imp_1_2(double x)
     static const double root2 = (381566830.0 / 1073741824.0) / 1073741824.0;
     static const double root3 = 0.9016312093258695918615325266959189453125e-19;
 
-   static double P[] = {
-       -0.0020713321167745952,
-       -0.045251321448739056,
-       -0.28919126444774784,
-       -0.65031853770896507,
-       -0.32555031186804491,
-       0.25479851061131551
-   };
-   static double Q[] = {
-       -0.55789841321675513e-6,
-       0.0021284987017821144,
-       0.054151797245674225,
-       0.43593529692665969,
-       1.4606242909763515,
-       2.0767117023730469,
-       1.0
-   };
-   g = x - root1;
-   g -= root2;
-   g -= root3;
-   r = polevl(x - 1.0, P, 5) / polevl(x - 1.0, Q, 6);
+    static double P[] = {
+        -0.0020713321167745952,
+        -0.045251321448739056,
+        -0.28919126444774784,
+        -0.65031853770896507,
+        -0.32555031186804491,
+        0.25479851061131551
+    };
+    static double Q[] = {
+        -0.55789841321675513e-6,
+        0.0021284987017821144,
+        0.054151797245674225,
+        0.43593529692665969,
+        1.4606242909763515,
+        2.0767117023730469,
+        1.0
+    };
+    g = x - root1 - root2 - root3;
+    r = polevl<5>(x - 1.0, P) / polevl<6>(x - 1.0, Q);
 
-   return g * Y + g * r;
+return g * Y + g * r;
 }
 
 
@@ -94,7 +93,7 @@ static __device__ double psi_asy(double x)
 
     if (x < 1.0e17) {
     z = 1.0 / (x * x);
-    y = z * polevl(z, A, 6);
+    y = z * polevl<6>(z, A);
     }
     else {
     y = 0.0;
@@ -186,13 +185,9 @@ def digamma(x):
     .. seealso:: :data:`scipy.special.digamma`
 
     """
-    if (x.dtype == cupy.float16 or x.dtype == cupy.dtype('b') or
-            x.dtype == cupy.dtype('h') or x.dtype == cupy.dtype('B') or
-            x.dtype == cupy.dtype('H') or x.dtype == cupy.bool_):
+    if x.dtype.char in '?ebBhH':
         x = x.astype(cupy.float32)
-    elif (x.dtype == cupy.dtype('i') or x.dtype == cupy.dtype('l') or
-            x.dtype == cupy.dtype('q') or x.dtype == cupy.dtype('I') or
-            x.dtype == cupy.dtype('L') or x.dtype == cupy.dtype('Q')):
+    elif x.dtype.char in 'iIlLqQ':
         x = x.astype(cupy.float64)
     y = cupy.zeros_like(x)
     _get_digamma_kernel()(x, y)

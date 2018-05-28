@@ -1,3 +1,6 @@
+# This source code contains SciPy's code.
+# https://github.com/scipy/scipy/blob/master/scipy/special/cephes/zeta.c
+
 import cupy
 from cupy import core
 
@@ -11,7 +14,7 @@ zeta_definition = '''
  * (2k)! / B2k
  * where B2k are Bernoulli numbers
  */
-static __device__ double A[] = {
+__constant__ double A[] = {
     12.0,
     -720.0,
     30240.0,
@@ -26,7 +29,7 @@ static __device__ double A[] = {
     -7.1661652561756670113e18	/*1.6938241367317436694528e27/236364091 */
 };
 
-static __device__ double MACHEP = 1.11022302462515654042E-16;
+__constant__ double MACHEP = 1.11022302462515654042E-16;
 
 /* 30 Nov 86 -- error in third coefficient fixed */
 
@@ -77,7 +80,7 @@ double __device__ zeta(double x, double q)
         b = pow(a, -x);
         s += b;
         if (fabs(b / s) < MACHEP)
-            goto done;
+            return s;
     }
 
     w = a;
@@ -92,7 +95,7 @@ double __device__ zeta(double x, double q)
         s = s + t;
         t = fabs(t / s);
         if (t < MACHEP)
-            goto done;
+            return s;
         k += 1.0;
         a *= x + k;
         b /= w;
@@ -124,16 +127,11 @@ def zeta(x, q):
     .. seealso:: :data:`scipy.special.zeta`
 
     """
-    if (x.dtype == cupy.float16 or x.dtype == cupy.dtype('b') or
-            x.dtype == cupy.dtype('h') or x.dtype == cupy.dtype('B') or
-            x.dtype == cupy.dtype('H') or x.dtype == cupy.bool_):
+    if x.dtype.char in '?ebBhH':
         x = x.astype(cupy.float32)
-    elif (x.dtype == cupy.dtype('i') or x.dtype == cupy.dtype('l') or
-            x.dtype == cupy.dtype('q') or x.dtype == cupy.dtype('I') or
-            x.dtype == cupy.dtype('L') or x.dtype == cupy.dtype('Q')):
+    elif x.dtype.char in 'iIlLqQ':
         x = x.astype(cupy.float64)
     q = q.astype(x.dtype)
-    x, q = cupy.asarray(x), cupy.asarray(q)
     x, q = cupy.broadcast_arrays(x, q)
     y = cupy.zeros_like(x)
     _get_zeta_kernel()(x, q, y)
