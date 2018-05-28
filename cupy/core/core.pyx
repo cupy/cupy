@@ -21,6 +21,7 @@ cimport cpython
 cimport cython
 from libcpp cimport vector
 
+from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
@@ -79,7 +80,6 @@ cdef class ndarray:
             This is equivalent to product over the shape tuple.
 
             .. seealso:: :attr:`numpy.ndarray.size`
-
 
     """
 
@@ -1756,6 +1756,39 @@ cdef class ndarray:
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
+
+    cpdef object toDlpack(self):
+        """Zero-copy conversion to a DLPack tensor.
+
+        DLPack is a open in memory tensor structure proposed in this
+        repository: `dmlc/dlpack <https://github.com/dmlc/dlpack>`_.
+
+        This function returns a :class:`PyCapsule` object which contains a
+        pointer to a DLPack tensor converted from the own ndarray. This
+        function does not copy the own data to the output DLpack tensor
+        but it shares the pointer which is pointing to the same memory region
+        for the data.
+
+        Returns:
+            dltensor (:class:`PyCapsule`): Output DLPack tensor which is
+                encapsulated in a :class:`PyCapsule` object.
+
+        .. seealso::
+
+            :meth:`~cupy.fromDlpack` is a method for zero-copy conversion from
+            a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
+            object) to a :class:`ndarray`
+
+        .. admonition:: Example
+
+            >>> import cupy
+            >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
+            >>> dltensor = array1.toDlpack()
+            >>> array2 = cupy.fromDlpack(dltensor)
+            >>> cupy.testing.assert_array_equal(array1, array2)
+
+        """
+        return dlpack.toDlpack(self)
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
