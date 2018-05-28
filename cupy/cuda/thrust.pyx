@@ -62,8 +62,8 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
                                   'supported'.format(dtype))
 
 
-cpdef lexsort(
-    dtype, size_t idx_start, size_t keys_start, size_t k, size_t n) except +:
+cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
+              size_t k, size_t n) except +:
 
     cdef size_t _strm
 
