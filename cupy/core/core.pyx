@@ -1395,6 +1395,9 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
+            if self.ndim == 0:
+                # `view` does not work with zero-dim array
+                return self.reshape(1).real[0]
             view = self.view(self.dtype.char.lower())
             view._set_shape_and_strides(self.shape, self.strides)
             return view
@@ -1410,6 +1413,9 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
+            if self.ndim == 0:
+                # `view` does not work with zero-dim array
+                return self.reshape(1).imag[0]
             view = self.view(self.dtype.char.lower())
             view._set_shape_and_strides(self.shape, self.strides)
             view.data = view.data + self.itemsize // 2
