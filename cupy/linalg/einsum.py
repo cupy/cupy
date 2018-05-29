@@ -452,6 +452,12 @@ def einsum(*operands, **kwargs):
                 raise ValueError(
                     "einstein sum subscripts string included output subscript "
                     "'%s' which never appeared in an input" % _chr(char))
+        if len(output_subscript) != len(set(output_subscript)):
+            for char in output_subscript:
+                if output_subscript.count(char) >= 2:
+                    raise ValueError(
+                        "einstein sum subscripts string includes output "
+                        "subscript '%s' multiple times" % _chr(char))
 
     _einsum_diagonals(input_subscripts, operands)
 
