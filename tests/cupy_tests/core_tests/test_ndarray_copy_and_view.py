@@ -7,8 +7,8 @@ from cupy import testing
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):
-    if (numpy.dtype(x.dtype).kind == 'c' and
-            numpy.dtype(dtype).kind not in ['b', 'c']):
+    dtype = numpy.dtype(dtype)
+    if x.dtype.kind == 'c' and dtype.kind not in ['b', 'c']:
         with testing.assert_warns(numpy.ComplexWarning):
             return x.astype(dtype, *args, **kwargs)
     else:
