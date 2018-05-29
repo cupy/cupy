@@ -31,7 +31,7 @@ class TestExplog(unittest.TestCase):
         self.check_unary('exp')
 
     def test_expm1(self):
-        self.check_unary('expm1', no_complex=True)
+        self.check_unary('expm1')
 
     def test_exp2(self):
         self.check_unary('exp2')
@@ -46,10 +46,10 @@ class TestExplog(unittest.TestCase):
 
     def test_log2(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_unary('log2', no_complex=True)
+            self.check_unary('log2')
 
     def test_log1p(self):
-        self.check_unary('log1p', no_complex=True)
+        self.check_unary('log1p')
 
     def test_logaddexp(self):
         self.check_binary('logaddexp', no_complex=True)
