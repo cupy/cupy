@@ -99,13 +99,24 @@ class TestArrayCopyAndView(unittest.TestCase):
             return a.astype(dst_dtype, order=order)
 
     @testing.for_orders('CFAK')
-    @testing.for_all_dtypes(name='src_dtype', no_complex=True)
-    @testing.for_all_dtypes(name='dst_dtype')
+    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
     def test_astype_type(self, src_dtype, dst_dtype, order):
+        complex_warning = (numpy.dtype(src_dtype).kind == 'c' and
+                           numpy.dtype(dst_dtype).kind not in ['b', 'c'])
+
         a = testing.shaped_arange((2, 3, 4), cupy, src_dtype)
-        b = a.astype(dst_dtype, order=order)
+        if complex_warning:
+            with testing.assert_warns(numpy.ComplexWarning):
+                b = a.astype(dst_dtype, order=order)
+        else:
+            b = a.astype(dst_dtype, order=order)
+
         a_cpu = testing.shaped_arange((2, 3, 4), numpy, src_dtype)
-        b_cpu = a_cpu.astype(dst_dtype, order=order)
+        if complex_warning:
+            with testing.assert_warns(numpy.ComplexWarning):
+                b_cpu = a_cpu.astype(dst_dtype, order=order)
+        else:
+            b_cpu = a_cpu.astype(dst_dtype, order=order)
         self.assertEqual(b.dtype.type, b_cpu.dtype.type)
 
     @testing.for_orders('CAK')
