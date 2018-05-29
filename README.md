@@ -23,13 +23,28 @@ It supports a subset of `numpy.ndarray` interface.
 
 For detailed instructions on installing CuPy, see [the installation guide](https://docs-cupy.chainer.org/en/stable/install.html).
 
-You can install CuPy using `pip`:
+The easiest way to install CuPy is to use `pip`.
+CuPy provides Wheels (precompiled binary packages) for Linux, which includes cuDNN and NCCL:
+
+```sh
+(For CUDA 9.1)
+$ pip install cupy-cuda91
+
+(For CUDA 9.0)
+$ pip install cupy-cuda90
+
+(For CUDA 8.0)
+$ pip install cupy-cuda80
+```
+
+Alternatively you can build and install CuPy from source code:
 
 ```sh
 $ pip install cupy
 ```
 
-Note that if you want to enable CUDA, cuDNN, and/or NCCL, they need to be set up before installation of CuPy.
+The install script in the source code automatically detects installed versions of CUDA, cuDNN and NCCL in your environment.
+Note that when building from source, if you want to enable cuDNN and/or NCCL, they need to be set up manually.
 
 ## Run with Docker
 
