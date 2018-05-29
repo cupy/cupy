@@ -61,8 +61,9 @@ def _parse_int_subscript(sub):
         elif isinstance(s, int):
             subscripts += einsum_symbols[s]
         else:
-            raise ValueError("For this input type lists must contain "
-                             "either int or Ellipsis")
+            raise ValueError(
+                "each subscript must be either an integer or an ellipsis"
+                " to provide subscripts strings as lists")
     return subscripts
 
 
@@ -95,7 +96,10 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
     """
 
     if len(operands) == 0:
-        raise ValueError("No input operands")
+        raise ValueError(
+            "must specify the einstein sum subscripts string and at least one "
+            "operand, or at least one operand and its corresponding "
+            "subscripts list")
 
     if isinstance(operands[0], str):
         subscripts = operands[0]
@@ -106,12 +110,16 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
             if s in '.,-> ':
                 continue
             if s not in einsum_symbols:
-                raise ValueError("Character %s is not a valid symbol." % s)
+                raise ValueError(
+                    "invalid subscript '%s' in einstein sum subscripts string,"
+                    " subscripts must be letters" % s)
 
         # Parse "..."
         subscripts = subscripts.replace("...", "@")
         if "." in subscripts:
-            raise ValueError("Invalid Ellipses.")
+            raise ValueError(
+                "einstein sum subscripts string contains a '.' that is not "
+                "part of an ellipsis ('...')")
 
         # Parse "->"
         if ("-" in subscripts) or (">" in subscripts):
@@ -119,7 +127,9 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
             invalid = subscripts.count("-") > 1 or subscripts.count(">") > 1
             subscripts = subscripts.split("->")
             if invalid or len(subscripts) != 2:
-                raise ValueError("Subscripts can only contain one '->'.")
+                raise ValueError(
+                    "einstein sum subscript string does not contain proper "
+                    "'->' output specified")
             input_subscripts, output_subscript = subscripts
             output_subscript = output_subscript.replace(" ", "")
 
@@ -129,8 +139,11 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
 
         input_subscripts = input_subscripts.replace(" ", "").split(",")
         if len(input_subscripts) != len(operands):
-            raise ValueError("Number of einsum subscripts must be equal to the"
-                             " number of operands.")
+            raise ValueError(
+                ("more" if len(operands) > len(input_subscripts) else "fewer")
+                +
+                " operands provided to einstein sum function than specified "
+                "in the subscripts string")
 
     else:
         tmp_operands = list(operands)
@@ -155,12 +168,14 @@ def _chr(char):
         return chr(char)
 
 
-def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
+def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
     """Parse a subscript that may contain ellipsis
 
     Args:
         subscript (str): An einsum subscript of an operand or an output. '...'
             should be replaced by '@'.
+        k (int or None): For error messages, give int k for the k-th operand
+            or None for the output.
         ndim (int, optional): ndim of the operand
         ellipsis_len (int, optional): number of broadcast dimensions of the
             output.
@@ -173,18 +188,23 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
     if len(subs) == 1:
         sub, = subs
         if ndim is not None and len(sub) != ndim:
-            # raise ValueError later
-            return "Einstein sum subscript %s does not contain the correct" \
-                " number of indices " % subs
+            if len(sub) > ndim:
+                raise ValueError(
+                    "einstein sum subscripts string %s contains too many "
+                    "subscripts for operand %d" % (sub, k))
+            raise ValueError(
+                "operand %d has more dimensions than subscripts string %s "
+                "given in einstein sum, but no '...' ellipsis provided to "
+                "broadcast the extra dimensions." % (k, sub))
         return list(map(ord, sub))
     elif len(subs) == 2:
         left_sub, right_sub = subs
         if ndim is not None:
             ellipsis_len = ndim - (len(left_sub) + len(right_sub))
         if ellipsis_len < 0:
-            # raise ValueError later
-            return "Einstein sum subscript %s...%s does not contain the" \
-                " correct number of indices " % (left_sub, right_sub)
+            raise ValueError(
+                "einstein sum subscripts string %s...%s contains too many "
+                "subscripts for operand %d" % (left_sub, right_sub, k))
         return list(itertools.chain(
             map(ord, left_sub),
             range(-ellipsis_len, 0),
@@ -192,7 +212,10 @@ def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
         ))
     else:
         # >= 2 ellipses for an operand
-        raise ValueError("Invalid Ellipses.")
+        raise ValueError(
+            "einstein sum subscripts string contains a '.' that is not "
+            "part of an ellipsis ('...') " +
+            ("in the output" if k is None else "for operand %d" % k))
 
 
 def _einsum_diagonals(input_subscripts, operands):
@@ -380,12 +403,9 @@ def einsum(*operands, **kwargs):
     ]
 
     input_subscripts = [
-        _parse_ellipsis_subscript(sub, ndim=arr.ndim)
-        for sub, arr in zip(input_subscripts, operands)
+        _parse_ellipsis_subscript(sub, k, ndim=arr.ndim)
+        for k, (sub, arr) in enumerate(zip(input_subscripts, operands))
     ]
-    for i, sub_or_err in enumerate(input_subscripts):
-        if isinstance(sub_or_err, str):
-            raise ValueError(sub_or_err + "for operand %d." % i)
 
     # Get length of each unique dimension and ensure all dimensions are correct
     dimension_dict = {}
@@ -416,9 +436,12 @@ def einsum(*operands, **kwargs):
     else:
         if not options['sum_ellipsis']:
             if '@' not in output_subscript and -1 in dimension_dict:
-                raise ValueError("output had too few broadcast dimensions")
+                raise ValueError(
+                    "output has more dimensions than subscripts "
+                    "given in einstein sum, but no '...' ellipsis "
+                    "provided to broadcast the extra dimensions.")
         output_subscript = _parse_ellipsis_subscript(
-            output_subscript,
+            output_subscript, None,
             ellipsis_len=len(list(s for s in dimension_dict.keys() if s < 0))
         )
 
@@ -427,8 +450,8 @@ def einsum(*operands, **kwargs):
         for char in output_subscript:
             if char not in tmp_subscripts:
                 raise ValueError(
-                    "Output character %s did not appear in the input"
-                    % _chr(char))
+                    "einstein sum subscripts string included output subscript "
+                    "'%s' which never appeared in an input" % _chr(char))
 
     _einsum_diagonals(input_subscripts, operands)
 
