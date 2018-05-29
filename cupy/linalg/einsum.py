@@ -155,6 +155,19 @@ def _chr(char):
 
 
 def _parse_ellipsis_subscript(subscript, ndim=None, ellipsis_len=None):
+    """Parse a subscript that may contain ellipsis
+
+    Args:
+        subscript (str): An einsum subscript of an operand or an output. '...'
+            should be replaced by '@'.
+        ndim (int, optional): ndim of the operand
+        ellipsis_len (int, optional): number of broadcast dimensions of the
+            output.
+
+    Returns:
+        list of ints: The parsed subscript
+
+    """
     subs = subscript.split('@')
     if len(subs) == 1:
         sub, = subs
