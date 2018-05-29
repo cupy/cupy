@@ -98,12 +98,12 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
         raise ValueError("No input operands")
 
     if isinstance(operands[0], str):
-        subscripts = operands[0].replace(" ", "")
+        subscripts = operands[0]
         operands = list(operands[1:])
 
         # Ensure all characters are valid
         for s in subscripts:
-            if s in '.,->':
+            if s in '.,-> ':
                 continue
             if s not in einsum_symbols:
                 raise ValueError("Character %s is not a valid symbol." % s)
@@ -121,12 +121,13 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
             if invalid or len(subscripts) != 2:
                 raise ValueError("Subscripts can only contain one '->'.")
             input_subscripts, output_subscript = subscripts
+            output_subscript = output_subscript.replace(" ", "")
 
         else:
             input_subscripts = subscripts
             output_subscript = None
 
-        input_subscripts = input_subscripts.split(",")
+        input_subscripts = input_subscripts.replace(" ", "").split(",")
         if len(input_subscripts) != len(operands):
             raise ValueError("Number of einsum subscripts must be equal to the"
                              " number of operands.")
