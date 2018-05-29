@@ -47,4 +47,35 @@ template<typename T> __device__ complex<T> expm1(complex<T> x) {
     return y;
 }
 
+template<typename T> __device__ complex<T> min(complex<T> x, complex<T> y) {
+    if (isnan(x)) {
+        return y;
+    } else if (isnan(y)) {
+        return x;
+    } else if (x.real() < y.real()) {
+        return x;
+    } else if (x.real() > y.real()) {
+        return y;
+    } else if (x.imag() < y.imag()) {
+        return x;
+    } else {
+        return y;
+    }
+}
+template<typename T> __device__ complex<T> max(complex<T> x, complex<T> y) {
+    if (isnan(x)) {
+        return y;
+    } else if (isnan(y)) {
+        return x;
+    } else if (x.real() < y.real()) {
+        return y;
+    } else if (x.real() > y.real()) {
+        return x;
+    } else if (x.imag() < y.imag()) {
+        return y;
+    } else {
+        return x;
+    }
+}
+
 // ToDo: assignment operator for complex<T> = T2 for T2 all types
