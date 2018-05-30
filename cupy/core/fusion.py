@@ -806,7 +806,6 @@ real = _create_ufunc(math.arithmetic.real, numpy.real)
 imag = _create_ufunc(math.arithmetic.imag, numpy.imag)
 multiply = _create_ufunc(math.arithmetic.multiply, numpy.multiply)
 divide = _create_ufunc(math.arithmetic.divide, numpy.divide)
-divmod = _create_ufunc(core.divmod, numpy.divmod)
 power = _create_ufunc(math.arithmetic.power, numpy.power)
 subtract = _create_ufunc(math.arithmetic.subtract, numpy.subtract)
 true_divide = _create_ufunc(math.arithmetic.true_divide, numpy.true_divide)
@@ -856,3 +855,8 @@ sum._raw = core._sum_auto_dtype
 prod._raw = core._prod_auto_dtype
 amax._raw = core._amax
 amin._raw = core._amin
+
+if hasattr(numpy, "divmod"):
+    divmod = _create_ufunc(core.divmod, numpy.divmod)
+else:
+    divmod = core.divmod

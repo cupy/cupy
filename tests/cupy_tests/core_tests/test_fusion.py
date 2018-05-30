@@ -831,7 +831,6 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.imag, 1, self.random_imag)
         self.check(cupy.multiply, 2, self.random_real)
         self.check(cupy.divide, 2, self.random_real)
-        self.check(cupy.divmod, 2, self.random_real)
         self.check(cupy.power, 2, self.random_real, ((0, 10),) * 2)
         self.check(cupy.subtract, 2, self.random_real)
         self.check(cupy.true_divide, 2, self.random_int, ((1, 1000),) * 2)
@@ -840,6 +839,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.mod, 2, self.random_int, ((1, 1000),) * 2)
         self.check(cupy.modf, 1, self.random_real)
         self.check(cupy.remainder, 2, self.random_int, ((1, 1000),) * 2)
+
+    @testing.with_requires('numpy>=1.13')
+    def test_divmod(self):
+        self.check(cupy.divmod, 2, self.random_real)
 
     def test_misc(self):
         self.check(cupy.sqrt, 1, self.random_real, ((0, 1000),))
