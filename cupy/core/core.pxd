@@ -62,7 +62,6 @@ cdef class ndarray:
     cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
                                  vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity=*)
-    cpdef _set_dtype(self, object dtype)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
 
