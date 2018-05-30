@@ -356,7 +356,7 @@ cdef class ndarray:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
-            elementwise_copy(ascontiguousarray(self).real, newarray)
+            elementwise_copy(self.real, newarray)
         else:
             elementwise_copy(self, newarray)
         return newarray
