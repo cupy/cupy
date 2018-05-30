@@ -1416,6 +1416,7 @@ cdef class ndarray:
                 shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
                 memptr=self.data)
             view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
             return view
         return self
 
@@ -1433,6 +1434,7 @@ cdef class ndarray:
                 shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
                 memptr=self.data + self.itemsize // 2)
             view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
             return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
