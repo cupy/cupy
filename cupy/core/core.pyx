@@ -21,6 +21,7 @@ cimport cpython
 cimport cython
 from libcpp cimport vector
 
+from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
@@ -79,7 +80,6 @@ cdef class ndarray:
             This is equivalent to product over the shape tuple.
 
             .. seealso:: :attr:`numpy.ndarray.size`
-
 
     """
 
@@ -349,7 +349,16 @@ cdef class ndarray:
             newarray._set_shape_and_strides(self._shape, strides)
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=order)
-        elementwise_copy(self, newarray)
+
+        if self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
+            cupy.not_equal(self, 0j, out=newarray)
+        elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+            elementwise_copy(self.real, newarray)
+        else:
+            elementwise_copy(self, newarray)
         return newarray
 
     # TODO(okuta): Implement byteswap
@@ -409,11 +418,19 @@ cdef class ndarray:
         v = ndarray.__new__(ndarray)
         v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
 
-        if dtype is None:
+        if v.dtype.itemsize == self.dtype.itemsize:
             v.size = self.size
             v._shape = self._shape
             v._strides = self._strides
         else:
+            if self.ndim == 0:
+                raise ValueError(
+                    "Changing the dtype of a 0d array is only supported if "
+                    "the itemsize is unchanged")
+            if not self._c_contiguous:
+                raise ValueError(
+                    "To change to a dtype of a different size, the array must "
+                    "be C-contiguous")
             shape = list(self._shape)
             strides = list(self._strides)
             shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
@@ -1144,7 +1161,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.sum`
 
         """
-        return _sum(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _sum_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _sum_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumsum
 
@@ -1190,7 +1210,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.prod`
 
         """
-        return _prod(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _prod_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _prod_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumprod
 
@@ -1389,8 +1412,11 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            view = self.view(self.dtype.char.lower())
+            view = ndarray(
+                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                memptr=self.data)
             view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
             return view
         return self
 
@@ -1404,9 +1430,11 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            view = self.view(self.dtype.char.lower())
+            view = ndarray(
+                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                memptr=self.data + self.itemsize // 2)
             view._set_shape_and_strides(self.shape, self.strides)
-            view.data = view.data + self.itemsize // 2
+            view.base = self.base if self.base is not None else self
             return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
@@ -1785,6 +1813,39 @@ cdef class ndarray:
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
+
+    cpdef object toDlpack(self):
+        """Zero-copy conversion to a DLPack tensor.
+
+        DLPack is a open in memory tensor structure proposed in this
+        repository: `dmlc/dlpack <https://github.com/dmlc/dlpack>`_.
+
+        This function returns a :class:`PyCapsule` object which contains a
+        pointer to a DLPack tensor converted from the own ndarray. This
+        function does not copy the own data to the output DLpack tensor
+        but it shares the pointer which is pointing to the same memory region
+        for the data.
+
+        Returns:
+            dltensor (:class:`PyCapsule`): Output DLPack tensor which is
+                encapsulated in a :class:`PyCapsule` object.
+
+        .. seealso::
+
+            :meth:`~cupy.fromDlpack` is a method for zero-copy conversion from
+            a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
+            object) to a :class:`ndarray`
+
+        .. admonition:: Example
+
+            >>> import cupy
+            >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
+            >>> dltensor = array1.toDlpack()
+            >>> array2 = cupy.fromDlpack(dltensor)
+            >>> cupy.testing.assert_array_equal(array1, array2)
+
+        """
+        return dlpack.toDlpack(self)
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
@@ -3376,7 +3437,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
-    reduced_idx = _sum(flattened_indexes, axis=0)
+    reduced_idx = _sum_auto_dtype(flattened_indexes, axis=0)
 
     return a_interm, reduced_idx, li, ri
 
@@ -4001,21 +4062,39 @@ _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-_sum = create_reduction_func(
+_sum_auto_dtype = create_reduction_func(
     'cupy_sum',
-    ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
-_prod = create_reduction_func(
-    'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+_sum_keep_dtype = create_reduction_func(
+    'cupy_sum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'],
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_prod_auto_dtype = create_reduction_func(
+    'cupy_prod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_prod_keep_dtype = create_reduction_func(
+    'cupy_prod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
@@ -4078,7 +4157,6 @@ real = create_ufunc(
     .. seealso:: :func:`numpy.real`
 
     ''')
-
 
 _real_setter = create_ufunc(
     'cupy_real_setter',

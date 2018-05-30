@@ -29,6 +29,7 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core.core',
+            'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',

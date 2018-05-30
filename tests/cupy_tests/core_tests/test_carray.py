@@ -60,12 +60,15 @@ class TestCArray32BitBoundary(unittest.TestCase):
     # This test case is intended to confirm CArray indexing work correctly
     # with arrays whose size is so large that it crosses the 32-bit boundary.
     # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
-    def test(self):
+
+    def tearDown(self):
+        # Free huge memory for slow test
+        cupy.get_default_memory_pool().free_all_blocks()
+
+    @testing.numpy_cupy_equal()
+    def test(self, xp):
         # Elementwise
-        a = cupy.ones(self.size, dtype='b')
+        a = xp.ones(self.size, dtype='b')
         # Reduction
         result = a.sum()
-        self.assertEqual(self.size, result)
-        # Free huge memory for slow test
-        del a
-        cupy.get_default_memory_pool().free_all_blocks()
+        return result

@@ -32,4 +32,50 @@ template<typename T> __device__ bool isfinite(complex<T> x) {
     return isfinite(x.real()) && isfinite(x.imag());
 }
 
+template<typename T> __device__ complex<T> log1p(complex<T> x) {
+    x += 1;
+    return log(x);
+}
+template<typename T> __device__ complex<T> log2(complex<T> x) {
+    complex<T> y = log(x);
+    y /= log(T(2));
+    return y;
+}
+template<typename T> __device__ complex<T> expm1(complex<T> x) {
+    complex<T> y = exp(x);
+    y -= 1;
+    return y;
+}
+
+template<typename T> __device__ complex<T> min(complex<T> x, complex<T> y) {
+    if (isnan(x)) {
+        return y;
+    } else if (isnan(y)) {
+        return x;
+    } else if (x.real() < y.real()) {
+        return x;
+    } else if (x.real() > y.real()) {
+        return y;
+    } else if (x.imag() < y.imag()) {
+        return x;
+    } else {
+        return y;
+    }
+}
+template<typename T> __device__ complex<T> max(complex<T> x, complex<T> y) {
+    if (isnan(x)) {
+        return y;
+    } else if (isnan(y)) {
+        return x;
+    } else if (x.real() < y.real()) {
+        return y;
+    } else if (x.real() > y.real()) {
+        return x;
+    } else if (x.imag() < y.imag()) {
+        return y;
+    } else {
+        return x;
+    }
+}
+
 // ToDo: assignment operator for complex<T> = T2 for T2 all types

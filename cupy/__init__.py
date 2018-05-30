@@ -518,6 +518,7 @@ from cupy.core.fusion import signbit  # NOQA
 
 from cupy.core.fusion import add  # NOQA
 from cupy.core.fusion import divide  # NOQA
+from cupy.core.fusion import divmod  # NOQA
 from cupy.core.fusion import floor_divide  # NOQA
 from cupy.core.fusion import fmod  # NOQA
 from cupy.core.fusion import modf  # NOQA
@@ -604,6 +605,11 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+# -----------------------------------------------------------------------------
+# DLPack
+# -----------------------------------------------------------------------------
+
+from cupy.core import fromDlpack  # NOQA
 
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.
