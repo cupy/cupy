@@ -969,7 +969,7 @@ class TestCsrMatrixData(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': [numpy.float32, numpy.float64],
     'ufunc': [
         'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',
         'floor', 'log1p', 'rad2deg', 'rint', 'sign', 'sin', 'sinh', 'sqrt',
