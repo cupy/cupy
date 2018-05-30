@@ -512,6 +512,7 @@ from cupy.core.fusion import signbit  # NOQA
 
 from cupy.core.fusion import add  # NOQA
 from cupy.core.fusion import divide  # NOQA
+from cupy.core.fusion import divmod  # NOQA
 from cupy.core.fusion import floor_divide  # NOQA
 from cupy.core.fusion import fmod  # NOQA
 from cupy.core.fusion import modf  # NOQA
