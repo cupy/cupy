@@ -1412,11 +1412,8 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            if self.ndim == 0:
-                # `view` does not work with zero-dim array
-                return self.reshape(1).real[0]
-            view = self.view(self.dtype.char.lower())
-            view._set_shape_and_strides(self.shape, self.strides)
+            view = self.view()
+            view._set_dtype(numpy.dtype(self.dtype.char.lower()))
             return view
         return self
 
@@ -1430,11 +1427,8 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            if self.ndim == 0:
-                # `view` does not work with zero-dim array
-                return self.reshape(1).imag[0]
-            view = self.view(self.dtype.char.lower())
-            view._set_shape_and_strides(self.shape, self.strides)
+            view = self.view()
+            view._set_dtype(numpy.dtype(self.dtype.char.lower()))
             view.data = view.data + self.itemsize // 2
             return view
         new_array = ndarray(self.shape, dtype=self.dtype)
@@ -1776,6 +1770,9 @@ cdef class ndarray:
             self._update_contiguity()
         else:
             self._update_f_contiguity()
+
+    cpdef _set_dtype(self, object dtype):
+        self.dtype = dtype
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
@@ -4123,7 +4120,6 @@ real = create_ufunc(
     .. seealso:: :func:`numpy.real`
 
     ''')
-
 
 _real_setter = create_ufunc(
     'cupy_real_setter',
