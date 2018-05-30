@@ -14,6 +14,9 @@ from cupy.testing import condition
 from cupy.testing import hypothesis
 
 
+_global_seed = 0  # sorry
+
+
 class RandomGeneratorTestCase(unittest.TestCase):
 
     target_method = None
@@ -136,6 +139,16 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     def test_lognormal_float64(self):
         self.check_lognormal(numpy.float64)
+
+    # @condition.repeat_with_success_at_least(5, 3)  # sorry
+    @testing.helper.numpy_cupy_equal_continuous_distribution(significance_level=0.05)
+    def test_distrib(self, xp):
+        global _global_seed
+        rs = xp.random.RandomState()
+        rs.seed(_global_seed)
+        _global_seed += 1
+        return rs.lognormal(
+            self.args[0], self.args[1], (1000,))
 
 
 @testing.gpu
