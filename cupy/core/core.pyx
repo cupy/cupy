@@ -356,7 +356,7 @@ cdef class ndarray:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
-            elementwise_copy(ascontiguousarray(self).real, newarray)
+            elementwise_copy(self.real, newarray)
         else:
             elementwise_copy(self, newarray)
         return newarray
@@ -1412,11 +1412,11 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            if self.ndim == 0:
-                # `view` does not work with zero-dim array
-                return self.reshape(1).real[0]
-            view = self.view(self.dtype.char.lower())
+            view = ndarray(
+                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                memptr=self.data)
             view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
             return view
         return self
 
@@ -1430,12 +1430,11 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            if self.ndim == 0:
-                # `view` does not work with zero-dim array
-                return self.reshape(1).imag[0]
-            view = self.view(self.dtype.char.lower())
+            view = ndarray(
+                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                memptr=self.data + self.itemsize // 2)
             view._set_shape_and_strides(self.shape, self.strides)
-            view.data = view.data + self.itemsize // 2
+            view.base = self.base if self.base is not None else self
             return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
@@ -4123,7 +4122,6 @@ real = create_ufunc(
     .. seealso:: :func:`numpy.real`
 
     ''')
-
 
 _real_setter = create_ufunc(
     'cupy_real_setter',
