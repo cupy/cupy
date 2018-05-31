@@ -76,6 +76,10 @@ template<typename T> __device__ complex<T> max(complex<T> x, complex<T> y) {
     } else {
         return x;
     }
+
+template<typename T> __device__ complex<T> rint(complex<T> x) {
+    return complex<T>(rint(x.real()), rint(x.imag()));
+}
 }
 
 // ToDo: assignment operator for complex<T> = T2 for T2 all types
