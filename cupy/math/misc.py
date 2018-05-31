@@ -84,7 +84,9 @@ maximum = core.create_ufunc(
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_maximum),
      ('ff->f', _float_maximum),
-     ('dd->d', _float_maximum)),
+     ('dd->d', _float_maximum),
+     ('FF->F', _float_maximum),
+     ('DD->D', _float_maximum)),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
 
@@ -103,7 +105,9 @@ minimum = core.create_ufunc(
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_minimum),
      ('ff->f', _float_minimum),
-     ('dd->d', _float_minimum)),
+     ('dd->d', _float_minimum),
+     ('FF->F', _float_minimum),
+     ('DD->D', _float_minimum)),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
@@ -117,7 +121,7 @@ minimum = core.create_ufunc(
 fmax = core.create_ufunc(
     'cupy_fmax',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
 
@@ -131,7 +135,7 @@ fmax = core.create_ufunc(
 fmin = core.create_ufunc(
     'cupy_fmin',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
