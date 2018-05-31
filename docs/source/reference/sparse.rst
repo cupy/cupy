@@ -1,12 +1,23 @@
--------------
-Sparse matrix
--------------
+---------------
+Sparse matrices
+---------------
 
 CuPy supports sparse matrices using `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
 These matrices have the same interfaces of `SciPy's sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
 
 .. module:: cupy.sparse
 
+Conversion to/from SciPy sparse matrices
+----------------------------------------
+
+``cupy.sparse.*_matrix`` and ``scipy.sparse.*_matrix`` are not implicitly convertible to each other.
+That means, SciPy functions cannot take ``cupy.sparse.*_matrix`` objects as inputs, and vice versa.
+
+- To convert SciPy sparse matrices to CuPy, pass it to the constructor of each CuPy sparse matrix class.
+- To convert CuPy sparse matrices to SciPy, use :func:`get <cupy.sparse.spmatrix.get>` method of each CuPy sparse matrix class.
+
+Note that converting between CuPy and SciPy incurs data transfer between
+the host (CPU) device and the GPU device, which is costly in terms of performance.
 
 Sparse matrix classes
 ---------------------
