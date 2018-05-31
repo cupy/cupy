@@ -52,4 +52,4 @@ fix = core.create_ufunc(
 
     .. seealso:: :func:`numpy.fix`
 
-    ''', support_complex=False)
+    ''')
