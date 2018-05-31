@@ -1,17 +1,13 @@
 from cupy import core
 
 
-def create_math_ufunc(math_name, nargs, name, doc, support_complex=True):
+def create_math_ufunc(math_name, nargs, name, doc):
     assert 1 <= nargs <= 2
     if nargs == 1:
-        types = ('e->e', 'f->f', 'd->d')
-        if support_complex:
-            types += ('F->F', 'D->D')
         return core.create_ufunc(
-            name, types, 'out0 = %s(in0)' % math_name, doc=doc)
+            name, ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+            'out0 = %s(in0)' % math_name, doc=doc)
     else:
-        types = ('ee->e', 'ff->f', 'dd->d')
-        if support_complex:
-            types += ('FF->F', 'DD->D')
         return core.create_ufunc(
-            name, types, 'out0 = %s(in0, in1)' % math_name, doc=doc)
+            name, ('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+            'out0 = %s(in0, in1)' % math_name, doc=doc)
