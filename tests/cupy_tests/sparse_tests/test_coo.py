@@ -832,7 +832,7 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'ufunc': [
         'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',
         'floor', 'log1p', 'rad2deg', 'rint', 'sign', 'sin', 'sinh', 'sqrt',
@@ -846,7 +846,14 @@ class TestUfunc(unittest.TestCase):
     def test_ufun(self, xp, sp):
         x = _make(xp, sp, self.dtype)
         x.data *= 0.1
-        return getattr(x, self.ufunc)().toarray()
+        func = getattr(x, self.ufunc)
+        if (numpy.dtype(self.dtype).kind == 'c' and
+                self.ufunc in {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}):
+            with self.assertRaises(TypeError):
+                func()
+            return numpy.array(0)
+        else:
+            return func().toarray()
 
 
 class TestIsspmatrixCoo(unittest.TestCase):
