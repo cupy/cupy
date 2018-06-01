@@ -21,7 +21,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         ``S`` is another sparse matrix. It is equivalent to ``S.tocsc()``.
     ``csc_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
-        is flat64.
+        is float64.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
