@@ -1499,11 +1499,11 @@ cdef class ndarray:
            CuPy handles out-of-bounds indices differently from NumPy.
            NumPy handles them by raising an error, but CuPy wraps around them.
 
-           Examples
-           --------
-           >>> a = cupy.arange(3)
-           >>> a[[1, 3]]
-           array([1, 0])
+        Example:
+
+            >>> a = cupy.arange(3)
+            >>> a[[1, 3]]
+            array([1, 0])
 
         """
         # supports basic indexing (by slices, ints or Ellipsis) and
@@ -1558,13 +1558,13 @@ cdef class ndarray:
             reference the same location multiple times.
             In that case, the value that is actually stored is undefined.
 
-            >>> import cupy; import numpy
+            >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(numpy.float)
+            >>> v = cupy.arange(10000).astype(cupy.float)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
-            array([ 9150.,  9151.])
+            array([9150., 9151.])
 
             On the other hand, NumPy stores the value corresponding to the
             last index among the indices referencing duplicate locations.
@@ -1575,7 +1575,7 @@ cdef class ndarray:
             >>> v_cpu = numpy.arange(10000).astype(numpy.float)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
-            array([ 9998.,  9999.])
+            array([9998., 9999.])
 
         """
         _scatter_op(self, slices, value, 'update')
