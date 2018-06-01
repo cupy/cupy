@@ -106,11 +106,11 @@ This is different from NumPy's rule on type promotion, when operands contain zer
 Zero-dimensional :class:`numpy.ndarray` s are treated as if they were scalar values if they appear in operands of NumPy's function,
 This may affect the dtype of its output, depending on the values of the "scalar" inputs.
 
-  >>> (numpy.array(3, dtype=numpy.int32) * numpy.array([1., 2.], dtype=numpy.float32)).dtype
+  >>> (np.array(3, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
   dtype('float32')
-  >>> (numpy.array(300000, dtype=numpy.int32) * numpy.array([1., 2.], dtype=numpy.float32)).dtype
+  >>> (np.array(300000, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
   dtype('float64')
-  >>> (cupy.array(3, dtype=numpy.int32) * cupy.array([1., 2.], dtype=numpy.float32)).dtype
+  >>> (cupy.array(3, dtype=np.int32) * cupy.array([1., 2.], dtype=np.float32)).dtype
   dtype('float64')
 
 
