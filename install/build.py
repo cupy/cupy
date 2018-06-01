@@ -372,14 +372,14 @@ def check_nvtx(compiler, settings):
 
 
 def build_shlib(compiler, source, libraries=(),
-                include_dirs=(), library_dirs=()):
+                include_dirs=(), library_dirs=(), define_macros=None):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
-
         objects = compiler.compile([fname], output_dir=temp_dir,
-                                   include_dirs=include_dirs)
+                                   include_dirs=include_dirs,
+                                   macros=define_macros)
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
@@ -395,14 +395,15 @@ def build_shlib(compiler, source, libraries=(),
 
 
 def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=()):
+                  include_dirs=(), library_dirs=(), define_macros=None):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
 
         objects = compiler.compile([fname], output_dir=temp_dir,
-                                   include_dirs=include_dirs)
+                                   include_dirs=include_dirs,
+                                   macros=define_macros)
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
