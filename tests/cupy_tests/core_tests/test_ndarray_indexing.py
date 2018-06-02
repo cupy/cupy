@@ -137,6 +137,14 @@ class TestArrayIndex(unittest.TestCase):
         a[:] = b
         return a
 
+    @testing.for_all_dtypes_combination(('src_type', 'dst_type'))
+    @testing.numpy_cupy_array_equal()
+    def test_setitem_different_type(self, xp, src_type, dst_type):
+        a = xp.zeros((2, 3, 4), dtype=dst_type)
+        b = testing.shaped_arange((2, 3, 4), xp, src_type)
+        a[:] = b
+        return a
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_setitem_partial_copy(self, xp, dtype):
