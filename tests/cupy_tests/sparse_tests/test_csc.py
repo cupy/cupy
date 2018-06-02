@@ -890,8 +890,9 @@ class TestUfunc(unittest.TestCase):
         x = _make(xp, sp, self.dtype)
         x.data *= 0.1
         func = getattr(x, self.ufunc)
+        complex_unsupported = {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}
         if (numpy.dtype(self.dtype).kind == 'c' and
-                self.ufunc in {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}):
+                self.ufunc in complex_unsupported):
             with self.assertRaises(TypeError):
                 func()
             return numpy.array(0)
