@@ -6,18 +6,18 @@ import cupy
 from cupy import core
 
 
-def corrcoef(a, y=None, rowvar=True, bias=numpy._NoValue, ddof=numpy._NoValue):
+def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
     """Returns the Pearson product-moment correlation coefficients of an array.
 
     Args:
         a (cupy.ndarray): Array to compute the Pearson product-moment
             correlation coefficients.
         y (cupy.ndarray): An additional set of variables and observations.
-        rowvar (bool): If ``True``, then each row represents a
-            variable, with observations in the columns. Otherwise, the
-            relationship is transposed.
-        bias (numpy._NoValue): Has no effect, do not use.
-        ddof (numpy._NoValue): Has no effect, do not use.
+        rowvar (bool): If ``True``, then each row represents a variable, with
+            observations in the columns. Otherwise, the relationship is
+            transposed.
+        bias (None): Has no effect, do not use.
+        ddof (None): Has no effect, do not use.
 
     Returns:
         cupy.ndarray: The Pearson product-moment correlation coefficients of
@@ -26,7 +26,7 @@ def corrcoef(a, y=None, rowvar=True, bias=numpy._NoValue, ddof=numpy._NoValue):
     .. seealso:: :func:`numpy.corrcoef`
 
     """
-    if bias is not numpy._NoValue or ddof is not numpy._NoValue:
+    if bias is not None or ddof is not None:
         warnings.warn('bias and ddof have no effect and are deprecated',
                       DeprecationWarning)
 
