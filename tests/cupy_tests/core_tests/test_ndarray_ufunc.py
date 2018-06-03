@@ -9,6 +9,7 @@ from cupy import testing
 @testing.gpu
 class TestArrayUfunc(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes()
     def test_unary_op(self, dtype):
         a = cupy.array(np.array([0, 1, 2]), dtype=dtype)
@@ -19,6 +20,7 @@ class TestArrayUfunc(unittest.TestCase):
         outb = np.sin(b)
         self.assertTrue(np.allclose(outa.get(), outb))
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes()
     def test_unary_op_out(self, dtype):
         a = cupy.array(np.array([0, 1, 2]), dtype=dtype)
@@ -29,6 +31,7 @@ class TestArrayUfunc(unittest.TestCase):
         np.sin(a, out=outa)
         self.assertTrue(np.allclose(outa.get(), outb))
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes()
     def test_binary_op(self, dtype):
         a1 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
@@ -41,6 +44,7 @@ class TestArrayUfunc(unittest.TestCase):
         outb = np.add(b1, b2)
         self.assertTrue(np.allclose(outa.get(), outb))
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes()
     def test_binary_op_out(self, dtype):
         a1 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
@@ -52,6 +56,7 @@ class TestArrayUfunc(unittest.TestCase):
         outb = np.add(b1, b2)
         self.assertTrue(np.allclose(outa.get(), outb))
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes()
     def test_binary_mixed_op(self, dtype):
         a1 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
