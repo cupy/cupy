@@ -79,6 +79,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
+    ctypedef int OpTensorOp 'cudnnOpTensorOp_t'
     ctypedef int ErrQueryMode 'cudnnErrQueryMode_t'
     ctypedef struct RuntimeTag 'cudnnRuntimeTag_t'
 
@@ -91,6 +92,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
+    ctypedef void* OpTensorDescriptor 'cudnnOpTensorDescriptor_t'
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
     ctypedef void* SamplerType 'cudnnSamplerType_t'
@@ -131,6 +133,21 @@ cdef extern from "cupy_cudnn.h" nogil:
     int cudnnAddTensor_v3(
         Handle handle, void* alpha, TensorDescriptor bDesc,
         void* b, void* beta, TensorDescriptor yDesc, void* y)
+
+    # Tensor operations
+    int cudnnCreateOpTensorDescriptor(OpTensorDescriptor* opTensorDesc)
+    int cudnnSetOpTensorDescriptor(
+        OpTensorDescriptor opTensorDesc, OpTensorOp opTensorOp,
+        DataType opTensorCompType, NanPropagation opTensorNanOpt)
+    int cudnnGetOpTensorDescriptor(
+        OpTensorDescriptor opTensorDesc, OpTensorOp* opTensorOp,
+        DataType* opTensorCompType, NanPropagation* opTensorNanOpt)
+    int cudnnDestroyOpTensorDescriptor(OpTensorDescriptor opTensorDesc)
+    int cudnnOpTensor(
+        Handle handle, OpTensorDescriptor opTensorDesc, void* alpha1,
+        TensorDescriptor aDesc, void* A, void* alpha2,
+        TensorDescriptor bDesc, void* B, void* beta,
+        TensorDescriptor cDesc, void* C)
 
     # Filter manipulation
     int cudnnCreateFilterDescriptor(FilterDescriptor* filterDesc)
@@ -637,6 +654,48 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
         status = cudnnAddTensor_v3(
             <Handle>handle, <void*>alpha, <TensorDescriptor>bDesc,
             <void*>b, <void*>beta, <TensorDescriptor>yDesc, <void*>y)
+    check_status(status)
+
+
+###############################################################################
+# Tensor operations
+###############################################################################
+
+cpdef size_t createOpTensorDescriptor() except *:
+    cdef OpTensorDescriptor opTensorDesc
+    status = cudnnCreateOpTensorDescriptor(&opTensorDesc)
+    check_status(status)
+    return <size_t>opTensorDesc
+
+cpdef setOpTensorDescriptor(size_t opTensorDesc, int opTensorOp,
+                            int opTensorCompType, int opTensorNanOpt):
+    status = cudnnSetOpTensorDescriptor(
+        <OpTensorDescriptor>opTensorDesc, <OpTensorOp>opTensorOp,
+        <DataType>opTensorCompType, <NanPropagation>opTensorNanOpt)
+    check_status(status)
+
+cpdef getOpTensorDescriptor(size_t opTensorDesc):
+    cdef OpTensorOp opTensorOp
+    cdef DataType opTensorCompType
+    cdef NanPropagation opTensorNanOpt
+    status = cudnnGetOpTensorDescriptor(
+        <OpTensorDescriptor>opTensorDesc, &opTensorOp, &opTensorCompType,
+        &opTensorNanOpt)
+    check_status(status)
+    return opTensorOp, opTensorCompType, opTensorNanOpt
+
+cpdef destroyOpTensorDescriptor(size_t opTensorDesc):
+    status = cudnnDestroyOpTensorDescriptor(<OpTensorDescriptor>opTensorDesc)
+    check_status(status)
+
+cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
+               size_t aDesc, size_t A, size_t alpha2, size_t bDesc,
+               size_t B, size_t beta, size_t cDesc, size_t C):
+    status = cudnnOpTensor(
+        <Handle>handle, <OpTensorDescriptor>opTensorDesc, <void*>alpha1,
+        <TensorDescriptor>aDesc, <void*>A, <void*>alpha2,
+        <TensorDescriptor>bDesc, <void*>B, <void*>beta,
+        <TensorDescriptor>cDesc, <void*>C)
     check_status(status)
 
 

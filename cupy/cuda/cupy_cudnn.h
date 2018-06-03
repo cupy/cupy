@@ -29,6 +29,7 @@ typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
 typedef enum {} cudnnSoftmaxMode_t;
 typedef enum {} cudnnTensorFormat_t;
+typedef enum {} cudnnOpTensorOp_t;
 typedef enum {} cudnnErrQueryMode_t;
 typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
@@ -37,6 +38,7 @@ typedef void* cudnnFilterDescriptor_t;
 typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
 typedef void* cudnnTensorDescriptor_t;
+typedef void* cudnnOpTensorDescriptor_t;
 
 
 // Error handling
@@ -95,6 +97,27 @@ cudnnStatus_t cudnnSetTensorNdDescriptor(...) {
 }
 
 cudnnStatus_t cudnnDestroyTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+// Tensor Operations
+cudnnStatus_t cudnnCreateOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnSetOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnDestroyOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnOpTensor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
