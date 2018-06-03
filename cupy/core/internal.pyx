@@ -234,3 +234,34 @@ cpdef size_t clp2(size_t x):
     x |= x >> 16
     x |= x >> 32
     return x + 1
+
+    
+ctypedef unsigned short u16
+ctypedef unsigned int u32
+ctypedef unsigned long long _uint64_t
+
+
+cdef union float32_int:
+    u32 n
+    float f
+
+
+cdef _float16 to_float16(float f):
+    cdef float32_int c
+    c.f = f
+    cdef u32 n = c.n
+    cdef u16 sign_bit = (n >> 16) & 0x8000
+    cdef u16 exponent = (((n >> 23) - 127 + 15) & 0x1f) << 10
+    cdef u16 fraction = (n >> (23-10)) & 0x3ff
+    return <_float16>(sign_bit | exponent | fraction)
+
+
+cdef float to_float(_float16 v):
+    cdef u16 val = <u16>v
+    cdef u32 sign_bit = (val & 0x8000) << 16
+    cdef u32 exponent = ((((val >> 10) & 0x1f) - 15 + 127) & 0xff) << 23
+    cdef u32 fraction = (val & 0x3ff) << (23 - 10)
+    cdef float32_int c
+    c.n =sign_bit | exponent | fraction
+    return c.f
+
