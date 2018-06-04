@@ -1,8 +1,10 @@
 import functools
 import itertools
 import operator
-import six.moves
+import string
 import warnings
+
+import six.moves
 
 import cupy
 from cupy.linalg.einsum_opt import _greedy_path
