@@ -26,25 +26,23 @@ def _prod(xs):
     return functools.reduce(operator.mul, xs, 1)
 
 
-def _transpose_ex(a, axeses, shape):
+def _transpose_ex(a, axeses):
     """Transpose and diagonal
 
     Args:
         a
         axeses (sequence of sequences of ints)
-        shape (sequence of ints)
 
     Returns:
         p: a with its axes permutated. A writeable view is returned whenever
             possible.
     """
 
+    shape = []
     strides = []
     for axes in axeses:
-        stride = sum(
-            0 if a.shape[axis] == 1 else a.strides[axis]
-            for axis in axes
-        )
+        shape.append(a.shape[axes[0]] if axes else 1)
+        stride = sum(a.strides[axis] for axis in axes)
         strides.append(stride)
     a = a.view()
     a._set_shape_and_strides(shape, strides)
@@ -232,11 +230,10 @@ def _einsum_diagonals(input_subscripts, operands):
 
             axes = list(axes.items())
 
-            shape = []
             for s, indices in axes:
+                if options['broadcast_diagonal']:
+                    indices = [j for j in indices if op.shape[j] != 1]
                 dims = {op.shape[j] for j in indices}
-                if options['broadcast_diagonal'] and 1 in dims:
-                    dims.remove(1)
                 if len(dims) >= 2:
                     dim0 = dims.pop()
                     dim1 = dims.pop()
@@ -245,11 +242,10 @@ def _einsum_diagonals(input_subscripts, operands):
                         " for collapsing index '%s' don't match (%d != %d)"
                         % (num, _chr(s), dim0, dim1)
                     )
-                shape.append(dims.pop() if dims else 1)
 
             sub, axes = zip(*axes)
             input_subscripts[num] = list(sub)
-            operands[num] = _transpose_ex(op, list(axes), shape)
+            operands[num] = _transpose_ex(op, list(axes))
 
 
 def _iter_path_pairs(path):
