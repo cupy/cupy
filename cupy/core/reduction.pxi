@@ -151,9 +151,8 @@ cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_shape = _reduce_dims(
-            in_args, params, in_indexer.shape)
-        out_args, out_shape = _reduce_dims(
+        in_shape = _reduce_dims(in_args, params, in_indexer.shape)
+        out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape

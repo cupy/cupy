@@ -172,7 +172,7 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
-    cdef Py_ssize_t i, j, n, ndim, cnt, axis, s
+    cdef Py_ssize_t i, j, n, ndim, cnt, axis, s, total_size
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
     cdef vector.vector[bint] is_array_flags
     cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
@@ -182,7 +182,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
 
     ndim = len(shape)
     if ndim <= 1:
-        return args, shape
+        return shape
 
     n = len(args)
     for i in range(n):
@@ -192,58 +192,64 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         is_array_flags.push_back(flag)
         if flag:
             arr = a
-            args_strides.push_back(arr._strides)
+            if not arr._c_contiguous:
+                args_strides.push_back(arr._strides)
 
-    vecshape = shape
-    axis = -1
-    cnt = 0
-    for i in range(1, ndim):
-        if vecshape[i - 1] == 1:
-            continue
-        for j in range(<Py_ssize_t>args_strides.size()):
-            if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
-                cnt += 1
-                axis = i - 1
-                break
-        else:
-            vecshape[i] *= vecshape[i - 1]
-            vecshape[i - 1] = 1
-    if vecshape[ndim - 1] != 1:
-        cnt += 1
+    if args_strides.size():
+        vecshape = shape
+        axis = -1
+        cnt = 0
+        for i in range(1, ndim):
+            if vecshape[i - 1] == 1:
+                continue
+            for j in range(<Py_ssize_t>args_strides.size()):
+                if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
+                    cnt += 1
+                    axis = i - 1
+                    break
+            else:
+                vecshape[i] *= vecshape[i - 1]
+                vecshape[i - 1] = 1
+        if vecshape[ndim - 1] != 1:
+            cnt += 1
+            axis = ndim - 1
+            if cnt == 1:
+                total_size = vecshape[axis]
+        if cnt == ndim:
+            return shape
+    else:
+        cnt = 1
         axis = ndim - 1
+        total_size = internal.prod(shape)
 
-    if cnt == ndim:
-        return args, shape
     if cnt == 1:
-        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
+        newshape.assign(<Py_ssize_t>1, total_size)
         ret = []
-        for i, a in enumerate(args):
+        for i in range(n):
             if is_array_flags[i]:
-                arr = a
+                arr = args[i]
                 arr = arr.view()
                 newstrides.assign(
                     <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
                 arr._set_shape_and_strides(newshape, newstrides, False)
-                a = arr
-            ret.append(a)
-        return ret, tuple(newshape)
+                args[i] = arr
+        return total_size,
 
     for i in range(ndim):
         if vecshape[i] != 1:
             newshape.push_back(vecshape[i])
     ret = []
-    for i, a in enumerate(args):
+    for i in range(n):
         if is_array_flags[i]:
-            arr = a
+            arr = args[i]
             arr = arr.view()
             newstrides.clear()
             for j in range(ndim):
                 if vecshape[j] != 1:
                     newstrides.push_back(arr._strides[j])
             arr._set_shape_and_strides(newshape, newstrides, False)
-            a = arr
-        ret.append(a)
-    return ret, tuple(newshape)
+            args[i] = arr
+    return tuple(newshape)
 
 
 cdef class ParameterInfo:
@@ -592,8 +598,7 @@ cdef class ElementwiseKernel:
         inout_args += out_args
 
         if self.reduce_dims:
-            inout_args, shape = _reduce_dims(
-                inout_args, self.params, shape)
+            shape = _reduce_dims(inout_args, self.params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
 
@@ -847,7 +852,7 @@ class ufunc(object):
             x = broad.values[i]
             inout_args.append(x if isinstance(x, ndarray) else t(x))
         inout_args.extend(out_args)
-        inout_args, shape = _reduce_dims(inout_args, self._params, shape)
+        shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
