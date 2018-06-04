@@ -33,6 +33,7 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
+import cupyx
 
 
 def is_available():
@@ -613,8 +614,6 @@ from cupy.core import fromDlpack  # NOQA
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
-
-import cupyx
 
 
 def asnumpy(a, stream=None):

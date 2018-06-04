@@ -1593,6 +1593,41 @@ cdef class ndarray:
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__
 
+    # numpy/ufunc compat
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+
+        """Apply unary or binary ufunc to this array
+
+        If binary, only allow if second argument is another cupy ndarray or
+        a number, i.e., raise ValueError instead of silently converting a
+        numpy array.
+        """
+        import cupy  # top-level ufuncs
+        if 'out' in kwargs:
+            # need to unfold tuple argument in kwargs
+            out = kwargs['out']
+            if len(out) != 1:
+                raise ValueError("The 'out' parameter must have exactly one "
+                                 "array value")
+            kwargs['out'] = out[0]
+
+        if method == '__call__':
+            if ufunc.signature is not None:
+                # we don't support generalised-ufuncs (gufuncs)
+                return NotImplemented
+            try:
+                cp_ufunc = getattr(cupy, ufunc.__name__)
+            except AttributeError:
+                return NotImplemented
+            return cp_ufunc(*inputs, **kwargs)
+        # Don't use for now, interface uncertain
+        # elif method =='at' and name == 'add':
+            # the only ufunc attribute currently
+            # http://docs-cupy.chainer.org/en/stable/reference/ufunc.html#ufunc-at
+            # self.scatter_add(*inputs, **kwargs)
+        else:
+            return NotImplemented
+
     # Conversion:
 
     def __int__(self):
