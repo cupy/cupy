@@ -130,10 +130,6 @@ class TestEinSumError(unittest.TestCase):
     def test_invalid_char3(self, xp):
         xp.einsum('i->&', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_char4(self, xp):
-        xp.einsum('i->j', xp.array([0, 0]))
-
     # output subscripts must appear in inumpy.t
     @testing.numpy_cupy_raises()
     def test_invalid_output_subscripts1(self, xp):
