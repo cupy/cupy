@@ -1,6 +1,7 @@
 import functools
 import itertools
 import operator
+import six.moves
 import warnings
 
 import cupy
@@ -223,20 +224,16 @@ def _einsum_diagonals(input_subscripts, operands):
 
     This function mutates args.
     """
+    for num in six.moves.range(len(input_subscripts)):
+        sub = input_subscripts[num]
+        op = operands[num]
 
-    for num, sub in enumerate(input_subscripts):
         if len(set(sub)) < len(sub):
-            op = operands[num]
-
             axes = {}
             for i, s in enumerate(sub):
                 axes.setdefault(s, []).append(i)
 
             axes = list(axes.items())
-            input_subscripts[num] = [
-                s
-                for s, _ in axes
-            ]
 
             if not options['broadcast_diagonal']:
                 for s, indices in axes:
@@ -248,13 +245,9 @@ def _einsum_diagonals(input_subscripts, operands):
                             % (num, _chr(s), dims[0], dims[1])
                         )
 
-            axes = [
-                indices
-                for _, indices in axes
-            ]
-            operands[num] = _transpose_ex(
-                op, axes
-            )
+            sub, axes = zip(*axes)
+            input_subscripts[num] = list(sub)
+            operands[num] = _transpose_ex(op, list(axes))
 
 
 def _iter_path_pairs(path):
