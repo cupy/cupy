@@ -1,5 +1,17 @@
 # This source code contains SciPy's code.
 # https://github.com/scipy/scipy/blob/master/scipy/special/cephes/psi.c
+#
+#
+# Cephes Math Library Release 2.8:  June, 2000
+# Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
+#
+#
+# Code for the rational approximation on [1, 2] is:
+#
+# (C) Copyright John Maddock 2006.
+# Use, modification and distribution are subject to the
+# Boost Software License, Version 1.0. (See accompanying file
+# LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 import cupy
 from cupy import core
@@ -20,7 +32,7 @@ template<int N> static __device__ double polevl(double x, double coef[])
         ans = ans * x + *p++;
     }
 
-    return (ans);
+    return ans;
 }
 '''
 
@@ -83,7 +95,7 @@ static __device__ double digamma_imp_1_2(double x)
     g = x - root1 - root2 - root3;
     r = polevl<5>(x - 1.0, P) / polevl<6>(x - 1.0, Q);
 
-return g * Y + g * r;
+    return g * Y + g * r;
 }
 
 
@@ -92,11 +104,11 @@ static __device__ double psi_asy(double x)
     double y, z;
 
     if (x < 1.0e17) {
-    z = 1.0 / (x * x);
-    y = z * polevl<6>(z, A);
+        z = 1.0 / (x * x);
+        y = z * polevl<6>(z, A);
     }
     else {
-    y = 0.0;
+        y = 0.0;
     }
 
     return log(x) - (0.5 / x) - y;
@@ -110,7 +122,7 @@ double __device__ psi(double x)
     int i, n;
 
     if (isnan(x)) {
-    return x;
+        return x;
     }
     else if (isinf(x)){
         if(x > 0){
@@ -123,39 +135,39 @@ double __device__ psi(double x)
         return -1.0/0.0;
     }
     else if (x < 0.0) {
-    /* argument reduction before evaluating tan(pi * x) */
-    r = modf(x, &q);
-    if (r == 0.0) {
-        return nan("");
-    }
-    y = -PI / tan(PI * r);
-    x = 1.0 - x;
+        /* argument reduction before evaluating tan(pi * x) */
+        r = modf(x, &q);
+        if (r == 0.0) {
+            return nan("");
+        }
+        y = -PI / tan(PI * r);
+        x = 1.0 - x;
     }
 
     /* check for positive integer up to 10 */
     if ((x <= 10.0) && (x == floor(x))) {
-    n = (int)x;
-    for (i = 1; i < n; i++) {
-        y += 1.0 / i;
-    }
-    y -= EULER;
-    return y;
+        n = (int)x;
+        for (i = 1; i < n; i++) {
+            y += 1.0 / i;
+        }
+        y -= EULER;
+        return y;
     }
 
     /* use the recurrence relation to move x into [1, 2] */
     if (x < 1.0) {
-    y -= 1.0 / x;
-    x += 1.0;
+        y -= 1.0 / x;
+        x += 1.0;
     }
     else if (x < 10.0) {
-    while (x > 2.0) {
-        x -= 1.0;
-        y += 1.0 / x;
-    }
+        while (x > 2.0) {
+            x -= 1.0;
+            y += 1.0 / x;
+        }
     }
     if ((1.0 <= x) && (x <= 2.0)) {
-    y += digamma_imp_1_2(x);
-    return y;
+        y += digamma_imp_1_2(x);
+        return y;
     }
 
     /* x is large, use the asymptotic series */

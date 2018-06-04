@@ -1,5 +1,10 @@
 # This source code contains SciPy's code.
 # https://github.com/scipy/scipy/blob/master/scipy/special/cephes/zeta.c
+#
+#
+# Cephes Math Library Release 2.0:  April, 1987
+# Copyright 1984, 1987 by Stephen L. Moshier
+# Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 import cupy
 from cupy import core
@@ -39,21 +44,21 @@ double __device__ zeta(double x, double q)
     int i;
     double a, b, k, s, t, w;
 
-    if (x == 1.0)
-    goto retinf;
+    if (x == 1.0){
+        return 1.0/0.0;
+    }
 
     if (x < 1.0) {
-      domerr:
-    return nan("");
+        return nan("");
     }
 
     if (q <= 0.0) {
-    if (q == floor(q)) {
-      retinf:
-        return 1.0/0.0;
-    }
-    if (x != floor(x))
-        goto domerr;	/* because q^-x not defined */
+        if (q == floor(q)) {
+            return 1.0/0.0;
+        }
+        if (x != floor(x)){
+            return nan("");	/* because q^-x not defined */
+        }
     }
 
     /* Asymptotic expansion
@@ -79,8 +84,9 @@ double __device__ zeta(double x, double q)
         a += 1.0;
         b = pow(a, -x);
         s += b;
-        if (fabs(b / s) < MACHEP)
+        if (fabs(b / s) < MACHEP){
             return s;
+        }
     }
 
     w = a;
@@ -94,15 +100,15 @@ double __device__ zeta(double x, double q)
         t = a * b / A[i];
         s = s + t;
         t = fabs(t / s);
-        if (t < MACHEP)
+        if (t < MACHEP){
             return s;
+        }
         k += 1.0;
         a *= x + k;
         b /= w;
         k += 1.0;
     }
-done:
-    return (s);
+    return s;
 }
 '''
 
