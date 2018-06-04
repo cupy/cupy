@@ -96,6 +96,44 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
+def multivariate_normal(mean, cov, size=None, check_valid='warn', tol=1e-8,
+                        dtype=float):
+    """Multivariate normal distribution.
+
+    Returns an array of samples drawn from the multivariate normal
+    distribution. Its probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{1}{(2\\pi|\\Sigma|)^(n/2)} \
+           \\exp\\left(-\\frac{1}{2} \
+           (x-\\mu)^{\\top}\\Sigma^{-1}(x-\\mu)\\right),
+
+    Args:
+        mean (1-D array_like, of length N): Mean of the multivariate normal
+            distribution :math:`\\mu`.
+        cov (2-D array_like, of shape (N, N)): Covariance matrix of the
+            multivariate normal distribution. It must be symmetric and
+            positive-semidefinite for proper sampling :math:`\\Sigma`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        check_valid (‘warn’, ‘raise’, ‘ignore’): Behavior when the covariance
+            matrix is not positive semidefinite.
+        tol (float): Tolerance when checking the singular values in
+            covariance matrix.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the multivariate normal distribution.
+
+    .. seealso:: :func:`numpy.random.multivariate_normal`
+
+    """
+    rs = generator.get_random_state()
+    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, dtype)
+    return x
+
+
 def standard_normal(size=None, dtype=float):
     """Returns an array of samples drawn from the standard normal distribution.
 
