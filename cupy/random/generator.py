@@ -74,6 +74,7 @@ class RandomState(object):
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from the laplace distribution.
+
         .. seealso::
             :func:`cupy.random.laplace` for full documentation,
             :meth:`numpy.random.RandomState.laplace`

@@ -41,10 +41,13 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
 
 def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
     """Laplace distribution.
+
     Returns an array of samples drawn from the laplace distribution. Its
     probability density function is defined as
+
     .. math::
        f(x) = \\frac{1}{2b}\\exp\\left(-\\frac{|x-\\mu|}{b}\\right),
+
     Args:
         loc (float): The location of the mode :math:`\\mu`.
         scale (float): The scale parameter :math:`b`.
@@ -52,8 +55,10 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
+
     Returns:
         cupy.ndarray: Samples drawn from the laplace destribution.
+
     .. seealso::
         :func:`cupy.random.RandomState.laplace`
         :func:`numpy.random.laplace`
