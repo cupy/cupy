@@ -26,28 +26,25 @@ def _prod(xs):
     return functools.reduce(operator.mul, xs, 1)
 
 
-def _transpose_ex(a, axeses):
+def _transpose_ex(a, axeses, shape):
     """Transpose and diagonal
 
     Args:
         a
         axeses (sequence of sequences of ints)
+        shape (sequence of ints)
 
     Returns:
         p: a with its axes permutated. A writeable view is returned whenever
             possible.
     """
 
-    shape = []
     strides = []
     for axes in axeses:
-        dims = [a.shape[axis] for axis in axes]
-        dim = max(dims)  # TODO(kataoka): fix to dim=0
         stride = sum(
-            0 if d == 1 else a.strides[axis]
-            for axis, d in zip(axes, dims)
+            0 if a.shape[axis] == 1 else a.strides[axis]
+            for axis in axes
         )
-        shape.append(dim)
         strides.append(stride)
     a = a.view()
     a._set_shape_and_strides(shape, strides)
@@ -235,19 +232,24 @@ def _einsum_diagonals(input_subscripts, operands):
 
             axes = list(axes.items())
 
-            if not options['broadcast_diagonal']:
-                for s, indices in axes:
-                    dims = list({op.shape[j] for j in indices})
-                    if len(dims) >= 2:
-                        raise ValueError(
-                            "dimensions in operand %d"
-                            " for collapsing index '%s' don't match (%d != %d)"
-                            % (num, _chr(s), dims[0], dims[1])
-                        )
+            shape = []
+            for s, indices in axes:
+                dims = {op.shape[j] for j in indices}
+                if options['broadcast_diagonal'] and 1 in dims:
+                    dims.remove(1)
+                if len(dims) >= 2:
+                    dim0 = dims.pop()
+                    dim1 = dims.pop()
+                    raise ValueError(
+                        "dimensions in operand %d"
+                        " for collapsing index '%s' don't match (%d != %d)"
+                        % (num, _chr(s), dim0, dim1)
+                    )
+                shape.append(dims.pop() if dims else 1)
 
             sub, axes = zip(*axes)
             input_subscripts[num] = list(sub)
-            operands[num] = _transpose_ex(op, list(axes))
+            operands[num] = _transpose_ex(op, list(axes), shape)
 
 
 def _iter_path_pairs(path):
