@@ -15,7 +15,7 @@ options = {
 }
 
 
-einsum_symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+einsum_symbols = string.ascii_uppercase + string.ascii_lowercase
 
 
 def _concat(lists):
@@ -50,10 +50,10 @@ def _transpose_ex(a, axeses):
 
 
 def _parse_int_subscript(sub):
-    subscripts = ""
+    subscripts = ''
     for s in sub:
         if s is Ellipsis:
-            subscripts += "@"
+            subscripts += '@'
         elif isinstance(s, int):
             subscripts += einsum_symbols[s]
         else:
@@ -110,30 +110,30 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
                     "invalid subscript '%s' in einstein sum subscripts string,"
                     " subscripts must be letters" % s)
 
-        # Parse "..."
-        subscripts = subscripts.replace("...", "@")
-        if "." in subscripts:
+        # Parse '...'
+        subscripts = subscripts.replace('...', '@')
+        if '.' in subscripts:
             raise ValueError(
                 "einstein sum subscripts string contains a '.' that is not "
                 "part of an ellipsis ('...')")
 
-        # Parse "->"
-        if ("-" in subscripts) or (">" in subscripts):
-            # Check for proper "->"
-            invalid = subscripts.count("-") > 1 or subscripts.count(">") > 1
-            subscripts = subscripts.split("->")
+        # Parse '->'
+        if ('-' in subscripts) or ('>' in subscripts):
+            # Check for proper '->'
+            invalid = subscripts.count('-') > 1 or subscripts.count('>') > 1
+            subscripts = subscripts.split('->')
             if invalid or len(subscripts) != 2:
                 raise ValueError(
                     "einstein sum subscript string does not contain proper "
                     "'->' output specified")
             input_subscripts, output_subscript = subscripts
-            output_subscript = output_subscript.replace(" ", "")
+            output_subscript = output_subscript.replace(' ', '')
 
         else:
             input_subscripts = subscripts
             output_subscript = None
 
-        input_subscripts = input_subscripts.replace(" ", "").split(",")
+        input_subscripts = input_subscripts.replace(' ', '').split(',')
         if len(input_subscripts) != len(operands):
             raise ValueError(
                 ("more" if len(operands) > len(input_subscripts) else "fewer")
@@ -159,7 +159,7 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
 
 def _chr(char):
     if char < 0:
-        return "...[%d]" % char
+        return '...[%d]' % char
     else:
         return chr(char)
 
@@ -380,7 +380,6 @@ def einsum(*operands, **kwargs):
     casting_kwargs = {}  # casting is not supported yet in astype
 
     optimize = kwargs.pop('optimize', False)
-    # assert optimize is False, "optimize: sorry"
     if optimize is True:
         optimize = 'greedy'
     if kwargs:
