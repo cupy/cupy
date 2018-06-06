@@ -158,11 +158,11 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
     return input_subscripts, output_subscript, operands
 
 
-def _chr(char):
-    if char < 0:
-        return '...[%d]' % char
+def _chr(label):
+    if label < 0:
+        return '...[%d]' % label
     else:
-        return chr(char)
+        return chr(label)
 
 
 def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
@@ -226,12 +226,12 @@ def _einsum_diagonals(input_subscripts, operands):
 
         if len(set(sub)) < len(sub):
             axes = {}
-            for i, s in enumerate(sub):
-                axes.setdefault(s, []).append(i)
+            for i, label in enumerate(sub):
+                axes.setdefault(label, []).append(i)
 
             axes = list(axes.items())
 
-            for s, indices in axes:
+            for label, indices in axes:
                 if options['broadcast_diagonal']:
                     indices = [j for j in indices if op.shape[j] != 1]
                 dims = {op.shape[j] for j in indices}
@@ -241,7 +241,7 @@ def _einsum_diagonals(input_subscripts, operands):
                     raise ValueError(
                         "dimensions in operand %d"
                         " for collapsing index '%s' don't match (%d != %d)"
-                        % (num, _chr(s), dim0, dim1)
+                        % (num, _chr(label), dim0, dim1)
                     )
 
             sub, axes = zip(*axes)
@@ -328,13 +328,13 @@ def _make_transpose_axes(sub, b_dims, c_dims):
     bs = []
     cs = []
     ts = []
-    for i, s in enumerate(sub):
-        if s in b_dims:
-            bs.append((s, i))
-        elif s in c_dims:
-            cs.append((s, i))
+    for i, label in enumerate(sub):
+        if label in b_dims:
+            bs.append((label, i))
+        elif label in c_dims:
+            cs.append((label, i))
         else:
-            ts.append((s, i))
+            ts.append((label, i))
     return (
         _tuple_sorted_by_0(bs),
         _tuple_sorted_by_0(cs),
@@ -403,27 +403,27 @@ def einsum(*operands, **kwargs):
     dimension_dict = {}
     for tnum, term in enumerate(input_subscripts):
         sh = operands[tnum].shape
-        for cnum, char in enumerate(term):
+        for cnum, label in enumerate(term):
             dim = sh[cnum]
-            if char in dimension_dict.keys():
+            if label in dimension_dict.keys():
                 # For broadcasting cases we always want the largest dim size
-                if dimension_dict[char] == 1:
-                    dimension_dict[char] = dim
-                elif dim not in (1, dimension_dict[char]):
-                    dim_old = dimension_dict[char]
+                if dimension_dict[label] == 1:
+                    dimension_dict[label] = dim
+                elif dim not in (1, dimension_dict[label]):
+                    dim_old = dimension_dict[label]
                     raise ValueError("Size of label '%s' for operand %d (%d) "
                                      "does not match previous terms (%d)."
-                                     % (_chr(char), tnum, dim, dim_old))
+                                     % (_chr(label), tnum, dim, dim_old))
             else:
-                dimension_dict[char] = dim
+                dimension_dict[label] = dim
 
     if output_subscript is None:
         # Build output subscripts
         tmp_subscripts = _concat(input_subscripts)
         output_subscript = [
-            s
-            for s in sorted(set(tmp_subscripts))
-            if s < 0 or tmp_subscripts.count(s) == 1
+            label
+            for label in sorted(set(tmp_subscripts))
+            if label < 0 or tmp_subscripts.count(label) == 1
         ]
     else:
         if not options['sum_ellipsis']:
@@ -434,22 +434,23 @@ def einsum(*operands, **kwargs):
                     "provided to broadcast the extra dimensions.")
         output_subscript = _parse_ellipsis_subscript(
             output_subscript, None,
-            ellipsis_len=len(list(s for s in dimension_dict.keys() if s < 0))
+            ellipsis_len=len(
+                [label for label in dimension_dict.keys() if label < 0])
         )
 
         # Make sure output subscripts are in the input
         tmp_subscripts = set(_concat(input_subscripts))
-        for char in output_subscript:
-            if char not in tmp_subscripts:
+        for label in output_subscript:
+            if label not in tmp_subscripts:
                 raise ValueError(
                     "einstein sum subscripts string included output subscript "
-                    "'%s' which never appeared in an input" % _chr(char))
+                    "'%s' which never appeared in an input" % _chr(label))
         if len(output_subscript) != len(set(output_subscript)):
-            for char in output_subscript:
-                if output_subscript.count(char) >= 2:
+            for label in output_subscript:
+                if output_subscript.count(label) >= 2:
                     raise ValueError(
                         "einstein sum subscripts string includes output "
-                        "subscript '%s' multiple times" % _chr(char))
+                        "subscript '%s' multiple times" % _chr(label))
 
     _einsum_diagonals(input_subscripts, operands)
 
@@ -458,7 +459,7 @@ def einsum(*operands, **kwargs):
     if len(operands) >= 2:
         if any(op.size == 0 for op in operands):
             return cupy.zeros(
-                tuple(dimension_dict[s] for s in output_subscript),
+                tuple(dimension_dict[label] for label in output_subscript),
                 dtype=result_dtype
             )
 
@@ -469,11 +470,11 @@ def einsum(*operands, **kwargs):
             if 1 in op.shape:
                 squeeze_indices = []
                 sub = []
-                for i, s in enumerate(input_subscripts[num]):
+                for i, label in enumerate(input_subscripts[num]):
                     if op.shape[i] == 1:
                         squeeze_indices.append(i)
                     else:
-                        sub.append(s)
+                        sub.append(label)
                 input_subscripts[num] = sub
                 operands[num] = cupy.squeeze(op, axis=tuple(squeeze_indices))
                 assert len(operands[num].shape) == len(input_subscripts[num])
@@ -488,14 +489,14 @@ def einsum(*operands, **kwargs):
         other_subscripts = _concat(other_subscripts)
         sum_axes = tuple(
             i
-            for i, s in enumerate(sub)
-            if s not in other_subscripts
+            for i, label in enumerate(sub)
+            if label not in other_subscripts
         )
         if sum_axes:
             returns_view = False
             input_subscripts[num] = [
-                s
-                for i, s in enumerate(sub)
+                label
+                for i, label in enumerate(sub)
                 if i not in sum_axes
             ]
 
@@ -564,13 +565,13 @@ def einsum(*operands, **kwargs):
     sub0, = input_subscripts
 
     transpose_axes = []
-    for s in output_subscript:
-        if s in sub0:
-            transpose_axes.append(sub0.index(s))
+    for label in output_subscript:
+        if label in sub0:
+            transpose_axes.append(sub0.index(label))
 
     op_out = op0.transpose(transpose_axes).reshape([
-        dimension_dict[s]
-        for s in output_subscript
+        dimension_dict[label]
+        for label in output_subscript
     ])
     assert returns_view or op_out.dtype == result_dtype
     return op_out
