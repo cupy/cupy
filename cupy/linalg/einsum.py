@@ -84,7 +84,7 @@ def _parse_einsum_input(operands, parse_ellipsis=True):
     >>> _parse_einsum_input(('...a,...a->...', a, b))
     (['@a, @a'], 'xz', [a, b])
 
-    >>> __parse_einsum_input((a, [Ellipsis, 0], b, [Ellipsis, 0]))
+    >>> _parse_einsum_input((a, [Ellipsis, 0], b, [Ellipsis, 0]))
     (['@a, @a'], 'xz', [a, b])
     """
 
