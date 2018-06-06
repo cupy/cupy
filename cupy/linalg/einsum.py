@@ -225,16 +225,16 @@ def _einsum_diagonals(input_subscripts, operands):
         arr = operands[num]
 
         if len(set(sub)) < len(sub):
-            axes = {}
-            for i, label in enumerate(sub):
-                axes.setdefault(label, []).append(i)
+            axeses = {}
+            for axis, label in enumerate(sub):
+                axeses.setdefault(label, []).append(axis)
 
-            axes = list(axes.items())
+            axeses = list(axeses.items())
 
-            for label, indices in axes:
+            for label, axes in axeses:
                 if options['broadcast_diagonal']:
-                    indices = [j for j in indices if arr.shape[j] != 1]
-                dims = {arr.shape[j] for j in indices}
+                    axes = [axis for axis in axes if arr.shape[axis] != 1]
+                dims = {arr.shape[axis] for axis in axes}
                 if len(dims) >= 2:
                     dim0 = dims.pop()
                     dim1 = dims.pop()
@@ -244,7 +244,7 @@ def _einsum_diagonals(input_subscripts, operands):
                         % (num, _chr(label), dim0, dim1)
                     )
 
-            sub, axes = zip(*axes)
+            sub, axes = zip(*axeses)
             input_subscripts[num] = list(sub)
             operands[num] = _transpose_ex(arr, list(axes))
 
@@ -313,10 +313,10 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     assert shapes0[0] == shapes1[0]
     arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
 
-    sub_b = [sub0[i] for i in bs0]
-    assert sub_b == [sub1[i] for i in bs1]
-    sub_l = [sub0[i] for i in ts0]
-    sub_r = [sub1[i] for i in ts1]
+    sub_b = [sub0[axis] for axis in bs0]
+    assert sub_b == [sub1[axis] for axis in bs1]
+    sub_l = [sub0[axis] for axis in ts0]
+    sub_r = [sub1[axis] for axis in ts1]
 
     sub_out = sub_b + sub_l + sub_r
     assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
@@ -328,13 +328,13 @@ def _make_transpose_axes(sub, b_dims, c_dims):
     bs = []
     cs = []
     ts = []
-    for i, label in enumerate(sub):
+    for axis, label in enumerate(sub):
         if label in b_dims:
-            bs.append((label, i))
+            bs.append((label, axis))
         elif label in c_dims:
-            cs.append((label, i))
+            cs.append((label, axis))
         else:
-            ts.append((label, i))
+            ts.append((label, axis))
     return (
         _tuple_sorted_by_0(bs),
         _tuple_sorted_by_0(cs),
@@ -403,8 +403,8 @@ def einsum(*operands, **kwargs):
     dimension_dict = {}
     for tnum, term in enumerate(input_subscripts):
         sh = operands[tnum].shape
-        for cnum, label in enumerate(term):
-            dim = sh[cnum]
+        for axis, label in enumerate(term):
+            dim = sh[axis]
             if label in dimension_dict.keys():
                 # For broadcasting cases we always want the largest dim size
                 if dimension_dict[label] == 1:
@@ -470,9 +470,9 @@ def einsum(*operands, **kwargs):
             if 1 in arr.shape:
                 squeeze_indices = []
                 sub = []
-                for i, label in enumerate(input_subscripts[num]):
-                    if arr.shape[i] == 1:
-                        squeeze_indices.append(i)
+                for axis, label in enumerate(input_subscripts[num]):
+                    if arr.shape[axis] == 1:
+                        squeeze_indices.append(axis)
                     else:
                         sub.append(label)
                 input_subscripts[num] = sub
@@ -489,16 +489,16 @@ def einsum(*operands, **kwargs):
         other_subscripts[num] = output_subscript
         other_subscripts = _concat(other_subscripts)
         sum_axes = tuple(
-            i
-            for i, label in enumerate(sub)
+            axis
+            for axis, label in enumerate(sub)
             if label not in other_subscripts
         )
         if sum_axes:
             returns_view = False
             input_subscripts[num] = [
                 label
-                for i, label in enumerate(sub)
-                if i not in sum_axes
+                for axis, label in enumerate(sub)
+                if axis not in sum_axes
             ]
 
             operands[num] = operands[num].sum(
