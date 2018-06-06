@@ -162,10 +162,10 @@ cdef extern from "cupy_cudnn.h" nogil:
         ReduceTensorIndices reduceTensorIndices,
         IndicesType reduceTensorIndicesType)
     int cudnnGetReduceTensorDescriptor(
-        ReduceTensorDescriptor reduceTensorDesc, 
-        ReduceTensorOp* reduceTensorOp, DataType* reduceTensorCompType, 
+        ReduceTensorDescriptor reduceTensorDesc,
+        ReduceTensorOp* reduceTensorOp, DataType* reduceTensorCompType,
         NanPropagation* reduceTensorNanOpt,
-        ReduceTensorIndices* reduceTensorIndices, 
+        ReduceTensorIndices* reduceTensorIndices,
         IndicesType* reduceTensorIndicesType)
     int cudnnDestroyReduceTensorDescriptor(
         ReduceTensorDescriptor reduceTensorDesc)
@@ -752,9 +752,9 @@ cpdef size_t createReduceTensorDescriptor() except *:
     return <size_t>reduceTensorDesc
 
 cpdef setReduceTensorDescriptor(
-    size_t reduceTensorDesc, int reduceTensorOp, int reduceTensorCompType,
-    int reduceTensorNanOpt, int reduceTensorIndices, 
-    int reduceTensorIndicesType):
+        size_t reduceTensorDesc, int reduceTensorOp, int reduceTensorCompType,
+        int reduceTensorNanOpt, int reduceTensorIndices,
+        int reduceTensorIndicesType):
     status = cudnnSetReduceTensorDescriptor(
         <ReduceTensorDescriptor>reduceTensorDesc,
         <ReduceTensorOp>reduceTensorOp,

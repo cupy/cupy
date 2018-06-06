@@ -205,10 +205,10 @@ cpdef setReduceTensorDescriptor(
 cpdef getReduceTensorDescriptor(size_t reduceTensorDesc)
 cpdef destroyReduceTensorDescriptor(size_t reduceTensorDesc)
 cpdef size_t getReductionIndicesSize(
-    size_t handle, size_t reduceTensorDesc, size_t aDesc, 
+    size_t handle, size_t reduceTensorDesc, size_t aDesc,
     size_t cDesc) except *
 cpdef size_t getReductionWorkspaceSize(
-    size_t handle, size_t reduceTensorDesc, size_t aDesc, 
+    size_t handle, size_t reduceTensorDesc, size_t aDesc,
     size_t cDesc) except *
 cpdef reduceTensor(
     size_t handle, size_t reduceTensorDesc, size_t indices,
