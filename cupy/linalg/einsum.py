@@ -50,18 +50,18 @@ def _transpose_ex(a, axeses):
     return a
 
 
-def _parse_int_subscript(sub):
-    subscripts = ''
-    for s in sub:
+def _parse_int_subscript(list_subscript):
+    str_subscript = ''
+    for s in list_subscript:
         if s is Ellipsis:
-            subscripts += '@'
+            str_subscript += '@'
         elif isinstance(s, int):
-            subscripts += einsum_symbols[s]
+            str_subscript += einsum_symbols[s]
         else:
             raise ValueError(
                 "each subscript must be either an integer or an ellipsis"
                 " to provide subscripts strings as lists")
-    return subscripts
+    return str_subscript
 
 
 def _parse_einsum_input(operands, parse_ellipsis=True):
@@ -222,7 +222,7 @@ def _einsum_diagonals(input_subscripts, operands):
     """
     for num in six.moves.range(len(input_subscripts)):
         sub = input_subscripts[num]
-        op = operands[num]
+        arr = operands[num]
 
         if len(set(sub)) < len(sub):
             axes = {}
@@ -233,8 +233,8 @@ def _einsum_diagonals(input_subscripts, operands):
 
             for label, indices in axes:
                 if options['broadcast_diagonal']:
-                    indices = [j for j in indices if op.shape[j] != 1]
-                dims = {op.shape[j] for j in indices}
+                    indices = [j for j in indices if arr.shape[j] != 1]
+                dims = {arr.shape[j] for j in indices}
                 if len(dims) >= 2:
                     dim0 = dims.pop()
                     dim1 = dims.pop()
@@ -246,7 +246,7 @@ def _einsum_diagonals(input_subscripts, operands):
 
             sub, axes = zip(*axes)
             input_subscripts[num] = list(sub)
-            operands[num] = _transpose_ex(op, list(axes))
+            operands[num] = _transpose_ex(arr, list(axes))
 
 
 def _iter_path_pairs(path):
@@ -293,7 +293,7 @@ def _flatten_transpose(a, axeses):
     )
 
 
-def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others):
+def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     set0 = set(sub0)
     set1 = set(sub1)
     assert len(set0) == len(sub0), "operand 0 should be reduced: diagonal"
@@ -307,11 +307,11 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others):
     bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
     bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
 
-    tmp0, shapes0 = _flatten_transpose(op0, [bs0, ts0, cs0])
-    tmp1, shapes1 = _flatten_transpose(op1, [bs1, cs1, ts1])
+    tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
+    tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
     shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
     assert shapes0[0] == shapes1[0]
-    op_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
+    arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
 
     sub_b = [sub0[i] for i in bs0]
     assert sub_b == [sub1[i] for i in bs1]
@@ -321,7 +321,7 @@ def reduced_binary_einsum(op0, sub0, op1, sub1, sub_others):
     sub_out = sub_b + sub_l + sub_r
     assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
 
-    return op_out, sub_out
+    return arr_out, sub_out
 
 
 def _make_transpose_axes(sub, b_dims, c_dims):
@@ -457,7 +457,7 @@ def einsum(*operands, **kwargs):
     # no more raises
 
     if len(operands) >= 2:
-        if any(op.size == 0 for op in operands):
+        if any(arr.size == 0 for arr in operands):
             return cupy.zeros(
                 tuple(dimension_dict[label] for label in output_subscript),
                 dtype=result_dtype
@@ -466,17 +466,17 @@ def einsum(*operands, **kwargs):
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
         for num in six.moves.range(len(operands)):
-            op = operands[num]
-            if 1 in op.shape:
+            arr = operands[num]
+            if 1 in arr.shape:
                 squeeze_indices = []
                 sub = []
                 for i, label in enumerate(input_subscripts[num]):
-                    if op.shape[i] == 1:
+                    if arr.shape[i] == 1:
                         squeeze_indices.append(i)
                     else:
                         sub.append(label)
                 input_subscripts[num] = sub
-                operands[num] = cupy.squeeze(op, axis=tuple(squeeze_indices))
+                operands[num] = cupy.squeeze(arr, axis=tuple(squeeze_indices))
                 assert len(operands[num].shape) == len(input_subscripts[num])
 
     # unary einsum without summation should return a (writeable) view
@@ -550,18 +550,18 @@ def einsum(*operands, **kwargs):
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum
-        op0 = operands.pop(idx0)
+        arr0 = operands.pop(idx0)
         sub0 = input_subscripts.pop(idx0)
-        op1 = operands.pop(idx1)
+        arr1 = operands.pop(idx1)
         sub1 = input_subscripts.pop(idx1)
         sub_others = _concat([output_subscript] + input_subscripts)
-        op_out, sub_out = reduced_binary_einsum(
-            op0, sub0, op1, sub1, sub_others)
-        operands.append(op_out)
+        arr_out, sub_out = reduced_binary_einsum(
+            arr0, sub0, arr1, sub1, sub_others)
+        operands.append(arr_out)
         input_subscripts.append(sub_out)
 
     # unary einsum at last
-    op0, = operands
+    arr0, = operands
     sub0, = input_subscripts
 
     transpose_axes = []
@@ -569,9 +569,9 @@ def einsum(*operands, **kwargs):
         if label in sub0:
             transpose_axes.append(sub0.index(label))
 
-    op_out = op0.transpose(transpose_axes).reshape([
+    arr_out = arr0.transpose(transpose_axes).reshape([
         dimension_dict[label]
         for label in output_subscript
     ])
-    assert returns_view or op_out.dtype == result_dtype
-    return op_out
+    assert returns_view or arr_out.dtype == result_dtype
+    return arr_out
