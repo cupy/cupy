@@ -100,7 +100,7 @@ cudnnStatus_t cudnnDestroyTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-// Tensor Operations
+// Tensor operations
 cudnnStatus_t cudnnCreateOpTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -118,6 +118,44 @@ cudnnStatus_t cudnnDestroyOpTensorDescriptor(...) {
 }
 
 cudnnStatus_t cudnnOpTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+
+// Tensor reduction
+cudnnStatus_t cudnnCreateReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnSetReduceTensorDescriptor(...){
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnDestroyReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReductionIndicesSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReductionWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnReduceTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnSetTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnScaleTensor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 

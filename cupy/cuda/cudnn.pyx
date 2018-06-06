@@ -80,6 +80,9 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
     ctypedef int OpTensorOp 'cudnnOpTensorOp_t'
+    ctypedef int ReduceTensorOp 'cudnnReduceTensorOp_t'
+    ctypedef int ReduceTensorIndices 'cudnnReduceTensorIndices_t'
+    ctypedef int IndicesType 'cudnnIndicesType_t'
     ctypedef int ErrQueryMode 'cudnnErrQueryMode_t'
     ctypedef struct RuntimeTag 'cudnnRuntimeTag_t'
 
@@ -93,6 +96,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* OpTensorDescriptor 'cudnnOpTensorDescriptor_t'
+    ctypedef void* ReduceTensorDescriptor 'cudnnReduceTensorDescriptor_t'
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
     ctypedef void* SamplerType 'cudnnSamplerType_t'
@@ -148,6 +152,33 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor aDesc, void* A, void* alpha2,
         TensorDescriptor bDesc, void* B, void* beta,
         TensorDescriptor cDesc, void* C)
+
+    # Tensor reduction
+    int cudnnCreateReduceTensorDescriptor(ReduceTensorDescriptor* reduceTensorDesc)
+    int cudnnSetReduceTensorDescriptor(
+        ReduceTensorDescriptor reduceTensorDesc, ReduceTensorOp reduceTensorOp,
+        DataType reduceTensorCompType, NanPropagation reduceTensorNanOpt,
+        ReduceTensorIndices reduceTensorIndices, IndicesType reduceTensorIndicesType)
+    int cudnnGetReduceTensorDescriptor(
+        ReduceTensorDescriptor reduceTensorDesc, ReduceTensorOp* reduceTensorOp,
+        DataType* reduceTensorCompType, NanPropagation* reduceTensorNanOpt,
+        ReduceTensorIndices* reduceTensorIndices, IndicesType* reduceTensorIndicesType)
+    int cudnnDestroyReduceTensorDescriptor(ReduceTensorDescriptor reduceTensorDesc)
+    int cudnnGetReductionIndicesSize(
+        Handle handle, ReduceTensorDescriptor reduceTensorDesc,
+        TensorDescriptor aDesc, TensorDescriptor cDesc, size_t* sizeInBytes)
+    int cudnnGetReductionWorkspaceSize(
+        Handle handle, ReduceTensorDescriptor reduceTensorDesc,
+        TensorDescriptor aDesc, TensorDescriptor cDesc, size_t* sizeInBytes)
+    int cudnnReduceTensor(
+        Handle handle, ReduceTensorDescriptor reduceTensorDesc, void* indices,
+        size_t indicesSizeInBytes, void* workspace, size_t workspaceSizeInBytes,
+        void* alpha, TensorDescriptor aDesc, void* A, void* beta,
+        TensorDescriptor cDesc, void* c)
+    int cudnnSetTensor(
+        Handle handle, TensorDescriptor yDesc, void* y, void* valuePtr)
+    int cudnnScaleTensor(
+        Handle handle, TensorDescriptor yDesc, void* y, void* alpha)
 
     # Filter manipulation
     int cudnnCreateFilterDescriptor(FilterDescriptor* filterDesc)
@@ -667,12 +698,14 @@ cpdef size_t createOpTensorDescriptor() except *:
     check_status(status)
     return <size_t>opTensorDesc
 
+
 cpdef setOpTensorDescriptor(size_t opTensorDesc, int opTensorOp,
                             int opTensorCompType, int opTensorNanOpt):
     status = cudnnSetOpTensorDescriptor(
         <OpTensorDescriptor>opTensorDesc, <OpTensorOp>opTensorOp,
         <DataType>opTensorCompType, <NanPropagation>opTensorNanOpt)
     check_status(status)
+
 
 cpdef getOpTensorDescriptor(size_t opTensorDesc):
     cdef OpTensorOp opTensorOp
@@ -684,9 +717,11 @@ cpdef getOpTensorDescriptor(size_t opTensorDesc):
     check_status(status)
     return opTensorOp, opTensorCompType, opTensorNanOpt
 
+
 cpdef destroyOpTensorDescriptor(size_t opTensorDesc):
     status = cudnnDestroyOpTensorDescriptor(<OpTensorDescriptor>opTensorDesc)
     check_status(status)
+
 
 cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
                size_t aDesc, size_t A, size_t alpha2, size_t bDesc,
@@ -698,6 +733,98 @@ cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
             <TensorDescriptor>aDesc, <void*>A, <void*>alpha2,
             <TensorDescriptor>bDesc, <void*>B, <void*>beta,
             <TensorDescriptor>cDesc, <void*>C)
+    check_status(status)
+
+
+###############################################################################
+# Tensor reductions
+###############################################################################
+
+cpdef size_t createReduceTensorDescriptor() except *:
+    cdef ReduceTensorDescriptor reduceTensorDesc
+    status = cudnnCreateReduceTensorDescriptor(&reduceTensorDesc)
+    check_status(status)
+    return <size_t>reduceTensorDesc
+
+cpdef setReduceTensorDescriptor(size_t reduceTensorDesc, int reduceTensorOp,
+                                int reduceTensorCompType, int reduceTensorNanOpt,
+                                int reduceTensorIndices, int reduceTensorIndicesType):
+    status = cudnnSetReduceTensorDescriptor(
+        <ReduceTensorDescriptor>reduceTensorDesc, <ReduceTensorOp>reduceTensorOp,
+        <DataType>reduceTensorCompType, <NanPropagation>reduceTensorNanOpt,
+        <ReduceTensorIndices>reduceTensorIndices, <IndicesType>reduceTensorIndicesType)
+    check_status(status)
+
+
+cpdef getReduceTensorDescriptor(size_t reduceTensorDesc):
+    cdef ReduceTensorOp redTensorOp
+    cdef DataType redTensorCompType
+    cdef NanPropagation redTensorNanOpt
+    cdef ReduceTensorIndices redTensorIndices
+    cdef IndicesType redTensorIndicesType
+    status = cudnnGetReduceTensorDescriptor(
+        <ReduceTensorDescriptor>reduceTensorDesc, &redTensorOp,
+        &redTensorCompType, &redTensorNanOpt,
+        &redTensorIndices, &redTensorIndicesType)
+    check_status(status)
+    return redTensorOp, redTensorCompType, redTensorNanOpt, redTensorIndices, redTensorIndicesType
+
+
+cpdef destroyReduceTensorDescriptor(size_t reduceTensorDesc):
+    status = cudnnDestroyReduceTensorDescriptor(<ReduceTensorDescriptor>reduceTensorDesc)
+    check_status(status)
+
+
+cpdef size_t getReductionIndicesSize(size_t handle, size_t reduceTensorDesc,
+                                     size_t aDesc, size_t cDesc) except *:
+    cdef size_t sizeInBytes
+    status = cudnnGetReductionIndicesSize(
+        <Handle>handle, <TensorDescriptor>reduceTensorDesc,
+        <TensorDescriptor>aDesc, <TensorDescriptor>cDesc, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef size_t getReductionWorkspaceSize(size_t handle, size_t reduceTensorDesc,
+                                       size_t aDesc, size_t cDesc) except *:
+    cdef size_t sizeInBytes
+    status = cudnnGetReductionWorkspaceSize(
+        <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
+        <TensorDescriptor>aDesc, <TensorDescriptor>cDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef reduceTensor(size_t handle, size_t reduceTensorDesc, size_t indices,
+                   size_t indicesSizeInBytes, size_t workspace,
+                   size_t workspaceSizeInBytes, size_t alpha, size_t aDesc,
+                   size_t A, size_t beta, size_t cDesc, size_t C):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnReduceTensor(
+            <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
+            <void*>indices, indicesSizeInBytes, <void*>workspace,
+            workspaceSizeInBytes, <void*>alpha, <TensorDescriptor>aDesc,
+            <void*>A, <void*>beta, <TensorDescriptor>cDesc, <void*>C)
+    check_status(status)
+
+
+cpdef setTensor(size_t handle, size_t yDesc, size_t y, size_t valuePtr):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnSetTensor(
+            <Handle>handle, <TensorDescriptor>yDesc, <void*>y,
+            <void*>valuePtr)
+    check_status(status)
+
+
+cpdef scaleTensor(size_t handle, size_t yDesc, size_t y, size_t alpha):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnScaleTensor(
+            <Handle>handle, <TensorDescriptor>yDesc, <void*> y,
+            <void*>alpha)
     check_status(status)
 
 
