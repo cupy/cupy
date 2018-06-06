@@ -691,11 +691,13 @@ cpdef destroyOpTensorDescriptor(size_t opTensorDesc):
 cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
                size_t aDesc, size_t A, size_t alpha2, size_t bDesc,
                size_t B, size_t beta, size_t cDesc, size_t C):
-    status = cudnnOpTensor(
-        <Handle>handle, <OpTensorDescriptor>opTensorDesc, <void*>alpha1,
-        <TensorDescriptor>aDesc, <void*>A, <void*>alpha2,
-        <TensorDescriptor>bDesc, <void*>B, <void*>beta,
-        <TensorDescriptor>cDesc, <void*>C)
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnOpTensor(
+            <Handle>handle, <OpTensorDescriptor>opTensorDesc, <void*>alpha1,
+            <TensorDescriptor>aDesc, <void*>A, <void*>alpha2,
+            <TensorDescriptor>bDesc, <void*>B, <void*>beta,
+            <TensorDescriptor>cDesc, <void*>C)
     check_status(status)
 
 
