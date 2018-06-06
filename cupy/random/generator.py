@@ -101,7 +101,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def multivariate_normal(self, mean, cov, size=None, check_valid='warn',
+    def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
                             tol=1e-8, dtype=float):
         """Returns an array of samples drawn from the multivariate normal distribution.
 
@@ -109,8 +109,8 @@ class RandomState(object):
             :func:`cupy.random.multivariate_normal` for full documentation,
             :meth:`numpy.random.RandomState.multivariate_normal`
         """
-        mean = cupy.array(mean, dtype=dtype)
-        cov = cupy.array(cov, dtype=dtype)
+        mean = cupy.asarray(mean, dtype=dtype)
+        cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = []
         elif isinstance(size, (int, cupy.integer)):
@@ -118,19 +118,19 @@ class RandomState(object):
         else:
             shape = size
 
-        if len(mean.shape) != 1:
+        if mean.ndim != 1:
             raise ValueError("mean must be 1 dimensional")
-        if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
+        if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
             raise ValueError("cov must be 2 dimensional and square")
-        if mean.shape[0] != cov.shape[0]:
+        if len(mean) != len(cov):
             raise ValueError("mean and cov must have same length")
-        final_shape = list(shape[:])
-        final_shape.append(mean.shape[0])
+        final_shape = list(shape)
+        final_shape.append(len(mean))
 
         x = self.standard_normal(size=final_shape, dtype=dtype)
-        x = x.reshape(-1, mean.shape[0])
+        x = x.reshape(-1, len(mean))
 
-        (u, s, v) = cupy.linalg.svd(cov)
+        u, s, v = cupy.linalg.svd(cov)
 
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':

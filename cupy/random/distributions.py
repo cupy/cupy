@@ -96,7 +96,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
-def multivariate_normal(mean, cov, size=None, check_valid='warn', tol=1e-8,
+def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
                         dtype=float):
     """Multivariate normal distribution.
 
