@@ -501,17 +501,8 @@ def einsum(*operands, **kwargs):
                 if i not in sum_axes
             ]
 
-            # Cannot do the following in cupy (bug?)
-            # operands[num] = operands[num].sum(
-            #     axis=sum_axes, dtype=result_dtype)
-
-            operands[num] = (
-                operands[num]
-                .astype(result_dtype, copy=False, **casting_kwargs)
-                .sum(axis=sum_axes)
-                # .sum uses platform integer types by default
-                .astype(result_dtype, copy=False)
-            )
+            operands[num] = operands[num].sum(
+                axis=sum_axes, dtype=result_dtype)
 
     if returns_view:
         operands = [arr.view() for arr in operands]
