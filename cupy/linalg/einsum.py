@@ -205,7 +205,7 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
                 "subscripts for operand %d" % (left_sub, right_sub, k))
         return list(itertools.chain(
             map(ord, left_sub),
-            range(-ellipsis_len, 0),
+            six.moves.range(-ellipsis_len, 0),
             map(ord, right_sub),
         ))
     else:
@@ -464,7 +464,7 @@ def einsum(*operands, **kwargs):
 
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
-        for num in range(len(operands)):
+        for num in six.moves.range(len(operands)):
             op = operands[num]
             if 1 in op.shape:
                 squeeze_indices = []
