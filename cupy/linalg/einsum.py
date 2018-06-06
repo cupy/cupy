@@ -61,7 +61,7 @@ def _parse_int_subscript(list_subscript):
     return str_subscript
 
 
-def _parse_einsum_input(operands, parse_ellipsis=True):
+def _parse_einsum_input(operands):
     """Parse einsum operands.
 
     This function is based on `numpy.core.einsumfunc._parse_einsum_input`
