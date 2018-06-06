@@ -455,13 +455,13 @@ def create_reduce_tensor_descriptor(reduce_type, dtype):
                       py_cudnn.destroyReduceTensorDescriptor)
     data_type = get_data_type(dtype)
     if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN, cudnn.CUDNN_REDUCE_TENSOR_MAX):
-        indicies = cudnn.CUDNN_REDUCE_TENSOR_FLATTENED_INDICES
+        indices = cudnn.CUDNN_REDUCE_TENSOR_FLATTENED_INDICES
     else:
-        indicies = cudnn.CUDNN_REDUCE_TENSOR_NO_INDICES
+        indices = cudnn.CUDNN_REDUCE_TENSOR_NO_INDICES
 
     cudnn.setReduceTensorDescriptor(desc.value, reduce_type, data_type,
                                     cudnn.CUDNN_NOT_PROPAGATE_NAN,
-                                    indicies,
+                                    indices,
                                     cudnn.CUDNN_32BIT_INDICES)
     return desc
 
