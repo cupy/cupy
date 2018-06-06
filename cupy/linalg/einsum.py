@@ -200,9 +200,9 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
                 "einstein sum subscripts string %s...%s contains too many "
                 "subscripts for operand %d" % (left_sub, right_sub, idx))
         ret = []
-        ret.extend([ord(label) for label in left_sub])
-        ret.extend(list(range(-ellipsis_len, 0)))
-        ret.extend([ord(label) for label in right_sub])
+        ret.extend(ord(label) for label in left_sub)
+        ret.extend(six.moves.range(-ellipsis_len, 0))
+        ret.extend(ord(label) for label in right_sub)
         return ret
     else:
         # >= 2 ellipses for an operand
@@ -241,7 +241,7 @@ def _einsum_diagonals(input_subscripts, operands):
                         % (idx, _chr(label), dim0, dim1)
                     )
 
-            sub, axeses = zip(*axeses)  # axeses is not empty
+            sub, axeses = six.moves.zip(*axeses)  # axeses is not empty
             input_subscripts[idx] = list(sub)
             operands[idx] = _transpose_ex(arr, axeses)
 
@@ -516,7 +516,7 @@ def einsum(*operands, **kwargs):
         'optimal': _optimal_path,
     }
     if optimize is False:
-        path = [tuple(range(len(operands)))]
+        path = [tuple(six.moves.range(len(operands)))]
     elif len(optimize) and (optimize[0] == 'einsum_path'):
         path = optimize[1:]
     else:
