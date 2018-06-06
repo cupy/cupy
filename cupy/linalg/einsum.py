@@ -1,5 +1,4 @@
 import functools
-import itertools
 import operator
 import string
 import warnings
@@ -194,7 +193,7 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
                 "operand %d has more dimensions than subscripts string %s "
                 "given in einstein sum, but no '...' ellipsis provided to "
                 "broadcast the extra dimensions." % (k, sub))
-        return list(map(ord, sub))
+        return [ord(label) for label in sub]
     elif len(subs) == 2:
         left_sub, right_sub = subs
         if ndim is not None:
@@ -203,11 +202,11 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
             raise ValueError(
                 "einstein sum subscripts string %s...%s contains too many "
                 "subscripts for operand %d" % (left_sub, right_sub, k))
-        return list(itertools.chain(
-            map(ord, left_sub),
-            six.moves.range(-ellipsis_len, 0),
-            map(ord, right_sub),
-        ))
+        ret = []
+        ret.extend([ord(label) for label in left_sub])
+        ret.extend(list(range(-ellipsis_len, 0)))
+        ret.extend([ord(label) for label in right_sub])
+        return ret
     else:
         # >= 2 ellipses for an operand
         raise ValueError(
@@ -288,7 +287,8 @@ def _flatten_transpose(a, axeses):
         for axes in axeses
     ]
     return (
-        a.transpose(sum(axeses, ())).reshape(tuple(map(_prod, shapes))),
+        a.transpose(sum(axeses, ())).reshape(
+            tuple(_prod(shape) for shape in shapes)),
         shapes
     )
 
