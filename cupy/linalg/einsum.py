@@ -1,3 +1,4 @@
+import copy
 import functools
 import operator
 import string
@@ -240,9 +241,9 @@ def _einsum_diagonals(input_subscripts, operands):
                         % (idx, _chr(label), dim0, dim1)
                     )
 
-            sub, axes = zip(*axeses)
+            sub, axeses = zip(*axeses)  # axeses is not empty
             input_subscripts[idx] = list(sub)
-            operands[idx] = _transpose_ex(arr, list(axes))
+            operands[idx] = _transpose_ex(arr, axeses)
 
 
 def _iter_path_pairs(path):
@@ -260,7 +261,7 @@ def _iter_path_pairs(path):
         assert all(idx >= 0 for idx in indices)
         # [3, 1, 4, 9] -> [(9, 4), (-1, 3), (-1, 1)]
         if len(indices) >= 2:
-            indices = list(sorted(indices, reverse=True))
+            indices = sorted(indices, reverse=True)
             yield indices[0], indices[1]
             for idx in indices[2:]:
                 yield -1, idx
@@ -278,12 +279,13 @@ def _flatten_transpose(a, axeses):
         shapes: flattened shapes
     """
 
-    shapes = [
-        [a.shape[axis] for axis in axes]
-        for axes in axeses
-    ]
+    transpose_axes = []
+    shapes = []
+    for axes in axeses:
+        transpose_axes.extend(axes)
+        shapes.append([a.shape[axis] for axis in axes])
     return (
-        a.transpose(sum(axeses, ())).reshape(
+        a.transpose(transpose_axes).reshape(
             tuple(cupy.core.internal.prod(shape) for shape in shapes)),
         shapes
     )
@@ -430,8 +432,7 @@ def einsum(*operands, **kwargs):
                     "provided to broadcast the extra dimensions.")
         output_subscript = _parse_ellipsis_subscript(
             output_subscript, None,
-            ellipsis_len=len(
-                [label for label in dimension_dict.keys() if label < 0])
+            ellipsis_len=sum(label < 0 for label in dimension_dict.keys())
         )
 
         # Make sure output subscripts are in the input
@@ -473,7 +474,7 @@ def einsum(*operands, **kwargs):
                         sub.append(label)
                 input_subscripts[idx] = sub
                 operands[idx] = cupy.squeeze(arr, axis=tuple(squeeze_indices))
-                assert len(operands[idx].shape) == len(input_subscripts[idx])
+                assert operands[idx].ndim == len(input_subscripts[idx])
             del arr
 
     # unary einsum without summation should return a (writeable) view
@@ -481,7 +482,7 @@ def einsum(*operands, **kwargs):
 
     # unary sum
     for idx, sub in enumerate(input_subscripts):
-        other_subscripts = list(input_subscripts)
+        other_subscripts = copy.copy(input_subscripts)
         other_subscripts[idx] = output_subscript
         other_subscripts = _concat(other_subscripts)
         sum_axes = tuple(
