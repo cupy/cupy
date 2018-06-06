@@ -122,7 +122,7 @@ cudnnStatus_t cudnnOpTensor(...) {
 }
 
 
-// Tensor reduction
+// Tensor reductions
 cudnnStatus_t cudnnCreateReduceTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }

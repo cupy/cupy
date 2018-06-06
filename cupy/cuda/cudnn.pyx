@@ -153,7 +153,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor bDesc, void* B, void* beta,
         TensorDescriptor cDesc, void* C)
 
-    # Tensor reduction
+    # Tensor reductions
     int cudnnCreateReduceTensorDescriptor(ReduceTensorDescriptor* reduceTensorDesc)
     int cudnnSetReduceTensorDescriptor(
         ReduceTensorDescriptor reduceTensorDesc, ReduceTensorOp reduceTensorOp,
