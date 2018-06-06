@@ -61,11 +61,16 @@ def _parse_int_subscript(list_subscript):
     return str_subscript
 
 
-def _parse_einsum_input(operands):
+def _parse_einsum_input(args):
     """Parse einsum operands.
 
     This function is based on `numpy.core.einsumfunc._parse_einsum_input`
     function in NumPy 1.14.
+
+    Parameters
+    ----------
+    args : tuple
+        The non-keyword arguments to einsum
 
     Returns
     -------
@@ -74,7 +79,7 @@ def _parse_einsum_input(operands):
     output_string : str
         Parsed output string
     operands : list of array_like
-        The operands to use in the numpy contraction
+        The operands to use in the contraction
 
     Examples
     --------
@@ -89,15 +94,15 @@ def _parse_einsum_input(operands):
     (['@a, @a'], 'xz', [a, b])
     """
 
-    if len(operands) == 0:
+    if len(args) == 0:
         raise ValueError(
             "must specify the einstein sum subscripts string and at least one "
             "operand, or at least one operand and its corresponding "
             "subscripts list")
 
-    if isinstance(operands[0], str):
-        subscripts = operands[0]
-        operands = list(operands[1:])
+    if isinstance(args[0], str):
+        subscripts = args[0]
+        operands = list(args[1:])
 
         # Ensure all characters are valid
         for s in subscripts:
@@ -140,15 +145,14 @@ def _parse_einsum_input(operands):
                 "in the subscripts string")
 
     else:
-        tmp_operands = list(operands)
+        args = list(args)
         operands = []
         input_subscripts = []
-        while len(tmp_operands) >= 2:
-            operands.append(tmp_operands.pop(0))
-            input_subscripts.append(_parse_int_subscript(
-                tmp_operands.pop(0)))
-        if tmp_operands:
-            output_subscript = _parse_int_subscript(tmp_operands[0])
+        while len(args) >= 2:
+            operands.append(args.pop(0))
+            input_subscripts.append(_parse_int_subscript(args.pop(0)))
+        if args:
+            output_subscript = _parse_int_subscript(args[0])
         else:
             output_subscript = None
 
