@@ -42,6 +42,7 @@ typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
 typedef void* cudnnTensorDescriptor_t;
 typedef void* cudnnOpTensorDescriptor_t;
+typedef void* cudnnReduceTensorDescriptor_t;
 
 
 // Error handling
