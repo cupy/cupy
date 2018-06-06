@@ -1,6 +1,4 @@
 import copy
-import functools
-import operator
 import string
 import warnings
 
