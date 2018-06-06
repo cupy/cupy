@@ -23,10 +23,6 @@ def _concat(lists):
     return sum(lists, [])
 
 
-def _prod(xs):
-    return functools.reduce(operator.mul, xs, 1)
-
-
 def _transpose_ex(a, axeses):
     """Transpose and diagonal
 
@@ -288,7 +284,7 @@ def _flatten_transpose(a, axeses):
     ]
     return (
         a.transpose(sum(axeses, ())).reshape(
-            tuple(_prod(shape) for shape in shapes)),
+            tuple(cupy.core.internal.prod(shape) for shape in shapes)),
         shapes
     )
 
