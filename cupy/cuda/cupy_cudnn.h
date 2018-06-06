@@ -30,6 +30,9 @@ typedef enum {} cudnnSoftmaxAlgorithm_t;
 typedef enum {} cudnnSoftmaxMode_t;
 typedef enum {} cudnnTensorFormat_t;
 typedef enum {} cudnnOpTensorOp_t;
+typedef enum {} cudnnReduceTensorOp_t;
+typedef enum {} cudnnReduceTensorIndices_t;
+typedef enum {} cudnnIndicesType_t;
 typedef enum {} cudnnErrQueryMode_t;
 typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
