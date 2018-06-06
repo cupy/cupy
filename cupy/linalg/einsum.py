@@ -478,6 +478,7 @@ def einsum(*operands, **kwargs):
                 input_subscripts[num] = sub
                 operands[num] = cupy.squeeze(arr, axis=tuple(squeeze_indices))
                 assert len(operands[num].shape) == len(input_subscripts[num])
+            del arr
 
     # unary einsum without summation should return a (writeable) view
     returns_view = len(operands) == 1
@@ -559,6 +560,7 @@ def einsum(*operands, **kwargs):
             arr0, sub0, arr1, sub1, sub_others)
         operands.append(arr_out)
         input_subscripts.append(sub_out)
+        del arr0, arr1
 
     # unary einsum at last
     arr0, = operands
