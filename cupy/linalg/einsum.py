@@ -1,4 +1,5 @@
 import copy
+import itertools
 import string
 import warnings
 
@@ -16,10 +17,6 @@ options = {
 
 
 einsum_symbols = string.ascii_uppercase + string.ascii_lowercase
-
-
-def _concat(lists):
-    return sum(lists, [])
 
 
 def _transpose_ex(a, axeses):
@@ -419,7 +416,7 @@ def einsum(*operands, **kwargs):
 
     if output_subscript is None:
         # Build output subscripts
-        tmp_subscripts = _concat(input_subscripts)
+        tmp_subscripts = list(itertools.chain.from_iterable(input_subscripts))
         output_subscript = [
             label
             for label in sorted(set(tmp_subscripts))
@@ -438,7 +435,7 @@ def einsum(*operands, **kwargs):
         )
 
         # Make sure output subscripts are in the input
-        tmp_subscripts = set(_concat(input_subscripts))
+        tmp_subscripts = set(itertools.chain.from_iterable(input_subscripts))
         for label in output_subscript:
             if label not in tmp_subscripts:
                 raise ValueError(
@@ -486,7 +483,7 @@ def einsum(*operands, **kwargs):
     for idx, sub in enumerate(input_subscripts):
         other_subscripts = copy.copy(input_subscripts)
         other_subscripts[idx] = output_subscript
-        other_subscripts = _concat(other_subscripts)
+        other_subscripts = set(itertools.chain.from_iterable(other_subscripts))
         sum_axes = tuple(
             axis
             for axis, label in enumerate(sub)
@@ -545,7 +542,9 @@ def einsum(*operands, **kwargs):
         sub0 = input_subscripts.pop(idx0)
         arr1 = operands.pop(idx1)
         sub1 = input_subscripts.pop(idx1)
-        sub_others = _concat([output_subscript] + input_subscripts)
+        sub_others = list(itertools.chain(
+            output_subscript,
+            itertools.chain.from_iterable(input_subscripts)))
         arr_out, sub_out = reduced_binary_einsum(
             arr0, sub0, arr1, sub1, sub_others)
         operands.append(arr_out)
