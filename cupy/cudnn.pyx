@@ -454,7 +454,8 @@ def create_reduce_tensor_descriptor(reduce_type, dtype):
     desc = Descriptor(cudnn.createReduceTensorDescriptor(),
                       py_cudnn.destroyReduceTensorDescriptor)
     data_type = get_data_type(dtype)
-    if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN, cudnn.CUDNN_REDUCE_TENSOR_MAX):
+    if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN,
+                       cudnn.CUDNN_REDUCE_TENSOR_MAX):
         indices = cudnn.CUDNN_REDUCE_TENSOR_FLATTENED_INDICES
     else:
         indices = cudnn.CUDNN_REDUCE_TENSOR_NO_INDICES
