@@ -165,14 +165,14 @@ def _chr(label):
         return chr(label)
 
 
-def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
+def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
     """Parse a subscript that may contain ellipsis
 
     Args:
         subscript (str): An einsum subscript of an operand or an output. '...'
             should be replaced by '@'.
-        k (int or None): For error messages, give int k for the k-th operand
-            or None for the output.
+        idx (int or None): For error messages, give int idx for the idx-th
+            operand or None for the output.
         ndim (int, optional): ndim of the operand
         ellipsis_len (int, optional): number of broadcast dimensions of the
             output.
@@ -188,11 +188,11 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
             if len(sub) > ndim:
                 raise ValueError(
                     "einstein sum subscripts string %s contains too many "
-                    "subscripts for operand %d" % (sub, k))
+                    "subscripts for operand %d" % (sub, idx))
             raise ValueError(
                 "operand %d has more dimensions than subscripts string %s "
                 "given in einstein sum, but no '...' ellipsis provided to "
-                "broadcast the extra dimensions." % (k, sub))
+                "broadcast the extra dimensions." % (idx, sub))
         return [ord(label) for label in sub]
     elif len(subs) == 2:
         left_sub, right_sub = subs
@@ -201,7 +201,7 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
         if ellipsis_len < 0:
             raise ValueError(
                 "einstein sum subscripts string %s...%s contains too many "
-                "subscripts for operand %d" % (left_sub, right_sub, k))
+                "subscripts for operand %d" % (left_sub, right_sub, idx))
         ret = []
         ret.extend([ord(label) for label in left_sub])
         ret.extend(list(range(-ellipsis_len, 0)))
@@ -212,7 +212,7 @@ def _parse_ellipsis_subscript(subscript, k, ndim=None, ellipsis_len=None):
         raise ValueError(
             "einstein sum subscripts string contains a '.' that is not "
             "part of an ellipsis ('...') " +
-            ("in the output" if k is None else "for operand %d" % k))
+            ("in the output" if idx is None else "for operand %d" % idx))
 
 
 def _einsum_diagonals(input_subscripts, operands):
@@ -395,8 +395,8 @@ def einsum(*operands, **kwargs):
     ]
 
     input_subscripts = [
-        _parse_ellipsis_subscript(sub, k, ndim=arr.ndim)
-        for k, (sub, arr) in enumerate(zip(input_subscripts, operands))
+        _parse_ellipsis_subscript(sub, idx, ndim=arr.ndim)
+        for idx, (sub, arr) in enumerate(zip(input_subscripts, operands))
     ]
 
     # Get length of each unique dimension and ensure all dimensions are correct
