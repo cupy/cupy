@@ -483,7 +483,7 @@ def einsum(*operands, **kwargs):
     for idx, sub in enumerate(input_subscripts):
         other_subscripts = copy.copy(input_subscripts)
         other_subscripts[idx] = output_subscript
-        other_subscripts = list(itertools.chain.from_iterable(other_subscripts))
+        other_subscripts = set(itertools.chain.from_iterable(other_subscripts))
         sum_axes = tuple(
             axis
             for axis, label in enumerate(sub)
