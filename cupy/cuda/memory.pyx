@@ -797,6 +797,11 @@ cdef class SingleDeviceMemoryPool:
                     _compact_index(self, stream_ptr, False)
                 break
         finally:
+            # clear references to chunks from local variables
+            # so that errorMemoryAllocation cases in the following section
+            # can cudaFree() the chunks by gc.collect().
+            arena = None
+            free_list = None
             rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:

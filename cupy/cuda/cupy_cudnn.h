@@ -29,7 +29,8 @@ typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
 typedef enum {} cudnnSoftmaxMode_t;
 typedef enum {} cudnnTensorFormat_t;
-
+typedef enum {} cudnnErrQueryMode_t;
+typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
 typedef void* cudnnConvolutionDescriptor_t;
 typedef void* cudnnFilterDescriptor_t;
@@ -49,6 +50,10 @@ size_t cudnnGetVersion() {
     return CUDNN_STATUS_SUCCESS;
 }
 
+// Runtime error checking
+cudnnStatus_t cudnnQueryRuntimeError(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
 
 // Initialization and CUDA cooperation
 cudnnStatus_t cudnnCreate(...) {
@@ -164,29 +169,6 @@ cudnnStatus_t cudnnSoftmaxBackward(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-
-typedef enum {} cudnnConvolutionBwdDataAlgo_t;
-typedef enum {} cudnnConvolutionBwdDataPreference_t;
-typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
-typedef enum {} cudnnConvolutionBwdFilterPreference_t;
-typedef struct {
-  cudnnConvolutionFwdAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-} cudnnConvolutionFwdAlgoPerf_t;
-typedef struct {
-  cudnnConvolutionBwdFilterAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-} cudnnConvolutionBwdFilterAlgoPerf_t;
-typedef struct {
-  cudnnConvolutionBwdDataAlgo_t algo;
-  cudnnStatus_t status;
-  float time;
-  size_t memory;
-} cudnnConvolutionBwdDataAlgoPerf_t;
 
 cudnnStatus_t cudnnAddTensor_v3(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -321,6 +303,75 @@ cudnnStatus_t cudnnSetConvolutionGroupCount(...) {
 cudnnStatus_t cudnnGetConvolutionGroupCount(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
+
+typedef enum {} cudnnConvolutionBwdDataAlgo_t;
+typedef enum {} cudnnConvolutionBwdDataPreference_t;
+typedef enum {} cudnnConvolutionBwdFilterAlgo_t;
+typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef enum {} cudnnDeterminism_t;
+
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionFwdAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdFilterAlgoPerf_t;
+
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+} cudnnConvolutionBwdDataAlgoPerf_t;
+
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionFwdAlgoPerf_v7_t;
+
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionBwdFilterAlgoPerf_v7_t;
+
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionBwdDataAlgoPerf_v7_t;
 
 } // extern "C"
 
@@ -586,6 +637,71 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 6000)
+
+typedef enum {} cudnnDeterminism_t;
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 6000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+cudnnStatus_t cudnnFindConvolutionForwardAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnFindConvolutionBackwardFilterAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnFindConvolutionBackwardDataAlgorithmEx_v7(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+typedef struct {
+  cudnnConvolutionFwdAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionFwdAlgoPerf_v7_t;
+
+typedef struct {
+  cudnnConvolutionBwdFilterAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionBwdFilterAlgoPerf_v7_t;
+
+typedef struct {
+  cudnnConvolutionBwdDataAlgo_t algo;
+  cudnnStatus_t status;
+  float time;
+  size_t memory;
+  cudnnDeterminism_t determinism;
+  cudnnMathType_t mathType;
+  int reserved[3];
+} cudnnConvolutionBwdDataAlgoPerf_v7_t;
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+#define cudnnFindConvolutionForwardAlgorithmEx_v7 cudnnFindConvolutionForwardAlgorithmEx
+#define cudnnFindConvolutionBackwardFilterAlgorithmEx_v7 cudnnFindConvolutionBackwardFilterAlgorithmEx
+#define cudnnFindConvolutionBackwardDataAlgorithmEx_v7 cudnnFindConvolutionBackwardDataAlgorithmEx
+
+#define cudnnConvolutionFwdAlgoPerf_v7_t cudnnConvolutionFwdAlgoPerf_t
+#define cudnnConvolutionBwdFilterAlgoPerf_v7_t cudnnConvolutionBwdFilterAlgoPerf_t
+#define cudnnConvolutionBwdDataAlgoPerf_v7_t cudnnConvolutionBwdDataAlgoPerf_t
+
+#endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
+
+
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 // TODO: check function names when cuDNN 8 is released.
 
@@ -594,6 +710,18 @@ cudnnStatus_t cudnnSetConvolution2dDescriptor_v4(...) {
 #define cudnnGetConvolutionBackwardDataAlgorithm_v6 cudnnGetConvolutionBackwardDataAlgorithm
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
+
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+typedef enum {} cudnnErrQueryMode_t;
+typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
+
+cudnnStatus_t cudnnQueryRuntimeError(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
 
 } // extern "C"
 

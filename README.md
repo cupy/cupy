@@ -26,10 +26,21 @@ For detailed instructions on installing CuPy, see [the installation guide](https
 You can install CuPy using `pip`:
 
 ```sh
+(Binary Package for CUDA 8.0)
+$ pip install cupy-cuda80
+
+(Binary Package for CUDA 9.0)
+$ pip install cupy-cuda90
+
+(Binary Package for CUDA 9.1)
+$ pip install cupy-cuda91
+
+(Source Package)
 $ pip install cupy
 ```
 
-Note that if you want to enable CUDA, cuDNN, and/or NCCL, they need to be set up before installation of CuPy.
+The latest version of cuDNN and NCCL libraries are included in binary packages (wheels).
+For the source package, you will need to install cuDNN/NCCL before installing CuPy, if you want to use it.
 
 ## Run with Docker
 
@@ -54,6 +65,7 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 
 MIT License (see `LICENSE` file).
 
+CuPy is designed based on NumPy's API and SciPy's API (see `LICENSE_THIRD_PARTY` file).
 
 ## Reference
 

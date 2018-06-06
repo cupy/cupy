@@ -6,6 +6,7 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
+import glob
 import os
 from os import path
 import shutil
@@ -17,6 +18,9 @@ from setuptools.command import build_ext
 from setuptools.command import sdist
 
 from install import build
+from install.build import PLATFORM_DARWIN
+from install.build import PLATFORM_LINUX
+from install.build import PLATFORM_WIN32
 
 
 required_cython_version = pkg_resources.parse_version('0.26.1')
@@ -29,6 +33,7 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core.core',
+            'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.cuda.cublas',
@@ -120,7 +125,7 @@ MODULES = [
             'nvToolsExt.h',
         ],
         'libraries': [
-            'nvToolsExt' if not sys.platform == 'win32' else 'nvToolsExt64_1',
+            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
     },
@@ -193,7 +198,7 @@ def check_readthedocs_environment():
 
 
 def check_library(compiler, includes=(), libraries=(),
-                  include_dirs=(), library_dirs=()):
+                  include_dirs=(), library_dirs=(), define_macros=None):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main(int argc, char* argv[]) {return 0;}'
@@ -203,7 +208,7 @@ def check_library(compiler, includes=(), libraries=(),
         # Especially when a user build an executable, distutils does not use
         # LDFLAGS environment variable.
         build.build_shlib(compiler, source, libraries,
-                          include_dirs, library_dirs)
+                          include_dirs, library_dirs, define_macros)
     except Exception as e:
         print(e)
         sys.stdout.flush()
@@ -256,12 +261,14 @@ def preconfigure_modules(compiler, settings):
         sys.stdout.flush()
         if not check_library(compiler,
                              includes=module['include'],
-                             include_dirs=settings['include_dirs']):
+                             include_dirs=settings['include_dirs'],
+                             define_macros=settings['define_macros']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
         elif not check_library(compiler,
                                libraries=module['libraries'],
-                               library_dirs=settings['library_dirs']):
+                               library_dirs=settings['library_dirs'],
+                               define_macros=settings['define_macros']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
         elif ('check_method' in module and
@@ -321,9 +328,9 @@ def preconfigure_modules(compiler, settings):
 
 
 def _rpath_base():
-    if sys.platform.startswith('linux'):
+    if PLATFORM_LINUX:
         return '$ORIGIN'
-    elif sys.platform.startswith('darwin'):
+    elif PLATFORM_DARWIN:
         return '@loader_path'
     else:
         raise Exception('not supported on this platform')
@@ -343,7 +350,8 @@ def make_extensions(options, compiler, use_cython):
         x for x in settings['library_dirs'] if path.exists(x)]
 
     # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
-    use_wheel_libs_rpath = 0 < len(options['wheel_libs'])
+    use_wheel_libs_rpath = (
+        0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
 
     # This is a workaround for Anaconda.
     # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
@@ -386,7 +394,7 @@ def make_extensions(options, compiler, use_cython):
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
-            if compiler.compiler_type == 'unix' and sys.platform != 'darwin':
+            if compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
                 # In mac environment, openmp is not required.
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
@@ -411,9 +419,9 @@ def make_extensions(options, compiler, use_cython):
                 depth = name.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
 
-            if sys.platform != 'win32':
+            if not PLATFORM_WIN32:
                 s['runtime_library_dirs'] = rpath
-            if sys.platform == 'darwin':
+            if PLATFORM_DARWIN:
                 args = s.setdefault('extra_link_args', [])
                 args.append(
                     '-Wl,' + ','.join('-rpath,' + p
@@ -489,23 +497,38 @@ def get_long_description():
 
 
 def prepare_wheel_libs():
-    libs = []
-    libdir = 'cupy/_lib'
+    """Prepare shared libraries for wheels.
 
-    # Clean up the library directory.
-    if os.path.exists(libdir):
-        print("Removing directory: {}".format(libdir))
-        shutil.rmtree(libdir)
-    os.mkdir(libdir)
+    On Windows, DLLs will be placed under `cupy/cuda`.
+    On other platforms, shared libraries are placed under `cupy/_libs` and
+    RUNPATH will be set to this directory later.
+    """
+    libdirname = None
+    if PLATFORM_WIN32:
+        libdirname = 'cuda'
+        # Clean up existing libraries.
+        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
+        for libfile in libfiles:
+            print("Removing file: {}".format(libfile))
+            os.remove(libfile)
+    else:
+        libdirname = '_lib'
+        # Clean up the library directory.
+        libdir = 'cupy/{}'.format(libdirname)
+        if os.path.exists(libdir):
+            print("Removing directory: {}".format(libdir))
+            shutil.rmtree(libdir)
+        os.mkdir(libdir)
 
     # Copy specified libraries to the library directory.
+    libs = []
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
         print("Copying library for wheel: {}".format(lib))
         libname = path.basename(lib)
-        libpath = '{}/{}'.format(libdir, libname)
+        libpath = 'cupy/{}/{}'.format(libdirname, libname)
         shutil.copy2(lib, libpath)
-        libs.append('_lib/{}'.format(libname))
+        libs.append('{}/{}'.format(libdirname, libname))
     return libs
 
 
@@ -727,7 +750,7 @@ class custom_build_ext(build_ext.build_ext):
                     try:
                         return func(*args, **kwargs)
                     except errors.DistutilsPlatformError:
-                        if not sys.platform == 'win32':
+                        if not PLATFORM_WIN32:
                             CCompiler = _UnixCCompiler
                         else:
                             CCompiler = _MSVCCompiler
