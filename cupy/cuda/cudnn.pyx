@@ -787,7 +787,7 @@ cpdef size_t getReductionIndicesSize(size_t handle, size_t reduceTensorDesc,
                                      size_t aDesc, size_t cDesc) except *:
     cdef size_t sizeInBytes
     status = cudnnGetReductionIndicesSize(
-        <Handle>handle, <TensorDescriptor>reduceTensorDesc,
+        <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
         <TensorDescriptor>aDesc, <TensorDescriptor>cDesc, &sizeInBytes)
     check_status(status)
     return sizeInBytes
