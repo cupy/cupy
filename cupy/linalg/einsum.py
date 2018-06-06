@@ -220,9 +220,9 @@ def _einsum_diagonals(input_subscripts, operands):
 
     This function mutates args.
     """
-    for num in six.moves.range(len(input_subscripts)):
-        sub = input_subscripts[num]
-        arr = operands[num]
+    for idx in six.moves.range(len(input_subscripts)):
+        sub = input_subscripts[idx]
+        arr = operands[idx]
 
         if len(set(sub)) < len(sub):
             axeses = {}
@@ -241,12 +241,12 @@ def _einsum_diagonals(input_subscripts, operands):
                     raise ValueError(
                         "dimensions in operand %d"
                         " for collapsing index '%s' don't match (%d != %d)"
-                        % (num, _chr(label), dim0, dim1)
+                        % (idx, _chr(label), dim0, dim1)
                     )
 
             sub, axes = zip(*axeses)
-            input_subscripts[num] = list(sub)
-            operands[num] = _transpose_ex(arr, list(axes))
+            input_subscripts[idx] = list(sub)
+            operands[idx] = _transpose_ex(arr, list(axes))
 
 
 def _iter_path_pairs(path):
@@ -401,9 +401,9 @@ def einsum(*operands, **kwargs):
 
     # Get length of each unique dimension and ensure all dimensions are correct
     dimension_dict = {}
-    for tnum, term in enumerate(input_subscripts):
-        sh = operands[tnum].shape
-        for axis, label in enumerate(term):
+    for idx, sub in enumerate(input_subscripts):
+        sh = operands[idx].shape
+        for axis, label in enumerate(sub):
             dim = sh[axis]
             if label in dimension_dict.keys():
                 # For broadcasting cases we always want the largest dim size
@@ -413,7 +413,7 @@ def einsum(*operands, **kwargs):
                     dim_old = dimension_dict[label]
                     raise ValueError("Size of label '%s' for operand %d (%d) "
                                      "does not match previous terms (%d)."
-                                     % (_chr(label), tnum, dim, dim_old))
+                                     % (_chr(label), idx, dim, dim_old))
             else:
                 dimension_dict[label] = dim
 
@@ -465,28 +465,28 @@ def einsum(*operands, **kwargs):
 
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
-        for num in six.moves.range(len(operands)):
-            arr = operands[num]
+        for idx in six.moves.range(len(operands)):
+            arr = operands[idx]
             if 1 in arr.shape:
                 squeeze_indices = []
                 sub = []
-                for axis, label in enumerate(input_subscripts[num]):
+                for axis, label in enumerate(input_subscripts[idx]):
                     if arr.shape[axis] == 1:
                         squeeze_indices.append(axis)
                     else:
                         sub.append(label)
-                input_subscripts[num] = sub
-                operands[num] = cupy.squeeze(arr, axis=tuple(squeeze_indices))
-                assert len(operands[num].shape) == len(input_subscripts[num])
+                input_subscripts[idx] = sub
+                operands[idx] = cupy.squeeze(arr, axis=tuple(squeeze_indices))
+                assert len(operands[idx].shape) == len(input_subscripts[idx])
             del arr
 
     # unary einsum without summation should return a (writeable) view
     returns_view = len(operands) == 1
 
     # unary sum
-    for num, sub in enumerate(input_subscripts):
+    for idx, sub in enumerate(input_subscripts):
         other_subscripts = list(input_subscripts)
-        other_subscripts[num] = output_subscript
+        other_subscripts[idx] = output_subscript
         other_subscripts = _concat(other_subscripts)
         sum_axes = tuple(
             axis
@@ -495,13 +495,13 @@ def einsum(*operands, **kwargs):
         )
         if sum_axes:
             returns_view = False
-            input_subscripts[num] = [
+            input_subscripts[idx] = [
                 label
                 for axis, label in enumerate(sub)
                 if axis not in sum_axes
             ]
 
-            operands[num] = operands[num].sum(
+            operands[idx] = operands[idx].sum(
                 axis=sum_axes, dtype=result_dtype)
 
     if returns_view:
