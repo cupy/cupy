@@ -271,6 +271,7 @@ class TestListArgEinSumError(unittest.TestCase):
 @testing.with_requires('numpy!=1.14.0')
 class TestEinSumUnaryOperation(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
