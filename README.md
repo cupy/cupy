@@ -65,6 +65,7 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 
 MIT License (see `LICENSE` file).
 
+CuPy is designed based on NumPy's API and SciPy's API (see `LICENSE_THIRD_PARTY` file).
 
 ## Reference
 
