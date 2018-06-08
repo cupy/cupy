@@ -173,6 +173,40 @@ class TestNormal(RandomGeneratorTestCase):
 
 @testing.gpu
 @testing.parameterize(*[
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},
+    {'args': ([10., 10.], [[20., 10.], [10., 20.]]),
+     'size': None, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 10, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (1, 2, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 3, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (3, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (), 'tol': 1e-6},
+])
+@testing.fix_random()
+class TestMultivariateNormal(RandomGeneratorTestCase):
+
+    target_method = 'multivariate_normal'
+
+    def check_multivariate_normal(self, dtype):
+        vals = self.generate_many(
+            mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
+            dtype=dtype, _count=10)
+
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape + (2,)
+
+    def test_multivariate_normal_float32(self):
+        self.check_multivariate_normal(numpy.float32)
+
+    def test_multivariate_normal_float64(self):
+        self.check_multivariate_normal(numpy.float64)
+
+
+@testing.gpu
+@testing.parameterize(*[
     {'size': None},
     {'size': 10},
     {'size': (1, 2, 3)},
@@ -516,6 +550,116 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         self.assertEqual(numpy.unique(val).size, val.size)
 
 
+@testing.parameterize(
+    {'n': 5, 'p': 0.5},
+    {'n': 5, 'p': 0.0},
+    {'n': 5, 'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBinomial(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'binomial'
+
+    def test_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 1.0, 'b': 3.0},
+    {'a': 3.0, 'b': 3.0},
+    {'a': 3.0, 'b': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBeta(RandomGeneratorTestCase):
+
+    target_method = 'beta'
+
+    def test_beta(self):
+        self.generate(a=self.a, b=self.b, size=(3, 2))
+
+
+@testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestChisquare(RandomGeneratorTestCase):
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        self.generate(df=self.df, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+
+@testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestF(RandomGeneratorTestCase):
+
+    target_method = 'f'
+
+    def test_f(self):
+        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+
+@testing.parameterize(
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGamma(RandomGeneratorTestCase):
+
+    target_method = 'gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
+
+    def test_gamma_2(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
+@testing.parameterize(
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGeometric(RandomGeneratorTestCase):
+
+    target_method = 'geometric'
+
+    def test_geometric(self):
+        self.generate(p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestGumbel(RandomGeneratorTestCase):
@@ -534,6 +678,52 @@ class TestGumbel(RandomGeneratorTestCase):
 
 @testing.gpu
 @testing.fix_random()
+class TestLaplace(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'laplace'
+
+    def test_laplace_1(self):
+        self.generate()
+
+    def test_laplace_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 1.0},
+    {'a': 3.0},
+    {'a': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPareto(RandomGeneratorTestCase):
+
+    target_method = 'pareto'
+
+    def test_pareto(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
+    {'lam': 1.0},
+    {'lam': 3.0},
+    {'lam': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPoisson(RandomGeneratorTestCase):
+
+    target_method = 'poisson'
+
+    def test_poisson(self):
+        self.generate(lam=self.lam, size=(3, 2))
+
+
+@testing.gpu
+@testing.fix_random()
 class TestRandint(RandomGeneratorTestCase):
     # TODO(niboshi):
     #   Test soundness of distribution.
@@ -546,6 +736,41 @@ class TestRandint(RandomGeneratorTestCase):
 
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
+
+
+@testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardT(RandomGeneratorTestCase):
+
+    target_method = 'standard_t'
+
+    def test_standard_t(self):
+        self.generate(df=self.df, size=(3, 2))
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardCauchy(RandomGeneratorTestCase):
+
+    target_method = 'standard_cauchy'
+
+    def test_standard_cauchy(self):
+        self.generate(size=(3, 2))
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardExponential(RandomGeneratorTestCase):
+
+    target_method = 'standard_exponential'
+
+    def test_standard_exponential(self):
+        self.generate(size=(3, 2))
 
 
 @testing.gpu

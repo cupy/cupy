@@ -4,6 +4,7 @@ import functools
 import operator
 import os
 import time
+import warnings
 
 import numpy
 import six
@@ -13,20 +14,7 @@ from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
-
-
-_gumbel_kernel = None
-
-
-def _get_gumbel_kernel():
-    global _gumbel_kernel
-    if _gumbel_kernel is None:
-        _gumbel_kernel = core.ElementwiseKernel(
-            'T x, T loc, T scale', 'T y',
-            'y = loc - log(-log(1 - x)) * scale',
-            'gumbel_kernel'
-        )
-    return _gumbel_kernel
+from cupy.random import kernels
 
 
 class RandomState(object):
@@ -85,222 +73,50 @@ class RandomState(object):
 
     # NumPy compatible functions
 
-    def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from a log normal distribution.
+    def beta(self, a, b, size=None, dtype=float):
+        """Returns an array of samples drawn from the beta distribution.
 
         .. seealso::
-            :func:`cupy.random.lognormal` for full documentation,
-            :meth:`numpy.random.RandomState.lognormal`
-
+            :func:`cupy.random.beta` for full documentation,
+            :meth:`numpy.random.RandomState.beta`
         """
-        dtype = _check_and_get_dtype(dtype)
-        if dtype.char == 'f':
-            func = curand.generateLogNormal
-        else:
-            func = curand.generateLogNormalDouble
-        return self._generate_normal(func, size, dtype, mean, sigma)
-
-    def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
-        """Returns an array of normally distributed samples.
-
-        .. seealso::
-            :func:`cupy.random.normal` for full documentation,
-            :meth:`numpy.random.RandomState.normal`
-
-        """
-        dtype = _check_and_get_dtype(dtype)
-        if dtype.char == 'f':
-            func = curand.generateNormal
-        else:
-            func = curand.generateNormalDouble
-        return self._generate_normal(func, size, dtype, loc, scale)
-
-    def rand(self, *size, **kwarg):
-        """Returns uniform random values over the interval ``[0, 1)``.
-
-        .. seealso::
-            :func:`cupy.random.rand` for full documentation,
-            :meth:`numpy.random.RandomState.rand`
-
-        """
-        dtype = kwarg.pop('dtype', float)
-        if kwarg:
-            raise TypeError('rand() got unexpected keyword arguments %s'
-                            % ', '.join(kwarg.keys()))
-        return self.random_sample(size=size, dtype=dtype)
-
-    def randn(self, *size, **kwarg):
-        """Returns an array of standard normal random values.
-
-        .. seealso::
-            :func:`cupy.random.randn` for full documentation,
-            :meth:`numpy.random.RandomState.randn`
-
-        """
-        dtype = kwarg.pop('dtype', float)
-        if kwarg:
-            raise TypeError('randn() got unexpected keyword arguments %s'
-                            % ', '.join(kwarg.keys()))
-        return self.normal(size=size, dtype=dtype)
-
-    _1m_kernel = core.ElementwiseKernel(
-        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
-
-    def random_sample(self, size=None, dtype=float):
-        """Returns an array of random values over the interval ``[0, 1)``.
-
-        .. seealso::
-            :func:`cupy.random.random_sample` for full documentation,
-            :meth:`numpy.random.RandomState.random_sample`
-
-        """
-        dtype = _check_and_get_dtype(dtype)
-        out = cupy.empty(size, dtype=dtype)
-        if dtype.char == 'f':
-            func = curand.generateUniform
-        else:
-            func = curand.generateUniformDouble
-        func(self._generator, out.data.ptr, out.size)
-        RandomState._1m_kernel(out)
-        return out
-
-    def interval(self, mx, size):
-        """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
-
-        Args:
-            mx (int): Upper bound of the interval
-            size (None or int or tuple): Shape of the array or the scalar
-                returned.
-        Returns:
-            int or cupy.ndarray: If ``None``, an :class:`cupy.ndarray` with
-            shape ``()`` is returned.
-            If ``int``, 1-D array of length size is returned.
-            If ``tuple``, multi-dimensional array with shape
-            ``size`` is returned.
-            Currently, only 32 bit integers can be sampled.
-            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
-            a ``numpy.int32`` array is returned.
-            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
-            a ``numpy.uint32`` array is returned.
-        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_beta_kernel()(a, b, self.rk_seed, y)
         if size is None:
-            return self.interval(mx, 1).reshape(())
-        elif isinstance(size, int):
-            size = (size, )
-
-        if mx == 0:
-            return cupy.zeros(size, dtype=numpy.int32)
-
-        if mx < 0:
-            raise ValueError(
-                'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= 0x7fffffff:
-            dtype = numpy.int32
-        elif mx <= 0xffffffff:
-            dtype = numpy.uint32
+            self.rk_seed += 1
         else:
-            raise ValueError(
-                'mx must be within uint32 range (actual: {})'.format(mx))
+            self.rk_seed += numpy.prod(size)
+        return y
 
-        mask = (1 << mx.bit_length()) - 1
-        mask = cupy.array(mask, dtype=dtype)
-
-        n = functools.reduce(operator.mul, size, 1)
-
-        sample = cupy.empty((n,), dtype=dtype)
-        n_rem = n  # The number of remaining elements to sample
-        ret = None
-        while n_rem > 0:
-            curand.generate(
-                self._generator, sample.data.ptr, sample.size)
-            # Drop the samples that exceed the upper limit
-            sample &= mask
-            success = sample <= mx
-
-            if ret is None:
-                # If the sampling has finished in the first iteration,
-                # just return the sample.
-                if success.all():
-                    n_rem = 0
-                    ret = sample
-                    break
-
-                # Allocate the return array.
-                ret = cupy.empty((n,), dtype=dtype)
-
-            n_succ = min(n_rem, int(success.sum()))
-            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
-            n_rem -= n_succ
-
-        assert n_rem == 0
-        return ret.reshape(size)
-
-    def seed(self, seed=None):
-        """Resets the state of the random number generator with a seed.
+    def binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the binomial distribution.
 
         .. seealso::
-            :func:`cupy.random.seed` for full documentation,
-            :meth:`numpy.random.RandomState.seed`
-
+            :func:`cupy.random.binomial` for full documentation,
+            :meth:`numpy.random.RandomState.binomial`
         """
-        if seed is None:
-            try:
-                seed_str = binascii.hexlify(os.urandom(8))
-                seed = numpy.uint64(int(seed_str, 16))
-            except NotImplementedError:
-                seed = numpy.uint64(time.clock() * 1000000)
-        else:
-            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
-
-        curand.setPseudoRandomGeneratorSeed(self._generator, seed)
-        curand.setGeneratorOffset(self._generator, 0)
-
-    def standard_normal(self, size=None, dtype=float):
-        """Returns samples drawn from the standard normal distribution.
-
-        .. seealso::
-            :func:`cupy.random.standard_normal` for full documentation,
-            :meth:`numpy.random.RandomState.standard_normal`
-
-        """
-        return self.normal(size=size, dtype=dtype)
-
-    def tomaxint(self, size=None):
-        """Draws integers between 0 and max integer inclusive.
-
-        Args:
-            size (int or tuple of ints): Output shape.
-
-        Returns:
-            cupy.ndarray: Drawn samples.
-
-        .. seealso::
-            :meth:`numpy.random.RandomState.tomaxint`
-
-        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_binomial_kernel()(n, p, self.rk_seed, y)
         if size is None:
-            size = ()
-        sample = cupy.empty(size, dtype=cupy.int_)
-        # cupy.random only uses int32 random generator
-        size_in_int = sample.dtype.itemsize // 4
-        curand.generate(
-            self._generator, sample.data.ptr, sample.size * size_in_int)
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
 
-        # Disable sign bit
-        sample &= cupy.iinfo(cupy.int_).max
-        return sample
-
-    def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
-        """Returns an array of uniformly-distributed samples over an interval.
+    def chisquare(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from the chi-square distribution.
 
         .. seealso::
-            :func:`cupy.random.uniform` for full documentation,
-            :meth:`numpy.random.RandomState.uniform`
-
+            :func:`cupy.random.chisquare` for full documentation,
+            :meth:`numpy.random.RandomState.chisquare`
         """
-        dtype = numpy.dtype(dtype)
-        rand = self.random_sample(size=size, dtype=dtype)
-        return dtype.type(low) + rand * dtype.type(high - low)
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_chisquare_kernel()(df, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
 
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
@@ -379,21 +195,261 @@ class RandomState(object):
 
         return a[index]
 
-    def shuffle(self, a):
-        """Returns a shuffled array.
+    def dirichlet(self, alpha, size=None, dtype=float):
+        """Returns an array of samples drawn from the dirichlet distribution.
 
         .. seealso::
-            :func:`cupy.random.shuffle` for full document,
-            :func:`numpy.random.shuffle`
+            :func:`cupy.random.dirichlet` for full documentation,
+            :meth:`numpy.random.RandomState.dirichlet`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_gamma_kernel()(alpha, self.rk_seed, y)
+        y /= cupy.expand_dims(y.sum(axis=-1), axis=-1)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def f(self, dfnum, dfden, size=None, dtype=float):
+        """Returns an array of samples drawn from the f distribution.
+
+        .. seealso::
+            :func:`cupy.random.f` for full documentation,
+            :meth:`numpy.random.RandomState.f`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_f_kernel()(dfnum, dfden, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def gamma(self, shape, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a gamma distribution.
+
+        .. seealso::
+            :func:`cupy.random.gamma` for full documentation,
+            :meth:`numpy.random.RandomState.gamma`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_gamma_kernel()(shape, self.rk_seed, y)
+        y *= scale
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def geometric(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the geometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.geometric` for full documentation,
+            :meth:`numpy.random.RandomState.geometric`
+        """
+        y = cupy.zeros(shape=size, dtype=int)
+        kernels._get_geometric_kernel()(p, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a Gumbel distribution.
+
+        .. seealso::
+            :func:`cupy.random.gumbel` for full documentation,
+            :meth:`numpy.random.RandomState.gumbel`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        # We use `1 - x` as input of `log` method to prevent overflow.
+        # It obeys numpy implementation.
+        kernels._get_gumbel_kernel()(x, loc, scale, x)
+        return x
+
+    def interval(self, mx, size):
+        """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
+
+        Args:
+            mx (int): Upper bound of the interval
+            size (None or int or tuple): Shape of the array or the scalar
+                returned.
+        Returns:
+            int or cupy.ndarray: If ``None``, an :class:`cupy.ndarray` with
+            shape ``()`` is returned.
+            If ``int``, 1-D array of length size is returned.
+            If ``tuple``, multi-dimensional array with shape
+            ``size`` is returned.
+            Currently, only 32 bit integers can be sampled.
+            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
+            a ``numpy.int32`` array is returned.
+            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
+            a ``numpy.uint32`` array is returned.
+        """
+        if size is None:
+            return self.interval(mx, 1).reshape(())
+        elif isinstance(size, int):
+            size = (size, )
+
+        if mx == 0:
+            return cupy.zeros(size, dtype=numpy.int32)
+
+        if mx < 0:
+            raise ValueError(
+                'mx must be non-negative (actual: {})'.format(mx))
+        elif mx <= 0x7fffffff:
+            dtype = numpy.int32
+        elif mx <= 0xffffffff:
+            dtype = numpy.uint32
+        else:
+            raise ValueError(
+                'mx must be within uint32 range (actual: {})'.format(mx))
+
+        mask = (1 << mx.bit_length()) - 1
+        mask = cupy.array(mask, dtype=dtype)
+
+        n = functools.reduce(operator.mul, size, 1)
+
+        sample = cupy.empty((n,), dtype=dtype)
+        n_rem = n  # The number of remaining elements to sample
+        ret = None
+        while n_rem > 0:
+            curand.generate(
+                self._generator, sample.data.ptr, sample.size)
+            # Drop the samples that exceed the upper limit
+            sample &= mask
+            success = sample <= mx
+
+            if ret is None:
+                # If the sampling has finished in the first iteration,
+                # just return the sample.
+                if success.all():
+                    n_rem = 0
+                    ret = sample
+                    break
+
+                # Allocate the return array.
+                ret = cupy.empty((n,), dtype=dtype)
+
+            n_succ = min(n_rem, int(success.sum()))
+            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
+            n_rem -= n_succ
+
+        assert n_rem == 0
+        return ret.reshape(size)
+
+    def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from the laplace distribution.
+
+        .. seealso::
+            :func:`cupy.random.laplace` for full documentation,
+            :meth:`numpy.random.RandomState.laplace`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        kernels._get_laplace_kernel()(x, loc, scale, x)
+        return x
+
+    def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a log normal distribution.
+
+        .. seealso::
+            :func:`cupy.random.lognormal` for full documentation,
+            :meth:`numpy.random.RandomState.lognormal`
 
         """
-        if not isinstance(a, cupy.ndarray):
-            raise TypeError('The array must be cupy.ndarray')
+        dtype = _check_and_get_dtype(dtype)
+        if dtype.char == 'f':
+            func = curand.generateLogNormal
+        else:
+            func = curand.generateLogNormalDouble
+        return self._generate_normal(func, size, dtype, mean, sigma)
 
-        if a.ndim == 0:
-            raise TypeError('An array whose ndim is 0 is not supported')
+    def multivariate_normal(self, mean, cov, size=None, check_valid='warn',
+                            tol=1e-8, dtype=float):
+        """Returns an array of samples drawn from the multivariate normal distribution.
 
-        a[:] = a[self.permutation(len(a))]
+        .. seealso::
+            :func:`cupy.random.multivariate_normal` for full documentation,
+            :meth:`numpy.random.RandomState.multivariate_normal`
+
+        """
+        mean = cupy.array(mean, dtype=dtype)
+        cov = cupy.array(cov, dtype=dtype)
+        if size is None:
+            shape = []
+        elif isinstance(size, (int, cupy.integer)):
+            shape = [size]
+        else:
+            shape = size
+
+        if len(mean.shape) != 1:
+            raise ValueError("mean must be 1 dimensional")
+        if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
+            raise ValueError("cov must be 2 dimensional and square")
+        if mean.shape[0] != cov.shape[0]:
+            raise ValueError("mean and cov must have same length")
+        final_shape = list(shape[:])
+        final_shape.append(mean.shape[0])
+
+        x = self.standard_normal(size=final_shape, dtype=dtype)
+        x = x.reshape(-1, mean.shape[0])
+
+        (u, s, v) = cupy.linalg.svd(cov)
+
+        if check_valid != 'ignore':
+            if check_valid != 'warn' and check_valid != 'raise':
+                raise ValueError(
+                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+
+            a = cupy.dot(v.T * s, v)
+            b = cov
+            psd = cupy.all(cupy.abs(a-b) <= tol*(1+cupy.abs(b)))
+            if not psd:
+                if check_valid == 'warn':
+                    warnings.warn(
+                        "covariance is not symmetric positive-semidefinite.",
+                        RuntimeWarning)
+                else:
+                    raise ValueError(
+                        "covariance is not symmetric positive-semidefinite.")
+
+        x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
+        x += mean
+        x.shape = tuple(final_shape)
+        return x
+
+    def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of normally distributed samples.
+
+        .. seealso::
+            :func:`cupy.random.normal` for full documentation,
+            :meth:`numpy.random.RandomState.normal`
+
+        """
+        dtype = _check_and_get_dtype(dtype)
+        if dtype.char == 'f':
+            func = curand.generateNormal
+        else:
+            func = curand.generateNormalDouble
+        return self._generate_normal(func, size, dtype, loc, scale)
+
+    def pareto(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the pareto II distribution.
+
+        .. seealso::
+            :func:`cupy.random.pareto_kernel` for full documentation,
+            :meth:`numpy.random.RandomState.pareto`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_pareto_kernel()(a, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
 
     def permutation(self, num):
         """Returns a permuted range."""
@@ -427,18 +483,34 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
-    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
-        """Returns an array of samples drawn from a Gumbel distribution.
+    def poisson(self, lam=1.0, size=None, dtype=int):
+        """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
-            :func:`cupy.random.gumbel` for full documentation,
-            :meth:`numpy.random.RandomState.gumbel`
+            :func:`cupy.random.poisson` for full documentation,
+            :meth:`numpy.random.RandomState.poisson`
         """
-        x = self.uniform(size=size, dtype=dtype)
-        # We use `1 - x` as input of `log` method to prevent overflow.
-        # It obeys numpy implementation.
-        _get_gumbel_kernel()(x, loc, scale, x)
-        return x
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_poisson_kernel()(lam, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def rand(self, *size, **kwarg):
+        """Returns uniform random values over the interval ``[0, 1)``.
+
+        .. seealso::
+            :func:`cupy.random.rand` for full documentation,
+            :meth:`numpy.random.RandomState.rand`
+
+        """
+        dtype = kwarg.pop('dtype', float)
+        if kwarg:
+            raise TypeError('rand() got unexpected keyword arguments %s'
+                            % ', '.join(kwarg.keys()))
+        return self.random_sample(size=size, dtype=dtype)
 
     def randint(self, low, high=None, size=None, dtype='l'):
         """Returns a scalar or an array of integer values over ``[low, high)``.
@@ -471,6 +543,171 @@ class RandomState(object):
         x = self.interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
+
+    def randn(self, *size, **kwarg):
+        """Returns an array of standard normal random values.
+
+        .. seealso::
+            :func:`cupy.random.randn` for full documentation,
+            :meth:`numpy.random.RandomState.randn`
+
+        """
+        dtype = kwarg.pop('dtype', float)
+        if kwarg:
+            raise TypeError('randn() got unexpected keyword arguments %s'
+                            % ', '.join(kwarg.keys()))
+        return self.normal(size=size, dtype=dtype)
+
+    _1m_kernel = core.ElementwiseKernel(
+        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
+
+    def random_sample(self, size=None, dtype=float):
+        """Returns an array of random values over the interval ``[0, 1)``.
+
+        .. seealso::
+            :func:`cupy.random.random_sample` for full documentation,
+            :meth:`numpy.random.RandomState.random_sample`
+
+        """
+        dtype = _check_and_get_dtype(dtype)
+        out = cupy.empty(size, dtype=dtype)
+        if dtype.char == 'f':
+            func = curand.generateUniform
+        else:
+            func = curand.generateUniformDouble
+        func(self._generator, out.data.ptr, out.size)
+        RandomState._1m_kernel(out)
+        return out
+
+    def shuffle(self, a):
+        """Returns a shuffled array.
+
+        .. seealso::
+            :func:`cupy.random.shuffle` for full document,
+            :func:`numpy.random.shuffle`
+
+        """
+        if not isinstance(a, cupy.ndarray):
+            raise TypeError('The array must be cupy.ndarray')
+
+        if a.ndim == 0:
+            raise TypeError('An array whose ndim is 0 is not supported')
+
+        a[:] = a[self.permutation(len(a))]
+
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_cauchy_kernel()(self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def standard_exponential(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard exp distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_exponential` for full documentation,
+            :meth:`numpy.random.RandomState.standard_exponential`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_exponential_kernel()(self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def standard_normal(self, size=None, dtype=float):
+        """Returns samples drawn from the standard normal distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_normal` for full documentation,
+            :meth:`numpy.random.RandomState.standard_normal`
+
+        """
+        return self.normal(size=size, dtype=dtype)
+
+    def standard_t(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard t distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_t` for full documentation,
+            :meth:`numpy.random.RandomState.standard_t`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        kernels._get_standard_t_kernel()(df, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
+    def seed(self, seed=None):
+        """Resets the state of the random number generator with a seed.
+
+        .. seealso::
+            :func:`cupy.random.seed` for full documentation,
+            :meth:`numpy.random.RandomState.seed`
+
+        """
+        if seed is None:
+            try:
+                seed_str = binascii.hexlify(os.urandom(8))
+                seed = numpy.uint64(int(seed_str, 16))
+            except NotImplementedError:
+                seed = numpy.uint64(time.clock() * 1000000)
+        else:
+            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
+
+        curand.setPseudoRandomGeneratorSeed(self._generator, seed)
+        curand.setGeneratorOffset(self._generator, 0)
+
+        self.rk_seed = numpy.uint32(seed)
+
+    def tomaxint(self, size=None):
+        """Draws integers between 0 and max integer inclusive.
+
+        Args:
+            size (int or tuple of ints): Output shape.
+
+        Returns:
+            cupy.ndarray: Drawn samples.
+
+        .. seealso::
+            :meth:`numpy.random.RandomState.tomaxint`
+
+        """
+        if size is None:
+            size = ()
+        sample = cupy.empty(size, dtype=cupy.int_)
+        # cupy.random only uses int32 random generator
+        size_in_int = sample.dtype.itemsize // 4
+        curand.generate(
+            self._generator, sample.data.ptr, sample.size * size_in_int)
+
+        # Disable sign bit
+        sample &= cupy.iinfo(cupy.int_).max
+        return sample
+
+    def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
+        """Returns an array of uniformly-distributed samples over an interval.
+
+        .. seealso::
+            :func:`cupy.random.uniform` for full documentation,
+            :meth:`numpy.random.RandomState.uniform`
+
+        """
+        dtype = numpy.dtype(dtype)
+        rand = self.random_sample(size=size, dtype=dtype)
+        return dtype.type(low) + rand * dtype.type(high - low)
 
 
 def _cupy_permutation():
