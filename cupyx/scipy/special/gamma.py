@@ -26,16 +26,22 @@ def _get_gamma_kernel():
     return _gamma_kernel
 
 
-def gamma(x):
+def gamma(z):
     """Gamma function.
+
+    Args:
+        z (cupy.ndarray): The input of gamma function.
+
+    Returns:
+        cupy.ndarray: Computed value of gamma function.
 
     .. seealso:: :data:`scipy.special.gamma`
 
     """
-    if x.dtype.char in '?ebBhH':
-        x = x.astype(cupy.float32)
-    elif x.dtype.char in 'iIlLqQ':
-        x = x.astype(cupy.float64)
-    y = cupy.zeros_like(x)
-    _get_gamma_kernel()(x, y)
+    if z.dtype.char in '?ebBhH':
+        z = z.astype(cupy.float32)
+    elif z.dtype.char in 'iIlLqQ':
+        z = z.astype(cupy.float64)
+    y = cupy.zeros_like(z)
+    _get_gamma_kernel()(z, y)
     return y

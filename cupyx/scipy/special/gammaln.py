@@ -25,6 +25,13 @@ def _get_gammaln_kernel():
 def gammaln(x):
     """Logarithm of the absolute value of the Gamma function.
 
+    Args:
+        x (cupy.ndarray): Values on the real line at which to compute
+        ``gammaln``.
+
+    Returns:
+        cupy.ndarray: Values of ``gammaln`` at x.
+
     .. seealso:: :data:`scipy.special.gammaln`
 
     """

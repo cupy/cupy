@@ -194,6 +194,12 @@ def _get_digamma_kernel():
 def digamma(x):
     """The digamma function.
 
+    Args:
+        x (cupy.ndarray): The input of digamma function.
+
+    Returns:
+        cupy.ndarray: Computed value of digamma function.
+
     .. seealso:: :data:`scipy.special.digamma`
 
     """

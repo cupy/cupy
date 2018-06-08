@@ -5,6 +5,13 @@ from cupyx.scipy import special
 def polygamma(n, x):
     """Polygamma function n.
 
+    Args:
+        n (cupy.ndarray): The order of the derivative of `psi`.
+        x (cupy.ndarray): Where to evaluate the polygamma function.
+
+    Returns:
+        cupy.ndarray: The result.
+
     .. seealso:: :data:`scipy.special.polygamma`
 
     """

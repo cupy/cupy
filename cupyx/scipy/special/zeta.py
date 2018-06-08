@@ -6,6 +6,8 @@
 # Copyright 1984, 1987 by Stephen L. Moshier
 # Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
+# TODO(YoshikawaMasashi): float implementation of zeta function
+
 import cupy
 from cupy import core
 
@@ -129,6 +131,13 @@ def _get_zeta_kernel():
 
 def zeta(x, q):
     """Hurwitz zeta function.
+
+    Args:
+        x (cupy.ndarray): Input data, must be real.
+        q (cupy.ndarray): Input data, must be real.
+
+    Returns:
+        cupy.ndarray: Values of zeta(x, q).
 
     .. seealso:: :data:`scipy.special.zeta`
 
