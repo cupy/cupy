@@ -175,11 +175,12 @@ class FusionVarPython(object):
 
     """The values of variables in target function of fusion.
 
+    Args:
+        var (_FusionVarCUDA)
+
     Attributes:
         dtype (dtype): The data type.
     """
-    # shape (tuple of ints): !! not supported !!
-    # _var (_FusionVarCUDA)
 
     def __init__(self, var, is_postmap):
         self._var = var
