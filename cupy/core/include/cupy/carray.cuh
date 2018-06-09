@@ -42,6 +42,7 @@ private:
   half  data_;
 public:
   __device__ float16() {}
+  __device__ float16(const float16& v) : data_(v.data_) {}
   __device__ float16(float v) : data_(v) {}
 
   explicit __device__ float16(bool v) : data_(float(v)) {}
