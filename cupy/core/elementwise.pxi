@@ -1,14 +1,13 @@
 import string
 
 import numpy
-import six
 
-from cupy.core import _dtype
 from cupy.cuda import compiler
 from cupy import util
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.core cimport _scalar
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -35,47 +34,6 @@ cpdef _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef dict _typenames_base = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
-}
-
-
-cdef dict _typenames = {}
-cdef dict _dtype_kind_size_dict = {}
-
-
-cdef _setup_type_dict():
-    global _typenames, _dtype_kind_size_dict
-    cdef char k
-    for i in _dtype.all_type_chars:
-        d = numpy.dtype(i)
-        t = d.type
-        _typenames[t] = _typenames_base[d]
-        k = (<char *>d.kind)[0]
-        _dtype_kind_size_dict[t] = (k, d.itemsize)
-
-
-_setup_type_dict()
-
-cdef tuple _python_scalar_type = six.integer_types + (float, bool, complex)
-cdef tuple _numpy_scalar_type = tuple(_typenames.keys())
-
-cdef set _python_scalar_type_set = set(_python_scalar_type)
-cdef set _numpy_scalar_type_set = set(_numpy_scalar_type)
-
 cdef dict _kind_score = {
     'b': 0,
     'u': 1,
@@ -83,198 +41,6 @@ cdef dict _kind_score = {
     'f': 2,
     'c': 3,
 }
-
-
-_int_iinfo = numpy.iinfo(int)
-cdef long long _int_min = _int_iinfo.min
-cdef long long _int_max = _int_iinfo.max
-cdef _int_type = _int_iinfo.dtype.type
-
-
-cpdef _python_scalar_to_numpy_scalar(x):
-    # Note that isinstance(x, six_integer_types) matches with bool.
-    typ = type(x)
-    if typ is bool:
-        numpy_type = numpy.bool_
-    elif typ is float:
-        numpy_type = numpy.float_
-    elif typ is complex:
-        numpy_type = numpy.complex_
-    else:
-        if 0x8000000000000000 <= x:
-            numpy_type = numpy.uint64
-        elif x < _int_min or _int_max < x:
-            numpy_type = numpy.int64
-        else:
-            # Generally `_int_type` is `numpy.int64`.
-            # On Windows, it is `numpy.int32`.
-            numpy_type = _int_type
-    return numpy_type(x)
-
-
-ctypedef unsigned char _uint8_t
-ctypedef unsigned short _uint16_t
-ctypedef unsigned int _uint32_t
-ctypedef unsigned long long _uint64_t
-ctypedef signed char _int8_t
-ctypedef signed short _int16_t
-ctypedef signed int _int32_t
-ctypedef signed long long _int64_t
-
-
-cdef union _Scalar:
-    bint bool_
-    _int8_t int8_
-    _int16_t int16_
-    _int32_t int32_
-    _int64_t int64_
-    _uint8_t uint8_
-    _uint16_t uint16_
-    _uint32_t uint32_
-    _uint64_t uint64_
-    float float32_
-    double float64_
-    float complex complex64_
-    double complex complex128_
-
-
-cdef class _CScalar(CPointer):
-    ndim = 0
-
-    cdef:
-        _Scalar val
-        char kind
-        _int8_t size
-
-    def __init__(self):
-        self.ptr = <void*>&(self.val)
-        self.kind = ' '
-        self.size = -1
-
-    cpdef apply_dtype(self, dtype):
-        if self.kind == 'b':
-            val = self.val.bool_
-            assert self.size == 1
-        else:
-            assert self.size == 8
-            if self.kind == 'i':
-                val = self.val.int64_
-            elif self.kind == 'u':
-                val = self.val.uint64_
-            elif self.kind == 'f':
-                val = self.float64_
-            elif self.kind == 'c':
-                val = self.val.complex128_
-            else:
-                assert False
-        cdef char kind
-        cdef int size
-        kind, size = <tuple>_dtype_kind_size_dict[dtype]
-        cdef _int64_t val_i
-        cdef _uint64_t val_u
-        if kind == 'b':
-            self.val.bool_ = val
-            assert size == 1
-        elif kind == 'i':
-            val_i = val
-            if size == 1:
-                self.val.int8_ = val_i
-            elif size == 2:
-                self.val.int16_ = val_i
-            elif size == 4:
-                self.val.int32_ = val_i
-            elif size == 8:
-                self.val.int64_ = val_i
-            else:
-                assert False
-        elif kind == 'u':
-            val_u = val
-            if size == 1:
-                self.val.uint8_ = val_u
-            elif size == 2:
-                self.val.uint16_ = val_u
-            elif size == 4:
-                self.val.uint32_ = val_u
-            elif size == 8:
-                self.val.uint64_ = val_u
-            else:
-                assert False
-        elif kind == 'f':
-            if size == 2:
-                self.val.uint16_ = <_uint16_t>internal.to_float16(<float>val)
-            elif size == 4:
-                self.val.float32_ = val
-            elif size == 8:
-                self.val.float64_ = val
-            else:
-                assert False
-        elif kind == 'c':
-            if size == 8:
-                self.val.complex64_ = val
-            elif size == 16:
-                self.val.complex128_ = val
-            else:
-                assert False
-        else:
-            assert False
-
-
-cpdef _CScalar _python_scalar_to_c_scalar(x):
-    cdef _CScalar ret = _CScalar()
-    typ = type(x)
-    if x is bool:
-        ret.val.bool_ = x
-        ret.kind = 'b'
-        ret.size = 1
-    elif x is float:
-        ret.val.float64_ = x
-        ret.kind = 'f'
-        ret.size = 8
-    elif x is complex:
-        ret.val.complex128_ = x
-        ret.kind = 'c'
-        ret.size = 16
-    else:
-        if 0x8000000000000000 <= x:
-            ret.val.uint64_ = x
-            ret.kind = 'u'
-            ret.size = 8
-        else:
-            ret.val.int64_ = x
-            ret.kind = 'i'
-            ret.size = 8
-    return ret
-
-
-cpdef _CScalar _numpy_scalar_to_c_scalar(x):
-    cdef _CScalar ret = _CScalar()
-    ret.kind = x.dtype.kind
-    if ret.kind == 'i':
-        ret.val.int64_ = x
-        ret.size = 8
-    elif ret.kind == 'u':
-        ret.val.uint64_ = x
-        ret.size = 8
-    elif ret.kind == 'f':
-        ret.val.float64_ = x
-        ret.size = 8
-    elif ret.kind == 'b':
-        ret.val.bool_ = x
-        ret.size = 1
-    elif ret.kind == 'c':
-        ret.val.complex128_ = x
-        ret.size = 16
-    else:
-        assert False
-    return ret
-
-
-cpdef str _get_typename(dtype):
-    if dtype is None:
-        raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = get_dtype(dtype).type
-    return _typenames[dtype]
 
 
 cpdef list _preprocess_args(args, bint use_c_scalar=False):
@@ -296,16 +62,10 @@ cpdef list _preprocess_args(args, bint use_c_scalar=False):
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
-        elif typ in _python_scalar_type_set:
-            if use_c_scalar:
-                arg = _python_scalar_to_c_scalar(arg)
-            else:
-                arg = _python_scalar_to_numpy_scalar(arg)
-        elif typ in _numpy_scalar_type_set:
-            if use_c_scalar:
-                arg = _numpy_scalar_to_c_scalar(arg)
         else:
-            raise TypeError('Unsupported type %s' % typ)
+            arg = _scalar.convert_scalar(arg, use_c_scalar)
+            if arg is None:
+                raise TypeError('Unsupported type %s' % typ)
         ret.append(arg)
     return ret
 
@@ -777,8 +537,8 @@ cdef class ElementwiseKernel:
             return ret
 
         for i, x in enumerate(in_args):
-            if type(x) is _CScalar:
-                (<_CScalar>x).apply_dtype(in_types[i])
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(in_types[i])
 
         inout_args = in_args + out_args
 

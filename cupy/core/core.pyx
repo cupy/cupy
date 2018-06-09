@@ -22,6 +22,7 @@ cimport cython
 from libcpp cimport vector
 
 from cupy.core._dtype cimport get_dtype
+from cupy.core._scalar import get_typename as _get_typename
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
