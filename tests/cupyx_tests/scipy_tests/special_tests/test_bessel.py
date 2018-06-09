@@ -85,7 +85,6 @@ class TestFusionSpecial(unittest.TestCase):
         self.check_unary('i1')
 
 
-@testing.gpu
 class TestFusionCPUSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['f', 'd'])
