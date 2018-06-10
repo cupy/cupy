@@ -33,6 +33,7 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
+import cupyx
 
 
 def is_available():
@@ -262,6 +263,9 @@ from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
+from cupy.creation.matrix import tri  # NOQA
+from cupy.creation.matrix import tril  # NOQA
+from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -302,6 +306,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
+
+from cupy.manipulation.add_remove import unique  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
@@ -514,6 +520,7 @@ from cupy.core.fusion import signbit  # NOQA
 
 from cupy.core.fusion import add  # NOQA
 from cupy.core.fusion import divide  # NOQA
+from cupy.core.fusion import divmod  # NOQA
 from cupy.core.fusion import floor_divide  # NOQA
 from cupy.core.fusion import fmod  # NOQA
 from cupy.core.fusion import modf  # NOQA
@@ -600,12 +607,15 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+# -----------------------------------------------------------------------------
+# DLPack
+# -----------------------------------------------------------------------------
+
+from cupy.core import fromDlpack  # NOQA
 
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
-
-import cupyx
 
 
 def asnumpy(a, stream=None):

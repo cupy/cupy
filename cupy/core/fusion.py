@@ -854,7 +854,12 @@ amin = reduction(statistics.order.amin, numpy.amin)
 
 all._raw = core._all
 any._raw = core._any
-sum._raw = core._sum
-prod._raw = core._prod
+sum._raw = core._sum_auto_dtype
+prod._raw = core._prod_auto_dtype
 amax._raw = core._amax
 amin._raw = core._amin
+
+if hasattr(numpy, "divmod"):
+    divmod = _create_ufunc(core.divmod, numpy.divmod)
+else:
+    divmod = core.divmod

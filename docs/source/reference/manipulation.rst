@@ -95,7 +95,7 @@ Splitting arrays along axis
 
 
 Repeating part of arrays along axis
-===================================
+-----------------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -105,8 +105,18 @@ Repeating part of arrays along axis
    cupy.repeat
 
 
+Adding and removing elements
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.unique
+
+
 Rearranging elements
-====================
+--------------------
 
 .. autosummary::
    :toctree: generated/
