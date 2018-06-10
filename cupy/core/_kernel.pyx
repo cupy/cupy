@@ -664,7 +664,12 @@ cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
     for op in ops:
         op_types = op[0]
         for i in range(n):
-            if not can_cast(in_types[i], op_types[i]):
+            it = in_types[i]
+            ot = op_types[i]
+            if isinstance(it, tuple):
+                if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                    break
+            elif not can_cast(it, ot):
                 break
         else:
             return op
@@ -701,28 +706,42 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
+cdef dict _mst_unsigned_to_signed = {
+    i : (numpy.iinfo(j).max, (i, j))
+    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
+                 for i in "BHILQ"]}
+
+
+cpdef _min_scalar_type(x):
+    t = numpy.min_scalar_type(x)
+    dt = t.type
+    if t.kind == 'u':
+        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
+        if x <= m:
+            return dt2
+    return dt
+
+
+cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
-            in_types = tuple([i.dtype if isinstance(i, ndarray) else i
-                              for i in in_args])
-            op = ()
+            in_types = tuple([
+                i.dtype.type if isinstance(i, ndarray) else _min_scalar_type(i)
+                for i in in_args])
         else:
             in_types = tuple([i.dtype.type for i in in_args])
-            op = cache.get(in_types, ())
-
+        op = cache.get(in_types, ())
         if op is ():
             op = _guess_routine_from_in_types(ops, in_types)
-            if not use_raw_value:
-                cache[in_types] = op
+            cache[in_types] = op
     else:
         op = cache.get(dtype, ())
         if op is ():
             op = _guess_routine_from_dtype(ops, dtype)
             cache[dtype] = op
 
-    if op:
+    if op is not None:
         return op
     if dtype is None:
         dtype = tuple([i.dtype.type for i in in_args])
