@@ -17,17 +17,11 @@ except ImportError:
 @testing.with_requires('scipy')
 class TestSpecial(unittest.TestCase):
 
-    def _get_xp_func(self, xp):
-        if xp is cupy:
-            return cupyx.scipy.special
-        else:
-            return scipy.special
-
     @testing.for_dtypes(['f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xp, dtype):
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def check_unary(self, name, xp, scp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(self._get_xp_func(xp), name)(a)
+        return getattr(scp.special, name)(a)
 
     def test_j0(self):
         self.check_unary('j0')
@@ -53,18 +47,15 @@ class TestSpecial(unittest.TestCase):
 class TestFusionSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xp, dtype):
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def check_unary(self, name, xp, scp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
 
-        if xp is cupy:
-            @cupy.fuse()
-            def f(x):
-                return getattr(cupyx.scipy.special, name)(x)
+        @cupy.fuse()
+        def f(x):
+            return getattr(scp.special, name)(x)
 
-            return f(a)
-        else:
-            return getattr(scipy.special, name)(a)
+        return f(a)
 
     def test_j0(self):
         self.check_unary('j0')
