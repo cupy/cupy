@@ -126,7 +126,7 @@ cpdef str _get_typename(dtype):
     if dtype is None:
         raise ValueError('dtype is None')
     if dtype not in _typenames:
-        dtype = numpy.dtype(dtype).type
+        dtype = get_dtype(dtype).type
     return _typenames[dtype]
 
 
@@ -289,7 +289,7 @@ cdef class ParameterInfo:
         elif len(t) == 1:
             self.ctype = t
         else:
-            dtype = numpy.dtype(t)
+            dtype = get_dtype(t)
             self.dtype = dtype.type
             if dtype.name != t:
                 raise ValueError('Wrong type %s' % t)
@@ -325,12 +325,12 @@ cdef tuple _decide_params_type_core(
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
-                if numpy.dtype(a) != numpy.dtype(p.dtype):
+                if get_dtype(a) != get_dtype(p.dtype):
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if numpy.dtype(t) != numpy.dtype(a):
+                if get_dtype(t) != get_dtype(a):
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -414,7 +414,7 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
-                      numpy.dtype(out_type).char,
+                      get_dtype(out_type).char,
                       a.dtype.char,
                       casting)
             raise TypeError(msg)
@@ -795,8 +795,8 @@ class ufunc(object):
         """
         types = []
         for in_types, out_types, _ in self._ops:
-            in_str = ''.join([<str>numpy.dtype(t).char for t in in_types])
-            out_str = ''.join([<str>numpy.dtype(t).char for t in out_types])
+            in_str = ''.join([<str>get_dtype(t).char for t in in_types])
+            out_str = ''.join([<str>get_dtype(t).char for t in out_types])
             types.append('%s->%s' % (in_str, out_str))
         return types
 
@@ -823,7 +823,7 @@ class ufunc(object):
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
         if dtype is not None:
-            dtype = numpy.dtype(dtype).type
+            dtype = get_dtype(dtype).type
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -894,8 +894,8 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t).type for t in in_types])
-        out_types = tuple([numpy.dtype(t).type for t in out_types])
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc,
