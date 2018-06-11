@@ -647,11 +647,29 @@ class _FusionHistory(object):
         """
         in_params = [self._fresh_premap_param(t) for t in in_dtypes]
         in_pvars = [FusionVarPython(_, False) for _ in in_params]
-        out_pvars = func(*in_pvars)
-        if isinstance(out_pvars, tuple):
-            out_pvars = list(out_pvars)
+        return_value = func(*in_pvars)
+
+        if isinstance(return_value, tuple):
+            if len(return_value) == 1:
+                def post_process(x):
+                    return (x,)
+            else:
+                def post_process(x):
+                    return x
+            out_pvars = list(return_value)
+        elif isinstance(return_value, FusionVarPython):
+            def post_process(x):
+                return x
+            out_pvars = [return_value]
+        elif return_value is None or isinstance(
+                return_value, six.integer_types + (bool, float, str)):
+            def post_process(x):
+                return return_value
+            out_pvars = []
         else:
-            out_pvars = [out_pvars]
+            raise TypeError(
+                'Fusion function can\'t return {}'.format(type(return_value)))
+
         out_pvars = [_ for _ in out_pvars if _ is not None]
         out_cvars = [self._get_cuda_var(_) for _ in out_pvars]
 
@@ -673,7 +691,7 @@ class _FusionHistory(object):
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
                 name=name)
-            return kernel, {}
+            return kernel, {}, post_process
         else:
             _, (postmap_type,), (_, reduce_code, postmap_cast_code,
                                  reduce_ctype) = self.reduce_op
@@ -713,7 +731,7 @@ class _FusionHistory(object):
                 name=name,
                 reduce_type=reduce_ctype,
                 preamble=submodule_code)
-            return kernel, self.reduce_kwargs
+            return kernel, self.reduce_kwargs, post_process
 
 
 class Fusion(object):
@@ -768,12 +786,12 @@ class Fusion(object):
                 message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
             else:
-                return self.func, {}
+                return self.func, {}, lambda x: x
 
     def _call(self, *args, **kwargs):
-        func, kw = self.compile(*args, **kwargs)
+        func, kw, post_process = self.compile(*args, **kwargs)
         kwargs = dict(kwargs, **kw)
-        return func(*args, **kwargs)
+        return post_process(func(*args, **kwargs))
 
 
 def fuse(*args, **kwargs):
