@@ -1490,3 +1490,28 @@ class TestFusionReturnsTuple(unittest.TestCase):
         y = f(x)
         self.assertEqual(type(y), tuple)
         return y
+
+
+class TestFusionComposition(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_composition(self, xp, dtype):
+        @cupy.fuse()
+        def f(x, y):
+            return x - y * 2, x + y
+
+        @cupy.fuse()
+        def g(x, y, z):
+            a, b = f(x + z, z - x * 3)
+            c, d = f(x - y, y - z)
+            return a + b * c - d
+
+        @cupy.fuse()
+        def h(x, y):
+            a, b = f(x + y * 2, y * 3)
+            return a - b * g(x - 2, x - 3, -y)
+
+        x = testing.shaped_arange((3, 3), xp, dtype)
+        y = testing.shaped_arange((3, 3), xp, dtype)
+        return h(x, y)
