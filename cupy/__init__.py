@@ -499,7 +499,6 @@ from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
 
-
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
 from cupy.core.fusion import expm1  # NOQA
@@ -509,6 +508,9 @@ from cupy.core.fusion import log1p  # NOQA
 from cupy.core.fusion import log2  # NOQA
 from cupy.core.fusion import logaddexp  # NOQA
 from cupy.core.fusion import logaddexp2  # NOQA
+
+from cupy.core.fusion import i0  # NOQA
+from cupy.core.fusion import sinc  # NOQA
 
 from cupy.core.fusion import copysign  # NOQA
 from cupy.core.fusion import frexp  # NOQA
