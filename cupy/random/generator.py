@@ -13,7 +13,7 @@ from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
-from cupy.random import kernels
+from cupy.random import _kernels
 
 
 class RandomState(object):
@@ -80,7 +80,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.laplace`
         """
         x = self.uniform(size=size, dtype=dtype)
-        kernels.laplace_kernel(x, loc, scale, x)
+        _kernels.laplace_kernel(x, loc, scale, x)
         return x
 
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
@@ -435,7 +435,7 @@ class RandomState(object):
         x = self.uniform(size=size, dtype=dtype)
         # We use `1 - x` as input of `log` method to prevent overflow.
         # It obeys numpy implementation.
-        kernels.gumbel_kernel(x, loc, scale, x)
+        _kernels.gumbel_kernel(x, loc, scale, x)
         return x
 
     def randint(self, low, high=None, size=None, dtype='l'):
