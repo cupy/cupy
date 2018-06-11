@@ -80,6 +80,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.laplace`
         """
         x = self.uniform(size=size, dtype=dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
         _kernels.laplace_kernel(x, loc, scale, x)
         return x
 
@@ -433,6 +435,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.gumbel`
         """
         x = self.uniform(size=size, dtype=dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
         # We use `1 - x` as input of `log` method to prevent overflow.
         # It obeys numpy implementation.
         _kernels.gumbel_kernel(x, loc, scale, x)
