@@ -16,6 +16,7 @@ from cupy import statistics
 
 
 _thread_local = threading.local()
+_thread_local.in_fusion = False
 
 _kind_score = {
     'b': 0,
@@ -752,13 +753,16 @@ class Fusion(object):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
-        _thread_local.in_fusion = True
-        _thread_local.history = _FusionHistory()
-        try:
-            return self._call(*args, **kwargs)
-        finally:
-            _thread_local.in_fusion = False
-            del _thread_local.history
+        if _thread_local.in_fusion:
+            return self.func(*args, **kwargs)
+        else:
+            _thread_local.in_fusion = True
+            _thread_local.history = _FusionHistory()
+            try:
+                return self._call(*args, **kwargs)
+            finally:
+                _thread_local.in_fusion = False
+                del _thread_local.history
 
     def compile(self, *args, **kwargs):
         if builtins.any(
