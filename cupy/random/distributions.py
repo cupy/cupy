@@ -116,7 +116,7 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
             positive-semidefinite for proper sampling :math:`\\Sigma`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        check_valid (‘warn’, ‘raise’, ‘ignore’): Behavior when the covariance
+        check_valid ('warn', 'raise', 'ignore'): Behavior when the covariance
             matrix is not positive semidefinite.
         tol (float): Tolerance when checking the singular values in
             covariance matrix.
