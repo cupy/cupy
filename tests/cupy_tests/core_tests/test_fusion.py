@@ -1416,7 +1416,7 @@ class TestFusionPythonConstant(unittest.TestCase):
 
 
 @testing.gpu
-class TestFusionConstantRetval(unittest.TestCase):
+class TestFusionReturnsConstantValue(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -1457,3 +1457,46 @@ class TestFusionConstantRetval(unittest.TestCase):
         y = f(x)
         self.assertEqual(y, 42)
         return x
+
+
+@testing.gpu
+class TestFusionReturnsTuple(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_empty_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return ()
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_singleton_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * 2,
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_pair_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * 2, x * 3
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y
