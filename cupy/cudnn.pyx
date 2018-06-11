@@ -648,14 +648,13 @@ cpdef tuple _get_algorithm_bwd_filter(
             if ret[i].memory <= max_workspace_size:
                 break
         else:
-            msg = 'No conv bwd filter algo available with workspace size less '\
-                  'equal {}'.format(max_workspace_size)
-            raise RuntimeError(msg)
+            raise RuntimeError(
+                'No conv bwd filter algo available with workspace size less '
+                'equal {}'.format(max_workspace_size))
         if i != 0:
-            msg = 'The best algo of conv bwd filter might not not selected '\
-                  'due to lack of workspace size ({})'\
-                  .format(max_workspace_size)
-            warnings.warn(msg)
+            warnings.warn(
+                'The best algo of conv bwd filter might not not selected due '
+                'to lack of workspace size ({})'.format(max_workspace_size))
         algo = ret[i].algo
         workspace_size = ret[i].memory
         math_type = ret[i].mathType
@@ -721,13 +720,13 @@ cpdef tuple _get_algorithm_bwd_data(
             if ret[i].memory <= max_workspace_size:
                 break
         else:
-            msg = 'No conv bwd data algo available with workspace size less '\
-                  'equal {}'.format(max_workspace_size)
-            raise RuntimeError(msg)
+            raise RuntimeError(
+                'No conv bwd data algo available with workspace size less '
+                'equal {}'.format(max_workspace_size))
         if i != 0:
-            msg = 'The best algo of conv bwd data might not not selected due '\
-                  'to lack of workspace size ({})'.format(max_workspace_size)
-            warnings.warn(msg)
+            warnings.warn(
+                'The best algo of conv bwd data might not not selected due '
+                'to lack of workspace size ({})'.format(max_workspace_size))
         algo = ret[i].algo
         workspace_size = ret[i].memory
         math_type = ret[i].mathType

@@ -1,7 +1,7 @@
 # distutils: language = c++
 
-cimport cpython
-cimport cython
+cimport cpython  # NOQA
+cimport cython  # NOQA
 
 
 @cython.profile(False)

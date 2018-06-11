@@ -7,7 +7,7 @@ import cupy
 
 def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
                     verbose=True):
-    """Raises an AssertionError if objects are not equal up to desired tolerance.
+    """Raises an AssertionError if objects are not equal up to desired tolerance.  # NOQA
 
     Args:
          actual(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -27,7 +27,7 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
 
 
 def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
-    """Raises an AssertionError if objects are not equal up to desired precision.
+    """Raises an AssertionError if objects are not equal up to desired precision.  # NOQA
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -59,7 +59,7 @@ def assert_array_almost_equal_nulp(x, y, nulp=1):
 
 
 def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
-    """Check that all items of arrays differ in at most N Units in the Last Place.
+    """Check that all items of arrays differ in at most N Units in the Last Place.  # NOQA
 
     Args:
          a(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -129,7 +129,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
-    """Raises an AssertionError if array_like objects are not ordered by less than.
+    """Raises an AssertionError if array_like objects are not ordered by less than.  # NOQA
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The smaller object to check.

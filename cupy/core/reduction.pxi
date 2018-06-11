@@ -195,8 +195,7 @@ class simple_reduction_function(object):
         out_params = _get_param_info('T out0', False)
         self._params = (
             in_params + out_params +
-            _get_param_info(
-                'CIndexer _in_ind, CIndexer _out_ind', False) +
+            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
             _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'

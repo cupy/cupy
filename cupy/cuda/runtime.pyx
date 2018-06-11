@@ -9,9 +9,8 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-cimport cpython
-from cpython cimport pythread
-cimport cython
+cimport cpython  # NOQA
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 
@@ -418,7 +417,7 @@ cpdef eventSynchronize(size_t event):
 # util
 ##############################################################################
 
-cdef int _context_initialized = pythread.PyThread_create_key()
+cdef int _context_initialized = cpython.PyThread_create_key()
 
 
 cdef _ensure_context():
@@ -427,8 +426,8 @@ cdef _ensure_context():
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
     cdef size_t status
-    status = <size_t>pythread.PyThread_get_key_value(_context_initialized)
+    status = <size_t>cpython.PyThread_get_key_value(_context_initialized)
     if status == 0:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
-        pythread.PyThread_set_key_value(_context_initialized, <void *>1)
+        cpython.PyThread_set_key_value(_context_initialized, <void *>1)

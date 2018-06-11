@@ -255,7 +255,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
                                        accept_error=False, sp_name=None,
                                        scipy_name=None):
-    """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
+    """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.  # NOQA
 
     Args:
          nulp(int): The maximum number of unit in the last place for tolerance.
@@ -290,7 +290,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
                              accept_error=False, sp_name=None,
                              scipy_name=None):
-    """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.
+    """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.  # NOQA
 
     Args:
          maxulp(int): The maximum number of units in the last place
@@ -366,7 +366,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
 def numpy_cupy_array_list_equal(
         err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None):
-    """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
+    """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.  # NOQA
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
@@ -720,7 +720,7 @@ def for_unsigned_dtypes(name='dtype'):
 
 
 def for_int_dtypes(name='dtype', no_bool=False):
-    """Decorator that checks the fixture with integer and optionally bool dtypes.
+    """Decorator that checks the fixture with integer and optionally bool dtypes.  # NOQA
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -853,7 +853,7 @@ def for_all_dtypes_combination(names=('dtyes',),
 
 
 def for_signed_dtypes_combination(names=('dtype',), full=None):
-    """Decorator for parameterized test w.r.t. the product set of signed dtypes.
+    """Decorator for parameterized test w.r.t. the product set of signed dtypes.  # NOQA
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
@@ -868,7 +868,7 @@ def for_signed_dtypes_combination(names=('dtype',), full=None):
 
 
 def for_unsigned_dtypes_combination(names=('dtype',), full=None):
-    """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.
+    """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.  # NOQA
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
@@ -883,7 +883,7 @@ def for_unsigned_dtypes_combination(names=('dtype',), full=None):
 
 
 def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
-    """Decorator for parameterized test w.r.t. the product set of int and boolean.
+    """Decorator for parameterized test w.r.t. the product set of int and boolean.  # NOQA
 
     Args:
          names(list of str): Argument names to which dtypes are passed.

@@ -1,6 +1,6 @@
 """Thin wrapper of CUSOLVER."""
-cimport cython
-cimport cusparse
+
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
