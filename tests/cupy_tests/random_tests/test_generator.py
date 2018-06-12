@@ -165,6 +165,8 @@ class TestLogNormal(RandomGeneratorTestCase):
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (3, 3), 'tol': 1e-6},
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (), 'tol': 1e-6},
 ])
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.fix_random()
 class TestMultivariateNormal(RandomGeneratorTestCase):
 
