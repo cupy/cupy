@@ -418,11 +418,19 @@ cdef class ndarray:
         v = ndarray.__new__(ndarray)
         v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
 
-        if dtype is None:
+        if v.dtype.itemsize == self.dtype.itemsize:
             v.size = self.size
             v._shape = self._shape
             v._strides = self._strides
         else:
+            if self.ndim == 0:
+                raise ValueError(
+                    "Changing the dtype of a 0d array is only supported if "
+                    "the itemsize is unchanged")
+            if not self._c_contiguous:
+                raise ValueError(
+                    "To change to a dtype of a different size, the array must "
+                    "be C-contiguous")
             shape = list(self._shape)
             strides = list(self._strides)
             shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
