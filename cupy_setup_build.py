@@ -28,6 +28,7 @@ MODULES = [
     {
         'name': 'cuda',
         'file': [
+            'cupy.core._dtype',
             'cupy.core.core',
             'cupy.core.flags',
             'cupy.core.internal',
