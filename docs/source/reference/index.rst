@@ -20,6 +20,7 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ufunc
    routines
    sparse
+   special
    ndimage
    generic
    cuda
