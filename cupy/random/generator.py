@@ -13,20 +13,7 @@ from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
-
-
-_gumbel_kernel = None
-
-
-def _get_gumbel_kernel():
-    global _gumbel_kernel
-    if _gumbel_kernel is None:
-        _gumbel_kernel = core.ElementwiseKernel(
-            'T x, T loc, T scale', 'T y',
-            'y = loc - log(-log(1 - x)) * scale',
-            'gumbel_kernel'
-        )
-    return _gumbel_kernel
+from cupy.random import _kernels
 
 
 class RandomState(object):
@@ -84,6 +71,19 @@ class RandomState(object):
             return out[:element_size].reshape(size)
 
     # NumPy compatible functions
+
+    def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from the laplace distribution.
+
+        .. seealso::
+            :func:`cupy.random.laplace` for full documentation,
+            :meth:`numpy.random.RandomState.laplace`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
+        _kernels.laplace_kernel(x, loc, scale, x)
+        return x
 
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a log normal distribution.
@@ -435,9 +435,11 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.gumbel`
         """
         x = self.uniform(size=size, dtype=dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
         # We use `1 - x` as input of `log` method to prevent overflow.
         # It obeys numpy implementation.
-        _get_gumbel_kernel()(x, loc, scale, x)
+        _kernels.gumbel_kernel(x, loc, scale, x)
         return x
 
     def randint(self, low, high=None, size=None, dtype='l'):
