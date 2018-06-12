@@ -3,6 +3,7 @@ import string
 import numpy
 import six
 
+from cupy.core import _dtype
 from cupy.cuda import compiler
 from cupy import util
 
@@ -51,33 +52,13 @@ cdef dict _typenames_base = {
     numpy.dtype('bool'): 'bool',
 }
 
-cdef str _all_type_chars = 'dfDFeqlihbQLIHB?'
-# for c in 'dDfFeqlihbQLIHB?':
-#    print('#', c, '...', np.dtype(c).name)
-# d ... float64
-# D ... complex128
-# f ... float32
-# F ... complex64
-# e ... float16
-# q ... int64
-# l ... int64
-# i ... int32
-# h ... int16
-# b ... int8
-# Q ... uint64
-# L ... uint64
-# I ... uint32
-# H ... uint16
-# B ... uint8
-# ? ... bool
-
 cdef dict _typenames = {
     numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
-    for i in _all_type_chars}
+    for i in _dtype.all_type_chars}
 
 cdef tuple _python_scalar_type = six.integer_types + (float, bool, complex)
 cdef tuple _numpy_scalar_type = tuple([numpy.dtype(i).type
-                                       for i in _all_type_chars])
+                                       for i in _dtype.all_type_chars])
 
 cdef set _python_scalar_type_set = set(_python_scalar_type)
 cdef set _numpy_scalar_type_set = set(_numpy_scalar_type)

@@ -2,14 +2,33 @@ import numpy
 import six
 
 
-cdef dict _dtype_dict
+all_type_chars = '?bhilqBHILQefdFD'
+# for c in '?bhilqBHILQefdFD':
+#    print('#', c, '...', np.dtype(c).name)
+# ? ... bool
+# b ... int8
+# h ... int16
+# i ... int32
+# l ... int64
+# q ... int64
+# B ... uint8
+# H ... uint16
+# I ... uint32
+# L ... uint64
+# Q ... uint64
+# e ... float16
+# f ... float32
+# d ... float64
+# F ... complex64
+# D ... complex128
+
+cdef dict _dtype_dict = {}
 
 
 cdef _init_dtype_dict():
-    global _dtype_dict
-    _dtype_dict = {i: numpy.dtype(i)
-                   for i in six.integer_types + (float, bool, complex, None)}
-    for i in 'dfDFeqlihbQLIHB?':
+    for i in six.integer_types + (float, bool, complex, None):
+        _dtype_dict[i] = numpy.dtype(i)
+    for i in all_type_chars:
         dtype = numpy.dtype(i)
         _dtype_dict[i] = dtype
         _dtype_dict[dtype.type] = dtype
