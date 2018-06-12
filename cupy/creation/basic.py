@@ -139,7 +139,7 @@ def zeros(shape, dtype=float, order='C'):
             (Fortran-style) order.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros`
 
@@ -159,7 +159,7 @@ def zeros_like(a, dtype=None):
         dtype: Data type specifier. The dtype of ``a`` is used by default.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros_like`
 
