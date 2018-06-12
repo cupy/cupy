@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import imp
 import os
 from setuptools import setup
 import sys
@@ -67,12 +66,12 @@ build_ext = cupy_setup_build.custom_build_ext
 sdist = cupy_setup_build.sdist_with_cython
 
 here = os.path.abspath(os.path.dirname(__file__))
-__version__ = imp.load_source(
-    '_version', os.path.join(here, 'cupy', '_version.py')).__version__
+# Get __version__ variable
+exec(open(os.path.join(here, 'cupy', '_version.py')).read())
 
 setup(
     name=package_name,
-    version=__version__,
+    version=__version__,  # NOQA
     description='CuPy: NumPy-like API accelerated with CUDA',
     long_description=long_description,
     author='Seiya Tokui',
@@ -105,6 +104,7 @@ setup(
         'cupyx',
         'cupyx.scipy',
         'cupyx.scipy.ndimage',
+        'cupyx.scipy.special',
     ],
     package_data=package_data,
     zip_safe=False,

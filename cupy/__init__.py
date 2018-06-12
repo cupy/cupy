@@ -33,6 +33,7 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
+import cupyx
 
 
 def is_available():
@@ -498,7 +499,6 @@ from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
 
-
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
 from cupy.core.fusion import expm1  # NOQA
@@ -508,6 +508,9 @@ from cupy.core.fusion import log1p  # NOQA
 from cupy.core.fusion import log2  # NOQA
 from cupy.core.fusion import logaddexp  # NOQA
 from cupy.core.fusion import logaddexp2  # NOQA
+
+from cupy.core.fusion import i0  # NOQA
+from cupy.core.fusion import sinc  # NOQA
 
 from cupy.core.fusion import copysign  # NOQA
 from cupy.core.fusion import frexp  # NOQA
@@ -613,8 +616,6 @@ from cupy.core import fromDlpack  # NOQA
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
-
-import cupyx
 
 
 def asnumpy(a, stream=None):
