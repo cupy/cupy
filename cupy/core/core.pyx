@@ -21,6 +21,7 @@ cimport cpython
 cimport cython
 from libcpp cimport vector
 
+from cupy.core._dtype cimport get_dtype
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
@@ -84,28 +85,28 @@ cdef class ndarray:
     """
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
-        cdef Py_ssize_t x
+        cdef Py_ssize_t x, itemsize
         self._shape = internal.get_size(shape)
         for x in self._shape:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
-        self.dtype = numpy.dtype(dtype)
+        self.dtype = get_dtype(dtype)
         self.size = internal.prod_ssize_t(self._shape)
+        itemsize = self.dtype.itemsize
 
         if memptr is None:
-            self.data = memory.alloc(self.size * self.dtype.itemsize)
+            self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        self.base = None
 
-        if order in ('C', None):
+        if order is None or order == 'C':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, is_c_contiguous=True)
+                self._shape, itemsize, is_c_contiguous=True)
             self._c_contiguous = True
             self._update_f_contiguity()
         elif order == 'F':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, is_c_contiguous=False)
+                self._shape, itemsize, is_c_contiguous=False)
             self._f_contiguous = True
             self._update_c_contiguity()
         else:
@@ -315,7 +316,7 @@ cdef class ndarray:
         if order not in ['C', 'F', 'A', 'K']:
             raise TypeError('order not understood')
 
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
                     order == 'K' or
@@ -416,7 +417,7 @@ cdef class ndarray:
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef ndarray v
         v = ndarray.__new__(ndarray)
-        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
+        v.dtype = self.dtype if dtype is None else get_dtype(dtype)
 
         if v.dtype.itemsize == self.dtype.itemsize:
             v.size = self.size
@@ -1413,7 +1414,7 @@ cdef class ndarray:
     def real(self):
         if self.dtype.kind == 'c':
             view = ndarray(
-                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                shape=(), dtype=get_dtype(self.dtype.char.lower()),
                 memptr=self.data)
             view._set_shape_and_strides(self.shape, self.strides)
             view.base = self.base if self.base is not None else self
@@ -1431,7 +1432,7 @@ cdef class ndarray:
     def imag(self):
         if self.dtype.kind == 'c':
             view = ndarray(
-                shape=(), dtype=numpy.dtype(self.dtype.char.lower()),
+                shape=(), dtype=get_dtype(self.dtype.char.lower()),
                 memptr=self.data + self.itemsize // 2)
             view._set_shape_and_strides(self.shape, self.strides)
             view.base = self.base if self.base is not None else self
@@ -2147,7 +2148,7 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
             return a
         dtype = a.dtype
     else:
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if a._c_contiguous and dtype == a.dtype:
             return a
 
@@ -2165,7 +2166,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
             return a
         dtype = a.dtype
     else:
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if a._f_contiguous and dtype == a.dtype:
             return a
 
