@@ -74,6 +74,7 @@ class RandomState(object):
 
     def binomial(self, n, p, size=None, dtype=int):
         """Returns an array of samples drawn from the binomial distribution.
+
         .. seealso::
             :func:`cupy.random.binomial` for full documentation,
             :meth:`numpy.random.RandomState.binomial`
