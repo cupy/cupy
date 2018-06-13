@@ -72,6 +72,23 @@ class RandomState(object):
 
     # NumPy compatible functions
 
+    def binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the binomial distribution.
+        .. seealso::
+            :func:`cupy.random.binomial` for full documentation,
+            :meth:`numpy.random.RandomState.binomial`
+        """
+        n, p = cupy.asarray(n), cupy.asarray(p)
+        if size is None:
+            size = n.shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.binomial_kernel(n, p, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from the laplace distribution.
 
@@ -254,6 +271,8 @@ class RandomState(object):
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
+
+        self.rk_seed = numpy.uint32(seed)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.

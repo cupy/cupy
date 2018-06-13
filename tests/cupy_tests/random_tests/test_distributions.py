@@ -7,6 +7,30 @@ from cupy import testing
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'n_shape': [(), (3, 2)],
+    'p_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsBinomial(unittest.TestCase):
+
+    def check_distribution(self, dist_func, n_dtype, p_dtype, dtype):
+        n = 5 * cupy.ones(self.n_shape, dtype=n_dtype)
+        p = 0.5 * cupy.ones(self.p_shape, dtype=p_dtype)
+        out = dist_func(n, p, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_int_dtypes('dtype')
+    @cupy.testing.for_int_dtypes('n_dtype')
+    @cupy.testing.for_float_dtypes('p_dtype')
+    def test_binomial(self, n_dtype, p_dtype, dtype):
+        self.check_distribution(distributions.binomial,
+                                n_dtype, p_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
