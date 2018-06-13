@@ -1013,12 +1013,21 @@ class reduction(object):
             return self._cupy_op(*args, **kwargs)
 
 
-all = reduction(logic.truth.all, numpy.all, core._all)
-any = reduction(logic.truth.any, numpy.any, core._any)
-sum = reduction(math.sumprod.sum, numpy.sum, core._sum_auto_dtype)
-prod = reduction(math.sumprod.prod, numpy.prod, core._prod_auto_dtype)
-amax = reduction(statistics.order.amax, numpy.amax, core._amax)
-amin = reduction(statistics.order.amin, numpy.amin, core._amin)
+def _create_reduction(cupy_op, numpy_op, raw):
+    op = reduction(cupy_op, numpy_op, raw)
+
+    def wrapper(*args, **kwargs):
+        return op(*args, **kwargs)
+
+    return functools.update_wrapper(wrapper, cupy_op)
+
+
+all = _create_reduction(logic.truth.all, numpy.all, core._all)
+any = _create_reduction(logic.truth.any, numpy.any, core._any)
+sum = _create_reduction(math.sumprod.sum, numpy.sum, core._sum_auto_dtype)
+prod = _create_reduction(math.sumprod.prod, numpy.prod, core._prod_auto_dtype)
+amax = _create_reduction(statistics.order.amax, numpy.amax, core._amax)
+amin = _create_reduction(statistics.order.amin, numpy.amin, core._amin)
 
 if hasattr(numpy, "divmod"):
     divmod = _create_ufunc(core.divmod, numpy.divmod)
