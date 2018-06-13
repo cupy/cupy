@@ -196,45 +196,40 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             if not arr._c_contiguous:
                 args_strides.push_back(arr._strides)
 
-    if args_strides.size():
-        vecshape = shape
-        axis = -1
-        cnt = 0
-        for ax in range(1, ndim):
-            if vecshape[ax - 1] == 1:
-                continue
-            for st in args_strides:
-                if st[ax] * vecshape[ax] != st[ax - 1]:
-                    cnt += 1
-                    axis = ax - 1
-                    break
-            else:
-                vecshape[ax] *= vecshape[ax - 1]
-                vecshape[ax - 1] = 1
-        if vecshape[ndim - 1] != 1:
-            cnt += 1
-            axis = ndim - 1
-            if cnt == 1:
-                total_size = vecshape[axis]
-        if cnt == ndim:
-            return shape
-    else:
+    if args_strides.size() == 0:
         # The input arrays are all c_contiguous
-        cnt = 1
-        axis = ndim - 1
         total_size = internal.prod(shape)
-
-    if cnt == 1:
         newshape.assign(<Py_ssize_t>1, total_size)
         for i in range(args_len):
             if is_array_flags[i]:
                 arr = args[i]
                 arr = arr.view()
-                newstrides.assign(
-                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
+                newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
                 arr._set_shape_and_strides(newshape, newstrides, False)
                 args[i] = arr
         return total_size,
+
+    vecshape = shape
+    axis = -1
+    cnt = 0
+    for ax in range(1, ndim):
+        if vecshape[ax - 1] == 1:
+            continue
+        for st in args_strides:
+            if st[ax] * vecshape[ax] != st[ax - 1]:
+                cnt += 1
+                axis = ax - 1
+                break
+        else:
+            vecshape[ax] *= vecshape[ax - 1]
+            vecshape[ax - 1] = 1
+    if vecshape[ndim - 1] != 1:
+        cnt += 1
+        axis = ndim - 1
+        if cnt == 1:
+            total_size = vecshape[axis]
+    if cnt == ndim:
+        return shape
 
     for i in range(ndim):
         if vecshape[i] != 1:
