@@ -208,7 +208,7 @@ class simple_reduction_function(object):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
         if dtype is not None:
-            dtype = numpy.dtype(dtype).type
+            dtype = get_dtype(dtype).type
 
         in_args = [a]
         a_shape = a.shape
@@ -466,8 +466,8 @@ cpdef create_reduction_func(name, ops, routine=None, identity=None,
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t).type for t in in_types])
-        out_types = tuple([numpy.dtype(t).type for t in out_types])
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     return simple_reduction_function(name, _ops, identity, preamble)

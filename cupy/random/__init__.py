@@ -17,6 +17,7 @@ from cupy.random import sample as sample_  # NOQA
 
 # import class and function
 from cupy.random.distributions import gumbel  # NOQA
+from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA
