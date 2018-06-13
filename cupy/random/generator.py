@@ -80,7 +80,7 @@ class RandomState(object):
         """
         n, p = cupy.asarray(n), cupy.asarray(p)
         if size is None:
-            size = n.shape
+            size = cupy.broadcast(n, p).shape
         y = cupy.zeros(shape=size, dtype=dtype)
         _kernels.binomial_kernel(n, p, self.rk_seed, y)
         if size is None:
