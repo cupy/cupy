@@ -4,8 +4,8 @@ from cupy.cuda cimport memory
 from cupy.cuda.function cimport CPointer
 
 cdef class ndarray:
-    cdef object __weakref__
     cdef:
+        object __weakref__
         readonly Py_ssize_t size
         public vector.vector[Py_ssize_t] _shape
         public vector.vector[Py_ssize_t] _strides
