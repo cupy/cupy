@@ -14,6 +14,12 @@ class TestCorrelation(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_corrcoef_diag_exception(self, xp, dtype):
+        a = testing.shaped_arange((1, 3), xp, dtype)
+        return xp.corrcoef(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_corrcoef_y(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((2, 3), xp, dtype)
