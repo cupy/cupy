@@ -183,7 +183,7 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
 # Tensor operations
 ###############################################################################
 
-cpdef size_t createOpTensorDescriptor() except *
+cpdef size_t createOpTensorDescriptor() except? 0
 cpdef setOpTensorDescriptor(size_t opTensorDesc, int opTensorOp,
                             int opTensorCompType, int opTensorNanOpt)
 cpdef getOpTensorDescriptor(size_t opTensorDesc)
@@ -197,7 +197,7 @@ cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
 # Tensor reductions
 ###############################################################################
 
-cpdef size_t createReduceTensorDescriptor() except *
+cpdef size_t createReduceTensorDescriptor() except? 0
 cpdef setReduceTensorDescriptor(
     size_t reduceTensorDesc, int reduceTensorOp,
     int reduceTensorCompType, int reduceTensorNanOpt,
@@ -206,10 +206,10 @@ cpdef getReduceTensorDescriptor(size_t reduceTensorDesc)
 cpdef destroyReduceTensorDescriptor(size_t reduceTensorDesc)
 cpdef size_t getReductionIndicesSize(
     size_t handle, size_t reduceTensorDesc, size_t aDesc,
-    size_t cDesc) except *
+    size_t cDesc) except? 0
 cpdef size_t getReductionWorkspaceSize(
     size_t handle, size_t reduceTensorDesc, size_t aDesc,
-    size_t cDesc) except *
+    size_t cDesc) except? 0
 cpdef reduceTensor(
     size_t handle, size_t reduceTensorDesc, size_t indices,
     size_t indicesSizeInBytes, size_t workspace,

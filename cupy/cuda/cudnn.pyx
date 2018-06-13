@@ -697,7 +697,7 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
 # Tensor operations
 ###############################################################################
 
-cpdef size_t createOpTensorDescriptor() except *:
+cpdef size_t createOpTensorDescriptor() except? 0:
     cdef OpTensorDescriptor opTensorDesc
     status = cudnnCreateOpTensorDescriptor(&opTensorDesc)
     check_status(status)
@@ -745,7 +745,7 @@ cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
 # Tensor reductions
 ###############################################################################
 
-cpdef size_t createReduceTensorDescriptor() except *:
+cpdef size_t createReduceTensorDescriptor() except? 0:
     cdef ReduceTensorDescriptor reduceTensorDesc
     status = cudnnCreateReduceTensorDescriptor(&reduceTensorDesc)
     check_status(status)
@@ -784,7 +784,7 @@ cpdef destroyReduceTensorDescriptor(size_t reduceTensorDesc):
 
 
 cpdef size_t getReductionIndicesSize(size_t handle, size_t reduceTensorDesc,
-                                     size_t aDesc, size_t cDesc) except *:
+                                     size_t aDesc, size_t cDesc) except? 0:
     cdef size_t sizeInBytes
     status = cudnnGetReductionIndicesSize(
         <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
@@ -794,7 +794,7 @@ cpdef size_t getReductionIndicesSize(size_t handle, size_t reduceTensorDesc,
 
 
 cpdef size_t getReductionWorkspaceSize(size_t handle, size_t reduceTensorDesc,
-                                       size_t aDesc, size_t cDesc) except *:
+                                       size_t aDesc, size_t cDesc) except? 0:
     cdef size_t sizeInBytes
     status = cudnnGetReductionWorkspaceSize(
         <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
