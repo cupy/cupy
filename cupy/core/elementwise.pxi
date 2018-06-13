@@ -172,26 +172,27 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
-    cdef Py_ssize_t i, j, n, ndim, cnt, axis, s, total_size
+    """ Remove contiguous stride to optimize CUDA kernel."""
+    cdef int i, j, ax, args_len, ndim, cnt, axis
+    cdef Py_ssize_t total_size
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
     cdef vector.vector[bint] is_array_flags
     cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
     cdef ParameterInfo p
-    cdef ndarray arr, view
+    cdef ndarray arr
     cdef bint flag
 
     ndim = len(shape)
     if ndim <= 1:
         return shape
 
-    n = len(args)
-    for i in range(n):
+    args_len = len(args)
+    for i in range(args_len):
         p = params[i]
-        a = args[i]
-        flag = not p.raw and isinstance(a, ndarray)
+        flag = not p.raw and isinstance(args[i], ndarray)
         is_array_flags.push_back(flag)
         if flag:
-            arr = a
+            arr = args[i]
             if not arr._c_contiguous:
                 args_strides.push_back(arr._strides)
 
@@ -199,17 +200,17 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         vecshape = shape
         axis = -1
         cnt = 0
-        for i in range(1, ndim):
-            if vecshape[i - 1] == 1:
+        for ax in range(1, ndim):
+            if vecshape[ax - 1] == 1:
                 continue
-            for j in range(<Py_ssize_t>args_strides.size()):
-                if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
+            for st in args_strides:
+                if st[ax] * vecshape[ax] != st[ax - 1]:
                     cnt += 1
-                    axis = i - 1
+                    axis = ax - 1
                     break
             else:
-                vecshape[i] *= vecshape[i - 1]
-                vecshape[i - 1] = 1
+                vecshape[ax] *= vecshape[ax - 1]
+                vecshape[ax - 1] = 1
         if vecshape[ndim - 1] != 1:
             cnt += 1
             axis = ndim - 1
@@ -218,14 +219,14 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         if cnt == ndim:
             return shape
     else:
+        # The input arrays are all c_contiguous
         cnt = 1
         axis = ndim - 1
         total_size = internal.prod(shape)
 
     if cnt == 1:
         newshape.assign(<Py_ssize_t>1, total_size)
-        ret = []
-        for i in range(n):
+        for i in range(args_len):
             if is_array_flags[i]:
                 arr = args[i]
                 arr = arr.view()
@@ -238,8 +239,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     for i in range(ndim):
         if vecshape[i] != 1:
             newshape.push_back(vecshape[i])
-    ret = []
-    for i in range(n):
+    for i in range(args_len):
         if is_array_flags[i]:
             arr = args[i]
             arr = arr.view()
