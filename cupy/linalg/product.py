@@ -6,7 +6,7 @@ import six
 import cupy
 from cupy import core
 from cupy import internal
-
+from cupy.linalg.solve import inv
 
 matmul = core.matmul
 
@@ -195,6 +195,51 @@ def tensordot(a, b, axes=2):
 
 
 # TODO(okuta): Implement matrix_power
+def matrix_power(M, n):
+    """Raise a square matrix to the (integer) power `n`.
+
+    Args:
+        M (~cupy.ndarray): Matrix to raise by power n.
+        n (~int): Power to raise matrix to.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    ..seealso:: :func:`numpy.linalg.matrix_power`
+    """
+    if M.ndim != 2 or M.shape[0] != M.shape[1]:
+        raise ValueError("input must be a square array")
+    if not numpy.issubdtype(type(n), numpy.integer):
+        raise TypeError("exponent must be an integer")
+
+    if n == 0:
+        M = M.copy()
+        M[:] = cupy.identity(M.shape[0])
+        return M
+    elif n < 0:
+        M = inv(M)
+        n *= -1
+    result = M
+    if n <= 3:
+        for _ in range(n-1):
+            result = cupy.dot(result, M)
+        return result
+
+    # binary decomposition to reduce the number of Matrix
+    # multiplications for n > 3.
+    beta = cupy.binary_repr(n)
+
+    Z, q, t = M, 0, len(beta)
+    while beta[t-q-1] == '0':
+        Z = N.dot(Z, Z)
+        q += 1
+    result = Z
+
+    for k in range(q+1, t):
+        Z = N.dot(Z, Z)
+        if beta[t-k-1] == '1':
+            result = N.dot(result, Z)
+    return result
 
 
 def kron(a, b):
