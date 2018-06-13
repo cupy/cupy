@@ -32,6 +32,7 @@ class TestCorrelation(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.cov(a)
 
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cov_empty(self, xp, dtype):
@@ -75,17 +76,17 @@ class TestCorrelation(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_cov_invalid_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return xp.cov(a, ddof=1.2)
+        xp.cov(a, ddof=1.2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_cov_too_much_ndim(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 2), xp, dtype)
-        return xp.cov(a)
+        xp.cov(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_cov_y_too_much_ndim(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((3, 4, 2), xp, dtype)
-        return xp.cov(a, y=y)
+        xp.cov(a, y=y)
