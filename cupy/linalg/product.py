@@ -231,14 +231,14 @@ def matrix_power(M, n):
 
     Z, q, t = M, 0, len(beta)
     while beta[t-q-1] == '0':
-        Z = N.dot(Z, Z)
+        Z = cupy.dot(Z, Z)
         q += 1
     result = Z
 
     for k in range(q+1, t):
-        Z = N.dot(Z, Z)
+        Z = cupy.dot(Z, Z)
         if beta[t-k-1] == '1':
-            result = N.dot(result, Z)
+            result = cupy.dot(result, Z)
     return result
 
 
