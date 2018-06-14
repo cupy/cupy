@@ -353,4 +353,3 @@ class TestProduct(unittest.TestCase):
         a = testing.shaped_arange((3, 3), xp, dtype)
         b = 2
         return xp.linalg.matrix_power(a, b)
-
