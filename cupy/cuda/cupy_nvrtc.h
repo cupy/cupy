@@ -57,4 +57,8 @@ nvrtcResult nvrtcGetProgramLog(...) {
 
 #endif // #ifndef CUPY_NO_CUDA
 
+ptrdiff_t cupyGetFunctionPointer() {
+    return reinterpret_cast<ptrdiff_t>(&nvrtcVersion);
+}
+
 #endif // #ifndef INCLUDE_GUARD_CUPY_NVRTC_H

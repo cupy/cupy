@@ -33,6 +33,8 @@ cdef extern from "cupy_nvrtc.h" nogil:
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
 
+    ptrdiff_t cupyGetFunctionPointer()
+
 
 ###############################################################################
 # Error handling
@@ -144,3 +146,11 @@ cpdef unicode getProgramLog(size_t prog):
     assert log.endswith(b'\x00')
     log = log[:-1]
     return log.decode('UTF-8')
+
+
+###############################################################################
+# Environment Check
+###############################################################################
+
+cpdef ptrdiff_t _get_function_pointer():
+    return cupyGetFunctionPointer()
