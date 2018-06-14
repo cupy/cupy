@@ -346,3 +346,11 @@ class TestProduct(unittest.TestCase):
         a = xp.array(2, dtype=dtype)
         b = testing.shaped_arange((4, 5), xp, dtype)
         return xp.kron(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        b = 2
+        return xp.linalg.matrix_power(a, b)
+
