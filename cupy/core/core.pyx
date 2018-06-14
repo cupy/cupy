@@ -3,13 +3,13 @@
 from __future__ import division
 import sys
 
+import ctypes
 import numpy
 import six
 
 import cupy
 from cupy.core import flags
 from cupy.cuda import device
-from cupy.cuda import stream
 
 try:
     from cupy.cuda import thrust
@@ -2120,6 +2120,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
+    cdef size_t nbytes
     if subok:
         raise NotImplementedError
     if isinstance(obj, ndarray):
@@ -2143,7 +2144,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
             order = 'A'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
-        order = 'C' if a_cpu.flags.c_contiguous else 'F'
+        order = None if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2151,12 +2152,12 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
-        mem = pinned_memory.alloc_pinned_memory(a.nbytes)
-        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
-                                   a_cpu.size).reshape(a_cpu.shape)
-        src_cpu[...] = a_cpu
+        nbytes = a.nbytes
+        mem = pinned_memory.alloc_pinned_memory(nbytes)
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[...] = a_cpu.ravel('A')
         stream = stream_module.get_current_stream()
-        a.set(src_cpu, stream)
+        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
 
