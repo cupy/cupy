@@ -11,6 +11,8 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
+from cupy.cuda import nvrtc_builtins
+
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
@@ -219,8 +221,15 @@ class CompileException(Exception):
 
 class _NVRTCProgram(object):
 
+    _builtins_checked = False
+
     def __init__(self, src, name="default_program", headers=(),
                  include_names=()):
+
+        if not _NVRTCProgram._builtins_checked:
+            nvrtc_builtins.check()
+            _NVRTCProgram._builtins_checked = True
+
         self.ptr = None
 
         if isinstance(src, six.binary_type):
