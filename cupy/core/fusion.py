@@ -650,21 +650,16 @@ class _FusionHistory(object):
         return_value = func(*in_pvars)
 
         if isinstance(return_value, tuple):
-            if len(return_value) == 1:
-                def post_process(x):
-                    return (x,)
-            else:
-                def post_process(x):
-                    return x
-            out_pvars = list(return_value)
+            simple_return = False
+            no_return = False
+            out_pvars = return_value
         elif isinstance(return_value, FusionVarPython):
-            def post_process(x):
-                return x
+            simple_return = True
+            no_return = False
             out_pvars = [return_value]
-        elif return_value is None or isinstance(
-                return_value, six.integer_types + (bool, float, str)):
-            def post_process(x):
-                return return_value
+        elif return_value is None:
+            simple_return = False
+            no_return = True
             out_pvars = []
         else:
             raise TypeError(
@@ -690,8 +685,10 @@ class _FusionHistory(object):
             kernel = core.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
+                simple_return=simple_return,
+                no_return=no_return,
                 name=name)
-            return kernel, {}, post_process
+            return kernel, {}
         else:
             _, (postmap_type,), (_, reduce_code, postmap_cast_code,
                                  reduce_ctype) = self.reduce_op
@@ -731,7 +728,7 @@ class _FusionHistory(object):
                 name=name,
                 reduce_type=reduce_ctype,
                 preamble=submodule_code)
-            return kernel, self.reduce_kwargs, post_process
+            return kernel, self.reduce_kwargs
 
 
 class Fusion(object):
@@ -786,12 +783,12 @@ class Fusion(object):
                 message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
             else:
-                return self.func, {}, lambda x: x
+                return self.func, {}
 
     def _call(self, *args, **kwargs):
-        func, kw, post_process = self.compile(*args, **kwargs)
+        func, kw = self.compile(*args, **kwargs)
         kwargs = dict(kwargs, **kw)
-        return post_process(func(*args, **kwargs))
+        return func(*args, **kwargs)
 
 
 def fuse(*args, **kwargs):
