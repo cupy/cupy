@@ -349,36 +349,60 @@ class TestProduct(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_matrix_power(self, xp, dtype):
+    def test_matrix_power_0(self, xp, dtype):
         a = testing.shaped_arange((3, 3), xp, dtype)
-        p = 2
-        return xp.linalg.matrix_power(a, p)
+        return xp.linalg.matrix_power(a, 0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_matrix_power_greater_than_three(self, xp, dtype):
+    def test_matrix_power_1(self, xp, dtype):
         a = testing.shaped_arange((3, 3), xp, dtype)
-        p = 4
-        return xp.linalg.matrix_power(a, p)
+        return xp.linalg.matrix_power(a, 1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_matrix_power_equals_zero(self, xp, dtype):
+    def test_matrix_power_2(self, xp, dtype):
         a = testing.shaped_arange((3, 3), xp, dtype)
-        p = 0
-        return xp.linalg.matrix_power(a, p)
+        return xp.linalg.matrix_power(a, 2)
 
-    @testing.for_dtypes_combination(['float32', 'float64'])
-    @testing.numpy_cupy_array_almost_equal()
-    def test_matrix_power_negative(self, xp, dtype):
-        """Some notes on this test:
-        1.  It failes with `numpy_cupy_allclose`. However, inspection of the
-            output does not reveal any difference.
-        2.  It failes for anything not dtype `float32` and `float64`. For
-            this reason, I have ensured that the docstring of matrix_power
-            states clearly that these two dtypes are required.
-        """
-        data = [[1, 2, 3], [3, 1, 2], [1, 3, 1]]
-        a = xp.array(data).astype(dtype)
-        p = -1
-        return xp.linalg.matrix_power(a, p)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_3(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        return xp.linalg.matrix_power(a, 3)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_matrix_power_inv1(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -1)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_matrix_power_inv2(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -2)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_matrix_power_inv3(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -3)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_matrix_power_of_two(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, 1 << 50)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_large(self, xp, dtype):
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
+        return xp.linalg.matrix_power(a, 123456789123456789)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_invlarge(self, xp, dtype):
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
+        return xp.linalg.matrix_power(a, -987654321987654321)
