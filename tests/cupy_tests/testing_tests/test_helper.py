@@ -1,5 +1,6 @@
 import re
 import unittest
+import warnings
 
 import numpy
 import six
@@ -346,3 +347,30 @@ class TestShapedRandom(unittest.TestCase):
         self.assertTrue(self.xp.all(0 <= a.imag))
         self.assertTrue(self.xp.all(a.imag < 10))
         self.assertTrue(self.xp.any(a.imag))
+
+
+class TestAssertWarns(unittest.TestCase):
+    def test_assert_warns(self):
+        # Should raise AssertionError if no warning.
+        with self.assertRaises(AssertionError):
+            with testing.assert_warns(UserWarning):
+                pass
+
+        # Should raise AssertionError if unexpected warning.
+        with self.assertRaises(AssertionError):
+            with testing.assert_warns(UserWarning):
+                warnings.warn('test', DeprecationWarning)
+
+        # Should not raise AssertionError.
+        with testing.assert_warns(UserWarning):
+            warnings.warn('test')
+
+    def test_assert_no_warns(self):
+        # Should raise AssertionError if warning.
+        with self.assertRaises(AssertionError):
+            with testing.assert_no_warns():
+                warnings.warn('test')
+
+        # Should not raise AssertionError.
+        with testing.assert_no_warns():
+            pass

@@ -1100,6 +1100,16 @@ def assert_warns(expected):
     raise AssertionError('%s not triggerred' % exc_name)
 
 
+@contextlib.contextmanager
+def assert_no_warns():
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        yield
+
+    if 0 < len(w):
+        raise AssertionError('unexpected warning triggerred: {}'.format(w))
+
+
 class NumpyAliasTestBase(unittest.TestCase):
 
     @property
