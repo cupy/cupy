@@ -62,6 +62,7 @@ class TestCov(unittest.TestCase):
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)
         with testing.assert_warns(RuntimeWarning):
+            self.check((2, 3), ddof=3)
             self.check((2, 3), ddof=4)
 
     def test_cov_raises(self):
