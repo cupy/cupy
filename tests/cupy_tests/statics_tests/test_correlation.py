@@ -79,6 +79,13 @@ class TestCorrelation(unittest.TestCase):
         return xp.cov(a, ddof=2)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cov_negative_degrees_of_freedom(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        with testing.assert_warns(RuntimeWarning):
+            return xp.cov(a, ddof=4)
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_cov_invalid_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
