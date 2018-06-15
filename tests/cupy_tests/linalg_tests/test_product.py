@@ -371,8 +371,7 @@ class TestProduct(unittest.TestCase):
     @testing.for_dtypes_combination(['float32', 'float64'])
     @testing.numpy_cupy_array_almost_equal()
     def test_matrix_power_negative(self, xp, dtype):
-        """
-        Some notes on this test:
+        """Some notes on this test:
         1.  It failes with `numpy_cupy_allclose`. However, inspection of the
             output does not reveal any difference.
         2.  It failes for anything not dtype `float32` and `float64`. For
