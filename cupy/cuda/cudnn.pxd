@@ -20,6 +20,31 @@ cpdef enum:
     CUDNN_TENSOR_NCHW = 0
     CUDNN_TENSOR_NHWC = 1
 
+    CUDNN_OP_TENSOR_ADD = 0
+    CUDNN_OP_TENSOR_MUL = 1
+    CUDNN_OP_TENSOR_MIN = 2
+    CUDNN_OP_TENSOR_MAX = 3
+    CUDNN_OP_TENSOR_SQRT = 4
+    CUDNN_OP_TENSOR_NOT = 5
+
+    CUDNN_REDUCE_TENSOR_ADD = 0
+    CUDNN_REDUCE_TENSOR_MUL = 1
+    CUDNN_REDUCE_TENSOR_MIN = 2
+    CUDNN_REDUCE_TENSOR_MAX = 3
+    CUDNN_REDUCE_TENSOR_AMAX = 4
+    CUDNN_REDUCE_TENSOR_AVG = 5
+    CUDNN_REDUCE_TENSOR_NORM1 = 6
+    CUDNN_REDUCE_TENSOR_NORM2 = 7
+    CUDNN_REDUCE_TENSOR_MUL_NO_ZEROS = 8
+
+    CUDNN_REDUCE_TENSOR_NO_INDICES = 0
+    CUDNN_REDUCE_TENSOR_FLATTENED_INDICES = 1
+
+    CUDNN_32BIT_INDICES = 0
+    CUDNN_64BIT_INDICES = 1
+    CUDNN_16BIT_INDICES = 2
+    CUDNN_8BIT_INDICES = 3
+
     CUDNN_ADD_IMAGE = 0
     CUDNN_ADD_SAME_HW = 0
     CUDNN_ADD_FEATURE_MAP = 1
@@ -152,6 +177,46 @@ cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
 cpdef destroyTensorDescriptor(size_t tensorDesc)
 cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
                    size_t b, size_t beta, size_t yDesc, size_t y)
+
+
+###############################################################################
+# Tensor operations
+###############################################################################
+
+cpdef size_t createOpTensorDescriptor() except? 0
+cpdef setOpTensorDescriptor(size_t opTensorDesc, int opTensorOp,
+                            int opTensorCompType, int opTensorNanOpt)
+cpdef getOpTensorDescriptor(size_t opTensorDesc)
+cpdef destroyOpTensorDescriptor(size_t opTensorDesc)
+cpdef opTensor(size_t handle, size_t opTensorDesc, size_t alpha1,
+               size_t aDesc, size_t A, size_t alpha2, size_t bDesc,
+               size_t B, size_t beta, size_t cDesc, size_t C)
+
+
+###############################################################################
+# Tensor reductions
+###############################################################################
+
+cpdef size_t createReduceTensorDescriptor() except? 0
+cpdef setReduceTensorDescriptor(
+    size_t reduceTensorDesc, int reduceTensorOp,
+    int reduceTensorCompType, int reduceTensorNanOpt,
+    int reduceTensorIndices, int reduceTensorIndicesType)
+cpdef getReduceTensorDescriptor(size_t reduceTensorDesc)
+cpdef destroyReduceTensorDescriptor(size_t reduceTensorDesc)
+cpdef size_t getReductionIndicesSize(
+    size_t handle, size_t reduceTensorDesc, size_t aDesc,
+    size_t cDesc) except? 0
+cpdef size_t getReductionWorkspaceSize(
+    size_t handle, size_t reduceTensorDesc, size_t aDesc,
+    size_t cDesc) except? 0
+cpdef reduceTensor(
+    size_t handle, size_t reduceTensorDesc, size_t indices,
+    size_t indicesSizeInBytes, size_t workspace,
+    size_t workspaceSizeInBytes, size_t alpha, size_t aDesc,
+    size_t A, size_t beta, size_t cDesc, size_t C)
+cpdef setTensor(size_t handle, size_t yDesc, size_t y, size_t valuePtr)
+cpdef scaleTensor(size_t handle, size_t yDesc, size_t y, size_t alpha)
 
 
 ###############################################################################
