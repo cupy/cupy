@@ -205,6 +205,8 @@ def matrix_power(M, n):
     Returns:
         ~cupy.ndarray: Output array.
 
+    .. note:: M must be of dtype `float32` or `float64`.
+
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
     if M.ndim != 2 or M.shape[0] != M.shape[1]:
