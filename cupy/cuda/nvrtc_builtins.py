@@ -13,7 +13,6 @@ _nvrtc_platform_config = {
         'nvrtc': 'libnvrtc.so',
         'nvrtc-builtins': 'libnvrtc-builtins.so',
         'lib_path_env': 'LD_LIBRARY_PATH',
-        'version_func': lambda lib, base: base.split('{}.'.format(lib))[1],
     }
 }
 _nvrtc_platform_config['linux2'] = _nvrtc_platform_config['linux']
@@ -46,6 +45,14 @@ def _get_cdll_path(func):
         return None
 
     return info.dli_fname.decode()
+
+
+def _get_version_from_path(path):
+    if sys.platform.startswith('linux'):
+        m = re.search(r'\.so\.([\d\.]+)$', os.path.basename(path))
+        if m is not None:
+            return m.group(1)
+    return None
 
 
 def _get_nvrtc_path():
@@ -84,12 +91,8 @@ Please make sure that all CUDA Toolkit components (including development \
 libraries) are installed on your system.'''.format(conf['nvrtc-builtins']))
         return
 
-    nvrtc_ver = conf['version_func'](
-        conf['nvrtc'],
-        os.path.basename(nvrtc_path))
-    nvrtc_builtins_ver = conf['version_func'](
-        conf['nvrtc-builtins'],
-        os.path.basename(nvrtc_builtins_path))
+    nvrtc_ver = _get_version_from_path(nvrtc_path)
+    nvrtc_builtins_ver = _get_version_from_path(nvrtc_builtins_path)
 
     if nvrtc_ver == nvrtc_builtins_ver:
         return
