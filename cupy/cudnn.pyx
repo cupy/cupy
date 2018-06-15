@@ -440,6 +440,33 @@ def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
                        biasData, beta, srcDestDesc, srcDestData)
 
 
+def create_op_tensor_descriptor(op_type, dtype):
+    desc = Descriptor(cudnn.createOpTensorDescriptor(),
+                      py_cudnn.destroyOpTensorDescriptor)
+    data_type = get_data_type(dtype)
+
+    cudnn.setOpTensorDescriptor(desc.value, op_type, data_type,
+                                cudnn.CUDNN_NOT_PROPAGATE_NAN)
+    return desc
+
+
+def create_reduce_tensor_descriptor(reduce_type, dtype):
+    desc = Descriptor(cudnn.createReduceTensorDescriptor(),
+                      py_cudnn.destroyReduceTensorDescriptor)
+    data_type = get_data_type(dtype)
+    if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN,
+                       cudnn.CUDNN_REDUCE_TENSOR_MAX):
+        indices = cudnn.CUDNN_REDUCE_TENSOR_FLATTENED_INDICES
+    else:
+        indices = cudnn.CUDNN_REDUCE_TENSOR_NO_INDICES
+
+    cudnn.setReduceTensorDescriptor(desc.value, reduce_type, data_type,
+                                    cudnn.CUDNN_NOT_PROPAGATE_NAN,
+                                    indices,
+                                    cudnn.CUDNN_32BIT_INDICES)
+    return desc
+
+
 cpdef bint is_tensor_core_available(dtype) except *:
     return (_cudnn_version >= 7000 and
             dtype == numpy.float16 and
