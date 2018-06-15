@@ -50,9 +50,15 @@ class TestCov(unittest.TestCase):
         return self._check(*args, **kw)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_warns(self, *args, **kw):
+        with testing.assert_warns(RuntimeWarning):
+            return self._check(*args, **kw)
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def check_raises(self, *args, **kw):
-        return self._check(*args, **kw)
+        self._check(*args, **kw)
 
     def test_cov(self):
         self.check((2, 3))
@@ -61,9 +67,10 @@ class TestCov(unittest.TestCase):
         self.check((2, 3), (2, 3), rowvar=False)
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)
-        with testing.assert_warns(RuntimeWarning):
-            self.check((2, 3), ddof=3)
-            self.check((2, 3), ddof=4)
+
+    def test_cov_warns(self):
+        self.check_warns((2, 3), ddof=3)
+        self.check_warns((2, 3), ddof=4)
 
     def test_cov_raises(self):
         self.check_raises((2, 3), ddof=1.2)
