@@ -351,5 +351,35 @@ class TestProduct(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_matrix_power(self, xp, dtype):
         a = testing.shaped_arange((3, 3), xp, dtype)
-        b = 2
-        return xp.linalg.matrix_power(a, b)
+        p = 2
+        return xp.linalg.matrix_power(a, p)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_greater_than_three(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        p = 4
+        return xp.linalg.matrix_power(a, p)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_equals_zero(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        p = 0
+        return xp.linalg.matrix_power(a, p)
+
+    @testing.for_dtypes_combination(['float32', 'float64'])
+    @testing.numpy_cupy_array_almost_equal()
+    def test_matrix_power_negative(self, xp, dtype):
+        """
+        Some notes on this test:
+        1.  It failes with `numpy_cupy_allclose`. However, inspection of the
+            output does not reveal any difference.
+        2.  It failes for anything not dtype `float32` and `float64`. For
+            this reason, I have ensured that the docstring of matrix_power
+            states clearly that these two dtypes are required.
+        """
+        data = [[1, 2, 3], [3, 1, 2], [1, 3, 1]]
+        a = xp.array(data).astype(dtype)
+        p = -1
+        return xp.linalg.matrix_power(a, p)
