@@ -389,10 +389,10 @@ class TestProduct(unittest.TestCase):
         a = testing.shaped_arange((3, 3), xp, dtype) ** 2
         return xp.linalg.matrix_power(a, -3)
 
-    @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_matrix_power_of_two(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
         return xp.linalg.matrix_power(a, 1 << 50)
 
     @testing.for_all_dtypes()
