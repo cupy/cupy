@@ -1087,7 +1087,7 @@ class NumpyError(object):
 def assert_warns(expected):
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('always')
-        yield
+        yield w
 
     if any(isinstance(m.message, expected) for m in w):
         return
