@@ -20,5 +20,3 @@ htmlcov/
 .idea/
 .cache/
 cupy/_lib/
-.pytest_cache/*
-
