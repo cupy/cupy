@@ -286,4 +286,3 @@ def _move_axes_to_head(a, axes):
 
     return a.transpose(
         axes + [i for i in six.moves.range(a.ndim) if i not in axes])
-
