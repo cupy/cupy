@@ -25,7 +25,7 @@ You need to have the following components to use CuPy.
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_
     * Compute Capability of the GPU must be at least 3.0.
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-zone>`_
-    * Supported Versions: 7.0, 7.5, 8.0, 9.0 and 9.1.
+    * Supported Versions: 7.0, 7.5, 8.0, 9.0, 9.1 and 9.2.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
@@ -44,9 +44,9 @@ Optional Libraries
 Some features in CuPy will only be enabled if the corresponding libraries are installed.
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ (library to accelerate deep neural network computations)
-    * Supported Versions: v4, v5, v5.1, v6, v7
+    * Supported Versions: v4, v5, v5.1, v6, v7 and v7.1.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
-    * Supported Versions: v1.3.4, v2
+    * Supported Versions: v1.3.4, v2, v2.1 and v2.2.
 
 
 Install CuPy
@@ -65,6 +65,9 @@ Package names are different depending on the CUDA version you have installed on 
 
   (For CUDA 9.1)
   $ pip install cupy-cuda91
+
+  (For CUDA 9.2)
+  $ pip install cupy-cuda92
 
 .. note::
 
