@@ -29,7 +29,7 @@ def _make_empty(xp, sp, dtype):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 class TestDiaMatrix(unittest.TestCase):
 
@@ -60,10 +60,17 @@ class TestDiaMatrix(unittest.TestCase):
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
-        self.assertEqual(str(self.m), '''  (1, 1)\t1.0
+        if numpy.dtype(self.dtype).kind == 'f':
+            expect = '''  (1, 1)\t1.0
   (2, 2)\t2.0
   (1, 0)\t3.0
-  (2, 1)\t4.0''')
+  (2, 1)\t4.0'''
+        else:
+            expect = '''  (1, 1)\t(1+0j)
+  (2, 2)\t(2+0j)
+  (1, 0)\t(3+0j)
+  (2, 1)\t(4+0j)'''
+        self.assertEqual(str(self.m), expect)
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -77,7 +84,7 @@ class TestDiaMatrix(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixInit(unittest.TestCase):
@@ -121,7 +128,7 @@ class TestDiaMatrixInit(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'make_method': ['_make', '_make_empty'],
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixScipyComparison(unittest.TestCase):

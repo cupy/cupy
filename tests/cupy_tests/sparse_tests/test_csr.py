@@ -86,7 +86,7 @@ def _make_shape(xp, sp, dtype):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 class TestCsrMatrix(unittest.TestCase):
 
@@ -230,10 +230,18 @@ class TestCsrMatrix(unittest.TestCase):
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
-        self.assertEqual(str(self.m), '''  (0, 0)\t0.0
+        if numpy.dtype(self.dtype).kind == 'f':
+            expect = '''  (0, 0)\t0.0
   (0, 1)\t1.0
   (1, 3)\t2.0
-  (2, 2)\t3.0''')
+  (2, 2)\t3.0'''
+        elif numpy.dtype(self.dtype).kind == 'c':
+            expect = '''  (0, 0)\t0j
+  (0, 1)\t(1+0j)
+  (1, 3)\t(2+0j)
+  (2, 2)\t(3+0j)'''
+
+        self.assertEqual(str(self.m), expect)
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -247,7 +255,7 @@ class TestCsrMatrix(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixInit(unittest.TestCase):
@@ -272,7 +280,7 @@ class TestCsrMatrixInit(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_dtype(self, xp, sp):
-        data = self.data(xp).astype('i')
+        data = self.data(xp).real.astype('i')
         x = sp.csr_matrix(
             (data, self.indices(xp), self.indptr(xp)), dtype=self.dtype)
         self.assertEqual(x.dtype, self.dtype)
@@ -365,7 +373,7 @@ class TestCsrMatrixInit(unittest.TestCase):
     'make_method': [
         '_make', '_make_unordered', '_make_empty', '_make_duplicate',
         '_make_shape'],
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixScipyComparison(unittest.TestCase):
@@ -820,7 +828,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixPowScipyComparison(unittest.TestCase):
@@ -897,7 +905,7 @@ class TestCsrMatrixSum(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixScipyCompressed(unittest.TestCase):
@@ -912,7 +920,7 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixData(unittest.TestCase):
@@ -934,7 +942,11 @@ class TestCsrMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_astype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.astype('d').toarray()
+        if numpy.dtype(self.dtype).kind == 'c':
+            t = 'D'
+        else:
+            t = 'd'
+        return m.astype(t).toarray()
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_count_nonzero(self, xp, sp):
@@ -949,7 +961,11 @@ class TestCsrMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_power_with_dtype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.power(2, 'd').toarray()
+        if numpy.dtype(self.dtype).kind == 'c':
+            t = 'D'
+        else:
+            t = 'd'
+        return m.power(2, t).toarray()
 
 
 @testing.parameterize(*testing.product({
@@ -990,7 +1006,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCsrMatrixGetitem(unittest.TestCase):
