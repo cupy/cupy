@@ -173,10 +173,10 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef int i, j, ax, args_len, ndim, cnt, axis
+    cdef int i, j, ax, ndim
     cdef Py_ssize_t total_size
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
-    cdef vector.vector[bint] is_array_flags
+    cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
     cdef ParameterInfo p
     cdef ndarray arr
@@ -186,12 +186,10 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if ndim <= 1:
         return shape
 
-    args_len = len(args)
-    for i in range(args_len):
+    for i in range(len(args)):
         p = params[i]
-        flag = not p.raw and isinstance(args[i], ndarray)
-        is_array_flags.push_back(flag)
-        if flag:
+        if not p.raw and isinstance(args[i], ndarray):
+            array_indexes.push_back(i)
             arr = args[i]
             if not arr._c_contiguous:
                 args_strides.push_back(arr._strides)
@@ -200,50 +198,40 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         # The input arrays are all c_contiguous
         total_size = internal.prod(shape)
         newshape.assign(<Py_ssize_t>1, total_size)
-        for i in range(args_len):
-            if is_array_flags[i]:
-                arr = args[i]
-                arr = arr.view()
-                newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
-                arr._set_shape_and_strides(newshape, newstrides, False)
-                args[i] = arr
+        for i in array_indexes:
+            arr = args[i]
+            arr = arr.view()
+            newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
+            arr._set_shape_and_strides(newshape, newstrides, False)
+            args[i] = arr
         return total_size,
 
     vecshape = shape
-    axis = -1
-    cnt = 0
     for ax in range(1, ndim):
         if vecshape[ax - 1] == 1:
             continue
         for st in args_strides:
             if st[ax] * vecshape[ax] != st[ax - 1]:
-                cnt += 1
-                axis = ax - 1
+                axes.push_back(ax - 1)
                 break
         else:
             vecshape[ax] *= vecshape[ax - 1]
             vecshape[ax - 1] = 1
     if vecshape[ndim - 1] != 1:
-        cnt += 1
-        axis = ndim - 1
-        if cnt == 1:
-            total_size = vecshape[axis]
-    if cnt == ndim:
+        axes.push_back(ndim - 1)
+    if axes.size() == ndim:
         return shape
 
-    for i in range(ndim):
-        if vecshape[i] != 1:
-            newshape.push_back(vecshape[i])
-    for i in range(args_len):
-        if is_array_flags[i]:
-            arr = args[i]
-            arr = arr.view()
-            newstrides.clear()
-            for j in range(ndim):
-                if vecshape[j] != 1:
-                    newstrides.push_back(arr._strides[j])
-            arr._set_shape_and_strides(newshape, newstrides, False)
-            args[i] = arr
+    for ax in axes:
+        newshape.push_back(vecshape[ax])
+    for i in array_indexes:
+        arr = args[i]
+        arr = arr.view()
+        newstrides.clear()
+        for ax in axes:
+            newstrides.push_back(arr._strides[ax])
+        arr._set_shape_and_strides(newshape, newstrides, False)
+        args[i] = arr
     return tuple(newshape)
 
 
