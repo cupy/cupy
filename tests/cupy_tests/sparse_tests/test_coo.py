@@ -85,7 +85,7 @@ def _make_shape(xp, sp, dtype):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 class TestCooMatrix(unittest.TestCase):
 
@@ -168,10 +168,17 @@ class TestCooMatrix(unittest.TestCase):
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
-        self.assertEqual(str(self.m), '''  (0, 0)\t0.0
+        if numpy.dtype(self.dtype).kind == 'f':
+            expect = '''  (0, 0)\t0.0
   (0, 1)\t1.0
   (1, 3)\t2.0
-  (2, 2)\t3.0''')
+  (2, 2)\t3.0'''
+        elif numpy.dtype(self.dtype).kind == 'c':
+            expect = '''  (0, 0)\t0j
+  (0, 1)\t(1+0j)
+  (1, 3)\t(2+0j)
+  (2, 2)\t(3+0j)'''
+        self.assertEqual(str(self.m), expect)
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -184,7 +191,7 @@ class TestCooMatrix(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCooMatrixInit(unittest.TestCase):
@@ -209,7 +216,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_dtype(self, xp, sp):
-        data = self.data(xp).astype('i')
+        data = self.data(xp).real.astype('i')
         x = sp.coo_matrix(
             (data, (self.row(xp), self.col(xp))), dtype=self.dtype)
         self.assertEqual(x.dtype, self.dtype)
@@ -331,7 +338,7 @@ class TestCooMatrixInit(unittest.TestCase):
     'make_method': [
         '_make', '_make_unordered', '_make_empty', '_make_duplicate',
         '_make_shape'],
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCooMatrixScipyComparison(unittest.TestCase):
@@ -788,7 +795,7 @@ class TestCooMatrixSum(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestCooMatrixSumDuplicates(unittest.TestCase):

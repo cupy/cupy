@@ -111,8 +111,10 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             dtype = numpy.dtype(dtype)
 
-        if dtype != 'f' and dtype != 'd':
-            raise ValueError('Only float32 and float64 are supported')
+        if dtype != 'f' and dtype != 'd' and dtype != 'F' and dtype != 'D':
+            raise ValueError(
+                'Only float32, float64, complex64 and complex128'
+                ' are supported')
 
         data = data.astype(dtype, copy=copy)
         row = row.astype('i', copy=copy)
@@ -232,16 +234,31 @@ class coo_matrix(sparse_data._data_matrix):
             data = cupy.zeros(size, dtype=self.data.dtype)
             row = cupy.empty(size, dtype='i')
             col = cupy.empty(size, dtype='i')
-            cupy.ElementwiseKernel(
-                'T src_data, int32 src_row, int32 src_col, int32 index',
-                'raw T data, raw int32 row, raw int32 col',
-                '''
-                atomicAdd(&data[index], src_data);
-                row[index] = src_row;
-                col[index] = src_col;
-                ''',
-                'sum_duplicates_assign'
-            )(src_data, src_row, src_col, index, data, row, col)
+            if self.data.dtype.kind == 'f':
+                cupy.ElementwiseKernel(
+                    'T src_data, int32 src_row, int32 src_col, int32 index',
+                    'raw T data, raw int32 row, raw int32 col',
+                    '''
+                    atomicAdd(&data[index], src_data);
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'sum_duplicates_assign'
+                )(src_data, src_row, src_col, index, data, row, col)
+            elif self.data.dtype.kind == 'c':
+                cupy.ElementwiseKernel(
+                    'T src_real, T src_imag, int32 src_row, int32 src_col, '
+                    'int32 index',
+                    'raw T real, raw T imag, raw int32 row, raw int32 col',
+                    '''
+                    atomicAdd(&real[index], src_real);
+                    atomicAdd(&imag[index], src_imag);
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'sum_duplicates_assign_complex'
+                )(src_data.real, src_data.imag, src_row, src_col, index,
+                  data.real, data.imag, row, col)
 
         self.data = data
         self.row = row
