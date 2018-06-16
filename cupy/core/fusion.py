@@ -650,15 +650,15 @@ class _FusionHistory(object):
         return_value = func(*in_pvars)
 
         if isinstance(return_value, tuple):
-            simple_return = False
+            return_tuple = True
             no_return = False
             out_pvars = return_value
         elif isinstance(return_value, FusionVarPython):
-            simple_return = True
+            return_tuple = False
             no_return = False
             out_pvars = [return_value]
         elif return_value is None:
-            simple_return = False
+            return_tuple = False
             no_return = True
             out_pvars = []
         else:
@@ -685,7 +685,7 @@ class _FusionHistory(object):
             kernel = core.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
-                simple_return=simple_return,
+                return_tuple=return_tuple,
                 no_return=no_return,
                 name=name)
             return kernel, {}

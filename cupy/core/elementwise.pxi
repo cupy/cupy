@@ -498,7 +498,7 @@ cdef class ElementwiseKernel:
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
         no_return (bool): If ``True``, __call__ returns ``None``.
-        simple_return (bool): If ``False``, __call__ always returns tuple of
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
             array even if single value is returned.
         loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
             the top of the kernel function definition and above the ``for``
@@ -520,14 +520,14 @@ cdef class ElementwiseKernel:
         readonly bint reduce_dims
         readonly str preamble
         readonly bint no_return
-        readonly bint simple_return
+        readonly bint return_tuple
         readonly dict kwargs
         readonly dict _kernel_memo
         readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
-                 no_return=False, simple_return=True, **kwargs):
+                 no_return=False, return_tuple=False, **kwargs):
         if not compiler.is_valid_kernel_name(name):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
@@ -544,7 +544,7 @@ cdef class ElementwiseKernel:
         self.reduce_dims = reduce_dims
         self.preamble = preamble
         self.no_return = no_return
-        self.simple_return = simple_return
+        self.return_tuple = return_tuple
         self.kwargs = kwargs
         self._kernel_memo = {}
         self._params_type_memo = {}
@@ -609,7 +609,7 @@ cdef class ElementwiseKernel:
             out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
             ret = None
-        elif self.simple_return and self.nout == 1:
+        elif not self.return_tuple and self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
