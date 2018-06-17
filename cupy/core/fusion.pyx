@@ -932,10 +932,6 @@ def fuse(*args, **kwargs):
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
 
-    .. note::
-       This API is currently experimental and the interface may be changed in
-       the future version.
-
     Example:
 
         >>> @cupy.fuse(kernel_name='squared_diff')
