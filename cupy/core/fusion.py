@@ -753,14 +753,14 @@ class Fusion(object):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history:
-            return self.func(*args, **kwargs)
-        else:
+        if _thread_local.history is None:
             _thread_local.history = _FusionHistory()
             try:
                 return self._call(*args, **kwargs)
             finally:
                 _thread_local.history = None
+        else:
+            return self.func(*args, **kwargs)
 
     def compile(self, *args, **kwargs):
         if builtins.any(
@@ -848,7 +848,7 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history:
+        if _thread_local.history is not None:
             if builtins.any(isinstance(_, FusionVarPython) for _ in args):
                 return _thread_local.history.call_ufunc(
                     self._fusion_op, args, kwargs)
