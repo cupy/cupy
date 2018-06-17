@@ -478,6 +478,9 @@ cdef class ElementwiseKernel:
         options (list): Options passed to the ``nvcc`` command.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
+        no_return (bool): If ``True``, __call__ returns ``None``.
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
+            array even if single value is returned.
         loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
             the top of the kernel function definition and above the ``for``
             loop.
@@ -497,12 +500,15 @@ cdef class ElementwiseKernel:
         readonly str name
         readonly bint reduce_dims
         readonly str preamble
+        readonly bint no_return
+        readonly bint return_tuple
         readonly dict kwargs
         readonly dict _kernel_memo
         readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
-                 name='kernel', reduce_dims=True, preamble='', **kwargs):
+                 name='kernel', reduce_dims=True, preamble='',
+                 no_return=False, return_tuple=False, **kwargs):
         if not compiler.is_valid_kernel_name(name):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
@@ -518,6 +524,8 @@ cdef class ElementwiseKernel:
         self.name = name
         self.reduce_dims = reduce_dims
         self.preamble = preamble
+        self.no_return = no_return
+        self.return_tuple = return_tuple
         self.kwargs = kwargs
         self._kernel_memo = {}
         self._params_type_memo = {}
@@ -542,8 +550,9 @@ cdef class ElementwiseKernel:
                 automatically.
 
         Returns:
-            Arrays are returned according to the ``out_params`` argument of the
-            ``__init__`` method.
+            If ``no_return`` has not set, arrays are returned according to the
+            ``out_params`` argument of the ``__init__`` method.
+            If ``no_return`` has set, ``None`` is returned.
 
         """
         cdef function.Function kern
@@ -579,7 +588,9 @@ cdef class ElementwiseKernel:
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
-        if self.nout == 1:
+        if self.no_return:
+            ret = None
+        elif not self.return_tuple and self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
