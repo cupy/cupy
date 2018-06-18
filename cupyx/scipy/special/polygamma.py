@@ -1,5 +1,7 @@
 import cupy
-from cupyx.scipy import special
+from cupyx.scipy.special import digamma
+from cupyx.scipy.special import gamma
+from cupyx.scipy.special import zeta
 
 
 def polygamma(n, x):
@@ -16,5 +18,5 @@ def polygamma(n, x):
 
     """
     n, x = cupy.broadcast_arrays(n, x)
-    fac2 = (-1.0)**(n+1) * special.gamma(n+1.0) * special.zeta(n+1.0, x)
-    return cupy.where(n == 0, special.digamma(x), fac2)
+    fac2 = (-1.0)**(n+1) * gamma.gamma(n+1.0) * zeta.zeta(n+1.0, x)
+    return cupy.where(n == 0, digamma.digamma(x), fac2)
