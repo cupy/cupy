@@ -1,4 +1,5 @@
 import cupy
+import numpy
 
 
 def empty(shape, dtype=float, order='C'):
@@ -138,7 +139,7 @@ def zeros(shape, dtype=float, order='C'):
             (Fortran-style) order.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros`
 
@@ -158,7 +159,7 @@ def zeros_like(a, dtype=None):
         dtype: Data type specifier. The dtype of ``a`` is used by default.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros_like`
 
@@ -188,6 +189,11 @@ def full(shape, fill_value, dtype=None):
 
     """
     # TODO(beam2d): Support ordering option
+    if dtype is None:
+        if isinstance(fill_value, cupy.ndarray):
+            dtype = fill_value.dtype
+        else:
+            dtype = numpy.array(fill_value).dtype
     a = cupy.ndarray(shape, dtype=dtype)
     a.fill(fill_value)
     return a

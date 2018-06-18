@@ -102,6 +102,22 @@ class TestRandomState(unittest.TestCase):
 
 
 @testing.gpu
+@testing.fix_random()
+class TestLaplace(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'laplace'
+
+    def test_laplace_1(self):
+        self.generate()
+
+    def test_laplace_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+
+@testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},

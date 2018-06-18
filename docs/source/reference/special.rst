@@ -1,20 +1,19 @@
-----------------------------------
-Special functions
-----------------------------------
+Special Functions
+=================
 
-CuPy provides special functions.
-It supports a subset of :mod:`scipy.special` interface.
-
-.. module:: cupyx.scipy.special
-
-
-Interpolation
--------------
+Faster versions of common Bessel Functions and other special functions.
+-----------------------------------------------------------------------
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.special.j0
+   cupyx.scipy.special.j1
+   cupyx.scipy.special.y0
+   cupyx.scipy.special.y1
+   cupyx.scipy.special.i0
+   cupyx.scipy.special.i1
    cupyx.scipy.special.digamma
    cupyx.scipy.special.gamma
    cupyx.scipy.special.gammaln

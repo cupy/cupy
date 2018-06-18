@@ -49,8 +49,11 @@ class TestTrace(unittest.TestCase):
 @testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
+    # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
+    # with NumPy. We should remove `type_check=False` once NumPy is fixed.
+    # See https://github.com/cupy/cupy/pull/875 for details.
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
     def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         with testing.NumpyError(divide='ignore'):
@@ -73,17 +76,21 @@ class TestNorm(unittest.TestCase):
 @testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
+    # matrix_rank of CuPy returns in dtype compatible with NumPy 1.14.
+    type_check = testing.numpy_satisfies('>=1.14')
+
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(type_check=type_check)
     def test_matrix_rank(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
         y = xp.linalg.matrix_rank(a, tol=self.tol)
         if xp is cupy:
-            # Note numpy returns int
             self.assertIsInstance(y, cupy.ndarray)
-            self.assertEqual(y.dtype, 'l')
             self.assertEqual(y.shape, ())
-        return xp.array(y)
+        else:
+            # Note numpy returns numpy scalar or python int
+            y = xp.array(y)
+        return y
 
 
 @unittest.skipUnless(

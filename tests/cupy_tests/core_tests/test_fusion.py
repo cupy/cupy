@@ -11,13 +11,8 @@ def fusion_default_array_equal():
     def res_func(func):
         def res(xxx, name, xp, dtype):
             f = getattr(cupy, name)
-
-            @cupy.fuse(input_num=f.nin)
-            def g(*args):
-                return f(*args)
-
             val = func(xxx, name, xp, dtype)
-            return g(*val)
+            return cupy.fuse(f)(*val)
         return res
     return res_func
 
@@ -582,18 +577,14 @@ class TestFusionUfunc(unittest.TestCase):
     def check(self, func, n, gen, args=None):
         if args is None:
             args = ((),) * n
-        self._check(func, n, gen, args, True)
-        self._check(func, n, gen, args, False)
+        self._check(func, n, gen, args)
 
-    def _check(self, func, n, gen, args, omit_nin, error_types=None):
+    def _check(self, func, n, gen, args, error_types=None):
         assert n == len(args), (n, args)
-        nin = n if not omit_nin else None
         if error_types is None:
             error_types = ()
 
-        @cupy.fuse(input_num=nin)
-        def f(*x):
-            return func(*x)
+        f = cupy.fuse(func)
 
         # Prepare input arrays
         if not isinstance(gen, tuple):
@@ -660,15 +651,12 @@ class TestFusionUfunc(unittest.TestCase):
     def check_reduce(self, func, n, reduce_f, gen, args=None):
         if args is None:
             args = ((),) * n
-        self._check_reduce(func, n, reduce_f, gen, args, True)
-        self._check_reduce(func, n, reduce_f, gen, args, False)
+        self._check_reduce(func, n, reduce_f, gen, args)
 
-    def _check_reduce(self, func, n, reduce_f, gen, args, omit_nin):
-        nin = n if not omit_nin else None
-
-        @cupy.fuse(input_num=nin, reduce=reduce_f)
-        def f(*x):
-            return func(*x)
+    def _check_reduce(self, func, n, reduce_f, gen, args):
+        @cupy.fuse()
+        def f(*args):
+            return reduce_f(func(*args))
 
         data = [gen(*a) for a in args]
         ret0 = reduce_f(func(*data))  # Non-fused
@@ -682,7 +670,7 @@ class TestFusionUfunc(unittest.TestCase):
 
         ret = self._check(
             func, 2, self.random_int, ((2, 3),) * 2,
-            True, error_types=(TypeError,))
+            error_types=(TypeError,))
         is_err, (arrs_n, arrs_f) = ret
 
         if not is_err:
@@ -698,7 +686,7 @@ class TestFusionUfunc(unittest.TestCase):
 
         ret = self._check(
             func, 2, self.random_int, ((2, 3),) * 2,
-            True, error_types=(TypeError,))
+            error_types=(TypeError,))
         is_err, (arrs_n, arrs_f) = ret
 
         if not is_err:
@@ -719,7 +707,7 @@ class TestFusionUfunc(unittest.TestCase):
             func, 3,
             lambda iarg: cupy.arange(6).astype(dtypes[iarg]).reshape((2, 3)),
             [(_,) for _ in range(3)],
-            True, error_types=(TypeError,))
+            error_types=(TypeError,))
         is_err, (arrs_n, arrs_f) = ret
 
         if not is_err:
@@ -738,7 +726,7 @@ class TestFusionUfunc(unittest.TestCase):
 
         ret = self._check(
             func, 5, self.random_int, ((),) * 5,
-            True, error_types=(TypeError,))
+            error_types=(TypeError,))
         is_err, (arrs_n, arrs_f) = ret
 
         # Must succeed
@@ -814,6 +802,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.logaddexp, 2, self.random_real, ((0, 10),) * 2)
         self.check(cupy.logaddexp2, 2, self.random_real, ((0, 10),) * 2)
 
+    def test_special_func(self):
+        self.check(cupy.i0, 1, self.random_real)
+        self.check(cupy.sinc, 1, self.random_real)
+
     def test_floating(self):
         self.check(cupy.signbit, 1, self.random_real)
         self.check(cupy.copysign, 2, self.random_real)
@@ -839,6 +831,10 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.mod, 2, self.random_int, ((1, 1000),) * 2)
         self.check(cupy.modf, 1, self.random_real)
         self.check(cupy.remainder, 2, self.random_int, ((1, 1000),) * 2)
+
+    @testing.with_requires('numpy>=1.13')
+    def test_divmod(self):
+        self.check(cupy.divmod, 2, self.random_real)
 
     def test_misc(self):
         self.check(cupy.sqrt, 1, self.random_real, ((0, 1000),))
@@ -1182,6 +1178,20 @@ class TestFusionFuse(unittest.TestCase):
 
         g(a, b)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_different_type_same_ufunc(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=numpy.int32)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=numpy.float32)
+
+        @cupy.fuse()
+        def g(x, y, z):
+            return (x + y, y + z, z + x)
+
+        s, t, u = g(a, b, c)
+        return s
+
     @unittest.skipUnless(six.PY2, 'Only for py2')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -1203,9 +1213,9 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.sum)
+        @cupy.fuse()
         def g(x, y, z):
-            return x * y + z
+            return xp.sum(x * y + z)
 
         return g(a, b, c)
 
@@ -1216,11 +1226,11 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.sum)
+        @cupy.fuse()
         def g(x, y, z):
-            return x * y + z
+            return xp.sum(x * y + z, axis=0)
 
-        return g(a, b, c, axis=0)
+        return g(a, b, c)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -1229,20 +1239,20 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.sum)
+        @cupy.fuse()
         def g(x, y, z):
-            return x * y + z
+            return xp.sum(x * y + z, axis=1)
 
-        return g(a, b, c, axis=1)
+        return g(a, b, c)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_reduce4(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.prod)
+        @cupy.fuse()
         def g(x):
-            return x
+            return xp.prod(x)
 
         return g(a)
 
@@ -1251,22 +1261,22 @@ class TestFusionFuse(unittest.TestCase):
     def test_reduce5(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.max)
+        @cupy.fuse()
         def g(x):
-            return x
+            return xp.max(x, axis=0)
 
-        return g(a, axis=0)
+        return g(a)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_reduce6(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @cupy.fuse(reduce=cupy.min)
+        @cupy.fuse()
         def g(x):
-            return x
+            return xp.min(x, axis=0)
 
-        return g(a, axis=0)
+        return g(a)
 
 
 @testing.gpu
@@ -1302,9 +1312,9 @@ class TestFusionDecorator(unittest.TestCase):
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):
-        a = xp.array([2, 3], 'f')
-        b = xp.array([2, 3], 'f')
-        c = xp.array([2, 3], 'f')
+        a = xp.arange(0, 12, dtype='d').reshape(3, 4)
+        b = xp.arange(5, 17, dtype='d').reshape(3, 4)
+        c = xp.arange(13, 25, dtype='d').reshape(3, 4)
 
         # Test kernel name (with mock)
         if xp is cupy:
@@ -1320,7 +1330,7 @@ class TestFusionKernelName(unittest.TestCase):
         # Test there's no error in computation (without mock)
         return func(a, b, c)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_elementwise(self, xp):
         def func(a, b, c):
             @cupy.fuse()
@@ -1331,7 +1341,7 @@ class TestFusionKernelName(unittest.TestCase):
 
         return self.check(xp, func, 'func_a1', True)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_elementwise_with_name(self, xp):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
@@ -1342,39 +1352,49 @@ class TestFusionKernelName(unittest.TestCase):
 
         return self.check(xp, func, 'abc', True)
 
-    @testing.numpy_cupy_array_equal()
-    def test_reduction(self, xp):
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_premap(self, xp):
         def func(a, b, c):
-            @cupy.fuse(reduce=cupy.sum)
+            @cupy.fuse()
             def func_a1(x, y, z):
-                return (x + y) * z
+                return cupy.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
         return self.check(xp, func, 'func_a1', False)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_postmap(self, xp):
+        def func(a, b, c):
+            @cupy.fuse()
+            def func_a1(x):
+                return cupy.sqrt(cupy.sum(x) + 10)
+
+            return func_a1(a)
+
+        return self.check(xp, func, 'func_a1', False)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_reduction_01(self, xp):
+        def func(a, b, c):
+            @cupy.fuse()
+            def func_a1(x, y, z):
+                return cupy.sqrt(cupy.prod(x + y * z, axis=1) + 10)
+
+            return func_a1(a, b, c)
+
+        return self.check(xp, func, 'func_a1', False)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_with_name(self, xp):
         def func(a, b, c):
-            @cupy.fuse(reduce=cupy.sum, kernel_name='abc')
+            @cupy.fuse(kernel_name='abc')
             def func_a1(x, y, z):
-                return (x + y) * z
+                return cupy.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
         return self.check(xp, func, 'abc', False)
-
-
-@testing.gpu
-class TestFusionInputNum(unittest.TestCase):
-
-    def test_no_result(self):
-        @cupy.fuse(input_num=0)
-        def f(x):
-            pass
-
-        f(testing.shaped_arange((1,), numpy, 'f'))
-        f(testing.shaped_arange((1,), cupy, 'f'))
 
 
 @testing.gpu
@@ -1397,3 +1417,76 @@ class TestFusionPythonConstant(unittest.TestCase):
         def f(x):
             return x * dtype(1)
         return f(testing.shaped_arange((1,), xp, dtype))
+
+
+@testing.gpu
+class TestFusionReturnsConstantValue(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_pass(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            pass
+
+        x = testing.shaped_arange((3, 3), xp, dtype)
+        y = f(x)
+        self.assertEqual(y, None)
+        return x
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_no_retval(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            x += 1
+
+        x = testing.shaped_arange((3, 3), xp, dtype)
+        y = f(x)
+        self.assertEqual(y, None)
+        return x
+
+
+@testing.gpu
+class TestFusionReturnsTuple(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_empty_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return ()
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_singleton_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * 2,
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_pair_tuple(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x * 2, x * 3
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        y = f(x)
+        self.assertEqual(type(y), tuple)
+        return y

@@ -145,7 +145,7 @@ class dia_matrix(data._data_matrix):
             int offset_inds = i % offset_len;
             row = offset_inds - offsets;
             mask = (row >= 0 && row < num_rows && offset_inds < num_cols
-                    && data != 0);
+                    && data != T(0));
             ''',
             'dia_tocsc')(offset_len, self.offsets[:, None], num_rows,
                          num_cols, self.data)

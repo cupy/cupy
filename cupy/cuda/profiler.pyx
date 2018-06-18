@@ -22,7 +22,7 @@ cpdef void initialize(str config_file,
 
     Args:
         config_file (str): Name of the configuration file.
-        output_file (str): Name of the coutput file.
+        output_file (str): Name of the output file.
         output_mode (int): ``cupy.cuda.profiler.cudaKeyValuePair`` or
             ``cupy.cuda.profiler.cudaCSV``.
     """
