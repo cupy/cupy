@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+from cupy import cuda
 from cupy import testing
 
 
@@ -347,6 +348,10 @@ class TestProduct(unittest.TestCase):
         b = testing.shaped_arange((4, 5), xp, dtype)
         return xp.kron(a, b)
 
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Requires CUDA 8.0 for cuSOLVER')
+class TestMatrixPower(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_matrix_power_0(self, xp, dtype):
