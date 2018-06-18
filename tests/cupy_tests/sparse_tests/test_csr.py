@@ -983,7 +983,15 @@ class TestUfunc(unittest.TestCase):
     def test_ufun(self, xp, sp):
         x = _make(xp, sp, self.dtype)
         x.data *= 0.1
-        return getattr(x, self.ufunc)().toarray()
+        func = getattr(x, self.ufunc)
+        complex_unsupported = {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}
+        if (numpy.dtype(self.dtype).kind == 'c' and
+                self.ufunc in complex_unsupported):
+            with self.assertRaises(TypeError):
+                func()
+            return numpy.array(0)
+        else:
+            return func().toarray()
 
 
 class TestIsspmatrixCsr(unittest.TestCase):
