@@ -1,4 +1,5 @@
 import numpy
+from numpy.core.numerictypes import typecodes
 
 import cupy
 from cupy.cuda import cublas
@@ -6,7 +7,8 @@ from cupy.cuda import device
 from cupy.linalg import util
 
 
-def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
+def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
+                     overwrite_b=False, check_finite=True):
     """Solve the equation a x = b for x, assuming a is a triangular matrix.
 
     Args:
@@ -25,6 +27,12 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
             ========  =========
         unit_diagonal (bool): If True, diagonal elements of `a` are assumed to
             be 1 and will not be referenced.
+        overwrite_b (bool): Allow overwriting data in b (may enhance
+            performance)
+        check_finite (bool): Whether to check that the input matrices contain
+            only finite numbers. Disabling may give a performance gain, but may
+            result in problems (crashes, non-termination) if the inputs do
+            contain infinities or NaNs.
 
     Returns:
         cupy.ndarray:
@@ -34,13 +42,11 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
     """
 
     util._assert_cupy_array(a, b)
-    util._assert_nd_squareness(a)
 
-    if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
-            a.shape[:-1] == b.shape[:a.ndim - 1]):
-        raise ValueError(
-            'a must have (..., M, M) shape and b must have (..., M) '
-            'or (..., M, K)')
+    if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
+        raise ValueError('expected square matrix')
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('incompatible dimensions')
 
     # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
@@ -51,8 +57,19 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
     a = a.astype(dtype)
     b = b.astype(dtype)
 
+    if check_finite:
+        if a.dtype.char in typecodes['AllFloat'] and \
+           not numpy.isfinite(a).all():
+            raise ValueError(
+                "array must not contain infs or NaNs")
+        if b.dtype.char in typecodes['AllFloat'] and \
+           not numpy.isfinite(b).all():
+            raise ValueError(
+                "array must not contain infs or NaNs")
+
     a = cupy.asfortranarray(a)
     b = cupy.asfortranarray(b)
+
     dtype = a.dtype
     m, n = (b.size, 1) if b.ndim == 1 else b.shape
     cublas_handle = device.get_cublas_handle()
@@ -62,7 +79,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
     else:  # dtype == 'd'
         trsm = cublas.dtrsm
 
-    if lower is True:
+    if lower:
         uplo = cublas.CUBLAS_FILL_MODE_LOWER
     else:
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
@@ -74,7 +91,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False):
     elif trans == 'C':
         trans = cublas.CUBLAS_OP_C
 
-    if unit_diagonal is True:
+    if unit_diagonal:
         diag = cublas.CUBLAS_DIAG_UNIT
     else:
         diag = cublas.CUBLAS_DIAG_NON_UNIT

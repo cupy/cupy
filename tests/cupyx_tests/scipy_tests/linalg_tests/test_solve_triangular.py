@@ -18,6 +18,8 @@ except ImportError:
     'trans': [0, 1, 2, 'N', 'T', 'C'],
     'lower': [True, False],
     'unit_diagonal': [True, False],
+    'overwrite_b': [True, False],
+    'check_finite': [True, False],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -41,10 +43,12 @@ class TestSolveTriangular(unittest.TestCase):
         b_gpu_copy = b_gpu.copy()
         result_cpu = scipy.linalg.solve_triangular(
             a_cpu, b_cpu, trans=self.trans, lower=self.lower,
-            unit_diagonal=self.unit_diagonal)
+            unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+            check_finite=self.check_finite)
         result_gpu = cupyx.scipy.linalg.solve_triangular(
             a_gpu, b_gpu, trans=self.trans, lower=self.lower,
-            unit_diagonal=self.unit_diagonal)
+            unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+            check_finite=self.check_finite)
         self.assertEqual(result_cpu.dtype, result_gpu.dtype)
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
@@ -54,3 +58,47 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
         self.check_x((5, 5), (5, 5))
+
+    @testing.numpy_cupy_raises()
+    def check_shape(self, a_shape, b_shape, xp):
+        a = xp.random.rand(*a_shape)
+        b = xp.random.rand(*b_shape)
+        if xp is cupy:
+            cupyx.scipy.linalg.solve_triangular(
+                a, b, trans=self.trans, lower=self.lower,
+                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+                check_finite=self.check_finite)
+        else:
+            scipy.linalg.solve_triangular(
+                a, b, trans=self.trans, lower=self.lower,
+                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+                check_finite=self.check_finite)
+
+    def test_invalid_shape(self):
+        self.check_shape((2, 3), (4,))
+        self.check_shape((3, 3), (2,))
+        self.check_shape((3, 3), (2, 2))
+        self.check_shape((3, 3, 4), (3,))
+
+    @testing.numpy_cupy_raises()
+    def check_infinite(self, a_shape, b_shape, xp):
+        a = xp.random.rand(*a_shape)
+        b = xp.random.rand(*b_shape)
+        a[(0,) * a.ndim] = numpy.inf
+        b[(0,) * b.ndim] = numpy.inf
+        if xp is cupy:
+            cupyx.scipy.linalg.solve_triangular(
+                a, b, trans=self.trans, lower=self.lower,
+                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+                check_finite=self.check_finite)
+        else:
+            scipy.linalg.solve_triangular(
+                a, b, trans=self.trans, lower=self.lower,
+                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+                check_finite=self.check_finite)
+
+    def test_infinite(self):
+        if self.check_finite:
+            self.check_infinite((4, 4), (4,))
+            self.check_infinite((5, 5), (5, 2))
+            self.check_infinite((5, 5), (5, 5))
