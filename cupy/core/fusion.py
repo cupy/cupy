@@ -798,6 +798,9 @@ class Fusion(object):
         finally:
             _thread_local.history = None
 
+    def clear_cache(self):
+        self._memo = {}
+
     def _call(self, *args, **kwargs):
         func, kw = self._compile(*args, **kwargs)
         kwargs = dict(kwargs, **kw)
