@@ -59,11 +59,11 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
 
     if check_finite:
         if a.dtype.char in typecodes['AllFloat'] and \
-           not numpy.isfinite(a).all():
+           not cupy.isfinite(a).all():
             raise ValueError(
                 "array must not contain infs or NaNs")
         if b.dtype.char in typecodes['AllFloat'] and \
-           not numpy.isfinite(b).all():
+           not cupy.isfinite(b).all():
             raise ValueError(
                 "array must not contain infs or NaNs")
 
