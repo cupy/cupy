@@ -22,12 +22,14 @@ class TestDigamma(unittest.TestCase):
         else:
             return scipy.special
 
+    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_arange(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return self._get_xp_func(xp).digamma(a)
 
+    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6)
     def test_linspace_positive(self, xp, dtype):
@@ -35,6 +37,7 @@ class TestDigamma(unittest.TestCase):
         a = xp.asarray(a)
         return self._get_xp_func(xp).digamma(a)
 
+    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3)
     def test_linspace_negative(self, xp, dtype):
@@ -47,6 +50,7 @@ class TestDigamma(unittest.TestCase):
     def test_scalar(self, xp, dtype):
         return self._get_xp_func(xp).digamma(dtype(1.5))
 
+    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3)
     def test_inf_and_nan(self, xp, dtype):
