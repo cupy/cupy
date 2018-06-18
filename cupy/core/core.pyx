@@ -2140,11 +2140,13 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        if order == 'K':
-            order = 'A'
+        if order == 'K' or order == 'A':
+            if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
-        order = None if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2155,7 +2157,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         nbytes = a.nbytes
         mem = pinned_memory.alloc_pinned_memory(nbytes)
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[...] = a_cpu.ravel('A')
+        src_cpu[:] = a_cpu.ravel(order)
         stream = stream_module.get_current_stream()
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
