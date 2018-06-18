@@ -762,7 +762,14 @@ class Fusion(object):
         else:
             return self.func(*args, **kwargs)
 
-    def compile(self, *args, **kwargs):
+    def _compile_with_dtypes(self, dtypes):
+        key = tuple(dtypes)
+        if key not in self._memo:
+            self._memo[key] = _thread_local.history.get_fusion(
+                self.func, dtypes, self.name)
+        return self._memo[key]
+
+    def _compile(self, *args, **kwargs):
         if builtins.any(
                 not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic))
                 for _ in args):
@@ -774,11 +781,7 @@ class Fusion(object):
             return isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
             dtypes = [_.dtype for _ in args]
-            key = tuple(dtypes)
-            if key not in self._memo:
-                self._memo[key] = _thread_local.history.get_fusion(
-                    self.func, dtypes, self.name)
-            return self._memo[key]
+            return self._compile_with_dtypes(dtypes)
         else:
             if builtins.any(type(_) is core.ndarray for _ in args):
                 types_str = '.'.join(repr(type(_)) for _ in args)
@@ -787,8 +790,16 @@ class Fusion(object):
             else:
                 return self.func, {}
 
+    def compile_with_dtypes(self, *dtypes):
+        assert _thread_local.history is None
+        _thread_local.history = _FusionHistory()
+        try:
+            self._compile_with_dtypes(dtypes)
+        finally:
+            _thread_local.history = None
+
     def _call(self, *args, **kwargs):
-        func, kw = self.compile(*args, **kwargs)
+        func, kw = self._compile(*args, **kwargs)
         kwargs = dict(kwargs, **kw)
         return func(*args, **kwargs)
 
