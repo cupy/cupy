@@ -29,7 +29,7 @@ class TestZeta(unittest.TestCase):
         b = testing.shaped_arange((2, 3), xp, dtype)
         return self._get_xp_func(xp).zeta(a, b)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6)
     def test_linspace(self, xp, dtype):
         a = numpy.linspace(-30, 30, 1000, dtype=dtype)
