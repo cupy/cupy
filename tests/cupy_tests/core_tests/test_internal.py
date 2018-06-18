@@ -203,6 +203,9 @@ class TestCompleteSliceError(unittest.TestCase):
     {'x': 2 ** 10,     'expect': 2 ** 10},
     {'x': 2 ** 10 - 1, 'expect': 2 ** 10},
     {'x': 2 ** 10 + 1, 'expect': 2 ** 11},
+    {'x': 2 ** 40,     'expect': 2 ** 40},
+    {'x': 2 ** 40 - 1, 'expect': 2 ** 40},
+    {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
 )
 class TestClp2(unittest.TestCase):
 

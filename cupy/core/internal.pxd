@@ -30,4 +30,4 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim)
 
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
-cpdef int clp2(size_t x)
+cpdef size_t clp2(size_t x)

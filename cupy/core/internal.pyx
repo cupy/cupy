@@ -225,7 +225,7 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
 
 
 @cython.profile(False)
-cpdef int clp2(size_t x):
+cpdef size_t clp2(size_t x):
     x -= 1
     x |= x >> 1
     x |= x >> 2
