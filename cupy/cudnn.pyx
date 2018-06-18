@@ -592,7 +592,8 @@ cpdef tuple _get_algorithm_fwd(
             handle, x_desc, filter_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
-        workspace_size = max_workspace_size
+        workspace_size = cudnn.getConvolutionForwardWorkspaceSize(
+            handle, x_desc, filter_desc, conv_desc, y_desc, algo)
     return algo, workspace_size
 
 
@@ -662,7 +663,8 @@ cpdef tuple _get_algorithm_bwd_filter(
             handle, x_desc, gy_desc, conv_desc, filter_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
-        workspace_size = max_workspace_size
+        workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
+            handle, x_desc, gy_desc, conv_desc, filter_desc, algo)
     return algo, workspace_size
 
 
@@ -731,7 +733,8 @@ cpdef tuple _get_algorithm_bwd_data(
             handle, filter_desc, x_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
-        workspace_size = max_workspace_size
+        workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
+            handle, filter_desc, x_desc, conv_desc, y_desc, algo)
     return algo, workspace_size
 
 
@@ -809,18 +812,17 @@ def convolution_forward(
                 x, W, y, conv_param, handle, x_desc, filter_desc,
                 conv_desc, y_desc, max_workspace_size, use_tensor_core)
 
-        max_workspace_size = max(max_workspace_size, workspace_size)
-        # TODO(okuta): allocate best size memory
-        workspace = memory.alloc(max_workspace_size)
+        workspace = memory.alloc(workspace_size)
 
         cudnn.convolutionForward(
             handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
-            conv_desc, algo, workspace.ptr, max_workspace_size, zero, y_desc,
+            conv_desc, algo, workspace.ptr, workspace_size, zero, y_desc,
             y.data.ptr)
+        del workspace, x, W
 
         if b is not None:
             assert dev_id == b.data.device.id
-            ndim = x.ndim - 2
+            ndim = y.ndim - 2
             b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc,
@@ -889,14 +891,12 @@ def convolution_backward_filter(
                 x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
                 filter_desc, max_workspace_size, use_tensor_core)
 
-        max_workspace_size = max(max_workspace_size, workspace_size)
-        # TODO(okuta): allocate best size memory
-        workspace = memory.alloc(max_workspace_size)
+        workspace = memory.alloc(workspace_size)
 
         cudnn.convolutionBackwardFilter_v3(
             handle, one, x_desc, x.data.ptr, gy_desc,
             gy.data.ptr, conv_desc, algo, workspace.ptr,
-            max_workspace_size, zero, filter_desc, gW.data.ptr)
+            workspace_size, zero, filter_desc, gW.data.ptr)
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(gy_desc)
@@ -969,18 +969,18 @@ def convolution_backward_data(
                 W, x, y, conv_param, handle, filter_desc, x_desc,
                 conv_desc, y_desc, max_workspace_size, use_tensor_core)
 
-        max_workspace_size = max(max_workspace_size, workspace_size)
-        # TODO(okuta): allocate best size memory
-        workspace = memory.alloc(max_workspace_size)
+        workspace = memory.alloc(workspace_size)
 
         cudnn.convolutionBackwardData_v3(
             handle, one, filter_desc, W.data.ptr, x_desc, x.data.ptr,
-            conv_desc, algo, workspace.ptr, max_workspace_size, zero, y_desc,
+            conv_desc, algo, workspace.ptr, workspace_size, zero, y_desc,
             y.data.ptr)
+
+        del workspace, x, W
 
         if b is not None:
             assert dev_id == b.data.device.id
-            ndim = x.ndim - 2
+            ndim = y.ndim - 2
             b = core.ascontiguousarray(b).reshape((1, -1) + (1,) * ndim)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
