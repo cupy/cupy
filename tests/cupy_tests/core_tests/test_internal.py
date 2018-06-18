@@ -1,3 +1,5 @@
+import math
+
 import unittest
 
 from cupy.core import internal
@@ -211,3 +213,21 @@ class TestClp2(unittest.TestCase):
 
     def test_clp2(self):
         assert internal.clp2(self.x) == self.expect
+
+
+@testing.parameterize(*testing.product({
+    'value': [0.0, 1.0, -1.0,
+              0.25, -0.25,
+              11.0, -11.0,
+              float('inf'), float('-inf')],
+}))
+class TestConvertFloat16(unittest.TestCase):
+
+    def test_conversion(self):
+        assert internal.to_float(internal.to_float16(self.value)) == self.value
+
+
+class TestConvertFloat16Nan(unittest.TestCase):
+
+    def test_conversion(self):
+        assert math.isnan(internal.to_float(internal.to_float16(float('nan'))))

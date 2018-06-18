@@ -34,7 +34,6 @@ cpdef size_t clp2(size_t x)
 
 ctypedef unsigned short _float16
 
-cdef _float16 to_float16(float f)
+cpdef unsigned short to_float16(float f)
 
-cdef float to_float(_float16 v)
-
+cpdef float to_float(unsigned short v)

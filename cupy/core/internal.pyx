@@ -4,6 +4,20 @@ cimport cpython
 cimport cython
 
 
+ctypedef unsigned short uint16_t
+ctypedef unsigned int uint32_t
+
+
+cdef union float32_int:
+    uint32_t n
+    float f
+
+
+cdef extern from "halffloat.h":
+    uint16_t npy_floatbits_to_halfbits(uint32_t f)
+    uint32_t npy_halfbits_to_floatbits(uint16_t h)
+
+
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
     cdef Py_ssize_t arg
@@ -246,22 +260,13 @@ cdef union float32_int:
     float f
 
 
-cdef _float16 to_float16(float f):
+cpdef uint16_t to_float16(float f):
     cdef float32_int c
     c.f = f
-    cdef u32 n = c.n
-    cdef u16 sign_bit = (n >> 16) & 0x8000
-    cdef u16 exponent = (((n >> 23) - 127 + 15) & 0x1f) << 10
-    cdef u16 fraction = (n >> (23-10)) & 0x3ff
-    return <_float16>(sign_bit | exponent | fraction)
+    return npy_floatbits_to_halfbits(c.n)
 
 
-cdef float to_float(_float16 v):
-    cdef u16 val = <u16>v
-    cdef u32 sign_bit = (val & 0x8000) << 16
-    cdef u32 exponent = ((((val >> 10) & 0x1f) - 15 + 127) & 0xff) << 23
-    cdef u32 fraction = (val & 0x3ff) << (23 - 10)
+cpdef float to_float(uint16_t v):
     cdef float32_int c
-    c.n =sign_bit | exponent | fraction
+    c.n = npy_halfbits_to_floatbits(v)
     return c.f
-

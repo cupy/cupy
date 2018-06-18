@@ -41,7 +41,7 @@ cdef _setup_type_dict():
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
-        k = (<char *>d.kind)[0]
+        k = (<const char*>d.kind)[0]
         _dtype_kind_size_dict[t] = (k, d.itemsize)
 
 
@@ -100,7 +100,7 @@ cdef class CScalar(CPointer):
             elif self.kind == 'u':
                 val = self.val.uint64_
             elif self.kind == 'f':
-                val = self.float64_
+                val = self.val.float64_
             elif self.kind == 'c':
                 val = self.val.complex128_
             else:
@@ -160,15 +160,15 @@ cdef class CScalar(CPointer):
 cpdef CScalar _python_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar()
     typ = type(x)
-    if x is bool:
+    if typ is bool:
         ret.val.bool_ = x
         ret.kind = 'b'
         ret.size = 1
-    elif x is float:
+    elif typ is float:
         ret.val.float64_ = x
         ret.kind = 'f'
         ret.size = 8
-    elif x is complex:
+    elif typ is complex:
         ret.val.complex128_ = x
         ret.kind = 'c'
         ret.size = 16
@@ -186,7 +186,7 @@ cpdef CScalar _python_scalar_to_c_scalar(x):
 
 cpdef CScalar _numpy_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar()
-    ret.kind = x.dtype.kind
+    ret.kind = (<const char*>x.dtype.kind)[0]
     if ret.kind == 'i':
         ret.val.int64_ = x
         ret.size = 8
