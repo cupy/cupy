@@ -5,7 +5,11 @@ from cupy import testing
 import cupyx.scipy.special
 import numpy
 
-import scipy.special
+try:
+    import scipy.special
+    _scipy_available = True
+except ImportError:
+    _scipy_available = False
 
 
 @testing.gpu
