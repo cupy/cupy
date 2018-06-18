@@ -3,8 +3,7 @@ from cupy import core
 
 rk_state_difinition = '''
 #define RK_STATE_LEN 624
-typedef struct rk_state_
-{
+typedef struct rk_state_ {
     unsigned long key[RK_STATE_LEN];
     int pos;
     int has_gauss; /* !=0: gauss contains a gaussian deviate */
@@ -37,8 +36,7 @@ rk_state;
 
 rk_seed_definition = '''
 __device__ void
-rk_seed(unsigned long seed, rk_state *state)
-{
+rk_seed(unsigned long seed, rk_state *state) {
     int pos;
     seed &= 0xffffffffUL;
     /* Knuth's PRNG as used in the Mersenne Twister reference implementation */
@@ -66,8 +64,7 @@ rk_random_definition = '''
  * integers are produced
  */
 __device__ unsigned long
-rk_random(rk_state *state)
-{
+rk_random(rk_state *state) {
     unsigned long y;
     if (state->pos == RK_STATE_LEN) {
         int i;
@@ -97,8 +94,7 @@ rk_random(rk_state *state)
 
 rk_double_definition = '''
 __device__ double
-rk_double(rk_state *state)
-{
+rk_double(rk_state *state) {
     /* shifts : 67108864 = 0x4000000, 9007199254740992 = 0x20000000000000 */
     long a = rk_random(state) >> 5, b = rk_random(state) >> 6;
     return (a * 67108864.0 + b) / 9007199254740992.0;
@@ -106,15 +102,13 @@ rk_double(rk_state *state)
 '''
 
 rk_binomial_btpe_definition = '''
-__device__ long rk_binomial_btpe(rk_state *state, long n, double p)
-{
+__device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
     long m,y,k,i;
     if (!(state->has_binomial) ||
          (state->nsave != n) ||
-         (state->psave != p))
-    {
+         (state->psave != p)) {
         /* initialize */
         state->nsave = n;
         state->psave = p;
@@ -135,9 +129,7 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p)
         state->p2 = p2 = p1*(1.0 + 2.0*c);
         state->p3 = p3 = p2 + c/laml;
         state->p4 = p4 = p3 + c/lamr;
-    }
-    else
-    {
+    } else {
         r = state->r;
         q = state->q;
         fm = state->fm;
@@ -184,17 +176,12 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p)
     s = r/q;
     a = s*(n+1);
     F = 1.0;
-    if (m < y)
-    {
-        for (i=m+1; i<=y; i++)
-        {
+    if (m < y) {
+        for (i=m+1; i<=y; i++) {
             F *= (a/i - s);
         }
-    }
-    else if (m > y)
-    {
-        for (i=y+1; i<=m; i++)
-        {
+    } else if (m > y) {
+        for (i=y+1; i<=m; i++) {
             F /= (a/i - s);
         }
     }
@@ -220,13 +207,11 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p)
            + (13680.-(462.-(132.-(99.-140./f2)/f2)/f2)/f2)/f1/166320.
            + (13680.-(462.-(132.-(99.-140./z2)/z2)/z2)/z2)/z/166320.
            + (13680.-(462.-(132.-(99.-140./x2)/x2)/x2)/x2)/x1/166320.
-           + (13680.-(462.-(132.-(99.-140./w2)/w2)/w2)/w2)/w/166320.))
-    {
+           + (13680.-(462.-(132.-(99.-140./w2)/w2)/w2)/w2)/w/166320.)) {
         goto Step10;
     }
   Step60:
-    if (p > 0.5)
-    {
+    if (p > 0.5) {
         y = n - y;
     }
     return y;
@@ -234,14 +219,12 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p)
 '''
 
 rk_binomial_inversion_definition = '''
-__device__ long rk_binomial_inversion(rk_state *state, long n, double p)
-{
+__device__ long rk_binomial_inversion(rk_state *state, long n, double p) {
     double q, qn, np, px, U;
     long X, bound;
     if (!(state->has_binomial) ||
          (state->nsave != n) ||
-         (state->psave != p))
-    {
+         (state->psave != p)) {
         state->nsave = n;
         state->psave = p;
         state->has_binomial = 1;
@@ -249,8 +232,7 @@ __device__ long rk_binomial_inversion(rk_state *state, long n, double p)
         state->r = qn = exp(n * log(q));
         state->c = np = n*p;
         state->m = bound = min((double)n, np + 10.0*sqrt(np*q + 1));
-    } else
-    {
+    } else {
         q = state->q;
         qn = state->r;
         np = state->c;
@@ -259,16 +241,13 @@ __device__ long rk_binomial_inversion(rk_state *state, long n, double p)
     X = 0;
     px = qn;
     U = rk_double(state);
-    while (U > px)
-    {
+    while (U > px) {
         X++;
-        if (X > bound)
-        {
+        if (X > bound) {
             X = 0;
             px = qn;
             U = rk_double(state);
-        } else
-        {
+        } else {
             U -= px;
             px  = ((n-X+1) * p * px)/(X*q);
         }
@@ -278,29 +257,19 @@ __device__ long rk_binomial_inversion(rk_state *state, long n, double p)
 '''
 
 rk_binomial_definition = '''
-__device__ long rk_binomial(rk_state *state, long n, double p)
-{
+__device__ long rk_binomial(rk_state *state, long n, double p) {
     double q;
-    if (p <= 0.5)
-    {
-        if (p*n <= 30.0)
-        {
+    if (p <= 0.5) {
+        if (p*n <= 30.0) {
             return rk_binomial_inversion(state, n, p);
-        }
-        else
-        {
+        } else {
             return rk_binomial_btpe(state, n, p);
         }
-    }
-    else
-    {
+    } else {
         q = 1.0-p;
-        if (q*n <= 30.0)
-        {
+        if (q*n <= 30.0) {
             return n - rk_binomial_inversion(state, n, q);
-        }
-        else
-        {
+        } else {
             return n - rk_binomial_btpe(state, n, q);
         }
     }
