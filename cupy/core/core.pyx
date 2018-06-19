@@ -52,6 +52,23 @@ except AttributeError:
     _AxisError = IndexOrValueError
 
 
+cdef int _normalize_order(str order) except? 0:
+    if len(order) != 1:
+        raise TypeError('order not understood')
+    cdef int order_char = ord(order)
+    if order_char == 'K' or order_char == 'k':
+        order_char = 'K'
+    elif order_char == 'A' or order_char == 'a':
+        order_char = 'A'
+    elif order_char == 'C' or order_char == 'c':
+        order_char = 'C'
+    elif order_char == 'F' or order_char == 'f':
+        order_char = 'F'
+    else:
+        raise TypeError('order not understood')
+    return order_char
+
+
 cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
@@ -98,19 +115,22 @@ cdef class ndarray:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
+        if order is None:
+            order = 'C'
 
-        if order is None or order == 'C':
+        cdef int order_char = _normalize_order(order)
+        if order_char == 'C':
             self._strides = internal.get_contiguous_strides(
                 self._shape, itemsize, is_c_contiguous=True)
             self._c_contiguous = True
             self._update_f_contiguity()
-        elif order == 'F':
+        elif order_char == 'F':
             self._strides = internal.get_contiguous_strides(
                 self._shape, itemsize, is_c_contiguous=False)
             self._f_contiguous = True
             self._update_c_contiguity()
         else:
-            raise TypeError('order not understood')
+            raise TypeError('order not understood. order={}'.format(order))
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -313,31 +333,30 @@ cdef class ndarray:
 
         if order is None:
             order = 'K'
-        if order not in ['C', 'F', 'A', 'K']:
-            raise TypeError('order not understood')
+        cdef int order_char = _normalize_order(order)
 
         dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
-                    order == 'K' or
-                    order == 'A' and (self._c_contiguous or
-                                      self._f_contiguous) or
-                    order == 'C' and self._c_contiguous or
-                    order == 'F' and self._f_contiguous):
+                    order_char == 'K' or
+                    order_char == 'A' and (self._c_contiguous or
+                                           self._f_contiguous) or
+                    order_char == 'C' and self._c_contiguous or
+                    order_char == 'F' and self._f_contiguous):
                 return self
 
-        if order == 'A':
+        if order_char == 'A':
             if self._f_contiguous:
-                order = 'F'
+                order_char = 'F'
             else:
-                order = 'C'
-        elif order == 'K':
+                order_char = 'C'
+        elif order_char == 'K':
             if self._f_contiguous:
-                order = 'F'
+                order_char = 'F'
             elif self._c_contiguous:
-                order = 'C'
+                order_char = 'C'
 
-        if order == 'K':
+        if order_char == 'K':
             newarray = ndarray(self.shape, dtype=dtype)
             stride_and_index = [
                 (abs(s), -i) for i, s in enumerate(self._strides)]
@@ -349,7 +368,7 @@ cdef class ndarray:
                 stride *= self._shape[-i]
             newarray._set_shape_and_strides(self._shape, strides)
         else:
-            newarray = ndarray(self.shape, dtype=dtype, order=order)
+            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
         if self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
             cupy.not_equal(self, 0j, out=newarray)
