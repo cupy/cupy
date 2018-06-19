@@ -3,7 +3,7 @@ from cupy import core
 
 rk_state_difinition = '''
 #define RK_STATE_LEN 624
-typedef struct rk_state_ {
+__shared__ typedef struct rk_state_ {
     unsigned long key[RK_STATE_LEN];
     int pos;
     int has_gauss; /* !=0: gauss contains a gaussian deviate */
