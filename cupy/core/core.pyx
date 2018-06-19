@@ -52,9 +52,8 @@ except AttributeError:
 
 
 cdef int _normalize_order(str order) except? 0:
-    if len(order) != 1:
-        raise TypeError('order not understood')
-    cdef int order_char = ord(order)
+    cdef int order_char
+    order_char = 'C' if len(order) == 0 else ord(order[0])
     if order_char == 'K' or order_char == 'k':
         order_char = 'K'
     elif order_char == 'A' or order_char == 'a':
