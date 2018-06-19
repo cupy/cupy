@@ -4,19 +4,17 @@ import numpy
 import six
 
 cimport cpython
+from libc.stdint cimport int8_t
+from libc.stdint cimport int16_t
+from libc.stdint cimport int32_t
+from libc.stdint cimport int64_t
 from libcpp cimport vector
+
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
-
-
-cdef extern from "cupy_stdint.h" nogil:
-    ctypedef signed char int8_t
-    ctypedef signed short int16_t
-    ctypedef signed int int32_t
-    ctypedef signed long long int64_t
 
 
 cdef class CPointer:
