@@ -249,7 +249,7 @@ cpdef size_t clp2(size_t x):
     x |= x >> 32
     return x + 1
 
-    
+
 ctypedef unsigned short u16
 ctypedef unsigned int u32
 ctypedef unsigned long long _uint64_t

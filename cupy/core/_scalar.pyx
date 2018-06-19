@@ -41,7 +41,7 @@ cdef _setup_type_dict():
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
-        k = (<const char*>d.kind)[0]
+        k = ord(d.kind)
         _dtype_kind_size_dict[t] = (k, d.itemsize)
 
 
@@ -189,7 +189,7 @@ cpdef CScalar _python_scalar_to_c_scalar(x):
 
 cpdef CScalar _numpy_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar()
-    ret.kind = (<const char*>x.dtype.kind)[0]
+    ret.kind = ord(x.dtype.kind)
     if ret.kind == 'i':
         ret.val.int64_ = x
         ret.size = 8
