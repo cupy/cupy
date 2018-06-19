@@ -94,14 +94,17 @@ cdef class CScalar(CPointer):
             val = self.val.bool_
             assert self.size == 1
         else:
-            assert self.size == 8
             if self.kind == 'i':
+                assert self.size == 8
                 val = self.val.int64_
             elif self.kind == 'u':
+                assert self.size == 8
                 val = self.val.uint64_
             elif self.kind == 'f':
+                assert self.size == 8
                 val = self.val.float64_
             elif self.kind == 'c':
+                assert self.size == 16
                 val = self.val.complex128_
             else:
                 assert False
