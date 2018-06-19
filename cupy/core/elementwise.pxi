@@ -217,12 +217,10 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         for st in args_strides:
             if st[ax] * vecshape[ax] != st[last_ax]:
                 axes.push_back(last_ax)
-                last_ax = ax
                 break
         else:
             vecshape[ax] *= vecshape[last_ax]
-            vecshape[last_ax] = 1
-            last_ax = ax
+        last_ax = ax
     if last_ax >= 0:
         axes.push_back(last_ax)
     if axes.size() == ndim:
