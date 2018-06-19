@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy.core import core
 from cupy import testing
@@ -51,3 +53,18 @@ class TestSize(unittest.TestCase):
     def test_size_huge(self, xp):
         a = xp.ndarray(2 ** 32, 'b')  # 4 GiB
         return xp.size(a)
+
+
+class TestOrder(unittest.TestCase):
+
+    @testing.for_orders([
+        'C', 'c', 'CONTIGUOUS',
+        'F', 'f', 'FORTRAN',
+        None,
+    ])
+    def test_ndarray(self, order):
+        a = core.ndarray((2, 3), order=order)
+        expect_c = order is None or order[0].upper() == 'C'
+        expect_f = order is not None and order[0].upper() == 'F'
+        assert a.flags.c_contiguous == expect_c
+        assert a.flags.f_contiguous == expect_f
