@@ -939,7 +939,7 @@ def for_CF_orders(name='order'):
     .. seealso:: :func:`cupy.testing.for_all_dtypes`
 
     """
-    return for_orders(['C', 'F'], name)
+    return for_orders([None, 'C', 'F', 'c', 'f'], name)
 
 
 def with_requires(*requirements):
