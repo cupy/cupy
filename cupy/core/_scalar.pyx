@@ -93,19 +93,17 @@ cdef class CScalar(CPointer):
         if self.kind == 'b':
             val = self.val.bool_
             assert self.size == 1
+        elif self.kind == 'c':
+            assert self.size == 16
+            val = self.val.complex128_
         else:
+            assert self.size == 8
             if self.kind == 'i':
-                assert self.size == 8
                 val = self.val.int64_
             elif self.kind == 'u':
-                assert self.size == 8
                 val = self.val.uint64_
             elif self.kind == 'f':
-                assert self.size == 8
                 val = self.val.float64_
-            elif self.kind == 'c':
-                assert self.size == 16
-                val = self.val.complex128_
             else:
                 assert False
         cdef char kind
@@ -117,7 +115,7 @@ cdef class CScalar(CPointer):
             self.val.bool_ = val
             assert size == 1
         elif kind == 'i':
-            val_i = val
+            val_i = numpy.int64(val)
             if size == 1:
                 self.val.int8_ = val_i
             elif size == 2:
@@ -129,7 +127,7 @@ cdef class CScalar(CPointer):
             else:
                 assert False
         elif kind == 'u':
-            val_u = val
+            val_u = numpy.uint64(val)
             if size == 1:
                 self.val.uint8_ = val_u
             elif size == 2:
