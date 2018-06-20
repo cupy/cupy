@@ -191,6 +191,7 @@ cdef class LinkState:
     """CUDA link state."""
 
     def __init__(self):
+        runtime._ensure_context()
         self.ptr = driver.linkCreate()
 
     def __del__(self):
