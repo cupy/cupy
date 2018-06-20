@@ -6,6 +6,11 @@ import numpy
 from cupy import testing
 
 
+_wrong_bool_einsum = \
+    numpy.lib.NumpyVersion(numpy.__version__) < '1.10.0'
+    # before numpy PR #5946
+
+
 def _dec_shape(shape, dec):
     # Test smaller shape
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
@@ -271,8 +276,7 @@ class TestListArgEinSumError(unittest.TestCase):
 @testing.with_requires('numpy!=1.14.0')
 class TestEinSumUnaryOperation(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=_wrong_bool_einsum)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -283,7 +287,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
         return out
 
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=_wrong_bool_einsum)
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -293,6 +297,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_out'],
+        no_bool=_wrong_bool_einsum,
         no_complex=True)  # avoid ComplexWarning
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
@@ -371,6 +376,7 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
 class TestEinSumBinaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
+        no_bool=_wrong_bool_einsum,
         no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
@@ -417,6 +423,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b', 'dtype_c'],
+        no_bool=_wrong_bool_einsum,
         no_float16=True)  # Avoid numpy issue #10899
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
