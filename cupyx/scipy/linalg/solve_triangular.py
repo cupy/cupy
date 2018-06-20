@@ -38,7 +38,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
         cupy.ndarray:
             The matrix with dimension ``(M,)`` or ``(M, N)``.
 
-    .. seealso:: :func:`numpy.linalg.solve_triangular`
+    .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
 
     util._assert_cupy_array(a, b)
