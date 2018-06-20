@@ -50,6 +50,7 @@ from cupy.core.core import ReductionKernel  # NOQA
 from cupy.core.core import remainder  # NOQA
 from cupy.core.core import right_shift  # NOQA
 from cupy.core.core import rollaxis  # NOQA
+from cupy.core.core import SimpleKernel  # NOQA
 from cupy.core.core import size  # NOQA'
 from cupy.core.core import sqrt  # NOQA
 from cupy.core.core import subtract  # NOQA
