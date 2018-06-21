@@ -6,9 +6,11 @@ import numpy
 from cupy import testing
 
 
-_wrong_bool_einsum = \
-    numpy.lib.NumpyVersion(numpy.__version__) < '1.10.0'
-    # before numpy PR #5946
+_wrong_bool_einsum, _wrong_float16_einsum = [
+    numpy.lib.NumpyVersion(numpy.__version__) <= v for v in [
+        '1.9.99',  # before numpy PR #5946
+        '1.14.99',  # before numpy PR #10911
+    ]]
 
 
 def _dec_shape(shape, dec):
@@ -377,7 +379,7 @@ class TestEinSumBinaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
         no_bool=_wrong_bool_einsum,
-        no_float16=True)  # Avoid numpy issue #10899
+        no_float16=_wrong_float16_einsum)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
@@ -424,7 +426,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b', 'dtype_c'],
         no_bool=_wrong_bool_einsum,
-        no_float16=True)  # Avoid numpy issue #10899
+        no_float16=_wrong_float16_einsum)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
