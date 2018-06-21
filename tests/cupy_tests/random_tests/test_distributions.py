@@ -4,11 +4,19 @@ import cupy
 from cupy.random import distributions
 from cupy import testing
 
+import numpy
+
+
+_signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
+_unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
+_int_dtypes = _signed_dtypes + _unsigned_dtypes
+
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'n_shape': [(), (3, 2)],
     'p_shape': [(), (3, 2)],
+    'dtype': _int_dtypes,  # to escape timeout
 })
 )
 @testing.gpu
@@ -21,12 +29,11 @@ class TestDistributionsBinomial(unittest.TestCase):
         self.assertEqual(self.shape, out.shape)
         self.assertEqual(out.dtype, dtype)
 
-    @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_int_dtypes('n_dtype')
     @cupy.testing.for_float_dtypes('p_dtype')
-    def test_binomial(self, n_dtype, p_dtype, dtype):
+    def test_binomial(self, n_dtype, p_dtype):
         self.check_distribution(distributions.binomial,
-                                n_dtype, p_dtype, dtype)
+                                n_dtype, p_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({
