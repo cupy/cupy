@@ -23,9 +23,8 @@ from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
 
-required_cython_version = pkg_resources.parse_version('0.26.1')
+required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
-    pkg_resources.parse_version('0.27.0'),
 ]
 
 MODULES = [

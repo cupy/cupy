@@ -130,7 +130,7 @@ You can also install the development version of CuPy from a cloned Git repositor
   $ cd cupy
   $ pip install .
 
-If you are using source tree downloaded from GitHub, you need to install Cython 0.26.1 or later (``pip install cython``).
+If you are using source tree downloaded from GitHub, you need to install Cython 0.28.0 or later (``pip install cython``).
 
 Uninstall CuPy
 --------------
