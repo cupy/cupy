@@ -6,9 +6,9 @@ import numpy
 from cupy import testing
 
 
-_np_version = numpy.lib.NumpyVersion(numpy.__version__)
-_wrong_bool_einsum = _np_version <= '1.9.99'  # before numpy PR #5946
-_wrong_float16_einsum = _np_version <= '1.14.99'  # before numpy PR #10911
+_wrong_bool_einsum = testing.numpy_satisfies('<1.10')  # before numpy PR #5946
+_wrong_float16_einsum = \
+    testing.numpy_satisfies('<1.15')  # before numpy PR #10911
 
 
 def _dec_shape(shape, dec):
