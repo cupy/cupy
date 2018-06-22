@@ -563,12 +563,11 @@ def check_extensions(extensions):
     for x in extensions:
         for f in x.sources:
             if not path.isfile(f):
-                raise RuntimeError(
-                    'Missing file: %s\n' % f +
-                    'Please install Cython %s. ' % required_cython_version +
-                    'Please also check the version of Cython.\n' +
-                    'See ' +
-                    'https://docs-cupy.chainer.org/en/stable/install.html')
+                raise RuntimeError('''\
+Missing file: {}
+Please install Cython {} or later. Please also check the version of Cython.
+See https://docs-cupy.chainer.org/en/stable/install.html for details.
+'''.format(f, required_cython_version))
 
 
 def get_ext_modules(use_cython=False):
