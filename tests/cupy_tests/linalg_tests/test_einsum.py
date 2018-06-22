@@ -285,7 +285,6 @@ class TestEinSumUnaryOperation(unittest.TestCase):
             testing.assert_allclose(optimized_out, out)
         return out
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_bool=not _bool_ok)
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
