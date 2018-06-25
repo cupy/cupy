@@ -54,9 +54,10 @@ cdef set _numpy_scalar_type_set = set(_typenames.keys())
 
 
 _int_iinfo = numpy.iinfo(int)
-cdef long long _int_min = _int_iinfo.min
-cdef long long _int_max = _int_iinfo.max
+cdef _int_min = _int_iinfo.min
+cdef _int_max = _int_iinfo.max
 cdef _int_type = _int_iinfo.dtype.type
+cdef bint _use_int32 = _int_type != numpy.int64
 del _int_iinfo
 
 
@@ -72,7 +73,7 @@ cpdef _python_scalar_to_numpy_scalar(x):
     else:
         if 0x8000000000000000 <= x:
             numpy_type = numpy.uint64
-        elif x < _int_min or _int_max < x:
+        elif _use_int32 and (x < _int_min or _int_max < x):
             numpy_type = numpy.int64
         else:
             # Generally `_int_type` is `numpy.int64`.
@@ -82,9 +83,10 @@ cpdef _python_scalar_to_numpy_scalar(x):
 
 
 cdef class CScalar(CPointer):
+
     ndim = 0
 
-    def __init__(self):
+    def __cinit__(self):
         self.ptr = <void*>&(self.val)
         self.kind = ' '
         self.size = -1
@@ -115,7 +117,11 @@ cdef class CScalar(CPointer):
             self.val.bool_ = val
             assert size == 1
         elif kind == 'i':
-            val_i = numpy.int64(val)
+            if self.kind == 'u':
+                # avoid overflow exception
+                val_i = self.val.uint64_
+            else:
+                val_i = val
             if size == 1:
                 self.val.int8_ = val_i
             elif size == 2:
@@ -127,7 +133,11 @@ cdef class CScalar(CPointer):
             else:
                 assert False
         elif kind == 'u':
-            val_u = numpy.uint64(val)
+            if self.kind == 'i':
+                # avoid overflow exception
+                val_u = self.val.int64_
+            else:
+                val_u = val
             if size == 1:
                 self.val.uint8_ = val_u
             elif size == 2:
@@ -159,7 +169,7 @@ cdef class CScalar(CPointer):
 
 
 cpdef CScalar _python_scalar_to_c_scalar(x):
-    cdef CScalar ret = CScalar()
+    cdef CScalar ret = CScalar.__new__(CScalar)
     typ = type(x)
     if typ is bool:
         ret.val.bool_ = x
@@ -177,16 +187,15 @@ cpdef CScalar _python_scalar_to_c_scalar(x):
         if 0x8000000000000000 <= x:
             ret.val.uint64_ = x
             ret.kind = 'u'
-            ret.size = 8
         else:
             ret.val.int64_ = x
             ret.kind = 'i'
-            ret.size = 8
+        ret.size = 8
     return ret
 
 
 cpdef CScalar _numpy_scalar_to_c_scalar(x):
-    cdef CScalar ret = CScalar()
+    cdef CScalar ret = CScalar.__new__(CScalar)
     ret.kind = ord(x.dtype.kind)
     if ret.kind == 'i':
         ret.val.int64_ = x
