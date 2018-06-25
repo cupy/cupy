@@ -2140,7 +2140,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        if order is not None and len(order) == 1 and order in 'KAka':
+        if order is not None and len(order) >= 1 and order[0] in 'KAka':
             if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
                 order = 'F'
             else:
