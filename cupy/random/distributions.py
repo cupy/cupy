@@ -4,6 +4,35 @@ from cupy.random import generator
 
 # TODO(beam2d): Implement many distributions
 
+
+def beta(a, b, size=None, dtype=float):
+    """Beta distribution.
+
+    Returns an array of samples drawn from the beta distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{x^{\\alpha-1}(1-x)^{\\beta-1}}{B(\\alpha,\\beta)},
+
+    Args:
+        a (float): Parameter of the beta distribution :math:`\\alpha`.
+        b (float): Parameter of the beta distribution :math:`\\beta`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the beta destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.beta`
+        :func:`numpy.random.beta`
+    """
+    rs = generator.get_random_state()
+    return rs.beta(a, b, size, dtype)
+
+
 def binomial(n, p, size=None, dtype=int):
     """Binomial distribution.
 

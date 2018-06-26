@@ -276,6 +276,109 @@ __device__ long rk_binomial(rk_state *state, long n, double p) {
 }
 '''
 
+rk_gauss_definition = '''
+__device__ double rk_gauss(rk_state *state) {
+    if (state->has_gauss) {
+        const double tmp = state->gauss;
+        state->gauss = 0;
+        state->has_gauss = 0;
+        return tmp;
+    } else {
+        double f, x1, x2, r2;
+        do {
+            x1 = 2.0*rk_double(state) - 1.0;
+            x2 = 2.0*rk_double(state) - 1.0;
+            r2 = x1*x1 + x2*x2;
+        }
+        while (r2 >= 1.0 || r2 == 0.0);
+        /* Box-Muller transform */
+        f = sqrt(-2.0*log(r2)/r2);
+        /* Keep for next call */
+        state->gauss = f*x1;
+        state->has_gauss = 1;
+        return f*x2;
+    }
+}
+'''
+
+rk_standard_exponential_definition = '''
+__device__ double rk_standard_exponential(rk_state *state) {
+    /* We use -log(1-U) since U is [0, 1) */
+    return -log(1.0 - rk_double(state));
+}
+'''
+
+rk_standard_gamma_definition = '''
+__device__ double rk_standard_gamma(rk_state *state, double shape) {
+    double b, c;
+    double U, V, X, Y;
+    if (shape == 1.0) {
+        return rk_standard_exponential(state);
+    } else if (shape < 1.0) {
+        for (;;) {
+            U = rk_double(state);
+            V = rk_standard_exponential(state);
+            if (U <= 1.0 - shape) {
+                X = pow(U, 1./shape);
+                if (X <= V) {
+                    return X;
+                }
+            } else {
+                Y = -log((1-U)/shape);
+                X = pow(1.0 - shape + shape*Y, 1./shape);
+                if (X <= (V + Y)) {
+                    return X;
+                }
+            }
+        }
+    } else {
+        b = shape - 1./3.;
+        c = 1./sqrt(9*b);
+        for (;;) {
+            do {
+                X = rk_gauss(state);
+                V = 1.0 + c*X;
+            } while (V <= 0.0);
+            V = V*V*V;
+            U = rk_double(state);
+            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
+            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
+        }
+    }
+}
+'''
+
+rk_beta_definition = '''
+__device__ double rk_beta(rk_state *state, double a, double b) {
+    double Ga, Gb;
+    if ((a <= 1.0) && (b <= 1.0)) {
+        double U, V, X, Y;
+        /* Use Johnk's algorithm */
+        while (1) {
+            U = rk_double(state);
+            V = rk_double(state);
+            X = pow(U, 1.0/a);
+            Y = pow(V, 1.0/b);
+            if ((X + Y) <= 1.0) {
+                if (X +Y > 0) {
+                    return X / (X + Y);
+                } else {
+                    double logX = log(U) / a;
+                    double logY = log(V) / b;
+                    double logM = logX > logY ? logX : logY;
+                    logX -= logM;
+                    logY -= logM;
+                    return exp(logX - log(exp(logX) + exp(logY)));
+                }
+            }
+        }
+    } else {
+        Ga = rk_standard_gamma(state, a);
+        Gb = rk_standard_gamma(state, b);
+        return Ga/(Ga + Gb);
+    }
+}
+'''
 
 gumbel_kernel = core.ElementwiseKernel(
     'T x, T loc, T scale', 'T y',
@@ -301,6 +404,22 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_beta_definition]
+beta_kernel = core.ElementwiseKernel(
+    'S a, T b, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_beta(&internal_state, a, b);
+    ''',
+    'beta_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
