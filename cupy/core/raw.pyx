@@ -21,5 +21,6 @@ cdef class RawKernel:
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=()):
-    module = cupy.core.core.compile_with_cache(code, options)
+    module = cupy.core.core.compile_with_cache(
+        code, options, prepend_cupy_headers=False)
     return module.get_function(name)
