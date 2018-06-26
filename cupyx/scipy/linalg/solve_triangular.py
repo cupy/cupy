@@ -8,7 +8,7 @@ from cupy.linalg import util
 
 
 def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
-                     overwrite_b=False, check_finite=True):
+                     overwrite_b=False, check_finite=False):
     """Solve the equation a x = b for x, assuming a is a triangular matrix.
 
     Args:
@@ -45,32 +45,26 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
 
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix')
-    if a.shape[0] != b.shape[0]:
+    if len(a) != len(b):
         raise ValueError('incompatible dimensions')
 
     # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
+    if a.dtype.char in 'fd':
         dtype = a.dtype
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
 
-    a = a.astype(dtype)
-    b = b.astype(dtype)
+    a = cupy.array(a, dtype=dtype, order='F', copy=False)
+    b = cupy.array(b, dtype=dtype, order='F', copy=(not overwrite_b))
 
     if check_finite:
-        if a.dtype.char in typecodes['AllFloat'] and \
-           not cupy.isfinite(a).all():
+        if a.dtype.kind == 'f' and not cupy.isfinite(a).all():
             raise ValueError(
                 "array must not contain infs or NaNs")
-        if b.dtype.char in typecodes['AllFloat'] and \
-           not cupy.isfinite(b).all():
+        if b.dtype.kind == 'f' and not cupy.isfinite(b).all():
             raise ValueError(
                 "array must not contain infs or NaNs")
 
-    a = cupy.asfortranarray(a)
-    b = cupy.asfortranarray(b)
-
-    dtype = a.dtype
     m, n = (b.size, 1) if b.ndim == 1 else b.shape
     cublas_handle = device.get_cublas_handle()
 
