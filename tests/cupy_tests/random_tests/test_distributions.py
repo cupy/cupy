@@ -7,6 +7,8 @@ from cupy import testing
 import numpy
 
 
+_regular_float_dtypes = (numpy.float64, numpy.float32)
+_float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
 _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
 _int_dtypes = _signed_dtypes + _unsigned_dtypes
@@ -16,23 +18,23 @@ _int_dtypes = _signed_dtypes + _unsigned_dtypes
     'shape': [(4, 3, 2), (3, 2)],
     'a_shape': [(), (3, 2)],
     'b_shape': [(), (3, 2)],
-    'dtype': _int_dtypes,  # to escape timeout
+    'dtype': _float_dtypes,  # to escape timeout
 })
 )
 @testing.gpu
 class TestDistributionsBeta(unittest.TestCase):
 
     def check_distribution(self, dist_func, a_dtype, b_dtype, dtype):
-        a = 5 * cupy.ones(self.a_shape, dtype=a_dtype)
-        b = 0.5 * cupy.ones(self.b_shape, dtype=b_dtype)
+        a = 3. * cupy.ones(self.a_shape, dtype=a_dtype)
+        b = 3. * cupy.ones(self.b_shape, dtype=b_dtype)
         out = dist_func(a, b, self.shape, dtype)
         self.assertEqual(self.shape, out.shape)
         self.assertEqual(out.dtype, dtype)
 
-    @cupy.testing.for_int_dtypes('a_dtype')
+    @cupy.testing.for_float_dtypes('a_dtype')
     @cupy.testing.for_float_dtypes('b_dtype')
-    def test_binomial(self, a_dtype, b_dtype):
-        self.check_distribution(distributions.binomial,
+    def test_beta(self, a_dtype, b_dtype):
+        self.check_distribution(distributions.beta,
                                 a_dtype, b_dtype, self.dtype)
 
 
