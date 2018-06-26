@@ -143,6 +143,32 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
+def poisson(lam=1.0, size=None, dtype=int):
+    """Poisson distribution.
+
+    Returns an array of samples drawn from the poisson distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{\\lambda^xe^{-\\lambda}}{k!},
+
+    Args:
+        lam (float): Parameter of the poisson distribution :math:`\\lambda`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the poisson distribution.
+
+    .. seealso:: :func:`numpy.random.poisson`
+    """
+    rs = generator.get_random_state()
+    x = rs.poisson(lam, size, dtype)
+    return x
+
+
 def standard_normal(size=None, dtype=float):
     """Returns an array of samples drawn from the standard normal distribution.
 

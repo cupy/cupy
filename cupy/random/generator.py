@@ -133,6 +133,21 @@ class RandomState(object):
             func = curand.generateNormalDouble
         return self._generate_normal(func, size, dtype, loc, scale)
 
+    def poisson(self, lam=1.0, size=None, dtype=int):
+        """Returns an array of samples drawn from the poisson distribution.
+
+        .. seealso::
+            :func:`cupy.random.poisson` for full documentation,
+            :meth:`numpy.random.RandomState.poisson`
+        """
+        lam = cupy.asarray(lam)
+        if size is None:
+            size = lam.shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.poisson_kernel(lam, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
 

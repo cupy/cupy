@@ -134,6 +134,26 @@ class TestDistributionsNormal(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'lam_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsPoisson(unittest.TestCase):
+
+    def check_distribution(self, dist_func, lam_dtype, dtype):
+        lam = 5 * cupy.ones(self.lam_shape, dtype=lam_dtype)
+        out = dist_func(lam, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_int_dtypes('dtype')
+    @cupy.testing.for_float_dtypes('lam_dtype')
+    def test_poisson(self, lam_dtype, dtype):
+        self.check_distribution(distributions.poisson, lam_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
 })
 )
 @testing.gpu
