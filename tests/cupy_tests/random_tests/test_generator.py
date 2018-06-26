@@ -119,6 +119,24 @@ class TestBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGamma(RandomGeneratorTestCase):
+
+    target_method = 'gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
+
+    def test_gamma_2(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):

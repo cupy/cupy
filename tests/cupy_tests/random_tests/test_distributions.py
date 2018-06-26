@@ -7,6 +7,8 @@ from cupy import testing
 import numpy
 
 
+_regular_float_dtypes = (numpy.float64, numpy.float32)
+_float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
 _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
 _int_dtypes = _signed_dtypes + _unsigned_dtypes
@@ -34,6 +36,30 @@ class TestDistributionsBinomial(unittest.TestCase):
     def test_binomial(self, n_dtype, p_dtype):
         self.check_distribution(distributions.binomial,
                                 n_dtype, p_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'shape_shape': [(), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+    'dtype': _float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsGamma(unittest.TestCase):
+
+    def check_distribution(self, dist_func, shape_dtype, scale_dtype, dtype):
+        shape = cupy.ones(self.shape_shape, dtype=shape_dtype)
+        scale = cupy.ones(self.scale_shape, dtype=scale_dtype)
+        out = dist_func(shape, scale, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('shape_dtype')
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_gamma(self, shape_dtype, scale_dtype):
+        self.check_distribution(distributions.gamma,
+                                shape_dtype, scale_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({
