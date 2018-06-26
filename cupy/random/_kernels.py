@@ -276,6 +276,12 @@ __device__ long rk_binomial(rk_state *state, long n, double p) {
 }
 '''
 
+rk_standard_exponential_definition = '''
+__device__ double rk_standard_exponential(rk_state *state) {
+    /* We use -log(1-U) since U is [0, 1) */
+    return -log(1.0 - rk_double(state));
+}
+'''
 
 gumbel_kernel = core.ElementwiseKernel(
     'T x, T loc, T scale', 'T y',
@@ -301,6 +307,20 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_standard_exponential_definition]
+standard_exponential_kernel = core.ElementwiseKernel(
+    'uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_exponential(&internal_state);
+    ''',
+    'standard_exponential_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
