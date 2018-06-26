@@ -151,9 +151,8 @@ cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_shape = _reduce_dims(
-            in_args, params, in_indexer.shape)
-        out_args, out_shape = _reduce_dims(
+        in_shape = _reduce_dims(in_args, params, in_indexer.shape)
+        out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
@@ -226,10 +225,9 @@ class simple_reduction_function(object):
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        if out_args[0].size == 0:
-            if len(out_args) == 1:
-                return out_args[0]
-            return tuple(out_args)
+        ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
+        if (<ndarray>out_args[0]).size == 0:
+            return ret
         if a.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
@@ -264,9 +262,7 @@ class simple_reduction_function(object):
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
             inout_args, shared_mem, block_size)
 
-        if len(out_args) == 1:
-            return out_args[0]
-        return tuple(out_args)
+        return ret
 
 
 @util.memoize(for_each_device=True)
@@ -413,8 +409,9 @@ class ReductionKernel(object):
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
+        ret = out_args[0]
         if 0 in out_shape:
-            return out_args[0]
+            return ret
 
         in_args = [x if isinstance(x, ndarray) else t(x)
                    for x, t in zip(in_args, in_types)]
@@ -447,7 +444,7 @@ class ReductionKernel(object):
         kern.linear_launch(
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
             inout_args, shared_mem, block_size, stream)
-        return out_args[0]
+        return ret
 
 
 cpdef create_reduction_func(name, ops, routine=None, identity=None,
