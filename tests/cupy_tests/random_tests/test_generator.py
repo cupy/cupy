@@ -120,6 +120,20 @@ class TestBinomial(RandomGeneratorTestCase):
 
 
 @testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+
+@testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
     # TODO(niboshi):
