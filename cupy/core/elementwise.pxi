@@ -173,7 +173,7 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef int i, j, ax, last_ax, ndim
+    cdef int i, ax, last_ax, ndim
     cdef Py_ssize_t total_size
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
     cdef vector.vector[int] array_indexes, axes
