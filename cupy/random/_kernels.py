@@ -276,6 +276,38 @@ __device__ long rk_binomial(rk_state *state, long n, double p) {
 }
 '''
 
+rk_gauss_definition = '''
+__device__ double
+rk_gauss(rk_state *state) {
+    if (state->has_gauss) {
+        const double tmp = state->gauss;
+        state->gauss = 0;
+        state->has_gauss = 0;
+        return tmp;
+    } else {
+        double f, x1, x2, r2;
+        do {
+            x1 = 2.0*rk_double(state) - 1.0;
+            x2 = 2.0*rk_double(state) - 1.0;
+            r2 = x1*x1 + x2*x2;
+        }
+        while (r2 >= 1.0 || r2 == 0.0);
+        /* Box-Muller transform */
+        f = sqrt(-2.0*log(r2)/r2);
+        /* Keep for next call */
+        state->gauss = f*x1;
+        state->has_gauss = 1;
+        return f*x2;
+    }
+}
+'''
+
+rk_standard_cauchy_definition = '''
+__device__ double rk_standard_cauchy(rk_state *state) {
+    return rk_gauss(state) / rk_gauss(state);
+}
+'''
+
 
 gumbel_kernel = core.ElementwiseKernel(
     'T x, T loc, T scale', 'T y',
@@ -301,6 +333,21 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_gauss_definition,
+     rk_standard_cauchy_definition]
+standard_cauchy_kernel = core.ElementwiseKernel(
+    'uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_cauchy(&internal_state);
+    ''',
+    'standard_cauchy_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

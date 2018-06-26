@@ -133,6 +133,21 @@ class RandomState(object):
             func = curand.generateNormalDouble
         return self._generate_normal(func, size, dtype, loc, scale)
 
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.standard_cauchy_kernel(self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
 

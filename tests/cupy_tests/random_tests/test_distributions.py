@@ -137,6 +137,23 @@ class TestDistributionsNormal(unittest.TestCase):
 })
 )
 @testing.gpu
+class TestDistributionsStandardCauchy(unittest.TestCase):
+
+    def check_distribution(self, dist_func, dtype):
+        out = dist_func(self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_cauchy(self, dtype):
+        self.check_distribution(distributions.standard_cauchy, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
 class TestDistributionsStandardNormal(unittest.TestCase):
 
     def check_distribution(self, dist_func, dtype):
