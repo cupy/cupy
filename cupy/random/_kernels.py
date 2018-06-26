@@ -276,6 +276,40 @@ __device__ long rk_binomial(rk_state *state, long n, double p) {
 }
 '''
 
+rk_geometric_search_definition = '''
+__device__ long rk_geometric_search(rk_state *state, double p) {
+    double U;
+    long X;
+    double sum, prod, q;
+    X = 1;
+    sum = prod = p;
+    q = 1.0 - p;
+    U = rk_double(state);
+    while (U > sum) {
+        prod *= q;
+        sum += prod;
+        X++;
+    }
+    return X;
+}
+'''
+
+rk_geometric_inversion_definition = '''
+__device__ long rk_geometric_inversion(rk_state *state, double p) {
+    return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
+}
+'''
+
+rk_geometric_definition = '''
+__device__ long rk_geometric(rk_state *state, double p) {
+    if (p >= 0.333333333333333333333333) {
+        return rk_geometric_search(state, p);
+    } else {
+        return rk_geometric_inversion(state, p);
+    }
+}
+'''
+
 
 gumbel_kernel = core.ElementwiseKernel(
     'T x, T loc, T scale', 'T y',
@@ -301,6 +335,21 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_geometric_search_definition,
+     rk_geometric_inversion_definition, rk_geometric_definition]
+geometric_kernel = core.ElementwiseKernel(
+    'T p, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_geometric(&internal_state, p);
+    ''',
+    'geometric_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
