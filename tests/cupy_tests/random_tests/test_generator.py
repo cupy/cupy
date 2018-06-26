@@ -205,6 +205,21 @@ class TestNormal(RandomGeneratorTestCase):
         self.check_normal(numpy.float64)
 
 
+@testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardT(RandomGeneratorTestCase):
+
+    target_method = 'standard_t'
+
+    def test_standard_t(self):
+        self.generate(df=self.df, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(*[
     {'size': None},

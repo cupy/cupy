@@ -43,6 +43,7 @@ Distributions
    cupy.random.multinomial
    cupy.random.normal
    cupy.random.standard_normal
+   cupy.random.standard_t
    cupy.random.uniform
 
 
