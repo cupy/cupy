@@ -37,6 +37,7 @@ Distributions
    :nosignatures:
 
    cupy.random.binomial
+   cupy.random.f
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal

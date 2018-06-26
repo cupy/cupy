@@ -7,6 +7,8 @@ from cupy import testing
 import numpy
 
 
+_regular_float_dtypes = (numpy.float64, numpy.float32)
+_float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
 _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
 _int_dtypes = _signed_dtypes + _unsigned_dtypes
@@ -34,6 +36,30 @@ class TestDistributionsBinomial(unittest.TestCase):
     def test_binomial(self, n_dtype, p_dtype):
         self.check_distribution(distributions.binomial,
                                 n_dtype, p_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'dfnum_shape': [(), (3, 2)],
+    'dfden_shape': [(), (3, 2)],
+    'dtype': _float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsF(unittest.TestCase):
+
+    def check_distribution(self, dist_func, dfnum_dtype, dfden_dtype, dtype):
+        dfnum = cupy.ones(self.dfnum_shape, dtype=dfnum_dtype)
+        dfden = cupy.ones(self.dfden_shape, dtype=dfden_dtype)
+        out = dist_func(dfnum, dfden, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dfnum_dtype')
+    @cupy.testing.for_float_dtypes('dfden_dtype')
+    def test_f(self, dfnum_dtype, dfden_dtype):
+        self.check_distribution(distributions.f,
+                                dfnum_dtype, dfden_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({

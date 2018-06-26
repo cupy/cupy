@@ -32,6 +32,38 @@ def binomial(n, p, size=None, dtype=int):
     return rs.binomial(n, p, size, dtype)
 
 
+def f(dfnum, dfden, size=None, dtype=float):
+    """F distribution.
+
+    Returns an array of samples drawn from the f distribution. Its probability
+    density function is defined as
+
+    .. math::
+        f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+            \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+            x^{\\frac{d_1}{2}-1} \
+            \\left(1+\\frac{d_1}{d_2}x\\right) \
+            ^{-\\frac{d_1+d_2}{2}},
+
+    Args:
+        dfnum (float): Parameter of the f distribution :math:`d_1`.
+        dfden (float): Parameter of the f distribution :math:`d_2`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the f destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.f`
+        :func:`numpy.random.f`
+    """
+    rs = generator.get_random_state()
+    return rs.f(dfnum, dfden, size, dtype)
+
+
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     """Returns an array of samples drawn from a Gumbel distribution.
 

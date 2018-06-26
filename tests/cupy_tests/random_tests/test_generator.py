@@ -119,6 +119,21 @@ class TestBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestF(RandomGeneratorTestCase):
+
+    target_method = 'f'
+
+    def test_f(self):
+        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
