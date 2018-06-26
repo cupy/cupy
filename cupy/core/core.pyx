@@ -408,7 +408,7 @@ cdef class ndarray:
             return self.astype(self.dtype, copy=True, order=order)
 
         dev_id = device.get_device_id()
-        if self.data.device_id == device.get_device_id():
+        if self.data.device_id == dev_id:
             return self.astype(self.dtype, copy=True, order=order)
 
         # It need to make a contiguous copy for copying from another device
