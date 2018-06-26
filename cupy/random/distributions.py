@@ -143,6 +143,32 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
+def pareto(a, size=None, dtype=float):
+    """Pareto II or Lomax distribution.
+
+    Returns an array of samples drawn from the pareto II distribution. Its
+    probability density function is defined as
+
+    .. math::
+        f(x) = \\alpha(1+x)^{-(\\alpha+1)},
+
+    Args:
+        a (float): Parameter of the gamma distribution :math:`\\alpha`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the pareto II distribution.
+
+    .. seealso:: :func:`numpy.random.pareto`
+    """
+    rs = generator.get_random_state()
+    x = rs.pareto(a, size, dtype)
+    return x
+
+
 def standard_normal(size=None, dtype=float):
     """Returns an array of samples drawn from the standard normal distribution.
 

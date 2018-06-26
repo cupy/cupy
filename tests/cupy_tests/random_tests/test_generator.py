@@ -205,6 +205,21 @@ class TestNormal(RandomGeneratorTestCase):
         self.check_normal(numpy.float64)
 
 
+@testing.parameterize(
+    {'a': 1.0},
+    {'a': 3.0},
+    {'a': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPareto(RandomGeneratorTestCase):
+
+    target_method = 'pareto'
+
+    def test_pareto(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(*[
     {'size': None},

@@ -133,6 +133,21 @@ class RandomState(object):
             func = curand.generateNormalDouble
         return self._generate_normal(func, size, dtype, loc, scale)
 
+    def pareto(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the pareto II distribution.
+
+        .. seealso::
+            :func:`cupy.random.pareto_kernel` for full documentation,
+            :meth:`numpy.random.RandomState.pareto`
+        """
+        a = cupy.asarray(a)
+        if size is None:
+            size = a.shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.pareto_kernel(a, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
 
