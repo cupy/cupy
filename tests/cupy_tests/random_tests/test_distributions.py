@@ -38,6 +38,26 @@ class TestDistributionsBinomial(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'df_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsChisquare(unittest.TestCase):
+
+    def check_distribution(self, dist_func, df_dtype, dtype):
+        df = 5 * cupy.ones(self.df_shape, dtype=df_dtype)
+        out = dist_func(df, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('df_dtype')
+    @cupy.testing.for_float_dtypes('dtype')
+    def test_chisquare(self, df_dtype, dtype):
+        self.check_distribution(distributions.chisquare, df_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
