@@ -101,6 +101,24 @@ class TestRandomState(unittest.TestCase):
             self.rs.seed(dtype(0))
 
 
+@testing.parameterize(
+    {'n': 5, 'p': 0.5},
+    {'n': 5, 'p': 0.0},
+    {'n': 5, 'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBinomial(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'binomial'
+
+    def test_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
