@@ -1,5 +1,4 @@
 import numpy
-from numpy.core.numerictypes import typecodes
 
 import cupy
 from cupy.cuda import cublas
