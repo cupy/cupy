@@ -1,8 +1,8 @@
 Special Functions
 =================
 
-Faster versions of common Bessel Functions and other special functions.
------------------------------------------------------------------------
+Faster versions of common Bessel Functions
+------------------------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -14,8 +14,26 @@ Faster versions of common Bessel Functions and other special functions.
    cupyx.scipy.special.y1
    cupyx.scipy.special.i0
    cupyx.scipy.special.i1
-   cupyx.scipy.special.digamma
+
+
+Gamma and Related Functions
+---------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+   
    cupyx.scipy.special.gamma
    cupyx.scipy.special.gammaln
+   cupyx.scipy.special.digamma
    cupyx.scipy.special.polygamma
+
+
+Other Special Functions
+-----------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
    cupyx.scipy.special.zeta
