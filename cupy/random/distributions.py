@@ -45,7 +45,7 @@ def dirichlet(alpha, size=None, dtype=float):
 
     Args:
         alpha (array): Parameters of the dirichlet distribution
-        :math:`\\alpha`.
+            :math:`\\alpha`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
