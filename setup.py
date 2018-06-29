@@ -105,6 +105,7 @@ setup(
         'cupyx.scipy',
         'cupyx.scipy.ndimage',
         'cupyx.scipy.special',
+        'cupyx.scipy.linalg',
     ],
     package_data=package_data,
     zip_safe=False,
