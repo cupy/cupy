@@ -182,7 +182,7 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
-    def interval(self, mx, size):
+    def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
         Args:
@@ -202,7 +202,7 @@ class RandomState(object):
             a ``numpy.uint32`` array is returned.
         """
         if size is None:
-            return self.interval(mx, 1).reshape(())
+            return self._interval(mx, 1).reshape(())
         elif isinstance(size, int):
             size = (size, )
 
@@ -490,7 +490,7 @@ class RandomState(object):
             raise NotImplementedError(
                 'Sampling from a range whose extent is larger than int32 '
                 'range is currently not supported')
-        x = self.interval(diff, size).astype(dtype, copy=False)
+        x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
 
