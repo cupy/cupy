@@ -258,7 +258,7 @@ class TestRandAndRandN(unittest.TestCase):
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):
 
-    target_method = 'interval'
+    target_method = '_interval'
 
     def test_zero(self):
         shape = (2, 3)
