@@ -468,7 +468,8 @@ cdef class ElementwiseKernel:
             (i.e., the arrays are reshaped without copy to the minimum
             dimension) by default. It may make the kernel fast by reducing the
             index calculations.
-        options (list): Options passed to the ``nvcc`` command.
+        options (tuple): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
         no_return (bool): If ``True``, __call__ returns ``None``.
