@@ -166,7 +166,7 @@ cdef class Module:
     def __init__(self):
         self.ptr = 0
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.moduleUnload(self.ptr)
             self.ptr = 0
@@ -193,7 +193,7 @@ cdef class LinkState:
     def __init__(self):
         self.ptr = driver.linkCreate()
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.linkDestroy(self.ptr)
             self.ptr = 0
