@@ -371,7 +371,10 @@ cdef class ndarray:
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
-        if self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
+        if self.size == 0:
+            # skip copy
+            pass
+        elif self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
             cupy.not_equal(self, 0j, out=newarray)
         elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
             warnings.warn(
