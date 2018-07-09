@@ -360,6 +360,11 @@ class ReductionKernel(object):
 
         Args:
             args: Arguments of the kernel.
+            axis (int or tuple of ints): Axis or axes along which the
+                reduction is performed.
+            keepdims (bool): If ``True``, the specified axes are remained as
+                axes of length one.
+            stream (cupy.cuda.Stream): CUDA stream to run this kernel.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
