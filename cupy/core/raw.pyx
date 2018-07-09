@@ -6,7 +6,20 @@ cdef class RawKernel:
 
     """User-defined custom kernel.
 
-    This class can be used to define a custom kernel.
+    This class can be used to define a custom kernel using raw CUDA source.
+
+    The kernel is compiled at an invocation of the :meth:`~RawKernel.__call__`
+    method, which is cached for each device.
+    The compiled binary is also cached into a file under the
+    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
+    binary is reused by other processes.
+
+    Args:
+        code (str): CUDA source code.
+        name (str): Name of the kernel function.
+        options (str): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+
     """
 
     def __init__(self, code, name='kernel', options=()):
@@ -15,6 +28,22 @@ cdef class RawKernel:
         self.options = options
 
     def __call__(self, grid, block, args, **kwargs):
+        """Compiles and invokes the kernel.
+
+        The compilation runs only if the kernel is not cached.
+
+        Generally, arguments of the kernel function must match with the dtypes
+        of ``args``. Mismatch between them will not be detected.
+
+        Args:
+            grid (tuple): Size of grid in blocks.
+            block (tuple): Dimensions of each thread block.
+            args: Arguments of the kernel.
+            shared_mem (int): Dynamic shared-memory size per thread block in
+                bytes.
+            stream (cupy.cuda.Stream): CUDA stream to run this kernel.
+
+        """
         kern = _get_raw_kernel(self.code, self.name, self.options)
         kern(grid, block, args, **kwargs)
 
