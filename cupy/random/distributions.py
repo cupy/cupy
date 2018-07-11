@@ -182,7 +182,4 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
 
     """
     rs = generator.get_random_state()
-    x = rs.uniform(0.0, 1.0, size=size, dtype=dtype)
-    cupy.multiply(x, (high - low), out=x)
-    cupy.add(x, low, out=x)
-    return x
+    return rs.uniform(low, high, size=size, dtype=dtype)
