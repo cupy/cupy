@@ -191,11 +191,11 @@ In other words, you have control over grid size, block size, shared memory size 
    >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
    >>> sum_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
    >>> y
-   array([[  0.,   2.,   4.,   6.,   8.],
-          [ 10.,  12.,  14.,  16.,  18.],
-          [ 20.,  22.,  24.,  26.,  28.],
-          [ 30.,  32.,  34.,  36.,  38.],
-          [ 40.,  42.,  44.,  46.,  48.]], dtype=float32)
+   array([[ 0.,  2.,  4.,  6.,  8.],
+          [10., 12., 14., 16., 18.],
+          [20., 22., 24., 26., 28.],
+          [30., 32., 34., 36., 38.],
+          [40., 42., 44., 46., 48.]], dtype=float32)
 
 .. note::
     The kernel does not have return values.
