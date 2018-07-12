@@ -28,17 +28,16 @@ cdef class RawKernel:
         self.options = options
 
     def __call__(self, grid, block, args, **kwargs):
-        """Compiles and invokes the kernel.
+        """__call__(self, grid, block, args, *, shared_mem=0, stream=None)
+
+        Compiles and invokes the kernel.
 
         The compilation runs only if the kernel is not cached.
-
-        Generally, arguments of the kernel function must match with the dtypes
-        of ``args``. Mismatch between them will not be detected.
 
         Args:
             grid (tuple): Size of grid in blocks.
             block (tuple): Dimensions of each thread block.
-            args: Arguments of the kernel.
+            args (tuple): Arguments of the kernel.
             shared_mem (int): Dynamic shared-memory size per thread block in
                 bytes.
             stream (cupy.cuda.Stream): CUDA stream to run this kernel.
