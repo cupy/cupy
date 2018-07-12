@@ -22,7 +22,7 @@ cdef class RawKernel:
 
     """
 
-    def __init__(self, code, name='kernel', options=()):
+    def __init__(self, code, name, options=()):
         self.code = code
         self.name = name
         self.options = options
