@@ -3,8 +3,8 @@
 User-Defined Kernels
 ====================
 
-CuPy provides easy ways to define two types of CUDA kernels: elementwise kernels and reduction kernels.
-We first describe how to define and call elementwise kernels, and then describe how to define and call reduction kernels.
+CuPy provides easy ways to define three types of CUDA kernels: elementwise kernels, reduction kernels and raw kernels.
+In this documentation, we describe how to define and call each kernels.
 
 
 Basics of elementwise kernels
@@ -166,3 +166,47 @@ For example, L2 norm along specified axes can be written as follows:
 .. note::
    ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
    It means, if you want to use ``raw`` specifier for at least one argument, the ``axis`` argument must be ``0`` or a contiguous increasing sequence of integers starting from ``0``, like ``(0, 1)``, ``(0, 1, 2)``, etc.
+
+
+Raw kernels
+-----------
+
+Raw kernels can be defined by the :class:`~cupy.RawKernel` class.
+By using raw kernels, you can define kernels from raw CUDA source.
+
+:class:`~cupy.RawKernel` object allows you to call the kernel with CUDA's ``cuLaunchKernel`` interface.
+In other words, you have control over grid size, block size, shared memory size and stream.
+
+.. doctest::
+
+   >>> sum_kernel = cp.RawKernel(r'''
+   ... extern "C" __global__
+   ... void my_sum(const float* x1, const float* x2, float* y) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + x2[tid];
+   ... }
+   ... ''', 'my_sum')
+   >>> x1 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
+   >>> x2 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
+   >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
+   >>> sum_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
+   >>> y
+   array([[  0.,   2.,   4.,   6.,   8.],
+          [ 10.,  12.,  14.,  16.,  18.],
+          [ 20.,  22.,  24.,  26.,  28.],
+          [ 30.,  32.,  34.,  36.,  38.],
+          [ 40.,  42.,  44.,  46.,  48.]], dtype=float32)
+
+.. note::
+    The kernel does not have return values.
+    You need to pass both input arrays and output arrays as arguments.
+
+.. note::
+    No validation will be performed by CuPy for arguments passed to the kernel, including types and number of arguments.
+    Especially note that when passing :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally).
+    For example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``.
+    For Python primitive types, ``int``, ``float`` and ``bool`` map to ``long long``, ``double`` and ``bool``, respectively.
+
+.. note::
+    When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
+    You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
