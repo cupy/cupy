@@ -36,4 +36,4 @@ ctypedef unsigned short _float16
 
 cpdef unsigned short to_float16(float f)
 
-cpdef float to_float(unsigned short v)
+cpdef float from_float16(unsigned short v)

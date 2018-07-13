@@ -266,7 +266,7 @@ cpdef uint16_t to_float16(float f):
     return npy_floatbits_to_halfbits(c.n)
 
 
-cpdef float to_float(uint16_t v):
+cpdef float from_float16(uint16_t v):
     cdef float32_int c
     c.n = npy_halfbits_to_floatbits(v)
     return c.f

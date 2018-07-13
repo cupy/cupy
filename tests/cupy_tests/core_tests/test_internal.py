@@ -208,6 +208,7 @@ class TestCompleteSliceError(unittest.TestCase):
     {'x': 2 ** 40,     'expect': 2 ** 40},
     {'x': 2 ** 40 - 1, 'expect': 2 ** 40},
     {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
+    {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
 )
 class TestClp2(unittest.TestCase):
 
@@ -219,15 +220,18 @@ class TestClp2(unittest.TestCase):
     'value': [0.0, 1.0, -1.0,
               0.25, -0.25,
               11.0, -11.0,
+              2 ** -15, -(2 ** -15),  # Denormalized Number
               float('inf'), float('-inf')],
 }))
 class TestConvertFloat16(unittest.TestCase):
 
     def test_conversion(self):
-        assert internal.to_float(internal.to_float16(self.value)) == self.value
+        half = internal.to_float16(self.value)
+        assert internal.from_float16(half) == self.value
 
 
 class TestConvertFloat16Nan(unittest.TestCase):
 
     def test_conversion(self):
-        assert math.isnan(internal.to_float(internal.to_float16(float('nan'))))
+        half = internal.to_float16(float('nan'))
+        assert math.isnan(internal.from_float16(half))
