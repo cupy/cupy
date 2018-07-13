@@ -238,7 +238,7 @@ class simple_reduction_function(object):
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        clp2_count = internal.clp2(in_indexer.size // out_indexer.size)
+        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
         block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
@@ -418,7 +418,7 @@ class ReductionKernel(object):
         block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        clp2_count = internal.clp2(in_indexer.size // out_indexer.size)
+        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
         block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
