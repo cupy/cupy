@@ -63,7 +63,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             has_canonical_format = True
 
         elif scipy_available and scipy.sparse.issparse(arg1):
-            # Convert scipy.sparse to cupy.sparse
+            # Convert scipy.sparse to cupyx.scipy.sparse
             x = arg1.asformat(self.format)
             data = cupy.array(x.data)
             indices = cupy.array(x.indices, dtype='i')

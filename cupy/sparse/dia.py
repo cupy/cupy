@@ -128,7 +128,7 @@ class dia_matrix(data._data_matrix):
                 arrays in a matrix cannot be shared in dia to csc conversion.
 
         Returns:
-            cupy.sparse.csc_matrix: Converted matrix.
+            cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
         if self.data.size == 0:
@@ -166,7 +166,7 @@ class dia_matrix(data._data_matrix):
                 arrays in a matrix cannot be shared in dia to csr conversion.
 
         Returns:
-            cupy.sparse.csc_matrix: Converted matrix.
+            cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
         return self.tocsc().tocsr()
@@ -176,7 +176,7 @@ def isspmatrix_dia(x):
     """Checks if a given matrix is of DIA format.
 
     Returns:
-        bool: Returns if ``x`` is :class:`cupy.sparse.dia_matrix`.
+        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.dia_matrix`.
 
     """
     return isinstance(x, dia_matrix)

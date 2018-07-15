@@ -164,7 +164,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -233,7 +233,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -269,7 +269,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
              If it is ``True``, all error types are acceptable.
              If it is ``False``, no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -307,7 +307,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -345,7 +345,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -375,7 +375,7 @@ def numpy_cupy_array_list_equal(
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -430,7 +430,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -454,7 +454,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.sciyp.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -499,7 +499,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for

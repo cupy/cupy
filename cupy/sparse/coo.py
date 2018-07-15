@@ -75,7 +75,7 @@ class coo_matrix(sparse_data._data_matrix):
             has_canonical_format = True
 
         elif _scipy_available and scipy.sparse.issparse(arg1):
-            # Convert scipy.sparse to cupy.sparse
+            # Convert scipy.sparse to cupyx.scipy.sparse
             x = arg1.tocoo()
             data = cupy.array(x.data)
             row = cupy.array(x.row, dtype='i')
@@ -288,7 +288,7 @@ class coo_matrix(sparse_data._data_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.coo_matrix: Converted matrix.
+            cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
         if copy:
@@ -305,7 +305,7 @@ class coo_matrix(sparse_data._data_matrix):
                 arrays in a matrix cannot be shared in coo to csc conversion.
 
         Returns:
-            cupy.sparse.csc_matrix: Converted matrix.
+            cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
         return self.T.tocsr().T
@@ -319,7 +319,7 @@ class coo_matrix(sparse_data._data_matrix):
                 arrays in a matrix cannot be shared in coo to csr conversion.
 
         Returns:
-            cupy.sparse.csr_matrix: Converted matrix.
+            cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
         if self.nnz == 0:
@@ -339,7 +339,7 @@ class coo_matrix(sparse_data._data_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupy.sparse.spmatrix: Transpose matrix.
+            cupyx.scipy.sparse.spmatrix: Transpose matrix.
 
         """
         if axes is not None:
@@ -355,7 +355,7 @@ def isspmatrix_coo(x):
     """Checks if a given matrix is of COO format.
 
     Returns:
-        bool: Returns if ``x`` is :class:`cupy.sparse.coo_matrix`.
+        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.coo_matrix`.
 
     """
     return isinstance(x, coo_matrix)
