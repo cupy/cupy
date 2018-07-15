@@ -8,8 +8,8 @@ except ImportError:
     scipy_available = False
 
 import cupy
-import cupy.sparse
 from cupy import testing
+from cupyx.scipy import sparse
 
 
 def _make(xp, sp, dtype):
@@ -90,7 +90,7 @@ def _make_shape(xp, sp, dtype):
 class TestCooMatrix(unittest.TestCase):
 
     def setUp(self):
-        self.m = _make(cupy, cupy.sparse, self.dtype)
+        self.m = _make(cupy, sparse, self.dtype)
 
     def test_dtype(self):
         self.assertEqual(self.m.dtype, self.dtype)
@@ -111,18 +111,18 @@ class TestCooMatrix(unittest.TestCase):
             self.m.col, cupy.array([0, 1, 3, 2], self.dtype))
 
     def test_init_copy(self):
-        n = cupy.sparse.coo_matrix(self.m)
+        n = sparse.coo_matrix(self.m)
         self.assertIsNot(n, self.m)
         cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
 
     def test_init_copy_other_sparse(self):
-        n = cupy.sparse.coo_matrix(self.m.tocsr())
+        n = sparse.coo_matrix(self.m.tocsr())
         cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_init_copy_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
-        n = cupy.sparse.coo_matrix(m)
+        n = sparse.coo_matrix(m)
         self.assertIsInstance(n.data, cupy.ndarray)
         self.assertIsInstance(n.row, cupy.ndarray)
         self.assertIsInstance(n.col, cupy.ndarray)
@@ -134,7 +134,7 @@ class TestCooMatrix(unittest.TestCase):
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_init_copy_other_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
-        n = cupy.sparse.coo_matrix(m.tocsc())
+        n = sparse.coo_matrix(m.tocsc())
         self.assertIsInstance(n.data, cupy.ndarray)
         self.assertIsInstance(n.row, cupy.ndarray)
         self.assertIsInstance(n.col, cupy.ndarray)
@@ -244,7 +244,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
     def test_data_invalid(self):
         with self.assertRaises(ValueError):
-            cupy.sparse.coo_matrix(
+            sparse.coo_matrix(
                 ('invalid', (self.row(cupy), self.col(cupy))),
                 shape=self.shape)
 
@@ -256,7 +256,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
     def test_row_invalid(self):
         with self.assertRaises(ValueError):
-            cupy.sparse.coo_matrix(
+            sparse.coo_matrix(
                 (self.data(cupy), ('invalid', self.col(cupy))),
                 shape=self.shape)
 
@@ -268,7 +268,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
     def test_col_invalid(self):
         with self.assertRaises(ValueError):
-            cupy.sparse.coo_matrix(
+            sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), 'invalid')),
                 shape=self.shape)
 
@@ -329,7 +329,7 @@ class TestCooMatrixInit(unittest.TestCase):
 
     def test_unsupported_dtype(self):
         with self.assertRaises(ValueError):
-            cupy.sparse.coo_matrix(
+            sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), self.col(cupy))),
                 shape=self.shape, dtype='i')
 
@@ -789,7 +789,7 @@ class TestCooMatrixSum(unittest.TestCase):
         out = xp.empty(shape, dtype=self.ret_dtype)
         if xp is numpy:
             # TODO(unno): numpy.matrix is used for scipy.sparse though
-            # cupy.ndarray is used for cupy.sparse.
+            # cupy.ndarray is used for cupyx.scipy.sparse.
             out = xp.asmatrix(out)
         return m.sum(axis=self.axis, dtype=self.ret_dtype, out=out)
 
@@ -860,16 +860,16 @@ class TestUfunc(unittest.TestCase):
 class TestIsspmatrixCoo(unittest.TestCase):
 
     def test_coo(self):
-        x = cupy.sparse.coo_matrix(
+        x = sparse.coo_matrix(
             (cupy.array([0], 'f'),
              (cupy.array([0], 'i'), cupy.array([0], 'i'))),
             shape=(1, 1), dtype='f')
-        self.assertTrue(cupy.sparse.isspmatrix_coo(x))
+        self.assertTrue(sparse.isspmatrix_coo(x))
 
     def test_csr(self):
-        x = cupy.sparse.csr_matrix(
+        x = sparse.csr_matrix(
             (cupy.array([], 'f'),
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertFalse(cupy.sparse.isspmatrix_coo(x))
+        self.assertFalse(sparse.isspmatrix_coo(x))

@@ -9,8 +9,8 @@ except ImportError:
     scipy_available = False
 
 import cupy
-import cupy.sparse
 from cupy import testing
+from cupyx.scipy import sparse
 
 
 def _make(xp, sp, dtype):
@@ -34,7 +34,7 @@ def _make_empty(xp, sp, dtype):
 class TestDiaMatrix(unittest.TestCase):
 
     def setUp(self):
-        self.m = _make(cupy, cupy.sparse, self.dtype)
+        self.m = _make(cupy, sparse, self.dtype)
 
     def test_dtype(self):
         self.assertEqual(self.m.dtype, self.dtype)
@@ -239,7 +239,7 @@ class TestDiaMatrixSum(unittest.TestCase):
         out = xp.empty(shape, dtype=self.ret_dtype)
         if xp is numpy:
             # TODO(unno): numpy.matrix is used for scipy.sparse though
-            # cupy.ndarray is used for cupy.sparse.
+            # cupy.ndarray is used for cupyx.scipy.sparse.
             out = xp.asmatrix(out)
         return m.sum(axis=self.axis, dtype=self.ret_dtype, out=out)
 
@@ -247,16 +247,16 @@ class TestDiaMatrixSum(unittest.TestCase):
 class TestIsspmatrixDia(unittest.TestCase):
 
     def test_dia(self):
-        x = cupy.sparse.dia_matrix(
+        x = sparse.dia_matrix(
             (cupy.array([], 'f'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertTrue(cupy.sparse.isspmatrix_dia(x))
+        self.assertTrue(sparse.isspmatrix_dia(x))
 
     def test_csr(self):
-        x = cupy.sparse.csr_matrix(
+        x = sparse.csr_matrix(
             (cupy.array([], 'f'),
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertFalse(cupy.sparse.isspmatrix_dia(x))
+        self.assertFalse(sparse.isspmatrix_dia(x))

@@ -6,8 +6,8 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy.sparse
 from cupy import testing
+from cupyx.scipy import sparse
 
 
 if scipy_available:
@@ -22,7 +22,7 @@ if scipy_available:
             return self._nnz
 
 
-class DummySparseGPU(cupy.sparse.spmatrix):
+class DummySparseGPU(sparse.spmatrix):
 
     def __init__(self, maxprint=50, shape=None, nnz=0):
         super(DummySparseGPU, self).__init__(maxprint)
@@ -40,7 +40,7 @@ class DummySparseGPU(cupy.sparse.spmatrix):
 class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
-        if sp is cupy.sparse:
+        if sp is sparse:
             return DummySparseGPU
         else:
             return DummySparseCPU

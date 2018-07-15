@@ -8,6 +8,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupyx.scipy import sparse
 
 
 @testing.parameterize(*testing.product({
@@ -30,14 +31,14 @@ class TestCsrmm(unittest.TestCase):
         self.c = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
 
     def test_csrmm(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.b)
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm_with_c(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
         y = cupy.cusparse.csrmm(
@@ -72,7 +73,7 @@ class TestCsrmm2(unittest.TestCase):
         self.c = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
 
     def test_csrmm2(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm2(
             a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
@@ -80,7 +81,7 @@ class TestCsrmm2(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm2_with_c(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
         y = cupy.cusparse.csrmm2(
@@ -112,8 +113,8 @@ class TestCsrgemm(unittest.TestCase):
             self.b = self.op_b
 
     def test_csrgemm(self):
-        a = cupy.sparse.csr_matrix(self.a)
-        b = cupy.sparse.csr_matrix(self.b)
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
         y = cupy.cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
         expect = self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y.toarray(), expect.toarray())
@@ -139,7 +140,7 @@ class TestCsrmv(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, 2).astype(self.dtype)
 
     def test_csrmv(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.cusparse.csrmv(
             a, x, alpha=self.alpha, transa=self.transa)
@@ -147,7 +148,7 @@ class TestCsrmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmv_with_y(self):
-        a = cupy.sparse.csr_matrix(self.a)
+        a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
         z = cupy.cusparse.csrmv(
