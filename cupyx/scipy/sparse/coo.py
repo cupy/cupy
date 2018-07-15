@@ -7,10 +7,10 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
-from cupy.sparse import base
-from cupy.sparse import csr
-from cupy.sparse import data as sparse_data
-from cupy.sparse import util
+from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import csr
+from cupyx.scipy.sparse import data as sparse_data
+from cupyx.scipy.sparse import util
 
 
 class coo_matrix(sparse_data._data_matrix):

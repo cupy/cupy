@@ -3,6 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cusparse
 from cupy.cuda import device
+import cupyx.scipy.sparse
 
 
 class MatDescriptor(object):
@@ -266,7 +267,8 @@ def csrgeam(a, b, alpha=1, beta=1):
         c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
         c_indices.data.ptr)
 
-    c = cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=a.shape)
+    c = cupyx.scipy.sparse.csr_matrix(
+        (c_data, c_indices, c_indptr), shape=a.shape)
     c._has_canonical_format = True
     return c
 
@@ -302,7 +304,7 @@ def csrgemm(a, b, transa=False, transb=False):
     a, b = _cast_common_type(a, b)
 
     if a.nnz == 0 or b.nnz == 0:
-        return cupy.sparse.csr_matrix((m, n), dtype=a.dtype)
+        return cupyx.scipy.sparse.csr_matrix((m, n), dtype=a.dtype)
 
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
@@ -331,7 +333,8 @@ def csrgemm(a, b, transa=False, transb=False):
         c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
         c_indices.data.ptr)
 
-    c = cupy.sparse.csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
+    c = cupyx.scipy.sparse.csr_matrix(
+        (c_data, c_indices, c_indptr), shape=(m, n))
     c._has_canonical_format = True
     return c
 
@@ -478,7 +481,7 @@ def coo2csr(x):
     cusparse.xcoo2csr(
         handle, x.row.data.ptr, x.nnz, m,
         indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupy.sparse.csr.csr_matrix(
+    return cupyx.scipy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
 
 
@@ -502,7 +505,7 @@ def csr2coo(x, data, indices):
         handle, x.indptr.data.ptr, nnz, m, row.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
     # data and indices did not need to be copied already
-    return cupy.sparse.coo_matrix(
+    return cupyx.scipy.sparse.coo_matrix(
         (data, (row, indices)), shape=x.shape)
 
 
@@ -521,7 +524,8 @@ def csr2csc(x):
         data.data.ptr, indices.data.ptr, indptr.data.ptr,
         cusparse.CUSPARSE_ACTION_NUMERIC,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    return cupyx.scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=x.shape)
 
 
 def dense2csc(x):
@@ -558,7 +562,7 @@ def dense2csc(x):
         x.data.ptr, m, nnz_per_col.data.ptr,
         data.data.ptr, indices.data.ptr, indptr.data.ptr)
     # Note that a desciptor is recreated
-    csc = cupy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    csc = cupyx.scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
     csc._has_canonical_format = True
     return csc
 
@@ -597,7 +601,7 @@ def dense2csr(x):
         x.data.ptr, m, nnz_per_row.data.ptr,
         data.data.ptr, indptr.data.ptr, indices.data.ptr)
     # Note that a desciptor is recreated
-    csr = cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+    csr = cupyx.scipy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
     csr._has_canonical_format = True
     return csr
 
@@ -623,4 +627,5 @@ def csr2csr_compress(x, tol):
         x.nnz, nnz_per_row.data.ptr, data.data.ptr, indices.data.ptr,
         indptr.data.ptr, tol)
 
-    return cupy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+    return cupyx.scipy.sparse.csr_matrix(
+        (data, indices, indptr), shape=x.shape)

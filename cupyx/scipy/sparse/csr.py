@@ -6,9 +6,9 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
-from cupy.sparse import base
-from cupy.sparse import compressed
-from cupy.sparse import csc
+from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import compressed
+from cupyx.scipy.sparse import csc
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):

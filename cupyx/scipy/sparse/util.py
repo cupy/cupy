@@ -1,5 +1,5 @@
 import cupy
-import cupy.sparse.base
+import cupyx.scipy.sparse
 
 
 def isintlike(x):
@@ -10,7 +10,7 @@ def isintlike(x):
 
 
 def isscalarlike(x):
-    return cupy.isscalar(x) or (cupy.sparse.base.isdense(x) and x.ndim == 0)
+    return cupy.isscalar(x) or (cupyx.scipy.sparse.isdense(x) and x.ndim == 0)
 
 
 def isshape(x):

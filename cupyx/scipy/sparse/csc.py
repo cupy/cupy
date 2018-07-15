@@ -6,7 +6,9 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
-from cupy.sparse import compressed
+import cupyx.scipy.sparse
+from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import compressed
 
 
 class csc_matrix(compressed._compressed_sparse_matrix):
@@ -74,7 +76,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
-        elif cupy.sparse.isspmatrix_csr(other):
+        elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
             return cusparse.csrgemm(self.T, other, transa=True)
@@ -82,9 +84,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             self.sum_duplicates()
             other.sum_duplicates()
             return cusparse.csrgemm(self.T, other.T, transa=True, transb=True)
-        elif cupy.sparse.isspmatrix(other):
+        elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
-        elif cupy.sparse.base.isdense(other):
+        elif base.isdense(other):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
@@ -230,7 +232,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = cupy.sparse.csr_matrix(
+        trans = cupyx.scipy.sparse.csr.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
         trans._has_canonical_format = self._has_canonical_format
         return trans

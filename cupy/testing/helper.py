@@ -16,10 +16,10 @@ import six
 
 import cupy
 from cupy import internal
-import cupy.sparse
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
+import cupyx.scipy.sparse
 
 
 def _call_func(self, impl, args, kw):
@@ -95,7 +95,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -390,7 +390,7 @@ def numpy_cupy_array_list_equal(
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -467,7 +467,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -519,7 +519,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy

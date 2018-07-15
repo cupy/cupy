@@ -1,4 +1,8 @@
 import cupy
+from cupyx.scipy.sparse import coo
+from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse import csr
+from cupyx.scipy.sparse import dia
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -28,16 +32,16 @@ def eye(m, n=None, k=0, dtype='d', format=None):
             indices = cupy.arange(n, dtype='i')
             data = cupy.ones(n, dtype=dtype)
             if format == 'csr':
-                cls = cupy.sparse.csr_matrix
+                cls = csr.csr_matrix
             else:
-                cls = cupy.sparse.csc_matrix
+                cls = csc.csc_matrix
             return cls((data, indices, indptr), (n, n))
 
         elif format == 'coo':
             row = cupy.arange(n, dtype='i')
             col = cupy.arange(n, dtype='i')
             data = cupy.ones(n, dtype=dtype)
-            return cupy.sparse.coo_matrix((data, (row, col)), (n, n))
+            return coo.coo_matrix((data, (row, col)), (n, n))
 
     diags = cupy.ones((1, max(0, min(m + k, n))), dtype=dtype)
     return spdiags(diags, k, m, n).asformat(format)
@@ -79,7 +83,7 @@ def spdiags(data, diags, m, n, format=None):
     .. seealso:: :func:`scipy.sparse.spdiags`
 
     """
-    return cupy.sparse.dia_matrix((data, diags), shape=(m, n)).asformat(format)
+    return dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
 
 
 def random(m, n, density=0.01, format='coo', dtype=None,
@@ -134,7 +138,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     j = cupy.floor(ind * (1. / m)).astype('i')
     i = ind - j * m
     vals = data_rvs(k).astype(dtype)
-    return cupy.sparse.coo_matrix(
+    return coo.coo_matrix(
         (vals, (i, j)), shape=(m, n)).asformat(format)
 
 
