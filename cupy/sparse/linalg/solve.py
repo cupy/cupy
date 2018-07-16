@@ -19,8 +19,8 @@ def lsqr(A, b):
     decomposed into ``Q * R``.
 
     Args:
-        A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
-            dimension ``(N, N)``
+        A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The input matrix
+            with dimension ``(N, N)``
         b (cupy.ndarray): Right-hand side vector.
 
     Returns:
