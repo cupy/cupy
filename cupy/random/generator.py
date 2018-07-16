@@ -87,7 +87,7 @@ class RandomState(object):
         if size is None:
             self.rk_seed += 1
         else:
-            self.rk_seed += numpy.prod(size)
+            self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -105,7 +105,7 @@ class RandomState(object):
         if size is None:
             self.rk_seed += 1
         else:
-            self.rk_seed += numpy.prod(size)
+            self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
