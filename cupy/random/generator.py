@@ -87,7 +87,7 @@ class RandomState(object):
         if size is None:
             self.rk_seed += 1
         else:
-            self.rk_seed += numpy.prod(size)
+            self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -102,11 +102,11 @@ class RandomState(object):
             size = alpha.shape
         y = cupy.zeros(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
-        y /= cupy.expand_dims(y.sum(axis=-1), axis=-1)
+        y /= y.sum(axis=-1, keepdims=True)
         if size is None:
             self.rk_seed += 1
         else:
-            self.rk_seed += numpy.prod(size)
+            self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
