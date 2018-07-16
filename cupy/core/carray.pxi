@@ -123,8 +123,10 @@ cpdef str _get_header_source():
 
 
 cpdef function.Module compile_with_cache(
-        str source, tuple options=(), arch=None, cachd_dir=None):
-    source = _cupy_header + source
+        str source, tuple options=(), arch=None, cachd_dir=None,
+        prepend_cupy_headers=True):
+    if prepend_cupy_headers:
+        source = _cupy_header + source
     extra_source = _get_header_source()
     options += ('-I%s' % _get_header_dir_path(),)
 

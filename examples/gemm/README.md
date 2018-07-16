@@ -21,14 +21,17 @@ As is the case for this example, `ndarray` abstraction does not need to be used 
 The SGEMM kernel expects input and output arrays to be in Fortran contiguous memory layout, and this layout is enforced by `cupy.asfortranarray`.
 
 #### How to dynamically compile and launch a kernel function written in CUDA C
-For compilation, `load_kernel` is used to compile a CUDA code written in `sgemm.cu`.
-This function takes a text of code and name of the kernel as input and returns `cupy.cuda.Function` object.
+
+For compilation, `cupy.RawKernel` class is used to compile a CUDA code written in `sgemm.cu`.
+The class takes a text of code and name of the kernel as an constructor argument.
+The instance is a callable; the CUDA code will be compiled and then invoked when it is called.
 The compiled code is cached, and it avoids the compilation process after the first time.
 Also, the CUDA code can be modified at Python level because it is simply a text.
 In this example, C macros that determine a distribution of data to threads are specified at runtime.
 Note that `"extern C"` needs to be put on top of the kernel that is called.
 
 #### How to supply grid size, block size and shared memory size on launching a kernel function
-Back to `cupy.cuda.Function`, this object allows you to call the kernel with CUDA's `cuLaunchKernel` interface.
-In other words, you have control over grid size, block size, shared memory size and stream id.
+
+`cupy.RawKernel` object allows you to call the kernel with CUDA's `cuLaunchKernel` interface.
+In other words, you have control over grid size, block size, shared memory size and stream.
 At this level of interface, it becomes straightforward to replace host `.cu` that calls CUDA kernels with Python code.
