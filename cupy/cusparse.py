@@ -113,7 +113,7 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     is an identity function otherwise.
 
     Args:
-        a (cupy.sparse.csr): Sparse matrix A.
+        a (cupyx.scipy.sparse.csr): Sparse matrix A.
         b (cupy.ndarray): Dense matrix B. It must be F-contiguous.
         c (cupy.ndarray or None): Dense matrix C. It must be F-contiguous.
         alpha (float): Coefficient for AB.
@@ -169,7 +169,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     cuSPARSE specification.
 
     Args:
-        a (cupy.sparse.csr): Sparse matrix A.
+        a (cupyx.scipy.sparse.csr): Sparse matrix A.
         b (cupy.ndarray): Dense matrix B. It must be F-contiguous.
         c (cupy.ndarray or None): Dense matrix C. It must be F-contiguous.
         alpha (float): Coefficient for AB.
@@ -222,13 +222,13 @@ def csrgeam(a, b, alpha=1, beta=1):
         C = \\alpha A + \\beta B
 
     Args:
-        a (cupy.sparse.csr_matrix): Sparse matrix A.
-        b (cupy.sparse.csr_matrix): Sparse matrix B.
+        a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.
+        b (cupyx.scipy.sparse.csr_matrix): Sparse matrix B.
         alpha (float): Coefficient for A.
         beta (float): Coefficient for B.
 
     Returns:
-        cupy.sparse.csr_matrix: Result matrix.
+        cupyx.scipy.sparse.csr_matrix: Result matrix.
 
     """
     assert a.has_canonical_format
@@ -278,13 +278,13 @@ def csrgemm(a, b, transa=False, transb=False):
        C = op(A) op(B),
 
     Args:
-        a (cupy.sparse.csr_matrix): Sparse matrix A.
-        b (cupy.sparse.csr_matrix): Sparse matrix B.
+        a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.
+        b (cupyx.scipy.sparse.csr_matrix): Sparse matrix B.
         transa (bool): If ``True``, transpose of A is used.
         transb (bool): If ``True``, transpose of B is used.
 
     Returns:
-        cupy.sparse.csr_matrix: Calculated C.
+        cupyx.scipy.sparse.csr_matrix: Calculated C.
 
     """
     assert a.ndim == b.ndim == 2
@@ -340,7 +340,7 @@ def csr2dense(x, out=None):
     """Converts CSR-matrix to a dense matrix.
 
     Args:
-        x (cupy.sparse.csr_matrix): A sparse matrix to convert.
+        x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to convert.
         out (cupy.ndarray or None): A dense metrix to store the result.
             It must be F-contiguous.
 
@@ -369,7 +369,7 @@ def csc2dense(x, out=None):
     """Converts CSC-matrix to a dense matrix.
 
     Args:
-        x (cupy.sparse.csc_matrix): A sparse matrix to convert.
+        x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to convert.
         out (cupy.ndarray or None): A dense metrix to store the result.
             It must be F-contiguous.
 
@@ -398,7 +398,7 @@ def csrsort(x):
     """Sorts indices of CSR-matrix in place.
 
     Args:
-        x (cupy.sparse.csr_matrix): A sparse matrix to sort.
+        x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to sort.
 
     """
     nnz = x.nnz
@@ -426,7 +426,7 @@ def cscsort(x):
     """Sorts indices of CSC-matrix in place.
 
     Args:
-        x (cupy.sparse.csc_matrix): A sparse matrix to sort.
+        x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to sort.
 
     """
     nnz = x.nnz
@@ -486,12 +486,12 @@ def csr2coo(x, data, indices):
     """Converts a CSR-matrix to COO format.
 
     Args:
-        x (cupy.sparse.csr_matrix): A matrix to be converted.
+        x (cupyx.scipy.sparse.csr_matrix): A matrix to be converted.
         data (cupy.ndarray): A data array for converted data.
         indices (cupy.ndarray): An index array for converted data.
 
     Returns:
-        cupy.sparse.coo_matrix: A converted matrix.
+        cupyx.scipy.sparse.coo_matrix: A converted matrix.
 
     """
     handle = device.get_cusparse_handle()
@@ -531,7 +531,7 @@ def dense2csc(x):
         x (cupy.ndarray): A matrix to be converted.
 
     Returns:
-        cupy.sparse.csc_matrix: A converted matrix.
+        cupyx.scipy.sparse.csc_matrix: A converted matrix.
 
     """
     assert x.ndim == 2
@@ -570,7 +570,7 @@ def dense2csr(x):
         x (cupy.ndarray): A matrix to be converted.
 
     Returns:
-        cupy.sparse.csr_matrix: A converted matrix.
+        cupyx.scipy.sparse.csr_matrix: A converted matrix.
 
     """
     assert x.ndim == 2

@@ -3,13 +3,13 @@
 from __future__ import division
 import sys
 
+import ctypes
 import numpy
 import six
 
 import cupy
 from cupy.core import flags
 from cupy.cuda import device
-from cupy.cuda import stream
 
 try:
     from cupy.cuda import thrust
@@ -2119,6 +2119,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
+    cdef size_t nbytes
     if subok:
         raise NotImplementedError
     if isinstance(obj, ndarray):
@@ -2138,11 +2139,13 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        if order == 'K':
-            order = 'A'
+        if order is not None and len(order) >= 1 and order[0] in 'KAka':
+            if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
-        order = 'C' if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2150,12 +2153,12 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
-        mem = pinned_memory.alloc_pinned_memory(a.nbytes)
-        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
-                                   a_cpu.size).reshape(a_cpu.shape)
-        src_cpu[...] = a_cpu
+        nbytes = a.nbytes
+        mem = pinned_memory.alloc_pinned_memory(nbytes)
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[:] = a_cpu.ravel(order)
         stream = stream_module.get_current_stream()
-        a.set(src_cpu, stream)
+        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
 
@@ -2193,16 +2196,17 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
             a.ndim == 2 and dtype == a.dtype):
         m, n = a.shape
+        handle = cuda.get_cublas_handle()
         if a.dtype == numpy.float32:
             cuda.cublas.sgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cuda.cublas.dgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
@@ -3738,6 +3742,8 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
+    handle = cuda.get_cublas_handle()
+
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast and _cuda_runtime_version >= 8000:
         strideA = _get_stride_for_strided_batched_gemm(a)
@@ -3745,7 +3751,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         strideC = _get_stride_for_strided_batched_gemm(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3755,7 +3761,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3765,7 +3771,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3775,7 +3781,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3791,7 +3797,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         outp = _mat_ptrs(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3800,7 +3806,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3809,7 +3815,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3818,7 +3824,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,

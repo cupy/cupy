@@ -173,7 +173,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 possible.
 
         Returns:
-            cupy.sparse.coo_matrix: Converted matrix.
+            cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
         return self.T.tocoo(copy).T
@@ -186,7 +186,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 Otherwise it makes a copy of the matrix.
 
         Returns:
-            cupy.sparse.csc_matrix: Converted matrix.
+            cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
         if copy:
@@ -203,7 +203,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 arrays in a matrix cannot be shared in csr to csc conversion.
 
         Returns:
-            cupy.sparse.csr_matrix: Converted matrix.
+            cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
         return self.T.tocsc(copy=False).T
@@ -221,7 +221,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupy.sparse.spmatrix: Transpose matrix.
+            cupyx.scipy.sparse.spmatrix: Transpose matrix.
 
         """
         if axes is not None:
@@ -240,7 +240,7 @@ def isspmatrix_csc(x):
     """Checks if a given matrix is of CSC format.
 
     Returns:
-        bool: Returns if ``x`` is :class:`cupy.sparse.csc_matrix`.
+        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.csc_matrix`.
 
     """
     return isinstance(x, csc_matrix)

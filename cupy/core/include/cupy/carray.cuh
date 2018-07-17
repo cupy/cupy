@@ -150,6 +150,12 @@ __device__ float16 min(float16 x, float16 y) {
 __device__ float16 max(float16 x, float16 y) {
   return float16(max(float(x), float(y)));
 }
+__device__ float16 fmin(float16 x, float16 y) {
+  return float16(fmin(float(x), float(y)));
+}
+__device__ float16 fmax(float16 x, float16 y) {
+  return float16(fmax(float(x), float(y)));
+}
 __device__ int iszero(float16 x) {return x.iszero();}
 __device__ int isnan(float16 x) {return x.isnan();}
 __device__ int isinf(float16 x) {return x.isinf();}

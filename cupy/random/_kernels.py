@@ -348,18 +348,37 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
 }
 '''
 
-gumbel_kernel = core.ElementwiseKernel(
-    'T x, T loc, T scale', 'T y',
-    'y = loc - log(-log(1 - x)) * scale',
-    'gumbel_kernel'
-)
-
-laplace_kernel = core.ElementwiseKernel(
-    'T x, T loc, T scale', 'T y',
-    'y = (x < 0.5)? loc + scale * log(x + x):'
-    ' loc - scale * log(2.0 - x - x)',
-    'laplace_kernel'
-)
+rk_beta_definition = '''
+__device__ double rk_beta(rk_state *state, double a, double b) {
+    double Ga, Gb;
+    if ((a <= 1.0) && (b <= 1.0)) {
+        double U, V, X, Y;
+        /* Use Johnk's algorithm */
+        while (1) {
+            U = rk_double(state);
+            V = rk_double(state);
+            X = pow(U, 1.0/a);
+            Y = pow(V, 1.0/b);
+            if ((X + Y) <= 1.0) {
+                if (X +Y > 0) {
+                    return X / (X + Y);
+                } else {
+                    double logX = log(U) / a;
+                    double logY = log(V) / b;
+                    double logM = logX > logY ? logX : logY;
+                    logX -= logM;
+                    logY -= logM;
+                    return exp(logX - log(exp(logX) + exp(logY)));
+                }
+            }
+        }
+    } else {
+        Ga = rk_standard_gamma(state, a);
+        Gb = rk_standard_gamma(state, b);
+        return Ga/(Ga + Gb);
+    }
+}
+'''
 
 definitions = \
     [rk_state_difinition, rk_seed_definition, rk_random_definition,
@@ -386,7 +405,23 @@ standard_gamma_kernel = core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_standard_gamma(&internal_state, shape);
     ''',
-    'standard_gamma_kernel',
+    'standard_gamma_kernel', 
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_beta_definition]
+beta_kernel = core.ElementwiseKernel(
+    'S a, T b, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_beta(&internal_state, a, b);
+    ''',
+    'beta_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

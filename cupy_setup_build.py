@@ -36,6 +36,7 @@ MODULES = [
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
             'cupy.cuda.curand',

@@ -13,7 +13,7 @@ def eye(m, n=None, k=0, dtype='d', format=None):
         format (str or None): Format of the result, e.g. ``format="csr"``.
 
     Returns:
-        cupy.sparse.spmatrix: Created sparse matrix.
+        cupyx.scipy.sparse.spmatrix: Created sparse matrix.
 
     .. seealso:: :func:`scipy.sparse.eye`
 
@@ -55,7 +55,7 @@ def identity(n, dtype='d', format=None):
         format (str or None): Format of the result, e.g. ``format="csr"``.
 
     Returns:
-        cupy.sparse.spmatrix: Created identity matrix.
+        cupyx.scipy.sparse.spmatrix: Created identity matrix.
 
     .. seealso:: :func:`scipy.sparse.identity`
 
@@ -74,7 +74,7 @@ def spdiags(data, diags, m, n, format=None):
         format (str or None): Sparse format, e.g. ``format="csr"``.
 
     Returns:
-        cupy.sparse.spmatrix: Created sparse matrix.
+        cupyx.scipy.sparse.spmatrix: Created sparse matrix.
 
     .. seealso:: :func:`scipy.sparse.spdiags`
 
@@ -107,7 +107,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
             If it is not given, `random_state.rand` is used.
 
     Returns:
-        cupy.sparse.spmatrix: Generated matrix.
+        cupyx.scipy.sparse.spmatrix: Generated matrix.
 
     .. seealso:: :func:`scipy.sparse.random`
 
@@ -141,7 +141,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
     """Generates a random sparse matrix.
 
-    See :func:`cupy.sparse.random` for detail.
+    See :func:`cupyx.scipy.sparse.random` for detail.
 
     Args:
         m (int): Number of rows.
@@ -157,10 +157,10 @@ def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
             This state is used to generate random indexes for nonzero entries.
 
     Returns:
-        cupy.sparse.spmatrix: Generated matrix.
+        cupyx.scipy.sparse.spmatrix: Generated matrix.
 
     .. seealso:: :func:`scipy.sparse.rand`
-    .. seealso:: :func:`cupy.sparse.random`
+    .. seealso:: :func:`cupyx.scipy.sparse.random`
 
     """
     return random(m, n, density, format, dtype, random_state)
