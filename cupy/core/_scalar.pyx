@@ -166,6 +166,8 @@ cdef class CScalar(CPointer):
                 assert False
         else:
             assert False
+        self.kind = kind
+        self.size = size
 
 
 cpdef CScalar _python_scalar_to_c_scalar(x):
