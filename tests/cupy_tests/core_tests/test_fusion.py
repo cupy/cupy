@@ -1538,3 +1538,19 @@ class TestFusionCompile(unittest.TestCase):
         y = testing.shaped_arange((3, 3), xp, dtype)
         f.clear_cache()
         return f(x, y)
+
+
+@testing.gpu
+class TestFusionGetArrayModule(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_get_array_module(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x):
+            xp = cupy.get_array_module(x)
+            return xp.square(x)
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return f(x)
