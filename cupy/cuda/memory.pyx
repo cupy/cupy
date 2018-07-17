@@ -1,4 +1,6 @@
 # distutils: language = c++
+cimport cython
+
 import atexit
 import collections
 import ctypes
@@ -34,6 +36,7 @@ class OutOfMemoryError(MemoryError):
         super(OutOfMemoryError, self).__init__(msg)
 
 
+@cython.no_gc
 cdef class Memory:
     """Memory allocation on a CUDA device.
 
@@ -485,6 +488,7 @@ cpdef set_allocator(allocator=None):
     _current_allocator = allocator
 
 
+@cython.no_gc
 cdef class PooledMemory(Memory):
 
     """Memory allocation for a memory pool.
@@ -515,10 +519,7 @@ cdef class PooledMemory(Memory):
         if ptr == 0:
             return
         self.ptr = 0
-        pool = self.pool
-        if pool is None:
-            return
-        pool = pool()
+        pool = self.pool()
         if pool is None:
             return
 
