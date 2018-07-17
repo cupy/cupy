@@ -515,7 +515,10 @@ cdef class PooledMemory(Memory):
         if ptr == 0:
             return
         self.ptr = 0
-        pool = self.pool()
+        pool = self.pool
+        if pool is None:
+            return
+        pool = pool()
         if pool is None:
             return
 
