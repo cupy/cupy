@@ -72,6 +72,24 @@ class RandomState(object):
 
     # NumPy compatible functions
 
+    def beta(self, a, b, size=None, dtype=float):
+        """Returns an array of samples drawn from the beta distribution.
+
+        .. seealso::
+            :func:`cupy.random.beta` for full documentation,
+            :meth:`numpy.random.RandomState.beta`
+        """
+        a, b = cupy.asarray(a), cupy.asarray(b)
+        if size is None:
+            size = cupy.broadcast(a, b).shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.beta_kernel(a, b, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
     def binomial(self, n, p, size=None, dtype=int):
         """Returns an array of samples drawn from the binomial distribution.
 
@@ -87,7 +105,7 @@ class RandomState(object):
         if size is None:
             self.rk_seed += 1
         else:
-            self.rk_seed += numpy.prod(size)
+            self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
