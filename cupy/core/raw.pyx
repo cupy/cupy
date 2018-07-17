@@ -28,7 +28,7 @@ cdef class RawKernel:
         self.options = options
 
     def __call__(self, grid, block, args, **kwargs):
-        """__call__(self, grid, block, args, *, shared_mem=0, stream=None)
+        """__call__(self, grid, block, args, *, shared_mem=0)
 
         Compiles and invokes the kernel.
 
@@ -40,7 +40,6 @@ cdef class RawKernel:
             args (tuple): Arguments of the kernel.
             shared_mem (int): Dynamic shared-memory size per thread block in
                 bytes.
-            stream (cupy.cuda.Stream): CUDA stream to run this kernel.
 
         """
         kern = _get_raw_kernel(self.code, self.name, self.options)
