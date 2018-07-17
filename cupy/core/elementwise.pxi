@@ -542,7 +542,6 @@ cdef class ElementwiseKernel:
                 This parameter must be specified if and only if all ndarrays
                 are `raw` and the range size cannot be determined
                 automatically.
-            stream (cupy.cuda.Stream): CUDA stream to run this kernel.
 
         Returns:
             If ``no_return`` has not set, arrays are returned according to the

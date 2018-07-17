@@ -361,7 +361,6 @@ class ReductionKernel(object):
                 reduction is performed.
             keepdims (bool): If ``True``, the specified axes are remained as
                 axes of length one.
-            stream (cupy.cuda.Stream): CUDA stream to run this kernel.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
