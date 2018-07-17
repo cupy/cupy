@@ -34,6 +34,7 @@ cdef class CScalar(CPointer):
         int8_t size
 
     cpdef apply_dtype(self, dtype)
+    cpdef get_numpy_type(self)
 
 
 cpdef str get_typename(dtype)

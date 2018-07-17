@@ -76,22 +76,10 @@ cpdef tuple _get_args_info(list args):
         t = type(a)
         if t is Indexer:
             dtype = None
+        elif t is _scalar.CScalar:
+            dtype = (<_scalar.CScalar>a).get_numpy_type()
         else:
             dtype = a.dtype.type
-        ret.append((t, dtype, a.ndim))
-    return tuple(ret)
-
-
-cpdef tuple _get_args_info_with_type(list args, tuple types):
-    ret = []
-    for i, a in enumerate(args):
-        t = type(a)
-        if t is Indexer:
-            dtype = None
-        elif t is ndarray:
-            dtype = a.dtype.type
-        else:
-            dtype = types[i]
         ret.append((t, dtype, a.ndim))
     return tuple(ret)
 
@@ -547,7 +535,7 @@ cdef class ElementwiseKernel:
         indexer = Indexer(shape)
         inout_args.append(indexer)
 
-        args_info = _get_args_info_with_type(inout_args, in_types)
+        args_info = _get_args_info(inout_args)
         kern = self._get_elementwise_kernel(args_info, types)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=128, stream=stream)

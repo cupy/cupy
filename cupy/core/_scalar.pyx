@@ -169,6 +169,41 @@ cdef class CScalar(CPointer):
         self.kind = kind
         self.size = size
 
+    cpdef get_numpy_type(self):
+        if self.kind == 'b':
+            return numpy.bool_
+        elif self.kind == 'i':
+            if self.size == 1:
+                return numpy.int8
+            elif self.size == 2:
+                return numpy.int16
+            elif self.size == 4:
+                return numpy.int32
+            elif self.size == 8:
+                return numpy.int64
+        elif self.kind == 'u':
+            if self.size == 1:
+                return numpy.uint8
+            elif self.size == 2:
+                return numpy.uint16
+            elif self.size == 4:
+                return numpy.uint32
+            elif self.size == 8:
+                return numpy.uint64
+        elif self.kind == 'f':
+            if self.size == 2:
+                return numpy.float16
+            elif self.size == 4:
+                return numpy.float32
+            elif self.size == 8:
+                return numpy.float64
+        elif self.kind == 'c':
+            if self.size == 8:
+                return numpy.complex64
+            elif self.size == 16:
+                return numpy.complex128
+        assert False
+
 
 cpdef CScalar _python_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar.__new__(CScalar)
