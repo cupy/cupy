@@ -405,7 +405,7 @@ standard_gamma_kernel = core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_standard_gamma(&internal_state, shape);
     ''',
-    'standard_gamma_kernel', 
+    'standard_gamma_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
