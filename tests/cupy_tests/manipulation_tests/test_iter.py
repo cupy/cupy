@@ -28,11 +28,11 @@ class TestIterInvalid(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_list(self, xp, dtype):
-        x = testing.shaped_arange(self.shape, xp, dtype)
+        x = testing.shaped_arange((), xp, dtype)
         list(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_len(self, xp, dtype):
-        x = testing.shaped_arange(self.shape, xp, dtype)
+        x = testing.shaped_arange((), xp, dtype)
         len(x)
