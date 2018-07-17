@@ -63,6 +63,27 @@ class TestDistributionsBinomial(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2, 3), (3, 2, 3)],
+    'alpha_shape': [(3,), (3, 2, 3)],
+})
+)
+@testing.gpu
+class TestDistributionsDirichlet(unittest.TestCase):
+
+    def check_distribution(self, dist_func, alpha_dtype, dtype):
+        alpha = cupy.ones(self.alpha_shape, dtype=alpha_dtype)
+        out = dist_func(alpha, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('alpha_dtype')
+    @cupy.testing.for_float_dtypes('dtype')
+    def test_dirichlet(self, alpha_dtype, dtype):
+        self.check_distribution(distributions.dirichlet,
+                                alpha_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],

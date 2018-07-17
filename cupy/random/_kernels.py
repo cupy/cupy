@@ -398,6 +398,21 @@ binomial_kernel = core.ElementwiseKernel(
 definitions = \
     [rk_state_difinition, rk_seed_definition, rk_random_definition,
      rk_double_definition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition]
+standard_gamma_kernel = core.ElementwiseKernel(
+    'T shape, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_gamma(&internal_state, shape);
+    ''',
+    'standard_gamma_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_state_difinition, rk_seed_definition, rk_random_definition,
+     rk_double_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_beta_definition]
 beta_kernel = core.ElementwiseKernel(

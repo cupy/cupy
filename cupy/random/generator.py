@@ -108,6 +108,25 @@ class RandomState(object):
             self.rk_seed += cupy.core.internal.prod(size)
         return y
 
+    def dirichlet(self, alpha, size=None, dtype=float):
+        """Returns an array of samples drawn from the dirichlet distribution.
+
+        .. seealso::
+            :func:`cupy.random.dirichlet` for full documentation,
+            :meth:`numpy.random.RandomState.dirichlet`
+        """
+        alpha = cupy.asarray(alpha)
+        if size is None:
+            size = alpha.shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
+        y /= y.sum(axis=-1, keepdims=True)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',
