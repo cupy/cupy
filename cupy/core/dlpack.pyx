@@ -64,6 +64,7 @@ cdef void pycapsule_deleter(object dltensor):
     try:
         dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'used_dltensor')
+        return             # we do not call a used capsule's deleter
     except Exception:
         dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
             dltensor, 'dltensor')
@@ -154,6 +155,7 @@ cdef class DLPackMemory(memory.Memory):
     def __dealloc__(self):
         # DLPack tensor should be managed by the original creator
         self.ptr = 0
+        self.dlm_tensor.deleter(self.dlm_tensor)
 
 
 # The name of this function is following the framwork integration guide of

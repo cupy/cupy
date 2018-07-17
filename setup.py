@@ -104,6 +104,8 @@ setup(
         'cupyx',
         'cupyx.scipy',
         'cupyx.scipy.ndimage',
+        'cupyx.scipy.sparse',
+        'cupyx.scipy.sparse.linalg',
         'cupyx.scipy.special',
         'cupyx.scipy.linalg',
     ],

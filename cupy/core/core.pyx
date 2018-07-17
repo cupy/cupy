@@ -2196,16 +2196,17 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
             a.ndim == 2 and dtype == a.dtype):
         m, n = a.shape
+        handle = cuda.get_cublas_handle()
         if a.dtype == numpy.float32:
             cuda.cublas.sgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cuda.cublas.dgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
@@ -3741,6 +3742,8 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
+    handle = cuda.get_cublas_handle()
+
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast and _cuda_runtime_version >= 8000:
         strideA = _get_stride_for_strided_batched_gemm(a)
@@ -3748,7 +3751,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         strideC = _get_stride_for_strided_batched_gemm(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3758,7 +3761,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3768,7 +3771,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3778,7 +3781,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3794,7 +3797,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         outp = _mat_ptrs(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3803,7 +3806,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3812,7 +3815,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3821,7 +3824,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
