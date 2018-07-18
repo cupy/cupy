@@ -658,6 +658,21 @@ cublasStatus_t cublasSgetriBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasStrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasStpttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDprttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // curand.h

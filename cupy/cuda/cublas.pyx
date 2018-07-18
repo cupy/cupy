@@ -217,6 +217,14 @@ cdef extern from 'cupy_cuda.h' nogil:
         const void *beta,
         void *C, runtime.DataType Ctype, int ldc,
         runtime.DataType computetype, GemmAlgo algo)
+    int cublasStpttr(
+        Handle handle, FillMode uplo, int n, float *AP, float *A, int lda)
+    int cublasDtpttr(
+        Handle handle, FillMode uplo, int n, double *AP, double *A, int lda)
+    int cublasStrttp(
+        Handle handle, FillMode uplo, int n, float *A, int lda, float *AP)
+    int cublasDtrttp(
+        Handle handle, FillMode uplo, int n, double *A, int lda, double *AP)
 
 ###############################################################################
 # Util
@@ -896,4 +904,36 @@ cpdef gemmEx(
             <const void*>beta,
             <void*>C, <runtime.DataType>Ctype, ldc,
             <runtime.DataType>computeType, <GemmAlgo>algo)
+    check_status(status)
+
+
+cpdef stpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasStpttr(
+            <Handle>handle, <FillMode>uplo, n, <const float*>AP, <float*>A, lda)
+    check_status(status)
+
+
+cpdef dtpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDtpttr(
+            <Handle>handle, <FillMode>uplo, n, <const double*>AP, <double*>A, lda)
+    check_status(status)
+
+
+cpdef strttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasStrttp(
+            <Handle>handle, <FillMode>uplo, n, <const float*>A, lda, <float*>AP)
+    check_status(status)
+
+
+cpdef dtrttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDtrttp(
+            <Handle>handle, <FillMode>uplo, n, <const double*>A, lda, <double*>AP)
     check_status(status)
