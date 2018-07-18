@@ -7,7 +7,7 @@ import cupy
 
 def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
                     verbose=True):
-    """Raises an AssertionError if objects are not equal up to desired tolerance.  # NOQA
+    """Raises an AssertionError if objects are not equal up to desired tolerance.
 
     Args:
          actual(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -20,14 +20,14 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
 
     .. seealso:: :func:`numpy.testing.assert_allclose`
 
-    """
+    """  # NOQA
     numpy.testing.assert_allclose(
         cupy.asnumpy(actual), cupy.asnumpy(desired),
         rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
 
 
 def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
-    """Raises an AssertionError if objects are not equal up to desired precision.  # NOQA
+    """Raises an AssertionError if objects are not equal up to desired precision.
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -38,7 +38,7 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
              values are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal`
-    """
+    """  # NOQA
     numpy.testing.assert_array_almost_equal(
         cupy.asnumpy(x), cupy.asnumpy(y), decimal=decimal,
         err_msg=err_msg, verbose=verbose)
@@ -59,7 +59,7 @@ def assert_array_almost_equal_nulp(x, y, nulp=1):
 
 
 def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
-    """Check that all items of arrays differ in at most N Units in the Last Place.  # NOQA
+    """Check that all items of arrays differ in at most N Units in the Last Place.
 
     Args:
          a(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -69,7 +69,7 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
          dtype(numpy.dtype): Data-type to convert ``a`` and ``b`` to if given.
 
     .. seealso:: :func:`numpy.testing.assert_array_max_ulp`
-    """
+    """  # NOQA
     numpy.testing.assert_array_max_ulp(
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
@@ -129,7 +129,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
-    """Raises an AssertionError if array_like objects are not ordered by less than.  # NOQA
+    """Raises an AssertionError if array_like objects are not ordered by less than.
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The smaller object to check.
@@ -139,7 +139,7 @@ def assert_array_less(x, y, err_msg='', verbose=True):
              are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_less`
-    """
+    """  # NOQA
     numpy.testing.assert_array_less(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
         verbose=verbose)

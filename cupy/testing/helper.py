@@ -255,7 +255,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
                                        accept_error=False, sp_name=None,
                                        scipy_name=None):
-    """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.  # NOQA
+    """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
 
     Args:
          nulp(int): The maximum number of unit in the last place for tolerance.
@@ -280,7 +280,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -290,7 +290,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
                              accept_error=False, sp_name=None,
                              scipy_name=None):
-    """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.  # NOQA
+    """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.
 
     Args:
          maxulp(int): The maximum number of units in the last place
@@ -319,7 +319,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
     .. seealso:: :func:`cupy.testing.assert_array_max_ulp`
 
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -366,7 +366,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
 def numpy_cupy_array_list_equal(
         err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None):
-    """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.  # NOQA
+    """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
@@ -385,7 +385,7 @@ def numpy_cupy_array_list_equal(
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
-    """
+    """  # NOQA
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -720,7 +720,7 @@ def for_unsigned_dtypes(name='dtype'):
 
 
 def for_int_dtypes(name='dtype', no_bool=False):
-    """Decorator that checks the fixture with integer and optionally bool dtypes.  # NOQA
+    """Decorator that checks the fixture with integer and optionally bool dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -734,7 +734,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
-    """
+    """  # NOQA
     if no_bool:
         return for_dtypes(_int_dtypes, name=name)
     else:
@@ -853,7 +853,7 @@ def for_all_dtypes_combination(names=('dtyes',),
 
 
 def for_signed_dtypes_combination(names=('dtype',), full=None):
-    """Decorator for parameterized test w.r.t. the product set of signed dtypes.  # NOQA
+    """Decorator for parameterized test w.r.t. the product set of signed dtypes.
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
@@ -863,12 +863,12 @@ def for_signed_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
 def for_unsigned_dtypes_combination(names=('dtype',), full=None):
-    """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.  # NOQA
+    """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
@@ -878,12 +878,12 @@ def for_unsigned_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
 def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
-    """Decorator for parameterized test w.r.t. the product set of int and boolean.  # NOQA
+    """Decorator for parameterized test w.r.t. the product set of int and boolean.
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
@@ -895,7 +895,7 @@ def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     if no_bool:
         types = _int_dtypes
     else:
