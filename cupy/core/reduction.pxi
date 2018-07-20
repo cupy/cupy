@@ -1,4 +1,5 @@
-import collections
+from cpython cimport sequence
+
 import string
 
 import numpy
@@ -110,7 +111,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     cdef Py_ssize_t dim
     if axis is None:
         axis = tuple(range(ndim))
-    elif isinstance(axis, collections.Sequence):
+    elif sequence.PySequence_Check(axis):
         axis = tuple(axis)
     else:
         axis = axis,
