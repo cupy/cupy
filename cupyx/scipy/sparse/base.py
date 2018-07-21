@@ -2,7 +2,6 @@ import numpy
 import six
 
 import cupy
-from cupy.core import core
 from cupyx.scipy.sparse import util
 
 
@@ -422,8 +421,5 @@ def issparse(x):
     return isinstance(x, spmatrix)
 
 
+isdense = util.isdense
 isspmatrix = issparse
-
-
-def isdense(x):
-    return isinstance(x, core.ndarray)
