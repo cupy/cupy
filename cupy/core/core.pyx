@@ -2313,7 +2313,7 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
         indices = [i * each_size
                    for i in range(1, indices_or_sections)]
     else:
-        indices = indices_or_sections
+        indices = [i if i >= 0 else size + i for i in indices_or_sections]
 
     if len(indices) == 0:
         return [ary]
