@@ -1498,6 +1498,12 @@ cdef class ndarray:
 
     # Container customization:
 
+    def __iter__(self):
+        if self._shape.size() == 0:
+            raise TypeError('iteration over a 0-d array')
+        for i in six.moves.range(self._shape[0]):
+            yield self[i]
+
     def __len__(self):
         if self._shape.size() == 0:
             raise TypeError('len() of unsized object')
