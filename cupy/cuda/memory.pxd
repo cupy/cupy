@@ -1,9 +1,12 @@
+cimport cython
+
 from libcpp cimport vector
 from libcpp cimport map
 
 from cupy.cuda cimport device
 
 
+@cython.no_gc
 cdef class Memory:
 
     cdef:
