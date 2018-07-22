@@ -3,4 +3,3 @@
 
 # "NOQA" to suppress flake8 warning
 from cupy.sparse.linalg.solve import lsqr    # NOQA
-from cupy.sparse.linalg.solve import lschol  # NOQA

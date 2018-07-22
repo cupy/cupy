@@ -72,6 +72,7 @@ def lsqr(A, b):
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
 
+
 def lschol(A, b):
     """Solves linear system with cholesky decomposition.
 
