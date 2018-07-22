@@ -1,5 +1,5 @@
 import cupy
-from cupy.sparse import base
+from cupyx.scipy.sparse import base
 
 
 _ufuncs = [

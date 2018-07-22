@@ -6,8 +6,8 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupy.sparse import csc
-from cupy.sparse import data
+from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse import data
 
 
 class dia_matrix(data._data_matrix):

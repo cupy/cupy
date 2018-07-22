@@ -2,8 +2,7 @@ import numpy
 import six
 
 import cupy
-from cupy.core import core
-from cupy.sparse import util
+from cupyx.scipy.sparse import util
 
 
 class spmatrix(object):
@@ -161,7 +160,9 @@ class spmatrix(object):
                 raise ValueError('exponent must be >= 0')
 
             if other == 0:
-                return cupy.sparse.identity(m, dtype=self.dtype, format='csr')
+                import cupyx.scipy.sparse
+                return cupyx.scipy.sparse.identity(
+                    m, dtype=self.dtype, format='csr')
             elif other == 1:
                 return self.copy()
             else:
@@ -420,8 +421,5 @@ def issparse(x):
     return isinstance(x, spmatrix)
 
 
+isdense = util.isdense
 isspmatrix = issparse
-
-
-def isdense(x):
-    return isinstance(x, core.ndarray)

@@ -1,20 +1,20 @@
-from cupy.sparse.base import issparse  # NOQA
-from cupy.sparse.base import isspmatrix  # NOQA
-from cupy.sparse.base import spmatrix  # NOQA
-from cupy.sparse.coo import coo_matrix  # NOQA
-from cupy.sparse.coo import isspmatrix_coo  # NOQA
-from cupy.sparse.csc import csc_matrix  # NOQA
-from cupy.sparse.csc import isspmatrix_csc  # NOQA
-from cupy.sparse.csr import csr_matrix  # NOQA
-from cupy.sparse.csr import isspmatrix_csr  # NOQA
-from cupy.sparse.dia import dia_matrix  # NOQA
-from cupy.sparse.dia import isspmatrix_dia  # NOQA
+from cupyx.scipy.sparse.base import issparse  # NOQA
+from cupyx.scipy.sparse.base import isspmatrix  # NOQA
+from cupyx.scipy.sparse.base import spmatrix  # NOQA
+from cupyx.scipy.sparse.coo import coo_matrix  # NOQA
+from cupyx.scipy.sparse.coo import isspmatrix_coo  # NOQA
+from cupyx.scipy.sparse.csc import csc_matrix  # NOQA
+from cupyx.scipy.sparse.csc import isspmatrix_csc  # NOQA
+from cupyx.scipy.sparse.csr import csr_matrix  # NOQA
+from cupyx.scipy.sparse.csr import isspmatrix_csr  # NOQA
+from cupyx.scipy.sparse.dia import dia_matrix  # NOQA
+from cupyx.scipy.sparse.dia import isspmatrix_dia  # NOQA
 
-from cupy.sparse.construct import eye  # NOQA
-from cupy.sparse.construct import identity  # NOQA
-from cupy.sparse.construct import rand  # NOQA
-from cupy.sparse.construct import random  # NOQA
-from cupy.sparse.construct import spdiags  # NOQA
+from cupyx.scipy.sparse.construct import eye  # NOQA
+from cupyx.scipy.sparse.construct import identity  # NOQA
+from cupyx.scipy.sparse.construct import rand  # NOQA
+from cupyx.scipy.sparse.construct import random  # NOQA
+from cupyx.scipy.sparse.construct import spdiags  # NOQA
 
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dok_matrix
@@ -39,4 +39,4 @@ from cupy.sparse.construct import spdiags  # NOQA
 # TODO(unno): implement isspmatrix_lil(x)
 # TODO(unno): implement isspmatrix_dok(x)
 
-from cupy.sparse import linalg  # NOQA
+from cupyx.scipy.sparse import linalg  # NOQA

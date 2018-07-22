@@ -1,5 +1,9 @@
 import cupy
-import cupy.sparse.base
+from cupy.core import core
+
+
+def isdense(x):
+    return isinstance(x, core.ndarray)
 
 
 def isintlike(x):
@@ -10,7 +14,7 @@ def isintlike(x):
 
 
 def isscalarlike(x):
-    return cupy.isscalar(x) or (cupy.sparse.base.isdense(x) and x.ndim == 0)
+    return cupy.isscalar(x) or (isdense(x) and x.ndim == 0)
 
 
 def isshape(x):
