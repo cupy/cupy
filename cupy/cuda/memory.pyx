@@ -1,4 +1,6 @@
 # distutils: language = c++
+cimport cython
+
 import atexit
 import collections
 import ctypes
@@ -34,6 +36,7 @@ class OutOfMemoryError(MemoryError):
         super(OutOfMemoryError, self).__init__(msg)
 
 
+@cython.no_gc
 cdef class Memory:
     """Memory allocation on a CUDA device.
 
@@ -485,6 +488,7 @@ cpdef set_allocator(allocator=None):
     _current_allocator = allocator
 
 
+@cython.no_gc
 cdef class PooledMemory(Memory):
 
     """Memory allocation for a memory pool.
@@ -612,23 +616,37 @@ cdef class SingleDeviceMemoryPool:
         self._in_use_lock = rlock.create_fastrlock()
 
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
-        """Round up the memory size to fit memory alignment of cudaMalloc."""
+        """Rounds up the memory size to fit memory alignment of cudaMalloc."""
         unit = self._allocation_unit_size
         return ((size + unit - 1) // unit) * unit
 
     cpdef int _bin_index_from_size(self, Py_ssize_t size):
-        """Get appropriate bins index from the memory size"""
+        """Returns appropriate bins index from the memory size."""
         unit = self._allocation_unit_size
         return (size - 1) // unit
 
     cpdef list _arena(self, size_t stream_ptr):
-        """Get appropriate arena (list of bins) of a given stream"""
+        """Returns appropriate arena (list of bins) of a given stream.
+
+        All free chunks in the stream belong to one of the bin in the arena.
+
+        Caller is responsible to acquire `_free_lock`.
+        """
         if stream_ptr not in self._free:
             self._free[stream_ptr] = []
         return self._free[stream_ptr]
 
     cdef vector.vector[int]* _arena_index(self, size_t stream_ptr):
-        """Get appropriate arena sparse index of a given stream"""
+        """Returns appropriate arena sparse index of a given stream.
+
+        Each element of the returned vector is an index value of the arena
+        for the stream. The k-th element of the arena index is the bin index
+        of the arena. For example, when the arena index is `[1, 3]`, it means
+        that the arena has 2 bins, and `arena[0]` is for bin index 1 and
+        `arena[1]` is for bin index 3.
+
+        Caller is responsible to acquire `_free_lock`.
+        """
         return &self._index[stream_ptr]
 
     cpdef _append_to_free_list(self, Py_ssize_t size, chunk,
@@ -661,6 +679,14 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef bint _remove_from_free_list(self, Py_ssize_t size, chunk,
                                       size_t stream_ptr) except *:
+        """Removes the chunk from the free list.
+
+        Returns:
+            bool: ``True`` if the chunk can successfully be removed from
+                the free list. ``False`` otherwise (e.g., the chunk could not
+                be found in the free list as the chunk is allocated.)
+        """
+
         cdef int index, bin_index
         cdef list arena
         cdef set free_list
@@ -676,6 +702,9 @@ cdef class SingleDeviceMemoryPool:
             index = algorithm.lower_bound(
                 arena_index.begin(), arena_index.end(),
                 bin_index) - arena_index.begin()
+            if index == arena_index.size():
+                # Bin does not exist for the given chunk size.
+                return False
             if arena_index.at(index) != bin_index:
                 return False
             free_list = arena[index]
@@ -772,6 +801,11 @@ cdef class SingleDeviceMemoryPool:
                     _compact_index(self, stream_ptr, False)
                 break
         finally:
+            # clear references to chunks from local variables
+            # so that errorMemoryAllocation cases in the following section
+            # can cudaFree() the chunks by gc.collect().
+            arena = None
+            free_list = None
             rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:

@@ -3,13 +3,13 @@
 from __future__ import division
 import sys
 
+import ctypes
 import numpy
 import six
 
 import cupy
 from cupy.core import flags
 from cupy.cuda import device
-from cupy.cuda import stream
 
 try:
     from cupy.cuda import thrust
@@ -17,10 +17,12 @@ except ImportError:
     pass
 from cupy import util
 
-cimport cpython
-cimport cython
+cimport cpython  # NOQA
+cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy.core._dtype cimport get_dtype
+from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
 from cupy.cuda cimport function
@@ -28,6 +30,7 @@ from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+
 
 DEF MAX_NDIM = 25
 
@@ -48,6 +51,22 @@ except AttributeError:
             super(IndexOrValueError, self).__init__(*args, **kwargs)
 
     _AxisError = IndexOrValueError
+
+
+cdef int _normalize_order(str order) except? 0:
+    cdef int order_char
+    order_char = 'C' if len(order) == 0 else ord(order[0])
+    if order_char == 'K' or order_char == 'k':
+        order_char = 'K'
+    elif order_char == 'A' or order_char == 'a':
+        order_char = 'A'
+    elif order_char == 'C' or order_char == 'c':
+        order_char = 'C'
+    elif order_char == 'F' or order_char == 'f':
+        order_char = 'F'
+    else:
+        raise TypeError('order not understood')
+    return order_char
 
 
 cdef class ndarray:
@@ -80,36 +99,38 @@ cdef class ndarray:
 
             .. seealso:: :attr:`numpy.ndarray.size`
 
-
     """
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
-        cdef Py_ssize_t x
+        cdef Py_ssize_t x, itemsize
         self._shape = internal.get_size(shape)
         for x in self._shape:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
-        self.dtype = numpy.dtype(dtype)
+        self.dtype = get_dtype(dtype)
         self.size = internal.prod_ssize_t(self._shape)
+        itemsize = self.dtype.itemsize
 
         if memptr is None:
-            self.data = memory.alloc(self.size * self.dtype.itemsize)
+            self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        self.base = None
+        if order is None:
+            order = 'C'
 
-        if order in ('C', None):
+        cdef int order_char = _normalize_order(order)
+        if order_char == 'C':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, is_c_contiguous=True)
+                self._shape, itemsize, is_c_contiguous=True)
             self._c_contiguous = True
             self._update_f_contiguity()
-        elif order == 'F':
+        elif order_char == 'F':
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize, is_c_contiguous=False)
+                self._shape, itemsize, is_c_contiguous=False)
             self._f_contiguous = True
             self._update_c_contiguity()
         else:
-            raise TypeError('order not understood')
+            raise TypeError('order not understood. order={}'.format(order))
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -312,31 +333,30 @@ cdef class ndarray:
 
         if order is None:
             order = 'K'
-        if order not in ['C', 'F', 'A', 'K']:
-            raise TypeError('order not understood')
+        cdef int order_char = _normalize_order(order)
 
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
-                    order == 'K' or
-                    order == 'A' and (self._c_contiguous or
-                                      self._f_contiguous) or
-                    order == 'C' and self._c_contiguous or
-                    order == 'F' and self._f_contiguous):
+                    order_char == 'K' or
+                    order_char == 'A' and (self._c_contiguous or
+                                           self._f_contiguous) or
+                    order_char == 'C' and self._c_contiguous or
+                    order_char == 'F' and self._f_contiguous):
                 return self
 
-        if order == 'A':
+        if order_char == 'A':
             if self._f_contiguous:
-                order = 'F'
+                order_char = 'F'
             else:
-                order = 'C'
-        elif order == 'K':
+                order_char = 'C'
+        elif order_char == 'K':
             if self._f_contiguous:
-                order = 'F'
+                order_char = 'F'
             elif self._c_contiguous:
-                order = 'C'
+                order_char = 'C'
 
-        if order == 'K':
+        if order_char == 'K':
             newarray = ndarray(self.shape, dtype=dtype)
             stride_and_index = [
                 (abs(s), -i) for i, s in enumerate(self._strides)]
@@ -348,8 +368,17 @@ cdef class ndarray:
                 stride *= self._shape[-i]
             newarray._set_shape_and_strides(self._shape, strides)
         else:
-            newarray = ndarray(self.shape, dtype=dtype, order=order)
-        elementwise_copy(self, newarray)
+            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
+
+        if self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
+            cupy.not_equal(self, 0j, out=newarray)
+        elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+            elementwise_copy(self.real, newarray)
+        else:
+            elementwise_copy(self, newarray)
         return newarray
 
     # TODO(okuta): Implement byteswap
@@ -407,13 +436,21 @@ cdef class ndarray:
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef ndarray v
         v = ndarray.__new__(ndarray)
-        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
+        v.dtype = self.dtype if dtype is None else get_dtype(dtype)
 
-        if dtype is None:
+        if v.dtype.itemsize == self.dtype.itemsize:
             v.size = self.size
             v._shape = self._shape
             v._strides = self._strides
         else:
+            if self.ndim == 0:
+                raise ValueError(
+                    "Changing the dtype of a 0d array is only supported if "
+                    "the itemsize is unchanged")
+            if not self._c_contiguous:
+                raise ValueError(
+                    "To change to a dtype of a different size, the array must "
+                    "be C-contiguous")
             shape = list(self._shape)
             strides = list(self._strides)
             shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
@@ -1144,7 +1181,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.sum`
 
         """
-        return _sum(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _sum_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _sum_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumsum
 
@@ -1190,7 +1230,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.prod`
 
         """
-        return _prod(self, axis, dtype, out, keepdims)
+        if dtype is None:
+            return _prod_auto_dtype(self, axis, dtype, out, keepdims)
+        else:
+            return _prod_keep_dtype(self, axis, dtype, out, keepdims)
 
     # TODO(okuta): Implement cumprod
 
@@ -1389,7 +1432,12 @@ cdef class ndarray:
     @property
     def real(self):
         if self.dtype.kind == 'c':
-            return real(self)
+            view = ndarray(
+                shape=(), dtype=get_dtype(self.dtype.char.lower()),
+                memptr=self.data)
+            view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
+            return view
         return self
 
     @real.setter
@@ -1402,7 +1450,12 @@ cdef class ndarray:
     @property
     def imag(self):
         if self.dtype.kind == 'c':
-            return imag(self)
+            view = ndarray(
+                shape=(), dtype=get_dtype(self.dtype.char.lower()),
+                memptr=self.data + self.itemsize // 2)
+            view._set_shape_and_strides(self.shape, self.strides)
+            view.base = self.base if self.base is not None else self
+            return view
         new_array = ndarray(self.shape, dtype=self.dtype)
         new_array.fill(0)
         return new_array
@@ -1446,6 +1499,12 @@ cdef class ndarray:
 
     # Container customization:
 
+    def __iter__(self):
+        if self._shape.size() == 0:
+            raise TypeError('iteration over a 0-d array')
+        for i in six.moves.range(self._shape[0]):
+            yield self[i]
+
     def __len__(self):
         if self._shape.size() == 0:
             raise TypeError('len() of unsized object')
@@ -1466,11 +1525,11 @@ cdef class ndarray:
            CuPy handles out-of-bounds indices differently from NumPy.
            NumPy handles them by raising an error, but CuPy wraps around them.
 
-           Examples
-           --------
-           >>> a = cupy.arange(3)
-           >>> a[[1, 3]]
-           array([1, 0])
+        Example:
+
+            >>> a = cupy.arange(3)
+            >>> a[[1, 3]]
+            array([1, 0])
 
         """
         # supports basic indexing (by slices, ints or Ellipsis) and
@@ -1525,13 +1584,13 @@ cdef class ndarray:
             reference the same location multiple times.
             In that case, the value that is actually stored is undefined.
 
-            >>> import cupy; import numpy
+            >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(numpy.float)
+            >>> v = cupy.arange(10000).astype(cupy.float)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
-            array([ 9150.,  9151.])
+            array([9150., 9151.])
 
             On the other hand, NumPy stores the value corresponding to the
             last index among the indices referencing duplicate locations.
@@ -1542,7 +1601,7 @@ cdef class ndarray:
             >>> v_cpu = numpy.arange(10000).astype(numpy.float)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
-            array([ 9998.,  9999.])
+            array([9998., 9999.])
 
         """
         _scatter_op(self, slices, value, 'update')
@@ -1559,6 +1618,41 @@ cdef class ndarray:
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__
+
+    # numpy/ufunc compat
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+
+        """Apply unary or binary ufunc to this array
+
+        If binary, only allow if second argument is another cupy ndarray or
+        a number, i.e., raise ValueError instead of silently converting a
+        numpy array.
+        """
+        import cupy  # top-level ufuncs
+        if 'out' in kwargs:
+            # need to unfold tuple argument in kwargs
+            out = kwargs['out']
+            if len(out) != 1:
+                raise ValueError("The 'out' parameter must have exactly one "
+                                 "array value")
+            kwargs['out'] = out[0]
+
+        if method == '__call__':
+            if ufunc.signature is not None:
+                # we don't support generalised-ufuncs (gufuncs)
+                return NotImplemented
+            try:
+                cp_ufunc = getattr(cupy, ufunc.__name__)
+            except AttributeError:
+                return NotImplemented
+            return cp_ufunc(*inputs, **kwargs)
+        # Don't use for now, interface uncertain
+        # elif method =='at' and name == 'add':
+            # the only ufunc attribute currently
+            # http://docs-cupy.chainer.org/en/stable/reference/ufunc.html#ufunc-at
+            # self.scatter_add(*inputs, **kwargs)
+        else:
+            return NotImplemented
 
     # Conversion:
 
@@ -1745,6 +1839,39 @@ cdef class ndarray:
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
+
+    cpdef object toDlpack(self):
+        """Zero-copy conversion to a DLPack tensor.
+
+        DLPack is a open in memory tensor structure proposed in this
+        repository: `dmlc/dlpack <https://github.com/dmlc/dlpack>`_.
+
+        This function returns a :class:`PyCapsule` object which contains a
+        pointer to a DLPack tensor converted from the own ndarray. This
+        function does not copy the own data to the output DLpack tensor
+        but it shares the pointer which is pointing to the same memory region
+        for the data.
+
+        Returns:
+            dltensor (:class:`PyCapsule`): Output DLPack tensor which is
+                encapsulated in a :class:`PyCapsule` object.
+
+        .. seealso::
+
+            :meth:`~cupy.fromDlpack` is a method for zero-copy conversion from
+            a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
+            object) to a :class:`ndarray`
+
+        .. admonition:: Example
+
+            >>> import cupy
+            >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
+            >>> dltensor = array1.toDlpack()
+            >>> array2 = cupy.fromDlpack(dltensor)
+            >>> cupy.testing.assert_array_equal(array1, array2)
+
+        """
+        return dlpack.toDlpack(self)
 
 
 cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
@@ -1999,6 +2126,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
     cdef ndarray a, src
+    cdef size_t nbytes
     if subok:
         raise NotImplementedError
     if isinstance(obj, ndarray):
@@ -2018,11 +2146,13 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:
-        if order == 'K':
-            order = 'A'
+        if order is not None and len(order) >= 1 and order[0] in 'KAka':
+            if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
-        order = 'C' if a_cpu.flags.c_contiguous else 'F'
         a_dtype = a_cpu.dtype
         if a_dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2030,12 +2160,12 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
         if a_cpu.ndim == 0:
             a.fill(a_cpu[()])
             return a
-        mem = pinned_memory.alloc_pinned_memory(a.nbytes)
-        src_cpu = numpy.frombuffer(mem, a_cpu.dtype,
-                                   a_cpu.size).reshape(a_cpu.shape)
-        src_cpu[...] = a_cpu
+        nbytes = a.nbytes
+        mem = pinned_memory.alloc_pinned_memory(nbytes)
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[:] = a_cpu.ravel(order)
         stream = stream_module.get_current_stream()
-        a.set(src_cpu, stream)
+        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     return a
 
@@ -2046,7 +2176,7 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
             return a
         dtype = a.dtype
     else:
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if a._c_contiguous and dtype == a.dtype:
             return a
 
@@ -2064,7 +2194,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
             return a
         dtype = a.dtype
     else:
-        dtype = numpy.dtype(dtype)
+        dtype = get_dtype(dtype)
         if a._f_contiguous and dtype == a.dtype:
             return a
 
@@ -2073,16 +2203,17 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
             a.ndim == 2 and dtype == a.dtype):
         m, n = a.shape
+        handle = cuda.get_cublas_handle()
         if a.dtype == numpy.float32:
             cuda.cublas.sgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cuda.cublas.dgeam(
-                cuda.Device().cublas_handle,
+                handle,
                 1,  # transpose a
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
@@ -2189,7 +2320,7 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
         indices = [i * each_size
                    for i in range(1, indices_or_sections)]
     else:
-        indices = indices_or_sections
+        indices = [i if i >= 0 else size + i for i in indices_or_sections]
 
     if len(indices) == 0:
         return [ary]
@@ -2467,7 +2598,7 @@ cpdef ndarray concatenate_method(tup, int axis):
 
 cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     cdef ndarray a, ret
-    cdef int i
+    cdef Py_ssize_t i
     cdef bint all_same_type, same_shape_and_contiguous
     cdef Py_ssize_t axis_size
     # If arrays are large, Issuing each copy method is efficient.
@@ -3336,7 +3467,7 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
         [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
-    reduced_idx = _sum(flattened_indexes, axis=0)
+    reduced_idx = _sum_auto_dtype(flattened_indexes, axis=0)
 
     return a_interm, reduced_idx, li, ri
 
@@ -3538,7 +3669,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (a.ndim - b.ndim) + b.strides)
         b = view
 
-    broadcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+    broadcast_pre_shape = numpy.maximum(
+        numpy.array(a.shape[:-2], numpy.uint64) - 1,
+        numpy.array(b.shape[:-2], numpy.uint64) - 1
+    ) + 1
 
     out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
@@ -3604,6 +3738,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 'operands could not be broadcast together with '
                 'remapped shapes')
 
+    if a.size == 0 or b.size == 0:
+        return cupy.zeros(out_shape, ret_dtype)
+
     batchCount = 1  # batchCount = numpy.prod(la)
     for i in la:
         batchCount *= i
@@ -3612,6 +3749,8 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
+    handle = cuda.get_cublas_handle()
+
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast and _cuda_runtime_version >= 8000:
         strideA = _get_stride_for_strided_batched_gemm(a)
@@ -3619,7 +3758,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         strideC = _get_stride_for_strided_batched_gemm(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3629,7 +3768,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3639,7 +3778,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3649,7 +3788,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmStridedBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3665,7 +3804,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         outp = _mat_ptrs(out_view)
         if dtype == numpy.float32:
             cuda.cublas.sgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3674,7 +3813,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
             cuda.cublas.dgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1.0,
@@ -3683,7 +3822,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
             cuda.cublas.cgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3692,7 +3831,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
             cuda.cublas.zgemmBatched(
-                cuda.Device().cublas_handle,
+                handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, 1,
@@ -3955,21 +4094,39 @@ _any = create_reduction_func(
 # Mathematical functions
 # -----------------------------------------------------------------------------
 
-_sum = create_reduction_func(
+_sum_auto_dtype = create_reduction_func(
     'cupy_sum',
-    ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
-_prod = create_reduction_func(
-    'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+_sum_keep_dtype = create_reduction_func(
+    'cupy_sum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'],
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_prod_auto_dtype = create_reduction_func(
+    'cupy_prod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_prod_keep_dtype = create_reduction_func(
+    'cupy_prod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
@@ -4015,7 +4172,7 @@ angle = create_ufunc(
     'out0 = in0 >= 0 ? 0 : M_PI',
     doc='''Returns the angle of the complex argument.
 
-    .. seealso:: :data:`numpy.angle`
+    .. seealso:: :func:`numpy.angle`
 
     ''')
 
@@ -4029,10 +4186,9 @@ real = create_ufunc(
     'out0 = in0',
     doc='''Returns the real part of the elements of the array.
 
-    .. seealso:: :data:`numpy.real`
+    .. seealso:: :func:`numpy.real`
 
     ''')
-
 
 _real_setter = create_ufunc(
     'cupy_real_setter',
@@ -4051,7 +4207,7 @@ imag = create_ufunc(
     'out0 = 0',
     doc='''Returns the imaginary part of the elements of the array.
 
-    .. seealso:: :data:`numpy.imag`
+    .. seealso:: :func:`numpy.imag`
 
     ''')
 

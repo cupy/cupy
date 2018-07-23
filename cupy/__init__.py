@@ -33,6 +33,7 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
+import cupyx
 
 
 def is_available():
@@ -61,18 +62,62 @@ from cupy import util  # NOQA
 
 # import class and function
 from cupy.core import ndarray  # NOQA
+from cupy.core import ufunc  # NOQA
 
-# dtype short cuts
+
+# =============================================================================
+# Constants (borrowed from NumPy)
+# =============================================================================
+from numpy import e  # NOQA
+from numpy import euler_gamma  # NOQA
+from numpy import Inf  # NOQA
+from numpy import inf  # NOQA
+from numpy import Infinity  # NOQA
+from numpy import infty  # NOQA
+from numpy import NAN  # NOQA
+from numpy import NaN  # NOQA
+from numpy import nan  # NOQA
+from numpy import newaxis  # == None  # NOQA
+from numpy import NINF  # NOQA
+from numpy import NZERO  # NOQA
+from numpy import pi  # NOQA
+from numpy import PINF  # NOQA
+from numpy import PZERO  # NOQA
+
+
+# =============================================================================
+# Data types (borrowed from NumPy)
+#
+# The order of these declarations are borrowed from the NumPy document:
+# https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Generic types
+# -----------------------------------------------------------------------------
+from numpy import complexfloating  # NOQA
 from numpy import floating  # NOQA
+from numpy import generic  # NOQA
 from numpy import inexact  # NOQA
 from numpy import integer  # NOQA
 from numpy import number  # NOQA
 from numpy import signedinteger  # NOQA
 from numpy import unsignedinteger  # NOQA
 
+# Not supported by CuPy:
+# from numpy import flexible
+# from numpy import character
 
+# -----------------------------------------------------------------------------
+# Booleans
+# -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
 
+from numpy import bool8  # NOQA
+
+# -----------------------------------------------------------------------------
+# Integers
+# -----------------------------------------------------------------------------
 from numpy import byte  # NOQA
 
 from numpy import short  # NOQA
@@ -83,6 +128,19 @@ from numpy import int_  # NOQA
 
 from numpy import longlong  # NOQA
 
+from numpy import intp  # NOQA
+
+from numpy import int8  # NOQA
+
+from numpy import int16  # NOQA
+
+from numpy import int32  # NOQA
+
+from numpy import int64  # NOQA
+
+# -----------------------------------------------------------------------------
+# Unsigned integers
+# -----------------------------------------------------------------------------
 from numpy import ubyte  # NOQA
 
 from numpy import ushort  # NOQA
@@ -93,23 +151,7 @@ from numpy import uint  # NOQA
 
 from numpy import ulonglong  # NOQA
 
-
-from numpy import half  # NOQA
-
-from numpy import single  # NOQA
-
-from numpy import float_  # NOQA
-
-from numpy import longfloat  # NOQA
-
-
-from numpy import int8  # NOQA
-
-from numpy import int16  # NOQA
-
-from numpy import int32  # NOQA
-
-from numpy import int64  # NOQA
+from numpy import uintp  # NOQA
 
 from numpy import uint8  # NOQA
 
@@ -119,6 +161,18 @@ from numpy import uint32  # NOQA
 
 from numpy import uint64  # NOQA
 
+# -----------------------------------------------------------------------------
+# Floating-point numbers
+# -----------------------------------------------------------------------------
+from numpy import half  # NOQA
+
+from numpy import single  # NOQA
+
+from numpy import double  # NOQA
+
+from numpy import float_  # NOQA
+
+from numpy import longfloat  # NOQA
 
 from numpy import float16  # NOQA
 
@@ -126,6 +180,14 @@ from numpy import float32  # NOQA
 
 from numpy import float64  # NOQA
 
+# Not supported by CuPy:
+# from numpy import float96
+# from numpy import float128
+
+# -----------------------------------------------------------------------------
+# Complex floating-point numbers
+# -----------------------------------------------------------------------------
+from numpy import csingle  # NOQA
 
 from numpy import complex_  # NOQA
 
@@ -133,15 +195,37 @@ from numpy import complex64  # NOQA
 
 from numpy import complex128  # NOQA
 
-from numpy import csingle  # NOQA
+# Not supported by CuPy:
+# from numpy import complex192
+# from numpy import complex256
+# from numpy import clongfloat
 
-from numpy import clongfloat  # NOQA
+# -----------------------------------------------------------------------------
+# Any Python object
+# -----------------------------------------------------------------------------
 
+# Not supported by CuPy:
+# from numpy import object_
+# from numpy import bytes_
+# from numpy import unicode_
+# from numpy import void
 
-from cupy.core import ufunc  # NOQA
+# -----------------------------------------------------------------------------
+# Built-in Python types
+# -----------------------------------------------------------------------------
 
-from numpy import newaxis  # == None  # NOQA
+from numpy import int  # NOQA
 
+from numpy import bool  # NOQA
+
+from numpy import float  # NOQA
+
+from numpy import complex  # NOQA
+
+# Not supported by CuPy:
+# from numpy import object
+# from numpy import unicode
+# from numpy import str
 
 # =============================================================================
 # Routines
@@ -179,6 +263,9 @@ from cupy.creation.ranges import ogrid  # NOQA
 
 from cupy.creation.matrix import diag  # NOQA
 from cupy.creation.matrix import diagflat  # NOQA
+from cupy.creation.matrix import tri  # NOQA
+from cupy.creation.matrix import tril  # NOQA
+from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -219,6 +306,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
+
+from cupy.manipulation.add_remove import unique  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
@@ -410,7 +499,6 @@ from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
 
-
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
 from cupy.core.fusion import expm1  # NOQA
@@ -421,6 +509,9 @@ from cupy.core.fusion import log2  # NOQA
 from cupy.core.fusion import logaddexp  # NOQA
 from cupy.core.fusion import logaddexp2  # NOQA
 
+from cupy.core.fusion import i0  # NOQA
+from cupy.core.fusion import sinc  # NOQA
+
 from cupy.core.fusion import copysign  # NOQA
 from cupy.core.fusion import frexp  # NOQA
 from cupy.core.fusion import ldexp  # NOQA
@@ -429,6 +520,7 @@ from cupy.core.fusion import signbit  # NOQA
 
 from cupy.core.fusion import add  # NOQA
 from cupy.core.fusion import divide  # NOQA
+from cupy.core.fusion import divmod  # NOQA
 from cupy.core.fusion import floor_divide  # NOQA
 from cupy.core.fusion import fmod  # NOQA
 from cupy.core.fusion import modf  # NOQA
@@ -441,11 +533,10 @@ from cupy.core.fusion import remainder as mod  # NOQA
 from cupy.core.fusion import subtract  # NOQA
 from cupy.core.fusion import true_divide  # NOQA
 
-# TODO(okuta): implement fusion function
-from cupy.core import angle  # NOQA
-from cupy.core import conj  # NOQA
-from cupy.core import imag  # NOQA
-from cupy.core import real  # NOQA
+from cupy.core.fusion import angle  # NOQA
+from cupy.core.fusion import conj  # NOQA
+from cupy.core.fusion import imag  # NOQA
+from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
@@ -485,6 +576,9 @@ from cupy.sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
+from cupy.statistics.correlation import corrcoef  # NOQA
+from cupy.statistics.correlation import cov  # NOQA
+
 from cupy.core.fusion import amax  # NOQA
 from cupy.core.fusion import amax as max  # NOQA
 from cupy.core.fusion import amin  # NOQA
@@ -493,6 +587,7 @@ from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
 
+from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
@@ -513,8 +608,14 @@ from cupy.util import clear_memo  # NOQA
 from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
+from cupy.core import RawKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
+# -----------------------------------------------------------------------------
+# DLPack
+# -----------------------------------------------------------------------------
+
+from cupy.core import fromDlpack  # NOQA
 
 # The following function is left for backward compatibility.
 # New CuPy specific routines should reside in cupyx package.
@@ -568,6 +669,8 @@ def get_array_module(*args):
 
     """
     for arg in args:
+        if isinstance(arg, fusion.FusionVarPython):
+            return fusion
         if isinstance(arg, (ndarray, sparse.spmatrix)):
             return _cupy
     return numpy
@@ -614,3 +717,9 @@ def get_default_pinned_memory_pool():
 
     """
     return _default_pinned_memory_pool
+
+
+def show_config():
+    """Prints the current runtime configuration to standard output."""
+    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.flush()

@@ -38,6 +38,7 @@ from cupy.testing.helper import numpy_cupy_array_list_equal  # NOQA
 from cupy.testing.helper import numpy_cupy_array_max_ulp  # NOQA
 from cupy.testing.helper import numpy_cupy_equal  # NOQA
 from cupy.testing.helper import numpy_cupy_raises  # NOQA
+from cupy.testing.helper import numpy_satisfies  # NOQA
 from cupy.testing.helper import NumpyAliasBasicTestBase  # NOQA
 from cupy.testing.helper import NumpyAliasValuesTestBase  # NOQA
 from cupy.testing.helper import NumpyError  # NOQA

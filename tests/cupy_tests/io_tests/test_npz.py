@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestNpz(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     def test_save_load(self, dtype):
         a = testing.shaped_arange((2, 3, 4), dtype=dtype)

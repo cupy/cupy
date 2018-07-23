@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestContent(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_dtypes('efFdD')
     @testing.numpy_cupy_array_equal()
     def check_unary_inf(self, name, xp, dtype):

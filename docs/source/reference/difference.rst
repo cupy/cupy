@@ -27,7 +27,7 @@ This is Intel CPU result.
 Random methods support dtype argument
 -------------------------------------
 
-NumPy's random value generator does not support dtype option and it always resturns a ``float32`` value.
+NumPy's random value generator does not support dtype option and it always returns a ``float32`` value.
 We support the option in CuPy because cuRAND, which is used in CuPy, supports any types of float values.
 
   >>> np.random.randn(dtype=np.float32)
@@ -80,8 +80,11 @@ last element among elements referencing duplicate locations.
   array([9998., 9999.])
 
 
-Reduction methods return zero-dimensional array
+Zero-dimensional array
 -----------------------------------------------
+
+Reduction methods
+~~~~~~~~~~~~~~~~~
 
 NumPy's reduction functions (e.g. :func:`numpy.sum`) return scalar values (e.g. :class:`numpy.float32`).
 However CuPy counterparts return zero-dimensional :class:`cupy.ndarray` s.
@@ -93,6 +96,22 @@ If you want to use scalar values, cast the returned arrays explicitly.
   True
   >>> type(cupy.sum(cupy.arange(3))) == cupy.core.core.ndarray
   True
+
+
+Type promotion
+~~~~~~~~~~~~~~
+
+CuPy automatically promotes dtypes of :class:`cupy.ndarray` s in a function with two or more operands, the result dtype is determined by the dtypes of the inputs.
+This is different from NumPy's rule on type promotion, when operands contain zero-dimensional arrays.
+Zero-dimensional :class:`numpy.ndarray` s are treated as if they were scalar values if they appear in operands of NumPy's function,
+This may affect the dtype of its output, depending on the values of the "scalar" inputs.
+
+  >>> (np.array(3, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
+  dtype('float32')
+  >>> (np.array(300000, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
+  dtype('float64')
+  >>> (cupy.array(3, dtype=np.int32) * cupy.array([1., 2.], dtype=np.float32)).dtype
+  dtype('float64')
 
 
 Data types

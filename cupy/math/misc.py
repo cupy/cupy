@@ -36,7 +36,7 @@ sqrt = sqrt_fixed = core.sqrt
 square = core.create_ufunc(
     'cupy_square',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = in0 * in0',
     doc='''Elementwise square function.
 
@@ -53,11 +53,19 @@ absolute = core.absolute
 
 
 _unsigned_sign = 'out0 = in0 > 0'
+_complex_sign = '''
+if (in0.real() == 0) {
+  out0 = (in0.imag() > 0) - (in0.imag() < 0);
+} else {
+  out0 = (in0.real() > 0) - (in0.real() < 0);
+}
+'''
 sign = core.create_ufunc(
     'cupy_sign',
     ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
      'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
-     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d'),
+     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
+     ('F->F', _complex_sign), ('D->D', _complex_sign)),
     'out0 = (in0 > 0) - (in0 < 0)',
     doc='''Elementwise sign function.
 
@@ -68,15 +76,16 @@ sign = core.create_ufunc(
     ''')
 
 
-_float_maximum = \
-    'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : max(in0, in1)'
+_float_maximum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : max(in0, in1)'
 maximum = core.create_ufunc(
     'cupy_maximum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_maximum),
      ('ff->f', _float_maximum),
-     ('dd->d', _float_maximum)),
+     ('dd->d', _float_maximum),
+     ('FF->F', _float_maximum),
+     ('DD->D', _float_maximum)),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
 
@@ -87,15 +96,16 @@ maximum = core.create_ufunc(
     ''')
 
 
-_float_minimum = \
-    'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : min(in0, in1)'
+_float_minimum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : min(in0, in1)'
 minimum = core.create_ufunc(
     'cupy_minimum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_minimum),
      ('ff->f', _float_minimum),
-     ('dd->d', _float_minimum)),
+     ('dd->d', _float_minimum),
+     ('FF->F', _float_minimum),
+     ('DD->D', _float_minimum)),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
@@ -109,7 +119,11 @@ minimum = core.create_ufunc(
 fmax = core.create_ufunc(
     'cupy_fmax',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'LL->L', 'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = fmax(in0, in1)'),
+     ('ff->f', 'out0 = fmax(in0, in1)'),
+     ('dd->d', 'out0 = fmax(in0, in1)'),
+     'FF->F', 'DD->D'),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
 
@@ -123,7 +137,11 @@ fmax = core.create_ufunc(
 fmin = core.create_ufunc(
     'cupy_fmin',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'LL->L', 'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = fmin(in0, in1)'),
+     ('ff->f', 'out0 = fmin(in0, in1)'),
+     ('dd->d', 'out0 = fmin(in0, in1)'),
+     'FF->F', 'DD->D'),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 

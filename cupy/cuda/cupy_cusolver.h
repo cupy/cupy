@@ -37,7 +37,15 @@ cusolverStatus_t cusolverDnGetStream(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpGetStream(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSetStream(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpSetStream(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

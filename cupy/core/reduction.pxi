@@ -1,4 +1,5 @@
-import collections
+from cpython cimport sequence
+
 import string
 
 import numpy
@@ -44,7 +45,7 @@ cpdef _get_simple_reduction_kernel(
              _j += _j_stride, _J += _J_stride) {
           _in_ind.set(_j);
           ${input_expr}
-          _type_reduce _a = ${pre_map_expr};
+          _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
           _s = REDUCE(_s, _a);
         }
         if (_block_stride < ${block_size}) {
@@ -110,7 +111,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     cdef Py_ssize_t dim
     if axis is None:
         axis = tuple(range(ndim))
-    elif isinstance(axis, collections.Sequence):
+    elif sequence.PySequence_Check(axis):
         axis = tuple(axis)
     else:
         axis = axis,
@@ -151,9 +152,8 @@ cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_shape = _reduce_dims(
-            in_args, params, in_indexer.shape)
-        out_args, out_shape = _reduce_dims(
+        in_shape = _reduce_dims(in_args, params, in_indexer.shape)
+        out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
@@ -196,8 +196,7 @@ class simple_reduction_function(object):
         out_params = _get_param_info('T out0', False)
         self._params = (
             in_params + out_params +
-            _get_param_info(
-                'CIndexer _in_ind, CIndexer _out_ind', False) +
+            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
             _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
@@ -208,7 +207,7 @@ class simple_reduction_function(object):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
         if dtype is not None:
-            dtype = numpy.dtype(dtype).type
+            dtype = get_dtype(dtype).type
 
         in_args = [a]
         a_shape = a.shape
@@ -226,10 +225,9 @@ class simple_reduction_function(object):
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        if out_args[0].size == 0:
-            if len(out_args) == 1:
-                return out_args[0]
-            return tuple(out_args)
+        ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
+        if (<ndarray>out_args[0]).size == 0:
+            return ret
         if a.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
@@ -240,10 +238,7 @@ class simple_reduction_function(object):
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        # Rounding Up to the Next Power of 2
-        # clp2_count >= in_indexer.size // out_indexer.size
-        clp2_count = 1 << int.bit_length(
-            int(in_indexer.size // out_indexer.size - 1))
+        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
         block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
@@ -264,9 +259,7 @@ class simple_reduction_function(object):
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
             inout_args, shared_mem, block_size)
 
-        if len(out_args) == 1:
-            return out_args[0]
-        return tuple(out_args)
+        return ret
 
 
 @util.memoize(for_each_device=True)
@@ -364,6 +357,10 @@ class ReductionKernel(object):
 
         Args:
             args: Arguments of the kernel.
+            axis (int or tuple of ints): Axis or axes along which the
+                reduction is performed.
+            keepdims (bool): If ``True``, the specified axes are remained as
+                axes of length one.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
@@ -413,8 +410,9 @@ class ReductionKernel(object):
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
+        ret = out_args[0]
         if 0 in out_shape:
-            return out_args[0]
+            return ret
 
         in_args = [x if isinstance(x, ndarray) else t(x)
                    for x, t in zip(in_args, in_types)]
@@ -424,10 +422,7 @@ class ReductionKernel(object):
         block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        # Rounding Up to the Next Power of 2
-        # clp2_count >= in_indexer.size // out_indexer.size
-        clp2_count = 1 << int.bit_length(
-            int(in_indexer.size // out_indexer.size - 1))
+        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
         block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
@@ -447,7 +442,7 @@ class ReductionKernel(object):
         kern.linear_launch(
             (out_indexer.size + block_stride - 1) // block_stride * block_size,
             inout_args, shared_mem, block_size, stream)
-        return out_args[0]
+        return ret
 
 
 cpdef create_reduction_func(name, ops, routine=None, identity=None,
@@ -466,8 +461,8 @@ cpdef create_reduction_func(name, ops, routine=None, identity=None,
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t).type for t in in_types])
-        out_types = tuple([numpy.dtype(t).type for t in out_types])
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     return simple_reduction_function(name, _ops, identity, preamble)
