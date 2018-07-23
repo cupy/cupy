@@ -65,7 +65,3 @@ class TestLschol(unittest.TestCase):
         b = cp.array(self.b, dtype=self.dtype)
         x = cupyx.linalg.sparse.lschol(A, b)
         testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)
-
-
-if __name__ == '__main__':
-    unittest.main()
