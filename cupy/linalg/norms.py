@@ -215,9 +215,9 @@ def slogdet(a):
 
     a = a.astype(dtype)
     for index in numpy.ndindex(*shape):
-        s, l = _slogdet_one(a[index])
+        s, logd = _slogdet_one(a[index])
         sign[index] = s
-        logdet[index] = l
+        logdet[index] = logd
     return sign, logdet
 
 
