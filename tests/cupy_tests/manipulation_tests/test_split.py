@@ -55,6 +55,12 @@ class TestSplit(unittest.TestCase):
         return xp.concatenate(split, -1)
 
     @testing.numpy_cupy_array_equal()
+    def test_split_by_sections3(self, xp):
+        a = testing.shaped_arange((3, 11), xp)
+        split = xp.split(a, (-9, 4, -2), 1)
+        return xp.concatenate(split, 1)
+
+    @testing.numpy_cupy_array_equal()
     def test_vsplit(self, xp):
         a = testing.shaped_arange((12, 3), xp)
         split = xp.vsplit(a, 4)
