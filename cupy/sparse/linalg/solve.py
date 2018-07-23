@@ -71,4 +71,3 @@ def lsqr(A, b):
     x = x.astype(numpy.float64)
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
-    
