@@ -93,10 +93,16 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-You can use ``autopep8`` and ``flake8`` commands to check your code.::
+You can use ``autopep8`` and ``flake8`` commands to check your code.
 
-  $ pip install autopep8
-  $ autopep8 --global-config .pep8 path/to/your/code.py
+In order to avoid confusion from using different tool versions, we pin the versions of those tools.
+Install them with the following command (from within the top directory of CuPy repository)::
+
+  $ pip install -e .[stylecheck]
+
+And check your code with::
+
+  $ autopep8 path/to/your/code.py
   $ flake8 path/to/your/code.py
 
 To check Cython code, use ``.flake8.cython`` configuration file::
