@@ -248,7 +248,7 @@ class RandomState(object):
             a ``numpy.int32`` array is returned.
             If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
             a ``numpy.uint32`` array is returned.
-        """
+        """  # NOQA
         if size is None:
             return self._interval(mx, 1).reshape(())
         elif isinstance(size, int):

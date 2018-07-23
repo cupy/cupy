@@ -17,8 +17,8 @@ except ImportError:
     pass
 from cupy import util
 
-cimport cpython
-cimport cython
+cimport cpython  # NOQA
+cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy.core._dtype cimport get_dtype
@@ -30,6 +30,7 @@ from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+
 
 DEF MAX_NDIM = 25
 

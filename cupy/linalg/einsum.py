@@ -133,11 +133,10 @@ def _parse_einsum_input(args):
 
         input_subscripts = input_subscripts.replace(' ', '').split(',')
         if len(input_subscripts) != len(operands):
+            msg = "more" if len(operands) > len(input_subscripts) else "fewer"
             raise ValueError(
-                ("more" if len(operands) > len(input_subscripts) else "fewer")
-                +
-                " operands provided to einstein sum function than specified "
-                "in the subscripts string")
+                msg + " operands provided to einstein sum function than "
+                "specified in the subscripts string")
 
     else:
         args = list(args)

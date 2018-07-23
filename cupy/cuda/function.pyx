@@ -3,7 +3,7 @@
 import numpy
 import six
 
-cimport cpython
+cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t

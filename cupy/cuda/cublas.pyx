@@ -1,12 +1,12 @@
 # distutils: language = c++
 
 """Thin wrapper of CUBLAS."""
-cimport cython
+
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
-
 
 ###############################################################################
 # Extern

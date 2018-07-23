@@ -2,9 +2,10 @@
 
 """Thin wrapper of Thrust implementations for CuPy API."""
 
-cimport cython
 import numpy
-from libcpp.vector cimport vector
+
+cimport cython  # NOQA
+from libcpp cimport vector
 
 from cupy.cuda cimport common
 from cupy.cuda cimport stream as stream_module

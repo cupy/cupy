@@ -12,8 +12,8 @@ signed_int_types = [numpy.int8, numpy.int16, numpy.int32, numpy.int64]
 unsigned_int_types = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 int_types = signed_int_types + unsigned_int_types
 all_types = [numpy.bool] + float_types + int_types + complex_types
-negative_types = ([numpy.bool] + float_types + signed_int_types
-                  + complex_types)
+negative_types = (
+    [numpy.bool] + float_types + signed_int_types + complex_types)
 negative_no_complex_types = [numpy.bool] + float_types + signed_int_types
 no_complex_types = [numpy.bool] + float_types + int_types
 
@@ -51,18 +51,18 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
 @testing.parameterize(*(
     testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                  for d in all_types]
-                 + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
+                  for d in all_types
+                  ] + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
         'name': ['conj', 'angle', 'real', 'imag'],
     }) + testing.product({
         'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                  for d in negative_types]
-                 + [0, 0.0j, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
+                  for d in negative_types
+                  ] + [0, 0.0j, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
         'name': ['angle'],
     }) + testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d) + 1
-                  for d in all_types]
-                 + [2, 2.0, 2j, True]),
+                  for d in all_types
+                  ] + [2, 2.0, 2j, True]),
         'name': ['reciprocal'],
     })
 ))
@@ -75,14 +75,12 @@ class TestArithmeticUnary(unittest.TestCase):
             arg1 = xp.asarray(arg1)
         y = getattr(xp, self.name)(arg1)
 
-        if (testing.numpy_satisfies('>=1.13.0')
-                and self.name in ('real', 'imag')):
-
+        is_over_1_13 = testing.numpy_satisfies('>=1.13.0')
+        if is_over_1_13 and self.name in ('real', 'imag'):
             # From NumPy>=1.13, some functions return Python scalars for Python
             # scalar inputs.
             # We need to convert them to arrays to compare with CuPy outputs.
-            if (xp is numpy
-                    and isinstance(arg1, (bool, int, float, complex))):
+            if xp is numpy and isinstance(arg1, (bool, int, float, complex)):
                 y = xp.asarray(y)
 
             # TODO(niboshi): Fix this
@@ -90,8 +88,7 @@ class TestArithmeticUnary(unittest.TestCase):
             # Python bool. CuPy should return an array of dtype.int32 or
             # dtype.int64 (depending on the platform) in such cases, instead
             # of an array of dtype.bool.
-            if (xp is cupy
-                    and isinstance(arg1, bool)):
+            if xp is cupy and isinstance(arg1, bool):
                 y = y.astype(int)
 
         return y
@@ -101,20 +98,20 @@ class TestArithmeticUnary(unittest.TestCase):
 @testing.parameterize(*(
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
-        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                  for d in all_types]
-                 + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
-        'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                  for d in all_types]
-                 + [0, 0.0, 0j, 2, 2.0, 2j, True, False]),
+        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
+                 for d in all_types
+                 ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
+        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+                 for d in all_types
+                 ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
         'name': ['add', 'multiply', 'power', 'subtract'],
     }) + testing.product({
-        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                  for d in negative_types]
-                 + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
-        'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                  for d in negative_types]
-                 + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
+        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_types
+                 ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
+        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_types
+                 ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
         'name': ['divide', 'true_divide', 'subtract'],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
@@ -123,20 +120,20 @@ class TestArithmeticUnary(unittest.TestCase):
                  for d in float_types] + [0.0, 2.0, -2.0],
         'name': ['power', 'true_divide', 'subtract'],
     }) + testing.product({
-        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
-                  for d in no_complex_types]
-                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
-        'arg2': ([testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-                  for d in no_complex_types]
-                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
+        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
+                 for d in no_complex_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+                 for d in no_complex_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
     }) + testing.product({
-        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                  for d in negative_no_complex_types]
-                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
-        'arg2': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                  for d in negative_no_complex_types]
-                 + [0, 0.0, 2, 2.0, -2, -2.0, True, False]),
+        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_no_complex_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in negative_no_complex_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
     })
 ))
@@ -146,31 +143,31 @@ class TestArithmeticBinary(unittest.TestCase):
     def test_binary(self, xp):
         arg1 = self.arg1
         arg2 = self.arg2
+        np1 = numpy.asarray(arg1)
+        np2 = numpy.asarray(arg2)
+        dtype1 = np1.dtype
+        dtype2 = np2.dtype
 
-        # TODO(niboshi): Fix this: power(0, 1j)
-        #     numpy => 1+0j
-        #     cupy => 0j
-        if (self.name == 'power'
-                and numpy.asarray(arg1 == 0).any()
-                and numpy.asarray(arg2).dtype in complex_types):
-            return xp.array(True)
+        if self.name == 'power':
+            # TODO(niboshi): Fix this: power(0, 1j)
+            #     numpy => 1+0j
+            #     cupy => 0j
+            if dtype2 in complex_types and (np1 == 0).any():
+                return xp.array(True)
 
-        # TODO(niboshi): Fix this: xp.power(0j, 0)
-        #     numpy => 1+0j
-        #     cupy => 0j
-        if (self.name == 'power'
-                and numpy.asarray(arg1).dtype in complex_types
-                and numpy.asarray(arg1 == 0j).any()
-                and numpy.asarray(arg2 == 0).any()):
-            return xp.array(True)
+            # TODO(niboshi): Fix this: xp.power(0j, 0)
+            #     numpy => 1+0j
+            #     cupy => 0j
+            c_arg1 = dtype1 in complex_types
+            if c_arg1 and (np1 == 0j).any() and (np2 == 0).any():
+                return xp.array(True)
 
         # TODO(niboshi): Fix this: xp.add(0j, xp.array([2.], 'f')).dtype
         #     numpy => complex64
         #     cupy => complex128
-        if (isinstance(arg1, complex)
-                and (numpy.asarray(arg2).dtype
-                     in (numpy.float16, numpy.float32))):
-            return xp.array(True)
+        if isinstance(arg1, complex):
+            if dtype2 in (numpy.float16, numpy.float32):
+                return xp.array(True)
 
         if isinstance(arg1, numpy.ndarray):
             arg1 = xp.asarray(arg1)
@@ -180,11 +177,9 @@ class TestArithmeticBinary(unittest.TestCase):
         # NumPy>=1.13.0 does not support subtraction between booleans
         # TODO(niboshi): Write a separate test to check both NumPy and CuPy
         # raise TypeError.
-        if (testing.numpy_satisfies('>=1.13.0')
-                and self.name == 'subtract'
-                and xp.asarray(arg1).dtype == numpy.bool_
-                and xp.asarray(arg2).dtype == numpy.bool_):
-            return xp.array(True)
+        if testing.numpy_satisfies('>=1.13.0') and self.name == 'subtract':
+            if dtype1 == numpy.bool_ and dtype2 == numpy.bool_:
+                return xp.array(True)
 
         func = getattr(xp, self.name)
         with testing.NumpyError(divide='ignore'):
@@ -195,21 +190,19 @@ class TestArithmeticBinary(unittest.TestCase):
         # TODO(niboshi): Fix this. If rhs is a Python complex,
         #    numpy returns complex64
         #    cupy returns complex128
-        if xp is cupy:
-            if (xp.asarray(arg1).dtype in (numpy.float16, numpy.float32)
-                    and isinstance(arg2, complex)):
+        if xp is cupy and isinstance(arg2, complex):
+            if dtype1 in (numpy.float16, numpy.float32):
                 y = y.astype(numpy.complex64)
 
         # NumPy returns different values (nan/inf) on division by zero
         # depending on the architecture.
         # As it is not possible for CuPy to replicate this behavior, we ignore
         # the difference here.
-        if (self.name in ('floor_divide', 'remainder')
-                and y.dtype in (float_types + complex_types)
-                and (xp.asarray(self.arg2) == 0).any()):
-            y = xp.asarray(y)
-            y[y == numpy.inf] = numpy.nan
-            y[y == -numpy.inf] = numpy.nan
+        if self.name in ('floor_divide', 'remainder'):
+            if y.dtype in (float_types + complex_types) and (np2 == 0).any():
+                y = xp.asarray(y)
+                y[y == numpy.inf] = numpy.nan
+                y[y == -numpy.inf] = numpy.nan
 
         return y
 

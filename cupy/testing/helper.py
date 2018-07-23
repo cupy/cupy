@@ -280,7 +280,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -319,7 +319,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
     .. seealso:: :func:`cupy.testing.assert_array_max_ulp`
 
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -385,7 +385,7 @@ def numpy_cupy_array_list_equal(
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
-    """
+    """  # NOQA
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -734,7 +734,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
-    """
+    """  # NOQA
     if no_bool:
         return for_dtypes(_int_dtypes, name=name)
     else:
@@ -863,7 +863,7 @@ def for_signed_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
@@ -878,7 +878,7 @@ def for_unsigned_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
@@ -895,7 +895,7 @@ def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     if no_bool:
         types = _int_dtypes
     else:

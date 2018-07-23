@@ -1,7 +1,4 @@
-from cython.operator cimport dereference
-
-cimport cpython
-from cpython cimport pycapsule
+cimport cpython  # NOQA
 
 from libc cimport stdlib
 from libc.stdint cimport uint8_t
@@ -12,7 +9,6 @@ from libcpp.vector cimport vector
 
 import cupy
 from cupy.core.core cimport ndarray
-from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory
 
 
@@ -62,11 +58,11 @@ cdef struct DLManagedTensor:
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor
     try:
-        dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+        dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
             dltensor, 'used_dltensor')
         return             # we do not call a used capsule's deleter
     except Exception:
-        dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+        dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
     deleter(dlm_tensor)
 
@@ -122,7 +118,7 @@ cpdef object toDlpack(ndarray array) except +:
     cpython.Py_INCREF(array)
     dlm_tensor.deleter = deleter
 
-    return pycapsule.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
+    return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
 cdef class DLPackMemory(memory.Memory):
@@ -138,7 +134,7 @@ cdef class DLPackMemory(memory.Memory):
 
     def __init__(self, object dltensor):
         self.dltensor = dltensor
-        self.dlm_tensor = <DLManagedTensor *>pycapsule.PyCapsule_GetPointer(
+        self.dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
         self.device = cupy.cuda.Device(self.dlm_tensor.dl_tensor.ctx.device_id)
         self.ptr = self.dlm_tensor.dl_tensor.data
@@ -150,7 +146,7 @@ cdef class DLPackMemory(memory.Memory):
         self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
 
         # Make sure this capsule will never be used again.
-        pycapsule.PyCapsule_SetName(dltensor, 'used_dltensor')
+        cpython.PyCapsule_SetName(dltensor, 'used_dltensor')
 
     def __dealloc__(self):
         # DLPack tensor should be managed by the original creator
