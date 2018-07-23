@@ -132,6 +132,38 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+class TestNdarrayCudaInterface(unittest.TestCase):
+
+    def test_cuda_array_interface(self):
+        arr = cupy.zeros(shape=(2,3), dtype=cupy.float64)
+        iface = arr.__cuda_array_interface__
+        self.assertEqual(set(iface.keys()),
+                         set(['shape', 'typestr', 'data', 'version', 'descr']))
+        self.assertEqual(iface['shape'], (2,3))
+        self.assertEqual(iface['typestr'], '<f8')
+        self.assertIsInstance(iface['data'], tuple)
+        self.assertEqual(len(iface['data']), 2)
+        self.assertEqual(iface['data'][1], False)
+        self.assertEqual(iface['version'], 0)
+        self.assertEqual(iface['descr'], [('', '<f8')])
+
+    def test_cuda_array_interface_view(self):
+        arr = cupy.zeros(shape=(10,20), dtype=cupy.float64)
+        view = arr[::2,::5]
+        iface = view.__cuda_array_interface__
+        self.assertEqual(set(iface.keys()),
+                         set(['shape', 'typestr', 'data', 'version',
+                              'strides', 'descr']))
+        self.assertEqual(iface['shape'], (5,4))
+        self.assertEqual(iface['typestr'], '<f8')
+        self.assertIsInstance(iface['data'], tuple)
+        self.assertEqual(len(iface['data']), 2)
+        self.assertEqual(iface['data'][1], False)
+        self.assertEqual(iface['version'], 0)
+        self.assertEqual(iface['strides'], [320, 40])
+        self.assertEqual(iface['descr'], [('', '<f8')])
+
+
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],

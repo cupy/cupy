@@ -14,6 +14,7 @@ cdef class ndarray:
         readonly object dtype
         readonly memory.MemoryPointer data
         readonly ndarray base
+        readonly object _cuda_array_descr
 
     cpdef tolist(self)
     cpdef tofile(self, fid, sep=*, format=*)

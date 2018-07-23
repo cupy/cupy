@@ -132,6 +132,27 @@ cdef class ndarray:
         else:
             raise TypeError('order not understood. order={}'.format(order))
 
+        self._cuda_array_descr = None
+
+    @property
+    def __cuda_array_interface__(self):
+        if self._cuda_array_descr is None:
+            desc = {
+                'shape': self.shape,
+                'typestr': self.dtype.str,
+                'descr': self.dtype.descr,
+                'data': (self.data.mem.ptr, False),
+                'version': 0,
+            }
+            if not self._c_contiguous:
+                desc['strides'] = self._strides
+
+            self._cuda_array_descr = desc
+        else:
+            desc = self._cuda_array_descr
+
+        return desc
+
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
     # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
