@@ -24,12 +24,7 @@ def lschol(A, b):
         b (cupy.ndarray): Right-hand side vector.
 
     Returns:
-        ret (tuple): Its length must be ten. It has same type elements
-            as SciPy. Only the first element, the solution vector ``x``, is
-            available and other elements are expressed as ``None`` because
-            the implementation of cuSOLVER is different from the one of SciPy.
-            You can easily calculate the fourth element by ``norm(b - Ax)``
-            and the ninth element by ``norm(x)``.
+        ret (cupy.ndarray): The solution vector ``x``.
 
     """
 
@@ -68,5 +63,5 @@ def lschol(A, b):
 
     # The return type of SciPy is always float64. Therefore, x must be casted.
     x = x.astype(numpy.float64)
-    ret = (x, None, None, None, None, None, None, None, None, None)
-    return ret
+
+    return x
