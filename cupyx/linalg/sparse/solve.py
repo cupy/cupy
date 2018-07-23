@@ -20,7 +20,8 @@ def lschol(A, b):
 
     Args:
         A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
-            dimension ``(N, N)``
+            dimension ``(N, N)``. Must be positive-definite input matrix.
+            Only symmetric real matrix is supported currently.
         b (cupy.ndarray): Right-hand side vector.
 
     Returns:
