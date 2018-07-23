@@ -61,7 +61,7 @@ def lschol(A, b):
         A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
         x.data.ptr, singularity.ctypes.data)
 
-    # The return type of SciPy is always float64. Therefore, x must be casted.
+    # The return type of SciPy is always float64. Maybe we can follow that rule.
     x = x.astype(numpy.float64)
 
     return x
