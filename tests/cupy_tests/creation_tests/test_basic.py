@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestBasic(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -140,6 +138,18 @@ class TestBasic(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_full(self, xp, dtype):
         return xp.full((2, 3, 4), 1, dtype=dtype)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.12.0')
+    def test_full_default_dtype(self, xp, dtype):
+        return xp.full((2, 3, 4), xp.array(1, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.12.0')
+    def test_full_default_dtype_cpu_input(self, xp, dtype):
+        return xp.full((2, 3, 4), numpy.array(1, dtype=dtype))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

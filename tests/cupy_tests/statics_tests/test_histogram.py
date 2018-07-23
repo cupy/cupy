@@ -38,8 +38,6 @@ def for_all_dtypes_combination_bincount(names):
 @testing.gpu
 class TestHistogram(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()
     def test_histogram(self, xp, dtype):

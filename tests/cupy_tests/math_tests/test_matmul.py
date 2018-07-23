@@ -11,22 +11,33 @@ from cupy import testing
     *testing.product({
         'shape_pair': [
             ((3, 2), (2, 4)),
+            ((3, 0), (0, 4)),
+            ((0, 2), (2, 4)),
+            ((3, 2), (2, 0)),
             ((2,), (2, 4)),
+            ((0,), (0, 4)),
             ((3, 2), (2,)),
+            ((3, 0), (0,)),
             ((2,), (2,)),
+            ((0,), (0,)),
             ((5, 3, 2), (5, 2, 4)),
+            ((0, 3, 2), (0, 2, 4)),
             ((5, 3, 2), (2, 4)),
+            ((0, 3, 2), (2, 4)),
             ((3, 2), (5, 2, 4)),
+            ((3, 2), (0, 2, 4)),
             ((5, 3, 2), (1, 2, 4)),
+            ((0, 3, 2), (1, 2, 4)),
             ((1, 3, 2), (5, 2, 4)),
+            ((1, 3, 2), (0, 2, 4)),
             ((5, 3, 2), (2,)),
+            ((5, 3, 0), (0,)),
             ((2,), (5, 2, 4)),
+            ((0,), (5, 0, 4)),
         ],
     }))
 @testing.gpu
 class TestMatmul(unittest.TestCase):
-
-    # _multiprocess_can_split_ = True
 
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
@@ -67,8 +78,6 @@ class TestMatmul(unittest.TestCase):
     }))
 @testing.gpu
 class TestMatmulLarge(unittest.TestCase):
-
-    # _multiprocess_can_split_ = True
 
     # Avoid overflow
     skip_dtypes = {
@@ -119,6 +128,8 @@ class TestMatmulLarge(unittest.TestCase):
             ((), (3, 2)),
             ((), ()),
             ((3, 2), (1,)),
+            ((0, 2), (3, 0)),
+            ((0, 1, 1), (2, 1, 1)),
         ],
     }))
 @testing.gpu

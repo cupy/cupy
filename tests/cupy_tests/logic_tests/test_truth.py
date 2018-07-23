@@ -37,8 +37,6 @@ def _calc_out_shape(shape, axis, keepdims):
 @testing.gpu
 class TestAllAny(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_without_out(self, xp, dtype):
@@ -66,8 +64,6 @@ class TestAllAny(unittest.TestCase):
          'keepdims': [False, True]}))
 @testing.gpu
 class TestAllAnyWithNaN(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_dtypes(
         (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))

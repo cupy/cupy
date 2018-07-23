@@ -23,7 +23,7 @@ floor = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.floor`
 
-    ''')
+    ''', support_complex=False)
 
 
 ceil = ufunc.create_math_ufunc(
@@ -32,7 +32,7 @@ ceil = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.ceil`
 
-    ''')
+    ''', support_complex=False)
 
 
 trunc = ufunc.create_math_ufunc(
@@ -41,7 +41,7 @@ trunc = ufunc.create_math_ufunc(
 
     .. seealso:: :data:`numpy.trunc`
 
-    ''')
+    ''', support_complex=False)
 
 
 fix = core.create_ufunc(
@@ -49,6 +49,7 @@ fix = core.create_ufunc(
     'out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)',
     doc='''If given value x is positive, it return floor(x).
     Else, it return ceil(x).
-    .. seealso:: :data:`numpy.fix`
+
+    .. seealso:: :func:`numpy.fix`
 
     ''')

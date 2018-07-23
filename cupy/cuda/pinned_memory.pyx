@@ -7,6 +7,7 @@ from fastrlock cimport rlock
 
 from cupy.cuda import runtime
 
+from cupy.core cimport internal
 from cupy.cuda cimport runtime
 
 
@@ -49,8 +50,8 @@ cdef class PinnedMemoryPointer:
             pointer refers.
 
     Attributes:
-        mem (PinnedMemory): The device memory buffer.
-        ptr (int): Pointer to the place within the buffer.
+        ~PinnedMemoryPointer.mem (PinnedMemory): The device memory buffer.
+        ~PinnedMemoryPointer.ptr (int): Pointer to the place within the buffer.
     """
 
     def __init__(self, mem, Py_ssize_t offset):
@@ -284,13 +285,14 @@ cdef class PinnedMemoryPool:
 
     cpdef PinnedMemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
+        cdef Py_ssize_t unit
 
         if size == 0:
             return PinnedMemoryPointer(PinnedMemory(0), 0)
 
         # Round up the memory size to fit memory alignment of cudaHostAlloc
         unit = self._allocation_unit_size
-        size = ((size + unit - 1) // unit) * unit
+        size = internal.clp2(((size + unit - 1) // unit) * unit)
         rlock.lock_fastrlock(self._lock, -1, True)
         try:
             free = self._free[size]

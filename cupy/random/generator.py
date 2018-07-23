@@ -13,20 +13,7 @@ from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
-
-
-_gumbel_kernel = None
-
-
-def _get_gumbel_kernel():
-    global _gumbel_kernel
-    if _gumbel_kernel is None:
-        _gumbel_kernel = core.ElementwiseKernel(
-            'T x, T loc, T scale', 'T y',
-            'y = loc - log(-log(1 - x)) * scale',
-            'gumbel_kernel'
-        )
-    return _gumbel_kernel
+from cupy.random import _kernels
 
 
 class RandomState(object):
@@ -84,6 +71,81 @@ class RandomState(object):
             return out[:element_size].reshape(size)
 
     # NumPy compatible functions
+
+    def beta(self, a, b, size=None, dtype=float):
+        """Returns an array of samples drawn from the beta distribution.
+
+        .. seealso::
+            :func:`cupy.random.beta` for full documentation,
+            :meth:`numpy.random.RandomState.beta`
+        """
+        a, b = cupy.asarray(a), cupy.asarray(b)
+        if size is None:
+            size = cupy.broadcast(a, b).shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.beta_kernel(a, b, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
+    def binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the binomial distribution.
+
+        .. seealso::
+            :func:`cupy.random.binomial` for full documentation,
+            :meth:`numpy.random.RandomState.binomial`
+        """
+        n, p = cupy.asarray(n), cupy.asarray(p)
+        if size is None:
+            size = cupy.broadcast(n, p).shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.binomial_kernel(n, p, self.rk_seed, y)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
+    def dirichlet(self, alpha, size=None, dtype=float):
+        """Returns an array of samples drawn from the dirichlet distribution.
+
+        .. seealso::
+            :func:`cupy.random.dirichlet` for full documentation,
+            :meth:`numpy.random.RandomState.dirichlet`
+        """
+        alpha = cupy.asarray(alpha)
+        if size is None:
+            size = alpha.shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
+        y /= y.sum(axis=-1, keepdims=True)
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
+    _laplace_kernel = core.ElementwiseKernel(
+        'T x, T loc, T scale', 'T y',
+        'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',
+        'laplace_kernel')
+
+    def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from the laplace distribution.
+
+        .. seealso::
+            :func:`cupy.random.laplace` for full documentation,
+            :meth:`numpy.random.RandomState.laplace`
+        """
+        x = self.random_sample(size=size, dtype=dtype)
+        if not numpy.isscalar(loc):
+            loc = cupy.asarray(loc, dtype)
+        if not numpy.isscalar(scale):
+            scale = cupy.asarray(scale, dtype)
+        RandomState._laplace_kernel(x, loc, scale, x)
+        return x
 
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a log normal distribution.
@@ -146,6 +208,16 @@ class RandomState(object):
     _1m_kernel = core.ElementwiseKernel(
         '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
 
+    def _random_sample_raw(self, size, dtype):
+        dtype = _check_and_get_dtype(dtype)
+        out = cupy.empty(size, dtype=dtype)
+        if dtype.char == 'f':
+            func = curand.generateUniform
+        else:
+            func = curand.generateUniformDouble
+        func(self._generator, out.data.ptr, out.size)
+        return out
+
     def random_sample(self, size=None, dtype=float):
         """Returns an array of random values over the interval ``[0, 1)``.
 
@@ -154,17 +226,11 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.random_sample`
 
         """
-        dtype = _check_and_get_dtype(dtype)
-        out = cupy.empty(size, dtype=dtype)
-        if dtype.char == 'f':
-            func = curand.generateUniform
-        else:
-            func = curand.generateUniformDouble
-        func(self._generator, out.data.ptr, out.size)
+        out = self._random_sample_raw(size, dtype)
         RandomState._1m_kernel(out)
         return out
 
-    def interval(self, mx, size):
+    def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
         Args:
@@ -182,9 +248,9 @@ class RandomState(object):
             a ``numpy.int32`` array is returned.
             If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
             a ``numpy.uint32`` array is returned.
-        """
+        """  # NOQA
         if size is None:
-            return self.interval(mx, 1).reshape(())
+            return self._interval(mx, 1).reshape(())
         elif isinstance(size, int):
             size = (size, )
 
@@ -255,6 +321,8 @@ class RandomState(object):
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
 
+        self.rk_seed = numpy.uint32(seed)
+
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
 
@@ -290,6 +358,11 @@ class RandomState(object):
         sample &= cupy.iinfo(cupy.int_).max
         return sample
 
+    _scale_kernel = core.ElementwiseKernel(
+        'T low, T high', 'T x',
+        'x = T(low) + x * T(high - low)',
+        'cupy_scale')
+
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformly-distributed samples over an interval.
 
@@ -300,14 +373,18 @@ class RandomState(object):
         """
         dtype = numpy.dtype(dtype)
         rand = self.random_sample(size=size, dtype=dtype)
-        return dtype.type(low) + rand * dtype.type(high - low)
+        if not numpy.isscalar(low):
+            low = cupy.asarray(low, dtype)
+        if not numpy.isscalar(high):
+            high = cupy.asarray(high, dtype)
+        return RandomState._scale_kernel(low, high, rand)
 
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
 
         .. seealso::
             :func:`cupy.random.choice` for full document,
-            :meth:`numpy.random.choice`
+            :func:`numpy.random.choice`
 
         """
         if a is None:
@@ -384,7 +461,7 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.shuffle` for full document,
-            :meth:`numpy.random.shuffle`
+            :func:`numpy.random.shuffle`
 
         """
         if not isinstance(a, cupy.ndarray):
@@ -427,6 +504,11 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
+    _gumbel_kernel = core.ElementwiseKernel(
+        'T x, T loc, T scale', 'T y',
+        'y = T(loc) - log(-log(x)) * T(scale)',
+        'gumbel_kernel')
+
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.
 
@@ -434,10 +516,12 @@ class RandomState(object):
             :func:`cupy.random.gumbel` for full documentation,
             :meth:`numpy.random.RandomState.gumbel`
         """
-        x = self.uniform(size=size, dtype=dtype)
-        # We use `1 - x` as input of `log` method to prevent overflow.
-        # It obeys numpy implementation.
-        _get_gumbel_kernel()(x, loc, scale, x)
+        x = self._random_sample_raw(size=size, dtype=dtype)
+        if not numpy.isscalar(loc):
+            loc = cupy.asarray(loc, dtype)
+        if not numpy.isscalar(scale):
+            scale = cupy.asarray(scale, dtype)
+        RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
     def randint(self, low, high=None, size=None, dtype='l'):
@@ -468,7 +552,7 @@ class RandomState(object):
             raise NotImplementedError(
                 'Sampling from a range whose extent is larger than int32 '
                 'range is currently not supported')
-        x = self.interval(diff, size).astype(dtype, copy=False)
+        x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
 

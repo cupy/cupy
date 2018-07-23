@@ -82,6 +82,17 @@ Exponential and logarithm functions
    cupy.logaddexp2
 
 
+Other special functions
+-----------------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.i0
+   cupy.sinc
+
+
 Floating point manipulations
 ----------------------------
 
@@ -116,6 +127,19 @@ Arithmetic operations
    cupy.remainder
    cupy.modf
    cupy.reciprocal
+
+
+Handling complex numbers
+------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.angle
+   cupy.real
+   cupy.imag
+   cupy.conj
 
 
 Miscellaneous

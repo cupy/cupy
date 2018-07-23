@@ -50,7 +50,7 @@ def scatter_add(a, slices, value):
         package.
         ``cupy.scatter_add`` is still available for backward compatibility.
 
-    .. seealso:: :func:`numpy.add.at`.
+    .. seealso:: :meth:`numpy.ufunc.at`.
 
     """
     a.scatter_add(slices, value)

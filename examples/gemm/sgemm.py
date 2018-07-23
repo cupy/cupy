@@ -8,7 +8,6 @@ import cupy as cp
 import numpy as np
 
 from utils import benchmark
-from utils import load_kernel
 from utils import read_code
 
 
@@ -37,7 +36,7 @@ def sgemm(A, B,
               'DIM_XB': dim_xb, 'DIM_YB': dim_yb,
               'THR_M': blk_m // dim_x, 'THR_N': blk_n // dim_y}
     code = read_code(sgemm_file, params=config)
-    kern = load_kernel('sgemm', code)
+    kern = cp.RawKernel(code, 'sgemm')
 
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)

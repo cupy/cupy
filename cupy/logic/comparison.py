@@ -28,7 +28,7 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
 
     .. math::
 
-       |a - b| \le \mathrm{atol} + \mathrm{rtol} |b|
+       |a - b| \\le \\mathrm{atol} + \\mathrm{rtol} |b|
 
     Args:
         a (cupy.ndarray): Input array to compare.

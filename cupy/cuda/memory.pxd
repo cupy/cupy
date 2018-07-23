@@ -1,9 +1,12 @@
+cimport cython
+
 from libcpp cimport vector
 from libcpp cimport map
 
 from cupy.cuda cimport device
 
 
+@cython.no_gc
 cdef class Memory:
 
     cdef:
@@ -42,14 +45,26 @@ cdef class SingleDeviceMemoryPool:
 
     cdef:
         object _allocator
+
+        # Map from memory pointer of the chunk (size_t) to the corresponding
+        # Chunk object. All chunks currently allocated to the application from
+        # this pool are stored.
+        # `_in_use_lock` must be acquired to access.
         dict _in_use
+
+        # Map from stream pointer (int) to its arena (list) for the stream.
+        # `_free_lock` must be acquired to access.
         dict _free
+
         object __weakref__
         object _weakref
         object _free_lock
         object _in_use_lock
         readonly Py_ssize_t _allocation_unit_size
         readonly int _device_id
+
+        # Map from stream pointer to its arena index.
+        # `_free_lock` must be acquired to access.
         map.map[size_t, vector.vector[int]] _index
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t size)

@@ -1,6 +1,6 @@
 [run]
 plugins = Cython.Coverage
-include = cupy/*,examples/*
+include = cupy/*,cupyx/*,examples/*
 
 [report]
 exclude_lines =

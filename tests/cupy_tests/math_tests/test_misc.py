@@ -1,18 +1,15 @@
+import sys
 import unittest
 
 import numpy
 
 from cupy import testing
 
-import os
-
 
 @testing.gpu
 class TestMisc(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
@@ -20,7 +17,7 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
@@ -29,15 +26,17 @@ class TestMisc(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            a += (a * 1j).astype(dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_float_dtypes()
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
         a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
@@ -47,7 +46,7 @@ class TestMisc(unittest.TestCase):
         return getattr(xp, name)(a, b)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
@@ -66,6 +65,11 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(None, 3)
 
+    # Skip this test due to NumPy bug on Windows (fixed in NumPy 1.14.0).
+    # https://github.com/numpy/numpy/pull/9778
+    @unittest.skipIf(
+        sys.platform == 'win32' and testing.numpy_satisfies('<1.14'),
+        'This test requires 1.14.0 when running on Windows.')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip_max_none(self, xp, dtype):
@@ -79,7 +83,7 @@ class TestMisc(unittest.TestCase):
         return a.clip(None, None)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip1(self, xp, dtype):
