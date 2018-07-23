@@ -2,19 +2,19 @@ import unittest
 
 import numpy
 try:
+    import scipy.linalg
     import scipy.sparse
     import scipy.stats
-    import scipy.linalg
+
     scipy_available = True
 except ImportError:
     scipy_available = False
 
-from cupy import cuda
-from cupy import testing
-from cupy.testing import condition
-import cupy.sparse as sp
 import cupy as cp
+import cupy.sparse as sp
 import cupyx
+from cupy import cuda, testing
+from cupy.testing import condition
 
 
 @testing.parameterize(*testing.product({
