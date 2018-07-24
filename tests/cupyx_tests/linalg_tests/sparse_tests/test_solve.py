@@ -13,7 +13,8 @@ except ImportError:
 import cupy as cp
 import cupy.sparse as sp
 import cupyx
-from cupy import cuda, testing
+from cupy import cuda
+from cupy import testing
 from cupy.testing import condition
 
 
