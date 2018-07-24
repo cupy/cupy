@@ -101,7 +101,7 @@ cpdef int get_data_type(dtype) except? -1:
         raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
 
 
-cpdef size_t _get_byte_size(data_type) except -1:
+cpdef int _get_byte_size(data_type) except -1:
     if data_type == cudnn.CUDNN_DATA_HALF:
         return 2
     elif data_type == cudnn.CUDNN_DATA_FLOAT:
