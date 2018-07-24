@@ -18,6 +18,7 @@ class TestSplit(unittest.TestCase):
         split = xp.array_split(a, 4, -1)
         return xp.concatenate(split, -1)
 
+    @testing.with_requires('numpy>=1.11')
     @testing.numpy_cupy_array_equal()
     def test_array_split_empty_array(self, xp):
         a = testing.shaped_arange((5, 0), xp)
