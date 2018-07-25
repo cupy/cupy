@@ -1057,22 +1057,22 @@ cdef class ndarray:
             count_nonzero = 0
         else:
             r = self.ravel()
-            scan_index = scan((r != 0).astype(dtype))
+            scan_index = scan(not_equal(r, 0, ndarray(r.shape, dtype)))
             count_nonzero = int(scan_index[-1])
         ndim = max(self._shape.size(), 1)
         if count_nonzero == 0:
             return (ndarray((0,), dtype=dtype),) * ndim
 
-        dst = ndarray((count_nonzero * ndim,), dtype=dtype)
         if ndim <= 1:
-            kern = _nonzero_1d_kernel(self.dtype, dtype)
-            kern.linear_launch(self.size, (r, scan_index, dst))
+            dst = ndarray((count_nonzero,), dtype=dtype)
+            _nonzero_kernel_1d(r, scan_index, dst)
             return dst,
         else:
-            kern = _nonzero_kernel(self.dtype, ndim, dtype, dtype)
-            kern.linear_launch(self.size,
-                               (r, Indexer(self.shape), scan_index, dst))
-            return tuple([dst[i::ndim] for i in range(ndim)])
+            del r
+            scan_index.shape = self.shape
+            dst = ndarray((ndim, count_nonzero), dtype=dtype)
+            _nonzero_kernel(self, scan_index, dst)
+            return tuple([dst[i] for i in range(ndim)])
 
     # TODO(okuta): Implement compress
 
@@ -4509,62 +4509,23 @@ def _add_scan_blocked_sum_kernel(dtype):
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
-def _nonzero_1d_kernel(src_dtype, index_dtype):
-    name = "nonzero_1d_kernel"
-    src_dtype = _get_typename(src_dtype)
-    index_dtype = _get_typename(index_dtype)
+cdef _nonzero_kernel_1d = ElementwiseKernel(
+    'T src, S index', 'raw S dst',
+    'if (src != 0) dst[index - 1] = i',
+    '_nonzero_kernel_1d')
 
-    source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${src_dtype}, 1> src,
-        const CArray<${index_dtype}, 1> scaned_index,
-        CArray<${index_dtype}, 1> dst){
-        int thid = blockIdx.x * blockDim.x + threadIdx.x;
-        ptrdiff_t n = src.size();
-        if (thid < n){
-            if (src[thid] != 0){
-                dst[scaned_index[thid] - 1] = thid;
-            }
+
+cdef _nonzero_kernel = ElementwiseKernel(
+    'T src, S index', 'raw S dst',
+    '''
+    if (src != 0){
+        for(int j = 0; j < _ind.ndim; j++){
+            ptrdiff_t ind[] = {j, index - 1};
+            dst[ind] = _ind.get()[j];
         }
-    }
-    """).substitute(name=name, src_dtype=src_dtype, index_dtype=index_dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name)
-
-
-@util.memoize(for_each_device=True)
-def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
-    name = "nonzero_kernel"
-    src_dtype = _get_typename(src_dtype)
-    index_dtype = _get_typename(index_dtype)
-    dst_dtype = _get_typename(dst_dtype)
-
-    source = string.Template("""
-        extern "C" __global__ void ${name}(const CArray<${src_dtype}, 1> src,
-            CIndexer<${src_ndim}> shape,
-            const CArray<${index_dtype}, 1> scaned_index,
-            CArray<${dst_dtype}, 1> dst){
-
-            int thid = blockIdx.x * blockDim.x + threadIdx.x;
-
-            if (thid < src.size()){
-                if (src[thid] != 0){
-                    ${index_dtype} idx = scaned_index[thid] - 1;
-                    int s = shape.size();
-
-                    shape.set(thid);
-
-                    for(int i = 0; i < ${src_ndim}; i++){
-                        dst[idx * ${src_ndim} + i] = shape.get()[i];
-                    }
-                }
-            }
-        }
-        """).substitute(name=name, src_dtype=src_dtype,
-                        src_ndim=src_ndim, index_dtype=index_dtype,
-                        dst_dtype=dst_dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name)
+    }''',
+    'nonzero_kernel',
+    reduce_dims=False)
 
 
 cpdef ndarray scan(ndarray a, ndarray out=None):
