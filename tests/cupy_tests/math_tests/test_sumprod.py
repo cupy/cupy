@@ -205,6 +205,13 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_empty(self, xp, dtype):
+        n = len(axes)
+        a = testing.shaped_arange(tuple(six.moves.range(0, n)), xp, dtype)
+        return xp.cumsum(a, axis=self.axis)
+
+    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower1(self, xp, dtype):

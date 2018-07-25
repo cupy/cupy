@@ -2331,6 +2331,8 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     prev = 0
     ret = []
     stride = ary._strides[axis]
+    if ary.size == 0:
+        stride = 0
     for index in indices:
         shape[axis] = index - prev
         v = ary.view()
