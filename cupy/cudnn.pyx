@@ -101,6 +101,17 @@ cpdef int get_data_type(dtype) except? -1:
         raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
 
 
+cpdef int _get_byte_size(int data_type) except -1:
+    if data_type == cudnn.CUDNN_DATA_HALF:
+        return 2
+    elif data_type == cudnn.CUDNN_DATA_FLOAT:
+        return 4
+    elif data_type == cudnn.CUDNN_DATA_DOUBLE:
+        return 8
+    else:
+        raise TypeError('Invalid cuDNN data type: {}'.format(data_type))
+
+
 cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
@@ -390,10 +401,11 @@ def get_rnn_lin_layer_matrix_params(
         cudnn.getRNNLinLayerMatrixParams(
             handle, rnn_desc.value, layer, x_desc.value, w_desc.value,
             w.data.ptr, lin_layer_id, mat_desc, <size_t>&ptr)
-        _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc, 3)
+        data_type, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc, 3)
     finally:
         cudnn.destroyFilterDescriptor(mat_desc)
-    offset = (ptr - w.data.ptr) // 4
+    byte_size = _get_byte_size(data_type)
+    offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
     mat = w[offset: offset + size]
     return mat
@@ -407,10 +419,11 @@ def get_rnn_lin_layer_bias_params(
         cudnn.getRNNLinLayerBiasParams(
             handle, rnn_desc.value, layer, x_desc.value, w_desc.value,
             w.data.ptr, lin_layer_id, bias_desc, <size_t>&ptr)
-        _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc, 3)
+        data_type, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc, 3)
     finally:
         cudnn.destroyFilterDescriptor(bias_desc)
-    offset = (ptr - w.data.ptr) // 4
+    byte_size = _get_byte_size(data_type)
+    offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
     bias = w[offset: offset + size]
     return bias
