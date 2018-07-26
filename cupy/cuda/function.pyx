@@ -82,6 +82,9 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, core.Indexer):
         return (<core.Indexer>x).get_pointer()
 
+    if isinstance(x, CPointer):
+        return x
+
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):
             x = numpy.int64(x)

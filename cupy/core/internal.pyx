@@ -4,6 +4,20 @@ cimport cpython
 cimport cython
 
 
+ctypedef unsigned short uint16_t
+ctypedef unsigned int uint32_t
+
+
+cdef union float32_int:
+    uint32_t n
+    float f
+
+
+cdef extern from "halffloat.h":
+    uint16_t npy_floatbits_to_halfbits(uint32_t f)
+    uint32_t npy_halfbits_to_floatbits(uint16_t h)
+
+
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
     cdef Py_ssize_t arg
@@ -234,3 +248,25 @@ cpdef size_t clp2(size_t x):
     x |= x >> 16
     x |= x >> 32
     return x + 1
+
+
+ctypedef unsigned short u16
+ctypedef unsigned int u32
+ctypedef unsigned long long _uint64_t
+
+
+cdef union float32_int:
+    u32 n
+    float f
+
+
+cpdef uint16_t to_float16(float f):
+    cdef float32_int c
+    c.f = f
+    return npy_floatbits_to_halfbits(c.n)
+
+
+cpdef float from_float16(uint16_t v):
+    cdef float32_int c
+    c.n = npy_halfbits_to_floatbits(v)
+    return c.f
