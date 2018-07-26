@@ -1,14 +1,13 @@
 import string
 
 import numpy
-import six
 
-from cupy.core import _dtype
 from cupy.cuda import compiler
 from cupy import util
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.core cimport _scalar
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -35,34 +34,6 @@ cpdef _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef dict _typenames_base = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
-}
-
-cdef dict _typenames = {
-    numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
-    for i in _dtype.all_type_chars}
-
-cdef tuple _python_scalar_type = six.integer_types + (float, bool, complex)
-cdef tuple _numpy_scalar_type = tuple([numpy.dtype(i).type
-                                       for i in _dtype.all_type_chars])
-
-cdef set _python_scalar_type_set = set(_python_scalar_type)
-cdef set _numpy_scalar_type_set = set(_numpy_scalar_type)
-
 cdef dict _kind_score = {
     'b': 0,
     'u': 1,
@@ -72,46 +43,7 @@ cdef dict _kind_score = {
 }
 
 
-cdef dict _python_type_to_numpy_type = {
-    float: numpy.dtype(float).type,
-    complex: numpy.dtype(complex).type,
-    bool: numpy.dtype(bool).type,
-}
-
-
-_int_iinfo = numpy.iinfo(int)
-cdef long long _int_min = _int_iinfo.min
-cdef long long _int_max = _int_iinfo.max
-cdef _int_type = _int_iinfo.dtype.type
-
-
-cpdef _python_scalar_to_numpy_scalar(x):
-    # Note that isinstance(x, six_integer_types) matches with bool.
-    if isinstance(x, bool):
-        numpy_type = numpy.bool_
-    elif isinstance(x, six.integer_types):
-        if 0x8000000000000000 <= x:
-            numpy_type = numpy.uint64
-        elif x < _int_min or _int_max < x:
-            numpy_type = numpy.int64
-        else:
-            # Generally `_int_type` is `numpy.int64`.
-            # On Windows, it is `numpy.int32`.
-            numpy_type = _int_type
-    else:
-        numpy_type = _python_type_to_numpy_type[type(x)]
-    return numpy_type(x)
-
-
-cpdef str _get_typename(dtype):
-    if dtype is None:
-        raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = get_dtype(dtype).type
-    return _typenames[dtype]
-
-
-cpdef list _preprocess_args(args):
+cpdef list _preprocess_args(args, bint use_c_scalar=False):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
@@ -130,12 +62,10 @@ cpdef list _preprocess_args(args):
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
                     % (arr_dev.id, dev_id))
-        elif typ in _python_scalar_type_set:
-            arg = _python_scalar_to_numpy_scalar(arg)
-        elif typ in _numpy_scalar_type_set:
-            pass
         else:
-            raise TypeError('Unsupported type %s' % typ)
+            arg = _scalar.convert_scalar(arg, use_c_scalar)
+            if arg is None:
+                raise TypeError('Unsupported type %s' % typ)
         ret.append(arg)
     return ret
 
@@ -146,6 +76,8 @@ cpdef tuple _get_args_info(list args):
         t = type(a)
         if t is Indexer:
             dtype = None
+        elif t is _scalar.CScalar:
+            dtype = (<_scalar.CScalar>a).get_numpy_type()
         else:
             dtype = a.dtype.type
         ret.append((t, dtype, a.ndim))
@@ -561,7 +493,7 @@ cdef class ElementwiseKernel:
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        args = _preprocess_args(args)
+        args = _preprocess_args(args, True)
 
         values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
@@ -592,9 +524,11 @@ cdef class ElementwiseKernel:
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, ndarray) else in_types[i](x)
-                      for i, x in enumerate(in_args)]
-        inout_args += out_args
+        for i, x in enumerate(in_args):
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(in_types[i])
+
+        inout_args = in_args + out_args
 
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
@@ -843,7 +777,7 @@ class ufunc(object):
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
+        if broad.size == 0:
             return ret
 
         inout_args = []

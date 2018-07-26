@@ -31,3 +31,9 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim)
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
 cpdef size_t clp2(size_t x)
+
+ctypedef unsigned short _float16
+
+cpdef unsigned short to_float16(float f)
+
+cpdef float from_float16(unsigned short v)
