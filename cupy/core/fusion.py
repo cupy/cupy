@@ -647,11 +647,24 @@ class _FusionHistory(object):
         """
         in_params = [self._fresh_premap_param(t) for t in in_dtypes]
         in_pvars = [FusionVarPython(_, False) for _ in in_params]
-        out_pvars = func(*in_pvars)
-        if isinstance(out_pvars, tuple):
-            out_pvars = list(out_pvars)
+        return_value = func(*in_pvars)
+
+        if isinstance(return_value, tuple):
+            return_tuple = True
+            no_return = False
+            out_pvars = return_value
+        elif isinstance(return_value, FusionVarPython):
+            return_tuple = False
+            no_return = False
+            out_pvars = [return_value]
+        elif return_value is None:
+            return_tuple = False
+            no_return = True
+            out_pvars = []
         else:
-            out_pvars = [out_pvars]
+            raise TypeError(
+                'Fusion function can\'t return {}'.format(type(return_value)))
+
         out_pvars = [_ for _ in out_pvars if _ is not None]
         out_cvars = [self._get_cuda_var(_) for _ in out_pvars]
 
@@ -672,6 +685,8 @@ class _FusionHistory(object):
             kernel = core.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
+                return_tuple=return_tuple,
+                no_return=no_return,
                 name=name)
             return kernel, {}
         else:
