@@ -754,20 +754,23 @@ class Fusion(object):
 
     def __call__(self, *args, **kwargs):
         if _thread_local.history is None:
-            _thread_local.history = _FusionHistory()
-            try:
-                return self._call(*args, **kwargs)
-            finally:
-                _thread_local.history = None
+            func, kw = self._compile(*args, **kwargs)
+            kwargs = dict(kwargs, **kw)
+            return func(*args, **kwargs)
         else:
             return self.func(*args, **kwargs)
 
-    def _compile_with_dtypes(self, dtypes):
-        key = tuple(dtypes)
-        if key not in self._memo:
-            self._memo[key] = _thread_local.history.get_fusion(
-                self.func, dtypes, self.name)
-        return self._memo[key]
+    def compile_with_dtypes(self, *dtypes):
+        assert _thread_local.history is None
+        _thread_local.history = _FusionHistory()
+        try:
+            key = tuple(dtypes)
+            if key not in self._memo:
+                self._memo[key] = _thread_local.history.get_fusion(
+                    self.func, dtypes, self.name)
+            return self._memo[key]
+        finally:
+            _thread_local.history = None
 
     def _compile(self, *args, **kwargs):
         if builtins.any(
@@ -781,7 +784,7 @@ class Fusion(object):
             return isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
             dtypes = [_.dtype for _ in args]
-            return self._compile_with_dtypes(dtypes)
+            return self.compile_with_dtypes(*dtypes)
         else:
             if builtins.any(type(_) is core.ndarray for _ in args):
                 types_str = '.'.join(repr(type(_)) for _ in args)
@@ -790,21 +793,8 @@ class Fusion(object):
             else:
                 return self.func, {}
 
-    def compile_with_dtypes(self, *dtypes):
-        assert _thread_local.history is None
-        _thread_local.history = _FusionHistory()
-        try:
-            self._compile_with_dtypes(dtypes)
-        finally:
-            _thread_local.history = None
-
     def clear_cache(self):
         self._memo = {}
-
-    def _call(self, *args, **kwargs):
-        func, kw = self._compile(*args, **kwargs)
-        kwargs = dict(kwargs, **kw)
-        return func(*args, **kwargs)
 
 
 def fuse(*args, **kwargs):
@@ -838,10 +828,12 @@ def fuse(*args, **kwargs):
 class ufunc(core.ufunc):
     # Args:
     #   fusion_op (cupy.ufunc)
-    #   cupy_op (cupyu.ufunc or function)
-    #   numpy_op (numpy.ufunc or function)
+    #   cupy_op (cupyu.ufunc or function or None)
 
-    def __init__(self, fusion_op, cupy_op, numpy_op):
+    def __init__(self, fusion_op, cupy_op=None):
+        if cupy_op is None:
+            cupy_op = fusion_op
+
         self.name = fusion_op.name
         self.__name__ = self.name
         self.nin = fusion_op.nin
@@ -855,169 +847,158 @@ class ufunc(core.ufunc):
 
         self._fusion_op = fusion_op
         self._cupy_op = cupy_op
-        self._numpy_op = numpy_op
         self._preamble = fusion_op._preamble
 
     def __repr__(self):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is not None:
-            if builtins.any(isinstance(_, FusionVarPython) for _ in args):
-                return _thread_local.history.call_ufunc(
-                    self._fusion_op, args, kwargs)
-            elif builtins.any(isinstance(_, numpy.ndarray) for _ in args):
-                return self._numpy_op(*args, **kwargs)
-
-        return self._cupy_op(*args, **kwargs)
+        if _thread_local.history is None:
+            return self._cupy_op(*args, **kwargs)
+        else:
+            return _thread_local.history.call_ufunc(
+                self._fusion_op, args, kwargs)
 
     __doc__ = core.ufunc.__doc__
     __call__.__doc__ = core.ufunc.__call__.__doc__
 
 
-def _create_ufunc(cupy_ufunc, numpy_ufunc):
-    return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc)
+where = ufunc(sorting.search._where_ufunc, sorting.search.where)
+clip = ufunc(core._clip, math.misc.clip)
+copy = ufunc(core.elementwise_copy, creation.from_data.copy)
 
+bitwise_and = ufunc(core.bitwise_and)
+bitwise_or = ufunc(core.bitwise_or)
+bitwise_xor = ufunc(core.bitwise_xor)
+invert = ufunc(core.invert)
+left_shift = ufunc(core.left_shift)
+right_shift = ufunc(core.right_shift)
 
-where = ufunc(sorting.search._where_ufunc,
-              sorting.search.where, numpy.where)
+greater = ufunc(core.greater)
+greater_equal = ufunc(core.greater_equal)
+less = ufunc(core.less)
+less_equal = ufunc(core.less_equal)
+equal = ufunc(core.equal)
+not_equal = ufunc(core.not_equal)
 
-clip = ufunc(core._clip, math.misc.clip, numpy.clip)
+isfinite = ufunc(logic.content.isfinite)
+isinf = ufunc(logic.content.isinf)
+isnan = ufunc(logic.content.isnan)
 
-copy = ufunc(core.elementwise_copy,
-             creation.from_data.copy, numpy.copy)
+logical_and = ufunc(logic.ops.logical_and)
+logical_or = ufunc(logic.ops.logical_or)
+logical_not = ufunc(logic.ops.logical_not)
+logical_xor = ufunc(logic.ops.logical_xor)
 
-bitwise_and = _create_ufunc(core.bitwise_and, numpy.bitwise_and)
-bitwise_or = _create_ufunc(core.bitwise_or, numpy.bitwise_or)
-bitwise_xor = _create_ufunc(core.bitwise_xor, numpy.bitwise_xor)
-invert = _create_ufunc(core.invert, numpy.invert)
-left_shift = _create_ufunc(core.left_shift, numpy.left_shift)
-right_shift = _create_ufunc(core.right_shift, numpy.right_shift)
+sin = ufunc(math.trigonometric.sin)
+cos = ufunc(math.trigonometric.cos)
+tan = ufunc(math.trigonometric.tan)
+arcsin = ufunc(math.trigonometric.arcsin)
+arccos = ufunc(math.trigonometric.arccos)
+arctan = ufunc(math.trigonometric.arctan)
+arctan2 = ufunc(math.trigonometric.arctan2)
+hypot = ufunc(math.trigonometric.hypot)
+deg2rad = ufunc(math.trigonometric.deg2rad)
+rad2deg = ufunc(math.trigonometric.rad2deg)
+degrees = ufunc(math.trigonometric.degrees)
+radians = ufunc(math.trigonometric.radians)
 
-greater = _create_ufunc(core.greater, numpy.greater)
-greater_equal = _create_ufunc(core.greater_equal, numpy.greater_equal)
-less = _create_ufunc(core.less, numpy.less)
-less_equal = _create_ufunc(core.less_equal, numpy.less_equal)
-equal = _create_ufunc(core.equal, numpy.equal)
-not_equal = _create_ufunc(core.not_equal, numpy.not_equal)
+sinh = ufunc(math.hyperbolic.sinh)
+cosh = ufunc(math.hyperbolic.cosh)
+tanh = ufunc(math.hyperbolic.tanh)
+arcsinh = ufunc(math.hyperbolic.arcsinh)
+arccosh = ufunc(math.hyperbolic.arccosh)
+arctanh = ufunc(math.hyperbolic.arctanh)
 
-isfinite = _create_ufunc(logic.content.isfinite, numpy.isfinite)
-isinf = _create_ufunc(logic.content.isinf, numpy.isinf)
-isnan = _create_ufunc(logic.content.isnan, numpy.isnan)
+rint = ufunc(math.rounding.rint)
+floor = ufunc(math.rounding.floor)
+ceil = ufunc(math.rounding.ceil)
+trunc = ufunc(math.rounding.trunc)
+fix = ufunc(math.rounding.fix)
 
-logical_and = _create_ufunc(logic.ops.logical_and, numpy.logical_and)
-logical_or = _create_ufunc(logic.ops.logical_or, numpy.logical_or)
-logical_not = _create_ufunc(logic.ops.logical_not, numpy.logical_not)
-logical_xor = _create_ufunc(logic.ops.logical_xor, numpy.logical_xor)
+exp = ufunc(math.explog.exp)
+expm1 = ufunc(math.explog.expm1)
+exp2 = ufunc(math.explog.exp2)
+log = ufunc(math.explog.log)
+log10 = ufunc(math.explog.log10)
+log2 = ufunc(math.explog.log2)
+log1p = ufunc(math.explog.log1p)
+logaddexp = ufunc(math.explog.logaddexp)
+logaddexp2 = ufunc(math.explog.logaddexp2)
 
-sin = _create_ufunc(math.trigonometric.sin, numpy.sin)
-cos = _create_ufunc(math.trigonometric.cos, numpy.cos)
-tan = _create_ufunc(math.trigonometric.tan, numpy.tan)
-arcsin = _create_ufunc(math.trigonometric.arcsin, numpy.arcsin)
-arccos = _create_ufunc(math.trigonometric.arccos, numpy.arccos)
-arctan = _create_ufunc(math.trigonometric.arctan, numpy.arctan)
-arctan2 = _create_ufunc(math.trigonometric.arctan2, numpy.arctan2)
-hypot = _create_ufunc(math.trigonometric.hypot, numpy.hypot)
-deg2rad = _create_ufunc(math.trigonometric.deg2rad, numpy.deg2rad)
-rad2deg = _create_ufunc(math.trigonometric.rad2deg, numpy.rad2deg)
-degrees = _create_ufunc(math.trigonometric.degrees, numpy.degrees)
-radians = _create_ufunc(math.trigonometric.radians, numpy.radians)
+i0 = ufunc(math.special.i0)
+sinc = ufunc(math.special.sinc)
 
-sinh = _create_ufunc(math.hyperbolic.sinh, numpy.sinh)
-cosh = _create_ufunc(math.hyperbolic.cosh, numpy.cosh)
-tanh = _create_ufunc(math.hyperbolic.tanh, numpy.tanh)
-arcsinh = _create_ufunc(math.hyperbolic.arcsinh, numpy.arcsinh)
-arccosh = _create_ufunc(math.hyperbolic.arccosh, numpy.arccosh)
-arctanh = _create_ufunc(math.hyperbolic.arctanh, numpy.arctanh)
+signbit = ufunc(math.floating.signbit)
+copysign = ufunc(math.floating.copysign)
+ldexp = ufunc(math.floating.ldexp)
+frexp = ufunc(math.floating.frexp)
+nextafter = ufunc(math.floating.nextafter)
 
-rint = _create_ufunc(math.rounding.rint, numpy.rint)
-floor = _create_ufunc(math.rounding.floor, numpy.floor)
-ceil = _create_ufunc(math.rounding.ceil, numpy.ceil)
-trunc = _create_ufunc(math.rounding.trunc, numpy.trunc)
-fix = _create_ufunc(math.rounding.fix, numpy.fix)
+add = ufunc(math.arithmetic.add)
+reciprocal = ufunc(math.arithmetic.reciprocal)
+negative = ufunc(math.arithmetic.negative)
+angle = ufunc(math.arithmetic.angle)
+conj = ufunc(math.arithmetic.conj)
+real = ufunc(core.real, math.arithmetic.real)
+imag = ufunc(core.imag, math.arithmetic.imag)
+multiply = ufunc(math.arithmetic.multiply)
+divide = ufunc(math.arithmetic.divide)
+power = ufunc(math.arithmetic.power)
+subtract = ufunc(math.arithmetic.subtract)
+true_divide = ufunc(math.arithmetic.true_divide)
+floor_divide = ufunc(math.arithmetic.floor_divide)
+fmod = ufunc(math.arithmetic.fmod)
+mod = ufunc(math.arithmetic.remainder)
+modf = ufunc(math.arithmetic.modf)
+remainder = ufunc(math.arithmetic.remainder)
 
-exp = _create_ufunc(math.explog.exp, numpy.exp)
-expm1 = _create_ufunc(math.explog.expm1, numpy.expm1)
-exp2 = _create_ufunc(math.explog.exp2, numpy.exp2)
-log = _create_ufunc(math.explog.log, numpy.log)
-log10 = _create_ufunc(math.explog.log10, numpy.log10)
-log2 = _create_ufunc(math.explog.log2, numpy.log2)
-log1p = _create_ufunc(math.explog.log1p, numpy.log1p)
-logaddexp = _create_ufunc(math.explog.logaddexp, numpy.logaddexp)
-logaddexp2 = _create_ufunc(math.explog.logaddexp2, numpy.logaddexp2)
+sqrt = ufunc(math.misc.sqrt)
+sqrt_fixed = ufunc(math.misc.sqrt_fixed)
+square = ufunc(math.misc.square)
+absolute = ufunc(math.misc.absolute)
+abs = ufunc(math.misc.absolute)
+sign = ufunc(math.misc.sign)
+maximum = ufunc(math.misc.maximum)
+minimum = ufunc(math.misc.minimum)
+fmax = ufunc(math.misc.fmax)
+fmin = ufunc(math.misc.fmin)
 
-i0 = _create_ufunc(math.special.i0, numpy.i0)
-sinc = _create_ufunc(math.special.sinc, numpy.sinc)
-
-signbit = _create_ufunc(math.floating.signbit, numpy.signbit)
-copysign = _create_ufunc(math.floating.copysign, numpy.copysign)
-ldexp = _create_ufunc(math.floating.ldexp, numpy.ldexp)
-frexp = _create_ufunc(math.floating.frexp, numpy.frexp)
-nextafter = _create_ufunc(math.floating.nextafter, numpy.nextafter)
-
-add = _create_ufunc(math.arithmetic.add, numpy.add)
-reciprocal = _create_ufunc(math.arithmetic.reciprocal, numpy.reciprocal)
-negative = _create_ufunc(math.arithmetic.negative, numpy.negative)
-angle = _create_ufunc(math.arithmetic.angle, numpy.angle)
-conj = _create_ufunc(math.arithmetic.conj, numpy.conj)
-real = ufunc(core.real, math.arithmetic.real, numpy.real)
-imag = ufunc(core.imag, math.arithmetic.imag, numpy.imag)
-multiply = _create_ufunc(math.arithmetic.multiply, numpy.multiply)
-divide = _create_ufunc(math.arithmetic.divide, numpy.divide)
-power = _create_ufunc(math.arithmetic.power, numpy.power)
-subtract = _create_ufunc(math.arithmetic.subtract, numpy.subtract)
-true_divide = _create_ufunc(math.arithmetic.true_divide, numpy.true_divide)
-floor_divide = _create_ufunc(math.arithmetic.floor_divide, numpy.floor_divide)
-fmod = _create_ufunc(math.arithmetic.fmod, numpy.fmod)
-mod = _create_ufunc(math.arithmetic.remainder, numpy.mod)
-modf = _create_ufunc(math.arithmetic.modf, numpy.modf)
-remainder = _create_ufunc(math.arithmetic.remainder, numpy.remainder)
-
-sqrt = _create_ufunc(math.misc.sqrt, numpy.sqrt)
-sqrt_fixed = _create_ufunc(math.misc.sqrt_fixed, numpy.sqrt)
-square = _create_ufunc(math.misc.square, numpy.square)
-absolute = _create_ufunc(math.misc.absolute, numpy.absolute)
-abs = _create_ufunc(math.misc.absolute, numpy.abs)
-sign = _create_ufunc(math.misc.sign, numpy.sign)
-maximum = _create_ufunc(math.misc.maximum, numpy.maximum)
-minimum = _create_ufunc(math.misc.minimum, numpy.minimum)
-fmax = _create_ufunc(math.misc.fmax, numpy.fmax)
-fmin = _create_ufunc(math.misc.fmin, numpy.fmin)
+if hasattr(numpy, "divmod"):
+    divmod = ufunc(core.divmod)
+else:
+    divmod = core.divmod
 
 
 class reduction(object):
     # Args:
-    #   cupy_op (function): The CuPy reduction function.
-    #   numpy_op (function): The NumPy reduction function.
-    #   raw (core.simple_reduction_function object):
+    #   fusion_op (core.simple_reduction_function object):
     #     This object must have identity, _preamble and _ops attributes
-    def __init__(self, cupy_op, numpy_op, raw):
+    #   cupy_op (function): The CuPy reduction function.
+    def __init__(self, fusion_op, cupy_op):
+        self._fusion_op = fusion_op
         self._cupy_op = cupy_op
-        self._numpy_op = numpy_op
-        self._raw = raw
         self.__doc__ = cupy_op.__doc__
 
     def __call__(self, *args, **kwargs):
-        arg = args[0]
-        if isinstance(arg, FusionVarPython):
-            if arg._is_postmap:
-                # Multiple reduction
-                raise NotImplementedError(
-                    'Multiple reduction is not implemented yet')
-            if len(args) != 1:
-                mes = '{}() takes 1 positional argument but {} were given'
-                raise TypeError(mes.format(self._raw._ops.name, len(args)))
-            return FusionVarPython(
-                _thread_local.history.set_reduce_op(self._raw, arg, kwargs),
-                True)
-        elif builtins.any(type(_) == numpy.ndarray for _ in args):
-            return self._numpy_op(*args, **kwargs)
-        else:
+        if _thread_local.history is None:
             return self._cupy_op(*args, **kwargs)
 
+        fusion_op = self._fusion_op
+        arg = args[0]
+        if arg._is_postmap:
+            # Multiple reduction
+            raise NotImplementedError(
+                'Multiple reduction is not implemented yet')
+        if len(args) != 1:
+            mes = '{}() takes 1 positional argument but {} were given'
+            raise TypeError(mes.format(fusion_op._ops.name, len(args)))
+        return FusionVarPython(
+            _thread_local.history.set_reduce_op(fusion_op, arg, kwargs), True)
 
-def _create_reduction(cupy_op, numpy_op, raw):
-    op = reduction(cupy_op, numpy_op, raw)
+
+def _create_reduction(fusion_op, cupy_op):
+    op = reduction(fusion_op, cupy_op)
 
     def wrapper(*args, **kwargs):
         return op(*args, **kwargs)
@@ -1025,14 +1006,9 @@ def _create_reduction(cupy_op, numpy_op, raw):
     return functools.update_wrapper(wrapper, cupy_op)
 
 
-all = _create_reduction(logic.truth.all, numpy.all, core._all)
-any = _create_reduction(logic.truth.any, numpy.any, core._any)
-sum = _create_reduction(math.sumprod.sum, numpy.sum, core._sum_auto_dtype)
-prod = _create_reduction(math.sumprod.prod, numpy.prod, core._prod_auto_dtype)
-amax = _create_reduction(statistics.order.amax, numpy.amax, core._amax)
-amin = _create_reduction(statistics.order.amin, numpy.amin, core._amin)
-
-if hasattr(numpy, "divmod"):
-    divmod = _create_ufunc(core.divmod, numpy.divmod)
-else:
-    divmod = core.divmod
+all = _create_reduction(core._all, logic.truth.all)
+any = _create_reduction(core._any, logic.truth.any)
+sum = _create_reduction(core._sum_auto_dtype, math.sumprod.sum)
+prod = _create_reduction(core._prod_auto_dtype, math.sumprod.prod)
+amax = _create_reduction(core._amax, statistics.order.amax)
+amin = _create_reduction(core._amin, statistics.order.amin)
