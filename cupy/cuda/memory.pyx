@@ -8,6 +8,7 @@ import gc
 import warnings
 import weakref
 
+from cpython cimport pythread
 from fastrlock cimport rlock
 from libcpp cimport algorithm
 
@@ -166,10 +167,11 @@ cdef class _Chunk:
 
     def __init__(self, *args):
         # For debug
-        self._init(*args)
+        mem, offset, size, stream_ptr = args
+        self._init(mem, offset, size, stream_ptr)
 
-    def _init(self, Memory mem, Py_ssize_t offset,
-              Py_ssize_t size, stream_ptr):
+    cdef _init(self, Memory mem, Py_ssize_t offset,
+               Py_ssize_t size, Py_ssize_t stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
         self.device = mem.device
@@ -592,6 +594,52 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
         arena[:] = new_arena
 
 
+cdef object _get_chunk(SingleDeviceMemoryPool pool, int bin_index,
+                       size_t stream_ptr):
+    cdef set free_list
+    cdef int i, index, length
+    cdef list arena
+
+    arena = pool._arena(stream_ptr)
+    a_index = pool._arena_index(stream_ptr)
+    index = algorithm.lower_bound(
+        a_index.begin(), a_index.end(), bin_index) - a_index.begin()
+    length = a_index.size()
+    for i in range(index, length):
+        free_list = arena[i]
+        if free_list is None:
+            continue
+        chunk = free_list.pop()
+        if len(free_list) == 0:
+            arena[i] = None
+        if i - index >= _index_compaction_threshold:
+            _compact_index(pool, stream_ptr, False)
+        return chunk
+    return None
+
+
+cdef Memory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
+    try:
+        return pool._alloc(size).mem
+    except runtime.CUDARuntimeError as e:
+        if e.status != runtime.errorMemoryAllocation:
+            raise
+        pool.free_all_blocks()
+        try:
+            return pool._alloc(size).mem
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            gc.collect()
+            try:
+                return pool._alloc(size).mem
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.errorMemoryAllocation:
+                    raise
+    total = size + pool.total_bytes()
+    raise OutOfMemoryError(size, total)
+
+
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
 
@@ -617,13 +665,12 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
         """Rounds up the memory size to fit memory alignment of cudaMalloc."""
-        unit = self._allocation_unit_size
+        cdef Py_ssize_t unit = self._allocation_unit_size
         return ((size + unit - 1) // unit) * unit
 
     cpdef int _bin_index_from_size(self, Py_ssize_t size):
         """Returns appropriate bins index from the memory size."""
-        unit = self._allocation_unit_size
-        return (size - 1) // unit
+        return (size - 1) // self._allocation_unit_size
 
     cpdef list _arena(self, size_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
@@ -632,9 +679,10 @@ cdef class SingleDeviceMemoryPool:
 
         Caller is responsible to acquire `_free_lock`.
         """
-        if stream_ptr not in self._free:
-            self._free[stream_ptr] = []
-        return self._free[stream_ptr]
+        ret = self._free.get(stream_ptr, None)
+        if ret is None:
+            self._free[stream_ptr] = ret = []
+        return ret
 
     cdef vector.vector[int]* _arena_index(self, size_t stream_ptr):
         """Returns appropriate arena sparse index of a given stream.
@@ -769,43 +817,23 @@ cdef class SingleDeviceMemoryPool:
             return self._malloc(rounded_size)
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
-        cdef set free_list
-        cdef _Chunk chunk = None
+        cdef _Chunk chunk
         cdef _Chunk remaining
-        cdef int bin_index, index, length
+        cdef int bin_index
+        cdef long current_thread
 
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
+        current_thread = pythread.PyThread_get_thread_ident()
         stream_ptr = stream_module.get_current_stream_ptr()
-
         bin_index = self._bin_index_from_size(size)
+
         # find best-fit, or a smallest larger allocation
-        rlock.lock_fastrlock(self._free_lock, -1, True)
+        rlock.lock_fastrlock(self._free_lock, current_thread, True)
         try:
-            arena = self._arena(stream_ptr)
-            arena_index = self._arena_index(stream_ptr)
-            index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin()
-            length = arena_index.size()
-            for i in range(index, length):
-                free_list = arena[i]
-                if free_list is None:
-                    continue
-                assert len(free_list) > 0
-                chunk = free_list.pop()
-                if len(free_list) == 0:
-                    arena[i] = None
-                if i - index >= _index_compaction_threshold:
-                    _compact_index(self, stream_ptr, False)
-                break
+            chunk = _get_chunk(self, bin_index, stream_ptr)
         finally:
-            # clear references to chunks from local variables
-            # so that errorMemoryAllocation cases in the following section
-            # can cudaFree() the chunks by gc.collect().
-            arena = None
-            free_list = None
             rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:
@@ -813,33 +841,15 @@ cdef class SingleDeviceMemoryPool:
             if remaining is not None:
                 self._append_to_free_list(remaining.size, remaining,
                                           stream_ptr)
+                del remaining
+            assert chunk.stream_ptr == stream_ptr
         else:
             # cudaMalloc if a cache is not found
-            try:
-                mem = self._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
-                if e.status != runtime.errorMemoryAllocation:
-                    raise
-                self.free_all_blocks()
-                try:
-                    mem = self._alloc(size).mem
-                except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.errorMemoryAllocation:
-                        raise
-                    gc.collect()
-                    try:
-                        mem = self._alloc(size).mem
-                    except runtime.CUDARuntimeError as e:
-                        if e.status != runtime.errorMemoryAllocation:
-                            raise
-                        else:
-                            total = size + self.total_bytes()
-                            raise OutOfMemoryError(size, total)
+            mem = _try_malloc(self, size)
             chunk = _Chunk.__new__(_Chunk)
             chunk._init(mem, 0, size, stream_ptr)
 
-        assert chunk.stream_ptr == stream_ptr
-        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
         try:
             self._in_use[chunk.ptr] = chunk
         finally:
