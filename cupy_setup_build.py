@@ -32,6 +32,7 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core._dtype',
+            'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.flags',
             'cupy.core.internal',
@@ -386,6 +387,13 @@ def make_extensions(options, compiler, use_cython):
         s = settings.copy()
         if not no_cuda:
             s['libraries'] = module['libraries']
+
+        compile_args = s.setdefault('extra_compile_args', [])
+        link_args = s.setdefault('extra_link_args', [])
+        if compiler.compiler_type == 'unix':
+            # In mac environment, openmp is not required.
+            compile_args.append('-std=c++0x')
+            link_args.append('-std=c++0x')
 
         if module['name'] == 'cusolver':
             compile_args = s.setdefault('extra_compile_args', [])
