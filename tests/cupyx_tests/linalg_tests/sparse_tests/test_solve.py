@@ -11,11 +11,11 @@ except ImportError:
     scipy_available = False
 
 import cupy as cp
-import cupy.sparse as sp
 from cupy import cuda
-import cupyx
+import cupy.sparse as sp
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
 @testing.parameterize(*testing.product({
