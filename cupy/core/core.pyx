@@ -1208,7 +1208,15 @@ cdef class ndarray:
                 a_max = numpy.iinfo(self.dtype.type).max
         return _clip(self, a_min, a_max, out=out)
 
-    # TODO(okuta): Implement round
+    cpdef ndarray round(self, decimals=0, out=None):
+        """Returns an array with values rounded to the given number of decimals.
+
+        .. seealso::
+           :func:`cupy.around` for full documentation,
+           :meth:`numpy.ndarray.round`
+
+        """
+        return _round_ufunc(self, decimals, out=out)
 
     cpdef ndarray trace(self, offset=0, axis1=0, axis2=1, dtype=None,
                         out=None):
@@ -2176,6 +2184,62 @@ cdef _argmax = create_reduction_func(
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
+
+
+cdef _round_preamble = '''
+__device__ long long pow10(long long n){
+  long long x = 1, a = 10;
+  while (n) {
+    if (n & 1) x *= a;
+    a *= a;
+    n >>= 1;
+  }
+  return x;
+}'''
+
+
+cdef _round_float = '''
+if (in1 == 0) {
+    out0 = round(in0);
+} else {
+    long long x = pow10(abs(in1));
+    out0 = in1 < 0 ? round(in0 / x) * x : round(in0 * x) / x;
+}'''
+
+cdef _round_complex = '''
+double x, inv_x;
+if (in1 == 0) {
+    x = inv_x = 1;
+} else {
+    x = pow10(abs(in1));
+    inv_x = 1.0 / x;
+    if (in1 < 0) {
+        double y = x;
+        x = inv_x;
+        inv_x = y;
+    }
+}
+out0 = in0_type(round(in0.real() * x) * inv_x,
+                round(in0.imag() * x) * inv_x);'''
+
+
+_round_ufunc = create_ufunc(
+    'cupy_round',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q',
+     ('eq->e', _round_float),
+     ('fq->f', _round_float),
+     ('dq->d', _round_float),
+     ('Fq->F', _round_complex),
+     ('Dq->D', _round_complex)),
+    '''
+    if (in1 < 0) {
+        long long x = pow10(-in1 - 1);
+        out0 = ((in0 / x + 5) / 10) * x * 10;
+    } else {
+        out0 = in0;
+    }''', preamble=_round_preamble)
 
 
 # -----------------------------------------------------------------------------
