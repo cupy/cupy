@@ -1059,6 +1059,7 @@ cdef class ndarray:
         else:
             r = self.ravel()
             nonzero = not_equal(r, 0, ndarray(r.shape, dtype))
+            del r
             scan_index = scan(nonzero)
             count_nonzero = int(scan_index[-1])
         ndim = max(self._shape.size(), 1)
@@ -1070,7 +1071,6 @@ cdef class ndarray:
             _nonzero_kernel_1d(nonzero, scan_index, dst)
             return dst,
         else:
-            del r
             nonzero.shape = self.shape
             scan_index.shape = self.shape
             dst = ndarray((ndim, count_nonzero), dtype=dtype)

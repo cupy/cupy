@@ -207,8 +207,9 @@ class TestWhereError(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
-    {"array": numpy.zeros((0, 2))},
-    {"array": numpy.zeros((0, 2, 0))},
+    {"array": numpy.empty((0,))},
+    {"array": numpy.empty((0, 2))},
+    {"array": numpy.empty((0, 2, 0))},
 )
 @testing.gpu
 class TestNonzero(unittest.TestCase):
@@ -225,13 +226,14 @@ class TestNonzero(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
-    {"array": numpy.zeros((0, 2))},
-    {"array": numpy.zeros((0, 2, 0))},
+    {"array": numpy.empty((0,))},
+    {"array": numpy.empty((0, 2))},
+    {"array": numpy.empty((0, 2, 0))},
 )
 @testing.gpu
 class TestFlatNonzero(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_flatnonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
