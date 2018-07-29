@@ -118,6 +118,8 @@ class RandomState(object):
         alpha = cupy.asarray(alpha)
         if size is None:
             size = alpha.shape
+        else:
+            size += alpha.shape
         y = cupy.zeros(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
