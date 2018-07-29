@@ -1187,7 +1187,15 @@ cdef class ndarray:
         else:
             return _sum_keep_dtype(self, axis, dtype, out, keepdims)
 
-    # TODO(okuta): Implement cumsum
+    cpdef ndarray cumsum(self, axis=None, dtype=None, out=None):
+        """Returns the cumulative sum of an array along a given axis.
+
+        .. seealso::
+           :func:`cupy.cumsum` for full documentation,
+           :meth:`numpy.ndarray.cumsum`
+
+        """
+        return cupy.cumsum(self, axis, dtype, out)
 
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
@@ -1236,7 +1244,15 @@ cdef class ndarray:
         else:
             return _prod_keep_dtype(self, axis, dtype, out, keepdims)
 
-    # TODO(okuta): Implement cumprod
+    cpdef ndarray cumprod(a, axis=None, dtype=None, out=None):
+        """Returns the cumulative product of an array along a given axis.
+
+        .. seealso::
+           :func:`cupy.cumprod` for full documentation,
+           :meth:`numpy.ndarray.cumprod`
+
+        """
+        return cupy.cumprod(a, axis, dtype, out)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         return _all(self, axis=axis, out=out, keepdims=keepdims)
