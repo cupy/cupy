@@ -670,7 +670,7 @@ cublasStatus_t cublasStpttr(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasDprttr(...) {
+cublasStatus_t cublasDtpttr(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
