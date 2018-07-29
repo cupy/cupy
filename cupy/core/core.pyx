@@ -3959,9 +3959,17 @@ cpdef ndarray tensordot_core(
                 b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
                 runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
-        cublas.sgemm(
-            handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+        if _cuda_runtime_version >= 7500:
+            cublas.sgemmEx(
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+                b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
+                a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
+                c.data.ptr, runtime.CUDA_R_32F, <int>m)
+        else:
+            cublas.sgemm(
+                handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
+                b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr,
+                <int>m)
     elif dtype == 'd':
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
