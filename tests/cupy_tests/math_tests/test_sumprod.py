@@ -205,6 +205,13 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_ndarray_cumsum_axis(self, xp, dtype):
+        n = len(axes)
+        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        return a.cumsum(axis=self.axis)
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum_axis_empty(self, xp, dtype):
         n = len(axes)
@@ -258,6 +265,12 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumprod(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_ndarray_cumprod_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return a.cumprod(axis=1)
 
     @testing.slow
     def test_cumprod_huge_array(self):

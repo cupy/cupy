@@ -44,6 +44,7 @@ cdef class ndarray:
     cpdef ndarray trace(self, offset=*, axis1=*, axis2=*, dtype=*,
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
+    cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
 
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
@@ -51,6 +52,8 @@ cdef class ndarray:
     cpdef ndarray std(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
+    cpdef ndarray cumprod(a, axis=*, dtype=*, out=*)
+
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
