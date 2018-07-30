@@ -2187,22 +2187,23 @@ cdef _argmax = create_reduction_func(
 
 
 cdef _round_preamble = '''
-__device__ long long pow10(long long n){
-  long long x = 1, a = 10;
+template<typename T> __device__ T pow10(long long n){
+  T x = 1, a = 10;
   while (n) {
     if (n & 1) x *= a;
     a *= a;
     n >>= 1;
   }
   return x;
-}'''
+};
+'''
 
 
 cdef _round_float = '''
 if (in1 == 0) {
     out0 = round(in0);
 } else {
-    long long x = pow10(abs(in1));
+    double x = pow10<double>(abs(in1));
     out0 = in1 < 0 ? round(in0 / x) * x : round(in0 * x) / x;
 }'''
 
@@ -2211,7 +2212,7 @@ double x, inv_x;
 if (in1 == 0) {
     x = inv_x = 1;
 } else {
-    x = pow10(abs(in1));
+    x = pow10<double>(abs(in1));
     inv_x = 1.0 / x;
     if (in1 < 0) {
         double y = x;
@@ -2235,7 +2236,7 @@ _round_ufunc = create_ufunc(
      ('Dq->D', _round_complex)),
     '''
     if (in1 < 0) {
-        long long x = pow10(-in1 - 1);
+        long long x = pow10<long long>(-in1 - 1);
         out0 = ((in0 / x + 5) / 10) * x * 10;
     } else {
         out0 = in0;

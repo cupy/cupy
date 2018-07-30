@@ -98,3 +98,23 @@ class TestRound(unittest.TestCase):
         out = xp.empty_like(a)
         xp.around(a, self.decimals, out)
         return out
+
+
+@testing.parameterize(*testing.product({
+    'decimals': [-100, -99, -90, 0, 90, 99, 100],
+}))
+class TestRoundExtreme(unittest.TestCase):
+
+    shape = (20,)
+
+    @testing.for_dtypes([numpy.float64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_round_large(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, scale=1e100, dtype=dtype)
+        return xp.around(a, self.decimals)
+
+    @testing.for_dtypes([numpy.float64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_round_small(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, scale=1e-100, dtype=dtype)
+        return xp.around(a, self.decimals)
