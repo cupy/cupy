@@ -4512,7 +4512,7 @@ def _add_scan_blocked_sum_kernel(dtype):
 cdef _nonzero_kernel_1d = ElementwiseKernel(
     'T src, S index', 'raw S dst',
     'if (src != 0) dst[index - 1] = i',
-    '_nonzero_kernel_1d')
+    'nonzero_kernel_1d')
 
 
 cdef _nonzero_kernel = ElementwiseKernel(
