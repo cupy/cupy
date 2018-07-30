@@ -1562,7 +1562,6 @@ cdef class ndarray:
         if mask_exists:
             mask_i = _get_mask_index(slice_list)
             return _getitem_mask_single(self, slice_list[mask_i], mask_i)
-
         if advanced:
             a, adv_slices, adv_mask = _prepare_advanced_indexing(
                 self, slice_list)
@@ -2850,10 +2849,11 @@ right_shift = _create_bit_op(
 # Indexing routines
 # -----------------------------------------------------------------------------
 
-cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
+cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
     cdef str kind
+    cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
         slice_list = list(slices)
@@ -2881,13 +2881,16 @@ cpdef _prepare_slice_list(slices, Py_ssize_t ndim):
             if is_list and s.size == 0:
                 s = s.astype(numpy.int32)
             slice_list[i] = s
+        elif isinstance(s, bool):
+            s = array(s)
+            slice_list[i] = s
         elif not isinstance(s, ndarray):
             continue
         kind = s.dtype.kind
         if kind == 'i' or kind == 'u':
             advanced = True
         elif kind == 'b':
-            mask_exists = not is_list
+            mask_exists = True
         else:
             raise IndexError(
                 'arrays used as indices must be of integer or boolean '
@@ -3126,6 +3129,10 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         mask_br = mask._reshape(masked_shape)
         return mask_br, mask_br, masked_shape
 
+    for i, s in enumerate(mask._shape):
+        if a.shape[axis + i] != s:
+            raise IndexError('boolean index did not match')
+
     # Get number of True in the mask to determine the shape of the array
     # after masking.
     if mask.size <= 2 ** 31 - 1:
@@ -3137,20 +3144,23 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     masked_shape = lshape + (n_true,) + rshape
 
     # When mask covers the entire array, broadcasting is not necessary.
-    if mask.ndim == a.ndim and axis == 0:
+    if mask._shape.size() == a._shape.size() and axis == 0:
         return mask, mask_scanned._reshape(mask._shape), masked_shape
+    mask_scanned = None
 
     # The scan of the broadcasted array is used to index on kernel.
-    mask_br = mask._reshape(
+    mask = mask._reshape(
         axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    mask_br = broadcast_to(mask_br, a.shape)
+    if mask._shape.size() > a._shape.size():
+        raise IndexError('too many indices for array')
+
+    mask = broadcast_to(mask, a.shape)
     if mask.size <= 2 ** 31 - 1:
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
-    mask_br_scanned = scan(mask_br.astype(mask_type).ravel())
-    mask_br_scanned = mask_br_scanned._reshape(mask_br._shape)
-    return mask_br, mask_br_scanned, masked_shape
+    mask_scanned = scan(mask.astype(mask_type).ravel())._reshape(mask._shape)
+    return mask, mask_scanned, masked_shape
 
 
 cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
@@ -3212,6 +3222,8 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
             raise TypeError('Output dtype mismatch')
         if out.shape != out_shape:
             raise ValueError('Output shape mismatch')
+    if a.size == 0 and out.size != 0:
+        raise IndexError('cannot do a non-empty take from an empty axes.')
 
     cdim = indices.size
     rdim = internal.prod(rshape)
@@ -3317,6 +3329,7 @@ cpdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, li, ri
     cdef ndarray v, x, y, a_interm, reduced_idx
     cdef list slice_list, adv_mask, adv_slices
+    cdef bint advanced, mask_exists
 
     slice_list, advanced, mask_exists = _prepare_slice_list(
         slices, a._shape.size())
