@@ -224,3 +224,9 @@ cpdef gemmEx(size_t handle, int transa, int transb, int m, int n, int k,
              size_t alpha, size_t A, int Atype, int lda, size_t B,
              int Btype, int ldb, size_t beta, size_t C, int Ctype,
              int ldc, int computeType, int algo)
+
+cpdef stpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda)
+cpdef dtpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda)
+
+cpdef strttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP)
+cpdef dtrttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP)
