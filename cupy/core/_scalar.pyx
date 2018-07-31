@@ -13,7 +13,7 @@ import six
 
 from cupy.core cimport _dtype
 from cupy.core import _dtype as _dtype_module
-from cupy.core cimport _float16
+from cupy.core cimport internal
 
 
 cdef union Scalar:
@@ -181,7 +181,7 @@ cdef class CScalar(CPointer):
                 assert False
         elif kind == 'f':
             if size == 2:
-                s.uint16_ = _float16.to_float16(<float>val)
+                s.uint16_ = internal.to_float16(<float>val)
             elif size == 4:
                 s.float32_ = val
             elif size == 8:
