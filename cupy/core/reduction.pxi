@@ -150,16 +150,18 @@ cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
 
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
-        object out_clp2_size, tuple params, bint reduce_dims):
+        Py_ssize_t out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
         in_shape = _reduce_dims(in_args, params, in_indexer.shape)
         out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    args = in_args + out_args + [in_indexer, out_indexer,
-                                 numpy.int32(out_clp2_size)]
-    return args
+    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
+    s.val.int32_ = out_clp2_size
+    s.kind = 'i'
+    s.size = 4
+    return in_args + out_args + [in_indexer, out_indexer, s]
 
 
 @util.memoize(for_each_device=True)
@@ -207,6 +209,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
+        cdef Py_ssize_t block_size, clp2_count, block_stride
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -367,6 +370,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
+        cdef Py_ssize_t block_size, clp2_count, block_stride
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -414,7 +418,8 @@ class ReductionKernel(object):
         if 0 in out_shape:
             return ret
 
-        in_args = [x if isinstance(x, ndarray) else t(x)
+        in_args = [x if isinstance(x, ndarray) else
+                   _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)

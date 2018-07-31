@@ -783,7 +783,8 @@ class ufunc(object):
         inout_args = []
         for i, t in enumerate(in_types):
             x = broad.values[i]
-            inout_args.append(x if isinstance(x, ndarray) else t(x))
+            inout_args.append(x if isinstance(x, ndarray) else
+                              _scalar.get_scalar_from_numpy(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)

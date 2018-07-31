@@ -38,4 +38,5 @@ cdef class CScalar(CPointer):
 
 
 cpdef str get_typename(dtype)
+cpdef get_scalar_from_numpy(x, dtype)
 cpdef convert_scalar(x, bint use_c_scalar)
