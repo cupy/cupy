@@ -394,10 +394,6 @@ def make_extensions(options, compiler, use_cython):
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
-        if compiler.compiler_type == 'unix':
-            # In mac environment, openmp is not required.
-            compile_args.append('-std=c++0x')
-            link_args.append('-std=c++0x')
 
         if module['name'] == 'cusolver':
             compile_args = s.setdefault('extra_compile_args', [])
