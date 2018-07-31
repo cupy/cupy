@@ -2,15 +2,7 @@
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
-
-
-ctypedef unsigned short uint16_t
-ctypedef unsigned int uint32_t
-
-
-cdef union float32_int:
-    uint32_t n
-    float f
+from libc.stdint cimport uint32_t
 
 
 cdef extern from "halffloat.h":
@@ -250,13 +242,8 @@ cpdef size_t clp2(size_t x):
     return x + 1
 
 
-ctypedef unsigned short u16
-ctypedef unsigned int u32
-ctypedef unsigned long long _uint64_t
-
-
 cdef union float32_int:
-    u32 n
+    uint32_t n
     float f
 
 

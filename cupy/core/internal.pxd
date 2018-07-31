@@ -1,4 +1,6 @@
 from libcpp cimport vector
+from libc.stdint cimport uint16_t
+
 
 cpdef Py_ssize_t prod(args, Py_ssize_t init=*) except *
 
@@ -34,6 +36,6 @@ cpdef size_t clp2(size_t x)
 
 ctypedef unsigned short _float16
 
-cpdef unsigned short to_float16(float f)
+cpdef uint16_t to_float16(float f)
 
-cpdef float from_float16(unsigned short v)
+cpdef float from_float16(uint16_t v)
