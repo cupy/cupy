@@ -8,13 +8,15 @@ from cupy import testing
 
 
 def fusion_default_array_equal():
-    def res_func(func):
-        def res(xxx, name, xp, dtype):
-            f = getattr(cupy, name)
-            val = func(xxx, name, xp, dtype)
-            return cupy.fuse(f)(*val)
-        return res
-    return res_func
+    def deco(func):
+        def wrapper(self_x, name, xp, dtype):
+            @cupy.fuse()
+            def f(*args):
+                return getattr(xp, name)(*args)
+            args = func(self_x, name, xp, dtype)
+            return f(*args)
+        return wrapper
+    return deco
 
 
 @testing.gpu
@@ -356,7 +358,7 @@ class TestFusionFloating(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y):
-            return cupy.ldexp(x, y)
+            return xp.ldexp(x, y)
 
         return g(a, b)
 
@@ -373,7 +375,8 @@ class TestFusionFloating(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.frexp(x)
+            xp = cupy.get_array_module(x)
+            return xp.frexp(x)
 
         numpy_b, numpy_c = g(numpy_a)
 
@@ -500,7 +503,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.modf(x)
+            return xp.modf(x)
 
         b, c = g(a)
         d = xp.empty((2, 7), dtype=dtype)
@@ -545,7 +548,8 @@ class TestFusionUfunc(unittest.TestCase):
 
     @cupy.fuse()
     def sample_function(x, y, z):
-        return cupy.square(cupy.add(x, y))
+        xp = cupy.get_array_module(x, y, z)
+        return xp.square(xp.add(x, y))
 
     def random_bool(self, seed=0):
         return testing.shaped_random((3, 3),
@@ -880,7 +884,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return getattr(cupy, name)(x)
+            return getattr(xp, name)(x)
 
         return g(a)
 
@@ -894,7 +898,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y):
-            return getattr(cupy, name)(x, y)
+            return getattr(xp, name)(x, y)
         return g(a, b)
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
@@ -906,7 +910,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return getattr(cupy, name)(x)
+            return getattr(xp, name)(x)
 
         return g(a)
 
@@ -927,7 +931,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y, z):
-            return cupy.clip(x, y, z)
+            return xp.clip(x, y, z)
 
         ty = numpy.dtype(dtype).type
         return g(a, ty(3), ty(13))
@@ -1005,7 +1009,7 @@ class TestFusionFuse(unittest.TestCase):
         @cupy.fuse()
         def g(x, y, z):
             x += z
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
             return z
 
         return g(a, b, c)
@@ -1084,7 +1088,7 @@ class TestFusionFuse(unittest.TestCase):
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
         def toi(x):
-            return cupy.where(x, 1, 0)
+            return xp.where(x, 1, 0)
 
         @cupy.fuse()
         def g(p, q, r, s, t, u):
@@ -1102,7 +1106,7 @@ class TestFusionFuse(unittest.TestCase):
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
         def toi(x):
-            return cupy.where(x, 1, 0)
+            return xp.where(x, 1, 0)
 
         @cupy.fuse()
         def g(p, q, r):
@@ -1141,7 +1145,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             a = x
             a += y
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
 
         g(a, b, c)
         return c
@@ -1157,7 +1161,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             a = x
             a += y
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
             return y
 
         res = g(a, b, c)
@@ -1357,7 +1361,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x, y, z):
-                return cupy.sum((x + y) * z)
+                return xp.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
@@ -1368,7 +1372,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x):
-                return cupy.sqrt(cupy.sum(x) + 10)
+                return xp.sqrt(xp.sum(x) + 10)
 
             return func_a1(a)
 
@@ -1379,7 +1383,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x, y, z):
-                return cupy.sqrt(cupy.prod(x + y * z, axis=1) + 10)
+                return xp.sqrt(xp.prod(x + y * z, axis=1) + 10)
 
             return func_a1(a, b, c)
 
@@ -1390,7 +1394,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
             def func_a1(x, y, z):
-                return cupy.sum((x + y) * z)
+                return xp.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
