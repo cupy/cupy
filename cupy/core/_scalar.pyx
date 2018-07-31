@@ -254,6 +254,12 @@ cpdef CScalar _numpy_scalar_to_c_scalar(x):
     return ret
 
 
+cpdef get_scalar_from_numpy(x, dtype):
+    cdef CScalar ret = _numpy_scalar_to_c_scalar(x)
+    ret.apply_dtype(dtype)
+    return ret
+
+
 cpdef convert_scalar(x, bint use_c_scalar):
     typ = type(x)
     if typ in _python_scalar_type_set:
