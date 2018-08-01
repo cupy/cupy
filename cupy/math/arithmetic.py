@@ -40,7 +40,15 @@ def real(val):
     return val.real
 
 
-imag = core.imag
+def imag(val):
+    '''Returns the imaginary part of the elements of the array.
+
+    .. seealso:: :func:`numpy.imag`
+
+    '''
+    if not isinstance(val, core.ndarray):
+        val = core.array(val)
+    return val.imag
 
 
 multiply = core.multiply

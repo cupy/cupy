@@ -22,7 +22,7 @@ no_complex_types = [numpy.bool] + float_types + int_types
 @testing.parameterize(*(
     testing.product({
         'nargs': [1],
-        'name': ['reciprocal', 'conj', 'angle', 'imag'],
+        'name': ['reciprocal', 'conj', 'angle'],
     }) + testing.product({
         'nargs': [2],
         'name': [
@@ -95,7 +95,7 @@ class TestArithmeticUnary(unittest.TestCase):
 
 
 @testing.gpu
-class TestReal(unittest.TestCase):
+class TestComplex(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_equal()
@@ -108,6 +108,22 @@ class TestReal(unittest.TestCase):
     def test_real(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype=dtype)
         return xp.real(x) is x
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_imag_ndarray(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
+        y = x.imag
+        x += 1 + 1j
+        return y
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_imag(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
+        y = xp.imag(x)
+        x += 1 + 1j
+        return y
 
 
 @testing.gpu
