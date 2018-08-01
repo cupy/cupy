@@ -3122,7 +3122,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef tuple lshape, rshape, out_shape
 
     lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask.ndim:]
+    rshape = a.shape[axis + mask._shape.size():]
 
     if mask.size == 0:
         masked_shape = lshape + (0,) + rshape
