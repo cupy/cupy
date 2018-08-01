@@ -1,4 +1,5 @@
 from cpython cimport sequence
+from libc.stdint cimport int32_t
 
 import string
 
@@ -158,7 +159,7 @@ cpdef list _get_inout_args(
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
     cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    s.val.int32_ = out_clp2_size
+    (<int32_t *>s.ptr)[0] = out_clp2_size
     s.kind = 'i'
     s.size = 4
     return in_args + out_args + [in_indexer, out_indexer, s]
