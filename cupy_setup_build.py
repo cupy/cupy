@@ -162,7 +162,7 @@ def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
     else:
-        return (file, [])
+        return file, []
 
 
 def module_extension_name(file):
