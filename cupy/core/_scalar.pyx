@@ -1,8 +1,33 @@
+from cpython cimport mem
+from libc.stdint cimport int8_t
+from libc.stdint cimport int16_t
+from libc.stdint cimport int32_t
+from libc.stdint cimport int64_t
+from libc.stdint cimport uint8_t
+from libc.stdint cimport uint16_t
+from libc.stdint cimport uint32_t
+from libc.stdint cimport uint64_t
+
 import numpy
 import six
 
-from cupy.core import _dtype
+from cupy.core cimport _dtype
+from cupy.core import _dtype as _dtype_module
 from cupy.core cimport internal
+
+
+cdef union Scalar:
+    bint bool_
+    int8_t int8_
+    int16_t int16_
+    int32_t int32_
+    int64_t int64_
+    uint8_t uint8_
+    uint16_t uint16_
+    uint32_t uint32_
+    uint64_t uint64_
+    float float32_
+    double float64_
 
 
 cdef dict _typenames_base = {
@@ -37,7 +62,7 @@ cdef dict _dtype_kind_size_dict = {}
 
 cdef _setup_type_dict():
     cdef char k
-    for i in _dtype.all_type_chars:
+    for i in _dtype_module.all_type_chars:
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
@@ -87,25 +112,31 @@ cdef class CScalar(CPointer):
     ndim = 0
 
     def __cinit__(self):
-        self.ptr = <void*>&(self.val)
+        self.ptr = mem.PyMem_Malloc(
+            max(sizeof(Scalar), sizeof(double complex)))
         self.kind = ' '
         self.size = -1
 
+    def __dealloc__(self):
+        mem.PyMem_Free(self.ptr)
+        self.ptr = <void*>0
+
     cpdef apply_dtype(self, dtype):
+        cdef Scalar* s = <Scalar*>self.ptr
         if self.kind == 'b':
-            val = self.val.bool_
+            val = s.bool_
             assert self.size == 1
         elif self.kind == 'c':
             assert self.size == 16
-            val = self.val.complex128_
+            val = (<double complex*>self.ptr)[0]
         else:
             assert self.size == 8
             if self.kind == 'i':
-                val = self.val.int64_
+                val = s.int64_
             elif self.kind == 'u':
-                val = self.val.uint64_
+                val = s.uint64_
             elif self.kind == 'f':
-                val = self.val.float64_
+                val = s.float64_
             else:
                 assert False
         cdef char kind
@@ -114,54 +145,54 @@ cdef class CScalar(CPointer):
         cdef int64_t val_i
         cdef uint64_t val_u
         if kind == 'b':
-            self.val.bool_ = val
+            s.bool_ = val
             assert size == 1
         elif kind == 'i':
             if self.kind == 'u':
                 # avoid overflow exception
-                val_i = self.val.uint64_
+                val_i = s.uint64_
             else:
                 val_i = val
             if size == 1:
-                self.val.int8_ = val_i
+                s.int8_ = val_i
             elif size == 2:
-                self.val.int16_ = val_i
+                s.int16_ = val_i
             elif size == 4:
-                self.val.int32_ = val_i
+                s.int32_ = val_i
             elif size == 8:
-                self.val.int64_ = val_i
+                s.int64_ = val_i
             else:
                 assert False
         elif kind == 'u':
             if self.kind == 'i':
                 # avoid overflow exception
-                val_u = self.val.int64_
+                val_u = s.int64_
             else:
                 val_u = val
             if size == 1:
-                self.val.uint8_ = val_u
+                s.uint8_ = val_u
             elif size == 2:
-                self.val.uint16_ = val_u
+                s.uint16_ = val_u
             elif size == 4:
-                self.val.uint32_ = val_u
+                s.uint32_ = val_u
             elif size == 8:
-                self.val.uint64_ = val_u
+                s.uint64_ = val_u
             else:
                 assert False
         elif kind == 'f':
             if size == 2:
-                self.val.uint16_ = <uint16_t>internal.to_float16(<float>val)
+                s.uint16_ = internal.to_float16(<float>val)
             elif size == 4:
-                self.val.float32_ = val
+                s.float32_ = val
             elif size == 8:
-                self.val.float64_ = val
+                s.float64_ = val
             else:
                 assert False
         elif kind == 'c':
             if size == 8:
-                self.val.complex64_ = val
+                (<float complex*>self.ptr)[0] = val
             elif size == 16:
-                self.val.complex128_ = val
+                (<double complex*>self.ptr)[0] = val
             else:
                 assert False
         else:
@@ -207,25 +238,26 @@ cdef class CScalar(CPointer):
 
 cpdef CScalar _python_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar.__new__(CScalar)
+    cdef Scalar* s = <Scalar*>ret.ptr
     typ = type(x)
     if typ is bool:
-        ret.val.bool_ = x
+        s.bool_ = x
         ret.kind = 'b'
         ret.size = 1
     elif typ is float:
-        ret.val.float64_ = x
+        s.float64_ = x
         ret.kind = 'f'
         ret.size = 8
     elif typ is complex:
-        ret.val.complex128_ = x
+        (<double complex*>ret.ptr)[0] = x
         ret.kind = 'c'
         ret.size = 16
     else:
         if 0x8000000000000000 <= x:
-            ret.val.uint64_ = x
+            s.uint64_ = x
             ret.kind = 'u'
         else:
-            ret.val.int64_ = x
+            s.int64_ = x
             ret.kind = 'i'
         ret.size = 8
     return ret
@@ -233,21 +265,22 @@ cpdef CScalar _python_scalar_to_c_scalar(x):
 
 cpdef CScalar _numpy_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar.__new__(CScalar)
+    cdef Scalar* s = <Scalar*>ret.ptr
     ret.kind = ord(x.dtype.kind)
     if ret.kind == 'i':
-        ret.val.int64_ = x
+        s.int64_ = x
         ret.size = 8
     elif ret.kind == 'u':
-        ret.val.uint64_ = x
+        s.uint64_ = x
         ret.size = 8
     elif ret.kind == 'f':
-        ret.val.float64_ = x
+        s.float64_ = x
         ret.size = 8
     elif ret.kind == 'b':
-        ret.val.bool_ = x
+        s.bool_ = x
         ret.size = 1
     elif ret.kind == 'c':
-        ret.val.complex128_ = x
+        (<double complex*>ret.ptr)[0] = x
         ret.size = 16
     else:
         assert False
