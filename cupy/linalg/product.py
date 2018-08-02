@@ -1,11 +1,10 @@
-import collections
-
 import numpy
 import six
 
 import cupy
 from cupy import core
 from cupy import internal
+from cupy.util import collections_abc
 
 
 matmul = core.matmul
@@ -161,7 +160,7 @@ def tensordot(a, b, axes=2):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b)
 
-    if isinstance(axes, collections.Sequence):
+    if isinstance(axes, collections_abc.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
         a_axes, b_axes = axes
