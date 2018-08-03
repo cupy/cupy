@@ -109,6 +109,10 @@ cdef extern from 'cupy_cusolver.h' nogil:
                                     int* lwork)
     int cusolverDnDgesvd_bufferSize(Handle handle, int m, int n,
                                     int* lwork)
+    int cusolverDnCgesvd_bufferSize(Handle handle, int m, int n,
+                                    int* lwork)
+    int cusolverDnZgesvd_bufferSize(Handle handle, int m, int n,
+                                    int* lwork)
     int cusolverDnSgesvd(Handle handle, char jobu, char jobvt, int m, int n,
                          float* A, int lda, float* S, float* U, int ldu,
                          float* VT, int ldvt, float* Work, int lwork,
@@ -116,6 +120,14 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnDgesvd(Handle handle, char jobu, char jobvt, int m, int n,
                          double* A, int lda, double* S, double* U, int ldu,
                          double* VT, int ldvt, double* Work, int lwork,
+                         double* rwork, int* devInfo)
+    int cusolverDnCgesvd(Handle handle, char jobu, char jobvt, int m, int n,
+                         cuComplex* A, int lda, float* S, cuComplex* U, int ldu,
+                         cuComplex* VT, int ldvt, cuComplex* Work, int lwork,
+                         float* rwork, int* devInfo)
+    int cusolverDnZgesvd(Handle handle, char jobu, char jobvt, int m, int n,
+                         cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu,
+                         cuDoubleComplex* VT, int ldvt, cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
     int cusolverDnSsyevd_bufferSize(
@@ -519,6 +531,22 @@ cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except *:
     check_status(status)
     return lwork
 
+cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvd_bufferSize(<Handle>handle, m, n, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvd_bufferSize(<Handle>handle, m, n, &lwork)
+    check_status(status)
+    return lwork
+
 cpdef sgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo):
@@ -539,6 +567,28 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <Handle>handle, jobu, jobvt, m, n, <double*>A,
             lda, <double*>S, <double*>U, ldu, <double*>VT, ldvt,
             <double*>Work, lwork, <double*>rwork, <int*>devInfo)
+    check_status(status)
+
+cpdef cgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvd(
+            <Handle>handle, jobu, jobvt, m, n, <cuComplex*>A,
+            lda, <float*>S, <cuComplex*>U, ldu, <cuComplex*>VT, ldvt,
+            <cuComplex*>Work, lwork, <float*>rwork, <int*>devInfo)
+    check_status(status)
+
+cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvd(
+            <Handle>handle, jobu, jobvt, m, n, <cuDoubleComplex*>A,
+            lda, <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>VT, ldvt,
+            <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
 cpdef int ssyevd_bufferSize(size_t handle, int jobz, int uplo, int n,

@@ -124,10 +124,18 @@ cpdef dgebrd(size_t handle, int m, int n, size_t A, int lda,
 
 cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *
 cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except *
+cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except *
+cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except *
 cpdef sgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
 cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo)
+cpdef cgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo)
+cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
 
