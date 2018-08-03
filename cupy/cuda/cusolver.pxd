@@ -22,7 +22,7 @@ cdef extern from *:
 
     ctypedef void* cuComplex 'cuComplex'
     ctypedef void* cuDoubleComplex 'cuDoubleComplex'
-    
+
 ###############################################################################
 # Enum
 ###############################################################################
