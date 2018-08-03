@@ -589,7 +589,8 @@ cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
     with nogil:
         status = cusolverDnZgesvd(
             <Handle>handle, jobu, jobvt, m, n, <cuDoubleComplex*>A,
-            lda, <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>VT, ldvt,
+            lda, <double*>S, <cuDoubleComplex*>U, ldu,
+            <cuDoubleComplex*>VT, ldvt,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
@@ -621,7 +622,8 @@ cpdef int cheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnCheevd_bufferSize(
-            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const cuComplex*>A,
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuComplex*>A,
             lda, <const float*>W, &lwork)
     check_status(status)
     return lwork
@@ -632,7 +634,8 @@ cpdef int zheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnZheevd_bufferSize(
-            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const cuDoubleComplex*>A,
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuDoubleComplex*>A,
             lda, <const double*>W, &lwork)
     check_status(status)
     return lwork
@@ -663,7 +666,8 @@ cpdef cheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnCheevd(
-            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <cuComplex*>A, lda,
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuComplex*>A, lda,
             <float*>W, <cuComplex*>work, lwork, <int*>info)
     check_status(status)
 
@@ -673,10 +677,11 @@ cpdef zheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnZheevd(
-            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <cuDoubleComplex*>A, lda,
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuDoubleComplex*>A, lda,
             <double*>W, <cuDoubleComplex*>work, lwork, <int*>info)
     check_status(status)
-    
+
 ###############################################################################
 # sparse LAPACK Functions
 ###############################################################################
