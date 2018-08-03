@@ -20,6 +20,9 @@ cdef extern from *:
 
     ctypedef void* MatDescr 'cusparseMatDescr_t'
 
+    ctypedef void* cuComplex 'cuComplex'
+    ctypedef void* cuDoubleComplex 'cuDoubleComplex'
+    
 ###############################################################################
 # Enum
 ###############################################################################

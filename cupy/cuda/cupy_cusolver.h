@@ -185,6 +185,22 @@ cusolverStatus_t cusolverDnDsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnCheevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZheevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCheevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZheevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverSpCreate(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }

@@ -124,12 +124,24 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnDsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const double* A,
         int lda, const double* W, int* lwork)
+    int cusolverDnCheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n, const cuComplex* A,
+        int lda, const float* W, int* lwork)
+    int cusolverDnZheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n, const cuDoubleComplex* A,
+        int lda, const double* W, int* lwork)
     int cusolverDnSsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, float* A, int lda,
         float* W, float* work, int lwork, int* info)
     int cusolverDnDsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
+    int cusolverDnCheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuComplex* A, int lda,
+        float* W, cuComplex* work, int lwork, int* info)
+    int cusolverDnZheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuDoubleComplex* A, int lda,
+        double* W, cuDoubleComplex* work, int lwork, int* info)
 
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
@@ -551,6 +563,28 @@ cpdef int dsyevd_bufferSize(size_t handle, int jobz, int uplo, int n,
     check_status(status)
     return lwork
 
+cpdef int cheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const cuComplex*>A,
+            lda, <const float*>W, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const cuDoubleComplex*>A,
+            lda, <const double*>W, &lwork)
+    check_status(status)
+    return lwork
+
 cpdef ssyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
              size_t W, size_t work, int lwork, size_t info):
     cdef int status
@@ -571,6 +605,26 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
             <double*>W, <double*>work, lwork, <int*>info)
     check_status(status)
 
+cpdef cheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <cuComplex*>A, lda,
+            <float*>W, <cuComplex*>work, lwork, <int*>info)
+    check_status(status)
+
+cpdef zheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <cuDoubleComplex*>A, lda,
+            <double*>W, <cuDoubleComplex*>work, lwork, <int*>info)
+    check_status(status)
+    
 ###############################################################################
 # sparse LAPACK Functions
 ###############################################################################
