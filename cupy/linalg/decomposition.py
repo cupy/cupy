@@ -209,17 +209,14 @@ def svd(a, full_matrices=True, compute_uv=True):
     util._assert_rank2(a)
 
     # Cast to float32 or float64
-    dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
-    if a.dtype.char == 'f':
-        a_dtype = 'f'
+    a_dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+    if a_dtype == 'f':
         s_dtype = 'f'
-    elif a.dtype.char == 'd':
-        a_dtype = 'd'
+    elif a_dtype == 'd':
         s_dtype = 'd'
-    elif a.dtype.char == 'F':
-        a_dtype = 'F'
+    elif a_dtype == 'F':
         s_dtype = 'f'
-    else: #a.dtype.char == 'D':
+    else:  # a_dtype == 'D':
         a_dtype = 'D'
         s_dtype = 'd'
 
@@ -277,7 +274,7 @@ def svd(a, full_matrices=True, compute_uv=True):
             handle, job, job, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    else: #a_dtype == 'D':
+    else:  # a_dtype == 'D':
         buffersize = cusolver.zgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=a_dtype)
         cusolver.zgesvd(
