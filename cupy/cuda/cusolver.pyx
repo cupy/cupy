@@ -122,12 +122,13 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          double* VT, int ldvt, double* Work, int lwork,
                          double* rwork, int* devInfo)
     int cusolverDnCgesvd(Handle handle, char jobu, char jobvt, int m, int n,
-                         cuComplex* A, int lda, float* S, cuComplex* U, int ldu,
-                         cuComplex* VT, int ldvt, cuComplex* Work, int lwork,
-                         float* rwork, int* devInfo)
+                         cuComplex* A, int lda, float* S, cuComplex* U,
+                         int ldu, cuComplex* VT, int ldvt, cuComplex* Work,
+                         int lwork, float* rwork, int* devInfo)
     int cusolverDnZgesvd(Handle handle, char jobu, char jobvt, int m, int n,
-                         cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu,
-                         cuDoubleComplex* VT, int ldvt, cuDoubleComplex* Work, int lwork,
+                         cuDoubleComplex* A, int lda, double* S,
+                         cuDoubleComplex* U, int ldu, cuDoubleComplex* VT,
+                         int ldvt, cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
     int cusolverDnSsyevd_bufferSize(
@@ -140,7 +141,8 @@ cdef extern from 'cupy_cusolver.h' nogil:
         Handle handle, EigMode jobz, FillMode uplo, int n, const cuComplex* A,
         int lda, const float* W, int* lwork)
     int cusolverDnZheevd_bufferSize(
-        Handle handle, EigMode jobz, FillMode uplo, int n, const cuDoubleComplex* A,
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuDoubleComplex* A,
         int lda, const double* W, int* lwork)
     int cusolverDnSsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, float* A, int lda,
@@ -149,11 +151,11 @@ cdef extern from 'cupy_cusolver.h' nogil:
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
     int cusolverDnCheevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n, cuComplex* A, int lda,
-        float* W, cuComplex* work, int lwork, int* info)
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuComplex* A,
+        int lda, float* W, cuComplex* work, int lwork, int* info)
     int cusolverDnZheevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n, cuDoubleComplex* A, int lda,
-        double* W, cuDoubleComplex* work, int lwork, int* info)
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuDoubleComplex* A,
+        int lda, double* W, cuDoubleComplex* work, int lwork, int* info)
 
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,

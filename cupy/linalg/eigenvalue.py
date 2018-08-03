@@ -74,7 +74,8 @@ def _syevd(a, UPLO, with_eigen_vector):
         buffer_size = cupy.cuda.cusolver.zheevd_bufferSize
         syevd = cupy.cuda.cusolver.zheevd
     else:
-        raise RuntimeError('Only float and double and cuComplex and cuDoubleComplex are supported')
+        raise RuntimeError('Only float and double and cuComplex and ' \
+            +'cuDoubleComplex are supported')
 
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
