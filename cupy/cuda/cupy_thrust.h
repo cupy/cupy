@@ -29,11 +29,21 @@ namespace cupy {
 
 namespace thrust {
 
-template <typename T> void _sort(...) { return; }
+template <typename T>
+void _sort(void *, size_t *, const std::vector<ptrdiff_t>&, size_t, void *) {
+    return;
+}
 
-template <typename T> void _lexsort(...) { return; }
+template <typename T>
+void _lexsort(size_t *, void *, size_t, size_t, size_t, void *) {
+    return;
+}
 
-template <typename T> void _argsort(...) { return; }
+template <typename T>
+void _argsort(size_t *, void *, void *, const std::vector<ptrdiff_t>&, size_t,
+              void *) {
+    return;
+}
 
 } // namespace thrust
 
