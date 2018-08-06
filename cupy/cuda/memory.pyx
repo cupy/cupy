@@ -1015,7 +1015,7 @@ cdef class MemoryPool(object):
         mp.free_all_blocks(stream=stream)
 
     cpdef free_all_free(self):
-        """Release free blocks."""
+        """(Deprecated) Use :meth:`free_all_blocks` instead."""
         warnings.warn(
             'free_all_free is deprecated. Use free_all_blocks instead.',
             DeprecationWarning)
