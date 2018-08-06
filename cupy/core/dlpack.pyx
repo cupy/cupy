@@ -1,5 +1,4 @@
 cimport cpython  # NOQA
-from cpython cimport pycapsule
 
 from libc cimport stdlib
 from libc.stdint cimport uint8_t
