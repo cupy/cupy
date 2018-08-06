@@ -6,3 +6,4 @@ NumPy-CuPy Generic Code Support
    :nosignatures:
 
    cupy.get_array_module
+   cupyx.scipy.get_array_module
