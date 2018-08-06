@@ -43,7 +43,7 @@ cpdef inline tuple get_size(object size):
         return tuple(size)
     if isinstance(size, int):
         return size,
-    raise ValueError('size should be None, collections.Sequence, or int')
+    raise ValueError('size should be None, collections.abc.Sequence, or int')
 
 
 @cython.profile(False)
