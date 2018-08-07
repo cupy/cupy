@@ -135,7 +135,8 @@ cpdef tuple _get_out_shape(
     return tuple([shape[i] for i in out_axis])
 
 
-cpdef tuple _get_permuted_args(list args, tuple axis_permutes, tuple shape, tuple params):
+cpdef tuple _get_permuted_args(
+        list args, tuple axis_permutes, tuple shape, tuple params):
     cdef ParameterInfo p
     if axis_permutes == tuple(range(len(shape))):
         return args, shape
@@ -210,7 +211,8 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size, out_block_num
+        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -243,7 +245,8 @@ class simple_reduction_function(object):
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(1, internal.clp2(in_indexer.size // out_indexer.size))
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
         out_block_size = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
@@ -259,7 +262,8 @@ class simple_reduction_function(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
-        out_block_num = (out_indexer.size + out_block_size - 1) // out_block_size
+        out_block_num = (
+            out_indexer.size + out_block_size - 1) // out_block_size
 
         kern.linear_launch(
             out_block_num * block_size,
@@ -372,7 +376,8 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size, out_block_num
+        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -413,7 +418,8 @@ class ReductionKernel(object):
             in_ndarray_types, out_ndarray_types)
 
         reduce_axis, out_axis = _get_axis(axis, len(broad_shape))
-        out_shape = _get_out_shape(broad_shape, reduce_axis, out_axis, keepdims)
+        out_shape = _get_out_shape(
+            broad_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
         ret = out_args[0]
@@ -429,7 +435,8 @@ class ReductionKernel(object):
         block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(1, internal.clp2(in_indexer.size // out_indexer.size))
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
         out_block_size = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
@@ -445,7 +452,8 @@ class ReductionKernel(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
-        out_block_num = (out_indexer.size + out_block_size - 1) // out_block_size
+        out_block_num = (
+            out_indexer.size + out_block_size - 1) // out_block_size
 
         kern.linear_launch(
             out_block_num * block_size,
