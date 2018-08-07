@@ -56,12 +56,12 @@ cpdef list _preprocess_args(args, bint use_c_scalar=False):
     for arg in args:
         typ = type(arg)
         if typ is ndarray:
-            arr_dev = (<ndarray?>arg).data.device
-            if arr_dev is not None and arr_dev.id != dev_id:
+            arr_dev_id = (<ndarray?>arg).data.device_id
+            if arr_dev_id != dev_id:
                 raise ValueError(
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
-                    % (arr_dev.id, dev_id))
+                    % (arr_dev_id, dev_id))
         else:
             arg = _scalar.convert_scalar(arg, use_c_scalar)
             if arg is None:

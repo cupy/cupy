@@ -108,8 +108,8 @@ class TestFromData(unittest.TestCase):
             y = cupy.array(x)
         self.assertIsInstance(y, cupy.ndarray)
         self.assertIsNot(x, y)  # Do copy
-        self.assertIsNone(x.device)
-        self.assertIsNone(y.device)
+        assert x.device.id == 0
+        assert y.device.id == 1
         testing.assert_array_equal(x, y)
 
     @testing.for_all_dtypes()

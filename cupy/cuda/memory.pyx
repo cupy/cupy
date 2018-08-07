@@ -55,10 +55,9 @@ cdef class Memory:
 
     def __init__(self, Py_ssize_t size):
         self.size = size
-        self.device = None
+        self.device_id = device.get_device_id()
         self.ptr = 0
         if size > 0:
-            self.device = device.Device()
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
@@ -68,6 +67,10 @@ cdef class Memory:
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr
+
+    @property
+    def device(self):
+        return device.Device(self.device_id)
 
 
 cdef class ManagedMemory(Memory):
@@ -83,10 +86,9 @@ cdef class ManagedMemory(Memory):
 
     def __init__(self, Py_ssize_t size):
         self.size = size
-        self.device = None
+        self.device_id = device.get_device_id()
         self.ptr = 0
         if size > 0:
-            self.device = device.Device()
             self.ptr = runtime.mallocManaged(size)
 
     def prefetch(self, stream):
@@ -95,7 +97,7 @@ cdef class ManagedMemory(Memory):
         Args:
             stream (cupy.cuda.Stream): CUDA stream.
         """
-        runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
                                  stream.ptr)
 
     def advise(self, int advise, device_mod.Device device):
@@ -145,8 +147,7 @@ cdef class _Chunk:
         stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
 
     Attributes:
-        device (~cupy.cuda.Device): Device whose memory the pointer refers to.
-        mem (~cupy.cuda.Memory): The device memory buffer.
+        mem (Memory): The device memory buffer.
         ptr (size_t): Memory address.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
@@ -174,7 +175,6 @@ cdef class _Chunk:
                Py_ssize_t size, Py_ssize_t stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
-        self.device = mem.device
         self.ptr = mem.ptr + offset
         self.offset = offset
         self.size = size
@@ -227,13 +227,17 @@ cdef class MemoryPointer:
 
     def __init__(self, Memory mem, Py_ssize_t offset):
         assert mem.ptr > 0 or offset == 0
-        self.mem = mem
-        self.device = mem.device
         self.ptr = mem.ptr + offset
+        self.device_id = mem.device_id
+        self.mem = mem
 
     def __int__(self):
         """Returns the pointer value."""
         return self.ptr
+
+    @property
+    def device(self):
+        return device.Device(self.device_id)
 
     def __add__(x, y):
         """Adds an offset to the pointer."""
@@ -272,7 +276,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            _set_peer_access(src.device.id, self.device.id)
+            _set_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -292,7 +296,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            _set_peer_access(src.device.id, self.device.id)
+            _set_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -504,9 +508,9 @@ cdef class PooledMemory(Memory):
         readonly object pool
 
     def __init__(self, _Chunk chunk, pool):
-        self.device = chunk.device
         self.ptr = chunk.ptr
         self.size = chunk.size
+        self.device_id = chunk.mem.device_id
         self.pool = pool
 
     cpdef free(self):
@@ -530,7 +534,7 @@ cdef class PooledMemory(Memory):
         hooks = memory_hook.get_memory_hooks()
         size = self.size
         if hooks:
-            device_id = self.device.id
+            device_id = self.device_id
             pmem_id = id(self)
             hooks_values = hooks.values()  # avoid six for performance
             for hook in hooks_values:
