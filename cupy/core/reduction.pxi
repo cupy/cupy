@@ -121,19 +121,19 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     for dim in axis:
         if dim < -ndim or dim >= ndim:
             raise ValueError('Axis overrun')
-    axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in range(ndim) if dim not in axis])
-    return axis, raxis
+    reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
+    out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
+    return reduce_axis, out_axis
 
 
 cpdef tuple _get_out_shape(
-        tuple shape, tuple axis, tuple raxis, bint keepdims):
+        tuple shape, tuple reduce_axis, tuple out_axis, bint keepdims):
     if keepdims:
         out_shape = list(shape)
-        for i in axis:
+        for i in reduce_axis:
             out_shape[i] = 1
         return tuple(out_shape)
-    return tuple([shape[i] for i in raxis])
+    return tuple([shape[i] for i in out_axis])
 
 
 cpdef tuple _get_permuted_args(list args, tuple axis_permutes, tuple shape, tuple params):
@@ -210,7 +210,7 @@ class simple_reduction_function(object):
     def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
         cdef list in_args, out_args
-        cdef tuple in_sahpe, laxis, raxis
+        cdef tuple in_sahpe, reduce_axis, out_axis
         cdef Py_ssize_t block_size, reduce_block_size, out_block_size, out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -227,9 +227,9 @@ class simple_reduction_function(object):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        laxis, raxis = _get_axis(axis, a._shape.size())
+        reduce_axis, out_axis = _get_axis(axis, a._shape.size())
         del axis  # to avoid bug
-        out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
+        out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
         ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
         if (<ndarray>out_args[0]).size == 0:
@@ -239,7 +239,7 @@ class simple_reduction_function(object):
                               ' %s which has no identity') % self.name)
 
         in_args, in_shape = _get_permuted_args(
-            in_args, laxis + raxis, a_shape, None)
+            in_args, reduce_axis + out_axis, a_shape, None)
 
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
@@ -413,8 +413,8 @@ class ReductionKernel(object):
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
-        axis, raxis = _get_axis(axis, len(broad_shape))
-        out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
+        reduce_axis, out_axis = _get_axis(axis, len(broad_shape))
+        out_shape = _get_out_shape(broad_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
         ret = out_args[0]
@@ -425,7 +425,7 @@ class ReductionKernel(object):
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
         in_args, in_shape = _get_permuted_args(
-            in_args, axis + raxis, broad_shape, self.in_params)
+            in_args, reduce_axis + out_axis, broad_shape, self.in_params)
 
         block_size = 512
         in_indexer = Indexer(in_shape)
