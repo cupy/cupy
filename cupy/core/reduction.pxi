@@ -31,47 +31,46 @@ cpdef _get_simple_reduction_kernel(
       _type_reduce *_sdata = _sdata_raw;
       unsigned int _tid = threadIdx.x;
 
-      int _J_offset = _tid / _block_stride;
-      int _j_offset = _J_offset * _out_ind.size();
-      int _J_stride = ${block_size} / _block_stride;
-      long long _j_stride = (long long)_J_stride * _out_ind.size();
+      int _reduce_block_offset = _tid / _out_block_size;
+      int _reduce_offset = _reduce_block_offset * _out_ind.size();
+      int _reduce_block_size = ${block_size} / _out_block_size;
+      long long _reduce_stride = (long long)_reduce_block_size * _out_ind.size();
 
-      for (int _i_base = blockIdx.x * _block_stride;
-           _i_base < _out_ind.size();
-           _i_base += gridDim.x * _block_stride) {
+      for (int _i_out_base = blockIdx.x * _out_block_size;
+           _i_out_base < _out_ind.size();
+           _i_out_base += gridDim.x * _out_block_size) {
         _type_reduce _s = _type_reduce(${identity});
-        int _i = _i_base + _tid % _block_stride;
-        int _J = _J_offset;
-        for (long long _j = _i + _j_offset; _j < _in_ind.size();
-             _j += _j_stride, _J += _J_stride) {
-          _in_ind.set(_j);
+        int _i_out = _i_out_base + _tid % _out_block_size;
+        for (long long _i_in = _i_out + _reduce_offset; _i_in < _in_ind.size();
+             _i_in += _reduce_stride) {
+          _in_ind.set(_i_in);
           ${input_expr}
           _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
           _s = REDUCE(_s, _a);
         }
-        if (_block_stride < ${block_size}) {
+        if (_out_block_size < ${block_size}) {
           _sdata[_tid] = _s;
           __syncthreads();
-          if (_block_stride <= 256) {
+          if (_out_block_size <= 256) {
             _REDUCE(256);
             __syncthreads();
-            if (_block_stride <= 128) {
+            if (_out_block_size <= 128) {
               _REDUCE(128);
               __syncthreads();
-              if (_block_stride <= 64) {
+              if (_out_block_size <= 64) {
                 _REDUCE(64);
                 __syncthreads();
-                if (_block_stride <= 32) {
+                if (_out_block_size <= 32) {
                   _REDUCE(32);
-                  if (_block_stride <= 16) {
+                  if (_out_block_size <= 16) {
                     _REDUCE(16);
-                    if (_block_stride <= 8) {
+                    if (_out_block_size <= 8) {
                       _REDUCE(8);
-                      if (_block_stride <= 4) {
+                      if (_out_block_size <= 4) {
                         _REDUCE(4);
-                        if (_block_stride <= 2) {
+                        if (_out_block_size <= 2) {
                           _REDUCE(2);
-                          if (_block_stride <= 1) {
+                          if (_out_block_size <= 1) {
                             _REDUCE(1);
                           }
                         }
@@ -85,8 +84,8 @@ cpdef _get_simple_reduction_kernel(
           _s = _sdata[_tid];
           __syncthreads();
         }
-        if (_J_offset == 0 && _i < _out_ind.size()) {
-          _out_ind.set(_i);
+        if (_reduce_block_offset == 0 && _i_out < _out_ind.size()) {
+          _out_ind.set(_i_out);
           ${output_expr}
           POST_MAP(_s);
         }
@@ -200,7 +199,7 @@ class simple_reduction_function(object):
         self._params = (
             in_params + out_params +
             _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _block_stride', True))
+            _get_param_info('int32 _out_block_size', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
@@ -209,7 +208,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
-        cdef Py_ssize_t block_size, clp2_count, block_stride
+        cdef Py_ssize_t block_size, clp2_count, out_block_size
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -243,10 +242,10 @@ class simple_reduction_function(object):
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // clp2_count)
+        out_block_size = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, block_stride,
+            in_args, out_args, in_indexer, out_indexer, out_block_size,
             self._params, True)
         args_info = _get_args_info(inout_args)
 
@@ -260,7 +259,7 @@ class simple_reduction_function(object):
         shared_mem = 32 * block_size
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            (out_indexer.size + out_block_size - 1) // out_block_size * block_size,
             inout_args, shared_mem, block_size)
 
         return ret
@@ -278,10 +277,10 @@ def _get_reduction_kernel(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
-        ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
+        ['const {0} {1} = _raw_{1}[_i_in];'.format(p.ctype, p.name)
          for p in arrays if p.is_const])
     output_expr = '\n'.join(
-        ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
+        ['{0} &{1} = _raw_{1}[_i_out];'.format(p.ctype, p.name)
          for p in arrays if not p.is_const])
 
     return _get_simple_reduction_kernel(
@@ -337,7 +336,7 @@ class ReductionKernel(object):
         self.params = (
             self.in_params + self.out_params +
             _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _block_stride', True))
+            _get_param_info('int32 _out_block_size', True))
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -371,7 +370,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, clp2_count, block_stride
+        cdef Py_ssize_t block_size, clp2_count, out_block_size
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -429,10 +428,10 @@ class ReductionKernel(object):
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // clp2_count)
+        out_block_size = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, block_stride,
+            in_args, out_args, in_indexer, out_indexer, out_block_size,
             self.params, self.reduce_dims)
         args_info = _get_args_info(inout_args)
 
@@ -446,7 +445,7 @@ class ReductionKernel(object):
         shared_mem = 32 * block_size
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            (out_indexer.size + out_block_size - 1) // out_block_size * block_size,
             inout_args, shared_mem, block_size, stream)
         return ret
 
