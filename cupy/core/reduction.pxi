@@ -134,17 +134,18 @@ cpdef tuple _get_out_shape(
     return tuple([shape[i] for i in raxis])
 
 
-cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+cpdef tuple _get_permuted_args(list args, tuple axis_permutes, tuple shape, tuple params):
     cdef ParameterInfo p
-    if trans == tuple(range(len(shape))):
+    if axis_permutes == tuple(range(len(shape))):
         return args, shape
     if params is not None:
         for p in params:
             if p.raw:
                 raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(trans) if isinstance(a, ndarray) else a
+    args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
             for a in args]
-    shape = tuple([shape[i] for i in trans])
+    shape = tuple([shape[i] for i in axis_permutes])
+
     return args, shape
 
 
@@ -235,7 +236,7 @@ class simple_reduction_function(object):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args, in_shape = _get_trans_args(
+        in_args, in_shape = _get_permuted_args(
             in_args, laxis + raxis, a_shape, None)
 
         block_size = self._block_size
@@ -421,7 +422,7 @@ class ReductionKernel(object):
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_args, in_shape = _get_trans_args(
+        in_args, in_shape = _get_permuted_args(
             in_args, axis + raxis, broad_shape, self.in_params)
 
         block_size = 512
