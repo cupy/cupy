@@ -210,7 +210,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, laxis, raxis
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t block_size, reduce_block_size, out_block_size, out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -259,11 +259,11 @@ class simple_reduction_function(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
+        out_block_num = (out_indexer.size + out_block_size - 1) // out_block_size
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            out_block_num * block_size,
             inout_args, shared_mem, block_size)
-
         return ret
 
 
@@ -372,7 +372,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t block_size, reduce_block_size, out_block_size, out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -445,9 +445,10 @@ class ReductionKernel(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
+        out_block_num = (out_indexer.size + out_block_size - 1) // out_block_size
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            out_block_num * block_size,
             inout_args, shared_mem, block_size, stream)
         return ret
 
