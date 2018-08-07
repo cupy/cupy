@@ -36,13 +36,15 @@ cpdef _get_simple_reduction_kernel(
       int _reduce_block_size = ${block_size} / _out_block_size;
       long long _reduce_stride = (long long)_reduce_block_size * _out_ind.size();
 
+      int _out_offset = _tid % _out_block_size;
+      int _out_stride = gridDim.x * _out_block_size;
+
       for (int _i_out_base = blockIdx.x * _out_block_size;
-           _i_out_base < _out_ind.size();
-           _i_out_base += gridDim.x * _out_block_size) {
+           _i_out_base < _out_ind.size(); _i_out_base += _out_stride) {
         _type_reduce _s = _type_reduce(${identity});
-        int _i_out = _i_out_base + _tid % _out_block_size;
-        for (long long _i_in = _i_out + _reduce_offset; _i_in < _in_ind.size();
-             _i_in += _reduce_stride) {
+        int _i_out = _i_out_base + _out_offset;
+        for (long long _i_in = _i_out + _reduce_offset;
+             _i_in < _in_ind.size(); _i_in += _reduce_stride) {
           _in_ind.set(_i_in);
           ${input_expr}
           _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
