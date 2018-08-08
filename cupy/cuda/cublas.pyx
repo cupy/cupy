@@ -180,6 +180,14 @@ cdef extern from 'cupy_cuda.h' nogil:
         Handle handle, SideMode size, FillMode uplo, Operation trans,
         DiagType diag, int m, int n, const double* alpha, const double* A,
         int lda, double* B, int ldb)
+    int cublasCtrsm(
+        Handle handle, SideMode size, FillMode uplo, Operation trans,
+        DiagType diag, int m, int n, const cuComplex* alpha, const cuComplex* A,
+        int lda, cuComplex* B, int ldb)
+    int cublasZtrsm(
+        Handle handle, SideMode size, FillMode uplo, Operation trans,
+        DiagType diag, int m, int n, const cuDoubleComplex* alpha, const cuDoubleComplex* A,
+        int lda, cuDoubleComplex* B, int ldb)
 
     # BLAS extension
     int cublasSgeam(
@@ -204,9 +212,30 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
+    int cublasDgetrfBatched(
+        Handle handle, int n, double **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
+    int cublasCgetrfBatched(
+        Handle handle, int n, cuComplex **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
+    int cublasZgetrfBatched(
+        Handle handle, int n, cuDoubleComplex **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
     int cublasSgetriBatched(
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
+        int batchSize)
+    int cublasDgetriBatched(
+        Handle handle, int n, const double **Aarray, int lda,
+        int *PivotArray, double *Carray[], int ldc, int *infoArray,
+        int batchSize)
+    int cublasCgetriBatched(
+        Handle handle, int n, const cuComplex **Aarray, int lda,
+        int *PivotArray, cuComplex *Carray[], int ldc, int *infoArray,
+        int batchSize)
+    int cublasZgetriBatched(
+        Handle handle, int n, const cuDoubleComplex **Aarray, int lda,
+        int *PivotArray, cuDoubleComplex *Carray[], int ldc, int *infoArray,
         int batchSize)
     int cublasGemmEx(
         Handle handle, Operation transa, Operation transb,
@@ -818,6 +847,32 @@ cpdef dtrsm(
             <double*>Barray, ldb)
     check_status(status)
 
+cpdef ctrsm(
+        size_t handle, int side, int uplo, int trans, int diag,
+        int m, int n, float complex alpha, size_t Aarray, int lda,
+        size_t Barray, int ldb):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    cdef cuComplex a = get_cu_complex(alpha)
+    with nogil:
+        status = cublasCtrsm(
+            <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
+            <DiagType>diag, m, n, &a, <const cuComplex*>Aarray, lda,
+            <cuComplex*>Barray, ldb)
+    check_status(status)
+
+
+cpdef ztrsm(
+        size_t handle, int side, int uplo, int trans, int diag,
+        int m, int n, double complex alpha, size_t Aarray, int lda,
+        size_t Barray, int ldb):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+    with nogil:
+        status = cublasZtrsm(
+            <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
+            <DiagType>diag, m, n, &a, <const cuDoubleComplex*>Aarray, lda,
+            <cuDoubleComplex*>Barray, ldb)
+    check_status(status)
 
 ###############################################################################
 # BLAS extension
@@ -882,6 +937,36 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
+cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetrfBatched(
+            <Handle>handle, n, <double**>Aarray, lda, <int*>PivotArray,
+            <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef cgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasCgetrfBatched(
+            <Handle>handle, n, <cuComplex**>Aarray, lda, <int*>PivotArray,
+            <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef zgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasZgetrfBatched(
+            <Handle>handle, n, <cuDoubleComplex**>Aarray, lda, <int*>PivotArray,
+            <int*>infoArray, batchSize)
+    check_status(status)
+
+
 cpdef sgetriBatched(
         size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
@@ -890,6 +975,39 @@ cpdef sgetriBatched(
         status = cublasSgetriBatched(
             <Handle>handle, n, <const float**>Aarray, lda, <int*>PivotArray,
             <float**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef dgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetriBatched(
+            <Handle>handle, n, <const double**>Aarray, lda, <int*>PivotArray,
+            <double**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef cgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasCgetriBatched(
+            <Handle>handle, n, <const cuComplex**>Aarray, lda, <int*>PivotArray,
+            <cuComplex**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef zgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasZgetriBatched(
+            <Handle>handle, n, <const cuDoubleComplex**>Aarray, lda, <int*>PivotArray,
+            <cuDoubleComplex**>Carray, ldc, <int*>infoArray, batchSize)
     check_status(status)
 
 
