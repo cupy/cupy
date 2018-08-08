@@ -426,6 +426,7 @@ from cupy.linalg.norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
+from cupy.logic.comparison import allclose  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.core.fusion import isfinite  # NOQA
