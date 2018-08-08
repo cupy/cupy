@@ -18,8 +18,7 @@ _is_close = core.create_ufunc(
 
 
 def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
-    """
-    Returns True if two arrays are element-wise equal within a tolerance.
+    """Returns True if two arrays are element-wise equal within a tolerance.
 
     Two values in ``a`` and ``b`` are  considiered equal when the following
     equation is satisfied.
