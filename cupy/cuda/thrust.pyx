@@ -27,7 +27,7 @@ cdef class _MemoryManager:
 cdef public char* cupy_malloc(void *m, ptrdiff_t size) with gil:
     if size == 0:
         return <char *>0
-    cdef _MemoryManager mm= <_MemoryManager>m
+    cdef _MemoryManager mm = <_MemoryManager>m
     mem = memory.alloc(size)
     mm.memory[mem.ptr] = mem
     return <char *>mem.ptr
