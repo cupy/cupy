@@ -2203,7 +2203,8 @@ cdef _round_float = '''
 if (in1 == 0) {
     out0 = round(in0);
 } else {
-    double x = pow10<double>(abs(in1));
+    double x;
+    x = pow10<double>(abs(in1));  // This is placed outside loop by compiler.
     out0 = in1 < 0 ? round(in0 / x) * x : round(in0 * x) / x;
 }'''
 
@@ -2212,7 +2213,7 @@ double x, inv_x;
 if (in1 == 0) {
     x = inv_x = 1;
 } else {
-    x = pow10<double>(abs(in1));
+    x = pow10<double>(abs(in1));  // This is placed outside loop by compiler.
     inv_x = 1.0 / x;
     if (in1 < 0) {
         double y = x;
