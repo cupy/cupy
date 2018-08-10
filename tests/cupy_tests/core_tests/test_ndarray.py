@@ -150,7 +150,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
-        view = arr[::2,::5]
+        view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
         self.assertEqual(set(iface.keys()),
                          set(['shape', 'typestr', 'data', 'version',
