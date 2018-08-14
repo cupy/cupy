@@ -35,8 +35,6 @@ def histogram(x, bins=10):
             min_value -= 0.5
             max_value += 0.5
         bin_type = cupy.result_type(min_value, max_value, x)
-        if cupy.issubdtype(bin_type, cupy.integer):
-            bin_type = cupy.result_Type(bin_type, float)
         bins = cupy.linspace(min_value, max_value, bins + 1, dtype=bin_type)
     elif isinstance(bins, cupy.ndarray):
         if cupy.any(bins[:-1] > bins[1:]):
