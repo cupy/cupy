@@ -1078,7 +1078,9 @@ cdef class ndarray:
             count_nonzero = 0
         else:
             r = self.ravel()
-            scan_index = scan(not_equal(r, 0, ndarray(r.shape, dtype)))
+            nonzero = not_equal(r, 0, ndarray(r.shape, dtype))
+            del r
+            scan_index = scan(nonzero)
             count_nonzero = int(scan_index[-1])
         ndim = max(self._shape.size(), 1)
         if count_nonzero == 0:
@@ -1086,13 +1088,13 @@ cdef class ndarray:
 
         if ndim <= 1:
             dst = ndarray((count_nonzero,), dtype=dtype)
-            _nonzero_kernel_1d(r, scan_index, dst)
+            _nonzero_kernel_1d(nonzero, scan_index, dst)
             return dst,
         else:
-            del r
+            nonzero.shape = self.shape
             scan_index.shape = self.shape
             dst = ndarray((ndim, count_nonzero), dtype=dtype)
-            _nonzero_kernel(self, scan_index, dst)
+            _nonzero_kernel(nonzero, scan_index, dst)
             return tuple([dst[i] for i in range(ndim)])
 
     # TODO(okuta): Implement compress
