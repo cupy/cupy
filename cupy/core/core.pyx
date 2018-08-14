@@ -3382,7 +3382,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise ValueError('axis1(={0}) and axis2(={1}) must be within range '
+        raise _AxisError('axis1(={0}) and axis2(={1}) must be within range '
                          '(ndim={2})'.format(axis1, axis2, ndim))
 
     axis1 %= ndim
