@@ -828,7 +828,7 @@ def fuse(*args, **kwargs):
 class ufunc(core.ufunc):
     # Args:
     #   fusion_op (cupy.ufunc)
-    #   cupy_op (cupyu.ufunc or function or None)
+    #   cupy_op (cupy.ufunc or function or None)
 
     def __init__(self, fusion_op, cupy_op=None):
         if cupy_op is None:
