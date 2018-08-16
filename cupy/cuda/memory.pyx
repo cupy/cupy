@@ -1,5 +1,5 @@
 # distutils: language = c++
-cimport cython
+cimport cython  # NOQA
 
 import atexit
 import collections

@@ -1,4 +1,4 @@
-cimport cython
+cimport cython  # NOQA
 
 from libcpp cimport vector
 from libcpp cimport map
