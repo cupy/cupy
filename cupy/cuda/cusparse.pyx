@@ -1,7 +1,7 @@
-cimport cython
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
-from cupy.cuda cimport stream as stream_module
+from cupy.cuda cimport stream as stream_module  # NOQA
 
 cdef extern from "cupy_cusparse.h":
 

@@ -9,9 +9,9 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-cimport cpython
+cimport cpython  # NOQA
 from cpython cimport pythread
-cimport cython
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 

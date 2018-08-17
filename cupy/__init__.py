@@ -602,7 +602,7 @@ from cupy.core import ReductionKernel  # NOQA
 # New CuPy specific routines should reside in cupyx package.
 from cupy.ext.scatter import scatter_add  # NOQA
 
-import cupyx
+import cupyx  # NOQA
 
 
 def asnumpy(a, stream=None):
