@@ -44,8 +44,10 @@ cpdef _get_simple_reduction_kernel(
            _i_out_base < _out_ind.size(); _i_out_base += _out_stride) {
         _type_reduce _s = _type_reduce(${identity});
         int _i_out = _i_out_base + _out_offset;
+        int _i_reduce = _reduce_block_offset;
         for (long long _i_in = _i_out + _reduce_offset;
-             _i_in < _in_ind.size(); _i_in += _reduce_stride) {
+             _i_in < _in_ind.size();
+             _i_in += _reduce_stride, _i_reduce += _reduce_block_size) {
           _in_ind.set(_i_in);
           ${input_expr}
           _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
