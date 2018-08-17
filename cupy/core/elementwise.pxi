@@ -566,7 +566,8 @@ cdef class ElementwiseKernel:
 
 @util.memoize(for_each_device=True)
 def _get_ufunc_kernel(
-        in_types, out_types, routine, args_info, params, name, preamble):
+        in_types, out_types, routine, args_info, params, name, preamble,
+        loop_prep):
     kernel_params = _get_kernel_params(params, args_info)
 
     types = []
@@ -590,7 +591,7 @@ def _get_ufunc_kernel(
     preamble = '\n'.join(types)
 
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble)
+        kernel_params, operation, name, preamble, loop_prep=loop_prep)
 
 
 cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
@@ -678,7 +679,7 @@ class ufunc(object):
 
     """
 
-    def __init__(self, name, nin, nout, ops, preamble='', doc='',
+    def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
         self.name = name
         self.nin = nin
@@ -686,6 +687,7 @@ class ufunc(object):
         self.nargs = nin + nout
         self._ops = ops
         self._preamble = preamble
+        self._loop_prep = loop_prep
         self.__doc__ = doc
         if default_casting is None:
             self._default_casting = 'same_kind'
@@ -793,14 +795,14 @@ class ufunc(object):
 
         kern = _get_ufunc_kernel(
             in_types, out_types, routine, args_info,
-            self._params, self.name, self._preamble)
+            self._params, self.name, self._preamble, self._loop_prep)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None):
+                   default_casting=None, loop_prep=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -818,6 +820,6 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
-    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc,
-                default_casting=default_casting)
+    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
+                loop_prep, doc, default_casting=default_casting)
     return ret
