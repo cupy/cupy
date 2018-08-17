@@ -11,7 +11,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-cimport cython
+cimport cython  # NOQA
 from libcpp cimport vector
 
 

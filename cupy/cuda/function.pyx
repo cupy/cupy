@@ -3,7 +3,7 @@
 import numpy
 import six
 
-cimport cpython
+cimport cpython  # NOQA
 from libcpp cimport vector
 
 from cupy.cuda cimport driver

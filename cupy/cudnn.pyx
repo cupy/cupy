@@ -577,8 +577,8 @@ cpdef tuple _get_algorithm_bwd_filter(
             if ret[i]['memory'] <= max_workspace_size:
                 break
         else:
-            msg = 'No conv bwd filter algo available with workspace size less '\
-                  'equal {}'.format(max_workspace_size)
+            msg = 'No conv bwd filter algo available with workspace size '\
+                  'less equal {}'.format(max_workspace_size)
             raise RuntimeError(msg)
         if i != 0:
             msg = 'The best algo of conv bwd filter might not not selected '\

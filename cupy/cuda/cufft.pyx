@@ -1,4 +1,4 @@
-cimport cython
+cimport cython  # NOQA
 
 import cupy
 import numpy

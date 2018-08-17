@@ -2,7 +2,7 @@
 
 """Thin wrapper of cuDNN."""
 # NOTE: This wrapper does not cover all APIs of cuDNN v4.
-cimport cython
+cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy.cuda cimport driver

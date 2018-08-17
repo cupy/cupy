@@ -2,7 +2,7 @@
 
 """Thin wrapper of Thrust implementations for CuPy API."""
 
-cimport cython
+cimport cython  # NOQA
 import numpy
 from libcpp.vector cimport vector
 
