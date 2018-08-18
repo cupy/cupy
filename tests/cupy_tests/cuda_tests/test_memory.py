@@ -540,3 +540,15 @@ class TestAllocatorDefault(unittest.TestCase):
     def test_none(self):
         memory.set_allocator(None)
         self._check_pool_not_used()
+
+
+@testing.gpu
+class TestMemInfo(unittest.TestCase):
+
+    def test_mem_info(self):
+        d = cupy.cuda.Device()
+        mem_info = d.mem_info
+        assert isinstance(mem_info, tuple)
+        assert len(mem_info) == 2
+        assert all(isinstance(m, int) for m in mem_info)
+        assert all(m > 0 for m in mem_info)
