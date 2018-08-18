@@ -507,7 +507,7 @@ cdef class ndarray:
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes)
         else:
-            elementwise_copy(value, self, dtype=self.dtype)
+            fill_kernel(value, self)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
@@ -1956,6 +1956,8 @@ include "reduction.pxi"
 # =============================================================================
 
 cdef str _id = 'out0 = in0'
+
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
 
 elementwise_copy = create_ufunc(
     'cupy_copy',
