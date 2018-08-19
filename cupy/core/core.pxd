@@ -32,6 +32,11 @@ cdef class ndarray:
     cpdef ndarray take(self, indices, axis=*, out=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
+    cpdef sort(self, int axis=*)
+    cpdef ndarray argsort(self, axis=*)
+    cpdef partition(self, kth, int axis=*)
+    cpdef ndarray argpartition(self, kth, axis=*)
+    cpdef tuple nonzero(self)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
