@@ -10,6 +10,7 @@ from cupy import testing
 @testing.parameterize(
     *testing.product({
         'shape_pair': [
+            # dot test
             ((3, 2), (2, 4)),
             ((3, 0), (0, 4)),
             ((0, 2), (2, 4)),
@@ -20,6 +21,7 @@ from cupy import testing
             ((3, 0), (0,)),
             ((2,), (2,)),
             ((0,), (0,)),
+            # matmul test
             ((5, 3, 2), (5, 2, 4)),
             ((0, 3, 2), (0, 2, 4)),
             ((5, 3, 2), (2, 4)),
