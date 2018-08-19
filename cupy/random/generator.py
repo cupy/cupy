@@ -323,7 +323,7 @@ class RandomState(object):
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
 
-        self.rk_seed = numpy.uint32(seed)
+        self.rk_seed = numpy.uint64(seed)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
