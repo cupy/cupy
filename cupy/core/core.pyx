@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 from __future__ import division
+import string
 import sys
 
 import ctypes
@@ -8,8 +9,12 @@ import numpy
 import six
 
 import cupy
+from cupy.core._kernel import ElementwiseKernel
+from cupy.core._kernel import ReductionKernel
+from cupy.core._kernel import ufunc  # NOQA
 from cupy.core import flags
 from cupy.cuda import device
+
 
 try:
     from cupy.cuda import thrust
@@ -23,6 +28,8 @@ from libcpp cimport vector
 
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
+from cupy.core._kernel cimport create_reduction_func
+from cupy.core._kernel cimport create_ufunc
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core cimport dlpack
 from cupy.core cimport internal
@@ -1962,8 +1969,6 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
 
 
 include "carray.pxi"
-include "elementwise.pxi"
-include "reduction.pxi"
 
 
 # =============================================================================
@@ -2406,6 +2411,7 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
 cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
 
 
+@cython.final
 cdef class broadcast:
     """Object that performs broadcasting.
 
@@ -2424,12 +2430,6 @@ cdef class broadcast:
     .. seealso:: :class:`numpy.broadcast`
 
     """
-
-    cdef:
-        readonly tuple values
-        readonly tuple shape
-        readonly Py_ssize_t size
-        readonly Py_ssize_t nd
 
     def __init__(self, *arrays):
         cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh
