@@ -760,7 +760,7 @@ class Fusion(object):
         else:
             return self.func(*args, **kwargs)
 
-    def compile_with_dtypes(self, *dtypes):
+    def _compile_from_dtypes(self, *dtypes):
         assert _thread_local.history is None
         _thread_local.history = _FusionHistory()
         try:
@@ -784,7 +784,7 @@ class Fusion(object):
             return isinstance(a, (core.ndarray, numpy.generic))
         if builtins.all(is_cupy_data(_) for _ in args):
             dtypes = [_.dtype for _ in args]
-            return self.compile_with_dtypes(*dtypes)
+            return self._compile_from_dtypes(*dtypes)
         else:
             if builtins.any(type(_) is core.ndarray for _ in args):
                 types_str = '.'.join(repr(type(_)) for _ in args)
