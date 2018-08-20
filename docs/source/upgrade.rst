@@ -8,15 +8,6 @@ This is a list of changes introduced in each release that users should be aware 
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
 
-CuPy v5
-=======
-
-``cupyx.scipy`` Namespace
--------------------------
-
-:mod:`cupyx.scipy` namespace has been introduced to provide CUDA-enabled SciPy functions.
-:mod:`cupy.sparse` module has been renamed to :mod:`cupyx.scipy.sparse`; :mod:`cupy.sparse` will be kept as an alias for backward compatibility.
-
 CuPy v4
 =======
 
