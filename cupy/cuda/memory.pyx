@@ -529,29 +529,30 @@ cdef class PooledMemory(Memory):
         if pool is None:
             return
 
-        hooks = None
-        # to avoid error at exit
-        hooks = memory_hook.get_memory_hooks()
         size = self.size
-        if hooks:
-            device_id = self.device_id
-            pmem_id = id(self)
-            hooks_values = hooks.values()  # avoid six for performance
-            for hook in hooks_values:
-                hook.free_preprocess(device_id=device_id,
-                                     mem_size=size,
-                                     mem_ptr=ptr,
-                                     pmem_id=pmem_id)
-            try:
-                pool.free(ptr, size)
-            finally:
+        if memory_hook._has_memory_hooks():
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                device_id = self.device_id
+                pmem_id = id(self)
+
+                # avoid six for performance
+                hooks_values = hooks.values()
                 for hook in hooks_values:
-                    hook.free_postprocess(device_id=device_id,
-                                          mem_size=size,
-                                          mem_ptr=ptr,
-                                          pmem_id=pmem_id)
-        else:
-            pool.free(ptr, size)
+                    hook.free_preprocess(device_id=device_id,
+                                         mem_size=size,
+                                         mem_ptr=ptr,
+                                         pmem_id=pmem_id)
+                try:
+                    pool.free(ptr, size)
+                finally:
+                    for hook in hooks_values:
+                        hook.free_postprocess(device_id=device_id,
+                                              mem_size=size,
+                                              mem_ptr=ptr,
+                                              pmem_id=pmem_id)
+                return
+        pool.free(ptr, size)
 
     def __dealloc__(self):
         if _exit_mode:
@@ -770,55 +771,57 @@ cdef class SingleDeviceMemoryPool:
         return False
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
-        hooks = memory_hook.get_memory_hooks()
-        if hooks:
-            memptr = None
-            device_id = self._device_id
-            hooks_values = hooks.values()  # avoid six for performance
-            for hook in hooks_values:
-                hook.alloc_preprocess(device_id=device_id,
-                                      mem_size=rounded_size)
-            try:
-                memptr = self._allocator(rounded_size)
-            finally:
+        if memory_hook._has_memory_hooks():
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                memptr = None
+                device_id = self._device_id
+                # avoid six for performance
+                hooks_values = hooks.values()
                 for hook in hooks_values:
-                    mem_ptr = memptr.ptr if memptr is not None else 0
-                    hook.alloc_postprocess(device_id=device_id,
-                                           mem_size=rounded_size,
-                                           mem_ptr=mem_ptr)
-            return memptr
-        else:
-            return self._allocator(rounded_size)
+                    hook.alloc_preprocess(device_id=device_id,
+                                          mem_size=rounded_size)
+                try:
+                    memptr = self._allocator(rounded_size)
+                finally:
+                    for hook in hooks_values:
+                        mem_ptr = memptr.ptr if memptr is not None else 0
+                        hook.alloc_postprocess(device_id=device_id,
+                                               mem_size=rounded_size,
+                                               mem_ptr=mem_ptr)
+                return memptr
+        return self._allocator(rounded_size)
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         rounded_size = self._round_size(size)
-        hooks = memory_hook.get_memory_hooks()
-        if hooks:
-            memptr = None
-            device_id = self._device_id
-            hooks_values = hooks.values()  # avoid six for performance
-            for hook in hooks_values:
-                hook.malloc_preprocess(device_id=device_id,
-                                       size=size,
-                                       mem_size=rounded_size)
-            try:
-                memptr = self._malloc(rounded_size)
-            finally:
-                if memptr is None:
-                    mem_ptr = 0
-                    pmem_id = 0
-                else:
-                    mem_ptr = memptr.ptr
-                    pmem_id = id(memptr.mem)
+        if memory_hook._has_memory_hooks():
+            hooks = memory_hook.get_memory_hooks()
+            if hooks:
+                memptr = None
+                device_id = self._device_id
+                # avoid six for performance
+                hooks_values = hooks.values()
                 for hook in hooks_values:
-                    hook.malloc_postprocess(device_id=device_id,
-                                            size=size,
-                                            mem_size=rounded_size,
-                                            mem_ptr=mem_ptr,
-                                            pmem_id=pmem_id)
-            return memptr
-        else:
-            return self._malloc(rounded_size)
+                    hook.malloc_preprocess(device_id=device_id,
+                                           size=size,
+                                           mem_size=rounded_size)
+                try:
+                    memptr = self._malloc(rounded_size)
+                finally:
+                    if memptr is None:
+                        mem_ptr = 0
+                        pmem_id = 0
+                    else:
+                        mem_ptr = memptr.ptr
+                        pmem_id = id(memptr.mem)
+                    for hook in hooks_values:
+                        hook.malloc_postprocess(device_id=device_id,
+                                                size=size,
+                                                mem_size=rounded_size,
+                                                mem_ptr=mem_ptr,
+                                                pmem_id=pmem_id)
+                return memptr
+        return self._malloc(rounded_size)
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef _Chunk chunk
