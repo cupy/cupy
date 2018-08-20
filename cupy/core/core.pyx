@@ -21,6 +21,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core cimport dlpack
@@ -54,7 +55,8 @@ except AttributeError:
     _AxisError = IndexOrValueError
 
 
-cdef int _normalize_order(str order) except? 0:
+@cython.profile(False)
+cdef inline int _normalize_order(order) except? 0:
     cdef int order_char
     order_char = 'C' if len(order) == 0 else ord(order[0])
     if order_char == 'K' or order_char == 'k':
@@ -104,30 +106,31 @@ cdef class ndarray:
 
     def __init__(self, shape, dtype=float, memptr=None, order='C'):
         cdef Py_ssize_t x, itemsize
-        self._shape = internal.get_size(shape)
-        for x in self._shape:
+        cdef tuple s = internal.get_size(shape)
+        self._shape.reserve(len(s))
+        self.size = 1
+        for x in s:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
-        self.dtype = get_dtype(dtype)
-        self.size = internal.prod_ssize_t(self._shape)
-        itemsize = self.dtype.itemsize
+            self._shape.push_back(x)
+            self.size *= x
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
 
         if memptr is None:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        if order is None:
-            order = 'C'
-
-        cdef int order_char = _normalize_order(order)
+        cdef int order_char = 'C'
+        if order is not None:
+            order_char = _normalize_order(order)
         if order_char == 'C':
-            self._strides = internal.get_contiguous_strides(
-                self._shape, itemsize, is_c_contiguous=True)
+            internal.set_contiguous_strides(
+                self._shape, self._strides, itemsize, True)
             self._c_contiguous = True
             self._update_f_contiguity()
         elif order_char == 'F':
-            self._strides = internal.get_contiguous_strides(
-                self._shape, itemsize, is_c_contiguous=False)
+            internal.set_contiguous_strides(
+                self._shape, self._strides, itemsize, False)
             self._f_contiguous = True
             self._update_c_contiguity()
         else:

@@ -21,6 +21,10 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
     vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
     bint is_c_contiguous) except *
 
+cdef set_contiguous_strides(
+    vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+    Py_ssize_t itemsize, bint is_c_contiguous)
+
 cpdef bint get_c_contiguity(
     vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
     Py_ssize_t itemsize) except *
