@@ -582,7 +582,6 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
         return
     new_arena = []
     arena = pool._free[stream_ptr]
-    arena_index = &pool._index[stream_ptr]
     arena_index = pool._arena_index(stream_ptr)
     for index, free_list in enumerate(arena):
         if not free_list:
