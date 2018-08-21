@@ -75,6 +75,15 @@ Please use :func:`cupy.cuda.Stream.use` instead.
 
 See the discussion in `#306 <https://github.com/cupy/cupy/pull/306>`_ for more details.
 
+``cupyx`` Namespace
+-------------------
+
+``cupyx`` namespace has been introduced to provide features specific to CuPy (i.e., features not provided in NumPy) while avoiding collision in future.
+See :doc:`reference/ext` for the list of such functions.
+
+For this rule, :func:`cupy.scatter_add` has been moved to :func:`cupyx.scatter_add`.
+:func:`cupy.scatter_add` is still available as an alias, but it is encouraged to use :func:`cupyx.scatter_add` instead.
+
 Update of Docker Images
 -----------------------
 
