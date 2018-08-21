@@ -9,6 +9,8 @@ import numpy
 import six
 
 import cupy
+from cupy.core._kernel import create_reduction_func
+from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ReductionKernel
 from cupy.core._kernel import ufunc  # NOQA
