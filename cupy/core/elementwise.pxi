@@ -497,7 +497,7 @@ cdef class ElementwiseKernel:
 
         values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
-        out_args = values[self.nin:]
+        out_args = args[self.nin:]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
