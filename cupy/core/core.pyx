@@ -3933,8 +3933,8 @@ cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
     else:
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'FF->?',
-               'dd->?', 'DD->?')
+               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
+               'FF->?', 'DD->?')
     return create_ufunc(
         'cupy_' + name,
         ops,
