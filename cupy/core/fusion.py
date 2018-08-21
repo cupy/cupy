@@ -672,7 +672,7 @@ class _FusionHistory(object):
         out_dtypes = [_.dtype for _ in out_pvars]
         out_params = [self._fresh_premap_param(t) for t in out_dtypes]
 
-        in_params_code = ', '.join(var.declaration_param()
+        in_params_code = ', '.join('_non_const ' + var.declaration_param()
                                    for var in in_params)
         out_params_code = ', '.join(var.declaration_param()
                                     for var in out_params)

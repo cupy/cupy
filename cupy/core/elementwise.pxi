@@ -206,6 +206,8 @@ cdef class ParameterInfo:
         for i in s[:-2]:
             if i == 'raw':
                 self.raw = True
+            elif i == '_non_const':
+                self.is_const = False
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
