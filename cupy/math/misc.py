@@ -33,6 +33,17 @@ def clip(a, a_min=None, a_max=None, out=None):
 sqrt = sqrt_fixed = core.sqrt
 
 
+cbrt = core.create_ufunc(
+    'cupy_cbrt',
+    ('e->e', 'f->f', 'd->d'),
+    'out0 = cbrt(in0)',
+    doc='''Elementwise cube root function.
+
+    .. seealso:: :data:`numpy.cbrt`
+
+    ''')
+
+
 square = core.create_ufunc(
     'cupy_square',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
