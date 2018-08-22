@@ -4426,7 +4426,12 @@ absolute = create_ufunc(
 sqrt = create_ufunc(
     'cupy_sqrt',
     ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = sqrt(in0)')
+    'out0 = sqrt(in0)',
+    doc='''Elementwise square root function.
+
+    .. seealso:: :data:`numpy.sqrt`
+
+    ''')
 
 
 _clip = create_ufunc(
