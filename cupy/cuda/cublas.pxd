@@ -43,6 +43,11 @@ cpdef enum:
     CUBLAS_DIAG_NON_UNIT = 0
     CUBLAS_DIAG_UNIT = 1
 
+    CUBLAS_GEMM_DEFAULT = -1
+    CUBLAS_GEMM_DEFAULT_TENSOR_OP = 99
+
+    # The following two are left for backward compatibility; renamed from
+    # `DFALT` to `DEFAULT` in CUDA 9.1.
     CUBLAS_GEMM_DFALT = -1
     CUBLAS_GEMM_DFALT_TENSOR_OP = 99
 
