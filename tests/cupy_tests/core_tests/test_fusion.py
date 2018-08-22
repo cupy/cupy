@@ -986,6 +986,18 @@ class TestFusionMisc(unittest.TestCase):
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
 
+    @testing.for_all_dtypes_combination(
+        names=['src_dtype', 'dst_dtype'], no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_astype_class(self, xp, src_dtype, dst_dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x.astype(dst_dtype)
+
+        x = xp.arange(6).astype(src_dtype).reshape(2, 3)
+        return f(x)
+
 
 @testing.gpu
 class TestFusionFuse(unittest.TestCase):
