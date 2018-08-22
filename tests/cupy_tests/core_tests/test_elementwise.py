@@ -62,6 +62,18 @@ class TestElementwise(unittest.TestCase):
 
 
 @testing.gpu
+class TestElementwiseInvalidShape(unittest.TestCase):
+
+    def test_invalid_shape(self):
+        with six.assertRaisesRegex(
+                self, ValueError, 'Out shape is mismatched'):
+            f = cupy.ElementwiseKernel('T x', 'T y', 'y += x')
+            x = cupy.arange(12).reshape(3, 4)
+            y = cupy.arange(4)
+            f(x, y)
+
+
+@testing.gpu
 class TestElementwiseInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
