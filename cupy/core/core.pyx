@@ -459,34 +459,37 @@ cdef class ndarray:
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef ndarray v
+        cdef Py_ssize_t ndim
+        cdef int self_is, v_is
         v = ndarray.__new__(ndarray)
-        v.dtype = self.dtype if dtype is None else get_dtype(dtype)
-
-        if v.dtype.itemsize == self.dtype.itemsize:
-            v.size = self.size
-            v._shape = self._shape
-            v._strides = self._strides
-        else:
-            if self.ndim == 0:
-                raise ValueError(
-                    "Changing the dtype of a 0d array is only supported if "
-                    "the itemsize is unchanged")
-            if not self._c_contiguous:
-                raise ValueError(
-                    "To change to a dtype of a different size, the array must "
-                    "be C-contiguous")
-            shape = list(self._shape)
-            strides = list(self._strides)
-            shape[-1] = shape[-1] * self.dtype.itemsize // v.dtype.itemsize
-            strides[-1] = strides[-1] * v.dtype.itemsize // self.dtype.itemsize
-            v._shape = shape
-            v._strides = strides
-            v.size = self.size * self.dtype.itemsize // v.dtype.itemsize
-
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
         v.data = self.data
         v.base = self.base if self.base is not None else self
+        v.size = self.size
+        v._shape = self._shape
+        v._strides = self._strides
+        if dtype is None:
+            v.dtype = self.dtype
+            return v
+
+        v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
+        self_is = self.dtype.itemsize
+        if v_is == self_is:
+            return v
+
+        ndim = self._shape.size()
+        if ndim == 0:
+            raise ValueError(
+                "Changing the dtype of a 0d array is only supported if "
+                "the itemsize is unchanged")
+        if not self._c_contiguous:
+            raise ValueError(
+                "To change to a dtype of a different size, the array must "
+                "be C-contiguous")
+        v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
+        v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
+        v.size = v.size * self_is // v_is
         return v
 
     # TODO(okuta): Implement getfield
