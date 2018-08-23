@@ -16,7 +16,7 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
 
     arr = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
     result = numpy.sum(arr)
-    print(type(result))  # <class 'cupy.core.core.ndarray'>
+    print(type(result))  # => <class 'cupy.core.core.ndarray'>
 
 Numba
 -----
@@ -69,13 +69,13 @@ Here is a simple example:
 	import cupy
 
 	# Create a CuPy array.
-	cupy_array = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
+	cx1 = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
 
 	# Convert it into a DLPack tensor.
-	dlpack_array = cupy_array.toDlpack()
+	dx = cx1.toDlpack()
 
 	# Convert it back to a CuPy array.
-	cupy_array2 = cupy.fromDlpack(dlpack_array)
+	cx2 = cupy.fromDlpack(dx)
 
 Here is an example of converting PyTorch tensor into :class:`cupy.ndarray`.
 
@@ -88,13 +88,13 @@ Here is an example of converting PyTorch tensor into :class:`cupy.ndarray`.
 	from torch.utils.dlpack import from_dlpack
 
 	# Create a PyTorch tensor.
-	tx = torch.randn(1, 2, 3, 4).cuda()
+	tx1 = torch.randn(1, 2, 3, 4).cuda()
 
 	# Convert it into a DLPack tensor.
-	t1 = to_dlpack(tx)
+	dx = to_dlpack(tx1)
 
 	# Convert it into a CuPy array.
-	cx = cupy.fromDlpack(t1)
+	cx = cupy.fromDlpack(dx)
 
 	# Convert it back to a PyTorch tensor.
-	t2 = from_dlpack(cx.toDlpack())
+	tx2 = from_dlpack(cx.toDlpack())
