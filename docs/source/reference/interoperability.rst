@@ -3,6 +3,21 @@ Interoperability
 
 CuPy can also be used in conjuction with other frameworks.
 
+NumPy
+-----
+
+:class:`cupy.ndarray` implements ``__array_ufunc__`` interface (see `NEP 13 — A Mechanism for Overriding Ufuncs <http://www.numpy.org/neps/nep-0013-ufunc-overrides.html>`_ for details).
+This enables NumPy ufuncs to be directly operated on CuPy arrays.
+
+.. code:: python
+
+    import cupy
+    import numpy
+
+    arr = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
+    result = numpy.sum(arr)
+    print(type(result))  # <class 'cupy.core.core.ndarray'>
+
 Numba
 -----
 
