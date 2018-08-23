@@ -23,8 +23,8 @@ Numba
 
 `Numba <https://numba.pydata.org/>`_ is a Python JIT compiler with NumPy support.
 
-:class:`cupy.ndarray` implements ``__cuda_array_interface__``, which is the CUDA array interchange interface compatible with Numba (``>=0.39.0``).
-It means you can now pass CuPy arrays to kernels JITed with Numba.
+:class:`cupy.ndarray` implements ``__cuda_array_interface__``, which is the CUDA array interchange interface compatible with Numba v0.39.0 or later (see `CUDA Array Interface <http://numba.pydata.org/numba-doc/latest/cuda/cuda_array_interface.html>`_ for details).
+It means you can pass CuPy arrays to kernels JITed with Numba.
 The folowing is a simple example code borrowed from `numba/numba#2860 <https://github.com/numba/numba/pull/2860>`_:
 
 .. code:: python
@@ -54,14 +54,13 @@ DLPack
 
 `DLPack <https://github.com/dmlc/dlpack>`_ is a specification of tensor structure to share tensors among frameworks.
 
-:class:`cupy.ndarray` supports importing from and exporting to DLPack data structure.
+CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.fromDlpack` and :func:`cupy.ndarray.toDlpack`).
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
    cupy.fromDlpack
-   cupy.ndarray.toDlpack
 
 Here is a simple example:
 
