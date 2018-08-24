@@ -599,12 +599,12 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
         new_arena.append(free_list)
     if free and len(new_arena) == 0:
         pool._index.erase(stream_ptr)
-        pool._count.erase(stream_ptr)
+        pool._flag.erase(stream_ptr)
         del pool._free[stream_ptr]
     else:
         arena_index.swap(new_index)
         arena[:] = new_arena
-        pool._arena_count(stream_ptr).assign(new_index.size(), <int8_t>1)
+        pool._arena_flag(stream_ptr).assign(new_index.size(), <int8_t>1)
 
 
 cdef object _get_chunk(SingleDeviceMemoryPool pool, Py_ssize_t size,
@@ -616,23 +616,23 @@ cdef object _get_chunk(SingleDeviceMemoryPool pool, Py_ssize_t size,
     cdef int bin_index = _bin_index_from_size(size)
     cdef list arena = pool._arena(stream_ptr)
     a_index = pool._arena_index(stream_ptr)
-    a_count = pool._arena_count(stream_ptr)
+    a_flag = pool._arena_flag(stream_ptr)
     index = algorithm.lower_bound(
         a_index.begin(), a_index.end(), bin_index) - a_index.begin()
     length = a_index.size()
     for i in range(index, length):
-        if a_count.at(i) == 0:
+        if a_flag.at(i) == 0:
             continue
         free_list = arena[i]
         chunk = free_list.pop()
         if len(free_list) == 0:
-            dereference(a_count)[i] = 0
+            dereference(a_flag)[i] = 0
             arena[i] = None
         if i - index >= _index_compaction_threshold:
             _compact_index(pool, stream_ptr, False)
         remaining = chunk.split(size)
         if remaining is not None:
-            _append_to_free_list(arena, a_index, a_count, remaining)
+            _append_to_free_list(arena, a_index, a_flag, remaining)
         assert chunk.stream_ptr == stream_ptr
         return chunk
     return None
@@ -661,7 +661,7 @@ cdef Memory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
 
 
 cdef _append_to_free_list(list arena, vector.vector[int]* a_index,
-                          vector.vector[int8_t]* a_count, _Chunk chunk):
+                          vector.vector[int8_t]* a_flag, _Chunk chunk):
     # need self._free_lock
     cdef int index, bin_index
     cdef set free_list
@@ -675,14 +675,14 @@ cdef _append_to_free_list(list arena, vector.vector[int]* a_index,
     else:
         free_list = set()
         a_index.insert(a_index.begin() + index, bin_index)
-        a_count.insert(a_count.begin() + index, 0)
+        a_flag.insert(a_flag.begin() + index, 0)
         arena.insert(index, free_list)
     free_list.add(chunk)
-    dereference(a_count)[index] = 1
+    dereference(a_flag)[index] = 1
 
 
 cdef bint _remove_from_free_list(list arena, vector.vector[int]* a_index,
-                                 vector.vector[int8_t]* a_count,
+                                 vector.vector[int8_t]* a_flag,
                                  _Chunk chunk) except *:
     """Removes the chunk from the free list (need self._free_lock).
 
@@ -703,14 +703,14 @@ cdef bint _remove_from_free_list(list arena, vector.vector[int]* a_index,
     if index == a_index.size():
         # Bin does not exist for the given chunk size.
         return False
-    if a_index.at(index) != bin_index or a_count.at(index) == 0:
+    if a_index.at(index) != bin_index or a_flag.at(index) == 0:
         return False
     free_list = arena[index]
     if chunk in free_list:
         free_list.remove(chunk)
         if len(free_list) == 0:
             arena[index] = None
-            dereference(a_count)[index] = 0
+            dereference(a_flag)[index] = 0
         return True
     return False
 
@@ -768,7 +768,7 @@ cdef class SingleDeviceMemoryPool:
         # Map from stream pointer to its arena index.
         # `_free_lock` must be acquired to access.
         map.map[size_t, vector.vector[int]] _index
-        map.map[size_t, vector.vector[int8_t]] _count
+        map.map[size_t, vector.vector[int8_t]] _flag
 
     def __init__(self, allocator=_malloc):
         self._in_use = {}
@@ -804,12 +804,12 @@ cdef class SingleDeviceMemoryPool:
         """
         return &self._index[stream_ptr]
 
-    cdef vector.vector[int8_t]* _arena_count(self, size_t stream_ptr):
-        """Returns appropriate arena count list of a given stream.
+    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
+        """Returns appropriate arena used flag list of a given stream.
 
         Caller is responsible to acquire `_free_lock`.
         """
-        return &self._count[stream_ptr]
+        return &self._flag[stream_ptr]
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         if memory_hook._has_memory_hooks():
@@ -913,20 +913,20 @@ cdef class SingleDeviceMemoryPool:
         try:
             arena = self._arena(stream_ptr)
             a_index = self._arena_index(stream_ptr)
-            a_count = self._arena_count(stream_ptr)
+            a_flag = self._arena_flag(stream_ptr)
 
             c = chunk.next
             if c is not None and _remove_from_free_list(arena, a_index,
-                                                        a_count, c):
+                                                        a_flag, c):
                 chunk.merge(c)
 
             c = chunk.prev
             if c is not None and _remove_from_free_list(arena, a_index,
-                                                        a_count, c):
+                                                        a_flag, c):
                 c.merge(chunk)
                 chunk = c
 
-            _append_to_free_list(arena, a_index, a_count, chunk)
+            _append_to_free_list(arena, a_index, a_flag, chunk)
         finally:
             rlock.unlock_fastrlock(self._free_lock)
 
