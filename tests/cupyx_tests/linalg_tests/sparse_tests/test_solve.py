@@ -31,7 +31,8 @@ class TestLschol(unittest.TestCase):
         self.A = scipy.sparse.random(
             50, 50, density=0.2, data_rvs=rvs, dtype=self.dtype)
         self.b = numpy.random.randint(5, size=50)
-        self.A = self.A.T*self.A + 10*scipy.sparse.eye(50) # symmetric and positive definite
+        # symmetric and positive definite
+        self.A = self.A.T*self.A + 10*scipy.sparse.eye(50)
         self.b = self.A.T*self.b
         # inital scipy results by dense cholesky method.
         L = scipy.linalg.cho_factor(self.A.todense())
