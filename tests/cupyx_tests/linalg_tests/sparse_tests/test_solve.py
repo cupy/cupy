@@ -30,14 +30,14 @@ class TestLschol(unittest.TestCase):
         rvs = scipy.stats.randint(0, 15).rvs
         self.A = scipy.sparse.random(
             50, 50, density=0.2, data_rvs=rvs, dtype=self.dtype)
-        self.b = numpy.random.randint(15, size=50)
-        self.A = self.A.T*self.A  # symmetric and positive definite
+        self.b = numpy.random.randint(5, size=50)
+        self.A = self.A.T*self.A + 10*scipy.sparse.eye(50) # symmetric and positive definite
         self.b = self.A.T*self.b
         # inital scipy results by dense cholesky method.
         L = scipy.linalg.cho_factor(self.A.todense())
         self.x = scipy.linalg.cho_solve(L, self.b)
         if self.dtype == numpy.float64:
-            self.decimal = 6
+            self.decimal = 8
         else:
             self.decimal = 3
 
