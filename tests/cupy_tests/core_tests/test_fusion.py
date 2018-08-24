@@ -942,6 +942,7 @@ class TestFusionMisc(unittest.TestCase):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
+    @testing.with_requires('numpy>=1.10')
     def test_cbrt(self):
         self.check_unary('cbrt')
 
