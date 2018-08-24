@@ -9,7 +9,9 @@ import warnings
 import weakref
 
 from cpython cimport pythread
+from cython.operator cimport dereference
 from fastrlock cimport rlock
+from libc.stdint cimport int8_t
 from libcpp cimport algorithm
 
 from cupy.cuda import runtime
@@ -132,6 +134,7 @@ cpdef _set_peer_access(int device, int peer):
         runtime.setDevice(current)
 
 
+@cython.final
 cdef class _Chunk:
 
     """A chunk points to a device memory.
@@ -157,12 +160,10 @@ cdef class _Chunk:
     """
 
     cdef:
-        readonly object mem
-        readonly device.Device device
-        readonly size_t ptr
+        readonly Memory mem
         readonly Py_ssize_t offset
         readonly Py_ssize_t size
-        public size_t stream_ptr
+        readonly size_t stream_ptr
         public _Chunk prev
         public _Chunk next
 
@@ -175,10 +176,12 @@ cdef class _Chunk:
                Py_ssize_t size, Py_ssize_t stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
-        self.ptr = mem.ptr + offset
         self.offset = offset
         self.size = size
         self.stream_ptr = stream_ptr
+
+    cpdef size_t ptr(self):
+        return self.mem.ptr + self.offset
 
     cpdef _Chunk split(self, Py_ssize_t size):
         """Split contiguous block of a larger allocation"""
@@ -226,6 +229,9 @@ cdef class MemoryPointer:
     """
 
     def __init__(self, Memory mem, Py_ssize_t offset):
+        self._init(mem, offset)
+
+    cdef _init(self, Memory mem, Py_ssize_t offset):
         assert mem.ptr > 0 or offset == 0
         self.ptr = mem.ptr + offset
         self.device_id = mem.device_id
@@ -462,7 +468,7 @@ cpdef MemoryPointer malloc_managed(Py_ssize_t size):
 cdef object _current_allocator = _malloc
 
 
-cpdef MemoryPointer alloc(Py_ssize_t size):
+cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
 
     Use :func:`~cupy.cuda.set_allocator` to change the current allocator.
@@ -494,6 +500,7 @@ cpdef set_allocator(allocator=None):
     _current_allocator = allocator
 
 
+@cython.final
 @cython.no_gc
 cdef class PooledMemory(Memory):
 
@@ -508,7 +515,7 @@ cdef class PooledMemory(Memory):
         readonly object pool
 
     def __init__(self, _Chunk chunk, pool):
-        self.ptr = chunk.ptr
+        self.ptr = chunk.ptr()
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
         self.pool = pool
@@ -544,7 +551,7 @@ cdef class PooledMemory(Memory):
                                          mem_ptr=ptr,
                                          pmem_id=pmem_id)
                 try:
-                    pool.free(ptr, size)
+                    (<SingleDeviceMemoryPool>pool).free(ptr, size)
                 finally:
                     for hook in hooks_values:
                         hook.free_postprocess(device_id=device_id,
@@ -552,7 +559,7 @@ cdef class PooledMemory(Memory):
                                               mem_ptr=ptr,
                                               pmem_id=pmem_id)
                 return
-        pool.free(ptr, size)
+        (<SingleDeviceMemoryPool>pool).free(ptr, size)
 
     def __dealloc__(self):
         if _exit_mode:
@@ -575,9 +582,8 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
         return
     new_arena = []
     arena = pool._free[stream_ptr]
-    arena_index = &pool._index[stream_ptr]
-    for index in range(len(arena)):
-        free_list = arena[index]
+    arena_index = pool._arena_index(stream_ptr)
+    for index, free_list in enumerate(arena):
         if not free_list:
             continue
         if free:
@@ -591,34 +597,43 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
 
         new_index.push_back(arena_index.at(index))
         new_arena.append(free_list)
-    if len(new_arena) == 0:
+    if free and len(new_arena) == 0:
         pool._index.erase(stream_ptr)
+        pool._flag.erase(stream_ptr)
         del pool._free[stream_ptr]
     else:
         arena_index.swap(new_index)
         arena[:] = new_arena
+        pool._arena_flag(stream_ptr).assign(new_index.size(), <int8_t>1)
 
 
-cdef object _get_chunk(SingleDeviceMemoryPool pool, int bin_index,
+cdef object _get_chunk(SingleDeviceMemoryPool pool, Py_ssize_t size,
                        size_t stream_ptr):
+    # need self._free_lock
     cdef set free_list
     cdef int i, index, length
-    cdef list arena
-
-    arena = pool._arena(stream_ptr)
+    cdef _Chunk chunk
+    cdef int bin_index = _bin_index_from_size(size)
+    cdef list arena = pool._arena(stream_ptr)
     a_index = pool._arena_index(stream_ptr)
+    a_flag = pool._arena_flag(stream_ptr)
     index = algorithm.lower_bound(
         a_index.begin(), a_index.end(), bin_index) - a_index.begin()
     length = a_index.size()
     for i in range(index, length):
-        free_list = arena[i]
-        if free_list is None:
+        if a_flag.at(i) == 0:
             continue
+        free_list = arena[i]
         chunk = free_list.pop()
         if len(free_list) == 0:
+            dereference(a_flag)[i] = 0
             arena[i] = None
         if i - index >= _index_compaction_threshold:
             _compact_index(pool, stream_ptr, False)
+        remaining = chunk.split(size)
+        if remaining is not None:
+            _append_to_free_list(arena, a_index, a_flag, remaining)
+        assert chunk.stream_ptr == stream_ptr
         return chunk
     return None
 
@@ -645,6 +660,81 @@ cdef Memory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
     raise OutOfMemoryError(size, total)
 
 
+cdef _append_to_free_list(list arena, vector.vector[int]* a_index,
+                          vector.vector[int8_t]* a_flag, _Chunk chunk):
+    # need self._free_lock
+    cdef int index, bin_index
+    cdef set free_list
+    bin_index = _bin_index_from_size(chunk.size)
+    index = algorithm.lower_bound(
+        a_index.begin(), a_index.end(), bin_index) - a_index.begin()
+    if index < <int>a_index.size() and a_index.at(index) == bin_index:
+        free_list = arena[index]
+        if free_list is None:
+            arena[index] = free_list = set()
+    else:
+        free_list = set()
+        a_index.insert(a_index.begin() + index, bin_index)
+        a_flag.insert(a_flag.begin() + index, 0)
+        arena.insert(index, free_list)
+    free_list.add(chunk)
+    dereference(a_flag)[index] = 1
+
+
+cdef bint _remove_from_free_list(list arena, vector.vector[int]* a_index,
+                                 vector.vector[int8_t]* a_flag,
+                                 _Chunk chunk) except *:
+    """Removes the chunk from the free list (need self._free_lock).
+
+    Returns:
+        bool: ``True`` if the chunk can successfully be removed from
+            the free list. ``False`` otherwise (e.g., the chunk could not
+            be found in the free list as the chunk is allocated.)
+    """
+
+    cdef int index, bin_index
+    cdef set free_list
+
+    bin_index = _bin_index_from_size(chunk.size)
+    if a_index.size() == 0:
+        return False
+    index = algorithm.lower_bound(
+        a_index.begin(), a_index.end(), bin_index) - a_index.begin()
+    if index == a_index.size():
+        # Bin does not exist for the given chunk size.
+        return False
+    if a_index.at(index) != bin_index or a_flag.at(index) == 0:
+        return False
+    free_list = arena[index]
+    if chunk in free_list:
+        free_list.remove(chunk)
+        if len(free_list) == 0:
+            arena[index] = None
+            dereference(a_flag)[index] = 0
+        return True
+    return False
+
+
+# cudaMalloc() is aligned to at least 512 bytes
+# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
+DEF ALLOCATION_UNIT_SIZE = 512
+# for test
+_allocation_unit_size = ALLOCATION_UNIT_SIZE
+
+
+cpdef Py_ssize_t _round_size(Py_ssize_t size):
+    """Rounds up the memory size to fit memory alignment of cudaMalloc."""
+    # avoid 0 div checking
+    size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
+    return size * ALLOCATION_UNIT_SIZE
+
+cpdef int _bin_index_from_size(Py_ssize_t size):
+    """Returns appropriate bins index from the memory size."""
+    # avoid 0 div checking
+    return (size - 1) // ALLOCATION_UNIT_SIZE
+
+
+@cython.final
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
 
@@ -656,10 +746,31 @@ cdef class SingleDeviceMemoryPool:
       are not split and retry the allocation.
     """
 
+    cdef:
+        object _allocator
+
+        # Map from memory pointer of the chunk (size_t) to the corresponding
+        # Chunk object. All chunks currently allocated to the application from
+        # this pool are stored.
+        # `_in_use_lock` must be acquired to access.
+        dict _in_use
+
+        # Map from stream pointer (int) to its arena (list) for the stream.
+        # `_free_lock` must be acquired to access.
+        dict _free
+
+        object __weakref__
+        object _weakref
+        object _free_lock
+        object _in_use_lock
+        readonly int _device_id
+
+        # Map from stream pointer to its arena index.
+        # `_free_lock` must be acquired to access.
+        map.map[size_t, vector.vector[int]] _index
+        map.map[size_t, vector.vector[int8_t]] _flag
+
     def __init__(self, allocator=_malloc):
-        # cudaMalloc() is aligned to at least 512 bytes
-        # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-        self._allocation_unit_size = 512
         self._in_use = {}
         self._free = {}
         self._allocator = allocator
@@ -667,15 +778,6 @@ cdef class SingleDeviceMemoryPool:
         self._device_id = device.get_device_id()
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
-
-    cpdef Py_ssize_t _round_size(self, Py_ssize_t size):
-        """Rounds up the memory size to fit memory alignment of cudaMalloc."""
-        cdef Py_ssize_t unit = self._allocation_unit_size
-        return ((size + unit - 1) // unit) * unit
-
-    cpdef int _bin_index_from_size(self, Py_ssize_t size):
-        """Returns appropriate bins index from the memory size."""
-        return (size - 1) // self._allocation_unit_size
 
     cpdef list _arena(self, size_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
@@ -689,7 +791,7 @@ cdef class SingleDeviceMemoryPool:
             self._free[stream_ptr] = ret = []
         return ret
 
-    cdef vector.vector[int]* _arena_index(self, size_t stream_ptr):
+    cdef inline vector.vector[int]* _arena_index(self, size_t stream_ptr):
         """Returns appropriate arena sparse index of a given stream.
 
         Each element of the returned vector is an index value of the arena
@@ -702,73 +804,12 @@ cdef class SingleDeviceMemoryPool:
         """
         return &self._index[stream_ptr]
 
-    cpdef _append_to_free_list(self, Py_ssize_t size, chunk,
-                               size_t stream_ptr):
-        cdef int index, bin_index
-        cdef list arena
-        cdef set free_list
-        cdef vector.vector[int]* arena_index
+    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
+        """Returns appropriate arena used flag list of a given stream.
 
-        bin_index = self._bin_index_from_size(size)
-        rlock.lock_fastrlock(self._free_lock, -1, True)
-        try:
-            arena = self._arena(stream_ptr)
-            arena_index = self._arena_index(stream_ptr)
-            index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin()
-            size = <int>arena_index.size()
-            if index < size and arena_index.at(index) == bin_index:
-                free_list = arena[index]
-                if free_list is None:
-                    arena[index] = free_list = set()
-            else:
-                free_list = set()
-                arena_index.insert(arena_index.begin() + index, bin_index)
-                arena.insert(index, free_list)
-            free_list.add(chunk)
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
-
-    cpdef bint _remove_from_free_list(self, Py_ssize_t size, chunk,
-                                      size_t stream_ptr) except *:
-        """Removes the chunk from the free list.
-
-        Returns:
-            bool: ``True`` if the chunk can successfully be removed from
-                the free list. ``False`` otherwise (e.g., the chunk could not
-                be found in the free list as the chunk is allocated.)
+        Caller is responsible to acquire `_free_lock`.
         """
-
-        cdef int index, bin_index
-        cdef list arena
-        cdef set free_list
-        cdef vector.vector[int]* arena_index
-
-        bin_index = self._bin_index_from_size(size)
-        rlock.lock_fastrlock(self._free_lock, -1, True)
-        try:
-            arena = self._arena(stream_ptr)
-            arena_index = self._arena_index(stream_ptr)
-            if arena_index.size() == 0:
-                return False
-            index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin()
-            if index == arena_index.size():
-                # Bin does not exist for the given chunk size.
-                return False
-            if arena_index.at(index) != bin_index:
-                return False
-            free_list = arena[index]
-            if free_list and chunk in free_list:
-                free_list.remove(chunk)
-                if len(free_list) == 0:
-                    arena[index] = None
-                return True
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
-        return False
+        return &self._flag[stream_ptr]
 
     cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         if memory_hook._has_memory_hooks():
@@ -793,7 +834,7 @@ cdef class SingleDeviceMemoryPool:
         return self._allocator(rounded_size)
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        rounded_size = self._round_size(size)
+        rounded_size = _round_size(size)
         if memory_hook._has_memory_hooks():
             hooks = memory_hook.get_memory_hooks()
             if hooks:
@@ -825,50 +866,41 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef _Chunk chunk
-        cdef _Chunk remaining
-        cdef int bin_index
         cdef long current_thread
-
+        cdef Memory mem
+        cdef MemoryPointer ret
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
         current_thread = pythread.PyThread_get_thread_ident()
         stream_ptr = stream_module.get_current_stream_ptr()
-        bin_index = self._bin_index_from_size(size)
 
         # find best-fit, or a smallest larger allocation
         rlock.lock_fastrlock(self._free_lock, current_thread, True)
         try:
-            chunk = _get_chunk(self, bin_index, stream_ptr)
+            chunk = _get_chunk(self, size, stream_ptr)
         finally:
             rlock.unlock_fastrlock(self._free_lock)
 
-        if chunk is not None:
-            remaining = chunk.split(size)
-            if remaining is not None:
-                self._append_to_free_list(remaining.size, remaining,
-                                          stream_ptr)
-                del remaining
-            assert chunk.stream_ptr == stream_ptr
-        else:
-            # cudaMalloc if a cache is not found
+        if chunk is None:
             mem = _try_malloc(self, size)
             chunk = _Chunk.__new__(_Chunk)
+            # cudaMalloc if a cache is not found
             chunk._init(mem, 0, size, stream_ptr)
 
         rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
         try:
-            self._in_use[chunk.ptr] = chunk
+            self._in_use[chunk.ptr()] = chunk
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
         pmem = PooledMemory(chunk, self._weakref)
         return MemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
-        cdef set free_list
-        cdef _Chunk chunk
+        cdef _Chunk chunk, c
+        cdef long current_thread = pythread.PyThread_get_thread_ident()
 
-        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
         try:
             chunk = self._in_use.pop(ptr)
         except KeyError:
@@ -877,18 +909,26 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._in_use_lock)
         stream_ptr = chunk.stream_ptr
 
-        if chunk.next is not None:
-            if self._remove_from_free_list(chunk.next.size, chunk.next,
-                                           stream_ptr):
-                chunk.merge(chunk.next)
+        rlock.lock_fastrlock(self._free_lock, current_thread, True)
+        try:
+            arena = self._arena(stream_ptr)
+            a_index = self._arena_index(stream_ptr)
+            a_flag = self._arena_flag(stream_ptr)
 
-        if chunk.prev is not None:
-            if self._remove_from_free_list(chunk.prev.size, chunk.prev,
-                                           stream_ptr):
-                chunk = chunk.prev
-                chunk.merge(chunk.next)
+            c = chunk.next
+            if c is not None and _remove_from_free_list(arena, a_index,
+                                                        a_flag, c):
+                chunk.merge(c)
 
-        self._append_to_free_list(chunk.size, chunk, stream_ptr)
+            c = chunk.prev
+            if c is not None and _remove_from_free_list(arena, a_index,
+                                                        a_flag, c):
+                c.merge(chunk)
+                chunk = c
+
+            _append_to_free_list(arena, a_index, a_flag, chunk)
+        finally:
+            rlock.unlock_fastrlock(self._free_lock)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
