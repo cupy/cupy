@@ -8,7 +8,8 @@ _j0 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.j0`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 _j1 = ufunc.create_math_ufunc(
@@ -17,7 +18,8 @@ _j1 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.j1`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 _y0 = ufunc.create_math_ufunc(
@@ -26,7 +28,8 @@ _y0 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.y0`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 _y1 = ufunc.create_math_ufunc(
@@ -35,7 +38,8 @@ _y1 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.y1`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 _i0 = ufunc.create_math_ufunc(
@@ -44,7 +48,8 @@ _i0 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.i0`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 _i1 = ufunc.create_math_ufunc(
@@ -53,7 +58,8 @@ _i1 = ufunc.create_math_ufunc(
 
     .. seealso:: :meth:`scipy.special.i1`
 
-    ''')
+    ''',
+    support_complex=False)
 
 
 j0 = cupy.core.fusion.ufunc(_j0)
