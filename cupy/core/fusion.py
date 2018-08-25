@@ -955,6 +955,7 @@ remainder = ufunc(math.arithmetic.remainder)
 
 sqrt = ufunc(math.misc.sqrt)
 sqrt_fixed = ufunc(math.misc.sqrt_fixed)
+cbrt = ufunc(math.misc.cbrt)
 square = ufunc(math.misc.square)
 absolute = ufunc(math.misc.absolute)
 abs = ufunc(math.misc.absolute)

@@ -541,6 +541,7 @@ from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
+from cupy.core.fusion import cbrt  # NOQA
 from cupy.core.fusion import clip  # NOQA
 from cupy.core.fusion import fmax  # NOQA
 from cupy.core.fusion import fmin  # NOQA

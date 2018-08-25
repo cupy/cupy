@@ -842,6 +842,7 @@ class TestFusionUfunc(unittest.TestCase):
 
     def test_misc(self):
         self.check(cupy.sqrt, 1, self.random_real, ((0, 1000),))
+        self.check(cupy.cbrt, 1, self.random_real, ((0, 1000),))
         self.check(cupy.square, 1, self.random_real)
         self.check(cupy.absolute, 1, self.random_real)
         self.check(cupy.abs, 1, self.random_real)
@@ -940,6 +941,10 @@ class TestFusionMisc(unittest.TestCase):
     def test_sqrt(self):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
+
+    @testing.with_requires('numpy>=1.10')
+    def test_cbrt(self):
+        self.check_unary('cbrt')
 
     def test_square(self):
         self.check_unary('square')

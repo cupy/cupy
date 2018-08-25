@@ -109,6 +109,13 @@ class TestMisc(unittest.TestCase):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_cbrt(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.cbrt(a)
+
     def test_square(self):
         self.check_unary('square')
 
