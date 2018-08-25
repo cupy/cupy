@@ -40,7 +40,7 @@ _y1 = ufunc.create_math_ufunc(
 
 _i0 = ufunc.create_math_ufunc(
     'cyl_bessel_i0', 1, 'cupyx_scipy_i0',
-    '''Modified Bessel function of order 1.
+    '''Modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0`
 
