@@ -12,6 +12,8 @@ from cupyx.scipy.special.gamma import gamma  # NOQA
 from cupyx.scipy.special.gammaln import gammaln  # NOQA
 from cupyx.scipy.special.zeta import zeta  # NOQA
 
+from cupyx.scipy.special.statistics import ndtr  # NOQA
+
 from cupyx.scipy.special.erf import erf  # NOQA
 from cupyx.scipy.special.erf import erfc  # NOQA
 from cupyx.scipy.special.erf import erfcx  # NOQA
