@@ -964,6 +964,7 @@ maximum = ufunc(math.misc.maximum)
 minimum = ufunc(math.misc.minimum)
 fmax = ufunc(math.misc.fmax)
 fmin = ufunc(math.misc.fmin)
+nan_to_num = ufunc(math.misc.nan_to_num)
 
 if hasattr(numpy, "divmod"):
     divmod = ufunc(core.divmod)

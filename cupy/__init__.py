@@ -547,6 +547,7 @@ from cupy.core.fusion import fmax  # NOQA
 from cupy.core.fusion import fmin  # NOQA
 from cupy.core.fusion import maximum  # NOQA
 from cupy.core.fusion import minimum  # NOQA
+from cupy.core.fusion import nan_to_num  # NOQA
 from cupy.core.fusion import sign  # NOQA
 from cupy.core.fusion import sqrt  # NOQA
 from cupy.core.fusion import square  # NOQA
