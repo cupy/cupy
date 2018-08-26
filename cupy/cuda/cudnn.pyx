@@ -75,6 +75,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
     ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
+    ctypedef int RNNDataLayout 'cudnnRNNDataLayout_t'
     ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
@@ -93,6 +94,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
+    ctypedef void* RNNDataDescriptor 'cudnnRNNDataDescriptor_t'
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* OpTensorDescriptor 'cudnnOpTensorDescriptor_t'
@@ -514,6 +516,65 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor* yDesc, void* y,
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes)
+
+    int cudnnGetRNNDataDescriptor(
+        RNNDataDescriptor RNNDataDesc, DataType* dataType,
+        RNNDataLayout* layout, int* maxSeqLength, int* batchSize,
+        int* vectorSize, int arrayLengthRequested, int seqLengthArray[],
+        void* paddingFill)
+    int cudnnRNNForwardInferenceEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        FilterDescriptor wDesc, const void* w,
+        RNNDataDescriptor yDesc, void* y,
+        TensorDescriptor hyDesc, void* hy,
+        TensorDescriptor cyDesc, void* cy,
+        RNNDataDescriptor kDesc, const void* keys,
+        RNNDataDescriptor cDesc, void* cAttn,
+        RNNDataDescriptor iDesc, void* iAttn,
+        RNNDataDescriptor qDesc, void* queries,
+        void* workSpace, size_t workSpaceSizeInBytes);
+    int cudnnRNNForwardTrainingEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        FilterDescriptor wDesc, const void* w,
+        RNNDataDescriptor yDesc, void* y,
+        TensorDescriptor hyDesc, void* hy,
+        TensorDescriptor cyDesc, void* cy,
+        RNNDataDescriptor kDesc, const void* keys,
+        RNNDataDescriptor cDesc, void* cAttn,
+        RNNDataDescriptor iDesc, void* iAttn,
+        RNNDataDescriptor qDesc, void* queries,
+        void* workSpace,  size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnRNNBackwardDataEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor yDesc, const void* y,
+        RNNDataDescriptor dyDesc, const void* dy,
+        RNNDataDescriptor dcDesc, const void* dcAttn,
+        TensorDescriptor dhyDesc, const void* dhy,
+        TensorDescriptor dcyDesc, const void* dcy,
+        FilterDescriptor wDesc, const void* w,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        RNNDataDescriptor dxDesc, void* dx,
+        TensorDescriptor dhxDesc, void* dhx,
+        TensorDescriptor dcxDesc, void* dcx,
+        RNNDataDescriptor dkDesc, void* dkeys,
+        void* workSpace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnRNNBackwardWeightsEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        RNNDataDescriptor yDesc, const void* y,
+        void* workSpace, size_t workSpaceSizeInBytes,
+        FilterDescriptor dwDesc, void* dw,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
     # Spatial Transformer
     int cudnnCreateSpatialTransformerDescriptor(
@@ -1807,6 +1868,122 @@ cpdef RNNBackwardWeights(
             <TensorDescriptor>hxDesc, <void*>hx,
             <TensorDescriptor*>yDesc, <void*>y,
             <void*>workspace, workSpaceSizeInBytes,
+            <FilterDescriptor>dwDesc, <void*>dw,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef GetRNNDataDescriptor(
+        size_t RNNDataDesc, size_t dataType,
+        size_t layout, size_t maxSeqLength, size_t batchSize,
+        size_t vectorSize, int arrayLengthRequested, size_t seqLengthArray,
+        size_t paddingFill):
+    status = cudnnGetRNNDataDescriptor(
+        <RNNDataDescriptor>RNNDataDesc, <DataType*>dataType,
+        <RNNDataLayout*>layout, <int*>maxSeqLength, <int*>batchSize,
+        <int*>vectorSize, arrayLengthRequested, <int*>seqLengthArray,
+        <void*>paddingFill)
+    check_status(status)
+
+
+cpdef RNNForwardInferenceEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+        size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+        size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+        size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNForwardInferenceEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <RNNDataDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>hyDesc, <void*>hy,
+            <TensorDescriptor>cyDesc, <void*>cy,
+            <RNNDataDescriptor>kDesc, <const void*>keys,
+            <RNNDataDescriptor>cDesc, <void*>cAttn,
+            <RNNDataDescriptor>iDesc, <void*>iAttn,
+            <RNNDataDescriptor>qDesc, <void*>queries,
+            <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNForwardTrainingEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+        size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+        size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+        size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+        size_t workSpace,  size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNForwardTrainingEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <RNNDataDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>hyDesc, <void*>hy,
+            <TensorDescriptor>cyDesc, <void*>cy,
+            <RNNDataDescriptor>kDesc, <const void*>keys,
+            <RNNDataDescriptor>cDesc, <void*>cAttn,
+            <RNNDataDescriptor>iDesc, <void*>iAttn,
+            <RNNDataDescriptor>qDesc, <void*>queries,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNBackwardDataEx(
+        size_t handle, size_t rnnDesc, size_t yDesc, size_t y, size_t dyDesc,
+        size_t dy, size_t dcDesc, size_t dcAttn, size_t dhyDesc, size_t dhy,
+        size_t dcyDesc, size_t dcy, size_t wDesc, size_t w, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t dxDesc, size_t dx,
+        size_t dhxDesc, size_t dhx, size_t dcxDesc, size_t dcx,
+        size_t dkDesc, size_t dkeys,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNBackwardDataEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>yDesc, <const void*>y,
+            <RNNDataDescriptor>dyDesc, <const void*>dy,
+            <RNNDataDescriptor>dcDesc, <const void*>dcAttn,
+            <TensorDescriptor>dhyDesc, <const void*>dhy,
+            <TensorDescriptor>dcyDesc, <const void*>dcy,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <RNNDataDescriptor>dxDesc, <void*>dx,
+            <TensorDescriptor>dhxDesc, <void*>dhx,
+            <TensorDescriptor>dcxDesc, <void*>dcx,
+            <RNNDataDescriptor>dkDesc, <void*>dkeys,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNBackwardWeightsEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x,
+        size_t hxDesc, size_t hx, size_t yDesc, size_t y,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t dwDesc, size_t dw,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNBackwardWeightsEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <RNNDataDescriptor>yDesc, <const void*>y,
+            <void*>workSpace, workSpaceSizeInBytes,
             <FilterDescriptor>dwDesc, <void*>dw,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
     check_status(status)
