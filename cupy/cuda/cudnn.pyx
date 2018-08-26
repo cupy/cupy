@@ -76,6 +76,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
     ctypedef int RNNDataLayout 'cudnnRNNDataLayout_t'
+    ctypedef int RNNPaddingMode 'cudnnRNNPaddingMode_t'
     ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
@@ -462,6 +463,21 @@ cdef extern from "cupy_cudnn.h" nogil:
         Handle handle, RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
         DirectionMode direction, RNNMode mode, RNNAlgo algo, DataType dataType)
+    int cudnnSetRNNPaddingMode(
+        RNNDescriptor rnnDesc, RNNPaddingMode paddingMode)
+    int cudnnGetRNNPaddingMode(
+        RNNDescriptor rnnDesc, RNNPaddingMode* paddingMode)
+    int cudnnCreateRNNDataDescriptor(RNNDataDescriptor* RNNDataDesc)
+    int cudnnDestroyRNNDataDescriptor(RNNDataDescriptor RNNDataDesc)
+    int cudnnSetRNNDataDescriptor(
+        RNNDataDescriptor RNNDataDesc, DataType dataType, RNNDataLayout layout,
+        int maxSeqLength, int batchSize, int vectorSize,
+        const int seqLengthArray[], void *paddingFill)
+    int cudnnGetRNNDataDescriptor(
+        RNNDataDescriptor RNNDataDesc, DataType* dataType,
+        RNNDataLayout* layout, int* maxSeqLength, int* batchSize,
+        int* vectorSize, int arrayLengthRequested, int seqLengthArray[],
+        void* paddingFill)
     int cudnnGetRNNWorkspaceSize(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc, size_t* sizeInBytes)
@@ -517,11 +533,6 @@ cdef extern from "cupy_cudnn.h" nogil:
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
-    int cudnnGetRNNDataDescriptor(
-        RNNDataDescriptor RNNDataDesc, DataType* dataType,
-        RNNDataLayout* layout, int* maxSeqLength, int* batchSize,
-        int* vectorSize, int arrayLengthRequested, int seqLengthArray[],
-        void* paddingFill)
     int cudnnRNNForwardInferenceEx(
         Handle handle, RNNDescriptor rnnDesc,
         RNNDataDescriptor xDesc, const void* x,
@@ -1732,6 +1743,57 @@ cpdef setRNNDescriptor_v6(
     check_status(status)
 
 
+cpdef setRNNPaddingMode(
+        size_t rnnDesc, int paddingMode):
+    status = cudnnSetRNNPaddingMode(
+        <RNNDescriptor>rnnDesc, <RNNPaddingMode>paddingMode)
+    check_status(status)
+
+
+cpdef getRNNPaddingMode(size_t rnnDesc):
+    cdef RNNPaddingMode paddingMode
+    status = cudnnGetRNNPaddingMode(
+        <RNNDescriptor>rnnDesc, &paddingMode)
+    check_status(status)
+    return paddingMode
+
+
+cpdef size_t createRNNDataDescriptor() except *:
+    cdef RNNDataDescriptor desc
+    status = cudnnCreateRNNDataDescriptor(&desc)
+    check_status(status)
+    return <size_t>desc
+
+
+cpdef destroyRNNDataDescriptor(size_t RNNDataDesc):
+    status = cudnnDestroyRNNDataDescriptor(<RNNDataDescriptor>RNNDataDesc)
+    check_status(status)
+
+
+cpdef setRNNDataDescriptor(
+        size_t RNNDataDesc, int dataType, size_t layout,
+        int maxSeqLength, int batchSize, int vectorSize,
+        size_t seqLengthArray, size_t paddingFill):
+    status = cudnnSetRNNDataDescriptor(
+        <RNNDataDescriptor>RNNDataDesc, <DataType>dataType,
+        <RNNDataLayout>layout, maxSeqLength, batchSize, vectorSize,
+        <const int*>seqLengthArray, <void*>paddingFill)
+    check_status(status)
+
+
+cpdef getRNNDataDescriptor(
+        size_t RNNDataDesc, size_t dataType,
+        size_t layout, size_t maxSeqLength, size_t batchSize,
+        size_t vectorSize, int arrayLengthRequested, size_t seqLengthArray,
+        size_t paddingFill):
+    status = cudnnGetRNNDataDescriptor(
+        <RNNDataDescriptor>RNNDataDesc, <DataType*>dataType,
+        <RNNDataLayout*>layout, <int*>maxSeqLength, <int*>batchSize,
+        <int*>vectorSize, arrayLengthRequested, <int*>seqLengthArray,
+        <void*>paddingFill)
+    check_status(status)
+
+
 cpdef getRNNWorkspaceSize(
         size_t handle, size_t rnnDesc, int seqLength, size_t xDesc):
     cdef size_t sizeInBytes
@@ -1870,19 +1932,6 @@ cpdef RNNBackwardWeights(
             <void*>workspace, workSpaceSizeInBytes,
             <FilterDescriptor>dwDesc, <void*>dw,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
-    check_status(status)
-
-
-cpdef GetRNNDataDescriptor(
-        size_t RNNDataDesc, size_t dataType,
-        size_t layout, size_t maxSeqLength, size_t batchSize,
-        size_t vectorSize, int arrayLengthRequested, size_t seqLengthArray,
-        size_t paddingFill):
-    status = cudnnGetRNNDataDescriptor(
-        <RNNDataDescriptor>RNNDataDesc, <DataType*>dataType,
-        <RNNDataLayout*>layout, <int*>maxSeqLength, <int*>batchSize,
-        <int*>vectorSize, arrayLengthRequested, <int*>seqLengthArray,
-        <void*>paddingFill)
     check_status(status)
 
 
