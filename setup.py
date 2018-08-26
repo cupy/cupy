@@ -108,6 +108,8 @@ setup(
         'cupyx.scipy.sparse.linalg',
         'cupyx.scipy.special',
         'cupyx.scipy.linalg',
+        'cupyx.linalg',
+        'cupyx.linalg.sparse'
     ],
     package_data=package_data,
     zip_safe=False,

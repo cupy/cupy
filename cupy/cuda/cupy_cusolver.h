@@ -197,6 +197,14 @@ cusolverStatus_t cusolverSpDcsrlsvqr(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpScsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 } // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
