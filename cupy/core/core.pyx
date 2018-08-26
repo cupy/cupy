@@ -4019,7 +4019,7 @@ cpdef ndarray tensordot_core(
                 a.data.ptr, runtime.CUDA_R_16F, <int>lda,
                 <size_t>&zero_fp32,
                 c.data.ptr, Ctype, <int>m,
-                runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DFALT_TENSOR_OP)
+                runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP)
             cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
         else:
             cublas.sgemmEx(
