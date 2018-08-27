@@ -29,6 +29,18 @@ Gamma and Related Functions
    cupyx.scipy.special.polygamma
 
 
+Error Function
+--------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.special.erf
+   cupyx.scipy.special.erfc
+   cupyx.scipy.special.erfcx
+
+
 Other Special Functions
 -----------------------
 
