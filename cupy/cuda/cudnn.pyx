@@ -546,7 +546,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         RNNDataDescriptor cDesc, void* cAttn,
         RNNDataDescriptor iDesc, void* iAttn,
         RNNDataDescriptor qDesc, void* queries,
-        void* workSpace, size_t workSpaceSizeInBytes);
+        void* workSpace, size_t workSpaceSizeInBytes)
     int cudnnRNNForwardTrainingEx(
         Handle handle, RNNDescriptor rnnDesc,
         RNNDataDescriptor xDesc, const void* x,
@@ -560,7 +560,7 @@ cdef extern from "cupy_cudnn.h" nogil:
         RNNDataDescriptor cDesc, void* cAttn,
         RNNDataDescriptor iDesc, void* iAttn,
         RNNDataDescriptor qDesc, void* queries,
-        void* workSpace,  size_t workSpaceSizeInBytes,
+        void* workSpace, size_t workSpaceSizeInBytes,
         void* reserveSpace, size_t reserveSpaceSizeInBytes)
     int cudnnRNNBackwardDataEx(
         Handle handle, RNNDescriptor rnnDesc,
@@ -1967,7 +1967,7 @@ cpdef RNNForwardTrainingEx(
         size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
         size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
         size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
-        size_t workSpace,  size_t workSpaceSizeInBytes,
+        size_t workSpace, size_t workSpaceSizeInBytes,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
