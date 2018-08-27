@@ -769,7 +769,7 @@ typedef struct {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
-#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7200)
+#if defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7200)
 
 typedef void* cudnnRNNDataDescriptor_t;
 
@@ -816,7 +816,7 @@ cudnnStatus_t cudnnRNNBackwardWeightsEx(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7200)
+#endif // defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7200)
 
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 // TODO: check function names when cuDNN 8 is released.
