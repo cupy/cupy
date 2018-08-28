@@ -153,7 +153,7 @@ cpdef tuple _get_permuted_args(
 
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
-        Py_ssize_t out_block_size, tuple params, bint reduce_dims):
+        Py_ssize_t block_stride, tuple params, bint reduce_dims):
     if reduce_dims:
         in_shape = _reduce_dims(in_args, params, in_indexer.shape)
         out_shape = _reduce_dims(
@@ -161,7 +161,7 @@ cpdef list _get_inout_args(
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
     cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    (<int32_t *>s.ptr)[0] = out_block_size
+    (<int32_t *>s.ptr)[0] = block_stride
     s.kind = 'i'
     s.size = 4
     return in_args + out_args + [in_indexer, out_indexer, s]
@@ -211,7 +211,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
         cdef Py_ssize_t out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -247,7 +247,7 @@ class simple_reduction_function(object):
         out_indexer = Indexer(out_shape)
         reduce_block_size = max(
             1, internal.clp2(in_indexer.size // out_indexer.size))
-        out_block_size = max(1, block_size // reduce_block_size)
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -263,7 +263,7 @@ class simple_reduction_function(object):
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
         out_block_num = (
-            out_indexer.size + out_block_size - 1) // out_block_size
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
             out_block_num * block_size,
@@ -376,7 +376,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, reduce_block_size, out_block_size
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
         cdef Py_ssize_t out_block_num
 
         out = kwargs.pop('out', None)
@@ -437,7 +437,7 @@ class ReductionKernel(object):
         out_indexer = Indexer(out_shape)
         reduce_block_size = max(
             1, internal.clp2(in_indexer.size // out_indexer.size))
-        out_block_size = max(1, block_size // reduce_block_size)
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -453,7 +453,7 @@ class ReductionKernel(object):
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
         out_block_num = (
-            out_indexer.size + out_block_size - 1) // out_block_size
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
             out_block_num * block_size,
