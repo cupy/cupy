@@ -1,65 +1,65 @@
+from cupy import core
 import cupy.core.fusion
-from cupy.math import ufunc
 
 
-_j0 = ufunc.create_math_ufunc(
-    'j0', 1, 'cupyx_scipy_j0',
-    '''Bessel function of the first kind of order 0.
+_j0 = core.create_ufunc(
+    'cupyx_scipy_j0', ('f->f', 'd->d'),
+    'out0 = j0(in0)',
+    doc='''Bessel function of the first kind of order 0.
 
     .. seealso:: :meth:`scipy.special.j0`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_j1 = ufunc.create_math_ufunc(
-    'j1', 1, 'cupyx_scipy_j1',
-    '''Bessel function of the first kind of order 1.
+_j1 = core.create_ufunc(
+    'cupyx_scipy_j1', ('f->f', 'd->d'),
+    'out0 = j1(in0)',
+    doc='''Bessel function of the first kind of order 1.
 
     .. seealso:: :meth:`scipy.special.j1`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_y0 = ufunc.create_math_ufunc(
-    'y0', 1, 'cupyx_scipy_y0',
-    '''Bessel function of the second kind of order 0.
+_y0 = core.create_ufunc(
+    'cupyx_scipy_y0', ('f->f', 'd->d'),
+    'out0 = y0(in0)',
+    doc='''Bessel function of the second kind of order 0.
 
     .. seealso:: :meth:`scipy.special.y0`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_y1 = ufunc.create_math_ufunc(
-    'y1', 1, 'cupyx_scipy_y1',
-    '''Bessel function of the second kind of order 1.
+_y1 = core.create_ufunc(
+    'cupyx_scipy_y1', ('f->f', 'd->d'),
+    'out0 = y1(in0)',
+    doc='''Bessel function of the second kind of order 1.
 
     .. seealso:: :meth:`scipy.special.y1`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_i0 = ufunc.create_math_ufunc(
-    'cyl_bessel_i0', 1, 'cupyx_scipy_i0',
-    '''Modified Bessel function of order 0.
+_i0 = core.create_ufunc(
+    'cupyx_scipy_i0', ('f->f', 'd->d'),
+    'out0 = cyl_bessel_i0(in0)',
+    doc='''Modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_i1 = ufunc.create_math_ufunc(
-    'cyl_bessel_i1', 1, 'cupyx_scipy_i1',
-    '''Modified Bessel function of order 1.
+_i1 = core.create_ufunc(
+    'cupyx_scipy_i1', ('f->f', 'd->d'),
+    'out0 = cyl_bessel_i1(in0)',
+    doc='''Modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
 j0 = cupy.core.fusion.ufunc(_j0)

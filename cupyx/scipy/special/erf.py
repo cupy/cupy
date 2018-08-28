@@ -1,35 +1,35 @@
+from cupy import core
 import cupy.core.fusion
-from cupy.math import ufunc
 
 
-_erf = ufunc.create_math_ufunc(
-    'erf', 1, 'cupyx_scipy_erf',
-    '''Error function.
+_erf = core.create_ufunc(
+    'cupyx_scipy_erf', ('f->f', 'd->d'),
+    'out0 = erf(in0)',
+    doc='''Error function.
 
     .. seealso:: :meth:`scipy.special.erf`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_erfc = ufunc.create_math_ufunc(
-    'erfc', 1, 'cupyx_scipy_erfc',
-    '''Complementary error function.
+_erfc = core.create_ufunc(
+    'cupyx_scipy_erfc', ('f->f', 'd->d'),
+    'out0 = erfc(in0)',
+    doc='''Complementary error function.
 
     .. seealso:: :meth:`scipy.special.erfc`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
-_erfcx = ufunc.create_math_ufunc(
-    'erfcx', 1, 'cupyx_scipy_erfcx',
-    '''Scaled complementary error function.
+_erfcx = core.create_ufunc(
+    'cupyx_scipy_erfcx', ('f->f', 'd->d'),
+    'out0 = erfcx(in0)',
+    doc='''Scaled complementary error function.
 
     .. seealso:: :meth:`scipy.special.erfcx`
 
-    ''',
-    support_complex=False)
+    ''')
 
 
 erf = cupy.core.fusion.ufunc(_erf)
