@@ -25,12 +25,6 @@ def _get_functions(obj):
     ])
 
 
-def _get_name(obj):
-    if isinstance(obj, type):
-        return '{}.{}'.format(obj.__module__, obj.__name__)
-    return obj.__name__
-
-
 def _generate_comparison_rst(base_obj, cupy_obj, base_type):
     base_funcs = _get_functions(eval(base_obj))
     cp_funcs = _get_functions(eval(cupy_obj))
