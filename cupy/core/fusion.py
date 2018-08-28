@@ -752,7 +752,7 @@ class Fusion(object):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
-        if hasattr(_thread_local, 'history'):
+        if not hasattr(_thread_local, 'history'):
             func, kw = self._compile(*args, **kwargs)
             kwargs = dict(kwargs, **kw)
             return func(*args, **kwargs)
