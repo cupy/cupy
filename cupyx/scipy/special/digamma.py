@@ -13,11 +13,9 @@
 # Boost Software License, Version 1.0. (See accompanying file
 # LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-import cupy
 from cupy import core
+import cupy.core.fusion
 
-
-_digamma_kernel = None
 
 polevl_definition = '''
 template<int N> static __device__ double polevl(double x, double coef[])
@@ -177,22 +175,11 @@ double __device__ psi(double x)
 '''
 
 
-def _get_digamma_kernel():
-    global _digamma_kernel
-    if _digamma_kernel is None:
-        _digamma_kernel = core.ElementwiseKernel(
-            'T x', 'T y',
-            """
-            y = psi(x)
-            """,
-            'digamma_kernel',
-            preamble=polevl_definition+psi_definition
-        )
-    return _digamma_kernel
-
-
-def digamma(x):
-    """The digamma function.
+_digamma = core.create_ufunc(
+    'cupyx_scipy_digamma', ('f->f', 'd->d'),
+    'out0 = psi(in0)',
+    preamble=polevl_definition+psi_definition,
+    doc="""The digamma function.
 
     Args:
         x (cupy.ndarray): The input of digamma function.
@@ -202,11 +189,7 @@ def digamma(x):
 
     .. seealso:: :data:`scipy.special.digamma`
 
-    """
-    if x.dtype.char in '?ebBhH':
-        x = x.astype(cupy.float32)
-    elif x.dtype.char in 'iIlLqQ':
-        x = x.astype(cupy.float64)
-    y = cupy.zeros_like(x)
-    _get_digamma_kernel()(x, y)
-    return y
+    """)
+
+
+digamma = cupy.core.fusion.ufunc(_digamma)
