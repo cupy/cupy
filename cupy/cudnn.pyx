@@ -309,6 +309,24 @@ def create_pooling_descriptor(ksize, stride, pad, int mode):
     return desc
 
 
+def create_rnn_data_descriptor():
+    return Descriptor(cudnn.createRNNDataDescriptor(),
+                      py_cudnn.destroyRNNDataDescriptor)
+
+
+def init_unpacked_rnn_data_descriptor(core.ndarray xs, core.ndarray lengths):
+    descriptor = create_rnn_data_descriptor()
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef max_length, batch, n_dim
+    max_length, batch, n_dim = xs.shape
+    py_cudnn.setRNNDataDescriptor(
+        descriptor.value, data_type,
+        cudnn.CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED,
+        max_length, batch, n_dim,
+        lengths.data.ptr, 0)
+    return descriptor
+
+
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
