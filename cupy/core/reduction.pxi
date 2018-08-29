@@ -283,8 +283,8 @@ def _get_reduction_kernel(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
-        ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-         for p in arrays if p.is_const])
+        [(('const {0} {1}' if p.is_const else '{0}& {1}') +
+          ' = _raw_{1}[_j];').format(p.ctype, p.name) for p in arrays])
     output_expr = '\n'.join(
         ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
          for p in arrays if not p.is_const])

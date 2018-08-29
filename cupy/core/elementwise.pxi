@@ -97,9 +97,11 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
             t = _get_typename(dtype)
             if is_array:
                 t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s %s%s' % (t,
-                                '_raw_' if is_array and not p.raw else '',
-                                p.name))
+        ret.append('{}{} {}{}'.format(
+            'const ' if p.is_const else '',
+            t,
+            '_raw_' if is_array and not p.raw else '',
+            p.name))
     return ', '.join(ret)
 
 
@@ -204,6 +206,8 @@ cdef class ParameterInfo:
         for i in s[:-2]:
             if i == 'raw':
                 self.raw = True
+            elif i == '_non_const':
+                self.is_const = False
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
@@ -364,7 +368,7 @@ cdef function.Function _get_elementwise_kernel(
     for p, a in zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))
