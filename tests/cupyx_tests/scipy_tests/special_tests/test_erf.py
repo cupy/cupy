@@ -21,7 +21,7 @@ class _TestBase(object):
 @testing.with_requires('scipy')
 class TestSpecial(unittest.TestCase, _TestBase):
 
-    @testing.for_dtypes(['f', 'd'])
+    @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
@@ -34,7 +34,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
 @testing.with_requires('scipy')
 class TestFusionSpecial(unittest.TestCase, _TestBase):
 
-    @testing.for_dtypes(['f', 'd'])
+    @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
