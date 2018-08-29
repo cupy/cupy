@@ -790,12 +790,12 @@ class Fusion(object):
                 return self.func, {}
 
     def compile_with_dtypes(self, *dtypes):
-        assert _thread_local.history is None
+        assert not hasattr(_thread_local, 'history')
         _thread_local.history = _FusionHistory()
         try:
             self._compile_with_dtypes(dtypes)
         finally:
-            _thread_local.history = None
+            del _thread_local.history
 
     def clear_cache(self):
         self._memo = {}
