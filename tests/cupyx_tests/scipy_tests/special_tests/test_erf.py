@@ -16,6 +16,12 @@ class _TestBase(object):
     def test_erfcx(self):
         self.check_unary('erfcx')
 
+    def test_erfinv(self):
+        self.check_unary('erfinv')
+
+    def test_erfcinv(self):
+        self.check_unary('erfcinv')
+
 
 @testing.gpu
 @testing.with_requires('scipy')
