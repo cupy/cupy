@@ -250,13 +250,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             major_start += major_size
         if major_stop < 0:
             major_stop += major_size
+        major_start = max(min(major_start, major_size), 0)
+        major_stop = max(min(major_stop, major_size), 0)
 
         if major_step != 1:
             raise ValueError('slicing with step != 1 not supported')
 
-        if not (0 <= major_start <= major_size and
-                0 <= major_stop <= major_size and
-                major_start <= major_stop):
+        if not (major_start <= major_stop):
             raise IndexError('index out of bounds')
 
         start = self.indptr[major_start]

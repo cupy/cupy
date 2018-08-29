@@ -168,43 +168,43 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocoo().toarray()
+        return m.tocoo()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.tocsc().toarray()
+        return m.tocsc()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsr().toarray()
+        return m.tocsr()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.transpose().toarray()
+        return m.transpose()
 
 
 @testing.parameterize(*testing.product({
