@@ -16,7 +16,6 @@ from cupy import statistics
 
 
 _thread_local = threading.local()
-_thread_local.history = None
 
 _kind_score = {
     'b': 0,
@@ -753,7 +752,7 @@ class Fusion(object):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is None:
+        if not hasattr(_thread_local, 'history'):
             func, kw = self._compile(*args, **kwargs)
             kwargs = dict(kwargs, **kw)
             return func(*args, **kwargs)
@@ -761,7 +760,7 @@ class Fusion(object):
             return self.func(*args, **kwargs)
 
     def _compile_from_dtypes(self, *dtypes):
-        assert _thread_local.history is None
+        assert not hasattr(_thread_local, 'history')
         _thread_local.history = _FusionHistory()
         try:
             key = tuple(dtypes)
@@ -770,7 +769,7 @@ class Fusion(object):
                     self.func, dtypes, self.name)
             return self._memo[key]
         finally:
-            _thread_local.history = None
+            del _thread_local.history
 
     def _compile(self, *args, **kwargs):
         if builtins.any(
@@ -853,7 +852,7 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is None:
+        if not hasattr(_thread_local, 'history'):
             return self._cupy_op(*args, **kwargs)
         else:
             return _thread_local.history.call_ufunc(
@@ -983,7 +982,7 @@ class reduction(object):
         self.__doc__ = cupy_op.__doc__
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is None:
+        if not hasattr(_thread_local, 'history'):
             return self._cupy_op(*args, **kwargs)
 
         fusion_op = self._fusion_op
