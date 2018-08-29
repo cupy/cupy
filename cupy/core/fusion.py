@@ -16,7 +16,6 @@ from cupy import statistics
 
 
 _thread_local = threading.local()
-_thread_local.history = None
 
 _kind_score = {
     'b': 0,
@@ -753,12 +752,12 @@ class Fusion(object):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is None:
+        if not hasattr(_thread_local, 'history'):
             _thread_local.history = _FusionHistory()
             try:
                 return self._call(*args, **kwargs)
             finally:
-                _thread_local.history = None
+                del _thread_local.history
         else:
             return self.func(*args, **kwargs)
 
@@ -791,12 +790,12 @@ class Fusion(object):
                 return self.func, {}
 
     def compile_with_dtypes(self, *dtypes):
-        assert _thread_local.history is None
+        assert not hasattr(_thread_local, 'history')
         _thread_local.history = _FusionHistory()
         try:
             self._compile_with_dtypes(dtypes)
         finally:
-            _thread_local.history = None
+            del _thread_local.history
 
     def clear_cache(self):
         self._memo = {}
@@ -862,7 +861,7 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if _thread_local.history is not None:
+        if hasattr(_thread_local, 'history'):
             if builtins.any(isinstance(_, FusionVarPython) for _ in args):
                 return _thread_local.history.call_ufunc(
                     self._fusion_op, args, kwargs)
