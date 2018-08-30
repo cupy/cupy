@@ -1,6 +1,7 @@
 import mock
 import numpy
 import six
+import threading
 import unittest
 
 import cupy
@@ -1567,3 +1568,24 @@ class TestFusionGetArrayModule(unittest.TestCase):
 
         x = testing.shaped_arange((3, 4), xp, dtype)
         return f(x)
+
+
+class TestFusionThread(unittest.TestCase):
+
+    def test_thread(self):
+        x = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        y = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        out = [None]
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(x, y):
+            out[0] = f(x, y)
+
+        t = threading.Thread(target=_target, args=(x, y))
+        t.daemon = True
+        t.start()
+        t.join()
+        assert (out[0] == f(x, y)).all()
