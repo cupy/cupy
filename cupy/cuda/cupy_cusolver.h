@@ -37,7 +37,15 @@ cusolverStatus_t cusolverDnGetStream(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpGetStream(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSetStream(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpSetStream(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
@@ -186,6 +194,14 @@ cusolverStatus_t cusolverSpScsrlsvqr(...) {
 }
 
 cusolverStatus_t cusolverSpDcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpScsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

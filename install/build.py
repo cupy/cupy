@@ -10,6 +10,10 @@ import tempfile
 from install import utils
 
 
+PLATFORM_DARWIN = sys.platform.startswith('darwin')
+PLATFORM_LINUX = sys.platform.startswith('linux')
+PLATFORM_WIN32 = sys.platform.startswith('win32')
+
 minimum_cuda_version = 7000
 minimum_cudnn_version = 4000
 maximum_cudnn_version = 7999
@@ -76,7 +80,7 @@ def get_nvcc_path():
     if cuda_path is None:
         return None
 
-    if sys.platform == 'win32':
+    if PLATFORM_WIN32:
         nvcc_bin = 'bin/nvcc.exe'
     else:
         nvcc_bin = 'bin/nvcc'
@@ -97,16 +101,16 @@ def get_compiler_setting():
 
     if cuda_path:
         include_dirs.append(os.path.join(cuda_path, 'include'))
-        if sys.platform == 'win32':
+        if PLATFORM_WIN32:
             library_dirs.append(os.path.join(cuda_path, 'bin'))
             library_dirs.append(os.path.join(cuda_path, 'lib', 'x64'))
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))
-    if sys.platform == 'darwin':
+    if PLATFORM_DARWIN:
         library_dirs.append('/usr/local/cuda/lib')
 
-    if sys.platform == 'win32':
+    if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
         if os.path.exists(nvtoolsext_path):
             include_dirs.append(os.path.join(nvtoolsext_path, 'include'))
@@ -356,18 +360,37 @@ def get_tc_version(formatted=False):
     return '0.1.1'
 
 
+def check_nvtx(compiler, settings):
+    if PLATFORM_WIN32:
+        path = os.environ.get('NVTOOLSEXT_PATH', None)
+        if path is None:
+            utils.print_warning(
+                'NVTX unavailable: NVTOOLSEXT_PATH is not set')
+        elif not os.path.exists(path):
+            utils.print_warning(
+                'NVTX unavailable: NVTOOLSEXT_PATH is set but the directory '
+                'does not exist')
+        elif utils.search_on_path(['nvToolsExt64_1.dll']) is None:
+            utils.print_warning(
+                'NVTX unavailable: nvToolsExt64_1.dll not found in PATH')
+        else:
+            return True
+        return False
+    return True
+
+
 def build_shlib(compiler, source, libraries=(),
-                include_dirs=(), library_dirs=()):
+                include_dirs=(), library_dirs=(), define_macros=None):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
-
         objects = compiler.compile([fname], output_dir=temp_dir,
-                                   include_dirs=include_dirs)
+                                   include_dirs=include_dirs,
+                                   macros=define_macros)
 
         try:
-            postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
+            postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
             compiler.link_shared_lib(objects,
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
@@ -380,17 +403,18 @@ def build_shlib(compiler, source, libraries=(),
 
 
 def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=()):
+                  include_dirs=(), library_dirs=(), define_macros=None):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
 
         objects = compiler.compile([fname], output_dir=temp_dir,
-                                   include_dirs=include_dirs)
+                                   include_dirs=include_dirs,
+                                   macros=define_macros)
 
         try:
-            postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
+            postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
             compiler.link_executable(objects,
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,

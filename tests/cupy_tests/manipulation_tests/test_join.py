@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestJoin(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()
@@ -107,6 +105,17 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 1), xp, 'i')
         b = testing.shaped_arange((2, 1), xp, 'f')
         return xp.concatenate((a, b) * 1024, axis=1)
+
+    @testing.slow
+    def test_concatenate_32bit_boundary(self):
+        a = cupy.zeros((2 ** 30,), dtype=cupy.int8)
+        b = cupy.zeros((2 ** 30,), dtype=cupy.int8)
+        ret = cupy.concatenate([a, b])
+        del a
+        del b
+        del ret
+        # Free huge memory for slow test
+        cupy.get_default_memory_pool().free_all_blocks()
 
     def test_concatenate_wrong_ndim(self):
         a = cupy.empty((2, 3))

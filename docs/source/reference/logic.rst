@@ -59,6 +59,8 @@ Comparison operations
    :toctree: generated/
    :nosignatures:
 
+   cupy.allclose
+   cupy.isclose
    cupy.greater
    cupy.greater_equal
    cupy.less

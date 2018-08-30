@@ -3,20 +3,18 @@
 import numpy
 import six
 
-cimport cpython
+cimport cpython  # NOQA
+from libc.stdint cimport int8_t
+from libc.stdint cimport int16_t
+from libc.stdint cimport int32_t
+from libc.stdint cimport int64_t
 from libcpp cimport vector
+
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
-
-
-cdef extern from "cupy_stdint.h" nogil:
-    ctypedef signed char int8_t
-    ctypedef signed short int16_t
-    ctypedef signed int int32_t
-    ctypedef signed long long int64_t
 
 
 cdef class CPointer:
@@ -81,6 +79,9 @@ cdef inline CPointer _pointer(x):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, core.Indexer):
         return (<core.Indexer>x).get_pointer()
+
+    if isinstance(x, CPointer):
+        return x
 
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):
@@ -168,7 +169,7 @@ cdef class Module:
     def __init__(self):
         self.ptr = 0
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.moduleUnload(self.ptr)
             self.ptr = 0
@@ -193,9 +194,10 @@ cdef class LinkState:
     """CUDA link state."""
 
     def __init__(self):
+        runtime._ensure_context()
         self.ptr = driver.linkCreate()
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.linkDestroy(self.ptr)
             self.ptr = 0

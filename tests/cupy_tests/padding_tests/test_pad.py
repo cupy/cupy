@@ -16,8 +16,6 @@ from cupy import testing
 @testing.gpu
 class TestPadDefault(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_pad_default(self, xp, dtype):
@@ -59,8 +57,6 @@ class TestPadDefault(unittest.TestCase):
 @testing.with_requires('numpy>=1.11.1')
 class TestPad(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_pad(self, xp, dtype):
@@ -85,8 +81,6 @@ class TestPad(unittest.TestCase):
 
 @testing.gpu
 class TestPadNumpybug(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.with_requires('numpy>=1.11.2')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -119,8 +113,6 @@ class TestPadNumpybug(unittest.TestCase):
 )
 @testing.gpu
 class TestPadSpecial(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.numpy_cupy_array_equal()
     def test_pad_special(self, xp):
@@ -159,8 +151,6 @@ class TestPadSpecial(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.11.1')  # Old numpy fails differently
 class TestPadFailure(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.numpy_cupy_raises()
     def test_pad_failure(self, xp):

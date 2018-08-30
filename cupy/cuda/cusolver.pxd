@@ -15,7 +15,7 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int FillMode 'cublasFillMode_t'
 
-    ctypedef int EigMode 'cusolverEigType_t'
+    ctypedef int EigType 'cusolverEigType_t'
     ctypedef int EigMode 'cusolverEigMode_t'
 
     ctypedef void* MatDescr 'cusparseMatDescr_t'
@@ -132,6 +132,12 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
 # sparse LAPACK Functions
 ###############################################################################
 
+cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity)
+cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity)
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                 int reorder, size_t x, size_t singularity)

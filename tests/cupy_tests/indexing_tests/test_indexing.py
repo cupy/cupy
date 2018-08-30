@@ -7,8 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.numpy_cupy_array_equal()
     def test_take_by_scalar(self, xp):
         a = testing.shaped_arange((2, 4, 3), xp)
@@ -86,8 +84,6 @@ class TestIndexing(unittest.TestCase):
 
 @testing.gpu
 class TestChoose(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

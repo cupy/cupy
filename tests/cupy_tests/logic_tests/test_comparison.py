@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestComparison(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype):
@@ -35,6 +33,53 @@ class TestComparison(unittest.TestCase):
 
     def test_equal(self):
         self.check_binary('equal')
+
+
+class TestAllclose(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    def test_allclose_finite(self, xp, dtype):
+        a = xp.array([0.9e-5, 1.1e-5, 1000 + 1e-4, 1000 - 1e-4], dtype=dtype)
+        b = xp.array([0, 0, 1000, 1000], dtype=dtype)
+        return xp.allclose(a, b)
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    def test_allclose_min_int(self, xp, dtype):
+        a = xp.array([0], dtype=dtype)
+        b = xp.array([numpy.iinfo('i').min], dtype=dtype)
+        return xp.allclose(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_allclose_infinite(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, nan, 0, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, 0, nan, inf, ninf], dtype=dtype)
+        return xp.allclose(a, b)
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_allclose_infinite_equal_nan(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, inf, ninf], dtype=dtype)
+        return xp.allclose(a, b, equal_nan=True)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    def test_allclose_array_scalar(self, xp, dtype):
+        a = xp.array([0.9e-5, 1.1e-5], dtype=dtype)
+        b = xp.dtype(xp.dtype).type(0)
+        return xp.allclose(a, b)
 
 
 class TestIsclose(unittest.TestCase):

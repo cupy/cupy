@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestKind(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     def test_asfortranarray1(self, dtype):
         def func(xp):

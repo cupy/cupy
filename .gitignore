@@ -2,6 +2,7 @@
 *.egg/
 *.pyc
 *.pyo
+*.pyd
 *.cpp
 *.so
 build
@@ -18,4 +19,5 @@ dist/
 htmlcov/
 .idea/
 .cache/
+.pytest_cache/
 cupy/_lib/

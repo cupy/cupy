@@ -9,8 +9,6 @@ import numpy
 @testing.gpu
 class TestFromData(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -22,6 +20,15 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_from_numpy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_numpy_broad_cast(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 1, 4), numpy, dtype)
+        a = numpy.broadcast_to(a, (2, 3, 4))
         return xp.array(a, order=order)
 
     @testing.for_orders('CFAK')
@@ -101,8 +108,8 @@ class TestFromData(unittest.TestCase):
             y = cupy.array(x)
         self.assertIsInstance(y, cupy.ndarray)
         self.assertIsNot(x, y)  # Do copy
-        self.assertIsNone(x.device)
-        self.assertIsNone(y.device)
+        assert x.device.id == 0
+        assert y.device.id == 1
         testing.assert_array_equal(x, y)
 
     @testing.for_all_dtypes()

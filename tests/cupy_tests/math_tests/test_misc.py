@@ -1,18 +1,16 @@
+from distutils.version import StrictVersion
+import sys
 import unittest
 
 import numpy
 
 from cupy import testing
 
-import os
-
 
 @testing.gpu
 class TestMisc(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
@@ -20,7 +18,7 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
@@ -29,15 +27,57 @@ class TestMisc(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            a += (a * 1j).astype(dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_float_dtypes()
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_inf(self, name, xp, dtype):
+        inf = numpy.inf
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -inf, inf]
+                          for y in [0, -1, 1, -inf, inf]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_nan(self, name, xp, dtype):
+        nan = numpy.nan
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -nan, nan]
+                          for y in [0, -1, 1, -nan, nan]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_inf_nan(self, name, xp, dtype):
+        inf = numpy.inf
+        nan = numpy.nan
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -inf, inf, -nan, nan], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -inf, inf, -nan, nan]
+                          for y in [0, -1, 1, -inf, inf, -nan, nan]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
         a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
@@ -47,7 +87,7 @@ class TestMisc(unittest.TestCase):
         return getattr(xp, name)(a, b)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
@@ -66,6 +106,11 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(None, 3)
 
+    # Skip this test due to NumPy bug on Windows (fixed in NumPy 1.14.0).
+    # https://github.com/numpy/numpy/pull/9778
+    @unittest.skipIf(
+        sys.platform == 'win32' and testing.numpy_satisfies('<1.14'),
+        'This test requires 1.14.0 when running on Windows.')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip_max_none(self, xp, dtype):
@@ -79,7 +124,7 @@ class TestMisc(unittest.TestCase):
         return a.clip(None, None)
 
     @unittest.skipIf(
-        os.sys.platform == 'win32', 'dtype problem on Windows')
+        sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip1(self, xp, dtype):
@@ -104,6 +149,13 @@ class TestMisc(unittest.TestCase):
     def test_sqrt(self):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_cbrt(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.cbrt(a)
 
     def test_square(self):
         self.check_unary('square')
@@ -143,3 +195,20 @@ class TestMisc(unittest.TestCase):
 
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
+
+    def test_nan_to_num(self):
+        no_bool = StrictVersion(numpy.version.version) < StrictVersion('1.10')
+        self.check_unary('nan_to_num', no_bool=no_bool)
+
+    def test_nan_to_num_negative(self):
+        no_bool = StrictVersion(numpy.version.version) < StrictVersion('1.10')
+        self.check_unary_negative('nan_to_num', no_bool=no_bool)
+
+    def test_nan_to_num_inf(self):
+        self.check_unary_inf('nan_to_num')
+
+    def test_nan_to_num_nan(self):
+        self.check_unary_nan('nan_to_num')
+
+    def test_nan_to_num_inf_nan(self):
+        self.check_unary_inf_nan('nan_to_num')

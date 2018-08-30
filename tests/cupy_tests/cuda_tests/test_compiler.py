@@ -1,9 +1,67 @@
 import unittest
 
+import mock
 import six
 
+import cupy
 from cupy.cuda import compiler
 from cupy import testing
+
+
+def cuda_version():
+    return cupy.cuda.runtime.runtimeGetVersion()
+
+
+@testing.gpu
+class TestNvrtcArch(unittest.TestCase):
+
+    def _check_get_arch(self, device_cc, expected_arch):
+        with mock.patch('cupy.cuda.device.Device') as device_class:
+            device_class.return_value.compute_capability = device_cc
+            assert compiler._get_arch() == expected_arch
+
+    @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
+    def test_get_arch_cuda8(self):
+        self._check_get_arch('37', 'compute_37')
+        self._check_get_arch('50', 'compute_50')
+        self._check_get_arch('52', 'compute_50')
+
+    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
+    def test_get_arch_cuda9(self):
+        self._check_get_arch('62', 'compute_62')
+        self._check_get_arch('70', 'compute_70')
+        self._check_get_arch('72', 'compute_70')
+
+    def _compile(self, arch):
+        compiler.compile_using_nvrtc('', arch=arch)
+
+    @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
+    def test_compile_cuda8(self):
+        # This test is intended to detect specification change in NVRTC API.
+
+        # It should not fail.
+        # (Do not test `compute_53` as it is for Tegra.)
+        self._compile('compute_52')
+
+        # It should fail.
+        # (`compute_60` and `compute_61` are not supported by NVRTC in CUDA 8
+        #  but it does not raise error when used.)
+        self.assertRaises(
+            compiler.CompileException, self._compile, 'compute_54')
+        self.assertRaises(
+            compiler.CompileException, self._compile, 'compute_70')
+
+    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
+    def test_compile_cuda9(self):
+        # This test is intended to detect specification change in NVRTC API.
+
+        # It should not fail.
+        # (Do not test `compute_72` as it is for Tegra.)
+        self._compile('compute_70')
+
+        # It should fail.
+        self.assertRaises(
+            compiler.CompileException, self._compile, 'compute_73')
 
 
 @testing.gpu

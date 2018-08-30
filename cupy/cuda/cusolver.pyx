@@ -1,9 +1,8 @@
 """Thin wrapper of CUSOLVER."""
-cimport cython
-cimport cusparse
+
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -18,7 +17,9 @@ cdef extern from 'cupy_cusolver.h' nogil:
 
     # Stream
     int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
+    int cusolverSpGetStream(SpHandle handle, driver.Stream* streamId)
     int cusolverDnSetStream(Handle handle, driver.Stream streamId)
+    int cusolverSpSetStream(SpHandle handle, driver.Stream streamId)
 
     # Linear Equations
     int cusolverDnSpotrf_bufferSize(Handle handle, FillMode uplo, int n,
@@ -130,6 +131,16 @@ cdef extern from 'cupy_cusolver.h' nogil:
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
 
+    int cusolverSpScsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const float* b, float tol, int reorder, float* x, int* singularity)
+
+    int cusolverSpDcsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const double* b, double tol, int reorder, double* x, int* singularity)
+
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
@@ -214,6 +225,21 @@ cpdef size_t getStream(size_t handle) except *:
         status = cusolverDnGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
+
+
+cpdef spSetStream(size_t handle, size_t stream):
+    with nogil:
+        status = cusolverSpSetStream(<SpHandle>handle, <driver.Stream>stream)
+    check_status(status)
+
+
+cpdef size_t spGetStream(size_t handle) except *:
+    cdef driver.Stream stream
+    with nogil:
+        status = cusolverSpGetStream(<SpHandle>handle, &stream)
+    check_status(status)
+    return <size_t>stream
+
 
 ###############################################################################
 # dense LAPACK Functions
@@ -558,11 +584,35 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
 ###############################################################################
 # sparse LAPACK Functions
 ###############################################################################
+cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpScsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const float*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const float*> b,
+            tol, reorder, <float*> x, <int*> singularity)
+    check_status(status)
+
+cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpDcsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const double*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const double*> b,
+            tol, reorder, <double*> x, <int*> singularity)
+    check_status(status)
 
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpScsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
@@ -575,6 +625,7 @@ cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
                 int reorder, size_t x, size_t singularity):
     cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpDcsrlsvqr(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,

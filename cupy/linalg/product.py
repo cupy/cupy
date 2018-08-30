@@ -1,11 +1,12 @@
-import collections
-
 import numpy
 import six
 
 import cupy
 from cupy import core
 from cupy import internal
+
+from cupy.linalg.solve import inv
+from cupy.util import collections_abc
 
 
 matmul = core.matmul
@@ -161,7 +162,7 @@ def tensordot(a, b, axes=2):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b)
 
-    if isinstance(axes, collections.Sequence):
+    if isinstance(axes, collections_abc.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
         a_axes, b_axes = axes
@@ -194,7 +195,49 @@ def tensordot(a, b, axes=2):
     return core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-# TODO(okuta): Implement matrix_power
+def matrix_power(M, n):
+    """Raise a square matrix to the (integer) power `n`.
+
+    Args:
+        M (~cupy.ndarray): Matrix to raise by power n.
+        n (~int): Power to raise matrix to.
+
+    Returns:
+        ~cupy.ndarray: Output array.
+
+    .. note:: M must be of dtype `float32` or `float64`.
+
+    ..seealso:: :func:`numpy.linalg.matrix_power`
+    """
+    if M.ndim != 2 or M.shape[0] != M.shape[1]:
+        raise ValueError("input must be a square array")
+    if not isinstance(n, six.integer_types):
+        raise TypeError("exponent must be an integer")
+
+    if n == 0:
+        return cupy.identity(M.shape[0], dtype=M.dtype)
+    elif n < 0:
+        M = inv(M)
+        n *= -1
+
+    # short-cuts
+    if n <= 3:
+        if n == 1:
+            return M
+        elif n == 2:
+            return cupy.matmul(M, M)
+        else:
+            return cupy.matmul(cupy.matmul(M, M), M)
+
+    # binary decomposition to reduce the number of Matrix
+    # multiplications for n > 3.
+    result, Z = None, None
+    for b in cupy.binary_repr(n)[::-1]:
+        Z = M if Z is None else cupy.matmul(Z, Z)
+        if b == '1':
+            result = Z if result is None else cupy.matmul(result, Z)
+
+    return result
 
 
 def kron(a, b):

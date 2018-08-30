@@ -2,7 +2,10 @@ import unittest
 
 import numpy as np
 
+import cupy
 from cupy import testing
+
+import six
 
 
 @testing.parameterize(*testing.product({
@@ -13,8 +16,6 @@ from cupy import testing
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -42,6 +43,25 @@ class TestFft(unittest.TestCase):
         return out
 
 
+@testing.gpu
+@testing.slow
+class TestFftAllocate(unittest.TestCase):
+
+    def test_fft_allocate(self):
+        # Check CuFFTError is not raised when the GPU memory is enough.
+        # See https://github.com/cupy/cupy/issues/1063
+        # TODO(mizuno): Simplify "a" after memory compaction is implemented.
+        a = []
+        for i in six.moves.range(10):
+            a.append(cupy.empty(100000000))
+        del a
+        b = cupy.empty(100000007, dtype=cupy.float32)
+        cupy.fft.fft(b)
+        # Free huge memory for slow test
+        del b
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
@@ -63,8 +83,6 @@ class TestFft(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -113,8 +131,6 @@ class TestFft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -148,8 +164,6 @@ class TestFftn(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestRfft(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
@@ -201,8 +215,6 @@ class TestRfft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfft2(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -253,8 +265,6 @@ class TestRfft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfftn(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -289,8 +299,6 @@ class TestRfftn(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestHfft(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_hfft(self, xp, dtype):
@@ -323,8 +331,6 @@ class TestHfft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFftfreq(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fftfreq(self, xp, dtype):
@@ -352,8 +358,6 @@ class TestFftfreq(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFftshift(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)

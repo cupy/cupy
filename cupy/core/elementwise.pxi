@@ -1,13 +1,13 @@
 import string
 
 import numpy
-import six
 
 from cupy.cuda import compiler
 from cupy import util
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.core cimport _scalar
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -34,54 +34,6 @@ cpdef _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef dict _typenames_base = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
-}
-
-cdef str _all_type_chars = 'dfDFeqlihbQLIHB?'
-# for c in 'dDfFeqlihbQLIHB?':
-#    print('#', c, '...', np.dtype(c).name)
-# d ... float64
-# D ... complex128
-# f ... float32
-# F ... complex64
-# e ... float16
-# q ... int64
-# l ... int64
-# i ... int32
-# h ... int16
-# b ... int8
-# Q ... uint64
-# L ... uint64
-# I ... uint32
-# H ... uint16
-# B ... uint8
-# ? ... bool
-
-cdef dict _typenames = {
-    numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
-    for i in _all_type_chars}
-
-cdef tuple _python_scalar_type = six.integer_types + (float, bool, complex)
-cdef tuple _numpy_scalar_type = tuple([numpy.dtype(i).type
-                                       for i in _all_type_chars])
-
-cdef set _python_scalar_type_set = set(_python_scalar_type)
-cdef set _numpy_scalar_type_set = set(_numpy_scalar_type)
-
 cdef dict _kind_score = {
     'b': 0,
     'u': 1,
@@ -91,33 +43,7 @@ cdef dict _kind_score = {
 }
 
 
-cdef dict _python_type_to_numpy_type = {
-    float: numpy.dtype(float).type,
-    complex: numpy.dtype(complex).type,
-    bool: numpy.dtype(bool).type,
-}
-
-
-cpdef _python_scalar_to_numpy_scalar(x):
-    # Note that isinstance(x, six_integer_types) matches with bool.
-    if isinstance(x, bool):
-        numpy_type = numpy.bool_
-    elif isinstance(x, six.integer_types):
-        numpy_type = numpy.uint64 if x >= 0x8000000000000000 else numpy.int64
-    else:
-        numpy_type = _python_type_to_numpy_type[type(x)]
-    return numpy_type(x)
-
-
-cpdef str _get_typename(dtype):
-    if dtype is None:
-        raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = numpy.dtype(dtype).type
-    return _typenames[dtype]
-
-
-cpdef list _preprocess_args(args):
+cpdef list _preprocess_args(args, bint use_c_scalar=False):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
@@ -130,18 +56,16 @@ cpdef list _preprocess_args(args):
     for arg in args:
         typ = type(arg)
         if typ is ndarray:
-            arr_dev = (<ndarray?>arg).data.device
-            if arr_dev is not None and arr_dev.id != dev_id:
+            arr_dev_id = (<ndarray?>arg).data.device_id
+            if arr_dev_id != dev_id:
                 raise ValueError(
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
-                    % (arr_dev.id, dev_id))
-        elif typ in _python_scalar_type_set:
-            arg = _python_scalar_to_numpy_scalar(arg)
-        elif typ in _numpy_scalar_type_set:
-            pass
+                    % (arr_dev_id, dev_id))
         else:
-            raise TypeError('Unsupported type %s' % typ)
+            arg = _scalar.convert_scalar(arg, use_c_scalar)
+            if arg is None:
+                raise TypeError('Unsupported type %s' % typ)
         ret.append(arg)
     return ret
 
@@ -152,6 +76,8 @@ cpdef tuple _get_args_info(list args):
         t = type(a)
         if t is Indexer:
             dtype = None
+        elif t is _scalar.CScalar:
+            dtype = (<_scalar.CScalar>a).get_numpy_type()
         else:
             dtype = a.dtype.type
         ret.append((t, dtype, a.ndim))
@@ -171,85 +97,80 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
             t = _get_typename(dtype)
             if is_array:
                 t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s %s%s' % (t,
-                                '_raw_' if is_array and not p.raw else '',
-                                p.name))
+        ret.append('{}{} {}{}'.format(
+            'const ' if p.is_const else '',
+            t,
+            '_raw_' if is_array and not p.raw else '',
+            p.name))
     return ', '.join(ret)
 
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
-    cdef Py_ssize_t i, j, n, ndim, cnt, axis, s
+    """ Remove contiguous stride to optimize CUDA kernel."""
+    cdef int i, ax, last_ax, ndim
+    cdef Py_ssize_t total_size
     cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
-    cdef vector.vector[bint] is_array_flags
+    cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
     cdef ParameterInfo p
-    cdef ndarray arr, view
+    cdef ndarray arr
     cdef bint flag
 
     ndim = len(shape)
     if ndim <= 1:
-        return args, shape
+        return shape
 
-    n = len(args)
-    for i in range(n):
+    for i in range(len(args)):
         p = params[i]
-        a = args[i]
-        flag = not p.raw and isinstance(a, ndarray)
-        is_array_flags.push_back(flag)
-        if flag:
-            arr = a
-            args_strides.push_back(arr._strides)
+        if not p.raw and isinstance(args[i], ndarray):
+            array_indexes.push_back(i)
+            arr = args[i]
+            if not arr._c_contiguous:
+                args_strides.push_back(arr._strides)
+
+    if args_strides.size() == 0:
+        # The input arrays are all c_contiguous
+        total_size = internal.prod(shape)
+        newshape.assign(<Py_ssize_t>1, total_size)
+        for i in array_indexes:
+            arr = args[i]
+            arr = arr.view()
+            newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
+            arr._set_shape_and_strides(newshape, newstrides, False)
+            args[i] = arr
+        return total_size,
 
     vecshape = shape
-    axis = -1
-    cnt = 0
-    for i in range(1, ndim):
-        if vecshape[i - 1] == 1:
+    last_ax = -1
+    for ax in range(ndim):
+        if vecshape[ax] == 1:
             continue
-        for j in range(<Py_ssize_t>args_strides.size()):
-            if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
-                cnt += 1
-                axis = i - 1
+        if last_ax < 0:
+            last_ax = ax
+            continue
+        for st in args_strides:
+            if st[ax] * vecshape[ax] != st[last_ax]:
+                axes.push_back(last_ax)
                 break
         else:
-            vecshape[i] *= vecshape[i - 1]
-            vecshape[i - 1] = 1
-    if vecshape[ndim - 1] != 1:
-        cnt += 1
-        axis = ndim - 1
+            vecshape[ax] *= vecshape[last_ax]
+        last_ax = ax
+    if last_ax >= 0:
+        axes.push_back(last_ax)
+    if axes.size() == ndim:
+        return shape
 
-    if cnt == ndim:
-        return args, shape
-    if cnt == 1:
-        newshape.assign(<Py_ssize_t>1, <Py_ssize_t>vecshape[axis])
-        ret = []
-        for i, a in enumerate(args):
-            if is_array_flags[i]:
-                arr = a
-                arr = arr.view()
-                newstrides.assign(
-                    <Py_ssize_t>1, <Py_ssize_t>arr._strides[axis])
-                arr._set_shape_and_strides(newshape, newstrides, False)
-                a = arr
-            ret.append(a)
-        return ret, tuple(newshape)
-
-    for i in range(ndim):
-        if vecshape[i] != 1:
-            newshape.push_back(vecshape[i])
-    ret = []
-    for i, a in enumerate(args):
-        if is_array_flags[i]:
-            arr = a
-            arr = arr.view()
-            newstrides.clear()
-            for j in range(ndim):
-                if vecshape[j] != 1:
-                    newstrides.push_back(arr._strides[j])
-            arr._set_shape_and_strides(newshape, newstrides, False)
-            a = arr
-        ret.append(a)
-    return ret, tuple(newshape)
+    for ax in axes:
+        newshape.push_back(vecshape[ax])
+    for i in array_indexes:
+        arr = args[i]
+        arr = arr.view()
+        newstrides.clear()
+        for ax in axes:
+            newstrides.push_back(arr._strides[ax])
+        arr._set_shape_and_strides(newshape, newstrides, False)
+        args[i] = arr
+    return tuple(newshape)
 
 
 cdef class ParameterInfo:
@@ -276,7 +197,7 @@ cdef class ParameterInfo:
         elif len(t) == 1:
             self.ctype = t
         else:
-            dtype = numpy.dtype(t)
+            dtype = get_dtype(t)
             self.dtype = dtype.type
             if dtype.name != t:
                 raise ValueError('Wrong type %s' % t)
@@ -285,6 +206,8 @@ cdef class ParameterInfo:
         for i in s[:-2]:
             if i == 'raw':
                 self.raw = True
+            elif i == '_non_const':
+                self.is_const = False
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
@@ -298,6 +221,13 @@ def _get_param_info(s, is_const):
 
 @util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
+    return _decide_params_type_core(in_params, out_params, in_args_dtype,
+                                    out_args_dtype)
+
+
+cdef tuple _decide_params_type_core(
+        tuple in_params, tuple out_params, tuple in_args_dtype,
+        tuple out_args_dtype):
     type_dict = {}
     if out_args_dtype:
         assert len(out_params) == len(out_args_dtype)
@@ -305,12 +235,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
-                if numpy.dtype(a) != numpy.dtype(p.dtype):
+                if get_dtype(a) != get_dtype(p.dtype):
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
-                if numpy.dtype(t) != numpy.dtype(a):
+                if get_dtype(t) != get_dtype(a):
                     raise TypeError(
                         'Type is mismatched. %s %s %s %s' % (
                             p.name, a, t, p.ctype))
@@ -394,7 +324,7 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
-                      numpy.dtype(out_type).char,
+                      get_dtype(out_type).char,
                       a.dtype.char,
                       casting)
             raise TypeError(msg)
@@ -403,28 +333,32 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
 
 cdef list _get_out_args_with_params(
         list out_args, tuple out_types, tuple out_shape, tuple out_params,
-        bint is_size_specified=False):
+        bint is_size_specified):
     cdef ParameterInfo p
+    cdef ndarray arr
+    cdef vector.vector[Py_ssize_t] shape
     if not out_args:
         for p in out_params:
-            if p.raw and is_size_specified is False:
+            if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
+    shape = out_shape
     for i in range(len(out_params)):
         a = out_args[i]
         p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
-        if not p.raw and a.shape != out_shape:
+        arr = a
+        if not p.raw and not internal.vector_equal(arr._shape, shape):
             raise ValueError('Out shape is mismatched')
     return out_args
 
 
-@util.memoize(for_each_device=True)
-def _get_elementwise_kernel(args_info, types, params, operation, name,
-                            preamble, kwargs):
+cdef function.Function _get_elementwise_kernel(
+        tuple args_info, tuple types, tuple params, str operation, str name,
+        str preamble, dict kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -434,7 +368,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     for p, a in zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))
@@ -442,7 +376,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name,
-        preamble, **dict(kwargs))
+        preamble, **kwargs)
 
 
 cdef class ElementwiseKernel:
@@ -470,9 +404,13 @@ cdef class ElementwiseKernel:
             (i.e., the arrays are reshaped without copy to the minimum
             dimension) by default. It may make the kernel fast by reducing the
             index calculations.
-        options (list): Options passed to the ``nvcc`` command.
+        options (tuple): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
+        no_return (bool): If ``True``, __call__ returns ``None``.
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
+            array even if single value is returned.
         loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
             the top of the kernel function definition and above the ``for``
             loop.
@@ -492,10 +430,15 @@ cdef class ElementwiseKernel:
         readonly str name
         readonly bint reduce_dims
         readonly str preamble
-        readonly object kwargs
+        readonly bint no_return
+        readonly bint return_tuple
+        readonly dict kwargs
+        readonly dict _kernel_memo
+        readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
-                 name='kernel', reduce_dims=True, preamble='', **kwargs):
+                 name='kernel', reduce_dims=True, preamble='',
+                 no_return=False, return_tuple=False, **kwargs):
         if not compiler.is_valid_kernel_name(name):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
@@ -511,7 +454,11 @@ cdef class ElementwiseKernel:
         self.name = name
         self.reduce_dims = reduce_dims
         self.preamble = preamble
-        self.kwargs = frozenset(kwargs.items())
+        self.no_return = no_return
+        self.return_tuple = return_tuple
+        self.kwargs = kwargs
+        self._kernel_memo = {}
+        self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError("Can not use 'i' as a parameter name")
@@ -533,44 +480,47 @@ cdef class ElementwiseKernel:
                 automatically.
 
         Returns:
-            Arrays are returned according to the ``out_params`` argument of the
-            ``__init__`` method.
+            If ``no_return`` has not set, arrays are returned according to the
+            ``out_params`` argument of the ``__init__`` method.
+            If ``no_return`` has set, ``None`` is returned.
 
         """
-
         cdef function.Function kern
+        cdef Py_ssize_t size
 
-        size = kwargs.pop('size', None)
+        size = -1
+        size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
-        if kwargs:
+        if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
 
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        args = _preprocess_args(args)
+        args = _preprocess_args(args, True)
 
-        values, shape = _broadcast(args, self.params, size is not None)
+        values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
-        out_args = values[self.nin:]
+        out_args = args[self.nin:]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
-        in_types, out_types, types = _decide_params_type(
-            self.in_params, self.out_params,
+        in_types, out_types, types = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
         is_size_specified = False
-        if size is not None:
+        if size != -1:
             shape = size,
             is_size_specified = True
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
-        if self.nout == 1:
+        if self.no_return:
+            ret = None
+        elif not self.return_tuple and self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
@@ -578,28 +528,50 @@ cdef class ElementwiseKernel:
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, ndarray) else in_types[i](x)
-                      for i, x in enumerate(in_args)]
-        inout_args += out_args
+        for i, x in enumerate(in_args):
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(in_types[i])
+
+        inout_args = in_args + out_args
 
         if self.reduce_dims:
-            inout_args, shape = _reduce_dims(
-                inout_args, self.params, shape)
+            shape = _reduce_dims(inout_args, self.params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
-        kern = _get_elementwise_kernel(
-            args_info, types, self.params, self.operation,
-            self.name, self.preamble, self.kwargs)
+        kern = self._get_elementwise_kernel(args_info, types)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=128, stream=stream)
         return ret
 
+    cpdef tuple _decide_params_type(
+            self, tuple in_args_dtype, tuple out_args_dtype):
+        key = (in_args_dtype, out_args_dtype)
+        if key in self._params_type_memo:
+            return self._params_type_memo[key]
+        ret = _decide_params_type_core(
+            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
+        self._params_type_memo[key] = ret
+        return ret
+
+    cpdef function.Function _get_elementwise_kernel(
+            self, tuple args_info, tuple types):
+        id = device.get_device_id()
+        key = (id, args_info, types)
+        if key in self._kernel_memo:
+            return self._kernel_memo[key]
+        kern = _get_elementwise_kernel(
+            args_info, types, self.params, self.operation,
+            self.name, self.preamble, self.kwargs)
+        self._kernel_memo[key] = kern
+        return kern
+
 
 @util.memoize(for_each_device=True)
 def _get_ufunc_kernel(
-        in_types, out_types, routine, args_info, params, name, preamble):
+        in_types, out_types, routine, args_info, params, name, preamble,
+        loop_prep):
     kernel_params = _get_kernel_params(params, args_info)
 
     types = []
@@ -623,7 +595,7 @@ def _get_ufunc_kernel(
     preamble = '\n'.join(types)
 
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble)
+        kernel_params, operation, name, preamble, loop_prep=loop_prep)
 
 
 cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
@@ -711,7 +683,7 @@ class ufunc(object):
 
     """
 
-    def __init__(self, name, nin, nout, ops, preamble='', doc='',
+    def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
         self.name = name
         self.nin = nin
@@ -719,6 +691,7 @@ class ufunc(object):
         self.nargs = nin + nout
         self._ops = ops
         self._preamble = preamble
+        self._loop_prep = loop_prep
         self.__doc__ = doc
         if default_casting is None:
             self._default_casting = 'same_kind'
@@ -747,8 +720,8 @@ class ufunc(object):
         """
         types = []
         for in_types, out_types, _ in self._ops:
-            in_str = ''.join([<str>numpy.dtype(t).char for t in in_types])
-            out_str = ''.join([<str>numpy.dtype(t).char for t in out_types])
+            in_str = ''.join([<str>get_dtype(t).char for t in in_types])
+            out_str = ''.join([<str>get_dtype(t).char for t in out_types])
             types.append('%s->%s' % (in_str, out_str))
         return types
 
@@ -775,7 +748,7 @@ class ufunc(object):
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
         if dtype is not None:
-            dtype = numpy.dtype(dtype).type
+            dtype = get_dtype(dtype).type
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -810,29 +783,30 @@ class ufunc(object):
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
+        if broad.size == 0:
             return ret
 
         inout_args = []
         for i, t in enumerate(in_types):
             x = broad.values[i]
-            inout_args.append(x if isinstance(x, ndarray) else t(x))
+            inout_args.append(x if isinstance(x, ndarray) else
+                              _scalar.get_scalar_from_numpy(x, t))
         inout_args.extend(out_args)
-        inout_args, shape = _reduce_dims(inout_args, self._params, shape)
+        shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
 
         kern = _get_ufunc_kernel(
             in_types, out_types, routine, args_info,
-            self._params, self.name, self._preamble)
+            self._params, self.name, self._preamble, self._loop_prep)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None):
+                   default_casting=None, loop_prep=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -846,10 +820,10 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t).type for t in in_types])
-        out_types = tuple([numpy.dtype(t).type for t in out_types])
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
-    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc,
-                default_casting=default_casting)
+    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
+                loop_prep, doc, default_casting=default_casting)
     return ret

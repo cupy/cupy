@@ -13,6 +13,7 @@ from cupy.cuda import function
 from cupy.cuda import nvrtc
 
 _nvrtc_version = None
+_nvrtc_max_compute_capability = None
 
 
 def _get_nvrtc_version():
@@ -24,7 +25,18 @@ def _get_nvrtc_version():
 
 
 def _get_arch():
-    cc = device.Device().compute_capability
+    global _nvrtc_max_compute_capability
+    if _nvrtc_max_compute_capability is None:
+        # See Supported Compile Options section of NVRTC User Guide for
+        # the maximum value allowed for `--gpu-architecture`.
+        major, minor = _get_nvrtc_version()
+        if major < 9:
+            # CUDA 7.0 / 7.5 / 8.0
+            _nvrtc_max_compute_capability = '50'
+        else:
+            # CUDA 9.0 / 9.1
+            _nvrtc_max_compute_capability = '70'
+    cc = min(device.Device().compute_capability, _nvrtc_max_compute_capability)
     return 'compute_%s' % cc
 
 

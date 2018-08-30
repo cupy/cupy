@@ -8,8 +8,6 @@ from cupy import testing
 @testing.gpu
 class TestSearch(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmax_all(self, xp, dtype):
@@ -209,13 +207,14 @@ class TestWhereError(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
-    {"array": numpy.zeros((0, 2))},
-    {"array": numpy.zeros((0, 2, 0))},
+    {"array": numpy.empty((0,))},
+    {"array": numpy.empty((0, 2))},
+    {"array": numpy.empty((0, 2, 0))},
 )
 @testing.gpu
 class TestNonzero(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
@@ -227,13 +226,14 @@ class TestNonzero(unittest.TestCase):
     {"array": numpy.random.randn(3, 2, 4)},
     {"array": numpy.array(0)},
     {"array": numpy.array(1)},
-    {"array": numpy.zeros((0, 2))},
-    {"array": numpy.zeros((0, 2, 0))},
+    {"array": numpy.empty((0,))},
+    {"array": numpy.empty((0, 2))},
+    {"array": numpy.empty((0, 2, 0))},
 )
 @testing.gpu
 class TestFlatNonzero(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_flatnonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)

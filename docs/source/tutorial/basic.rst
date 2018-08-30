@@ -186,3 +186,21 @@ A CPU/GPU generic function is defined using it like follows:
    >>> def softplus(x):
    ...     xp = cp.get_array_module(x)
    ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+
+Sometimes, an explicit conversion to a host or device array may be required.
+:func:`cupy.asarray` and :func:`cupy.asnumpy` can be used in agnostic implementations
+to get host or device arrays from either CuPy or NumPy arrays.
+
+.. doctest::
+
+   >>> np.allclose(x_cpu, [1, 2, 3])
+   True
+   >>> np.allclose(x_gpu, [1, 2, 3])
+   Traceback (most recent call last):
+   ...
+   ValueError: object __array__ method not producing an array
+   >>> np.allclose(cp.asnumpy(x_cpu), [1, 2, 3])
+   True
+   >>> np.allclose(cp.asnumpy(x_gpu), [1, 2, 3])
+   True
+

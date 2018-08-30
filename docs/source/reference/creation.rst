@@ -45,6 +45,8 @@ Numerical ranges
    cupy.linspace
    cupy.logspace
    cupy.meshgrid
+   cupy.mgrid
+   cupy.ogrid
 
 
 Matrix creation
@@ -56,3 +58,6 @@ Matrix creation
 
    cupy.diag
    cupy.diagflat
+   cupy.tri
+   cupy.tril
+   cupy.triu

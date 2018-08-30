@@ -212,6 +212,17 @@ cdef class Device:
             _cusparse_handles[self.id] = handle
             return handle
 
+    @property
+    def mem_info(self):
+        """The device memory info.
+
+        Returns:
+            free: The amount of free memory, in bytes.
+            total: The total amount of memory, in bytes.
+        """
+        with self:
+            return runtime.memGetInfo()
+
     def __richcmp__(Device self, Device other, int op):
         if op == 0:
             return self.id < other.id

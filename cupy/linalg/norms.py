@@ -69,17 +69,14 @@ def norm(x, ord=None, axis=None, keepdims=False):
         elif ord == 0:
             # Zero norm
             # Convert to Python float in accordance with NumPy
-            return (x != 0).sum(axis=axis, keepdims=keepdims, dtype='d')
+            return (x != 0).astype(x.real.dtype).sum(
+                axis=axis, keepdims=keepdims)
         elif ord == 1:
             # special case for speedup
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            if issubclass(x.dtype.type, numpy.complexfloating):
-                s = abs(x)
-                s *= s
-            else:
-                s = x ** 2
+            s = (x.conj() * x).real
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
@@ -87,18 +84,10 @@ def norm(x, ord=None, axis=None, keepdims=False):
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
 
-            # Mirror Numpy behavior of casting to double for non-complex
-            # dtypes, and to float32 or float64 for complex dtypes and
-            # no reduction over all axes.
-            cast_dtype = 'd'
-            if issubclass(x.dtype.type, numpy.complexfloating):
-                if keepdims or tuple(sorted(axis)) != tuple(range(nd)):
-                    cast_dtype = x.dtype.char.lower()  # 'D'->'d' and 'F'->'f'
-
-            absx = abs(x).astype(cast_dtype)
+            absx = abs(x)
             absx **= ord
             ret = absx.sum(axis=axis, keepdims=keepdims)
-            ret **= (1.0 / ord)
+            ret **= cupy.reciprocal(ord, dtype=ret.dtype)
             return ret
     elif len(axis) == 2:
         row_axis, col_axis = axis
@@ -182,12 +171,12 @@ def matrix_rank(M, tol=None):
     .. seealso:: :func:`numpy.linalg.matrix_rank`
     """
     if M.ndim < 2:
-        return (M != 0).any().astype('l')
+        return (M != 0).any().astype(int)
     S = decomposition.svd(M, compute_uv=False)
     if tol is None:
         tol = (S.max(axis=-1, keepdims=True) * max(M.shape[-2:]) *
                numpy.finfo(S.dtype).eps)
-    return (S > tol).sum(axis=-1)
+    return (S > tol).sum(axis=-1, dtype=numpy.intp)
 
 
 def slogdet(a):
@@ -226,9 +215,9 @@ def slogdet(a):
 
     a = a.astype(dtype)
     for index in numpy.ndindex(*shape):
-        s, l = _slogdet_one(a[index])
+        s, logd = _slogdet_one(a[index])
         sign[index] = s
-        logdet[index] = l
+        logdet[index] = logd
     return sign, logdet
 
 

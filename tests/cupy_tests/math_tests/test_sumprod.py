@@ -10,8 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestSumprod(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     def tearDown(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
@@ -120,6 +118,14 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((20, 30, 40, 50), xp, dtype)
         return a.sum(axis=(0, 2, 3))
 
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
+    @testing.numpy_cupy_allclose()
+    def test_sum_dtype(self, xp, src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype):
+            return xp.array([])  # skip
+        a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
+        return a.sum(dtype=dst_dtype)
+
     @testing.numpy_cupy_allclose()
     def test_sum_keepdims(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
@@ -163,6 +169,14 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.prod(a, axis=1)
 
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
+    @testing.numpy_cupy_allclose()
+    def test_prod_dtype(self, xp, src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype):
+            return xp.array([])  # skip
+        a = testing.shaped_arange((2, 3), xp, src_dtype)
+        return a.prod(dtype=dst_dtype)
+
 
 axes = [0, 1, 2]
 
@@ -170,8 +184,6 @@ axes = [0, 1, 2]
 @testing.parameterize(*testing.product({'axis': axes}))
 @testing.gpu
 class TestCumsum(unittest.TestCase):
-
-    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -190,6 +202,20 @@ class TestCumsum(unittest.TestCase):
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        return xp.cumsum(a, axis=self.axis)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_ndarray_cumsum_axis(self, xp, dtype):
+        n = len(axes)
+        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        return a.cumsum(axis=self.axis)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_empty(self, xp, dtype):
+        n = len(axes)
+        a = testing.shaped_arange(tuple(six.moves.range(0, n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
@@ -222,8 +248,6 @@ class TestCumsum(unittest.TestCase):
 @testing.gpu
 class TestCumprod(unittest.TestCase):
 
-    _multiprocess_can_split_ = True
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumprod_1dim(self, xp, dtype):
@@ -241,6 +265,12 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumprod(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_ndarray_cumprod_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return a.cumprod(axis=1)
 
     @testing.slow
     def test_cumprod_huge_array(self):

@@ -19,11 +19,14 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ndarray
    ufunc
    routines
-   sparse           
+   scipy
+   sparse
+   ndimage
    generic
    cuda
    memoize
    kernel
+   interoperability
    testing
    prof
    environment
