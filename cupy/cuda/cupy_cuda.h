@@ -250,6 +250,10 @@ const char* cudaGetErrorString(...) {
     return NULL;
 }
 
+cudaError_t cudaGetLastError() {
+    return cudaSuccess;
+}
+
 
 // Initialization
 cudaError_t cudaDriverGetVersion(...) {
