@@ -1662,3 +1662,45 @@ class TestBroadcast(unittest.TestCase):
         x = testing.shaped_arange((3, 4), xp, xp.int64)
         y = testing.shaped_arange((2, 3, 4), xp, xp.int64)
         return f(x, y)
+
+
+class TestFusionConstexpr(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_constexpr(self, xp, dtype):
+
+        @cupy.fuse(constexpr={'const_x': 1, 'xp': xp})
+        def f(x, const_x, xp):
+            return xp.square(x + const_x)
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return f(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_constexpr_multiple_kernels(self, xp, dtype):
+
+        def f(x, const_x, xp):
+            return xp.square(x + const_x)
+
+        f1 = cupy.fuse(f, constexpr={'const_x': 1, 'xp': xp})
+        f2 = cupy.fuse(f, constexpr={'const_x': 20, 'xp': xp})
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return f1(x) + f2(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_constexpr_composition(self, xp, dtype):
+
+        @cupy.fuse(constexpr={'const_x': 1, 'xp': xp})
+        def f(x, const_x, xp):
+            return xp.square(x + const_x)
+
+        @cupy.fuse(constexpr={'const_x': 1, 'xp': xp})
+        def g(x, const_x, xp):
+            return xp.square(f(x) + const_x)
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return g(x)
