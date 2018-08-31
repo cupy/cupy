@@ -1582,6 +1582,7 @@ class TestFusionThread(unittest.TestCase):
             return x + y * 2
 
         def _target(x, y):
+            cupy.cuda.Device(0).use()
             out[0] = f(x, y)
 
         t = threading.Thread(target=_target, args=(x, y))
@@ -1604,6 +1605,8 @@ class TestFusionThread(unittest.TestCase):
             return x + y * 2
 
         def _target(tid, x, y):
+            if xp is cupy:
+                xp.cuda.Device(0).use()
             out[tid] = f(x, y).astype(xp.int64)
 
         def run_thread(tid):
