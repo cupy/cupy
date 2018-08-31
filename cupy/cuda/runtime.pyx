@@ -50,6 +50,7 @@ cdef extern from "cupy_cuda.h" nogil:
     # Error handling
     const char* cudaGetErrorName(Error error)
     const char* cudaGetErrorString(Error error)
+    int cudaGetLastError()
 
     # Initialization
     int cudaDriverGetVersion(int* driverVersion)
@@ -131,6 +132,8 @@ class CUDARuntimeError(RuntimeError):
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
+        # to reset error status
+        cudaGetLastError()
         raise CUDARuntimeError(status)
 
 
