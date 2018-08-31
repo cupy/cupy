@@ -1589,3 +1589,40 @@ class TestFusionThread(unittest.TestCase):
         t.start()
         t.join()
         assert (out[0] == f(x, y)).all()
+
+    @testing.numpy_cupy_array_equal()
+    def test_thread_multiple_dtypes(self, xp):
+        x1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        y1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        x2 = x1.astype(xp.float64)
+        y2 = y1.astype(xp.float64)
+        threads = [None] * 100
+        out = [None] * 100
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(tid, x, y):
+            out[tid] = f(x, y).astype(xp.int64)
+
+        def run_thread(tid):
+            x, y = (x1, y1) if tid % 2 == 0 else (x2, y2)
+            t = threading.Thread(target=_target, args=(tid, x, y))
+            threads[tid] = t
+            t.daemon = True
+            t.start()
+
+        for tid in six.moves.range(0, 50):
+            run_thread(tid)
+
+        for tid in six.moves.range(0, 50):
+            threads[tid].join()
+
+        for tid in six.moves.range(50, 100):
+            run_thread(tid)
+
+        for tid in six.moves.range(50, 100):
+            threads[tid].join()
+
+        return xp.concatenate(out)
