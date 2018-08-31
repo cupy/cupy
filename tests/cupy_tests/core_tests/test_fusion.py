@@ -1,6 +1,7 @@
 import mock
 import numpy
 import six
+import threading
 import unittest
 
 import cupy
@@ -1567,3 +1568,64 @@ class TestFusionGetArrayModule(unittest.TestCase):
 
         x = testing.shaped_arange((3, 4), xp, dtype)
         return f(x)
+
+
+class TestFusionThread(unittest.TestCase):
+
+    def test_thread(self):
+        x = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        y = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        out = [None]
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(x, y):
+            cupy.cuda.Device(0).use()
+            out[0] = f(x, y)
+
+        t = threading.Thread(target=_target, args=(x, y))
+        t.daemon = True
+        t.start()
+        t.join()
+        assert (out[0] == f(x, y)).all()
+
+    @testing.numpy_cupy_array_equal()
+    def test_thread_multiple_dtypes(self, xp):
+        x1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        y1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        x2 = x1.astype(xp.float64)
+        y2 = y1.astype(xp.float64)
+        threads = [None] * 100
+        out = [None] * 100
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(tid, x, y):
+            if xp is cupy:
+                xp.cuda.Device(0).use()
+            out[tid] = f(x, y).astype(xp.int64)
+
+        def run_thread(tid):
+            x, y = (x1, y1) if tid % 2 == 0 else (x2, y2)
+            t = threading.Thread(target=_target, args=(tid, x, y))
+            threads[tid] = t
+            t.daemon = True
+            t.start()
+
+        for tid in six.moves.range(0, 50):
+            run_thread(tid)
+
+        for tid in six.moves.range(0, 50):
+            threads[tid].join()
+
+        for tid in six.moves.range(50, 100):
+            run_thread(tid)
+
+        for tid in six.moves.range(50, 100):
+            threads[tid].join()
+
+        return xp.concatenate(out)
