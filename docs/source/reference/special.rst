@@ -41,6 +41,16 @@ Error Function
    cupyx.scipy.special.erfcx
 
 
+Raw Statistical Functions
+-------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.special.ndtr
+
+
 Other Special Functions
 -----------------------
 
