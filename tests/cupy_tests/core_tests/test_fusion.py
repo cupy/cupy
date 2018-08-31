@@ -1547,18 +1547,6 @@ class TestFusionCompile(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
-    def test_compile_from_dtypes(self, xp, dtype):
-        @cupy.fuse()
-        def f(x, y):
-            return x - y * 2
-
-        x = testing.shaped_arange((3, 3), xp, dtype)
-        y = testing.shaped_arange((3, 3), xp, dtype)
-        f._compile_from_dtypes(x.dtype, y.dtype)
-        return f(x, y)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
     def test_clear_cache(self, xp, dtype):
         @cupy.fuse()
         def f(x, y):
@@ -1609,6 +1597,7 @@ class TestFusionThread(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_thread_multiple_dtypes(self, xp):
+        # A fusion class set thread_local for each dtypes of input parameters.
         x1 = testing.shaped_arange((3, 3), xp, xp.int64)
         y1 = testing.shaped_arange((3, 3), xp, xp.int64)
         x2 = x1.astype(xp.float64)

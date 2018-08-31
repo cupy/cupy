@@ -768,27 +768,15 @@ class Fusion(object):
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
-    def __call__(self, *args, **kwargs):
-        if not hasattr(_thread_local, 'history'):
-            func, kw = self._compile(*args, **kwargs)
-            kwargs = dict(kwargs, **kw)
-            return func(*args, **kwargs)
-        else:
-            return self.func(*args, **kwargs)
+    def _is_cupy_data(self, a):
+        return isinstance(a, (core.ndarray, numpy.generic))
 
-    def _compile_from_dtypes(self, *dtypes):
-        assert not hasattr(_thread_local, 'history')
-        _thread_local.history = _FusionHistory()
-        try:
-            key = tuple(dtypes)
-            if key not in self._memo:
-                self._memo[key] = _thread_local.history.get_fusion(
-                    self.func, dtypes, self.name)
-            return self._memo[key]
-        finally:
-            del _thread_local.history
+    def __call__(self, *args):
+        # Inner function of composition of multiple fused functions.
+        if hasattr(_thread_local, 'history'):
+            return self.func(*args)
 
-    def _compile(self, *args, **kwargs):
+        # Invalid argument types
         if builtins.any(
                 not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic))
                 for _ in args):
@@ -796,18 +784,25 @@ class Fusion(object):
                 self.name,
                 ', '.join(repr(type(_)) for _ in args)))
 
-        def is_cupy_data(a):
-            return isinstance(a, (core.ndarray, numpy.generic))
-        if builtins.all(is_cupy_data(_) for _ in args):
-            dtypes = [_.dtype for _ in args]
-            return self._compile_from_dtypes(*dtypes)
-        else:
+        # Fail to fuse
+        if not builtins.all(self._is_cupy_data(_) for _ in args):
+            # Arguments include some CuPy ndarrays
             if builtins.any(type(_) is core.ndarray for _ in args):
                 types_str = '.'.join(repr(type(_)) for _ in args)
                 message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
-            else:
-                return self.func, {}
+            return self.func(*args)
+
+        dtypes = tuple(_.dtype for _ in args)
+        if dtypes not in self._memo:
+            try:
+                _thread_local.history = _FusionHistory()
+                self._memo[dtypes] = _thread_local.history.get_fusion(
+                    self.func, dtypes, self.name)
+            finally:
+                del _thread_local.history
+        kernel, kwargs = self._memo[dtypes]
+        return kernel(*args, **kwargs)
 
     def clear_cache(self):
         self._memo = {}
@@ -834,8 +829,8 @@ def fuse(*args, **kwargs):
     def wrapper(f, kernel_name=None):
         return Fusion(f, kernel_name)
 
-    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-        return functools.update_wrapper(wrapper(args[0]), args[0])
+    if len(args) >= 1 and callable(args[0]):
+        return functools.update_wrapper(wrapper(*args, **kwargs), args[0])
     else:
         return lambda f: functools.update_wrapper(
             wrapper(f, *args, **kwargs), f)
