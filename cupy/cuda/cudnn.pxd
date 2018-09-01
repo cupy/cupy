@@ -465,7 +465,7 @@ cpdef setRNNDescriptor_v6(
     int algo, int dataType)
 cpdef setRNNPaddingMode(size_t rnnDesc, int paddingMode)
 cpdef getRNNPaddingMode(size_t rnnDesc)
-cpdef size_t createRNNDataDescriptor() except *
+cpdef size_t createRNNDataDescriptor() except? 0
 cpdef destroyRNNDataDescriptor(size_t RNNDataDesc)
 cpdef setRNNDataDescriptor(
     size_t RNNDataDesc, int dataType, size_t layout,
