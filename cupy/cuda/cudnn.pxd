@@ -107,23 +107,23 @@ cpdef enum:
 # Version
 ###############################################################################
 
-cpdef size_t getVersion() except *
+cpdef size_t getVersion() except? 0
 
 ###############################################################################
 # Initialization and CUDA cooperation
 ###############################################################################
 
-cpdef size_t create() except *
+cpdef size_t create() except? 0
 cpdef destroy(size_t handle)
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle) except *
+cpdef size_t getStream(size_t handle) except? 0
 
 
 ###############################################################################
 # Tensor manipulation
 ###############################################################################
 
-cpdef size_t createTensorDescriptor() except *
+cpdef size_t createTensorDescriptor() except? 0
 cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
                             int n, int c, int h, int w)
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
@@ -140,7 +140,7 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
 # Filter manipulation
 ###############################################################################
 
-cpdef size_t createFilterDescriptor() except *
+cpdef size_t createFilterDescriptor() except? 0
 cpdef setFilter4dDescriptor_v4(
     size_t filterDesc, int dataType, int format, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor_v4(
@@ -153,13 +153,13 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 # Convolution
 ###############################################################################
 
-cpdef size_t createConvolutionDescriptor() except *
+cpdef size_t createConvolutionDescriptor() except? 0
 cpdef setConvolutionMathType(
     size_t convDesc, size_t mathType)
-cpdef size_t getConvolutionMathType(size_t convDesc) except *
+cpdef size_t getConvolutionMathType(size_t convDesc) except? 0
 cpdef setConvolutionGroupCount(
     size_t convDesc, int groupCount)
-cpdef int getConvolutionGroupCount(size_t convDesc) except *
+cpdef int getConvolutionGroupCount(size_t convDesc) except? -1
 cpdef setConvolution2dDescriptor_v4(
     size_t convDesc, int pad_h, int pad_w, int u, int v, int dilation_h,
     int dilation_w, int mode)
@@ -179,13 +179,13 @@ cpdef findConvolutionForwardAlgorithmEx(
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-    size_t destDesc, int preference, size_t memoryLimitInbytes) except *
+    size_t destDesc, int preference, size_t memoryLimitInbytes) except? -1
 cpdef getConvolutionForwardAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int requestedAlgoCount)
-cpdef size_t getConvolutionForwardWorkspaceSize(
+cpdef Py_ssize_t getConvolutionForwardWorkspaceSize(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-    size_t destDesc, int algo) except *
+    size_t destDesc, int algo) except? -1
 cpdef convolutionForward(
     size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
     size_t filterDesc, size_t filterData, size_t convDesc, int algo,
@@ -203,13 +203,13 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-    size_t filterDesc, int preference, size_t memoryLimitInbytes) except *
+    size_t filterDesc, int preference, size_t memoryLimitInbytes) except? -1
 cpdef getConvolutionBackwardFilterAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
-cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
+cpdef Py_ssize_t getConvolutionBackwardFilterWorkspaceSize(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-    size_t filterDesc, int algo) except *
+    size_t filterDesc, int algo) except? -1
 cpdef convolutionBackwardFilter_v3(
     size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
     size_t diffDesc, size_t diffData, size_t convDesc, int algo,
@@ -225,13 +225,13 @@ cpdef findConvolutionBackwardDataAlgorithmEx(
 cpdef int getConvolutionBackwardDataAlgorithm_v6(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, size_t preference,
-    size_t memoryLimitInbytes) except *
+    size_t memoryLimitInbytes) except? -1
 cpdef getConvolutionBackwardDataAlgorithm_v7(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
-cpdef size_t getConvolutionBackwardDataWorkspaceSize(
+cpdef Py_ssize_t getConvolutionBackwardDataWorkspaceSize(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-    size_t gradDesc, int algo) except *
+    size_t gradDesc, int algo) except? -1
 cpdef convolutionBackwardData_v3(
     size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
     size_t diffDesc, size_t diffData, size_t convDesc, int algo,
@@ -243,7 +243,7 @@ cpdef convolutionBackwardData_v3(
 # Pooling
 ###############################################################################
 
-cpdef size_t createPoolingDescriptor() except *
+cpdef size_t createPoolingDescriptor() except? 0
 cpdef setPooling2dDescriptor_v4(
     size_t poolingDesc, int mode, int maxpoolingNanOpt, int windowHeight,
     int windowWidth, int verticalPadding, int horizontalPadding,
@@ -300,7 +300,7 @@ cpdef batchNormalizationBackward(
 # Activation
 ###############################################################################
 
-cpdef size_t createActivationDescriptor() except *
+cpdef size_t createActivationDescriptor() except? 0
 cpdef setActivationDescriptor(
     size_t activationDesc, int mode, int reluNanOpt, double reluCeiling)
 cpdef destroyActivationDescriptor(size_t activationDesc)
@@ -324,13 +324,13 @@ cpdef activationBackward_v4(
 ###############################################################################
 # Dropout
 ###############################################################################
-cpdef size_t createDropoutDescriptor() except *
+cpdef size_t createDropoutDescriptor() except? 0
 cpdef destroyDropoutDescriptor(size_t dropoutDesc)
-cpdef size_t dropoutGetStatesSize(size_t handle) except *
+cpdef Py_ssize_t dropoutGetStatesSize(size_t handle) except? -1
 cpdef setDropoutDescriptor(
     size_t dropoutDesc, size_t handle, float dropout,
     size_t states, size_t stateSizeInBytes, unsigned long long seed)
-cpdef size_t getDropoutReserveSpaceSize(size_t xDesc)
+cpdef size_t getDropoutReserveSpaceSize(size_t xDesc) except? 0
 cpdef dropoutForward(
     size_t handle, size_t dropoutDesc,
     size_t srcDesc, size_t srcData,
@@ -347,10 +347,10 @@ cpdef dropoutBackward(
 # RNN
 ###############################################################################
 
-cpdef size_t createRNNDescriptor() except *
+cpdef size_t createRNNDescriptor() except? 0
 cpdef destroyRNNDescriptor(size_t rnnDesc)
 cpdef size_t createPersistentRNNPlan(
-    size_t rnnDesc, int minibatch, int dataType) except *
+    size_t rnnDesc, int minibatch, int dataType) except? 0
 cpdef setPersistentRNNPlan(size_t rnnDesc, size_t plan)
 cpdef destroyPersistentRNNPlan(size_t plan)
 cpdef setRNNDescriptor_v5(
@@ -407,7 +407,7 @@ cpdef RNNBackwardWeights(
 # Spatial Transformer
 ###############################################################################
 
-cpdef size_t createSpatialTransformerDescriptor() except *
+cpdef size_t createSpatialTransformerDescriptor() except? 0
 cpdef destroySpatialTransformerDescriptor(size_t stDesc)
 cpdef setSpatialTransformerDescriptor(
     size_t stDesc, size_t samplerType, int dataType,

@@ -87,7 +87,7 @@ def get_build_version():
 # Context management
 ###############################################################################
 
-cpdef size_t ctxGetCurrent() except *:
+cpdef size_t ctxGetCurrent() except? 0:
     cdef Context ctx
     with nogil:
         status = cuCtxGetCurrent(&ctx)
@@ -99,7 +99,7 @@ cpdef size_t ctxGetCurrent() except *:
 # Module load and kernel execution
 ###############################################################################
 
-cpdef size_t linkCreate() except *:
+cpdef size_t linkCreate() except? 0:
     cpdef LinkState state
     with nogil:
         status = cuLinkCreate(0, <CUjit_option*>0, <void**>0, &state)
@@ -134,7 +134,7 @@ cpdef linkDestroy(size_t state):
     check_status(status)
 
 
-cpdef size_t moduleLoad(str filename) except *:
+cpdef size_t moduleLoad(str filename) except? 0:
     cdef Module module
     cdef bytes b_filename = filename.encode()
     cdef char* b_filename_ptr = b_filename
@@ -144,7 +144,7 @@ cpdef size_t moduleLoad(str filename) except *:
     return <size_t>module
 
 
-cpdef size_t moduleLoadData(bytes image) except *:
+cpdef size_t moduleLoadData(bytes image) except? 0:
     cdef Module module
     cdef char* image_ptr = image
     with nogil:
@@ -159,7 +159,7 @@ cpdef moduleUnload(size_t module):
     check_status(status)
 
 
-cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
+cpdef size_t moduleGetFunction(size_t module, str funcname) except? 0:
     cdef Function func
     cdef bytes b_funcname = funcname.encode()
     cdef char* b_funcname_ptr = b_funcname
@@ -169,7 +169,7 @@ cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
     return <size_t>func
 
 
-cpdef size_t moduleGetGlobal(size_t module, str varname) except *:
+cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0:
     cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()

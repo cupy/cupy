@@ -179,7 +179,7 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cusolverDnCreate(&handle)
@@ -187,7 +187,7 @@ cpdef size_t create() except *:
     return <size_t>handle
 
 
-cpdef size_t spCreate() except *:
+cpdef size_t spCreate() except? 0:
     cdef SpHandle handle
     with nogil:
         status = cusolverSpCreate(&handle)
@@ -195,7 +195,7 @@ cpdef size_t spCreate() except *:
     return <size_t>handle
 
 
-cpdef void destroy(size_t handle) except *:
+cpdef destroy(size_t handle):
     with nogil:
         status = cusolverDnDestroy(<Handle>handle)
     check_status(status)
@@ -210,7 +210,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
+cpdef size_t getStream(size_t handle) except? 0:
     cdef driver.Stream stream
     with nogil:
         status = cusolverDnGetStream(<Handle>handle, &stream)
@@ -237,7 +237,7 @@ cpdef size_t spGetStream(size_t handle) except *:
 ###############################################################################
 
 cpdef int spotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *:
+                            int n, size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -247,7 +247,7 @@ cpdef int spotrf_bufferSize(size_t handle, int uplo,
     return lwork
 
 cpdef int dpotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *:
+                            int n, size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -333,7 +333,7 @@ cpdef dgetrs(size_t handle, int trans, int n, int nrhs,
     check_status(status)
 
 cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -343,7 +343,7 @@ cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -353,7 +353,7 @@ cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -363,7 +363,7 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -391,7 +391,7 @@ cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,
     check_status(status)
 
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *:
+                            size_t A, int lda, size_t tau) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -402,7 +402,7 @@ cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
     return lwork
 
 cpdef int dorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *:
+                            size_t A, int lda, size_t tau) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -492,7 +492,7 @@ cpdef dgebrd(size_t handle, int m, int n, size_t A, int lda,
             <double*>Work, lwork, <int*>devInfo)
     check_status(status)
 
-cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -500,7 +500,7 @@ cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *:
     check_status(status)
     return lwork
 
-cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
