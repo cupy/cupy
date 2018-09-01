@@ -127,6 +127,13 @@ cpdef enum:
     CUDNN_RNN_ALGO_PERSIST_STATIC = 1
     CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2
 
+    CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED = 0
+    CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_PACKED = 1
+    CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED = 2
+
+    CUDNN_RNN_PADDED_IO_DISABLED = 0
+    CUDNN_RNN_PADDED_IO_ENABLED = 1
+
     CUDNN_LINEAR_INPUT = 0
     CUDNN_SKIP_INPUT = 1
 
@@ -456,6 +463,19 @@ cpdef setRNNDescriptor_v6(
     size_t handle, size_t rnnDesc, int hiddenSize, int numLayers,
     size_t dropoutDesc, int inputMode, int direction, int mode,
     int algo, int dataType)
+cpdef setRNNPaddingMode(size_t rnnDesc, int paddingMode)
+cpdef getRNNPaddingMode(size_t rnnDesc)
+cpdef size_t createRNNDataDescriptor() except? 0
+cpdef destroyRNNDataDescriptor(size_t RNNDataDesc)
+cpdef setRNNDataDescriptor(
+    size_t RNNDataDesc, int dataType, size_t layout,
+    int maxSeqLength, int batchSize, int vectorSize,
+    size_t seqLengthArray, size_t paddingFill)
+cpdef getRNNDataDescriptor(
+    size_t RNNDataDesc, size_t dataType,
+    size_t layout, size_t maxSeqLength, size_t batchSize,
+    size_t vectorSize, int arrayLengthRequested, size_t seqLengthArray,
+    size_t paddingFill)
 cpdef getRNNWorkspaceSize(
     size_t handle, size_t rnnDesc, int seqLength, size_t xDesc)
 cpdef getRNNTrainingReserveSize(
@@ -496,6 +516,36 @@ cpdef RNNBackwardWeights(
     size_t hxDesc, size_t hx, size_t yDesc, size_t y,
     size_t workspace, size_t workSpaceSizeInBytes, size_t dwDesc,
     size_t dw, size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+cpdef RNNForwardInferenceEx(
+    size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+    size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+    size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+    size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+    size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+    size_t workSpace, size_t workSpaceSizeInBytes)
+cpdef RNNForwardTrainingEx(
+    size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+    size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+    size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+    size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+    size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+cpdef RNNBackwardDataEx(
+    size_t handle, size_t rnnDesc, size_t yDesc, size_t y, size_t dyDesc,
+    size_t dy, size_t dcDesc, size_t dcAttn, size_t dhyDesc, size_t dhy,
+    size_t dcyDesc, size_t dcy, size_t wDesc, size_t w, size_t hxDesc,
+    size_t hx, size_t cxDesc, size_t cx, size_t dxDesc, size_t dx,
+    size_t dhxDesc, size_t dhx, size_t dcxDesc, size_t dcx,
+    size_t dkDesc, size_t dkeys,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+cpdef RNNBackwardWeightsEx(
+    size_t handle, size_t rnnDesc, size_t xDesc, size_t x,
+    size_t hxDesc, size_t hx, size_t yDesc, size_t y,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t dwDesc, size_t dw,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
 
 
 ###############################################################################
