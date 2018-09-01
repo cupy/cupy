@@ -79,21 +79,21 @@ cpdef check_status(int status)
 # Initialization
 ###############################################################################
 
-cpdef int driverGetVersion() except *
-cpdef int runtimeGetVersion() except *
+cpdef int driverGetVersion() except? -1
+cpdef int runtimeGetVersion() except? -1
 
 
 ###############################################################################
 # Device and context operations
 ###############################################################################
 
-cpdef int getDevice() except *
-cpdef int deviceGetAttribute(int attrib, int device) except *
-cpdef int getDeviceCount() except *
+cpdef int getDevice() except? -1
+cpdef int deviceGetAttribute(int attrib, int device) except? -1
+cpdef int getDeviceCount() except? -1
 cpdef setDevice(int device)
 cpdef deviceSynchronize()
 
-cpdef int deviceCanAccessPeer(int device, int peerDevice) except *
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
 cpdef deviceEnablePeerAccess(int peerDevice)
 
 
@@ -101,9 +101,9 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 # Memory management
 ###############################################################################
 
-cpdef size_t malloc(size_t size) except *
-cpdef size_t mallocManaged(size_t size, unsigned int flags=*) except *
-cpdef size_t hostAlloc(size_t size, unsigned int flags) except *
+cpdef size_t malloc(size_t size) except? 0
+cpdef size_t mallocManaged(size_t size, unsigned int flags=*) except? 0
+cpdef size_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef free(size_t ptr)
 cpdef freeHost(size_t ptr)
 cpdef memGetInfo()
@@ -127,18 +127,18 @@ cpdef PointerAttributes pointerGetAttributes(size_t ptr)
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate() except *
-cpdef size_t streamCreateWithFlags(unsigned int flags) except *
+cpdef size_t streamCreate() except? 0
+cpdef size_t streamCreateWithFlags(unsigned int flags) except? 0
 cpdef streamDestroy(size_t stream)
 cpdef streamSynchronize(size_t stream)
 cpdef streamAddCallback(size_t stream, callback, size_t arg,
                         unsigned int flags=*)
 cpdef streamQuery(size_t stream)
 cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=*)
-cpdef size_t eventCreate() except *
-cpdef size_t eventCreateWithFlags(unsigned int flags) except *
+cpdef size_t eventCreate() except? 0
+cpdef size_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(size_t event)
-cpdef float eventElapsedTime(size_t start, size_t end) except *
+cpdef float eventElapsedTime(size_t start, size_t end) except? 0
 cpdef eventQuery(size_t event)
 cpdef eventRecord(size_t event, size_t stream)
 cpdef eventSynchronize(size_t event)
