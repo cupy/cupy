@@ -22,7 +22,7 @@ cdef _thread_local = threading.local()
 cdef vector.vector[size_t] _handles
 
 
-cpdef size_t get_handle() except *:
+cpdef size_t get_handle() except? 0:
     cdef int dev
     dev = device.get_device_id()
     if _handles.size() <= dev:
