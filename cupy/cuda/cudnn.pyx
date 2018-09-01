@@ -1758,7 +1758,7 @@ cpdef getRNNPaddingMode(size_t rnnDesc):
     return paddingMode
 
 
-cpdef size_t createRNNDataDescriptor() except *:
+cpdef size_t createRNNDataDescriptor() except? 0:
     cdef RNNDataDescriptor desc
     status = cudnnCreateRNNDataDescriptor(&desc)
     check_status(status)
