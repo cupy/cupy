@@ -2,6 +2,7 @@ from libcpp cimport vector
 from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
+from cupy.cuda.function cimport Module
 
 cdef class ndarray:
     cdef:
@@ -75,6 +76,14 @@ cdef class ndarray:
     cpdef object toDlpack(self)
 
 
+cdef class broadcast:
+    cdef:
+        readonly tuple values
+        readonly tuple shape
+        readonly Py_ssize_t size
+        readonly Py_ssize_t nd
+
+
 cdef class Indexer:
     cdef:
         readonly Py_ssize_t size
@@ -84,3 +93,5 @@ cdef class Indexer:
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
+cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
+                                cachd_dir=*, prepend_cupy_headers=*)
