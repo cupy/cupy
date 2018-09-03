@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestUserkernel(unittest.TestCase):
 
     def test_manual_indexing(self, n=100):
@@ -66,3 +65,19 @@ class TestUserkernel(unittest.TestCase):
 
         expected = in1_cpu + dtype(2)
         testing.assert_array_equal(out1, expected)
+
+
+@testing.parameterize(*testing.product({
+    'value': [-1, 2 * 32, 2 ** 63 - 1, -(2 ** 63)],
+}))
+class TestUserkernelScalar(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_scalar(self, xp, dtype):
+        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        if xp is numpy:
+            return x + numpy.dtype(dtype).type(self.value)
+        else:
+            kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
+            return kernel(x, self.value)

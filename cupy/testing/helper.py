@@ -16,10 +16,10 @@ import six
 
 import cupy
 from cupy import internal
-import cupy.sparse
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
+import cupyx.scipy.sparse
 
 
 def _call_func(self, impl, args, kw):
@@ -95,7 +95,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -164,7 +164,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -193,10 +193,16 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
-    def check_func(cupy_result, numpy_result):
-        c = cupy_result
-        n = numpy_result
-        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+    def check_func(c, n):
+        c_array = c
+        n_array = n
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(c):
+                c_array = c.A
+            if scipy.sparse.issparse(n):
+                n_array = n.A
+        array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
         if contiguous_check and isinstance(n, numpy.ndarray):
             if n.flags.c_contiguous and not c.flags.c_contiguous:
                 raise AssertionError(
@@ -233,7 +239,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -269,7 +275,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
              If it is ``True``, all error types are acceptable.
              If it is ``False``, no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -280,7 +286,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -307,7 +313,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -319,7 +325,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
     .. seealso:: :func:`cupy.testing.assert_array_max_ulp`
 
-    """
+    """  # NOQA
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -345,7 +351,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -358,6 +364,13 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(x):
+                x = x.A
+            if scipy.sparse.issparse(y):
+                y = y.A
+
         array.assert_array_equal(x, y, err_msg, verbose)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
@@ -375,7 +388,7 @@ def numpy_cupy_array_list_equal(
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -385,12 +398,12 @@ def numpy_cupy_array_list_equal(
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
-    """
+    """  # NOQA
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -430,7 +443,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
              If it is ``True`` all error types are acceptable.
              If it is ``False`` no error is acceptable.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -454,7 +467,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.sciyp.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -467,7 +480,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -499,7 +512,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -519,7 +532,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             if sp_name:
-                kw[sp_name] = cupy.sparse
+                kw[sp_name] = cupyx.scipy.sparse
             if scipy_name:
                 kw[scipy_name] = cupyx.scipy
             kw[name] = cupy
@@ -734,7 +747,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
-    """
+    """  # NOQA
     if no_bool:
         return for_dtypes(_int_dtypes, name=name)
     else:
@@ -863,7 +876,7 @@ def for_signed_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
@@ -878,7 +891,7 @@ def for_unsigned_dtypes_combination(names=('dtype',), full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
@@ -895,7 +908,7 @@ def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
              (see description in :func:`cupy.testing.for_dtypes_combination`).
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
-    """
+    """  # NOQA
     if no_bool:
         types = _int_dtypes
     else:

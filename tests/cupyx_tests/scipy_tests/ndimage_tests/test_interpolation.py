@@ -91,8 +91,8 @@ class TestAffineTransform(unittest.TestCase):
     _multiprocess_can_split = True
 
     def _affine_transform(self, xp, scp, a, matrix):
-        if (numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0'
-                and matrix.ndim == 2 and matrix.shape[1] == 3):
+        ver = numpy.lib.NumpyVersion(scipy.__version__)
+        if ver < '1.0.0' and matrix.ndim == 2 and matrix.shape[1] == 3:
             return xp.empty(0)
 
         if matrix.shape == (3, 3):

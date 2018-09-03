@@ -93,9 +93,9 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-To check your code, use ``autopep8`` and ``flake8`` command installed by ``hacking`` package::
+You can use ``autopep8`` and ``flake8`` commands to check your code.::
 
-  $ pip install autopep8 hacking
+  $ pip install autopep8
   $ autopep8 --global-config .pep8 path/to/your/code.py
   $ flake8 path/to/your/code.py
 

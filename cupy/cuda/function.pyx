@@ -3,7 +3,7 @@
 import numpy
 import six
 
-cimport cpython
+cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
@@ -80,6 +80,9 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, core.Indexer):
         return (<core.Indexer>x).get_pointer()
 
+    if isinstance(x, CPointer):
+        return x
+
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):
             x = numpy.int64(x)
@@ -111,9 +114,9 @@ cdef inline size_t _get_stream(stream) except *:
         return stream.ptr
 
 
-cdef void _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
-                  Py_ssize_t block0, int block1, int block2,
-                  args, Py_ssize_t shared_mem, size_t stream) except *:
+cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
+             Py_ssize_t block0, int block1, int block2,
+             args, Py_ssize_t shared_mem, size_t stream):
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
@@ -166,7 +169,7 @@ cdef class Module:
     def __init__(self):
         self.ptr = 0
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.moduleUnload(self.ptr)
             self.ptr = 0
@@ -191,9 +194,10 @@ cdef class LinkState:
     """CUDA link state."""
 
     def __init__(self):
+        runtime._ensure_context()
         self.ptr = driver.linkCreate()
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.ptr:
             driver.linkDestroy(self.ptr)
             self.ptr = 0

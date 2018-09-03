@@ -1,102 +1,53 @@
 from cupy import core
 
 
-rk_state_difinition = '''
-#define RK_STATE_LEN 624
-__shared__ typedef struct rk_state_ {
-    unsigned long key[RK_STATE_LEN];
-    int pos;
-    int has_gauss; /* !=0: gauss contains a gaussian deviate */
+rk_use_binominal = '''
+#define CUPY_USE_BINOMIAL
+'''
+
+rk_basic_difinition = '''
+typedef struct {
+    unsigned int xor128[4];
     double gauss;
+    int has_gauss; // !=0: gauss contains a gaussian deviate
+
+#ifdef CUPY_USE_BINOMIAL
+    int has_binomial; // !=0: following parameters initialized for binomial
     /* The rk_state structure has been extended to store the following
      * information for the binomial generator. If the input values of n or p
      * are different than nsave and psave, then the other parameters will be
      * recomputed. RTK 2005-09-02 */
-    int has_binomial; /* !=0: following parameters initialized for
-                              binomial */
-    double psave;
-    long nsave;
-    double r;
-    double q;
-    double fm;
-    long m;
-    double p1;
-    double xm;
-    double xl;
-    double xr;
-    double c;
-    double laml;
-    double lamr;
-    double p2;
-    double p3;
-    double p4;
-}
-rk_state;
-'''
+    int nsave, m;
+    double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
+#endif
+} rk_state;
 
-rk_seed_definition = '''
-__device__ void
-rk_seed(unsigned long seed, rk_state *state) {
-    int pos;
-    seed &= 0xffffffffUL;
-    /* Knuth's PRNG as used in the Mersenne Twister reference implementation */
-    for (pos = 0; pos < RK_STATE_LEN; pos++) {
-        state->key[pos] = seed;
-        seed = (1812433253UL * (seed ^ (seed >> 30)) + pos + 1) & 0xffffffffUL;
+
+__device__ void rk_seed(unsigned long long s, rk_state *state) {
+    for (int i = 1; i <= 4; i++) {
+        s = 1812433253U * (s ^ (s >> 30)) + i;
+        state->xor128[i - 1] = s;
     }
-    state->pos = RK_STATE_LEN;
-    state->gauss = 0;
     state->has_gauss = 0;
+#ifdef CUPY_USE_BINOMIAL
     state->has_binomial = 0;
+#endif
 }
-'''
 
-rk_random_definition = '''
-/* Magic Mersenne Twister constants */
-#define N 624
-#define M 397
-#define MATRIX_A 0x9908b0dfUL
-#define UPPER_MASK 0x80000000UL
-#define LOWER_MASK 0x7fffffffUL
-/*
- * Slightly optimised reference implementation of the Mersenne Twister
- * Note that regardless of the precision of long, only 32 bit random
- * integers are produced
- */
-__device__ unsigned long
-rk_random(rk_state *state) {
-    unsigned long y;
-    if (state->pos == RK_STATE_LEN) {
-        int i;
-        for (i = 0; i < N - M; i++) {
-            y = (state->key[i] & UPPER_MASK) | (state->key[i+1] & LOWER_MASK);
-            state->key[i] = state->key[i+M] ^ (y>>1) ^ (-(y & 1) & MATRIX_A);
-        }
-        for (; i < N - 1; i++) {
-            y = (state->key[i] & UPPER_MASK) | (state->key[i+1] & LOWER_MASK);
-            state->key[i]
-                = state->key[i+(M-N)] ^ (y>>1) ^ (-(y & 1) & MATRIX_A);
-        }
-        y = (state->key[N - 1] & UPPER_MASK) | (state->key[0] & LOWER_MASK);
-        state->key[N - 1]
-            = state->key[M - 1] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
-        state->pos = 0;
-    }
-    y = state->key[state->pos++];
-    /* Tempering */
-    y ^= (y >> 11);
-    y ^= (y << 7) & 0x9d2c5680UL;
-    y ^= (y << 15) & 0xefc60000UL;
-    y ^= (y >> 18);
-    return y;
+
+__device__ unsigned long rk_random(rk_state *state) {
+    unsigned int *xor128 = state->xor128;
+    unsigned int t = xor128[0] ^ (xor128[0] << 11);
+    xor128[0] = xor128[1];
+    xor128[1] = xor128[2];
+    xor128[2] = xor128[3];
+    return xor128[3] ^= (xor128[3] >> 19) ^ t ^ (t >> 8);
 }
-'''
 
-rk_double_definition = '''
-__device__ double
-rk_double(rk_state *state) {
+
+__device__ double rk_double(rk_state *state) {
     /* shifts : 67108864 = 0x4000000, 9007199254740992 = 0x20000000000000 */
-    long a = rk_random(state) >> 5, b = rk_random(state) >> 6;
+    int a = rk_random(state) >> 5, b = rk_random(state) >> 6;
     return (a * 67108864.0 + b) / 9007199254740992.0;
 }
 '''
@@ -105,7 +56,7 @@ rk_binomial_btpe_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
-    long m,y,k,i;
+    int m,y,k,i;
     if (!(state->has_binomial) ||
          (state->nsave != n) ||
          (state->psave != p)) {
@@ -219,9 +170,9 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
 '''
 
 rk_binomial_inversion_definition = '''
-__device__ long rk_binomial_inversion(rk_state *state, long n, double p) {
+__device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
     double q, qn, np, px, U;
-    long X, bound;
+    int X, bound;
     if (!(state->has_binomial) ||
          (state->nsave != n) ||
          (state->psave != p)) {
@@ -257,7 +208,7 @@ __device__ long rk_binomial_inversion(rk_state *state, long n, double p) {
 '''
 
 rk_binomial_definition = '''
-__device__ long rk_binomial(rk_state *state, long n, double p) {
+__device__ long rk_binomial(rk_state *state, int n, double p) {
     double q;
     if (p <= 0.5) {
         if (p*n <= 30.0) {
@@ -354,25 +305,90 @@ __device__ double rk_standard_t(rk_state *state, double df) {
 }
 '''
 
-gumbel_kernel = core.ElementwiseKernel(
-    'T x, T loc, T scale', 'T y',
-    'y = loc - log(-log(1 - x)) * scale',
-    'gumbel_kernel'
-)
+rk_standard_exponential_definition = '''
+__device__ double rk_standard_exponential(rk_state *state) {
+    /* We use -log(1-U) since U is [0, 1) */
+    return -log(1.0 - rk_double(state));
+}
+'''
 
-laplace_kernel = core.ElementwiseKernel(
-    'T x, T loc, T scale', 'T y',
-    'y = (x < 0.5)? loc + scale * log(x + x):'
-    ' loc - scale * log(2.0 - x - x)',
-    'laplace_kernel'
-)
+rk_standard_gamma_definition = '''
+__device__ double rk_standard_gamma(rk_state *state, double shape) {
+    double b, c;
+    double U, V, X, Y;
+    if (shape == 1.0) {
+        return rk_standard_exponential(state);
+    } else if (shape < 1.0) {
+        for (;;) {
+            U = rk_double(state);
+            V = rk_standard_exponential(state);
+            if (U <= 1.0 - shape) {
+                X = pow(U, 1./shape);
+                if (X <= V) {
+                    return X;
+                }
+            } else {
+                Y = -log((1-U)/shape);
+                X = pow(1.0 - shape + shape*Y, 1./shape);
+                if (X <= (V + Y)) {
+                    return X;
+                }
+            }
+        }
+    } else {
+        b = shape - 1./3.;
+        c = 1./sqrt(9*b);
+        for (;;) {
+            do {
+                X = rk_gauss(state);
+                V = 1.0 + c*X;
+            } while (V <= 0.0);
+            V = V*V*V;
+            U = rk_double(state);
+            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
+            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
+        }
+    }
+}
+'''
 
-definitions = \
-    [rk_state_difinition, rk_seed_definition, rk_random_definition,
-     rk_double_definition, rk_binomial_btpe_definition,
-     rk_binomial_inversion_definition, rk_binomial_definition]
+rk_beta_definition = '''
+__device__ double rk_beta(rk_state *state, double a, double b) {
+    double Ga, Gb;
+    if ((a <= 1.0) && (b <= 1.0)) {
+        double U, V, X, Y;
+        /* Use Johnk's algorithm */
+        while (1) {
+            U = rk_double(state);
+            V = rk_double(state);
+            X = pow(U, 1.0/a);
+            Y = pow(V, 1.0/b);
+            if ((X + Y) <= 1.0) {
+                if (X +Y > 0) {
+                    return X / (X + Y);
+                } else {
+                    double logX = log(U) / a;
+                    double logY = log(V) / b;
+                    double logM = logX > logY ? logX : logY;
+                    logX -= logM;
+                    logY -= logM;
+                    return exp(logX - log(exp(logX) + exp(logY)));
+                }
+            }
+        }
+    } else {
+        Ga = rk_standard_gamma(state, a);
+        Gb = rk_standard_gamma(state, b);
+        return Ga/(Ga + Gb);
+    }
+}
+'''
+
+definitions = [
+    rk_use_binominal, rk_basic_difinition, rk_binomial_btpe_definition,
+    rk_binomial_inversion_definition, rk_binomial_definition]
 binomial_kernel = core.ElementwiseKernel(
-    'S n, T p, uint32 seed', 'Y y',
+    'S n, T p, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_binomial(&internal_state, n, p);
@@ -383,8 +399,7 @@ binomial_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_state_difinition, rk_seed_definition, rk_random_definition,
-     rk_double_definition, rk_gauss_definition,
+    [rk_basic_difinition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_standard_t_definition]
 standard_t_kernel = core.ElementwiseKernel(
@@ -394,6 +409,35 @@ standard_t_kernel = core.ElementwiseKernel(
     y = rk_standard_t(&internal_state, df);
     ''',
     'standard_t_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition]
+standard_gamma_kernel = core.ElementwiseKernel(
+    'T shape, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_gamma(&internal_state, shape);
+    ''',
+    'standard_gamma_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_beta_definition]
+beta_kernel = core.ElementwiseKernel(
+    'S a, T b, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_beta(&internal_state, a, b);
+    ''',
+    'beta_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

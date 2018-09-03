@@ -4,6 +4,35 @@ from cupy.random import generator
 
 # TODO(beam2d): Implement many distributions
 
+
+def beta(a, b, size=None, dtype=float):
+    """Beta distribution.
+
+    Returns an array of samples drawn from the beta distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{x^{\\alpha-1}(1-x)^{\\beta-1}}{B(\\alpha,\\beta)},
+
+    Args:
+        a (float): Parameter of the beta distribution :math:`\\alpha`.
+        b (float): Parameter of the beta distribution :math:`\\beta`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the beta destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.beta`
+        :func:`numpy.random.beta`
+    """
+    rs = generator.get_random_state()
+    return rs.beta(a, b, size, dtype)
+
+
 def binomial(n, p, size=None, dtype=int):
     """Binomial distribution.
 
@@ -30,6 +59,36 @@ def binomial(n, p, size=None, dtype=int):
     """
     rs = generator.get_random_state()
     return rs.binomial(n, p, size, dtype)
+
+
+def dirichlet(alpha, size=None, dtype=float):
+    """Dirichlet distribution.
+
+    Returns an array of samples drawn from the dirichlet distribution. Its
+    probability density function is defined as
+
+    .. math::
+        f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
+            {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
+            \\prod_{i=1}^Kx_i^{\\alpha_i-1},
+
+    Args:
+        alpha (array): Parameters of the dirichlet distribution
+            :math:`\\alpha`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the dirichret destribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.dirichlet`
+        :func:`numpy.random.dirichlet`
+    """
+    rs = generator.get_random_state()
+    return rs.dirichlet(alpha, size, dtype)
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -211,7 +270,4 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
 
     """
     rs = generator.get_random_state()
-    x = rs.uniform(0.0, 1.0, size=size, dtype=dtype)
-    cupy.multiply(x, (high - low), out=x)
-    cupy.add(x, low, out=x)
-    return x
+    return rs.uniform(low, high, size=size, dtype=dtype)
