@@ -3636,9 +3636,6 @@ cdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
-           shape: () -> one ptr
-           shape: (A) -> one ptr to mat o size (A)
-           shape: (A, B) -> one ptr to mat o size (A, B)
            shape: (A, B, C) -> A ptrs to mat o size (B, C)
            shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
                   size (B, C)
@@ -3746,7 +3743,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     b = ascontiguousarray(b, dtype)
 
     # broadcast
-    batchCount = 1  # batchCount = numpy.prod(la)
+    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
     out_shape = []
     use_broadcast = False
     for i in range(0, ndim - 2):
