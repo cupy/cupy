@@ -1,7 +1,7 @@
 # distutils: language = c++
 
 """Thin wrapper of cuRAND."""
-cimport cython
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
@@ -87,7 +87,7 @@ cpdef inline check_status(int status):
 # Generator
 ###############################################################################
 
-cpdef size_t createGenerator(int rng_type) except *:
+cpdef size_t createGenerator(int rng_type) except? 0:
     cdef Generator generator
     with nogil:
         status = curandCreateGenerator(&generator, <RngType>rng_type)
@@ -100,7 +100,7 @@ cpdef destroyGenerator(size_t generator):
     check_status(status)
 
 
-cpdef int getVersion() except *:
+cpdef int getVersion() except? -1:
     cdef int version
     status = curandGetVersion(&version)
     check_status(status)

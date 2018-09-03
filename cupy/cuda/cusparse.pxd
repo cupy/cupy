@@ -40,5 +40,5 @@ cpdef enum:
     CUSPARSE_DIRECTION_COLUMN = 1
 
 
-cpdef size_t create() except *
-cpdef void destroy(size_t handle)
+cpdef size_t create() except? 0
+cpdef destroy(size_t handle)

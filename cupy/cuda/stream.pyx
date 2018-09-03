@@ -1,7 +1,6 @@
 from cupy.cuda import runtime
 from cpython cimport pythread
 import threading
-import warnings
 import weakref
 
 

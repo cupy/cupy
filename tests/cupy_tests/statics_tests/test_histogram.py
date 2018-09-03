@@ -38,6 +38,7 @@ def for_all_dtypes_combination_bincount(names):
 @testing.gpu
 class TestHistogram(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.15.0')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()
     def test_histogram(self, xp, dtype):
@@ -45,6 +46,7 @@ class TestHistogram(unittest.TestCase):
         y, bin_edges = xp.histogram(x)
         return y, bin_edges
 
+    @testing.with_requires('numpy>=1.15.0')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()
     def test_histogram_same_value(self, xp, dtype):
@@ -52,6 +54,7 @@ class TestHistogram(unittest.TestCase):
         y, bin_edges = xp.histogram(x, 3)
         return y, bin_edges
 
+    @testing.with_requires('numpy>=1.15.0')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()
     def test_histogram_empty(self, xp, dtype):
