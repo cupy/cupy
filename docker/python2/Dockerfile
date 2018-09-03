@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install --no-cache-dir cupy-cuda80==4.4.0
+RUN pip install --no-cache-dir cupy-cuda80==4.4.1
