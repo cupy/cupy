@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import collections
 import functools
 import operator
 import os
@@ -112,11 +113,11 @@ class RandomState(object):
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
-            shape = []
-        elif isinstance(size, (int, cupy.integer)):
-            shape = [size]
+            shape = ()
+        elif (isinstance(size, collections.Sequence)):
+            shape = tuple(size)
         else:
-            shape = size
+            shape = size,
 
         if mean.ndim != 1:
             raise ValueError("mean must be 1 dimensional")
@@ -124,11 +125,9 @@ class RandomState(object):
             raise ValueError("cov must be 2 dimensional and square")
         if len(mean) != len(cov):
             raise ValueError("mean and cov must have same length")
-        final_shape = list(shape)
-        final_shape.append(len(mean))
+        shape += (len(mean),)
 
-        x = self.standard_normal(size=final_shape, dtype=dtype)
-        x = x.reshape(-1, len(mean))
+        x = self.standard_normal(size=shape, dtype=dtype)
 
         u, s, v = cupy.linalg.svd(cov)
 
@@ -151,7 +150,6 @@ class RandomState(object):
 
         x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
         x += mean
-        x.shape = tuple(final_shape)
         return x
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):

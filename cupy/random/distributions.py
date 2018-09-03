@@ -131,9 +131,9 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
     Args:
         mean (1-D array_like, of length N): Mean of the multivariate normal
             distribution :math:`\\mu`.
-        cov (2-D array_like, of shape (N, N)): Covariance matrix of the
-            multivariate normal distribution. It must be symmetric and
-            positive-semidefinite for proper sampling :math:`\\Sigma`.
+        cov (2-D array_like, of shape (N, N)): Covariance matrix
+            :math:`\\Sigma` of the multivariate normal distribution. It must be
+            symmetric and positive-semidefinite for proper sampling.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         check_valid ('warn', 'raise', 'ignore'): Behavior when the covariance
