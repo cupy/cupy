@@ -36,8 +36,13 @@ Distributions
    :toctree: generated/
    :nosignatures:
 
+   cupy.random.beta
    cupy.random.binomial
+<<<<<<< HEAD
    cupy.random.chisquare
+=======
+   cupy.random.dirichlet
+>>>>>>> master
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal

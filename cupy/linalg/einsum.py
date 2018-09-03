@@ -133,11 +133,10 @@ def _parse_einsum_input(args):
 
         input_subscripts = input_subscripts.replace(' ', '').split(',')
         if len(input_subscripts) != len(operands):
+            msg = "more" if len(operands) > len(input_subscripts) else "fewer"
             raise ValueError(
-                ("more" if len(operands) > len(input_subscripts) else "fewer")
-                +
-                " operands provided to einstein sum function than specified "
-                "in the subscripts string")
+                msg + " operands provided to einstein sum function than "
+                "specified in the subscripts string")
 
     else:
         args = list(args)
@@ -501,11 +500,11 @@ def einsum(*operands, **kwargs):
                 axis=sum_axes, dtype=result_dtype)
 
     if returns_view:
-        operands = [arr.view() for arr in operands]
+        operands = [a.view() for a in operands]
     else:
         operands = [
-            arr.astype(result_dtype, copy=False, **casting_kwargs)
-            for arr in operands
+            a.astype(result_dtype, copy=False, **casting_kwargs)
+            for a in operands
         ]
 
     # no more casts

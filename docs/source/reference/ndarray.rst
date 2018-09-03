@@ -28,6 +28,7 @@ In such situations, :func:`cupy.get_array_module` can be used.
    :nosignatures:
 
    cupy.get_array_module
+   cupyx.scipy.get_array_module
 
 
 Conversion to/from NumPy arrays

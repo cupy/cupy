@@ -5,16 +5,16 @@ Sparse matrices
 CuPy supports sparse matrices using `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
 These matrices have the same interfaces of `SciPy's sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
 
-.. module:: cupy.sparse
+.. module:: cupyx.scipy.sparse
 
 Conversion to/from SciPy sparse matrices
 ----------------------------------------
 
-``cupy.sparse.*_matrix`` and ``scipy.sparse.*_matrix`` are not implicitly convertible to each other.
-That means, SciPy functions cannot take ``cupy.sparse.*_matrix`` objects as inputs, and vice versa.
+``cupyx.scipy.sparse.*_matrix`` and ``cupyx.scipy.sparse.*_matrix`` are not implicitly convertible to each other.
+That means, SciPy functions cannot take ``cupyx.scipy.sparse.*_matrix`` objects as inputs, and vice versa.
 
 - To convert SciPy sparse matrices to CuPy, pass it to the constructor of each CuPy sparse matrix class.
-- To convert CuPy sparse matrices to SciPy, use :func:`get <cupy.sparse.spmatrix.get>` method of each CuPy sparse matrix class.
+- To convert CuPy sparse matrices to SciPy, use :func:`get <cupyx.scipy.sparse.spmatrix.get>` method of each CuPy sparse matrix class.
 
 Note that converting between CuPy and SciPy incurs data transfer between
 the host (CPU) device and the GPU device, which is costly in terms of performance.
@@ -26,11 +26,11 @@ Sparse matrix classes
    :toctree: generated/
    :nosignatures:
 
-   cupy.sparse.coo_matrix
-   cupy.sparse.csr_matrix
-   cupy.sparse.csc_matrix
-   cupy.sparse.dia_matrix
-   cupy.sparse.spmatrix
+   cupyx.scipy.sparse.coo_matrix
+   cupyx.scipy.sparse.csr_matrix
+   cupyx.scipy.sparse.csc_matrix
+   cupyx.scipy.sparse.dia_matrix
+   cupyx.scipy.sparse.spmatrix
 
 
 Functions
@@ -43,11 +43,11 @@ Building sparse matrices
    :toctree: generated/
    :nosignatures:
 
-   cupy.sparse.eye
-   cupy.sparse.identity
-   cupy.sparse.spdiags
-   cupy.sparse.rand
-   cupy.sparse.random
+   cupyx.scipy.sparse.eye
+   cupyx.scipy.sparse.identity
+   cupyx.scipy.sparse.spdiags
+   cupyx.scipy.sparse.rand
+   cupyx.scipy.sparse.random
 
 
 Identifying sparse matrices
@@ -57,12 +57,12 @@ Identifying sparse matrices
    :toctree: generated/
    :nosignatures:
 
-   cupy.sparse.issparse
-   cupy.sparse.isspmatrix
-   cupy.sparse.isspmatrix_csc
-   cupy.sparse.isspmatrix_csr
-   cupy.sparse.isspmatrix_coo
-   cupy.sparse.isspmatrix_dia
+   cupyx.scipy.sparse.issparse
+   cupyx.scipy.sparse.isspmatrix
+   cupyx.scipy.sparse.isspmatrix_csc
+   cupyx.scipy.sparse.isspmatrix_csr
+   cupyx.scipy.sparse.isspmatrix_coo
+   cupyx.scipy.sparse.isspmatrix_dia
 
 
 Linear Algebra
@@ -72,4 +72,4 @@ Linear Algebra
    :toctree: generated/
    :nosignatures:
 
-   cupy.sparse.linalg.lsqr
+   cupyx.scipy.sparse.linalg.lsqr

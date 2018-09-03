@@ -81,3 +81,9 @@ class TestArrayUfunc(unittest.TestCase):
             # bad form for out=
             # this is also an error with numpy array
             np.sin(a1, out=(a1, a1))
+
+    @testing.numpy_cupy_array_equal()
+    def test_indexing(self, xp):
+        a = cupy.testing.shaped_arange((3, 1), xp)[:, :, None]
+        b = cupy.testing.shaped_arange((3, 2), xp)[:, None, :]
+        return a * b

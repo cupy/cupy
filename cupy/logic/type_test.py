@@ -86,7 +86,7 @@ def isfortran(a):
     >>> cupy.isfortran(a)
     False
 
-    >>> b = cupy.array([[1, 2, 3], [4, 5, 6]], order='FORTRAN')
+    >>> b = cupy.array([[1, 2, 3], [4, 5, 6]], order='F')
     >>> b
     array([[1, 2, 3],
            [4, 5, 6]])
@@ -111,7 +111,7 @@ def isfortran(a):
 
     C-ordered arrays evaluate as False even if they are also FORTRAN-ordered.
 
-    >>> cupy.isfortran(np.array([1, 2], order='FORTRAN'))
+    >>> cupy.isfortran(np.array([1, 2], order='F'))
     False
 
     """

@@ -11,7 +11,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-cimport cython
+cimport cython  # NOQA
 from libcpp cimport vector
 
 
@@ -66,7 +66,7 @@ cpdef tuple getVersion():
 ###############################################################################
 
 cpdef size_t createProgram(unicode src, unicode name, headers,
-                           include_names) except *:
+                           include_names) except? 0:
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src

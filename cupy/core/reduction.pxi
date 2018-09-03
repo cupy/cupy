@@ -1,4 +1,6 @@
-import collections
+from cpython cimport sequence
+from libc.stdint cimport int32_t
+
 import string
 
 import numpy
@@ -110,7 +112,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     cdef Py_ssize_t dim
     if axis is None:
         axis = tuple(range(ndim))
-    elif isinstance(axis, collections.Sequence):
+    elif sequence.PySequence_Check(axis):
         axis = tuple(axis)
     else:
         axis = axis,
@@ -118,48 +120,51 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     for dim in axis:
         if dim < -ndim or dim >= ndim:
             raise ValueError('Axis overrun')
-    axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in range(ndim) if dim not in axis])
-    return axis, raxis
+    reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
+    out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
+    return reduce_axis, out_axis
 
 
 cpdef tuple _get_out_shape(
-        tuple shape, tuple axis, tuple raxis, bint keepdims):
+        tuple shape, tuple reduce_axis, tuple out_axis, bint keepdims):
     if keepdims:
         out_shape = list(shape)
-        for i in axis:
+        for i in reduce_axis:
             out_shape[i] = 1
         return tuple(out_shape)
-    return tuple([shape[i] for i in raxis])
+    return tuple([shape[i] for i in out_axis])
 
 
-cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+cpdef tuple _get_permuted_args(
+        list args, tuple axis_permutes, tuple shape, tuple params):
     cdef ParameterInfo p
-    if trans == tuple(range(len(shape))):
+    if axis_permutes == tuple(range(len(shape))):
         return args, shape
     if params is not None:
         for p in params:
             if p.raw:
                 raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(trans) if isinstance(a, ndarray) else a
+    args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
             for a in args]
-    shape = tuple([shape[i] for i in trans])
+    shape = tuple([shape[i] for i in axis_permutes])
+
     return args, shape
 
 
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
-        object out_clp2_size, tuple params, bint reduce_dims):
+        Py_ssize_t block_stride, tuple params, bint reduce_dims):
     if reduce_dims:
-        in_args, in_shape = _reduce_dims(
-            in_args, params, in_indexer.shape)
-        out_args, out_shape = _reduce_dims(
+        in_shape = _reduce_dims(in_args, params, in_indexer.shape)
+        out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    args = in_args + out_args + [in_indexer, out_indexer,
-                                 numpy.int32(out_clp2_size)]
-    return args
+    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
+    (<int32_t *>s.ptr)[0] = block_stride
+    s.kind = 'i'
+    s.size = 4
+    return in_args + out_args + [in_indexer, out_indexer, s]
 
 
 @util.memoize(for_each_device=True)
@@ -196,8 +201,7 @@ class simple_reduction_function(object):
         out_params = _get_param_info('T out0', False)
         self._params = (
             in_params + out_params +
-            _get_param_info(
-                'CIndexer _in_ind, CIndexer _out_ind', False) +
+            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
             _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
@@ -206,7 +210,9 @@ class simple_reduction_function(object):
     def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
         cdef list in_args, out_args
-        cdef tuple in_sahpe, laxis, raxis
+        cdef tuple in_sahpe, reduce_axis, out_axis
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
+        cdef Py_ssize_t out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -222,29 +228,26 @@ class simple_reduction_function(object):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        laxis, raxis = _get_axis(axis, a._shape.size())
+        reduce_axis, out_axis = _get_axis(axis, a._shape.size())
         del axis  # to avoid bug
-        out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
+        out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        if out_args[0].size == 0:
-            if len(out_args) == 1:
-                return out_args[0]
-            return tuple(out_args)
+        ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
+        if (<ndarray>out_args[0]).size == 0:
+            return ret
         if a.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args, in_shape = _get_trans_args(
-            in_args, laxis + raxis, a_shape, None)
+        in_args, in_shape = _get_permuted_args(
+            in_args, reduce_axis + out_axis, a_shape, None)
 
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        # Rounding Up to the Next Power of 2
-        # clp2_count >= in_indexer.size // out_indexer.size
-        clp2_count = 1 << int.bit_length(
-            int(in_indexer.size // out_indexer.size - 1))
-        block_stride = max(1, block_size // clp2_count)
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -259,14 +262,13 @@ class simple_reduction_function(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            out_block_num * block_size,
             inout_args, shared_mem, block_size)
-
-        if len(out_args) == 1:
-            return out_args[0]
-        return tuple(out_args)
+        return ret
 
 
 @util.memoize(for_each_device=True)
@@ -281,8 +283,8 @@ def _get_reduction_kernel(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
-        ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-         for p in arrays if p.is_const])
+        [(('const {0} {1}' if p.is_const else '{0}& {1}') +
+          ' = _raw_{1}[_j];').format(p.ctype, p.name) for p in arrays])
     output_expr = '\n'.join(
         ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
          for p in arrays if not p.is_const])
@@ -364,12 +366,18 @@ class ReductionKernel(object):
 
         Args:
             args: Arguments of the kernel.
+            axis (int or tuple of ints): Axis or axes along which the
+                reduction is performed.
+            keepdims (bool): If ``True``, the specified axes are remained as
+                axes of length one.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
             ``__init__`` method.
 
         """
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
+        cdef Py_ssize_t out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -409,26 +417,27 @@ class ReductionKernel(object):
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
-        axis, raxis = _get_axis(axis, len(broad_shape))
-        out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
+        reduce_axis, out_axis = _get_axis(axis, len(broad_shape))
+        out_shape = _get_out_shape(
+            broad_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
+        ret = out_args[0]
         if 0 in out_shape:
-            return out_args[0]
+            return ret
 
-        in_args = [x if isinstance(x, ndarray) else t(x)
+        in_args = [x if isinstance(x, ndarray) else
+                   _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, broad_shape, self.in_params)
+        in_args, in_shape = _get_permuted_args(
+            in_args, reduce_axis + out_axis, broad_shape, self.in_params)
 
         block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        # Rounding Up to the Next Power of 2
-        # clp2_count >= in_indexer.size // out_indexer.size
-        clp2_count = 1 << int.bit_length(
-            int(in_indexer.size // out_indexer.size - 1))
-        block_stride = max(1, block_size // clp2_count)
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -443,11 +452,13 @@ class ReductionKernel(object):
 
         # TODO(okuta) set actual size
         shared_mem = 32 * block_size
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            out_block_num * block_size,
             inout_args, shared_mem, block_size, stream)
-        return out_args[0]
+        return ret
 
 
 cpdef create_reduction_func(name, ops, routine=None, identity=None,
