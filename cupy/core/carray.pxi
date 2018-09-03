@@ -26,7 +26,7 @@ cdef class Indexer(CPointer):
 
     def __init__(self, tuple shape):
         cdef Py_ssize_t s, size = 1
-        cdef int i, ndim = len(shape)
+        cdef int i
         self.shape = shape
         for i, s in enumerate(shape):
             self.val.shape_and_index[i] = s
