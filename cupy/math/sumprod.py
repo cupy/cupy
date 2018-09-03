@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import cupy
 from cupy import core
 
 
@@ -60,6 +61,8 @@ def _axis_to_first(x, axis):
 
 
 def _proc_as_batch(proc, x, axis):
+    if x.shape[axis] == 0:
+        return cupy.empty_like(x)
     trans, revert = _axis_to_first(x, axis)
     t = x.transpose(trans)
     s = t.shape

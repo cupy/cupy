@@ -32,10 +32,13 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core._dtype',
+            'cupy.core._kernel',
+            'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
             'cupy.cuda.curand',
@@ -160,7 +163,7 @@ def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
     else:
-        return (file, [])
+        return file, []
 
 
 def module_extension_name(file):
@@ -389,6 +392,9 @@ def make_extensions(options, compiler, use_cython):
         s = settings.copy()
         if not no_cuda:
             s['libraries'] = module['libraries']
+
+        compile_args = s.setdefault('extra_compile_args', [])
+        link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
             compile_args = s.setdefault('extra_compile_args', [])

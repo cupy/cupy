@@ -426,6 +426,7 @@ from cupy.linalg.norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
+from cupy.logic.comparison import allclose  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.core.fusion import isfinite  # NOQA
@@ -540,11 +541,13 @@ from cupy.core.fusion import real  # NOQA
 
 from cupy.core.fusion import abs  # NOQA
 from cupy.core.fusion import absolute  # NOQA
+from cupy.core.fusion import cbrt  # NOQA
 from cupy.core.fusion import clip  # NOQA
 from cupy.core.fusion import fmax  # NOQA
 from cupy.core.fusion import fmin  # NOQA
 from cupy.core.fusion import maximum  # NOQA
 from cupy.core.fusion import minimum  # NOQA
+from cupy.core.fusion import nan_to_num  # NOQA
 from cupy.core.fusion import sign  # NOQA
 from cupy.core.fusion import sqrt  # NOQA
 from cupy.core.fusion import square  # NOQA
@@ -608,6 +611,7 @@ from cupy.util import clear_memo  # NOQA
 from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
+from cupy.core import RawKernel  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -668,6 +672,8 @@ def get_array_module(*args):
 
     """
     for arg in args:
+        if isinstance(arg, fusion.FusionVarPython):
+            return fusion
         if isinstance(arg, (ndarray, sparse.spmatrix)):
             return _cupy
     return numpy

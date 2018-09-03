@@ -3,7 +3,7 @@
 """
 Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
-cimport cython
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 
