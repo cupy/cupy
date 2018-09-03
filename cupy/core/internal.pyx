@@ -1,11 +1,17 @@
 # distutils: language = c++
 
-cimport cpython
-cimport cython
+cimport cpython  # NOQA
+cimport cython  # NOQA
+from libc.stdint cimport uint32_t
+
+
+cdef extern from "halffloat.h":
+    uint16_t npy_floatbits_to_halfbits(uint32_t f)
+    uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
+cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
     cdef Py_ssize_t arg
     for arg in args:
         init *= arg
@@ -29,7 +35,7 @@ cpdef inline tuple get_size(object size):
         return tuple(size)
     if isinstance(size, int):
         return size,
-    raise ValueError('size should be None, collections.Sequence, or int')
+    raise ValueError('size should be None, collections.abc.Sequence, or int')
 
 
 @cython.profile(False)
@@ -87,30 +93,37 @@ cdef void get_reduced_dims(
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous) except *:
+        bint is_c_contiguous):
     cdef vector.vector[Py_ssize_t] strides
+    set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
+    return strides
+
+
+@cython.profile(False)
+cdef inline set_contiguous_strides(
+        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+        Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
-    cdef int i
+    cdef int i, ndim = shape.size()
     cdef Py_ssize_t idx
-    strides.resize(shape.size(), 0)
+    strides.resize(ndim, 0)
     st = itemsize
 
-    for i in range(<int>shape.size()):
+    for i in range(ndim):
         if is_c_contiguous:
-            idx = shape.size() - 1 - i
+            idx = ndim - 1 - i
         else:
             idx = i
         strides[idx] = st
         sh = shape[idx]
         if sh > 1:
             st *= sh
-    return strides
 
 
 @cython.profile(False)
 cpdef inline bint get_c_contiguity(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
-        Py_ssize_t itemsize) except *:
+        Py_ssize_t itemsize):
     cdef vector.vector[Py_ssize_t] r_shape, r_strides
     cpdef Py_ssize_t ndim
     ndim = strides.size()
@@ -143,7 +156,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t _extract_slice_element(x) except *:
+cpdef inline Py_ssize_t _extract_slice_element(x) except? 0:
     try:
         return x.__index__()
     except AttributeError:
@@ -234,3 +247,20 @@ cpdef size_t clp2(size_t x):
     x |= x >> 16
     x |= x >> 32
     return x + 1
+
+
+cdef union float32_int:
+    uint32_t n
+    float f
+
+
+cpdef uint16_t to_float16(float f):
+    cdef float32_int c
+    c.f = f
+    return npy_floatbits_to_halfbits(c.n)
+
+
+cpdef float from_float16(uint16_t v):
+    cdef float32_int c
+    c.n = npy_halfbits_to_floatbits(v)
+    return c.f

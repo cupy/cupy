@@ -250,6 +250,10 @@ const char* cudaGetErrorString(...) {
     return NULL;
 }
 
+cudaError_t cudaGetLastError() {
+    return cudaSuccess;
+}
+
 
 // Initialization
 cudaError_t cudaDriverGetVersion(...) {
@@ -658,6 +662,21 @@ cublasStatus_t cublasSgetriBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasStrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasStpttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtpttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // curand.h

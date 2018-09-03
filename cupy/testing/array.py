@@ -20,7 +20,7 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
 
     .. seealso:: :func:`numpy.testing.assert_allclose`
 
-    """
+    """  # NOQA
     numpy.testing.assert_allclose(
         cupy.asnumpy(actual), cupy.asnumpy(desired),
         rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
@@ -38,7 +38,7 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
              values are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal`
-    """
+    """  # NOQA
     numpy.testing.assert_array_almost_equal(
         cupy.asnumpy(x), cupy.asnumpy(y), decimal=decimal,
         err_msg=err_msg, verbose=verbose)
@@ -69,7 +69,7 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
          dtype(numpy.dtype): Data-type to convert ``a`` and ``b`` to if given.
 
     .. seealso:: :func:`numpy.testing.assert_array_max_ulp`
-    """
+    """  # NOQA
     numpy.testing.assert_array_max_ulp(
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
@@ -139,7 +139,7 @@ def assert_array_less(x, y, err_msg='', verbose=True):
              are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_less`
-    """
+    """  # NOQA
     numpy.testing.assert_array_less(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
         verbose=verbose)
