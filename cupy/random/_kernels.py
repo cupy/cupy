@@ -454,8 +454,7 @@ binomial_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_state_difinition, rk_seed_definition, rk_random_definition,
-     rk_double_definition, loggam_difinition,
+    [rk_basic_difinition, loggam_difinition,
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = core.ElementwiseKernel(
