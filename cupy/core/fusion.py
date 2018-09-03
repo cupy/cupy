@@ -104,9 +104,13 @@ class _FusionVarCUDA(object):
         self.index = index
         self.dtype = dtype
         self.const = const
+        self.mutable = False
 
     def __repr__(self):
         return 'v{}'.format(self.index)
+
+    def mutate(self):
+        self.mutable = True
 
     def declaration(self):
         c = self.const
@@ -126,7 +130,11 @@ class _FusionVarCUDA(object):
             raise TypeError('Invalid constant type: {}'.format(type(c)))
         return 'const {} v{} {};\n'.format(ctype, self.index, init)
 
-    def declaration_param(self):
+    def declaration_in_param(self):
+        non_const = '_non_const ' if self.mutable else ''
+        return '{}{} v{}'.format(non_const, self.dtype, self.index)
+
+    def declaration_out_param(self):
         return '{} v{}'.format(self.dtype, self.index)
 
 
@@ -540,11 +548,9 @@ class _FusionHistory(object):
                     if i >= len(out_vars):
                         v = self._fresh_local(out_dtypes[i])
                         out_vars.append(v)
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -552,6 +558,8 @@ class _FusionHistory(object):
                             'according to the casting rule '
                             '"same_kind"'.format(
                                 out_dtypes[i].char, out_vars[i].dtype.char))
+                    v.mutate()
+                    ret.append(FusionVarPython(v, self._has_reduction()))
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, t in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
@@ -667,9 +675,9 @@ class _FusionHistory(object):
         out_dtypes = [_.dtype for _ in out_pvars]
         out_params = [self._fresh_premap_param(t) for t in out_dtypes]
 
-        in_params_code = ', '.join('_non_const ' + var.declaration_param()
+        in_params_code = ', '.join(var.declaration_in_param()
                                    for var in in_params)
-        out_params_code = ', '.join(var.declaration_param()
+        out_params_code = ', '.join(var.declaration_out_param()
                                     for var in out_params)
 
         operation = self._emit_operation_code()
