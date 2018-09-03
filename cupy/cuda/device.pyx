@@ -15,7 +15,7 @@ except ImportError:
     cusolver_enabled = False
 
 
-cpdef int get_device_id() except *:
+cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
@@ -26,7 +26,7 @@ cdef dict _cusparse_handles = {}
 cdef dict _compute_capabilities = {}
 
 
-cpdef size_t get_cublas_handle() except *:
+cpdef size_t get_cublas_handle() except? 0:
     dev_id = get_device_id()
     ret = _cublas_handles.get(dev_id, None)
     if ret is not None:
@@ -34,7 +34,7 @@ cpdef size_t get_cublas_handle() except *:
     return Device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except *:
+cpdef size_t get_cusolver_handle() except? 0:
     dev_id = get_device_id()
     ret = _cusolver_handles.get(dev_id, None)
     if ret is not None:
@@ -49,7 +49,7 @@ cpdef get_cusolver_sp_handle():
     return Device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except *:
+cpdef size_t get_cusparse_handle() except? 0:
     dev_id = get_device_id()
     ret = _cusparse_handles.get(dev_id, None)
     if ret is not None:
@@ -211,6 +211,17 @@ cdef class Device:
             handle = cusparse.create()
             _cusparse_handles[self.id] = handle
             return handle
+
+    @property
+    def mem_info(self):
+        """The device memory info.
+
+        Returns:
+            free: The amount of free memory, in bytes.
+            total: The total amount of memory, in bytes.
+        """
+        with self:
+            return runtime.memGetInfo()
 
     def __richcmp__(Device self, Device other, int op):
         if op == 0:

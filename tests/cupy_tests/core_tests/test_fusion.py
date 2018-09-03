@@ -1,6 +1,7 @@
 import mock
 import numpy
 import six
+import threading
 import unittest
 
 import cupy
@@ -8,13 +9,15 @@ from cupy import testing
 
 
 def fusion_default_array_equal():
-    def res_func(func):
-        def res(xxx, name, xp, dtype):
-            f = getattr(cupy, name)
-            val = func(xxx, name, xp, dtype)
-            return cupy.fuse(f)(*val)
-        return res
-    return res_func
+    def deco(func):
+        def wrapper(self_x, name, xp, dtype):
+            @cupy.fuse()
+            def f(*args):
+                return getattr(xp, name)(*args)
+            args = func(self_x, name, xp, dtype)
+            return f(*args)
+        return wrapper
+    return deco
 
 
 @testing.gpu
@@ -356,7 +359,7 @@ class TestFusionFloating(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y):
-            return cupy.ldexp(x, y)
+            return xp.ldexp(x, y)
 
         return g(a, b)
 
@@ -373,7 +376,8 @@ class TestFusionFloating(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.frexp(x)
+            xp = cupy.get_array_module(x)
+            return xp.frexp(x)
 
         numpy_b, numpy_c = g(numpy_a)
 
@@ -500,7 +504,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return cupy.modf(x)
+            return xp.modf(x)
 
         b, c = g(a)
         d = xp.empty((2, 7), dtype=dtype)
@@ -545,7 +549,8 @@ class TestFusionUfunc(unittest.TestCase):
 
     @cupy.fuse()
     def sample_function(x, y, z):
-        return cupy.square(cupy.add(x, y))
+        xp = cupy.get_array_module(x, y, z)
+        return xp.square(xp.add(x, y))
 
     def random_bool(self, seed=0):
         return testing.shaped_random((3, 3),
@@ -838,6 +843,7 @@ class TestFusionUfunc(unittest.TestCase):
 
     def test_misc(self):
         self.check(cupy.sqrt, 1, self.random_real, ((0, 1000),))
+        self.check(cupy.cbrt, 1, self.random_real, ((0, 1000),))
         self.check(cupy.square, 1, self.random_real)
         self.check(cupy.absolute, 1, self.random_real)
         self.check(cupy.abs, 1, self.random_real)
@@ -880,7 +886,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return getattr(cupy, name)(x)
+            return getattr(xp, name)(x)
 
         return g(a)
 
@@ -894,7 +900,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y):
-            return getattr(cupy, name)(x, y)
+            return getattr(xp, name)(x, y)
         return g(a, b)
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
@@ -906,7 +912,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x):
-            return getattr(cupy, name)(x)
+            return getattr(xp, name)(x)
 
         return g(a)
 
@@ -927,7 +933,7 @@ class TestFusionMisc(unittest.TestCase):
 
         @cupy.fuse()
         def g(x, y, z):
-            return cupy.clip(x, y, z)
+            return xp.clip(x, y, z)
 
         ty = numpy.dtype(dtype).type
         return g(a, ty(3), ty(13))
@@ -936,6 +942,10 @@ class TestFusionMisc(unittest.TestCase):
     def test_sqrt(self):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
+
+    @testing.with_requires('numpy>=1.10')
+    def test_cbrt(self):
+        self.check_unary('cbrt')
 
     def test_square(self):
         self.check_unary('square')
@@ -1005,7 +1015,7 @@ class TestFusionFuse(unittest.TestCase):
         @cupy.fuse()
         def g(x, y, z):
             x += z
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
             return z
 
         return g(a, b, c)
@@ -1084,7 +1094,7 @@ class TestFusionFuse(unittest.TestCase):
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
         def toi(x):
-            return cupy.where(x, 1, 0)
+            return xp.where(x, 1, 0)
 
         @cupy.fuse()
         def g(p, q, r, s, t, u):
@@ -1102,7 +1112,7 @@ class TestFusionFuse(unittest.TestCase):
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
         def toi(x):
-            return cupy.where(x, 1, 0)
+            return xp.where(x, 1, 0)
 
         @cupy.fuse()
         def g(p, q, r):
@@ -1141,7 +1151,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             a = x
             a += y
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
 
         g(a, b, c)
         return c
@@ -1157,7 +1167,7 @@ class TestFusionFuse(unittest.TestCase):
         def g(x, y, z):
             a = x
             a += y
-            cupy.add(x, y, z)
+            xp.add(x, y, z)
             return y
 
         res = g(a, b, c)
@@ -1357,7 +1367,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x, y, z):
-                return cupy.sum((x + y) * z)
+                return xp.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
@@ -1368,7 +1378,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x):
-                return cupy.sqrt(cupy.sum(x) + 10)
+                return xp.sqrt(xp.sum(x) + 10)
 
             return func_a1(a)
 
@@ -1379,7 +1389,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse()
             def func_a1(x, y, z):
-                return cupy.sqrt(cupy.prod(x + y * z, axis=1) + 10)
+                return xp.sqrt(xp.prod(x + y * z, axis=1) + 10)
 
             return func_a1(a, b, c)
 
@@ -1390,7 +1400,7 @@ class TestFusionKernelName(unittest.TestCase):
         def func(a, b, c):
             @cupy.fuse(kernel_name='abc')
             def func_a1(x, y, z):
-                return cupy.sum((x + y) * z)
+                return xp.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
@@ -1521,14 +1531,14 @@ class TestFusionCompile(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
-    def test_compile_with_dtypes(self, xp, dtype):
+    def test_compile_from_dtypes(self, xp, dtype):
         @cupy.fuse()
         def f(x, y):
             return x - y * 2
 
         x = testing.shaped_arange((3, 3), xp, dtype)
         y = testing.shaped_arange((3, 3), xp, dtype)
-        f.compile_with_dtypes(x.dtype, y.dtype)
+        f._compile_from_dtypes(x.dtype, y.dtype)
         return f(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -1558,3 +1568,64 @@ class TestFusionGetArrayModule(unittest.TestCase):
 
         x = testing.shaped_arange((3, 4), xp, dtype)
         return f(x)
+
+
+class TestFusionThread(unittest.TestCase):
+
+    def test_thread(self):
+        x = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        y = testing.shaped_arange((3, 3), cupy, cupy.int64)
+        out = [None]
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(x, y):
+            cupy.cuda.Device(0).use()
+            out[0] = f(x, y)
+
+        t = threading.Thread(target=_target, args=(x, y))
+        t.daemon = True
+        t.start()
+        t.join()
+        assert (out[0] == f(x, y)).all()
+
+    @testing.numpy_cupy_array_equal()
+    def test_thread_multiple_dtypes(self, xp):
+        x1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        y1 = testing.shaped_arange((3, 3), xp, xp.int64)
+        x2 = x1.astype(xp.float64)
+        y2 = y1.astype(xp.float64)
+        threads = [None] * 100
+        out = [None] * 100
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        def _target(tid, x, y):
+            if xp is cupy:
+                xp.cuda.Device(0).use()
+            out[tid] = f(x, y).astype(xp.int64)
+
+        def run_thread(tid):
+            x, y = (x1, y1) if tid % 2 == 0 else (x2, y2)
+            t = threading.Thread(target=_target, args=(tid, x, y))
+            threads[tid] = t
+            t.daemon = True
+            t.start()
+
+        for tid in six.moves.range(0, 50):
+            run_thread(tid)
+
+        for tid in six.moves.range(0, 50):
+            threads[tid].join()
+
+        for tid in six.moves.range(50, 100):
+            run_thread(tid)
+
+        for tid in six.moves.range(50, 100):
+            threads[tid].join()
+
+        return xp.concatenate(out)

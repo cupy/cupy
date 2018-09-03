@@ -36,25 +36,25 @@ cpdef enum:
 # Context
 ###############################################################################
 
-cpdef size_t create() except *
-cpdef size_t spCreate() except *
-cpdef void destroy(size_t handle) except *
+cpdef size_t create() except? 0
+cpdef size_t spCreate() except? 0
+cpdef destroy(size_t handle)
 
 ###############################################################################
 # Stream
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle) except *
+cpdef size_t getStream(size_t handle) except? 0
 
 ###############################################################################
 # dense LAPACK Functions
 ###############################################################################
 
 cpdef int spotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *
+                            int n, size_t A, int lda) except? -1
 cpdef int dpotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *
+                            int n, size_t A, int lda) except? -1
 cpdef spotrf(size_t handle, int uplo, int n, size_t A, int lda,
              size_t work, int lwork, size_t devInfo)
 cpdef dpotrf(size_t handle, int uplo, int n, size_t A, int lda,
@@ -78,17 +78,17 @@ cpdef dgetrs(size_t handle, int trans, int n, int nrhs,
              size_t B, int ldb, size_t devInfo)
 
 cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *
+                            size_t A, int lda) except? -1
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *
+                            size_t A, int lda) except? -1
 cpdef int cgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
 cpdef int zgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except *
 cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *
+                            size_t A, int lda) except? -1
 cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *
+                            size_t A, int lda) except? -1
 
 cpdef sgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
@@ -100,9 +100,9 @@ cpdef zgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *
+                            size_t A, int lda, size_t tau) except? -1
 cpdef int dorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *
+                            size_t A, int lda, size_t tau) except? -1
 cpdef sorgqr(size_t handle, int m, int n, int k, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 cpdef dorgqr(size_t handle, int m, int n, int k, size_t A, int lda,
@@ -133,8 +133,8 @@ cpdef dgebrd(size_t handle, int m, int n, size_t A, int lda,
              size_t D, size_t E, size_t tauQ, size_t tauP,
              size_t Work, int lwork, size_t devInfo)
 
-cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *
-cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except *
+cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except? -1
+cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except? -1
 cpdef sgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
@@ -146,6 +146,12 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
 # sparse LAPACK Functions
 ###############################################################################
 
+cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity)
+cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity)
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                 int reorder, size_t x, size_t singularity)

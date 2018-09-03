@@ -2,9 +2,11 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import fusion
 from cupy.logic import content
 
 
+@fusion._reduction_wrapper(core.core._amin)
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -32,6 +34,7 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
+@fusion._reduction_wrapper(core.core._amax)
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the maximum of an array or the maximum along an axis.
 
