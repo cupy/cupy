@@ -2204,7 +2204,7 @@ if (in1 == 0) {
     out0 = round(in0);
 } else {
     double x;
-    x = pow10<double>(abs(in1));  // This is placed outside loop by compiler.
+    x = pow10<double>(abs(in1));
     out0 = in1 < 0 ? round(in0 / x) * x : round(in0 * x) / x;
 }'''
 
@@ -2213,7 +2213,7 @@ double x, inv_x;
 if (in1 == 0) {
     x = inv_x = 1;
 } else {
-    x = pow10<double>(abs(in1));  // This is placed outside loop by compiler.
+    x = pow10<double>(abs(in1));
     inv_x = 1.0 / x;
     if (in1 < 0) {
         double y = x;
@@ -2238,6 +2238,7 @@ _round_ufunc = create_ufunc(
     '''
     if (in1 < 0) {
         long long x = pow10<long long>(-in1 - 1);
+        // TODO(okuta): Check Numpy
         out0 = ((in0 / x + 5) / 10) * x * 10;
     } else {
         out0 = in0;
