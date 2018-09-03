@@ -34,7 +34,8 @@ def histogram(x, bins=10):
         if min_value == max_value:
             min_value -= 0.5
             max_value += 0.5
-        bins = cupy.linspace(min_value, max_value, bins + 1)
+        bin_type = cupy.result_type(min_value, max_value, x)
+        bins = cupy.linspace(min_value, max_value, bins + 1, dtype=bin_type)
     elif isinstance(bins, cupy.ndarray):
         if cupy.any(bins[:-1] > bins[1:]):
             raise ValueError('bins must increase monotonically.')

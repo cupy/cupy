@@ -323,7 +323,7 @@ class RandomState(object):
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
 
-        self.rk_seed = numpy.uint32(seed)
+        self.rk_seed = numpy.uint64(seed)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
@@ -499,7 +499,7 @@ class RandomState(object):
                 block_size *= 2
             for j_start in range(0, num, block_size):
                 j_end = j_start + block_size
-                _cupy_permutation()(array, sample, j_start, j_end, size=num)
+                _cupy_permutation()(sample, j_start, j_end, array, size=num)
         else:
             # When num > 32M, argsort is used, because it is faster than
             # custom kernel. See https://github.com/cupy/cupy/pull/603.
@@ -561,8 +561,8 @@ class RandomState(object):
 
 def _cupy_permutation():
     return core.ElementwiseKernel(
-        'raw int32 array, raw int32 sample, int32 j_start, int32 _j_end',
-        '',
+        'raw int32 sample, int32 j_start, int32 _j_end',
+        'raw int32 array',
         '''
             const int invalid = -1;
             const int num = _ind.size();

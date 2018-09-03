@@ -17,7 +17,33 @@ _is_close = core.create_ufunc(
 )
 
 
-# TODO(okuta): Implement allclose
+def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+    """Returns True if two arrays are element-wise equal within a tolerance.
+
+    Two values in ``a`` and ``b`` are  considiered equal when the following
+    equation is satisfied.
+
+    .. math::
+
+       |a - b| \\le \\mathrm{atol} + \\mathrm{rtol} |b|
+
+    Args:
+        a (cupy.ndarray): Input array to compare.
+        b (cupy.ndarray): Input array to compare.
+        rtol (float): The relative tolerance.
+        atol (float): The absolute tolerance.
+        equal_nan (bool): If ``True``, NaN's in ``a`` will be considered equal
+            to NaN's in ``b``.
+
+    Returns:
+        bool: if ``True``, two arrays are element-wise equal within a
+            tolerance.
+
+    .. seealso:: :func:`numpy.allclose`
+
+    """
+    res = isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan).all()
+    return bool(res)
 
 
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
