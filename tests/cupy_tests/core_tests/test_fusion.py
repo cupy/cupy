@@ -1629,3 +1629,31 @@ class TestFusionThread(unittest.TestCase):
             threads[tid].join()
 
         return xp.concatenate(out)
+
+
+@testing.gpu
+class TestBroadcast(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_broadcast(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            x += y
+            return x
+
+        x = testing.shaped_arange((2, 3, 4), xp, xp.int64)
+        y = testing.shaped_arange((3, 4), xp, xp.int64)
+        return f(x, y)
+
+    @testing.numpy_cupy_raises()
+    def test_broadcast_datarace(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            x += y
+            return x
+
+        x = testing.shaped_arange((3, 4), xp, xp.int64)
+        y = testing.shaped_arange((2, 3, 4), xp, xp.int64)
+        return f(x, y)
