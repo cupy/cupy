@@ -129,6 +129,25 @@ class RandomState(object):
             self.rk_seed += cupy.core.internal.prod(size)
         return y
 
+    def gamma(self, shape, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a gamma distribution.
+
+        .. seealso::
+            :func:`cupy.random.gamma` for full documentation,
+            :meth:`numpy.random.RandomState.gamma`
+        """
+        shape, scale = cupy.asarray(shape), cupy.asarray(scale)
+        if size is None:
+            size = cupy.broadcast(shape, scale).shape
+        y = cupy.zeros(shape=size, dtype=dtype)
+        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
+        y *= scale
+        if size is None:
+            self.rk_seed += 1
+        else:
+            self.rk_seed += numpy.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',

@@ -35,8 +35,8 @@ class RandomDistributionsTestCase(unittest.TestCase):
 @testing.gpu
 class TestDistributionsBeta(RandomDistributionsTestCase):
 
-    @cupy.testing.for_float_dtypes('a_dtype')
-    @cupy.testing.for_float_dtypes('b_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['a_dtype', 'b_dtype'])
     def test_beta(self, a_dtype, b_dtype):
         a = 3. * numpy.ones(self.a_shape, dtype=a_dtype)
         b = 3. * numpy.ones(self.b_shape, dtype=b_dtype)
@@ -71,12 +71,36 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsDirichlet(RandomDistributionsTestCase):
 
-    @cupy.testing.for_float_dtypes('alpha_dtype')
-    @cupy.testing.for_float_dtypes('dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['alpha_dtype', 'dtype'])
     def test_dirichlet(self, alpha_dtype, dtype):
         alpha = numpy.ones(self.alpha_shape, dtype=alpha_dtype)
         self.check_distribution('dirichlet',
                                 {'alpha': alpha}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'shape_shape': [(), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+    'dtype': _float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsGamma(unittest.TestCase):
+
+    def check_distribution(self, dist_func, shape_dtype, scale_dtype, dtype):
+        shape = cupy.ones(self.shape_shape, dtype=shape_dtype)
+        scale = cupy.ones(self.scale_shape, dtype=scale_dtype)
+        out = dist_func(shape, scale, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['shape_dtype', 'scale_dtype'])
+    def test_gamma(self, shape_dtype, scale_dtype):
+        self.check_distribution(distributions.gamma,
+                                shape_dtype, scale_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -89,8 +113,8 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
 class TestDistributionsGumbel(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('loc_dtype')
-    @cupy.testing.for_float_dtypes('scale_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['loc_dtype', 'scale_dtype'])
     def test_gumbel(self, loc_dtype, scale_dtype, dtype):
         loc = numpy.ones(self.loc_shape, dtype=loc_dtype)
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
@@ -108,8 +132,8 @@ class TestDistributionsGumbel(RandomDistributionsTestCase):
 class TestDistributionsLaplace(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('loc_dtype')
-    @cupy.testing.for_float_dtypes('scale_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['loc_dtype', 'scale_dtype'])
     def test_laplace(self, loc_dtype, scale_dtype, dtype):
         loc = numpy.ones(self.loc_shape, dtype=loc_dtype)
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
@@ -127,8 +151,8 @@ class TestDistributionsLaplace(RandomDistributionsTestCase):
 class TestDistributionsLognormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('mean_dtype')
-    @cupy.testing.for_float_dtypes('sigma_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['mean_dtype', 'sigma_dtype'])
     def test_lognormal(self, mean_dtype, sigma_dtype, dtype):
         mean = numpy.ones(self.mean_shape, dtype=mean_dtype)
         sigma = numpy.ones(self.sigma_shape, dtype=sigma_dtype)
@@ -146,8 +170,8 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 class TestDistributionsNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('loc_dtype')
-    @cupy.testing.for_float_dtypes('scale_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['loc_dtype', 'scale_dtype'])
     def test_normal(self, loc_dtype, scale_dtype, dtype):
         loc = numpy.ones(self.loc_shape, dtype=loc_dtype)
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
@@ -177,8 +201,8 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 class TestDistributionsUniform(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('low_dtype')
-    @cupy.testing.for_float_dtypes('high_dtype')
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['low_dtype', 'high_dtype'])
     def test_uniform(self, low_dtype, high_dtype, dtype):
         low = numpy.ones(self.low_shape, dtype=low_dtype)
         high = numpy.ones(self.high_shape, dtype=high_dtype) * 2.
