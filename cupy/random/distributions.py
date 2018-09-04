@@ -23,7 +23,7 @@ def beta(a, b, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the beta destribution.
+        cupy.ndarray: Samples drawn from the beta distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.beta`
@@ -51,7 +51,7 @@ def binomial(n, p, size=None, dtype=int):
             :class:`numpy.int64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the binomial destribution.
+        cupy.ndarray: Samples drawn from the binomial distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.binomial`
@@ -81,7 +81,7 @@ def dirichlet(alpha, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the dirichret destribution.
+        cupy.ndarray: Samples drawn from the dirichret distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.dirichlet`
@@ -115,7 +115,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Gumbel destribution.
+        cupy.ndarray: Samples drawn from the Gumbel distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.gumbel`
@@ -143,7 +143,7 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the laplace destribution.
+        cupy.ndarray: Samples drawn from the laplace distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.laplace`
@@ -233,14 +233,14 @@ def standard_t(df, size=None, dtype=float):
             \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})},
 
     Args:
-        df (float): Degree of freedom :math:`\\nu`.
+        df (float or array_like of floats): Degree of freedom :math:`\\nu`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the standard Student's t destribution.
+        cupy.ndarray: Samples drawn from the standard Student's t distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.standard_t`
