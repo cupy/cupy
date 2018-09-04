@@ -12,6 +12,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import cupy
+from cupy import util
 from cupy.core import internal
 from cupy.cuda import cudnn as py_cudnn
 
@@ -543,12 +544,13 @@ cdef dict _algorithm_bwd_data = {}
 
 cpdef _warn_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param):
-    msg = 'Tensor Core mode is set but the selected convolution forward '\
-          'algorithm is not a Tensor Core enabled algorithm. '\
-          'This might be due to lack of workspace memory. '\
-          'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'\
-          .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1])
-    warnings.warn(msg, RuntimeWarning)
+    warnings.warn(
+        'Tensor Core mode is set but the selected convolution forward '
+        'algorithm is not a Tensor Core enabled algorithm. '
+        'This might be due to lack of workspace memory. '
+        'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'.format(
+            x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
+        util.PerformanceWarning)
 
 
 cpdef tuple _find_algorithm_fwd(
@@ -593,9 +595,10 @@ cpdef tuple _get_algorithm_fwd(
             raise RuntimeError('No conv fwd algo available with workspace size'
                                ' less equal {}'.format(max_workspace_size))
         if i != 0:
-            msg = 'The best algo of conv fwd might not be selected due to '\
-                  'lack of workspace size ({})'.format(max_workspace_size)
-            warnings.warn(msg)
+            warnings.warn(
+                'The best algo of conv fwd might not be selected due to '
+                'lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = ret[i].algo
         workspace_size = ret[i].memory
         math_type = ret[i].mathType
@@ -614,12 +617,13 @@ cpdef tuple _get_algorithm_fwd(
 
 cpdef _warn_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param):
-    msg = 'Tensor Core mode is set but the selected convolution backward '\
-          'filter algorithm is not a Tensor Core enabled algorithm. '\
-          'This might be due to lack of workspace memory. '\
-          'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'\
-          .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1])
-    warnings.warn(msg, RuntimeWarning)
+    warnings.warn(
+        'Tensor Core mode is set but the selected convolution backward '
+        'filter algorithm is not a Tensor Core enabled algorithm. '
+        'This might be due to lack of workspace memory. '
+        'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'.format(
+            x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
+        util.PerformanceWarning)
 
 
 cpdef tuple _find_algorithm_bwd_filter(
@@ -686,12 +690,13 @@ cpdef tuple _get_algorithm_bwd_filter(
 
 cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
-    msg = 'Tensor Core mode is set but the selected convolution backward '\
-          'filter algorithm is not a Tensor Core enabled algorithm. '\
-          'This might be due to lack of workspace memory. '\
-          'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'\
-          .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1])
-    warnings.warn(msg, RuntimeWarning)
+    warnings.warn(
+        'Tensor Core mode is set but the selected convolution backward '
+        'filter algorithm is not a Tensor Core enabled algorithm. '
+        'This might be due to lack of workspace memory. '
+        'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'.format(
+            W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
+        util.PerformanceWarning)
 
 
 cpdef tuple _find_algorithm_bwd_data(
@@ -739,7 +744,8 @@ cpdef tuple _get_algorithm_bwd_data(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = ret[i].algo
         workspace_size = ret[i].memory
         math_type = ret[i].mathType
