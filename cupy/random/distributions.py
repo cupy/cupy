@@ -71,7 +71,7 @@ def chisquare(df, size=None, dtype=float):
        f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2},
 
     Args:
-        df (int): Degree of freedom :math:`k`.
+        df (int or array_like of ints): Degree of freedom :math:`k`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
@@ -102,7 +102,6 @@ def dirichlet(alpha, size=None, dtype=float):
     Args:
         alpha (array): Parameters of the dirichlet distribution
             :math:`\\alpha`.
-
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
