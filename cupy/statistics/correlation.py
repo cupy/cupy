@@ -103,6 +103,11 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None):
         ddof = 0 if bias else 1
 
     fact = X.shape[1] - ddof
+    if fact <= 0:
+        warnings.warn('Degrees of freedom <= 0 for slice',
+                      RuntimeWarning, stacklevel=2)
+        fact = 0.0
+
     X -= X.mean(axis=1)[:, None]
     out = X.dot(X.T.conj()) * (1 / cupy.float64(fact))
 

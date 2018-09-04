@@ -36,7 +36,9 @@ Distributions
    :toctree: generated/
    :nosignatures:
 
+   cupy.random.beta
    cupy.random.binomial
+   cupy.random.dirichlet
    cupy.random.f
    cupy.random.gumbel
    cupy.random.laplace
