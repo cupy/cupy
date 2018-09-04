@@ -769,6 +769,55 @@ typedef struct {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
+
+typedef void* cudnnRNNDataDescriptor_t;
+
+typedef enum {} cudnnRNNDataLayout_t;
+typedef enum {} cudnnRNNPaddingMode_t;
+  
+cudnnStatus_t cudnnSetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardInferenceEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardTrainingEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardDataEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardWeightsEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
+
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 // TODO: check function names when cuDNN 8 is released.
 

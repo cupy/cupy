@@ -16,11 +16,11 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
                               no_bool=False, no_complex=False):
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
             return xp.array(True)
-        if no_complex and (numpy.dtype(x_type).kind == 'c'
-                           or numpy.dtype(y_type).kind == 'c'):
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
@@ -448,8 +448,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_reversed_op(self, op, xp, x_type, y_type, no_bool=False):
-        if no_bool and (numpy.dtype(x_type) == '?'
-                        and numpy.dtype(y_type) == '?'):
+        if no_bool and x_type == numpy.bool_ and y_type == numpy.bool_:
             return xp.array(True)
         a = xp.array([1, 2, 3, 4, 5], x_type)
         b = xp.array([1, 2, 3, 4, 5], y_type)

@@ -102,6 +102,21 @@ class TestRandomState(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'a': 1.0, 'b': 3.0},
+    {'a': 3.0, 'b': 3.0},
+    {'a': 3.0, 'b': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBeta(RandomGeneratorTestCase):
+
+    target_method = 'beta'
+
+    def test_beta(self):
+        self.generate(a=self.a, b=self.b, size=(3, 2))
+
+
+@testing.parameterize(
     {'n': 5, 'p': 0.5},
     {'n': 5, 'p': 0.0},
     {'n': 5, 'p': 1.0},
@@ -117,6 +132,20 @@ class TestBinomial(RandomGeneratorTestCase):
 
     def test_binomial(self):
         self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
 
 
 @testing.gpu
@@ -268,7 +297,7 @@ class TestRandAndRandN(unittest.TestCase):
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):
 
-    target_method = 'interval'
+    target_method = '_interval'
 
     def test_zero(self):
         shape = (2, 3)
