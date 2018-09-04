@@ -345,7 +345,6 @@ binomial_kernel = core.ElementwiseKernel(
     loop_prep="rk_state internal_state;"
 )
 
-
 definitions = [
     rk_basic_difinition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition]
