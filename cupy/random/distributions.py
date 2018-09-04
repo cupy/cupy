@@ -75,8 +75,10 @@ def f(dfnum, dfden, size=None, dtype=float):
             ^{-\\frac{d_1+d_2}{2}},
 
     Args:
-        dfnum (float): Parameter of the f distribution :math:`d_1`.
-        dfden (float): Parameter of the f distribution :math:`d_2`.
+        dfnum (float or array_like of floats): Parameter of the f distribution
+            :math:`d_1`.
+        dfden (float or array_like of floats): Parameter of the f distribution
+            :math:`d_2`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
