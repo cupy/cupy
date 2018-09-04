@@ -212,7 +212,8 @@ def poisson(lam=1.0, size=None, dtype=int):
         f(x) = \\frac{\\lambda^xe^{-\\lambda}}{k!},
 
     Args:
-        lam (float): Parameter of the poisson distribution :math:`\\lambda`.
+        lam (array_like of floats): Parameter of the poisson distribution
+            :math:`\\lambda`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.int32` and
