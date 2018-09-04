@@ -223,8 +223,9 @@ def standard_cauchy(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_cauchy`
     """
     rs = generator.get_random_state()
-    x = rs.standard_cauchy(size, dtype)
-    return x
+    x1 = rs.normal(0, 1, size, dtype)
+    x2 = rs.normal(0, 1, size, dtype)
+    return x1 / x2
 
 
 def standard_normal(size=None, dtype=float):

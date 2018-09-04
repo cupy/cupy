@@ -252,12 +252,6 @@ __device__ double rk_gauss(rk_state *state) {
 }
 '''
 
-rk_standard_cauchy_definition = '''
-__device__ double rk_standard_cauchy(rk_state *state) {
-    return rk_gauss(state) / rk_gauss(state);
-}
-'''
-
 rk_standard_exponential_definition = '''
 __device__ double rk_standard_exponential(rk_state *state) {
     /* We use -log(1-U) since U is [0, 1) */
@@ -347,20 +341,6 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
-    preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
-)
-
-definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
-     rk_standard_cauchy_definition]
-standard_cauchy_kernel = core.ElementwiseKernel(
-    'uint32 seed', 'Y y',
-    '''
-    rk_seed(seed + i, &internal_state);
-    y = rk_standard_cauchy(&internal_state);
-    ''',
-    'standard_cauchy_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

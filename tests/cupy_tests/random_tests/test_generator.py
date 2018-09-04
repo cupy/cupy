@@ -235,16 +235,6 @@ class TestNormal(RandomGeneratorTestCase):
 
 
 @testing.gpu
-@testing.fix_random()
-class TestStandardCauchy(RandomGeneratorTestCase):
-
-    target_method = 'standard_cauchy'
-
-    def test_standard_cauchy(self):
-        self.generate(size=(3, 2))
-
-
-@testing.gpu
 @testing.parameterize(*[
     {'size': None},
     {'size': 10},
