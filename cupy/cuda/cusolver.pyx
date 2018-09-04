@@ -543,7 +543,7 @@ cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     check_status(status)
     return lwork
 
-cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -551,7 +551,7 @@ cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except *:
     check_status(status)
     return lwork
 
-cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
