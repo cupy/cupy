@@ -223,8 +223,8 @@ def standard_exponential(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_exponential`
     """
     rs = generator.get_random_state()
-    x = rs.standard_exponential(size, dtype)
-    return x
+    x = rs.uniform(0, 1, size, dtype)
+    return -cupy.log(1.0 - x)
 
 
 def standard_normal(size=None, dtype=float):

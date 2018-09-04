@@ -235,16 +235,6 @@ class TestNormal(RandomGeneratorTestCase):
 
 
 @testing.gpu
-@testing.fix_random()
-class TestStandardExponential(RandomGeneratorTestCase):
-
-    target_method = 'standard_exponential'
-
-    def test_standard_exponential(self):
-        self.generate(size=(3, 2))
-
-
-@testing.gpu
 @testing.parameterize(*[
     {'size': None},
     {'size': 10},
