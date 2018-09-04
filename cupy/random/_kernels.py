@@ -299,53 +299,6 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
 }
 '''
 
-rk_standard_exponential_definition = '''
-__device__ double rk_standard_exponential(rk_state *state) {
-    /* We use -log(1-U) since U is [0, 1) */
-    return -log(1.0 - rk_double(state));
-}
-'''
-
-rk_standard_gamma_definition = '''
-__device__ double rk_standard_gamma(rk_state *state, double shape) {
-    double b, c;
-    double U, V, X, Y;
-    if (shape == 1.0) {
-        return rk_standard_exponential(state);
-    } else if (shape < 1.0) {
-        for (;;) {
-            U = rk_double(state);
-            V = rk_standard_exponential(state);
-            if (U <= 1.0 - shape) {
-                X = pow(U, 1./shape);
-                if (X <= V) {
-                    return X;
-                }
-            } else {
-                Y = -log((1-U)/shape);
-                X = pow(1.0 - shape + shape*Y, 1./shape);
-                if (X <= (V + Y)) {
-                    return X;
-                }
-            }
-        }
-    } else {
-        b = shape - 1./3.;
-        c = 1./sqrt(9*b);
-        for (;;) {
-            do {
-                X = rk_gauss(state);
-                V = 1.0 + c*X;
-            } while (V <= 0.0);
-            V = V*V*V;
-            U = rk_double(state);
-            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
-            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
-        }
-    }
-}
-'''
-
 rk_beta_definition = '''
 __device__ double rk_beta(rk_state *state, double a, double b) {
     double Ga, Gb;

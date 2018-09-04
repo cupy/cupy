@@ -23,7 +23,7 @@ def beta(a, b, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the beta destribution.
+        cupy.ndarray: Samples drawn from the beta distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.beta`
@@ -51,7 +51,7 @@ def binomial(n, p, size=None, dtype=int):
             :class:`numpy.int64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the binomial destribution.
+        cupy.ndarray: Samples drawn from the binomial distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.binomial`
@@ -71,15 +71,15 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
        f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}e^{-x/\\theta},
 
     Args:
-        shape (float): Parameter of the gamma distribution :math:`k`.
-        scale (float): Parameter of the gamma distribution :math:`\\theta`
+        shape (array): Parameter of the gamma distribution :math:`k`.
+        scale (array): Parameter of the gamma distribution :math:`\\theta`
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the gamma destribution.
+        cupy.ndarray: Samples drawn from the gamma distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.gamma`
@@ -109,7 +109,7 @@ def dirichlet(alpha, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the gamma destribution.
+        cupy.ndarray: Samples drawn from the dirichlet distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.dirichlet`
@@ -143,7 +143,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the Gumbel destribution.
+        cupy.ndarray: Samples drawn from the Gumbel distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.gumbel`
@@ -171,7 +171,7 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the laplace destribution.
+        cupy.ndarray: Samples drawn from the laplace distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.laplace`

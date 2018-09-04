@@ -135,9 +135,15 @@ class TestBinomial(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'shape': 0.5, 'scale': 0.5},
+    {'shape': 1.0, 'scale': 0.5},
+    {'shape': 3.0, 'scale': 0.5},
+    {'shape': 0.5, 'scale': 1.0},
+    {'shape': 1.0, 'scale': 1.0},
+    {'shape': 3.0, 'scale': 1.0},
+    {'shape': 0.5, 'scale': 3.0},
     {'shape': 1.0, 'scale': 3.0},
     {'shape': 3.0, 'scale': 3.0},
-    {'shape': 3.0, 'scale': 1.0},
 )
 @testing.gpu
 @testing.fix_random()
