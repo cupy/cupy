@@ -325,6 +325,17 @@ class RandomState(object):
 
         self.rk_seed = numpy.uint64(seed)
 
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        x = self.normal(size=size, dtype=dtype)
+        y = self.normal(size=size, dtype=dtype)
+        return x / y
+
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
 

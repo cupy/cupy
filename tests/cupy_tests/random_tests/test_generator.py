@@ -283,6 +283,16 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.gpu
+@testing.fix_random()
+class TestStandardCauchy(RandomGeneratorTestCase):
+
+    target_method = 'standard_cauchy'
+
+    def test_standard_cauchy(self):
+        self.generate(size=(3, 2))
+
+
 @testing.fix_random()
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):
