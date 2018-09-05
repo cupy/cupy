@@ -658,6 +658,10 @@ cublasStatus_t cublasSgetrfBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasDgetrfBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgetriBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
