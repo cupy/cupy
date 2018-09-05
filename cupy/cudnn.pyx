@@ -323,7 +323,7 @@ def make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
         descriptor.value, data_type,
         cudnn.CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED,
         max_length, batch, n_dim,
-        lengths.data.ptr, 0)
+        lengths.ctypes.data, 0)
     return descriptor
 
 
