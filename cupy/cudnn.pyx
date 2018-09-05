@@ -314,7 +314,7 @@ def create_rnn_data_descriptor():
                       py_cudnn.destroyRNNDataDescriptor)
 
 
-def init_unpacked_rnn_data_descriptor(core.ndarray xs, core.ndarray lengths):
+def make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
     descriptor = create_rnn_data_descriptor()
     cdef int data_type = get_data_type(xs.dtype)
     cdef max_length, batch, n_dim
