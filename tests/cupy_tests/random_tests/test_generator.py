@@ -14,9 +14,6 @@ from cupy.testing import condition
 from cupy.testing import hypothesis
 
 
-_global_seed = 0  # sorry
-
-
 class RandomGeneratorTestCase(unittest.TestCase):
 
     target_method = None
@@ -61,6 +58,31 @@ class RandomGeneratorTestCase(unittest.TestCase):
         vals = [self._generate_check_repro(func, seed=0)]
         for i in range(1, _count):
             vals.append(func())
+        return vals
+
+
+@testing.parameterize(
+    {'target_method': 'lognormal', 'args': (0.0, 1.0)},
+    {'target_method': 'normal', 'args': (0.0, 1.0)},
+)
+@testing.gpu
+@testing.fix_random()
+class TestKS(unittest.TestCase):
+
+    # @condition.repeat_with_success_at_least(5, 3)  # sorry
+    @testing.for_dtypes('fd')
+    @testing.helper.numpy_cupy_equal_continuous_distribution(significance_level=0.05)
+    def test_distrib(self, xp, dtype):
+        rs = xp.random.RandomState(seed=testing.generate_seed())
+        args = getattr(self, 'args', ())
+        kwargs = getattr(self, 'kwargs', {})
+        kwargs.setdefault('size', 1000)
+        if xp == cupy:
+            kwargs['dtype'] = dtype
+        method = getattr(rs, self.target_method)
+        vals = method(*args, **kwargs)
+        if 'dtype' not in kwargs:
+            vals = vals.astype(dtype)
         return vals
 
 
@@ -139,16 +161,6 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     def test_lognormal_float64(self):
         self.check_lognormal(numpy.float64)
-
-    # @condition.repeat_with_success_at_least(5, 3)  # sorry
-    @testing.helper.numpy_cupy_equal_continuous_distribution(significance_level=0.05)
-    def test_distrib(self, xp):
-        global _global_seed
-        rs = xp.random.RandomState()
-        rs.seed(_global_seed)
-        _global_seed += 1
-        return rs.lognormal(
-            self.args[0], self.args[1], (1000,))
 
 
 @testing.gpu
