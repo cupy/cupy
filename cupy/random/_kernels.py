@@ -227,7 +227,7 @@ __device__ long rk_binomial(rk_state *state, int n, double p) {
 }
 '''
 
-loggam_difinition = '''
+loggam_definition = '''
 /*
  * log-gamma function to support some of these distributions. The
  * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
@@ -454,7 +454,7 @@ binomial_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, loggam_difinition,
+    [rk_basic_difinition, loggam_definition,
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = core.ElementwiseKernel(
