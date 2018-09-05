@@ -404,33 +404,26 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     return _make_decorator(check_func, name, type_check, accept_error, sp_name)
 
 
-def numpy_cupy_equal_continuous_distribution(significance_level, name='xp', sp_name=None):
+def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
     """Decorator that tests the distributions of NumPy samples and CuPy ones.
 
     Args:
-        significance_level (float): 
-         name(str): Argument name whose value is either
-             ``numpy`` or ``cupy`` module.
-         sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupy.sparse`` module. If ``None``, no
-             argument is given for the modules.
+        significance_level (float): The test fails if p-value is lower than
+            this argument.
+        name(str): Argument name whose value is either
+            ``numpy`` or ``cupy`` module.
 
-    Decorated test fixture is required to return the same results
-    even if ``xp`` is ``numpy`` or ``cupy``.
+    Decorated test fixture is required to return samples from the same
+    distribution even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.kstest`
     """
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            if sp_name:
-                kw[sp_name] = cupy.sparse
             kw[name] = cupy
             cupy_result = impl(self, *args, **kw)
 
-            if sp_name:
-                import scipy.sparse
-                kw[sp_name] = scipy.sparse
             kw[name] = numpy
             numpy_result = impl(self, *args, **kw)
 
