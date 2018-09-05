@@ -113,29 +113,61 @@ class RandomGeneratorTestCase(unittest.TestCase):
         return vals
 
 
-@testing.parameterize(
-    {'target_method': 'lognormal', 'args': (0.0, 1.0)},
-    {'target_method': 'normal', 'args': (0.0, 1.0)},
-)
-@testing.gpu
-@testing.fix_random()
-class TestKS(unittest.TestCase):
+class ContinuousRandomTestCase(unittest.TestCase):
 
-    # @condition.repeat_with_success_at_least(5, 3)  # sorry
+    target_method = None
+    args = ()
+    kwargs = {}
+
     @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
     @numpy_cupy_equal_continuous_distribution(significance_level=0.05)
     def test_distrib(self, xp, dtype):
+        if self.target_method is None:
+            raise unittest.SkipTest('')
+        assert isinstance(self.target_method, str), \
+            'target_method must be overridden'
         rs = xp.random.RandomState(seed=testing.generate_seed())
-        args = getattr(self, 'args', ())
-        kwargs = getattr(self, 'kwargs', {})
+        kwargs = dict(self.kwargs)
         kwargs.setdefault('size', 1000)
         if xp == cupy:
             kwargs['dtype'] = dtype
         method = getattr(rs, self.target_method)
-        vals = method(*args, **kwargs)
+        vals = method(*self.args, **kwargs)
         if 'dtype' not in kwargs:
             vals = vals.astype(dtype)
         return vals
+
+
+@testing.parameterize(
+    {'args': (0.0, 1.0)},
+    {'args': (10.0, 20.0)},
+    {'args': ()},
+)
+@testing.gpu
+@testing.fix_random()
+class TestLogNormalStat(ContinuousRandomTestCase):
+
+    target_method = 'lognormal'
+
+
+@testing.parameterize(
+    {'args': (0.0, 1.0)},
+    {'args': (10.0, 20.0)},
+    {'args': ()},
+)
+@testing.gpu
+@testing.fix_random()
+class TestNormalStat(ContinuousRandomTestCase):
+
+    target_method = 'normal'
+
+
+@testing.gpu
+@testing.fix_random()
+class TestRandomSample(unittest.TestCase):
+
+    target_method = 'random_sample'
 
 
 @testing.fix_random()
@@ -203,7 +235,6 @@ class TestLogNormal(RandomGeneratorTestCase):
             assert val.dtype == dtype
             assert val.shape == shape
             assert (0 <= val).all()
-        # TODO(niboshi): Distribution test
 
     def test_lognormal_float(self):
         self.check_lognormal(float)
@@ -239,7 +270,6 @@ class TestNormal(RandomGeneratorTestCase):
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
             assert val.shape == shape
-        # TODO(niboshi): Distribution test
 
     def test_normal_float32(self):
         self.check_normal(numpy.float32)
@@ -272,7 +302,6 @@ class TestRandomSample(unittest.TestCase):
             assert val.shape == shape
             assert (0 <= val).all()
             assert (val < 1).all()
-        # TODO(niboshi): Distribution test
 
     def test_random_sample_float32(self):
         self.check_random_sample(numpy.float32)
