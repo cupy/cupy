@@ -292,6 +292,11 @@ class TestStandardCauchy(RandomGeneratorTestCase):
     def test_standard_cauchy(self):
         self.generate(size=(3, 2))
 
+    def test_standard_cauchy_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
+
 
 @testing.fix_random()
 @testing.gpu
