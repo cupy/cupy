@@ -2,6 +2,7 @@ import copy
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import core
@@ -13,10 +14,10 @@ from cupy import testing
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
-        self.assertEqual(core.get_size(None), ())
+        assert core.get_size(None) == ()
 
     def check_collection(self, a):
-        self.assertEqual(core.get_size(a), tuple(a))
+        assert core.get_size(a) == tuple(a)
 
     def test_list(self):
         self.check_collection([1, 2, 3])
@@ -25,10 +26,10 @@ class TestGetSize(unittest.TestCase):
         self.check_collection((1, 2, 3))
 
     def test_int(self):
-        self.assertEqual(core.get_size(1), (1,))
+        assert core.get_size(1) == (1,)
 
     def test_float(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             core.get_size(1.0)
 
 
@@ -39,36 +40,69 @@ def wrap_take(array, *args, **kwargs):
     return array.take(*args, **kwargs)
 
 
-@testing.parameterize(
-    {'arg': None, 'shape': ()},
-    {'arg': 3, 'shape': (3,)},
-)
 @testing.gpu
 class TestNdarrayInit(unittest.TestCase):
 
-    def test_shape(self):
-        a = core.ndarray(self.arg)
-        self.assertTupleEqual(a.shape, self.shape)
+    def test_shape_none(self):
+        a = cupy.ndarray(None)
+        assert a.shape == ()
 
+    def test_shape_int(self):
+        a = cupy.ndarray(3)
+        assert a.shape == (3, )
 
-@testing.gpu
-class TestNdarrayOrder(unittest.TestCase):
+    def test_memptr(self):
+        a = cupy.arange(6).astype(numpy.float32).reshape((2, 3))
+        memptr = a.data
 
-    shape = (2, 3, 4)
+        b = cupy.ndarray((2, 3), numpy.float32, memptr)
+        testing.assert_array_equal(a, b)
+
+        b += 1
+        testing.assert_array_equal(a, b)
+
+    def test_memptr_with_strides(self):
+        a = cupy.arange(12).astype(numpy.float32).reshape((2, 6))[::-1, ::2]
+        memptr = a.data
+
+        b = cupy.ndarray((2, 3), numpy.float32, memptr, strides=a.strides)
+        testing.assert_array_equal(a, b)
+        assert a.strides == b.strides
+
+        b += 1
+        testing.assert_array_equal(a, b)
+
+    def test_strides(self):
+        a = cupy.ndarray((2, 3), numpy.float32, strides=(8, 4))
+        assert a.strides == (8, 4)
+
+        a[:] = 1
+        a[0, 2] = 4
+        assert float(a[1, 0]) == 4
+
+    def test_strides_is_given_and_order_is_ignored(self):
+        a = cupy.ndarray((2, 3), numpy.float32, strides=(8, 4), order='C')
+        assert a.strides == (8, 4)
+
+    def test_strides_is_given_but_order_is_invalid(self):
+        with pytest.raises(TypeError):
+            cupy.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
 
     def test_order(self):
-        a = core.ndarray(self.shape, order='F')
-        a_cpu = numpy.ndarray(self.shape, order='F')
-        self.assertTupleEqual(a.strides, a_cpu.strides)
-        self.assertTrue(a.flags.f_contiguous)
-        self.assertTrue(not a.flags.c_contiguous)
+        shape = (2, 3, 4)
+        a = core.ndarray(shape, order='F')
+        a_cpu = numpy.ndarray(shape, order='F')
+        assert a.strides == a_cpu.strides
+        assert a.flags.f_contiguous
+        assert not a.flags.c_contiguous
 
     def test_order_none(self):
-        a = core.ndarray(self.shape, order=None)
-        a_cpu = numpy.ndarray(self.shape, order=None)
-        self.assertEqual(a.flags.c_contiguous, a_cpu.flags.c_contiguous)
-        self.assertEqual(a.flags.f_contiguous, a_cpu.flags.f_contiguous)
-        self.assertTupleEqual(a.strides, a_cpu.strides)
+        shape = (2, 3, 4)
+        a = core.ndarray(shape, order=None)
+        a_cpu = numpy.ndarray(shape, order=None)
+        assert a.flags.c_contiguous == a_cpu.flags.c_contiguous
+        assert a.flags.f_contiguous == a_cpu.flags.f_contiguous
+        assert a.strides == a_cpu.strides
 
 
 @testing.gpu
@@ -76,7 +110,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
         arr = numpy.ndarray((2, 3), dtype=object)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             core.array(arr)
 
 
@@ -89,11 +123,11 @@ class TestNdarrayInitRaise(unittest.TestCase):
 class TestNdarrayCopy(unittest.TestCase):
 
     def _check_deepcopy(self, arr, arr2):
-        self.assertIsNot(arr.data, arr2.data)
-        self.assertEqual(arr.shape, arr2.shape)
-        self.assertEqual(arr.size, arr2.size)
-        self.assertEqual(arr.dtype, arr2.dtype)
-        self.assertEqual(arr.strides, arr2.strides)
+        assert arr.data is not arr2.data
+        assert arr.shape == arr2.shape
+        assert arr.size == arr2.size
+        assert arr.dtype == arr2.dtype
+        assert arr.strides == arr2.strides
         testing.assert_array_equal(arr, arr2)
 
     def test_deepcopy(self):
@@ -107,7 +141,7 @@ class TestNdarrayCopy(unittest.TestCase):
         with cuda.Device(1):
             arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
-        self.assertEqual(arr2.device, arr.device)
+        assert arr2.device == arr.device
 
 
 @testing.gpu
@@ -137,33 +171,33 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     def test_cuda_array_interface(self):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
-        self.assertEqual(set(iface.keys()),
-                         set(['shape', 'typestr', 'data', 'version', 'descr']))
-        self.assertEqual(iface['shape'], (2, 3))
-        self.assertEqual(iface['typestr'], '<f8')
-        self.assertIsInstance(iface['data'], tuple)
-        self.assertEqual(len(iface['data']), 2)
-        self.assertEqual(iface['data'][0], arr.data.ptr)
-        self.assertEqual(iface['data'][1], False)
-        self.assertEqual(iface['version'], 0)
-        self.assertEqual(iface['descr'], [('', '<f8')])
+        assert (set(iface.keys()) ==
+                set(['shape', 'typestr', 'data', 'version', 'descr']))
+        assert iface['shape'] == (2, 3)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'][0] == arr.data.ptr
+        assert not iface['data'][1]
+        assert iface['version'] == 0
+        assert iface['descr'] == [('', '<f8')]
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
-        self.assertEqual(set(iface.keys()),
-                         set(['shape', 'typestr', 'data', 'version',
-                              'strides', 'descr']))
-        self.assertEqual(iface['shape'], (5, 4))
-        self.assertEqual(iface['typestr'], '<f8')
-        self.assertIsInstance(iface['data'], tuple)
-        self.assertEqual(len(iface['data']), 2)
-        self.assertEqual(iface['data'][0], arr.data.ptr)
-        self.assertEqual(iface['data'][1], False)
-        self.assertEqual(iface['version'], 0)
-        self.assertEqual(iface['strides'], [320, 40])
-        self.assertEqual(iface['descr'], [('', '<f8')])
+        assert (set(iface.keys()) ==
+                set(['shape', 'typestr', 'data', 'version',
+                     'strides', 'descr']))
+        assert iface['shape'] == (5, 4)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'][0] == arr.data.ptr
+        assert not iface['data'][1]
+        assert iface['version'] == 0
+        assert iface['strides'] == [320, 40]
+        assert iface['descr'] == [('', '<f8')]
 
 
 @testing.parameterize(
@@ -266,7 +300,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     def test_axis_overrun2(self):
         a = testing.shaped_arange(self.shape, cupy)
-        with self.assertRaises(core.core._AxisError):
+        with pytest.raises(core.core._AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
 
