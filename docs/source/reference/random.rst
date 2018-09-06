@@ -40,6 +40,7 @@ Distributions
    cupy.random.binomial
    cupy.random.chisquare
    cupy.random.dirichlet
+   cupy.random.gamma
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal
