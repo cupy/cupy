@@ -332,9 +332,8 @@ class RandomState(object):
             :func:`cupy.random.standard_cauchy` for full documentation,
             :meth:`numpy.random.RandomState.standard_cauchy`
         """
-        x = self.normal(size=size, dtype=dtype)
-        y = self.normal(size=size, dtype=dtype)
-        return x / y
+        x = self.uniform(size=size, dtype=dtype)
+        return cupy.tan(cupy.pi * (x - 0.5))
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
