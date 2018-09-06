@@ -114,9 +114,16 @@ cdef class ndarray:
 
     """
 
-    def __init__(self, shape, dtype=float, memptr=None, order='C'):
+    def __init__(self, shape, dtype=float, memptr=None, strides=None,
+                 order='C'):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
+        cdef int order_char = 'C' if order is None else _normalize_order(order)
+        # `strides` is prioritized over `order`, but invalid `order` should be
+        # checked even if `strides` is given.
+        if order_char not in ('C', 'F'):
+            raise TypeError('order not understood. order={}'.format(order))
+
         self._shape.reserve(len(s))
         self.size = 1
         for x in s:
@@ -130,10 +137,14 @@ cdef class ndarray:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        cdef int order_char = 'C'
-        if order is not None:
-            order_char = _normalize_order(order)
-        if order_char == 'C':
+
+        # Compute strides
+        if strides is not None:
+            # strides is given
+            self._strides = strides
+            self._update_c_contiguity()
+            self._update_f_contiguity()
+        elif order_char == 'C':
             internal.set_contiguous_strides(
                 self._shape, self._strides, itemsize, True)
             self._c_contiguous = True
@@ -144,7 +155,7 @@ cdef class ndarray:
             self._f_contiguous = True
             self._update_c_contiguity()
         else:
-            raise TypeError('order not understood. order={}'.format(order))
+            assert False
 
     @property
     def __cuda_array_interface__(self):
