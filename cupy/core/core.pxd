@@ -14,6 +14,8 @@ cdef class ndarray:
         readonly bint _f_contiguous
         readonly object dtype
         readonly memory.MemoryPointer data
+        # TODO(niboshi): Return arbitrary owner object as `base` if the
+        # underlying memory is UnownedMemory.
         readonly ndarray base
 
     cpdef tolist(self)

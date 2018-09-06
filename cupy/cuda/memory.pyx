@@ -40,19 +40,33 @@ class OutOfMemoryError(MemoryError):
 
 
 @cython.no_gc
-cdef class Memory:
-    """Memory allocation on a CUDA device.
-
-    This class provides an RAII interface of the CUDA memory allocation.
-
-    Args:
-        size (int): Size of the memory allocation in bytes.
+cdef class BaseMemory:
+    """Memory on a CUDA device.
 
     Attributes:
         ~Memory.ptr (int): Pointer to the place within the buffer.
         ~Memory.size (int): Size of the memory allocation in bytes.
         ~Memory.device (~cupy.cuda.Device): Device whose memory the pointer
             refers to.
+    """
+
+    def __int__(self):
+        """Returns the pointer value to the head of the allocation."""
+        return self.ptr
+
+    @property
+    def device(self):
+        return device.Device(self.device_id)
+
+
+@cython.no_gc
+cdef class Memory(BaseMemory):
+    """Memory allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA memory allocation.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
     """
 
     def __init__(self, Py_ssize_t size):
@@ -66,16 +80,35 @@ cdef class Memory:
         if self.ptr:
             runtime.free(self.ptr)
 
-    def __int__(self):
-        """Returns the pointer value to the head of the allocation."""
-        return self.ptr
 
-    @property
-    def device(self):
-        return device.Device(self.device_id)
+cdef class UnownedMemory(BaseMemory):
+    """CUDA memory that is not owned by CuPy.
+
+    Args:
+        ptr (int): Pointer to the buffer.
+        size (int): Size of the buffer.
+        device (int): CUDA device of the buffer. If omitted, the device
+            associated to the pointer is retrieved.
+
+    Attributes:
+        ~owner (object): Reference to the owner object to keep the memory
+            alive.
+    """
+
+    def __init__(self, size_t ptr, Py_ssize_t size, object owner,
+                 int device_id=-1):
+        cdef runtime.PointerAttributes ptr_attrs
+        if device_id < 0:
+            ptr_attrs = runtime.pointerGetAttributes(ptr)
+            device_id = ptr_attrs.device
+        self.size = size
+        self.device_id = device_id
+        self.ptr = ptr
+        self.owner = owner
 
 
-cdef class ManagedMemory(Memory):
+@cython.no_gc
+cdef class ManagedMemory(BaseMemory):
     """Managed memory (Unified memory) allocation on a CUDA device.
 
     This class provides an RAII interface of the CUDA managed memory
@@ -160,7 +193,7 @@ cdef class _Chunk:
     """
 
     cdef:
-        readonly Memory mem
+        readonly BaseMemory mem
         readonly Py_ssize_t offset
         readonly Py_ssize_t size
         readonly size_t stream_ptr
@@ -172,7 +205,7 @@ cdef class _Chunk:
         mem, offset, size, stream_ptr = args
         self._init(mem, offset, size, stream_ptr)
 
-    cdef _init(self, Memory mem, Py_ssize_t offset,
+    cdef _init(self, BaseMemory mem, Py_ssize_t offset,
                Py_ssize_t size, Py_ssize_t stream_ptr):
         assert mem.ptr > 0 or offset == 0
         self.mem = mem
@@ -217,21 +250,21 @@ cdef class MemoryPointer:
     and a pointer to a place within this buffer.
 
     Args:
-        mem (~cupy.cuda.Memory): The device memory buffer.
+        mem (~cupy.cuda.BaseMemory): The device memory buffer.
         offset (int): An offset from the head of the buffer to the place this
             pointer refers.
 
     Attributes:
         ~MemoryPointer.device (~cupy.cuda.Device): Device whose memory the
             pointer refers to.
-        ~MemoryPointer.mem (~cupy.cuda.Memory): The device memory buffer.
+        ~MemoryPointer.mem (~cupy.cuda.BaseMemory): The device memory buffer.
         ~MemoryPointer.ptr (size_t): Pointer to the place within the buffer.
     """
 
-    def __init__(self, Memory mem, Py_ssize_t offset):
+    def __init__(self, BaseMemory mem, Py_ssize_t offset):
         self._init(mem, offset)
 
-    cdef _init(self, Memory mem, Py_ssize_t offset):
+    cdef _init(self, BaseMemory mem, Py_ssize_t offset):
         assert mem.ptr > 0 or offset == 0
         self.ptr = mem.ptr + offset
         self.device_id = mem.device_id
@@ -502,7 +535,7 @@ cpdef set_allocator(allocator=None):
 
 @cython.final
 @cython.no_gc
-cdef class PooledMemory(Memory):
+cdef class PooledMemory(BaseMemory):
 
     """Memory allocation for a memory pool.
 
@@ -638,7 +671,7 @@ cdef object _get_chunk(SingleDeviceMemoryPool pool, Py_ssize_t size,
     return None
 
 
-cdef Memory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
+cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
     try:
         return pool._alloc(size).mem
     except runtime.CUDARuntimeError as e:
@@ -867,7 +900,7 @@ cdef class SingleDeviceMemoryPool:
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef _Chunk chunk
         cdef long current_thread
-        cdef Memory mem
+        cdef BaseMemory mem
         cdef MemoryPointer ret
         if size == 0:
             return MemoryPointer(Memory(0), 0)
