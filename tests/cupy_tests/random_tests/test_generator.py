@@ -177,32 +177,6 @@ def _xp_random(xp, method_name):
     return f
 
 
-class ContinuousRandomTestCase(unittest.TestCase):
-
-    target_method = None
-    args = ()
-    kwargs = {}
-
-    @testing.for_dtypes('fd')
-    @condition.repeat_with_success_at_least(5, 3)
-    @numpy_cupy_equal_continuous_distribution(significance_level=0.05)
-    def test_distrib(self, xp, dtype):
-        if self.target_method is None:
-            raise unittest.SkipTest('')
-        assert isinstance(self.target_method, str), \
-            'target_method must be overridden'
-        rs = xp.random.RandomState(seed=testing.generate_seed())
-        kwargs = dict(self.kwargs)
-        kwargs.setdefault('size', 1000)
-        if xp == cupy:
-            kwargs['dtype'] = dtype
-        method = getattr(rs, self.target_method)
-        vals = method(*self.args, **kwargs)
-        if 'dtype' not in kwargs:
-            vals = vals.astype(dtype)
-        return vals
-
-
 @testing.fix_random()
 @testing.gpu
 class TestRandomState(unittest.TestCase):
@@ -442,6 +416,7 @@ class TestRandomSample(unittest.TestCase):
         self.check_random_sample(numpy.float64)
 
 
+@testing.fix_random()
 class TestRandomSampleDistrib(unittest.TestCase):
 
     @testing.for_dtypes('fd')
