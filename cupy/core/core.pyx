@@ -4090,13 +4090,9 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 
 cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
 
-    if require_sortable_dtype:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
+    ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
+           'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
+           'FF->?', 'DD->?')
     return create_ufunc(
         'cupy_' + name,
         ops,
