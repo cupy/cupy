@@ -162,6 +162,21 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
             raise AssertionError(message)
 
 
+def _xp_random(xp, method_name):
+    method = getattr(xp.random.RandomState(), method_name)
+    if xp == cupy:
+        return method
+
+    def f(*args, **kwargs):
+        dtype = kwargs.pop('dtype', None)
+        ret = method(*args, **kwargs)
+        if dtype is not None:
+            ret = ret.astype(dtype, copy=False)
+        return ret
+
+    return f
+
+
 class ContinuousRandomTestCase(unittest.TestCase):
 
     target_method = None
@@ -426,11 +441,14 @@ class TestRandomSample(unittest.TestCase):
     def test_random_sample_float64(self):
         self.check_random_sample(numpy.float64)
 
+
+class TestRandomSampleDistrib(unittest.TestCase):
+
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
-    def test_ks(self, dtype):
-        self.check_ks(0.05)(
-            size=self.size, dtype=dtype)
+    @numpy_cupy_equal_continuous_distribution(0.05)
+    def test_ks(self, xp, dtype):
+        return _xp_random(xp, 'random_sample')(size=1000, dtype=dtype)
 
 
 @testing.fix_random()
