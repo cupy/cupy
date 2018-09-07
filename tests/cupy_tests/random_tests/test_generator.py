@@ -54,15 +54,25 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
 
 
 def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
+    """Computes the Kolmogorov-Smirnov statistic on 2 samples
+
+    Unlike `scipy.stats.ks_2samp`, the returned p-value is not accurate
+    for large p.
+    """
     n1, = observed1.shape
     n2, = observed2.shape
     assert n1 >= 100 and n2 >= 100
-    indices = numpy.argsort(numpy.concatenate([observed1, observed2]))
+    observed = numpy.concatenate([observed1, observed2])
+    indices = numpy.argsort(observed)
+    observed = observed[indices]  # sort
     ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n1)
+    assert ds[-1] == 0
+    ds = ds[:-1][observed[:-1] < observed[1:]]
     d_plus = float(ds.max()) / (n1 * n2)
     d_minus = -float(ds.min()) / (n1 * n2)
     d = max(d_plus, d_minus)
-    p = 2.0 * numpy.exp(-2.0 * n1 * n2 * numpy.square(d) / (n1 + n2))
+    # Approximate p = special.kolmogorov(d * numpy.sqrt(n1 * n2 / (n1 + n2)))
+    p = min(1.0, 2.0 * numpy.exp(-2.0 * d**2 * n1 * n2 / (n1 + n2)))
     return d_plus, d_minus, p
 
 
