@@ -2,9 +2,11 @@ from libcpp cimport vector
 from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
+from cupy.cuda.function cimport Module
 
 cdef class ndarray:
     cdef:
+        object __weakref__
         readonly Py_ssize_t size
         public vector.vector[Py_ssize_t] _shape
         public vector.vector[Py_ssize_t] _strides
@@ -31,6 +33,11 @@ cdef class ndarray:
     cpdef ndarray take(self, indices, axis=*, out=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
+    cpdef sort(self, int axis=*)
+    cpdef ndarray argsort(self, axis=*)
+    cpdef partition(self, kth, int axis=*)
+    cpdef ndarray argpartition(self, kth, axis=*)
+    cpdef tuple nonzero(self)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
@@ -43,6 +50,7 @@ cdef class ndarray:
     cpdef ndarray trace(self, offset=*, axis1=*, axis2=*, dtype=*,
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
+    cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
 
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
@@ -50,6 +58,8 @@ cdef class ndarray:
     cpdef ndarray std(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
+    cpdef ndarray cumprod(a, axis=*, dtype=*, out=*)
+
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
@@ -66,6 +76,14 @@ cdef class ndarray:
     cpdef object toDlpack(self)
 
 
+cdef class broadcast:
+    cdef:
+        readonly tuple values
+        readonly tuple shape
+        readonly Py_ssize_t size
+        readonly Py_ssize_t nd
+
+
 cdef class Indexer:
     cdef:
         readonly Py_ssize_t size
@@ -75,3 +93,5 @@ cdef class Indexer:
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
+cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
+                                cachd_dir=*, prepend_cupy_headers=*)

@@ -1,10 +1,66 @@
 import unittest
+import warnings
 
 import numpy
 
 from cupy import testing
 
 
+_bool_ok = testing.numpy_satisfies('>=1.10')  # after numpy PR #5946
+_float16_ok = testing.numpy_satisfies('>=1.15')  # after numpy PR #10911
+
+
+def _dec_shape(shape, dec):
+    # Test smaller shape
+    return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
+
+
+def _rand1_shape(shape, prob):
+    # Test broadcast
+    # If diagonals are "broadcasted" we can simply:
+    # return tuple(1 if numpy.random.rand() < prob else s for s in shape)
+    table = {}
+    new_shape = []
+    for s in shape:
+        if s not in table:
+            table[s] = 1 if numpy.random.rand() < prob else s
+        new_shape.append(table[s])
+    return tuple(new_shape)
+
+
+def augument_einsum_testcases(*params):
+    """Modify shapes in einsum tests
+
+    Shape parameter should be starts with 'shape_'.
+    The original parameter is stored as '_raw_params'.
+
+    Args:
+        params (sequence of dicts)
+
+    Yields:
+        dict: parameter with modified shapes.
+
+    """
+    for dec in range(3):
+        for drop in [False, True]:
+            for param in params:
+                param_new = param.copy()
+                for k in param.keys():
+                    if k.startswith('shape_'):
+                        new_shape = _dec_shape(param[k], dec)
+                        if drop:
+                            prob = numpy.random.rand()
+                            new_shape = _rand1_shape(new_shape, prob)
+                        param_new[k] = new_shape
+                param_new['_raw_params'] = {
+                    'orig': param,
+                    'dec': dec,
+                    'drop': drop,
+                }
+                yield param_new
+
+
+@testing.with_requires('numpy!=1.14.0')
 class TestEinSumError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
@@ -52,11 +108,11 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum(',', 0)
 
     @testing.numpy_cupy_raises()
-    def test_many_dimension1(self, xp):
+    def test_too_many_dimension1(self, xp):
         xp.einsum('i', 0)
 
     @testing.numpy_cupy_raises()
-    def test_many_dimension2(self, xp):
+    def test_too_many_dimension2(self, xp):
         xp.einsum('ij', xp.array([0, 0]))
 
     @testing.numpy_cupy_raises()
@@ -103,6 +159,28 @@ class TestEinSumError(unittest.TestCase):
     def test_invalid_diagonal2(self, xp):
         xp.einsum('ii->', xp.arange(6).reshape(2, 3))
 
+    @testing.numpy_cupy_raises()
+    def test_invalid_diagonal3(self, xp):
+        xp.einsum('ii', xp.arange(3).reshape(1, 3))
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_char1(self, xp):
+        xp.einsum('i,i', xp.arange(2), xp.arange(3))
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis1(self, xp):
+        xp.einsum('...,...', xp.arange(2), xp.arange(3))
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis2(self, xp):
+        a = xp.arange(12).reshape(2, 3, 2)
+        xp.einsum('i...,...i', a, a)
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch_ellipsis3(self, xp):
+        a = xp.arange(12).reshape(2, 3, 2)
+        xp.einsum('...,...', a, a[:, :2])
+
     # invalid -> operator
     @testing.numpy_cupy_raises()
     def test_invalid_arrow1(self, xp):
@@ -121,7 +199,47 @@ class TestEinSumError(unittest.TestCase):
         xp.einsum('i-', xp.array([0, 0]))
 
 
-@testing.parameterize(
+@testing.with_requires('numpy!=1.14.0')
+class TestListArgEinSumError(unittest.TestCase):
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub1(self, xp):
+        xp.einsum(xp.arange(2), [None])
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub2(self, xp):
+        xp.einsum(xp.arange(2), [0], [1])
+
+    @testing.numpy_cupy_raises()
+    def test_invalid_sub3(self, xp):
+        xp.einsum(xp.arange(2), [Ellipsis, 0, Ellipsis])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch1(self, xp):
+        xp.einsum(xp.arange(2), [0], xp.arange(3), [0])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch2(self, xp):
+        xp.einsum(xp.arange(2), [0], xp.arange(3), [0], [0])
+
+    @testing.numpy_cupy_raises()
+    def test_dim_mismatch3(self, xp):
+        xp.einsum(xp.arange(6).reshape(2, 3), [0, 0])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims1(self, xp):
+        xp.einsum(3, [0])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims2(self, xp):
+        xp.einsum(xp.arange(2), [0, 1])
+
+    @testing.numpy_cupy_raises()
+    def test_too_many_dims3(self, xp):
+        xp.einsum(xp.arange(6).reshape(2, 3), [Ellipsis, 0, 1, 2])
+
+
+@testing.parameterize(*augument_einsum_testcases(
     {'shape_a': (2, 3), 'subscripts': 'ij'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': '...'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ji'},  # transpose
@@ -137,9 +255,9 @@ class TestEinSumError(unittest.TestCase):
     {'shape_a': (2, 3, 4), 'subscripts': 'j...i->i...j'},  # swap axes
     {'shape_a': (3,), 'subscripts': 'i->'},  # sum
     {'shape_a': (3, 3), 'subscripts': 'ii'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},  # trace
-    {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},  # trace
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijkj->kij'},
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'ijij->ij'},
+    {'shape_a': (2, 2, 2, 2), 'subscripts': 'jiji->ij'},
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'ii...->...'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': 'i...i->...'},  # trace
     {'shape_a': (2, 2, 2, 2), 'subscripts': '...ii->...'},  # trace
@@ -153,21 +271,58 @@ class TestEinSumError(unittest.TestCase):
 
     {'shape_a': (), 'subscripts': ''},  # do nothing
     {'shape_a': (), 'subscripts': '->'},  # do nothing
-)
+))
+@testing.with_requires('numpy!=1.14.0')
 class TestEinSumUnaryOperation(unittest.TestCase):
-    # Avoid overflow
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=not _bool_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
-        if dtype in self.skip_dtypes:
-            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype)
-        return xp.einsum(self.subscripts, a)
+        out = xp.einsum(self.subscripts, a)
+        if xp is not numpy:
+            optimized_out = xp.einsum(self.subscripts, a, optimize=True)
+            testing.assert_allclose(optimized_out, out)
+        return out
+
+    @testing.for_all_dtypes(no_bool=not _bool_ok)
+    @testing.numpy_cupy_equal()
+    def test_einsum_unary_views(self, xp, dtype):
+        a = testing.shaped_arange(self.shape_a, xp, dtype)
+        b = xp.einsum(self.subscripts, a)
+
+        return b.ndim == 0 or b.base is a
+
+    @testing.for_all_dtypes_combination(
+        ['dtype_a', 'dtype_out'],
+        no_bool=not _bool_ok,
+        no_complex=True)  # avoid ComplexWarning
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
+        if not numpy.can_cast(dtype_a, dtype_out):
+            # skip this combination
+            return xp.array([])
+
+        a = testing.shaped_arange(self.shape_a, xp, dtype_a)
+        return xp.einsum(self.subscripts, a, dtype=dtype_out)
 
 
-@testing.parameterize(
+class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_int(self, xp, dtype):
+        return xp.asarray(xp.einsum('->', 2, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_scalar_float(self, xp, dtype):
+        return xp.asarray(xp.einsum('', 2.0, dtype=dtype))
+
+
+@testing.parameterize(*augument_einsum_testcases(
+    # dot vecvec
+    {'shape_a': (3,), 'shape_b': (3,),
+     'subscripts': 'i,i'},
     # outer
     {'shape_a': (2,), 'shape_b': (3,),
      'subscripts': 'i,j'},
@@ -188,7 +343,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
      'subscripts': 'ij...,ji...->i...'},
     # trace and tensordot and diagonal
     {'shape_a': (2, 3, 2, 4), 'shape_b': (3, 2, 2),
-     'subscripts': 'ijil,jkk->kj', 'skip_overflow': True},
+     'subscripts': 'ijil,jkk->kj'},
     {'shape_a': (2, 4, 2, 3), 'shape_b': (3, 2, 4),
      'subscripts': 'i...ij,ji...->...j'},
     # broadcast
@@ -214,17 +369,15 @@ class TestEinSumUnaryOperation(unittest.TestCase):
      'subscripts': '...kl,k...'},
     {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
      'subscripts': '...lmn,lmno->...o'},
-)
+))
+@testing.with_requires('numpy!=1.14.0')
 class TestEinSumBinaryOperation(unittest.TestCase):
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
-    skip_overflow = False
-
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(
+        ['dtype_a', 'dtype_b'],
+        no_bool=not _bool_ok,
+        no_float16=not _float16_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
-        if self.skip_overflow and (dtype_a in self.skip_dtypes or
-                                   dtype_b in self.skip_dtypes):
-            return xp.array([])
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
         return xp.einsum(self.subscripts, a, b)
@@ -246,32 +399,102 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
         return xp.asarray(xp.einsum('i,->', a, 4))
 
 
-def _target_dtype(dtype):
-    if (dtype == numpy.complex64 or dtype == numpy.complex128):
-        return numpy.complex64
-    else:
-        return numpy.float32
-
-
-@testing.parameterize(
+@testing.parameterize(*augument_einsum_testcases(
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
-     'subscripts': 'ij,jk,kl', 'skip_overflow': True},
+     'subscripts': 'ij,jk,kl'},
     {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
-     'subscripts': 'ij,ik,i->ijk', 'skip_overflow': False},
+     'subscripts': 'ij,ik,i->ijk'},
     {'shape_a': (2, 4), 'shape_b': (3, 2), 'shape_c': (2,),
-     'subscripts': 'ij,ki,i->jk', 'skip_overflow': False},
+     'subscripts': 'ij,ki,i->jk'},
     {'shape_a': (2, 3, 4), 'shape_b': (2,), 'shape_c': (3, 4, 2),
-     'subscripts': 'i...,i,...i->...i', 'skip_overflow': True},
-)
+     'subscripts': 'i...,i,...i->...i'},
+    {'shape_a': (2, 3, 4), 'shape_b': (4, 3), 'shape_c': (3, 3, 4),
+     'subscripts': 'a...,...b,c...->abc...'},
+    {'shape_a': (2, 3, 4), 'shape_b': (3, 4), 'shape_c': (3, 3, 4),
+     'subscripts': 'a...,...,c...->ac...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (4, 3), 'shape_c': (2, 3, 4),
+     'subscripts': 'a...,...b,c...->abc...'},
+    {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
+     'subscripts': 'a...,...,c...->ac...'},
+))
+@testing.with_requires('numpy!=1.14.0')
 class TestEinSumTernaryOperation(unittest.TestCase):
-    skip_dtypes = (numpy.bool_, numpy.int8, numpy.uint8)
-
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(
+        ['dtype_a', 'dtype_b', 'dtype_c'],
+        no_bool=not _bool_ok,
+        no_float16=not _float16_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum_ternary(self, xp, dtype):
-        if self.skip_overflow and dtype in self.skip_dtypes:
-            return xp.array([])
-        a = testing.shaped_arange(self.shape_a, xp, dtype)
-        b = testing.shaped_arange(self.shape_b, xp, dtype)
-        c = testing.shaped_arange(self.shape_c, xp, dtype)
-        return xp.einsum(self.subscripts, a, b, c).astype(_target_dtype(dtype))
+    def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
+        a = testing.shaped_arange(self.shape_a, xp, dtype_a)
+        b = testing.shaped_arange(self.shape_b, xp, dtype_b)
+        c = testing.shaped_arange(self.shape_c, xp, dtype_c)
+
+        try:
+            out = xp.einsum(self.subscripts, a, b, c, optimize=False)
+        except TypeError:
+            self.assertIs(xp, numpy)
+            out = xp.einsum(self.subscripts, a, b, c)
+
+        if xp is not numpy:  # Avoid numpy issues #11059, #11060
+            for optimize in [
+                    True,  # 'greedy'
+                    'optimal',
+                    ['einsum_path', (0, 1), (0, 1)],
+                    ['einsum_path', (0, 2), (0, 1)],
+                    ['einsum_path', (1, 2), (0, 1)],
+            ]:
+                optimized_out = xp.einsum(
+                    self.subscripts, a, b, c, optimize=optimize)
+                testing.assert_allclose(optimized_out, out)
+        return out
+
+
+@testing.parameterize(*([
+    # memory constraint
+    {'subscript': 'a,b,c->abc', 'opt': ('greedy', 0)},
+    {'subscript': 'acdf,jbje,gihb,hfac', 'opt': ('greedy', 0)},
+] + testing.product({'subscript': [
+    # long paths
+    'acdf,jbje,gihb,hfac,gfac,gifabc,hfac',
+    'chd,bde,agbc,hiad,bdi,cgh,agdb',
+    # edge cases
+    'eb,cb,fb->cef',
+    'dd,fb,be,cdb->cef',
+    'bca,cdb,dbf,afc->',
+    'dcc,fce,ea,dbf->ab',
+    'a,ac,ab,ad,cd,bd,bc->',
+], 'opt': ['greedy', 'optimal'],
+})))
+@testing.with_requires('numpy>=1.12,!=1.14.0')
+class TestEinSumLarge(unittest.TestCase):
+
+    def setUp(self):
+        chars = 'abcdefghij'
+        sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
+        size_dict = {}
+        for size, char in zip(sizes, chars):
+            size_dict[char] = size
+
+        # Builds views based off initial operands
+        string = self.subscript
+        operands = [string]
+        terms = string.split('->')[0].split(',')
+        for term in terms:
+            dims = [size_dict[x] for x in term]
+            operands.append(numpy.random.rand(*dims))
+
+        self.operands = operands
+
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_einsum(self, xp):
+        # TODO(kataoka): support memory efficient cupy.einsum
+        with warnings.catch_warnings(record=True) as ws:
+            # I hope there's no problem with np.einsum for these cases...
+            out = xp.einsum(*self.operands, optimize=self.opt)
+            if xp is not numpy and \
+                    isinstance(self.opt, tuple):  # with memory limit
+                for w in ws:
+                    self.assertIn("memory", str(w.message))
+            else:
+                self.assertEqual(len(ws), 0)
+        return out

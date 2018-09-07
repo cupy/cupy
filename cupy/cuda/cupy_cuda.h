@@ -3,7 +3,7 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_H
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
-#include "cupy_stdint.h"
+#include <stdint.h>
 
 #ifndef CUPY_NO_CUDA
 #include <cuda.h>
@@ -248,6 +248,10 @@ const char* cudaGetErrorName(...) {
 
 const char* cudaGetErrorString(...) {
     return NULL;
+}
+
+cudaError_t cudaGetLastError() {
+    return cudaSuccess;
 }
 
 
@@ -654,10 +658,29 @@ cublasStatus_t cublasSgetrfBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasDgetrfBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSgetriBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasStrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrttp(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasStpttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtpttr(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // curand.h

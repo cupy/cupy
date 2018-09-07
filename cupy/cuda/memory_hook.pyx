@@ -1,12 +1,19 @@
 import collections
+from cpython cimport pythread
 import threading
 
 cdef thread_local = threading.local()
+cdef int _memory_hook_flag = pythread.PyThread_create_key()
+
+
+cpdef bint _has_memory_hooks():
+    return pythread.PyThread_get_key_value(_memory_hook_flag) != <void*>0
 
 
 cpdef get_memory_hooks():
     ret = getattr(thread_local, 'memory_hooks', None)
     if ret is None:
+        pythread.PyThread_set_key_value(_memory_hook_flag, <void*>1)
         ret = collections.OrderedDict()
         thread_local.memory_hooks = ret
     return ret

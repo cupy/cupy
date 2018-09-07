@@ -71,7 +71,8 @@ class RandomGeneratorTestCase(unittest.TestCase):
     target_method = None
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.__seed = testing.generate_seed()
+        self.rs = generator.RandomState(seed=self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -79,7 +80,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         f = getattr(self.rs, self.target_method)
         return lambda: f(*args, **kwargs)
 
-    def _generate_check_repro(self, func, seed=0):
+    def _generate_check_repro(self, func, seed):
         # Sample a random array while checking reproducibility
         self.rs.seed(seed)
         x = func()
@@ -94,7 +95,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         # Pick one sample from generator.
         # Reproducibility is checked by repeating seed-and-sample cycle twice.
         func = self._get_generator_func(*args, **kwargs)
-        return self._generate_check_repro(func, seed=0)
+        return self._generate_check_repro(func, self.__seed)
 
     def generate_many(self, *args, **kwargs):
         # Pick many samples from generator.
@@ -107,7 +108,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         if _count == 0:
             return []
 
-        vals = [self._generate_check_repro(func, seed=0)]
+        vals = [self._generate_check_repro(func, self.__seed)]
         for i in range(1, _count):
             vals.append(func())
         return vals
@@ -208,6 +209,93 @@ class TestRandomState(unittest.TestCase):
     def test_seed_invalid_type_float(self, dtype):
         with self.assertRaises(TypeError):
             self.rs.seed(dtype(0))
+
+
+@testing.parameterize(
+    {'a': 1.0, 'b': 3.0},
+    {'a': 3.0, 'b': 3.0},
+    {'a': 3.0, 'b': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBeta(RandomGeneratorTestCase):
+
+    target_method = 'beta'
+
+    def test_beta(self):
+        self.generate(a=self.a, b=self.b, size=(3, 2))
+
+
+@testing.parameterize(
+    {'n': 5, 'p': 0.5},
+    {'n': 5, 'p': 0.0},
+    {'n': 5, 'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestBinomial(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'binomial'
+
+    def test_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
+@testing.parameterize(
+    {'shape': 0.5, 'scale': 0.5},
+    {'shape': 1.0, 'scale': 0.5},
+    {'shape': 3.0, 'scale': 0.5},
+    {'shape': 0.5, 'scale': 1.0},
+    {'shape': 1.0, 'scale': 1.0},
+    {'shape': 3.0, 'scale': 1.0},
+    {'shape': 0.5, 'scale': 3.0},
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGamma(RandomGeneratorTestCase):
+
+    target_method = 'gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
+
+    def test_gamma_2(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+
+@testing.gpu
+@testing.fix_random()
+class TestLaplace(RandomGeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'laplace'
+
+    def test_laplace_1(self):
+        self.generate()
+
+    def test_laplace_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
 
 
 @testing.gpu
@@ -330,7 +418,7 @@ class TestRandAndRandN(unittest.TestCase):
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):
 
-    target_method = 'interval'
+    target_method = '_interval'
 
     def test_zero(self):
         shape = (2, 3)

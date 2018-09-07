@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+from cupy import cuda
 from cupy import testing
 
 
@@ -346,3 +347,67 @@ class TestProduct(unittest.TestCase):
         a = xp.array(2, dtype=dtype)
         b = testing.shaped_arange((4, 5), xp, dtype)
         return xp.kron(a, b)
+
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Requires CUDA 8.0 for cuSOLVER')
+class TestMatrixPower(unittest.TestCase):
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_0(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        return xp.linalg.matrix_power(a, 0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_1(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        return xp.linalg.matrix_power(a, 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_2(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        return xp.linalg.matrix_power(a, 2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_3(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        return xp.linalg.matrix_power(a, 3)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_matrix_power_inv1(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -1)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_matrix_power_inv2(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -2)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_matrix_power_inv3(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        return xp.linalg.matrix_power(a, -3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_of_two(self, xp, dtype):
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
+        return xp.linalg.matrix_power(a, 1 << 50)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_large(self, xp, dtype):
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
+        return xp.linalg.matrix_power(a, 123456789123456789)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_matrix_power_invlarge(self, xp, dtype):
+        a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
+        return xp.linalg.matrix_power(a, -987654321987654321)

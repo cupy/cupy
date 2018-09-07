@@ -12,9 +12,9 @@ cdef extern from "cupy_cuda.h" nogil:
     runtime.Error cudaProfilerStop()
 
 
-cpdef void initialize(str config_file,
-                      str output_file,
-                      int output_mode) except *:
+cpdef initialize(str config_file,
+                 str output_file,
+                 int output_mode):
     """Initialize the CUDA profiler.
 
     This function initialize the CUDA profiler. See the CUDA document for
@@ -22,7 +22,7 @@ cpdef void initialize(str config_file,
 
     Args:
         config_file (str): Name of the configuration file.
-        output_file (str): Name of the coutput file.
+        output_file (str): Name of the output file.
         output_mode (int): ``cupy.cuda.profiler.cudaKeyValuePair`` or
             ``cupy.cuda.profiler.cudaCSV``.
     """
@@ -34,7 +34,7 @@ cpdef void initialize(str config_file,
     runtime.check_status(status)
 
 
-cpdef void start() except *:
+cpdef start():
     """Enable profiling.
 
     A user can enable CUDA profiling. When an error occurs, it raises an
@@ -46,7 +46,7 @@ cpdef void start() except *:
     runtime.check_status(status)
 
 
-cpdef void stop() except *:
+cpdef stop():
     """Disable profiling.
 
     A user can disable CUDA profiling. When an error occurs, it raises an

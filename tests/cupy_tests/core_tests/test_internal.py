@@ -1,3 +1,5 @@
+import math
+
 import unittest
 
 from cupy.core import internal
@@ -193,3 +195,42 @@ class TestCompleteSliceError(unittest.TestCase):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
         with self.assertRaises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
+
+
+@testing.parameterize(
+    {'x': 0, 'expect': 0},
+    {'x': 1, 'expect': 1},
+    {'x': 2, 'expect': 2},
+    {'x': 3, 'expect': 4},
+    {'x': 2 ** 10,     'expect': 2 ** 10},
+    {'x': 2 ** 10 - 1, 'expect': 2 ** 10},
+    {'x': 2 ** 10 + 1, 'expect': 2 ** 11},
+    {'x': 2 ** 40,     'expect': 2 ** 40},
+    {'x': 2 ** 40 - 1, 'expect': 2 ** 40},
+    {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
+)
+class TestClp2(unittest.TestCase):
+
+    def test_clp2(self):
+        assert internal.clp2(self.x) == self.expect
+
+
+@testing.parameterize(*testing.product({
+    'value': [0.0, 1.0, -1.0,
+              0.25, -0.25,
+              11.0, -11.0,
+              2 ** -15, -(2 ** -15),  # Denormalized Number
+              float('inf'), float('-inf')],
+}))
+class TestConvertFloat16(unittest.TestCase):
+
+    def test_conversion(self):
+        half = internal.to_float16(self.value)
+        assert internal.from_float16(half) == self.value
+
+
+class TestConvertFloat16Nan(unittest.TestCase):
+
+    def test_conversion(self):
+        half = internal.to_float16(float('nan'))
+        assert math.isnan(internal.from_float16(half))

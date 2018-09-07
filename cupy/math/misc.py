@@ -1,9 +1,11 @@
 from cupy import core
-
+import cupy.core.core
+from cupy.core import fusion
 
 # TODO(okuta): Implement convolve
 
 
+@fusion._ufunc_wrapper(cupy.core.core._clip)
 def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
 
@@ -31,6 +33,17 @@ def clip(a, a_min=None, a_max=None, out=None):
 # sqrt_fixed is deprecated.
 # numpy.sqrt is fixed in numpy 1.11.2.
 sqrt = sqrt_fixed = core.sqrt
+
+
+cbrt = core.create_ufunc(
+    'cupy_cbrt',
+    ('e->e', 'f->f', 'd->d'),
+    'out0 = cbrt(in0)',
+    doc='''Elementwise cube root function.
+
+    .. seealso:: :data:`numpy.cbrt`
+
+    ''')
 
 
 square = core.create_ufunc(
@@ -76,8 +89,7 @@ sign = core.create_ufunc(
     ''')
 
 
-_float_maximum = \
-    'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : max(in0, in1)'
+_float_maximum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : max(in0, in1)'
 maximum = core.create_ufunc(
     'cupy_maximum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -97,8 +109,7 @@ maximum = core.create_ufunc(
     ''')
 
 
-_float_minimum = \
-    'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : min(in0, in1)'
+_float_minimum = 'out0 = isnan(in0) ? in0 : isnan(in1) ? in1 : min(in0, in1)'
 minimum = core.create_ufunc(
     'cupy_minimum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -121,7 +132,11 @@ minimum = core.create_ufunc(
 fmax = core.create_ufunc(
     'cupy_fmax',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+     'LL->L', 'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = fmax(in0, in1)'),
+     ('ff->f', 'out0 = fmax(in0, in1)'),
+     ('dd->d', 'out0 = fmax(in0, in1)'),
+     'FF->F', 'DD->D'),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
 
@@ -135,7 +150,11 @@ fmax = core.create_ufunc(
 fmin = core.create_ufunc(
     'cupy_fmin',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+     'LL->L', 'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = fmin(in0, in1)'),
+     ('ff->f', 'out0 = fmin(in0, in1)'),
+     ('dd->d', 'out0 = fmin(in0, in1)'),
+     'FF->F', 'DD->D'),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
@@ -146,7 +165,46 @@ fmin = core.create_ufunc(
     ''')
 
 
-# TODO(okuta): Implement nan_to_num
+_nan_to_num_preamble = '''
+template <class T>
+__device__ T nan_to_num(T x, T large) {
+    if (isnan(x))
+        return 0;
+    if (isinf(x))
+        return copysign(large, x);
+    return x;
+}
+
+template <class T>
+__device__ complex<T> nan_to_num(complex<T> x, T large) {
+    T re = nan_to_num(x.real(), large);
+    T im = nan_to_num(x.imag(), large);
+    return complex<T>(re, im);
+}
+'''
+
+
+nan_to_num = core.create_ufunc(
+    'cupy_nan_to_num',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
+     'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',
+     ('e->e',
+      'out0 = nan_to_num(in0, float16(32 * 0x7FF))'),
+     ('f->f',
+      'out0 = nan_to_num(in0, __int_as_float(0x7F800000 - 1))'),
+     ('d->d',
+      'out0 = nan_to_num(in0, __longlong_as_double(0x7FF0000000000000 - 1))'),
+     ('F->F',
+      'out0 = nan_to_num(in0, __int_as_float(0x7F800000 - 1))'),
+     ('D->D',
+      'out0 = nan_to_num(in0, __longlong_as_double(0x7FF0000000000000 - 1))')),
+    'out0 = in0',
+    preamble=_nan_to_num_preamble,
+    doc='''Elementwise nan_to_num function.
+
+    .. seealso:: :data:`numpy.nan_to_num`
+
+    ''')
 
 
 # TODO(okuta): Implement real_if_close

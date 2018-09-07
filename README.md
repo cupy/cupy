@@ -35,6 +35,9 @@ $ pip install cupy-cuda90
 (Binary Package for CUDA 9.1)
 $ pip install cupy-cuda91
 
+(Binary Package for CUDA 9.2)
+$ pip install cupy-cuda92
+
 (Source Package)
 $ pip install cupy
 ```
@@ -65,6 +68,7 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 
 MIT License (see `LICENSE` file).
 
+CuPy is designed based on NumPy's API and SciPy's API (see `docs/LICENSE_THIRD_PARTY` file).
 
 ## Reference
 
