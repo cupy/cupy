@@ -123,6 +123,34 @@ class RandomGeneratorTestCase(unittest.TestCase):
             vals.append(func())
         return vals
 
+    def check_ks(self, significance_level):
+        return functools.partial(self._check_ks, significance_level)
+
+    def _check_ks(self, significance_level, *args, **kwargs):
+        # cupy
+        vals_cupy = self.generate_many(*args, **kwargs)
+        vals_cupy = cupy.concatenate(vals_cupy).ravel()
+
+        # numpy
+        kwargs.pop('_count')
+        kwargs['size'] = 1000
+        dtype = kwargs.pop('dtype', None)
+        numpy_rs = numpy.random.RandomState(self.__seed)
+        vals_numpy = getattr(numpy_rs, self.target_method)(*args, **kwargs)
+        if dtype is not None:
+            vals_numpy = vals_numpy.astype(dtype, copy=False)
+
+        # test
+        d_plus, d_minus, p_value = \
+            two_sample_Kolmogorov_Smirnov_test(
+                cupy.asnumpy(cupy_result), numpy_result)
+        if p_value < significance_level:
+            message = '''Rejected null hypothesis:
+p: %f
+D+ (cupy < numpy): %f
+D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
+            raise AssertionError(message)
+
 
 class ContinuousRandomTestCase(unittest.TestCase):
 
@@ -148,18 +176,6 @@ class ContinuousRandomTestCase(unittest.TestCase):
         if 'dtype' not in kwargs:
             vals = vals.astype(dtype)
         return vals
-
-
-@testing.parameterize(
-    {'args': (0.0, 1.0)},
-    {'args': (10.0, 20.0)},
-    {'args': ()},
-)
-@testing.gpu
-@testing.fix_random()
-class TestLogNormalStat(ContinuousRandomTestCase):
-
-    target_method = 'lognormal'
 
 
 @testing.parameterize(
@@ -342,6 +358,13 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     def test_lognormal_float64(self):
         self.check_lognormal(numpy.float64)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_ks(self, dtype):
+        self.check_ks(0.05)(
+            *self.args, size=self.size, dtype=dtype,
+            _count=1 + 99 // numpy.prod(self.size))
 
 
 @testing.gpu
