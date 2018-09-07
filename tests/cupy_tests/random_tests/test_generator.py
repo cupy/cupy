@@ -176,7 +176,7 @@ class TestNormalStat(ContinuousRandomTestCase):
 
 @testing.gpu
 @testing.fix_random()
-class TestRandomSample(unittest.TestCase):
+class TestRandomSampleStat(ContinuousRandomTestCase):
 
     target_method = 'random_sample'
 
