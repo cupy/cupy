@@ -695,6 +695,21 @@ class TestSetRandomState(unittest.TestCase):
 
 
 @testing.gpu
+@testing.fix_random()
+class TestStandardExponential(RandomGeneratorTestCase):
+
+    target_method = 'standard_exponential'
+
+    def test_standard_exponential(self):
+        self.generate(size=(3, 2))
+
+    def test_standard_exponential_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
+
+
+@testing.gpu
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def setUp(self):
