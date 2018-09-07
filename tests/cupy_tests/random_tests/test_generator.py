@@ -65,7 +65,7 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     observed = numpy.concatenate([observed1, observed2])
     indices = numpy.argsort(observed)
     observed = observed[indices]  # sort
-    ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n1)
+    ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n2)
     assert ds[-1] == 0
     ds = ds[:-1][observed[:-1] < observed[1:]]
     d_plus = float(ds.max()) / (n1 * n2)
@@ -119,20 +119,30 @@ class RandomGeneratorTestCase(unittest.TestCase):
             return []
 
         vals = [self._generate_check_repro(func, self.__seed)]
-        for i in range(1, _count):
+        for _ in range(1, _count):
             vals.append(func())
         return vals
 
-    def check_ks(self, significance_level):
-        return functools.partial(self._check_ks, significance_level)
+    def check_ks(self, significance_level, cupy_len=100, numpy_len=1000):
+        return functools.partial(
+            self._check_ks, significance_level, cupy_len, numpy_len)
 
-    def _check_ks(self, significance_level, *args, **kwargs):
+    def _check_ks(
+            self, significance_level, cupy_len, numpy_len,
+            *args, **kwargs):
+        assert 'size' in kwargs
+
         # cupy
-        vals_cupy = self.generate_many(*args, **kwargs)
-        vals_cupy = cupy.concatenate(vals_cupy).ravel()
+        func = self._get_generator_func(*args, **kwargs)
+        vals_cupy = func()
+        assert vals_cupy.size > 0
+        count = 1 + (cupy_len - 1) // vals_cupy.size
+        vals_cupy = [vals_cupy]
+        for _ in range(1, count):
+            vals_cupy.append(func())
+        vals_cupy = cupy.stack(vals_cupy).ravel()
 
         # numpy
-        kwargs.pop('_count')
         kwargs['size'] = 1000
         dtype = kwargs.pop('dtype', None)
         numpy_rs = numpy.random.RandomState(self.__seed)
@@ -143,7 +153,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         # test
         d_plus, d_minus, p_value = \
             two_sample_Kolmogorov_Smirnov_test(
-                cupy.asnumpy(cupy_result), numpy_result)
+                cupy.asnumpy(vals_cupy), vals_numpy)
         if p_value < significance_level:
             message = '''Rejected null hypothesis:
 p: %f
@@ -176,25 +186,6 @@ class ContinuousRandomTestCase(unittest.TestCase):
         if 'dtype' not in kwargs:
             vals = vals.astype(dtype)
         return vals
-
-
-@testing.parameterize(
-    {'args': (0.0, 1.0)},
-    {'args': (10.0, 20.0)},
-    {'args': ()},
-)
-@testing.gpu
-@testing.fix_random()
-class TestNormalStat(ContinuousRandomTestCase):
-
-    target_method = 'normal'
-
-
-@testing.gpu
-@testing.fix_random()
-class TestRandomSampleStat(ContinuousRandomTestCase):
-
-    target_method = 'random_sample'
 
 
 @testing.fix_random()
@@ -363,8 +354,7 @@ class TestLogNormal(RandomGeneratorTestCase):
     @condition.repeat_with_success_at_least(5, 3)
     def test_ks(self, dtype):
         self.check_ks(0.05)(
-            *self.args, size=self.size, dtype=dtype,
-            _count=1 + 99 // numpy.prod(self.size))
+            *self.args, size=self.size, dtype=dtype)
 
 
 @testing.gpu
@@ -398,6 +388,12 @@ class TestNormal(RandomGeneratorTestCase):
     def test_normal_float64(self):
         self.check_normal(numpy.float64)
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_ks(self, dtype):
+        self.check_ks(0.05)(
+            *self.args, size=self.size, dtype=dtype)
+
 
 @testing.gpu
 @testing.parameterize(*[
@@ -429,6 +425,12 @@ class TestRandomSample(unittest.TestCase):
 
     def test_random_sample_float64(self):
         self.check_random_sample(numpy.float64)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_ks(self, dtype):
+        self.check_ks(0.05)(
+            size=self.size, dtype=dtype)
 
 
 @testing.fix_random()
