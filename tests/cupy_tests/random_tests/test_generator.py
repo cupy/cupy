@@ -59,13 +59,14 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     Unlike `scipy.stats.ks_2samp`, the returned p-value is not accurate
     for large p.
     """
+    assert observed1.dtype == observed2.dtype
     n1, = observed1.shape
     n2, = observed2.shape
     assert n1 >= 100 and n2 >= 100
     observed = numpy.concatenate([observed1, observed2])
     indices = numpy.argsort(observed)
     observed = observed[indices]  # sort
-    ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n2)
+    ds = numpy.cumsum(numpy.where(indices < n1, -n2, n1).astype(numpy.int64))
     assert ds[-1] == 0
     ds = ds[:-1][observed[:-1] < observed[1:]]
     d_plus = float(ds.max()) / (n1 * n2)
