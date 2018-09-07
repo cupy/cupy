@@ -367,7 +367,7 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
-    def test_ks(self, dtype):
+    def test_lognormal_ks(self, dtype):
         self.check_ks(0.05)(
             *self.args, size=self.size, dtype=dtype)
 
@@ -405,7 +405,7 @@ class TestNormal(RandomGeneratorTestCase):
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
-    def test_ks(self, dtype):
+    def test_normal_ks(self, dtype):
         self.check_ks(0.05)(
             *self.args, size=self.size, dtype=dtype)
 
@@ -447,8 +447,8 @@ class TestRandomSampleDistrib(unittest.TestCase):
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
     @numpy_cupy_equal_continuous_distribution(0.05)
-    def test_ks(self, xp, dtype):
-        return _xp_random(xp, 'random_sample')(size=1000, dtype=dtype)
+    def test_random_sample_ks(self, xp, dtype):
+        return _xp_random(xp, 'random_sample')(size=2000, dtype=dtype)
 
 
 @testing.fix_random()
@@ -766,9 +766,6 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 @testing.gpu
 @testing.fix_random()
 class TestGumbel(RandomGeneratorTestCase):
-    # TODO(niboshi):
-    #   Test soundness of distribution.
-    #   Currently only reprocibility is checked.
 
     target_method = 'gumbel'
 
@@ -777,6 +774,18 @@ class TestGumbel(RandomGeneratorTestCase):
 
     def test_gumbel_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_gumbel_ks_1(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_gumbel_ks_2(self, dtype):
+        self.check_ks(0.05)(
+            2.3, 4.5, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -798,9 +807,6 @@ class TestRandint(RandomGeneratorTestCase):
 @testing.gpu
 @testing.fix_random()
 class TestUniform(RandomGeneratorTestCase):
-    # TODO(niboshi):
-    #   Test soundness of distribution.
-    #   Currently only reprocibility is checked.
 
     target_method = 'uniform'
 
@@ -809,6 +815,18 @@ class TestUniform(RandomGeneratorTestCase):
 
     def test_uniform_2(self):
         self.generate(-4.2, 2.4, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_uniform_ks_1(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_uniform_ks_2(self, dtype):
+        self.check_ks(0.05)(
+            -4.2, 2.4, size=2000, dtype=dtype)
 
 
 @testing.parameterize(
