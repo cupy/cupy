@@ -135,16 +135,3 @@ chi_square_table = [
      272.836, 273.911, 274.987, 276.062, 277.138,
      278.213, 279.288, 280.362, 281.437, 282.511,
      283.586, 284.660, 285.734, 286.808, 287.882]]
-
-
-def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
-    n1, = observed1.shape
-    n2, = observed2.shape
-    assert n1 >= 100 and n2 >= 100
-    indices = numpy.argsort(numpy.concatenate([observed1, observed2]))
-    ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n1)
-    d_plus = float(ds.max()) / (n1 * n2)
-    d_minus = -float(ds.min()) / (n1 * n2)
-    d = max(d_plus, d_minus)
-    p = 2.0 * numpy.exp(-2.0 * n1 * n2 * numpy.square(d) / (n1 + n2))
-    return d_plus, d_minus, p

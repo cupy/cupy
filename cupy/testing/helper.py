@@ -18,7 +18,6 @@ import cupy
 from cupy import internal
 import cupy.sparse
 from cupy.testing import array
-from cupy.testing import hypothesis
 from cupy.testing import parameterized
 
 
@@ -402,44 +401,6 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name)
-
-
-def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
-    """Decorator that tests the distributions of NumPy samples and CuPy ones.
-
-    Args:
-        significance_level (float): The test fails if p-value is lower than
-            this argument.
-        name(str): Argument name whose value is either
-            ``numpy`` or ``cupy`` module.
-
-    Decorated test fixture is required to return samples from the same
-    distribution even if ``xp`` is ``numpy`` or ``cupy``.
-
-    .. seealso:: :func:`cupy.testing.kstest`
-    """
-    def decorator(impl):
-        @functools.wraps(impl)
-        def test_func(self, *args, **kw):
-            kw[name] = cupy
-            cupy_result = impl(self, *args, **kw)
-
-            kw[name] = numpy
-            numpy_result = impl(self, *args, **kw)
-
-            self.assertIsNotNone(cupy_result)
-            self.assertIsNotNone(numpy_result)
-            d_plus, d_minus, p_value = \
-                hypothesis.two_sample_Kolmogorov_Smirnov_test(
-                    cupy.asnumpy(cupy_result), numpy_result)
-            if p_value < significance_level:
-                message = '''Rejected null hypothesis:
-p: %f
-D+ (cupy < numpy): %f
-D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
-                raise AssertionError(message)
-        return test_func
-    return decorator
 
 
 def numpy_cupy_equal(name='xp', sp_name=None):

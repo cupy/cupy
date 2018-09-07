@@ -1,3 +1,4 @@
+import functools
 import os
 import threading
 import unittest
@@ -12,6 +13,57 @@ from cupy.random import generator
 from cupy import testing
 from cupy.testing import condition
 from cupy.testing import hypothesis
+
+
+def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
+    """Decorator that tests the distributions of NumPy samples and CuPy ones.
+
+    Args:
+        significance_level (float): The test fails if p-value is lower than
+            this argument.
+        name(str): Argument name whose value is either
+            ``numpy`` or ``cupy`` module.
+
+    Decorated test fixture is required to return samples from the same
+    distribution even if ``xp`` is ``numpy`` or ``cupy``.
+
+    .. seealso:: :func:`cupy.testing.kstest`
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            kw[name] = cupy
+            cupy_result = impl(self, *args, **kw)
+
+            kw[name] = numpy
+            numpy_result = impl(self, *args, **kw)
+
+            self.assertIsNotNone(cupy_result)
+            self.assertIsNotNone(numpy_result)
+            d_plus, d_minus, p_value = \
+                two_sample_Kolmogorov_Smirnov_test(
+                    cupy.asnumpy(cupy_result), numpy_result)
+            if p_value < significance_level:
+                message = '''Rejected null hypothesis:
+p: %f
+D+ (cupy < numpy): %f
+D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
+                raise AssertionError(message)
+        return test_func
+    return decorator
+
+
+def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
+    n1, = observed1.shape
+    n2, = observed2.shape
+    assert n1 >= 100 and n2 >= 100
+    indices = numpy.argsort(numpy.concatenate([observed1, observed2]))
+    ds = numpy.cumsum((indices >= n1).astype(numpy.int64) * (n1 + n2) - n1)
+    d_plus = float(ds.max()) / (n1 * n2)
+    d_minus = -float(ds.min()) / (n1 * n2)
+    d = max(d_plus, d_minus)
+    p = 2.0 * numpy.exp(-2.0 * n1 * n2 * numpy.square(d) / (n1 + n2))
+    return d_plus, d_minus, p
 
 
 class RandomGeneratorTestCase(unittest.TestCase):
@@ -71,7 +123,7 @@ class TestKS(unittest.TestCase):
 
     # @condition.repeat_with_success_at_least(5, 3)  # sorry
     @testing.for_dtypes('fd')
-    @testing.helper.numpy_cupy_equal_continuous_distribution(significance_level=0.05)
+    @numpy_cupy_equal_continuous_distribution(significance_level=0.05)
     def test_distrib(self, xp, dtype):
         rs = xp.random.RandomState(seed=testing.generate_seed())
         args = getattr(self, 'args', ())
