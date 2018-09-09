@@ -82,12 +82,9 @@ class RandomState(object):
         a, b = cupy.asarray(a), cupy.asarray(b)
         if size is None:
             size = cupy.broadcast(a, b).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.beta_kernel(a, b, self.rk_seed, y)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -100,12 +97,9 @@ class RandomState(object):
         n, p = cupy.asarray(n), cupy.asarray(p)
         if size is None:
             size = cupy.broadcast(n, p).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.binomial_kernel(n, p, self.rk_seed, y)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def chisquare(self, df, size=None, dtype=float):
@@ -118,12 +112,9 @@ class RandomState(object):
         df = cupy.asarray(df)
         if size is None:
             size = df.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.chisquare_kernel(df, self.rk_seed, y)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -138,13 +129,10 @@ class RandomState(object):
             size = alpha.shape
         else:
             size += alpha.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
@@ -157,13 +145,10 @@ class RandomState(object):
         shape, scale = cupy.asarray(shape), cupy.asarray(scale)
         if size is None:
             size = cupy.broadcast(shape, scale).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
         y *= scale
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
