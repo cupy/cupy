@@ -1,9 +1,11 @@
 from cupy import core
-
+import cupy.core.core
+from cupy.core import fusion
 
 # TODO(okuta): Implement convolve
 
 
+@fusion._ufunc_wrapper(cupy.core.core._clip)
 def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
 

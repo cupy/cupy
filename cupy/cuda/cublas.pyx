@@ -204,6 +204,9 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
+    int cublasDgetrfBatched(
+        Handle handle, int n, double **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
     int cublasSgetriBatched(
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
@@ -878,6 +881,16 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     with nogil:
         status = cublasSgetrfBatched(
             <Handle>handle, n, <float**>Aarray, lda, <int*>PivotArray,
+            <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetrfBatched(
+            <Handle>handle, n, <double**>Aarray, lda, <int*>PivotArray,
             <int*>infoArray, batchSize)
     check_status(status)
 
