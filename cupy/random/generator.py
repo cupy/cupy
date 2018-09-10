@@ -206,12 +206,10 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.pareto`
         """
         a = cupy.asarray(a)
-        if size is None:
-            size = a.shape
-        y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.pareto_kernel(a, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
-        return y
+        x = self._random_sample_raw(size, dtype)
+        cupy.log(x, out=x)
+        cupy.exp(-x/a, out=x)
+        return x - 1
 
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.

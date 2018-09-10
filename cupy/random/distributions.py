@@ -247,7 +247,7 @@ def pareto(a, size=None, dtype=float):
             :class:`numpy.float64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the pareto II distribution.
+        cupy.ndarray: Samples drawn from the Pareto II distribution.
 
     .. seealso:: :func:`numpy.random.pareto`
     """
