@@ -368,10 +368,10 @@ class RandomState(object):
         return cupy.log(x, out=x)
 
     def standard_gamma(self, shape, size=None, dtype=float):
-        """Returns an array of samples drawn from a gamma distribution.
+        """Returns an array of samples drawn from a standard gamma distribution.
 
         .. seealso::
-            :func:`cupy.random.gamma` for full documentation,
+            :func:`cupy.random.standard_gamma` for full documentation,
             :meth:`numpy.random.RandomState.standard_gamma`
         """
         shape = cupy.asarray(shape)
