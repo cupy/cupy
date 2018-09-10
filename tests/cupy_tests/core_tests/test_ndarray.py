@@ -132,6 +132,40 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+class TestNdarrayCudaInterface(unittest.TestCase):
+
+    def test_cuda_array_interface(self):
+        arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
+        iface = arr.__cuda_array_interface__
+        self.assertEqual(set(iface.keys()),
+                         set(['shape', 'typestr', 'data', 'version', 'descr']))
+        self.assertEqual(iface['shape'], (2, 3))
+        self.assertEqual(iface['typestr'], '<f8')
+        self.assertIsInstance(iface['data'], tuple)
+        self.assertEqual(len(iface['data']), 2)
+        self.assertEqual(iface['data'][0], arr.data.ptr)
+        self.assertEqual(iface['data'][1], False)
+        self.assertEqual(iface['version'], 0)
+        self.assertEqual(iface['descr'], [('', '<f8')])
+
+    def test_cuda_array_interface_view(self):
+        arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
+        view = arr[::2, ::5]
+        iface = view.__cuda_array_interface__
+        self.assertEqual(set(iface.keys()),
+                         set(['shape', 'typestr', 'data', 'version',
+                              'strides', 'descr']))
+        self.assertEqual(iface['shape'], (5, 4))
+        self.assertEqual(iface['typestr'], '<f8')
+        self.assertIsInstance(iface['data'], tuple)
+        self.assertEqual(len(iface['data']), 2)
+        self.assertEqual(iface['data'][0], arr.data.ptr)
+        self.assertEqual(iface['data'][1], False)
+        self.assertEqual(iface['version'], 0)
+        self.assertEqual(iface['strides'], [320, 40])
+        self.assertEqual(iface['descr'], [('', '<f8')])
+
+
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],
@@ -224,16 +258,14 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
-    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
-    def test_axis_overrun1(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
+    def test_axis_overrun1(self, xp):
+        a = testing.shaped_arange(self.shape, xp)
         wrap_take(a, self.indices, axis=self.axis)
 
-    @testing.for_all_dtypes()
-    def test_axis_overrun2(self, dtype):
-        a = testing.shaped_arange(self.shape, cupy, dtype)
+    def test_axis_overrun2(self):
+        a = testing.shaped_arange(self.shape, cupy)
         with self.assertRaises(core.core._AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
@@ -245,12 +277,11 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 @testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
-    @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
-    def test_shape_mismatch(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
+    def test_shape_mismatch(self, xp):
+        a = testing.shaped_arange(self.shape, xp)
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
-        o = testing.shaped_arange(self.out_shape, xp, dtype)
+        o = testing.shaped_arange(self.out_shape, xp)
         wrap_take(a, i, out=o)
 
 
@@ -267,6 +298,34 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
         o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
         wrap_take(a, i, out=o)
+
+
+@testing.parameterize(
+    {"shape": (0,), "indices": (0,)},
+    {"shape": (0,), "indices": (0, 1)},
+)
+@testing.gpu
+class TestZeroSizedNdarrayTake(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_output_type_mismatch(self, xp):
+        a = testing.shaped_arange(self.shape, xp, numpy.int32)
+        i = testing.shaped_arange(self.indices, xp, numpy.int32)
+        return wrap_take(a, i)
+
+
+@testing.parameterize(
+    {"shape": (0,), "indices": (1,)},
+    {"shape": (0,), "indices": (1, 1)},
+)
+@testing.gpu
+class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_output_type_mismatch(self, xp):
+        a = testing.shaped_arange(self.shape, xp, numpy.int32)
+        i = testing.shaped_arange(self.indices, xp, numpy.int32)
+        wrap_take(a, i)
 
 
 @testing.gpu

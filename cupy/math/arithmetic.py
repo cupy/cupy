@@ -1,4 +1,5 @@
 from cupy import core
+from cupy.core import fusion
 
 
 add = core.add
@@ -29,16 +30,37 @@ conj = core.conj
 angle = core.angle
 
 
-real = core.real
+@fusion._ufunc_wrapper(core.real)
+def real(val):
+    '''Returns the real part of the elements of the array.
+
+    .. seealso:: :func:`numpy.real`
+
+    '''
+    if not isinstance(val, core.ndarray):
+        val = core.array(val)
+    return val.real
 
 
-imag = core.imag
+@fusion._ufunc_wrapper(core.imag)
+def imag(val):
+    '''Returns the imaginary part of the elements of the array.
+
+    .. seealso:: :func:`numpy.imag`
+
+    '''
+    if not isinstance(val, core.ndarray):
+        val = core.array(val)
+    return val.imag
 
 
 multiply = core.multiply
 
 
 divide = core.divide
+
+
+divmod = core.divmod
 
 
 power = core.power
