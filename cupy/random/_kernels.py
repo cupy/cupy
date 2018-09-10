@@ -333,6 +333,12 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
 }
 '''
 
+rk_chisquare_definition = '''
+__device__ double rk_chisquare(rk_state *state, double df) {
+    return 2.0*rk_standard_gamma(state, df/2.0);
+}
+'''
+
 rk_beta_definition = '''
 __device__ double rk_beta(rk_state *state, double a, double b) {
     double Ga, Gb;
@@ -375,6 +381,21 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition]
+chisquare_kernel = core.ElementwiseKernel(
+    'T df, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_chisquare(&internal_state, df);
+    ''',
+    'chisquare_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
