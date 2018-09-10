@@ -61,6 +61,63 @@ def binomial(n, p, size=None, dtype=int):
     return rs.binomial(n, p, size, dtype)
 
 
+def chisquare(df, size=None, dtype=float):
+    """Chi-square distribution.
+
+    Returns an array of samples drawn from the chi-square distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2},
+
+    Args:
+        df (int or array_like of ints): Degree of freedom :math:`k`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the chi-square distribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.chisquare`
+        :func:`numpy.random.chisquare`
+    """
+    rs = generator.get_random_state()
+    return rs.chisquare(df, size, dtype)
+
+
+def dirichlet(alpha, size=None, dtype=float):
+    """Dirichlet distribution.
+
+    Returns an array of samples drawn from the dirichlet distribution. Its
+    probability density function is defined as
+
+    .. math::
+        f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
+            {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
+            \\prod_{i=1}^Kx_i^{\\alpha_i-1},
+
+    Args:
+        alpha (array): Parameters of the dirichlet distribution
+            :math:`\\alpha`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the dirichlet distribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.dirichlet`
+        :func:`numpy.random.dirichlet`
+    """
+    rs = generator.get_random_state()
+    return rs.dirichlet(alpha, size, dtype)
+
+
 def f(dfnum, dfden, size=None, dtype=float):
     """F distribution.
 
@@ -112,8 +169,7 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
-    Returns:
-        cupy.ndarray: Samples drawn from the gamma distribution.
+    Returns:cupy.ndarray: Samples drawn from the gamma distribution.
 
     .. seealso::
         :func:`cupy.random.RandomState.gamma`
@@ -123,34 +179,31 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     return rs.gamma(shape, scale, size, dtype)
 
 
-def dirichlet(alpha, size=None, dtype=float):
-    """Dirichlet distribution.
+def geometric(p, size=None, dtype=int):
+    """Geometric distribution.
 
-    Returns an array of samples drawn from the dirichlet distribution. Its
-    probability density function is defined as
+    Returns an array of samples drawn from the geometric distribution. Its
+    probability mass function is defined as
 
     .. math::
-        f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
-            {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
-            \\prod_{i=1}^Kx_i^{\\alpha_i-1},
+        f(x) = p(1-p)^{k-1},
 
     Args:
-        alpha (array): Parameters of the dirichlet distribution
-            :math:`\\alpha`.
+        p (float): Success probability of the geometric distribution.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        dtype: Data type specifier. Only :class:`numpy.float32` and
-            :class:`numpy.float64` types are allowed.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
 
     Returns:
-        cupy.ndarray: Samples drawn from the dirichlet distribution.
+        cupy.ndarray: Samples drawn from the geometric distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.dirichlet`
-        :func:`numpy.random.dirichlet`
+        :func:`cupy.random.RandomState.geometric`
+        :func:`numpy.random.geometric`
     """
     rs = generator.get_random_state()
-    return rs.dirichlet(alpha, size, dtype)
+    return rs.geometric(p, size, dtype)
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -262,6 +315,55 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     cupy.multiply(x, scale, out=x)
     cupy.add(x, loc, out=x)
     return x
+
+
+def standard_cauchy(size=None, dtype=float):
+    """Standard cauchy distribution.
+
+    Returns an array of samples drawn from the standard cauchy distribution.
+    Its probability density function is defined as
+
+      .. math::
+         f(x) = \\frac{1}{\\pi(1+x^2)},
+
+    Args:
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard cauchy distribution.
+
+    .. seealso:: :func:`numpy.random.standard_cauchy`
+    """
+    rs = generator.get_random_state()
+    x = rs.standard_cauchy(size, dtype)
+    return x
+
+
+def standard_exponential(size=None, dtype=float):
+    """Standard exponential distribution.
+
+    Returns an array of samples drawn from the standard exponential
+    distribution. Its probability density function is defined as
+
+      .. math::
+         f(x) = e^{-x},
+
+    Args:
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard exponential distribution.
+
+    .. seealso:: :func:`numpy.random.standard_exponential`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_exponential(size, dtype)
 
 
 def standard_normal(size=None, dtype=float):
