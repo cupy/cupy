@@ -208,7 +208,7 @@ class RandomState(object):
         a = cupy.asarray(a)
         if size is None:
             size = a.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.pareto_kernel(a, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
