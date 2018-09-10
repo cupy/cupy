@@ -438,6 +438,21 @@ class RandomState(object):
             high = cupy.asarray(high, dtype)
         return RandomState._scale_kernel(low, high, rand)
 
+    def vonmises(self, mu, kappa, size=None, dtype=float):
+        """Returns an array of samples drawn from the von Mises distribution.
+
+        .. seealso::
+            :func:`cupy.random.vonmises` for full documentation,
+            :meth:`numpy.random.RandomState.vonmises`
+        """
+        mu, kappa = cupy.asarray(mu), cupy.asarray(kappa)
+        if size is None:
+            size = cupy.broadcast(mu, kappa).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
+        self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
 

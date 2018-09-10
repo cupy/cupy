@@ -51,6 +51,7 @@ Distributions
    cupy.random.standard_exponential
    cupy.random.standard_normal
    cupy.random.uniform
+   cupy.random.vonmises
 
 
 Random number generator

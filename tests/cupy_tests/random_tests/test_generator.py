@@ -697,6 +697,21 @@ class TestUniform(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'mu': 0.0, 'kappa': 1.0},
+    {'mu': 3.0, 'kappa': 3.0},
+    {'mu': 3.0, 'kappa': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestVonmises(RandomGeneratorTestCase):
+
+    target_method = 'vonmises'
+
+    def test_vonmises(self):
+        self.generate(mu=self.mu, kappa=self.kappa, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 3, 'size': 5},
     {'a': [1, 2, 3], 'size': 5},
 )
