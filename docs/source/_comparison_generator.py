@@ -40,7 +40,7 @@ def _generate_comparison_rst(base_obj, cupy_obj, base_type):
             line = '   :obj:`{0}.{1}`, :obj:`{2}.{1}`'.format(
                 base_obj, f, cupy_obj)
         else:
-            line = '   :obj:`{0}.{1}`, \-'.format(base_obj, f)
+            line = '   :obj:`{0}.{1}`, \\-'.format(base_obj, f)
         buf.append(line)
 
     buf += [
