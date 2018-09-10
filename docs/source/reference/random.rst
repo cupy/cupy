@@ -46,6 +46,7 @@ Distributions
    cupy.random.lognormal
    cupy.random.multinomial
    cupy.random.normal
+   cupy.random.standard_cauchy
    cupy.random.standard_exponential
    cupy.random.standard_normal
    cupy.random.uniform
