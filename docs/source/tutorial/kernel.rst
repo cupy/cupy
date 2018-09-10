@@ -179,7 +179,7 @@ In other words, you have control over grid size, block size, shared memory size 
 
 .. doctest::
 
-   >>> sum_kernel = cp.RawKernel(r'''
+   >>> add_kernel = cp.RawKernel(r'''
    ... extern "C" __global__
    ... void my_add(const float* x1, const float* x2, float* y) {
    ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
@@ -189,7 +189,7 @@ In other words, you have control over grid size, block size, shared memory size 
    >>> x1 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
    >>> x2 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
    >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
-   >>> sum_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
+   >>> add_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
    >>> y
    array([[ 0.,  2.,  4.,  6.,  8.],
           [10., 12., 14., 16., 18.],
