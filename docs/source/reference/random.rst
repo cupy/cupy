@@ -38,6 +38,7 @@ Distributions
 
    cupy.random.beta
    cupy.random.binomial
+   cupy.random.chisquare
    cupy.random.dirichlet
    cupy.random.gamma
    cupy.random.gumbel
@@ -45,6 +46,7 @@ Distributions
    cupy.random.lognormal
    cupy.random.multinomial
    cupy.random.normal
+   cupy.random.standard_exponential
    cupy.random.standard_gamma
    cupy.random.standard_normal
    cupy.random.uniform
