@@ -1,4 +1,5 @@
 from cupy import core
+from cupy.core import fusion
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
@@ -94,6 +95,7 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
+@fusion._ufunc_wrapper(core.elementwise_copy)
 def copy(a, order='K'):
     """Creates a copy of a given array on the current device.
 
