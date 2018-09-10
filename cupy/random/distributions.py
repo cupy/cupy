@@ -26,7 +26,6 @@ def beta(a, b, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the beta distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.beta`
         :func:`numpy.random.beta`
     """
     rs = generator.get_random_state()
@@ -54,7 +53,6 @@ def binomial(n, p, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the binomial distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.binomial`
         :func:`numpy.random.binomial`
     """
     rs = generator.get_random_state()
@@ -81,7 +79,6 @@ def chisquare(df, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the chi-square distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.chisquare`
         :func:`numpy.random.chisquare`
     """
     rs = generator.get_random_state()
@@ -111,7 +108,6 @@ def dirichlet(alpha, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the dirichlet distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.dirichlet`
         :func:`numpy.random.dirichlet`
     """
     rs = generator.get_random_state()
@@ -138,7 +134,6 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     Returns:cupy.ndarray: Samples drawn from the gamma distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.gamma`
         :func:`numpy.random.gamma`
     """
     rs = generator.get_random_state()
@@ -172,7 +167,6 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the Gumbel distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.gumbel`
         :func:`numpy.random.gumbel`
     """
     rs = generator.get_random_state()
@@ -200,7 +194,6 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the laplace distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.laplace`
         :func:`numpy.random.laplace`
     """
     rs = generator.get_random_state()
@@ -325,7 +318,6 @@ def standard_gamma(shape, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the standard gamma distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.standard_gamma`
         :func:`numpy.random.standard_gamma`
     """
     rs = generator.get_random_state()

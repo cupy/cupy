@@ -372,7 +372,7 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.gamma` for full documentation,
-            :meth:`numpy.random.RandomState.gamma`
+            :meth:`numpy.random.RandomState.standard_gamma`
         """
         shape = cupy.asarray(shape)
         if size is None:
