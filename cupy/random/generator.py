@@ -347,6 +347,16 @@ class RandomState(object):
 
         self.rk_seed = numpy.uint64(seed)
 
+    def standard_exponential(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard exp distribution.
+
+         .. seealso::
+            :func:`cupy.random.standard_exponential` for full documentation,
+            :meth:`numpy.random.RandomState.standard_exponential`
+        """
+        x = self._random_sample_raw(size, dtype)
+        return cupy.log(x, out=x)
+
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
 

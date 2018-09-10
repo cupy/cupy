@@ -204,6 +204,18 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
+class TestDistributionsStandardExponential(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_exponential(self, dtype):
+        self.check_distribution('standard_exponential', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
 class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
