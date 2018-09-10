@@ -1,16 +1,4 @@
-import numpy
-
-import scipy
-import scipy.linalg
-import scipy.special
-import scipy.ndimage
-
-import cupy
-
-import cupyx.scipy
-import cupyx.scipy.linalg
-import cupyx.scipy.ndimage
-import cupyx.scipy.special
+import importlib
 
 
 def _get_functions(obj):
@@ -26,8 +14,8 @@ def _get_functions(obj):
 
 
 def _generate_comparison_rst(base_obj, cupy_obj, base_type):
-    base_funcs = _get_functions(eval(base_obj))
-    cp_funcs = _get_functions(eval(cupy_obj))
+    base_funcs = _get_functions(importlib.import_module(base_obj))
+    cp_funcs = _get_functions(importlib.import_module(cupy_obj))
 
     buf = []
     buf += [
