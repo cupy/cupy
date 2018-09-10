@@ -1,6 +1,9 @@
 import cupy
+from cupy.core import core
+from cupy.core import fusion
 
 
+@fusion._reduction_wrapper(core._all)
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -22,6 +25,7 @@ def all(a, axis=None, out=None, keepdims=False):
     return a.all(axis=axis, out=out, keepdims=keepdims)
 
 
+@fusion._reduction_wrapper(core._any)
 def any(a, axis=None, out=None, keepdims=False):
     """Tests whether any array elements along a given axis evaluate to True.
 

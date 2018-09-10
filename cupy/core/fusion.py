@@ -7,12 +7,8 @@ import warnings
 
 import numpy
 
+import cupy
 from cupy.core import core
-from cupy import creation
-from cupy import logic
-from cupy import math
-from cupy import sorting
-from cupy import statistics
 
 
 _thread_local = threading.local()
@@ -191,142 +187,142 @@ class FusionVarPython(object):
         return '<FusionVarPython, dtype={}>'.format(self.dtype)
 
     def __neg__(self):
-        return negative(self)
+        return cupy.negative(self)
 
     def __add__(self, other):
-        return add(self, other)
+        return cupy.add(self, other)
 
     def __iadd__(self, other):
-        return add(self, other, self)
+        return cupy.add(self, other, self)
 
     def __radd__(self, other):
-        return add(other, self)
+        return cupy.add(other, self)
 
     def __sub__(self, other):
-        return subtract(self, other)
+        return cupy.subtract(self, other)
 
     def __isub__(self, other):
-        return subtract(self, other, self)
+        return cupy.subtract(self, other, self)
 
     def __rsub__(self, other):
-        return subtract(other, self)
+        return cupy.subtract(other, self)
 
     def __mul__(self, other):
-        return multiply(self, other)
+        return cupy.multiply(self, other)
 
     def __imul__(self, other):
-        return multiply(self, other, self)
+        return cupy.multiply(self, other, self)
 
     def __rmul__(self, other):
-        return multiply(other, self)
+        return cupy.multiply(other, self)
 
     def __div__(self, other):
-        return divide(self, other)
+        return cupy.divide(self, other)
 
     def __idiv__(self, other):
-        return divide(self, other, self)
+        return cupy.divide(self, other, self)
 
     def __rdiv__(self, other):
-        return divide(other, self)
+        return cupy.divide(other, self)
 
     def __truediv__(self, other):
-        return true_divide(self, other)
+        return cupy.true_divide(self, other)
 
     def __itruediv__(self, other):
-        return true_divide(self, other, self)
+        return cupy.true_divide(self, other, self)
 
     def __rtruediv__(self, other):
-        return true_divide(other, self)
+        return cupy.true_divide(other, self)
 
     def __floordiv__(self, other):
-        return floor_divide(self, other)
+        return cupy.floor_divide(self, other)
 
     def __ifloordiv__(self, other):
-        return floor_divide(self, other, self)
+        return cupy.floor_divide(self, other, self)
 
     def __rfloordiv__(self, other):
-        return floor_divide(other, self)
+        return cupy.floor_divide(other, self)
 
     def __mod__(self, other):
-        return remainder(self, other)
+        return cupy.remainder(self, other)
 
     def __imod__(self, other):
-        return remainder(self, other, self)
+        return cupy.remainder(self, other, self)
 
     def __rmod__(self, other):
-        return remainder(other, self)
+        return cupy.remainder(other, self)
 
     def __pow__(x, y):
-        return power(x, y)
+        return cupy.power(x, y)
 
     def __ipow__(self, other):
-        return power(self, other, self)
+        return cupy.power(self, other, self)
 
     def __lshift__(self, other):
-        return left_shift(self, other)
+        return cupy.left_shift(self, other)
 
     def __ilshift__(self, other):
-        return left_shift(self, other, self)
+        return cupy.left_shift(self, other, self)
 
     def __rlshift__(self, other):
-        return left_shift(other, self)
+        return cupy.left_shift(other, self)
 
     def __rshift__(self, other):
-        return right_shift(self, other)
+        return cupy.right_shift(self, other)
 
     def __irshift__(self, other):
-        return right_shift(self, other, self)
+        return cupy.right_shift(self, other, self)
 
     def __rrshift__(self, other):
-        return right_shift(other, self)
+        return cupy.right_shift(other, self)
 
     def __and__(self, other):
-        return bitwise_and(self, other)
+        return cupy.bitwise_and(self, other)
 
     def __iand__(self, other):
-        return bitwise_and(self, other, self)
+        return cupy.bitwise_and(self, other, self)
 
     def __rand__(self, other):
-        return bitwise_and(other, self)
+        return cupy.bitwise_and(other, self)
 
     def __or__(self, other):
-        return bitwise_or(self, other)
+        return cupy.bitwise_or(self, other)
 
     def __ior__(self, other):
-        return bitwise_or(self, other, self)
+        return cupy.bitwise_or(self, other, self)
 
     def __ror__(self, other):
-        return bitwise_or(other, self)
+        return cupy.bitwise_or(other, self)
 
     def __xor__(self, other):
-        return bitwise_xor(self, other)
+        return cupy.bitwise_xor(self, other)
 
     def __ixor__(self, other):
-        return bitwise_xor(self, other, self)
+        return cupy.bitwise_xor(self, other, self)
 
     def __rxor__(self, other):
-        return bitwise_xor(other, self)
+        return cupy.bitwise_xor(other, self)
 
     def __invert__(self):
-        return invert(self)
+        return cupy.invert(self)
 
     def __lt__(self, other):
-        return less(self, other)
+        return cupy.less(self, other)
 
     def __le__(self, other):
-        return less_equal(self, other)
+        return cupy.less_equal(self, other)
 
     def __eq__(self, other):
-        return equal(self, other)
+        return cupy.equal(self, other)
 
     def __ne__(self, other):
-        return not_equal(self, other)
+        return cupy.not_equal(self, other)
 
     def __gt__(self, other):
-        return greater(self, other)
+        return cupy.greater(self, other)
 
     def __ge__(self, other):
-        return greater_equal(self, other)
+        return cupy.greater_equal(self, other)
 
     def __nonzero__(self):
         raise Exception('Can\'t cast to bool')
@@ -337,12 +333,12 @@ class FusionVarPython(object):
     def __setitem__(self, slices, value):
         if slices is Ellipsis or (isinstance(slices, slice) and
                                   slices == slice(None)):
-            copy(value, self)
+            cupy.copy(value, self)
         else:
             raise ValueError('The fusion supports `[...]` or `[:]`.')
 
     def copy(self):
-        return copy(self)
+        return cupy.copy(self)
 
 
 class _FusionHistory(object):
@@ -824,192 +820,31 @@ def fuse(*args, **kwargs):
             wrapper(f, *args, **kwargs), f)
 
 
-class ufunc(core.ufunc):
-    # Args:
-    #   fusion_op (cupy.ufunc)
-    #   cupy_op (cupy.ufunc or function or None)
-
-    def __init__(self, fusion_op, cupy_op=None):
-        if cupy_op is None:
-            cupy_op = fusion_op
-
-        self.name = fusion_op.name
-        self.__name__ = self.name
-        self.nin = fusion_op.nin
-        self.nout = fusion_op.nout
-        self.nargs = fusion_op.nargs
-        self._ops = fusion_op._ops
-        self._preamble = fusion_op._preamble
-        self.__doc__ = cupy_op.__doc__
-        self._params = fusion_op._params
-        self._routine_cache = fusion_op._routine_cache
-
-        self._fusion_op = fusion_op
-        self._cupy_op = cupy_op
-        self._preamble = fusion_op._preamble
-
-    def __repr__(self):
-        return repr(self._cupy_op)
-
-    def __call__(self, *args, **kwargs):
-        if not hasattr(_thread_local, 'history'):
-            return self._cupy_op(*args, **kwargs)
-        else:
-            return _thread_local.history.call_ufunc(
-                self._fusion_op, args, kwargs)
-
-    __doc__ = core.ufunc.__doc__
-    __call__.__doc__ = core.ufunc.__call__.__doc__
+def _ufunc_wrapper(fusion_op):
+    def func(f):
+        def call(*args, **kwargs):
+            if not hasattr(_thread_local, 'history'):
+                return f(*args, **kwargs)
+            return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
+        return functools.update_wrapper(call, f)
+    return func
 
 
-where = ufunc(sorting.search._where_ufunc, sorting.search.where)
-clip = ufunc(core._clip, math.misc.clip)
-copy = ufunc(core.elementwise_copy, creation.from_data.copy)
-
-bitwise_and = ufunc(core.bitwise_and)
-bitwise_or = ufunc(core.bitwise_or)
-bitwise_xor = ufunc(core.bitwise_xor)
-invert = ufunc(core.invert)
-left_shift = ufunc(core.left_shift)
-right_shift = ufunc(core.right_shift)
-
-greater = ufunc(core.greater)
-greater_equal = ufunc(core.greater_equal)
-less = ufunc(core.less)
-less_equal = ufunc(core.less_equal)
-equal = ufunc(core.equal)
-not_equal = ufunc(core.not_equal)
-
-isfinite = ufunc(logic.content.isfinite)
-isinf = ufunc(logic.content.isinf)
-isnan = ufunc(logic.content.isnan)
-
-logical_and = ufunc(logic.ops.logical_and)
-logical_or = ufunc(logic.ops.logical_or)
-logical_not = ufunc(logic.ops.logical_not)
-logical_xor = ufunc(logic.ops.logical_xor)
-
-sin = ufunc(math.trigonometric.sin)
-cos = ufunc(math.trigonometric.cos)
-tan = ufunc(math.trigonometric.tan)
-arcsin = ufunc(math.trigonometric.arcsin)
-arccos = ufunc(math.trigonometric.arccos)
-arctan = ufunc(math.trigonometric.arctan)
-arctan2 = ufunc(math.trigonometric.arctan2)
-hypot = ufunc(math.trigonometric.hypot)
-deg2rad = ufunc(math.trigonometric.deg2rad)
-rad2deg = ufunc(math.trigonometric.rad2deg)
-degrees = ufunc(math.trigonometric.degrees)
-radians = ufunc(math.trigonometric.radians)
-
-sinh = ufunc(math.hyperbolic.sinh)
-cosh = ufunc(math.hyperbolic.cosh)
-tanh = ufunc(math.hyperbolic.tanh)
-arcsinh = ufunc(math.hyperbolic.arcsinh)
-arccosh = ufunc(math.hyperbolic.arccosh)
-arctanh = ufunc(math.hyperbolic.arctanh)
-
-rint = ufunc(math.rounding.rint)
-floor = ufunc(math.rounding.floor)
-ceil = ufunc(math.rounding.ceil)
-trunc = ufunc(math.rounding.trunc)
-fix = ufunc(math.rounding.fix)
-
-exp = ufunc(math.explog.exp)
-expm1 = ufunc(math.explog.expm1)
-exp2 = ufunc(math.explog.exp2)
-log = ufunc(math.explog.log)
-log10 = ufunc(math.explog.log10)
-log2 = ufunc(math.explog.log2)
-log1p = ufunc(math.explog.log1p)
-logaddexp = ufunc(math.explog.logaddexp)
-logaddexp2 = ufunc(math.explog.logaddexp2)
-
-i0 = ufunc(math.special.i0)
-sinc = ufunc(math.special.sinc)
-
-signbit = ufunc(math.floating.signbit)
-copysign = ufunc(math.floating.copysign)
-ldexp = ufunc(math.floating.ldexp)
-frexp = ufunc(math.floating.frexp)
-nextafter = ufunc(math.floating.nextafter)
-
-add = ufunc(math.arithmetic.add)
-reciprocal = ufunc(math.arithmetic.reciprocal)
-negative = ufunc(math.arithmetic.negative)
-angle = ufunc(math.arithmetic.angle)
-conj = ufunc(math.arithmetic.conj)
-real = ufunc(core.real, math.arithmetic.real)
-imag = ufunc(core.imag, math.arithmetic.imag)
-multiply = ufunc(math.arithmetic.multiply)
-divide = ufunc(math.arithmetic.divide)
-power = ufunc(math.arithmetic.power)
-subtract = ufunc(math.arithmetic.subtract)
-true_divide = ufunc(math.arithmetic.true_divide)
-floor_divide = ufunc(math.arithmetic.floor_divide)
-fmod = ufunc(math.arithmetic.fmod)
-mod = ufunc(math.arithmetic.remainder)
-modf = ufunc(math.arithmetic.modf)
-remainder = ufunc(math.arithmetic.remainder)
-
-sqrt = ufunc(math.misc.sqrt)
-sqrt_fixed = ufunc(math.misc.sqrt_fixed)
-cbrt = ufunc(math.misc.cbrt)
-square = ufunc(math.misc.square)
-absolute = ufunc(math.misc.absolute)
-abs = ufunc(math.misc.absolute)
-sign = ufunc(math.misc.sign)
-maximum = ufunc(math.misc.maximum)
-minimum = ufunc(math.misc.minimum)
-fmax = ufunc(math.misc.fmax)
-fmin = ufunc(math.misc.fmin)
-nan_to_num = ufunc(math.misc.nan_to_num)
-
-if hasattr(numpy, "divmod"):
-    divmod = ufunc(core.divmod)
-else:
-    divmod = core.divmod
-
-
-class reduction(object):
-    # Args:
-    #   fusion_op (core.simple_reduction_function object):
-    #     This object must have identity, _preamble and _ops attributes
-    #   cupy_op (function): The CuPy reduction function.
-    def __init__(self, fusion_op, cupy_op):
-        self._fusion_op = fusion_op
-        self._cupy_op = cupy_op
-        self.__doc__ = cupy_op.__doc__
-
-    def __call__(self, *args, **kwargs):
-        if not hasattr(_thread_local, 'history'):
-            return self._cupy_op(*args, **kwargs)
-
-        fusion_op = self._fusion_op
-        arg = args[0]
-        if arg._is_postmap:
-            # Multiple reduction
-            raise NotImplementedError(
-                'Multiple reduction is not implemented yet')
-        if len(args) != 1:
-            mes = '{}() takes 1 positional argument but {} were given'
-            raise TypeError(mes.format(fusion_op._ops.name, len(args)))
-        return FusionVarPython(
-            _thread_local.history.set_reduce_op(fusion_op, arg, kwargs), True)
-
-
-def _create_reduction(fusion_op, cupy_op):
-    op = reduction(fusion_op, cupy_op)
-
-    def wrapper(*args, **kwargs):
-        return op(*args, **kwargs)
-
-    return functools.update_wrapper(wrapper, cupy_op)
-
-
-all = _create_reduction(core._all, logic.truth.all)
-any = _create_reduction(core._any, logic.truth.any)
-sum = _create_reduction(core._sum_auto_dtype, math.sumprod.sum)
-prod = _create_reduction(core._prod_auto_dtype, math.sumprod.prod)
-amax = _create_reduction(core._amax, statistics.order.amax)
-amin = _create_reduction(core._amin, statistics.order.amin)
+def _reduction_wrapper(fusion_op):
+    def func(f):
+        def call(*args, **kwargs):
+            if not hasattr(_thread_local, 'history'):
+                return f(*args, **kwargs)
+            arg = args[0]
+            if arg._is_postmap:
+                # Multiple reduction
+                raise NotImplementedError(
+                    'Multiple reduction is not implemented yet')
+            if len(args) != 1:
+                mes = '{}() takes 1 positional argument but {} were given'
+                raise TypeError(mes.format(fusion_op._ops.name, len(args)))
+            return FusionVarPython(
+                _thread_local.history.set_reduce_op(fusion_op, arg, kwargs),
+                True)
+        return functools.update_wrapper(call, f)
+    return func

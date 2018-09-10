@@ -14,7 +14,6 @@
 # LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 from cupy import core
-import cupy.core.fusion
 
 
 polevl_definition = '''
@@ -175,7 +174,7 @@ double __device__ psi(double x)
 '''
 
 
-_digamma = core.create_ufunc(
+digamma = core.create_ufunc(
     'cupyx_scipy_digamma', ('f->f', 'd->d'),
     'out0 = psi(in0)',
     preamble=polevl_definition+psi_definition,
@@ -190,6 +189,3 @@ _digamma = core.create_ufunc(
     .. seealso:: :data:`scipy.special.digamma`
 
     """)
-
-
-digamma = cupy.core.fusion.ufunc(_digamma)
