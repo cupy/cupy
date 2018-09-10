@@ -145,7 +145,6 @@ def f(dfnum, dfden, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the f distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.f`
         :func:`numpy.random.f`
     """
     rs = generator.get_random_state()
