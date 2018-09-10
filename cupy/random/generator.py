@@ -347,6 +347,16 @@ class RandomState(object):
 
         self.rk_seed = numpy.uint64(seed)
 
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        return cupy.tan(cupy.pi * (x - 0.5))
+
     def standard_exponential(self, size=None, dtype=float):
         """Returns an array of samples drawn from the standard exp distribution.
 

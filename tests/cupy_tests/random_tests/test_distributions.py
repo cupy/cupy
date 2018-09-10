@@ -201,6 +201,30 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_cauchy(self, dtype):
+        self.check_distribution('standard_cauchy', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardExponential(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_exponential(self, dtype):
+        self.check_distribution('standard_exponential', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'shape_shape': [(), (3, 2)],
 })
 )
@@ -220,22 +244,10 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsStandardExponential(RandomDistributionsTestCase):
-
-    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    def test_standard_exponential(self, dtype):
-        self.check_distribution('standard_exponential', {}, dtype)
-
-
-@testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
-})
-)
-@testing.gpu
 class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    def test_standardnormal(self, dtype):
+    def test_standard_normal(self, dtype):
         self.check_distribution('standard_normal', {}, dtype)
 
 
