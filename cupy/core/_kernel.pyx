@@ -149,7 +149,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = args[i]
             arr = arr.view()
             newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
-            arr._set_shape_and_strides(newshape, newstrides, False)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            arr._set_shape_and_strides(newshape, newstrides, False, True)
             args[i] = arr
         return total_size,
 
@@ -181,7 +182,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newstrides.clear()
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
-        arr._set_shape_and_strides(newshape, newstrides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        arr._set_shape_and_strides(newshape, newstrides, False, True)
         args[i] = arr
     return tuple(newshape)
 
