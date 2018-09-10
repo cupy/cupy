@@ -61,9 +61,6 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
 
-seed_testsvd = 0
-
-
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
@@ -74,9 +71,7 @@ seed_testsvd = 0
 class TestSVD(unittest.TestCase):
 
     def setUp(self):
-        global seed_testsvd
-        self.seed = seed_testsvd
-        seed_testsvd += 1
+        self.seed = testing.generate_seed()
 
     @testing.for_float_dtypes(no_float16=True)
     def check_usv(self, shape, dtype):
