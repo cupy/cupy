@@ -364,7 +364,7 @@ class RandomState(object):
         df = cupy.asarray(df)
         if size is None:
             size = df.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_t_kernel(df, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
