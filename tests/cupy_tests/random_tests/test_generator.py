@@ -307,6 +307,21 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.parameterize(
+    {'shape': 0.5},
+    {'shape': 1.0},
+    {'shape': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardGamma(RandomGeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
 @testing.fix_random()
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):

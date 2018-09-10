@@ -24,6 +24,7 @@ from cupy.random.distributions import gumbel  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
 from cupy.random.distributions import normal  # NOQA
+from cupy.random.distributions import standard_gamma  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA
 from cupy.random.distributions import uniform  # NOQA
 from cupy.random.generator import get_random_state  # NOQA
