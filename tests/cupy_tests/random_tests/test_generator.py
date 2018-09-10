@@ -135,6 +135,35 @@ class TestBinomial(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestChisquare(RandomGeneratorTestCase):
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        self.generate(df=self.df, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},
@@ -158,18 +187,19 @@ class TestGamma(RandomGeneratorTestCase):
         self.generate(shape=self.shape, size=(3, 2))
 
 
-@testing.gpu
 @testing.parameterize(
-    {'alpha': cupy.array([1.0, 1.0, 1.0])},
-    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},
 )
+@testing.gpu
 @testing.fix_random()
-class TestDirichlet(RandomGeneratorTestCase):
+class TestGeometric(RandomGeneratorTestCase):
 
-    target_method = 'dirichlet'
+    target_method = 'geometric'
 
-    def test_dirichlet(self):
-        self.generate(alpha=self.alpha, size=(3, 2, 3))
+    def test_geometric(self):
+        self.generate(p=self.p, size=(3, 2))
 
 
 @testing.gpu
@@ -320,6 +350,21 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardCauchy(RandomGeneratorTestCase):
+
+    target_method = 'standard_cauchy'
+
+    def test_standard_cauchy(self):
+        self.generate(size=(3, 2))
+
+    def test_standard_cauchy_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
 
 
 @testing.fix_random()
@@ -731,6 +776,21 @@ class TestSetRandomState(unittest.TestCase):
         rs = generator.RandomState()
         generator.set_random_state(rs)
         assert generator.get_random_state() is rs
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardExponential(RandomGeneratorTestCase):
+
+    target_method = 'standard_exponential'
+
+    def test_standard_exponential(self):
+        self.generate(size=(3, 2))
+
+    def test_standard_exponential_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
 
 
 @testing.gpu

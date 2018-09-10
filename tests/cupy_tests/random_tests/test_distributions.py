@@ -38,8 +38,8 @@ class TestDistributionsBeta(RandomDistributionsTestCase):
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['a_dtype', 'b_dtype'])
     def test_beta(self, a_dtype, b_dtype):
-        a = 3. * numpy.ones(self.a_shape, dtype=a_dtype)
-        b = 3. * numpy.ones(self.b_shape, dtype=b_dtype)
+        a = numpy.full(self.a_shape, 3, dtype=a_dtype)
+        b = numpy.full(self.b_shape, 3, dtype=b_dtype)
         self.check_distribution('beta',
                                 {'a': a, 'b': b}, self.dtype)
 
@@ -57,10 +57,30 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
     @cupy.testing.for_signed_dtypes('n_dtype')
     @cupy.testing.for_float_dtypes('p_dtype')
     def test_binomial(self, n_dtype, p_dtype):
-        n = 5 * numpy.ones(self.n_shape, dtype=n_dtype)
-        p = 0.5 * numpy.ones(self.p_shape, dtype=p_dtype)
+        n = numpy.full(self.n_shape, 5, dtype=n_dtype)
+        p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
         self.check_distribution('binomial',
                                 {'n': n, 'p': p}, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'df_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsChisquare(unittest.TestCase):
+
+    def check_distribution(self, dist_func, df_dtype, dtype):
+        df = cupy.full(self.df_shape, 5, dtype=df_dtype)
+        out = dist_func(df, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('df_dtype')
+    @cupy.testing.for_float_dtypes('dtype')
+    def test_chisquare(self, df_dtype, dtype):
+        self.check_distribution(distributions.chisquare, df_dtype, dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -101,6 +121,27 @@ class TestDistributionsGamma(unittest.TestCase):
     def test_gamma(self, shape_dtype, scale_dtype):
         self.check_distribution(distributions.gamma,
                                 shape_dtype, scale_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'p_shape': [(), (3, 2)],
+    'dtype': _int_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsGeometric(unittest.TestCase):
+
+    def check_distribution(self, dist_func, p_dtype, dtype):
+        p = 0.5 * cupy.ones(self.p_shape, dtype=p_dtype)
+        out = dist_func(p, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('p_dtype')
+    def test_geometric(self, p_dtype):
+        self.check_distribution(distributions.geometric,
+                                p_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -184,10 +225,34 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
+class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_cauchy(self, dtype):
+        self.check_distribution('standard_cauchy', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardExponential(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_standard_exponential(self, dtype):
+        self.check_distribution('standard_exponential', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+})
+)
+@testing.gpu
 class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    def test_standardnormal(self, dtype):
+    def test_standard_normal(self, dtype):
         self.check_distribution('standard_normal', {}, dtype)
 
 

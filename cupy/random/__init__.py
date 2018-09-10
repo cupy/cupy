@@ -18,12 +18,16 @@ from cupy.random import sample as sample_  # NOQA
 # import class and function
 from cupy.random.distributions import beta  # NOQA
 from cupy.random.distributions import binomial  # NOQA
+from cupy.random.distributions import chisquare  # NOQA
 from cupy.random.distributions import dirichlet  # NOQA
 from cupy.random.distributions import gamma  # NOQA
+from cupy.random.distributions import geometric  # NOQA
 from cupy.random.distributions import gumbel  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
 from cupy.random.distributions import normal  # NOQA
+from cupy.random.distributions import standard_cauchy  # NOQA
+from cupy.random.distributions import standard_exponential  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA
 from cupy.random.distributions import standard_t  # NOQA
 from cupy.random.distributions import uniform  # NOQA
