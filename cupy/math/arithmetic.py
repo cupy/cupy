@@ -1,4 +1,5 @@
 from cupy import core
+from cupy.core import fusion
 
 
 add = core.add
@@ -29,6 +30,7 @@ conj = core.conj
 angle = core.angle
 
 
+@fusion._ufunc_wrapper(core.real)
 def real(val):
     '''Returns the real part of the elements of the array.
 
@@ -40,6 +42,7 @@ def real(val):
     return val.real
 
 
+@fusion._ufunc_wrapper(core.imag)
 def imag(val):
     '''Returns the imaginary part of the elements of the array.
 
@@ -55,6 +58,9 @@ multiply = core.multiply
 
 
 divide = core.divide
+
+
+divmod = core.divmod
 
 
 power = core.power

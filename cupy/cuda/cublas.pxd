@@ -221,6 +221,8 @@ cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,
               int ldc)
 cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
+cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
 
 cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,

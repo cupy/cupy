@@ -699,6 +699,7 @@ class ufunc(object):
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
         self.name = name
+        self.__name__ = name
         self.nin = nin
         self.nout = nout
         self.nargs = nin + nout
@@ -753,6 +754,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
+        from cupy.core import fusion
+
+        thread_local = fusion._thread_local
+        if hasattr(thread_local, 'history'):
+            return thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 
