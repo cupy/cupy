@@ -38,6 +38,7 @@ Distributions
 
    cupy.random.beta
    cupy.random.binomial
+   cupy.random.chisquare
    cupy.random.dirichlet
    cupy.random.gamma
    cupy.random.gumbel

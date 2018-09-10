@@ -135,6 +135,35 @@ class TestBinomial(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestChisquare(RandomGeneratorTestCase):
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        self.generate(df=self.df, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(
+    {'alpha': cupy.array([1.0, 1.0, 1.0])},
+    {'alpha': cupy.array([1.0, 3.0, 5.0])},
+)
+@testing.fix_random()
+class TestDirichlet(RandomGeneratorTestCase):
+
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},
@@ -156,20 +185,6 @@ class TestGamma(RandomGeneratorTestCase):
 
     def test_gamma_2(self):
         self.generate(shape=self.shape, size=(3, 2))
-
-
-@testing.gpu
-@testing.parameterize(
-    {'alpha': cupy.array([1.0, 1.0, 1.0])},
-    {'alpha': cupy.array([1.0, 3.0, 5.0])},
-)
-@testing.fix_random()
-class TestDirichlet(RandomGeneratorTestCase):
-
-    target_method = 'dirichlet'
-
-    def test_dirichlet(self):
-        self.generate(alpha=self.alpha, size=(3, 2, 3))
 
 
 @testing.gpu
