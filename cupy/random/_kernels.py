@@ -331,8 +331,8 @@ __device__ long rk_poisson(rk_state *state, double lam) {
         return 0;
     } else {
         return rk_poisson_mult(state, lam);
-        }
     }
+}
 '''
 
 rk_gauss_definition = '''
