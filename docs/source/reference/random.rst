@@ -41,6 +41,7 @@ Distributions
    cupy.random.chisquare
    cupy.random.dirichlet
    cupy.random.gamma
+   cupy.random.geometric
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal

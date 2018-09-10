@@ -151,6 +151,21 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def geometric(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the geometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.geometric` for full documentation,
+            :meth:`numpy.random.RandomState.geometric`
+        """
+        p = cupy.asarray(p)
+        if size is None:
+            size = p.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.geometric_kernel(p, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',

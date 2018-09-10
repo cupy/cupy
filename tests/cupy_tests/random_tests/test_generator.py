@@ -187,6 +187,21 @@ class TestGamma(RandomGeneratorTestCase):
         self.generate(shape=self.shape, size=(3, 2))
 
 
+@testing.parameterize(
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGeometric(RandomGeneratorTestCase):
+
+    target_method = 'geometric'
+
+    def test_geometric(self):
+        self.generate(p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
