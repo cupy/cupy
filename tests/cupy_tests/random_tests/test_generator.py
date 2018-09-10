@@ -149,6 +149,30 @@ class TestF(RandomGeneratorTestCase):
         self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
 
 
+@testing.parameterize(
+    {'shape': 0.5, 'scale': 0.5},
+    {'shape': 1.0, 'scale': 0.5},
+    {'shape': 3.0, 'scale': 0.5},
+    {'shape': 0.5, 'scale': 1.0},
+    {'shape': 1.0, 'scale': 1.0},
+    {'shape': 3.0, 'scale': 1.0},
+    {'shape': 0.5, 'scale': 3.0},
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGamma(RandomGeneratorTestCase):
+
+    target_method = 'gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
+
+    def test_gamma_2(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(
     {'alpha': cupy.array([1.0, 1.0, 1.0])},
