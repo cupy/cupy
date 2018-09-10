@@ -189,7 +189,7 @@ class RandomState(object):
         lam = cupy.asarray(lam)
         if size is None:
             size = lam.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.poisson_kernel(lam, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
