@@ -186,6 +186,20 @@ class RandomState(object):
         RandomState._laplace_kernel(x, loc, scale, x)
         return x
 
+    def logistic(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from the logistic distribution.
+
+        .. seealso::
+            :func:`cupy.random.logistic` for full documentation,
+            :meth:`numpy.random.RandomState.logistic`
+        """
+        x = self._random_sample_raw(size, dtype)
+        x = (1.0 - x) / x
+        cupy.log(x, out=x)
+        cupy.multiply(x, scale, out=x)
+        cupy.add(x, loc, out=x)
+        return x
+
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a log normal distribution.
 

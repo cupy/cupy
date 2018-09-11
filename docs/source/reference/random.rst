@@ -44,6 +44,7 @@ Distributions
    cupy.random.geometric
    cupy.random.gumbel
    cupy.random.laplace
+   cupy.random.logistic
    cupy.random.lognormal
    cupy.random.multinomial
    cupy.random.normal

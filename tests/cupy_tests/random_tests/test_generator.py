@@ -219,6 +219,19 @@ class TestLaplace(RandomGeneratorTestCase):
 
 
 @testing.gpu
+@testing.fix_random()
+class TestLogistic(RandomGeneratorTestCase):
+
+    target_method = 'logistic'
+
+    def test_logistic_1(self):
+        self.generate()
+
+    def test_logistic_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+
+@testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},
