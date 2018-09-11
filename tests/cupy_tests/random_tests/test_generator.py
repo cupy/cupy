@@ -133,6 +133,7 @@ class TestBinomial(RandomGeneratorTestCase):
     def test_binomial(self):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
+
 @testing.parameterize(
     {'df': 1.0},
     {'df': 3.0},
