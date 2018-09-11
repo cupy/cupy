@@ -213,7 +213,8 @@ class TestHypergeometric(RandomGeneratorTestCase):
     target_method = 'hypergeometric'
 
     def test_geometric(self):
-        self.generate(ngood=ngood, nbad=nbad, nsample=nsample, size=(3, 2))
+        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
+                      size=(3, 2))
 
 
 @testing.gpu

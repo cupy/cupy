@@ -168,8 +168,8 @@ class TestDistributionsGumbel(RandomDistributionsTestCase):
     'ngood_shape': [(), (3, 2)],
     'nbad_shape': [(), (3, 2)],
     'nsample_shape': [(), (3, 2)],
-    'nsample_dtype': _int_dtypes,  # to escape timeout
-    'dtype': _int_dtypes,  # to escape timeout
+    'nsample_dtype': [numpy.int32, numpy.int64],  # to escape timeout
+    'dtype': [numpy.int32, numpy.int64],  # to escape timeout
 })
 )
 @testing.gpu
@@ -185,9 +185,9 @@ class TestDistributionsHyperGeometric(unittest.TestCase):
         self.assertEqual(out.dtype, dtype)
 
     @cupy.testing.for_dtypes_combination(
-        _int_dtypes, names=['ngood_dtype', 'nbad_dtype'])
+        [numpy.int32, numpy.int64], names=['ngood_dtype', 'nbad_dtype'])
     def test_geometric(self, ngood_dtype, nbad_dtype):
-        self.check_distribution(distributions.geometric, ngood_dtype,
+        self.check_distribution(distributions.hypergeometric, ngood_dtype,
                                 nbad_dtype, self.nsample_dtype, self.dtype)
 
 

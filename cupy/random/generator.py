@@ -179,7 +179,7 @@ class RandomState(object):
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
-        self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += numpy.prod(size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
