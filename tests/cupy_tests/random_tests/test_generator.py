@@ -19,7 +19,8 @@ class RandomGeneratorTestCase(unittest.TestCase):
     target_method = None
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.__seed = testing.generate_seed()
+        self.rs = generator.RandomState(seed=self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -27,7 +28,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         f = getattr(self.rs, self.target_method)
         return lambda: f(*args, **kwargs)
 
-    def _generate_check_repro(self, func, seed=0):
+    def _generate_check_repro(self, func, seed):
         # Sample a random array while checking reproducibility
         self.rs.seed(seed)
         x = func()
@@ -42,7 +43,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         # Pick one sample from generator.
         # Reproducibility is checked by repeating seed-and-sample cycle twice.
         func = self._get_generator_func(*args, **kwargs)
-        return self._generate_check_repro(func, seed=0)
+        return self._generate_check_repro(func, self.__seed)
 
     def generate_many(self, *args, **kwargs):
         # Pick many samples from generator.
@@ -55,7 +56,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         if _count == 0:
             return []
 
-        vals = [self._generate_check_repro(func, seed=0)]
+        vals = [self._generate_check_repro(func, self.__seed)]
         for i in range(1, _count):
             vals.append(func())
         return vals
