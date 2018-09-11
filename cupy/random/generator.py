@@ -135,6 +135,15 @@ class RandomState(object):
         self.rk_seed += cupy.core.internal.prod(size)
         return y
 
+    def exponential(self, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a exponential distribution.
+
+        .. seealso::
+            :func:`cupy.random.exponential` for full documentation,
+            :meth:`numpy.random.RandomState.exponential`
+        """
+        return scale * self.standard_exponential(size, dtype)
+
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a gamma distribution.
 

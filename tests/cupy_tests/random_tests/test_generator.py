@@ -164,6 +164,21 @@ class TestDirichlet(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+    {'scale': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestExponential(RandomGeneratorTestCase):
+
+    target_method = 'exponential'
+
+    def test_exponential(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},
