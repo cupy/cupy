@@ -763,7 +763,10 @@ cdef class ndarray:
            :meth:`numpy.ndarray.take`
 
         """
-        return _take(self, indices, li=axis, ri=axis, out=out)
+        if axis is None:
+            return _take(self, indices, 0, self._shape.size() - 1, out)
+        else:
+            return _take(self, indices, axis, axis, out)
 
     # TODO(okuta): Implement put
 
@@ -3080,31 +3083,22 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     v._set_shape_and_strides(shape, strides)
     return v
 
+cdef _take_kernel_core = '''
+ptrdiff_t out_i = indices % index_range;
+if (out_i < 0) out_i += index_range;
+if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
+if (rdim != 1) out_i = out_i * rdim + i % rdim;
+out = a[out_i];
+'''
 
 cdef _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
-    'T out',
-    '''
-      S wrap_indices = indices % index_range;
-      if (wrap_indices < 0) wrap_indices += index_range;
+    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
+    'T out', _take_kernel_core, 'cupy_take')
 
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      out = a[(li * adim + wrap_indices) * rdim + ri];
-    ''',
-    'cupy_take')
-
-
-cdef _take_kernel_0axis = ElementwiseKernel(
-    'raw T a, S indices, int32 rdim, S index_range',
-    'T out',
-    '''
-      S wrap_indices = indices % index_range;
-      if (wrap_indices < 0) wrap_indices += index_range;
-
-      out = a[wrap_indices * rdim + i % rdim];
-    ''',
-    'cupy_take_0axis')
+cdef _take_kernel_scalar = ElementwiseKernel(
+    'raw T a, int64 indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'int64 index_range',
+    'T out', _take_kernel_core, 'cupy_take_scalar')
 
 
 cdef _choose_kernel = ElementwiseKernel(
@@ -3235,46 +3229,50 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
-cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
-    # When li == ri, this function behaves similarly to np.take
-    if a.ndim == 0:
-        a = a[None]
-
-    if li is None and ri is None:
+cpdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
+    # When li + 1 == ri this function behaves similarly to np.take
+    cdef tuple out_shape, ind_shape, indices_shape
+    cdef int i, ndim = a._shape.size()
+    cdef Py_ssize_t ldim, cdim, rdim, index_range
+    if ndim == 0:
         a = a.ravel()
-        lshape = ()
-        rshape = ()
-        adim = 1
-        index_range = a.size
-    else:
-        if not (-a.ndim <= li < a.ndim and -a.ndim <= ri < a.ndim):
-            raise _AxisError('Axis overrun')
-        if a.ndim != 0:
-            li %= a.ndim
-            ri %= a.ndim
+        ndim = 1
 
-        lshape = a.shape[:li]
-        rshape = a.shape[ri + 1:]
-        adim = internal.prod(a.shape[li:ri + 1])
-        index_range = adim
+    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
+        raise _AxisError('Axis overrun')
+
+    if ndim == 1:
+        li = ri = 0
+    else:
+        li %= ndim
+        ri %= ndim
+        assert 0 <= li <= ri
 
     if numpy.isscalar(indices):
-        indices %= index_range
-        if li is not None and ri is not None and li == ri:
-            a = rollaxis(a, li)
-        if out is None:
-            return a[indices].copy()
-        else:
-            if out.dtype != a.dtype:
-                raise TypeError('Output dtype mismatch')
-            if out.shape != a.shape[1:]:
-                raise ValueError('Output shape mismatch')
-            elementwise_copy(a[indices], out)
-            return out
-    elif not isinstance(indices, ndarray):
-        indices = array(indices, dtype=int)
+        indices_shape = ()
+        cdim = 1
+    else:
+        if not isinstance(indices, ndarray):
+            indices = array(indices, dtype=int)
+        indices_shape = indices.shape
+        cdim = indices.size
 
-    out_shape = lshape + indices.shape + rshape
+    ldim = rdim = 1
+    if ndim == 1:
+        out_shape = indices_shape
+        index_range = a.size
+    else:
+        a_shape = a.shape
+        out_shape = a_shape[:li] + indices_shape + a_shape[ri + 1:]
+        if len(indices_shape) != 0:
+            indices = indices._reshape(
+                (1,) * li + indices_shape + (1,) * (ndim - (ri + 1)))
+        for i in range(li):
+            ldim *= a._shape[i]
+        for i in range(ri + 1, ndim):
+            rdim *= a._shape[i]
+        index_range = a.size // (ldim * rdim)
+
     if out is None:
         out = ndarray(out_shape, dtype=a.dtype)
     else:
@@ -3285,16 +3283,12 @@ cpdef ndarray _take(ndarray a, indices, li=None, ri=None, ndarray out=None):
     if a.size == 0 and out.size != 0:
         raise IndexError('cannot do a non-empty take from an empty axes.')
 
-    cdim = indices.size
-    rdim = internal.prod(rshape)
-    indices = indices._reshape(
-        (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
-    if (li == 0 and ri == 0) or (li is None and ri is None):
-        return _take_kernel_0axis(
-            a.reduced_view(), indices, rdim, index_range, out)
-    else:
+    if isinstance(indices, ndarray):
         return _take_kernel(
-            a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
+            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+    else:
+        return _take_kernel_scalar(
+            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
 
 
 cpdef _scatter_op_single(ndarray a, ndarray indices, v,
@@ -3470,7 +3464,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     return ret
 
 
-cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
+cpdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
     cdef Py_ssize_t i, p, li, ri, max_index
     cdef ndarray take_idx, input_flat, out_flat, ret
@@ -3565,18 +3559,8 @@ cpdef _prepare_multiple_array_indexing(ndarray a, list slices):
 
 
 cpdef ndarray _getitem_multiple(ndarray a, list slices):
-    cdef ndarray a_interm, reduced_idx, ret, ret_flat
-    cdef tuple a_interm_shape, kern_input_shape, out_shape
-    cdef int li, ri
-
-    a_interm, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
-
-    a_interm_shape = a_interm.shape
-    out_shape = a_interm_shape[:li] + \
-        reduced_idx.shape + a_interm_shape[ri + 1:]
-    ret_flat = _take(a_interm, reduced_idx.ravel(), li=li, ri=ri)
-    ret = ret_flat._reshape(out_shape)
-    return ret
+    a, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
+    return _take(a, reduced_idx, li, ri)
 
 
 # -----------------------------------------------------------------------------
