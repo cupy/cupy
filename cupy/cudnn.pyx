@@ -327,6 +327,62 @@ def make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
     return descriptor
 
 
+def rnn_forward_inference_ex(rnn_desc, lengths, xs, hx, cx, w):
+    c_x_descs = _make_tensor_descriptor_array(xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace()
+    x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
+    hx_desc = create_tensor_nd_descriptor(hx)
+    cx_desc = create_tensor_nd_descriptor(cx)
+    w_desc = cudnn.create_filter_descriptor(w)
+
+    ys = cuda.cupy.empty(
+        xs.shape[0:2] + (n_units * self.rnn_direction,), dtype=xs.dtype)
+    y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
+    hy = cuda.cupy.empty_like(hx)
+    hy_desc = create_tensor_nd_descriptor(hy)
+    cy = cuda.cupy.empty_like(cx)
+    cy_desc = cudnn.create_tensor_nd_descriptor(cy)
+    
+    length = xs.shape[0]
+    n_units = hx.shape[2]
+
+    ys = cuda.cupy.empty(
+        xs.shape[0:2] + (n_units * self.rnn_direction,), dtype=xs.dtype)
+
+    py_cudnn.RNNForwardInferenceEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc_value, cx_data_ptr,
+        w_desc.value, w.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        hy_desc.value, hy.data.ptr,
+        cy_desc_value, cy_data_ptr,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        workspace.ptr, workspace.mem.size)
+
+    return workspace, ys, hy, cy
+
+
+def rnn_forward_training_ex(rnn_desc, lengths, xs, hx, cx, w):
+    c_x_descs = _make_tensor_descriptor_array(xs)
+    reserve_size = libcudnn.getRNNTrainingReserveSize(
+        handle, rnn_desc.value, length, c_x_descs.data)
+    self.reserve_space = cuda.cupy.empty((reserve_size,), dtype='b')
+    libcudnn.RNNForwardTrainingEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc_value, cx_data_ptr,
+        w_desc.value, w.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        hy_desc.value, hy.data.ptr,
+        cy_desc_value, cy_data_ptr,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        workspace.data.ptr, work_size,
+        self.reserve_space.data.ptr, reserve_size)
+    
+
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
