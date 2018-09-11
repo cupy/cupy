@@ -107,8 +107,8 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsExponential(RandomDistributionsTestCase):
 
-    @cupy.testing.for_dtypes_combination(
-        _float_dtypes, names=['scale_dtype', 'dtype'])
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
     def test_exponential(self, scale_dtype, dtype):
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
         self.check_distribution('exponential',

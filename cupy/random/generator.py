@@ -142,7 +142,8 @@ class RandomState(object):
             :func:`cupy.random.exponential` for full documentation,
             :meth:`numpy.random.RandomState.exponential`
         """
-        return scale * self.standard_exponential(size, dtype)
+        x = self.standard_exponential(size, dtype)
+        return cupy.multiply(scale, x, out=x)
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a gamma distribution.
@@ -389,7 +390,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_exponential`
         """
         x = self._random_sample_raw(size, dtype)
-        return cupy.log(x, out=x)
+        return -cupy.log(x, out=x)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
