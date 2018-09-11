@@ -43,6 +43,7 @@ Distributions
    cupy.random.gamma
    cupy.random.geometric
    cupy.random.gumbel
+   cupy.random.hypergeometric
    cupy.random.laplace
    cupy.random.lognormal
    cupy.random.multinomial

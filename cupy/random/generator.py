@@ -166,6 +166,22 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+        """Returns an array of samples drawn from the hypergeometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.hypergeometric` for full documentation,
+            :meth:`numpy.random.RandomState.hypergeometric`
+        """
+        ngood, nbad, nsample = \
+            cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
+        if size is None:
+            size = cupy.broadcast(ngood, nbad, nsample).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
+        self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',

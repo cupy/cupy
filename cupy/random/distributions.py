@@ -206,6 +206,37 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     return rs.gumbel(loc, scale, size, dtype)
 
 
+def hypergeometric(ngood, nbad, nsample, size=None, dtype=int):
+    """hypergeometric distribution.
+
+    Returns an array of samples drawn from the hypergeometric distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}},
+
+    Args:
+        ngood (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`n`.
+        nbad (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`m`.
+        nsample (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`N`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the hypergeometric distribution.
+
+    .. seealso::
+        :func:`numpy.random.hypergeometric`
+    """
+    rs = generator.get_random_state()
+    return rs.hypergeometric(ngood, nbad, nsample, size, dtype)
+
+
 def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
     """Laplace distribution.
 

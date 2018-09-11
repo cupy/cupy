@@ -202,6 +202,20 @@ class TestGeometric(RandomGeneratorTestCase):
         self.generate(p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'ngood': 1, 'nbad': 1, 'nsample': 1},
+    {'ngood': 1, 'nbad': 1, 'nsample': 2},
+)
+@testing.gpu
+@testing.fix_random()
+class TestHypergeometric(RandomGeneratorTestCase):
+
+    target_method = 'hypergeometric'
+
+    def test_geometric(self):
+        self.generate(ngood=ngood, nbad=nbad, nsample=nsample, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
