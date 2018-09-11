@@ -274,6 +274,7 @@ class TestDistributionsUniform(RandomDistributionsTestCase):
         self.check_distribution('uniform',
                                 {'low': low, 'high': high}, dtype)
 
+
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'mu_shape': [(), (3, 2)],

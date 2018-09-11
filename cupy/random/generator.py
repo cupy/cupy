@@ -450,7 +450,7 @@ class RandomState(object):
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
-        self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += numpy.prod(size)
         return y
 
     def choice(self, a, size=None, replace=True, p=None):
