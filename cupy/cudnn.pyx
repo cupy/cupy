@@ -304,7 +304,7 @@ def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
     cdef size_t zero, one
-    cdef core.ndarray x_mat, y
+    cdef core.ndarray y
     if x.dtype == 'd':
         zero = <size_t>&double_zero
         one = <size_t>&double_one
