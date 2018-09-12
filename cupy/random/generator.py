@@ -82,12 +82,9 @@ class RandomState(object):
         a, b = cupy.asarray(a), cupy.asarray(b)
         if size is None:
             size = cupy.broadcast(a, b).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.beta_kernel(a, b, self.rk_seed, y)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -100,12 +97,24 @@ class RandomState(object):
         n, p = cupy.asarray(n), cupy.asarray(p)
         if size is None:
             size = cupy.broadcast(n, p).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.binomial_kernel(n, p, self.rk_seed, y)
+        self.rk_seed += cupy.core.internal.prod(size)
+        return y
+
+    def chisquare(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from the chi-square distribution.
+
+        .. seealso::
+            :func:`cupy.random.chisquare` for full documentation,
+            :meth:`numpy.random.RandomState.chisquare`
+        """
+        df = cupy.asarray(df)
         if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+            size = df.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.chisquare_kernel(df, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -120,13 +129,10 @@ class RandomState(object):
             size = alpha.shape
         else:
             size += alpha.shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
-        if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += cupy.core.internal.prod(size)
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
@@ -139,13 +145,25 @@ class RandomState(object):
         shape, scale = cupy.asarray(shape), cupy.asarray(scale)
         if size is None:
             size = cupy.broadcast(shape, scale).shape
-        y = cupy.zeros(shape=size, dtype=dtype)
+        y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
         y *= scale
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    def geometric(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the geometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.geometric` for full documentation,
+            :meth:`numpy.random.RandomState.geometric`
+        """
+        p = cupy.asarray(p)
         if size is None:
-            self.rk_seed += 1
-        else:
-            self.rk_seed += numpy.prod(size)
+            size = p.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.geometric_kernel(p, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
@@ -356,6 +374,26 @@ class RandomState(object):
         curand.setGeneratorOffset(self._generator, 0)
 
         self.rk_seed = numpy.uint64(seed)
+
+    def standard_cauchy(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard cauchy distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_cauchy` for full documentation,
+            :meth:`numpy.random.RandomState.standard_cauchy`
+        """
+        x = self.uniform(size=size, dtype=dtype)
+        return cupy.tan(cupy.pi * (x - 0.5))
+
+    def standard_exponential(self, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard exp distribution.
+
+         .. seealso::
+            :func:`cupy.random.standard_exponential` for full documentation,
+            :meth:`numpy.random.RandomState.standard_exponential`
+        """
+        x = self._random_sample_raw(size, dtype)
+        return cupy.log(x, out=x)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
