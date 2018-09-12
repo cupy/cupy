@@ -5,7 +5,7 @@ rk_use_binominal = '''
 #define CUPY_USE_BINOMIAL
 '''
 
-rk_basic_difinition = '''
+rk_basic_definition = '''
 typedef struct {
     unsigned int xor128[4];
     double gauss;
@@ -434,7 +434,7 @@ __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
 '''
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
+    rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
     rk_beta_definition]
 beta_kernel = core.ElementwiseKernel(
@@ -449,7 +449,7 @@ beta_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_use_binominal, rk_basic_difinition, rk_binomial_btpe_definition,
+    rk_use_binominal, rk_basic_definition, rk_binomial_btpe_definition,
     rk_binomial_inversion_definition, rk_binomial_definition]
 binomial_kernel = core.ElementwiseKernel(
     'S n, T p, uint64 seed', 'Y y',
@@ -463,7 +463,7 @@ binomial_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
+    [rk_basic_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
@@ -478,7 +478,7 @@ chisquare_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_geometric_search_definition,
+    [rk_basic_definition, rk_geometric_search_definition,
      rk_geometric_inversion_definition, rk_geometric_definition]
 geometric_kernel = core.ElementwiseKernel(
     'T p, uint32 seed', 'Y y',
@@ -492,7 +492,7 @@ geometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
+    rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition]
 standard_gamma_kernel = core.ElementwiseKernel(
     'T shape, uint64 seed', 'Y y',
@@ -506,7 +506,7 @@ standard_gamma_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_vonmises_definition]
+    rk_basic_definition, rk_vonmises_definition]
 vonmises_kernel = core.ElementwiseKernel(
     'S mu, T kappa, uint64 seed', 'Y y',
     '''
