@@ -294,6 +294,6 @@ class TestDistributionsVonmises(unittest.TestCase):
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['mu_dtype', 'kappa_dtype'])
-    def test_gamma(self, mu_dtype, kappa_dtype):
+    def test_vonmises(self, mu_dtype, kappa_dtype):
         self.check_distribution(distributions.vonmises,
                                 mu_dtype, kappa_dtype, self.dtype)
