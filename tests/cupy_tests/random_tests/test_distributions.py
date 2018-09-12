@@ -233,7 +233,7 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
-    def test_gamma(self, shape_dtype, dtype):
+    def test_standard_gamma(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_distribution('standard_gamma',
                                 {'shape': shape}, dtype)

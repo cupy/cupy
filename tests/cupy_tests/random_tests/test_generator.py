@@ -348,7 +348,7 @@ class TestStandardGamma(RandomGeneratorTestCase):
 
     target_method = 'standard_gamma'
 
-    def test_gamma_1(self):
+    def test_standard_gamma(self):
         self.generate(shape=self.shape, size=(3, 2))
 
 
