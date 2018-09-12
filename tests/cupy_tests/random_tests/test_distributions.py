@@ -313,3 +313,19 @@ class TestDistributionsVonmises(unittest.TestCase):
     def test_vonmises(self, mu_dtype, kappa_dtype):
         self.check_distribution(distributions.vonmises,
                                 mu_dtype, kappa_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsWeibull(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_weibull(self, a_dtype, dtype):
+        a = numpy.ones(self.a_shape, dtype=a_dtype)
+        self.check_distribution('weibull',
+                                {'a': a}, dtype)

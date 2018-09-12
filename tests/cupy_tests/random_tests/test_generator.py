@@ -728,6 +728,21 @@ class TestVonmises(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'a': 0.5},
+    {'a': 1.0},
+    {'a': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWeibull(RandomGeneratorTestCase):
+
+    target_method = 'weibull'
+
+    def test_weibull(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 3, 'size': 5},
     {'a': [1, 2, 3], 'size': 5},
 )

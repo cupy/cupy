@@ -380,7 +380,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_exponential`
         """
         x = self._random_sample_raw(size, dtype)
-        return cupy.log(x, out=x)
+        return -cupy.log(x, out=x)
 
     def standard_gamma(self, shape, size=None, dtype=float):
         """Returns an array of samples drawn from a standard gamma distribution.
@@ -467,6 +467,17 @@ class RandomState(object):
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
+
+    def weibull(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the weibull distribution.
+
+        .. seealso::
+            :func:`cupy.random.weibull` for full documentation,
+            :meth:`numpy.random.RandomState.weibull`
+        """
+        x = self.standard_exponential(size, dtype)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
