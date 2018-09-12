@@ -212,7 +212,7 @@ class TestHypergeometric(RandomGeneratorTestCase):
 
     target_method = 'hypergeometric'
 
-    def test_geometric(self):
+    def test_hypergeometric(self):
         self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
                       size=(3, 2))
 

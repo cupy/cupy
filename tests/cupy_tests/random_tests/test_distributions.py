@@ -186,7 +186,7 @@ class TestDistributionsHyperGeometric(unittest.TestCase):
 
     @cupy.testing.for_dtypes_combination(
         [numpy.int32, numpy.int64], names=['ngood_dtype', 'nbad_dtype'])
-    def test_geometric(self, ngood_dtype, nbad_dtype):
+    def test_hypergeometric(self, ngood_dtype, nbad_dtype):
         self.check_distribution(distributions.hypergeometric, ngood_dtype,
                                 nbad_dtype, self.nsample_dtype, self.dtype)
 
