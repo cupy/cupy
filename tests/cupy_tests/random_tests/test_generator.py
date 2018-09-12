@@ -353,6 +353,21 @@ class TestStandardCauchy(RandomGeneratorTestCase):
             self.assertTrue(cupy.isfinite(x).all())
 
 
+@testing.parameterize(
+    {'shape': 0.5},
+    {'shape': 1.0},
+    {'shape': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardGamma(RandomGeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_standard_gamma(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
 @testing.fix_random()
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):
@@ -695,6 +710,21 @@ class TestUniform(RandomGeneratorTestCase):
 
     def test_uniform_2(self):
         self.generate(-4.2, 2.4, size=(3, 2))
+
+
+@testing.parameterize(
+    {'mu': 0.0, 'kappa': 1.0},
+    {'mu': 3.0, 'kappa': 3.0},
+    {'mu': 3.0, 'kappa': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestVonmises(RandomGeneratorTestCase):
+
+    target_method = 'vonmises'
+
+    def test_vonmises(self):
+        self.generate(mu=self.mu, kappa=self.kappa, size=(3, 2))
 
 
 @testing.parameterize(
