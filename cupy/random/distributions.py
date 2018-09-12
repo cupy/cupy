@@ -288,8 +288,8 @@ def poisson(lam=1.0, size=None, dtype=int):
     Args:
         lam (array_like of floats): Parameter of the poisson distribution
             :math:`\\lambda`.
-        size (int or tuple of ints): The shape of the array. If ``None``, a
-            zero-dimensional array is generated.
+        size (int or tuple of ints): The shape of the array. If ``None``, this
+            function generate an array whose shape is `lam.shape`.
         dtype: Data type specifier. Only :class:`numpy.int32` and
             :class:`numpy.int64` types are allowed.
 

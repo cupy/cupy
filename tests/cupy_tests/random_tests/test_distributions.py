@@ -229,7 +229,7 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 class TestDistributionsPoisson(unittest.TestCase):
 
     def check_distribution(self, dist_func, lam_dtype, dtype):
-        lam = 5 * cupy.ones(self.lam_shape, dtype=lam_dtype)
+        lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
         out = dist_func(lam, self.shape, dtype)
         self.assertEqual(self.shape, out.shape)
         self.assertEqual(out.dtype, dtype)
