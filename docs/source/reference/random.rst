@@ -53,6 +53,7 @@ Distributions
    cupy.random.standard_normal
    cupy.random.uniform
    cupy.random.vonmises
+   cupy.random.zipf
 
 
 Random number generator

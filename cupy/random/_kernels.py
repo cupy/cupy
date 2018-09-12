@@ -433,6 +433,32 @@ __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
 }
 '''
 
+rk_zipf_definition = '''
+__device__ long rk_zipf(rk_state *state, double a)
+{
+    double am1, b;
+
+    am1 = a - 1.0;
+    b = pow(2.0, am1);
+    while (1) {
+        double T, U, V, X;
+
+        U = 1.0 - rk_double(state);
+        V = rk_double(state);
+        X = floor(pow(U, -1.0/am1));
+
+        if (X < 1.0) {
+            continue;
+        }
+
+        T = pow(1.0 + 1.0/X, am1);
+        if (V*X*(T - 1.0)/(b - 1.0) <= T/b) {
+            return (long)X;
+        }
+    }
+}
+'''
+
 definitions = [
     rk_basic_difinition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
@@ -514,6 +540,19 @@ vonmises_kernel = core.ElementwiseKernel(
     y = rk_vonmises(&internal_state, mu, kappa);
     ''',
     'vonmises_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, rk_zipf_definition]
+zipf_kernel = core.ElementwiseKernel(
+    'T a, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_zipf(&internal_state, a);
+    ''',
+    'zipf_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
