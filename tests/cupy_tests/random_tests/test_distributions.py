@@ -203,6 +203,22 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'p_shape': [()],
+})
+)
+@testing.gpu
+class TestDistributionsLogseries(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes([numpy.int64, numpy.int32], 'dtype')
+    @cupy.testing.for_float_dtypes('p_dtype', no_float16=True)
+    def test_logseries(self, p_dtype, dtype):
+        p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
+        self.check_distribution('logseries',
+                                {'p': p}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })

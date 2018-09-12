@@ -45,6 +45,7 @@ Distributions
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal
+   cupy.random.logseries
    cupy.random.multinomial
    cupy.random.normal
    cupy.random.standard_cauchy
