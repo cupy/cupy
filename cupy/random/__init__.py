@@ -26,6 +26,7 @@ from cupy.random.distributions import gumbel  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
 from cupy.random.distributions import normal  # NOQA
+from cupy.random.distributions import power  # NOQA
 from cupy.random.distributions import standard_cauchy  # NOQA
 from cupy.random.distributions import standard_exponential  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA

@@ -338,6 +338,19 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.parameterize(
+    {'a': 0.5},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPower(RandomGeneratorTestCase):
+
+    target_method = 'power'
+
+    def test_power(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestStandardCauchy(RandomGeneratorTestCase):

@@ -201,6 +201,20 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
+    def power(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the power distribution.
+
+        .. seealso::
+            :func:`cupy.random.power` for full documentation,
+            :meth:`numpy.random.RandomState.power`
+        """
+        a = cupy.asarray(a)
+        x = self.standard_exponential(size=size, dtype=dtype)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
+
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
 
@@ -380,7 +394,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_exponential`
         """
         x = self._random_sample_raw(size, dtype)
-        return cupy.log(x, out=x)
+        return -cupy.log(x, out=x)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.

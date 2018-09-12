@@ -222,6 +222,21 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [()],
+})
+)
+@testing.gpu
+class TestDistributionsPower(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_power(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, 0.5, dtype=a_dtype)
+        self.check_distribution('power', {'a': a}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
 })
 )
 @testing.gpu
