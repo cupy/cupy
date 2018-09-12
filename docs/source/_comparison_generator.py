@@ -22,11 +22,18 @@ def _import(mod, klass):
         return obj, ':func:`{}.{{}}`'.format(mod)
 
 
-def _generate_comparison_rst(base_mod, cupy_mod, base_type, klass):
+def _generate_comparison_rst(
+        base_mod, cupy_mod, base_type, klass, exclude_mod):
     base_obj, base_fmt = _import(base_mod, klass)
     base_funcs = _get_functions(base_obj)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
     cp_funcs = _get_functions(cp_obj)
+
+    if exclude_mod:
+        exclude_obj, _ = _import(exclude_mod, klass)
+        exclude_funcs = _get_functions(exclude_obj)
+        base_funcs -= exclude_funcs
+        cp_funcs -= exclude_funcs
 
     buf = []
     buf += [
@@ -53,12 +60,16 @@ def _generate_comparison_rst(base_mod, cupy_mod, base_type, klass):
     return buf
 
 
-def _section(header, base_mod, cupy_mod, base_type='NumPy', klass=None):
+def _section(
+        header, base_mod, cupy_mod,
+        base_type='NumPy', klass=None, exclude=None):
     return [
         header,
         '~' * len(header),
         '',
-    ] + _generate_comparison_rst(base_mod, cupy_mod, base_type, klass) + [
+    ] + _generate_comparison_rst(
+        base_mod, cupy_mod, base_type, klass, exclude
+    ) + [
         '',
     ]
 
@@ -97,7 +108,10 @@ def generate():
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy')
     buf += _section(
         'Sparse Linear Algebra',
-        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy')
+        'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy')
+    buf += _section(
+        'Advanced Linear Algebra',
+        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy', exclude='numpy.linalg')
     buf += _section(
         'Multidimensional Image Processing',
         'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy')
