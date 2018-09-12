@@ -372,3 +372,32 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
     """
     rs = generator.get_random_state()
     return rs.uniform(low, high, size=size, dtype=dtype)
+
+
+def wald(mean, scale, size=None, dtype=float):
+    """Wald distribution.
+
+    Returns an array of samples drawn from the wald distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\sqrt{\\frac{scale}{2\\pi x^3}}\\
+           e^{\\frac{-scale(x-mean)^2}{2mean^2x}},
+
+    Args:
+        mean (float): Parameter of the wald distribution :math:`mean`.
+        scale (float): Parameter of the wald distribution :math:`scale`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the wald distribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.wald`
+        :func:`numpy.random.wald`
+    """
+    rs = generator.get_random_state()
+    return rs.wald(mean, scale, size, dtype)

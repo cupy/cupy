@@ -698,6 +698,21 @@ class TestUniform(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'mean': 1.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWald(RandomGeneratorTestCase):
+
+    target_method = 'wald'
+
+    def test_wald(self):
+        self.generate(mean=self.mean, scale=self.scale, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 3, 'size': 5},
     {'a': [1, 2, 3], 'size': 5},
 )
