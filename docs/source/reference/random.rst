@@ -50,6 +50,7 @@ Distributions
    cupy.random.standard_cauchy
    cupy.random.standard_exponential
    cupy.random.standard_normal
+   cupy.random.triangular
    cupy.random.uniform
 
 

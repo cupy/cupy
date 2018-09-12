@@ -417,6 +417,41 @@ class RandomState(object):
         sample &= cupy.iinfo(cupy.int_).max
         return sample
 
+    _triangular_kernel = core.ElementwiseKernel(
+        'T U, L left, M mode, R right', 'T x',
+        """
+        T base, leftbase, ratio, leftprod, rightprod;
+
+        base = right - left;
+        leftbase = mode - left;
+        ratio = leftbase / base;
+        leftprod = leftbase*base;
+        rightprod = (right - mode)*base;
+
+        if (U <= ratio)
+        {
+            x = left + sqrt(U*leftprod);
+        } else
+        {
+            x = right - sqrt((1.0 - U) * rightprod);
+        }
+        """,
+        'triangular_kernel'
+    )
+
+    def triangular(self, left, mode, right, size=None, dtype=float):
+        """Returns an array of samples drawn from the triangular distribution.
+
+        .. seealso::
+            :func:`cupy.random.triangular` for full documentation,
+            :meth:`numpy.random.RandomState.triangular`
+        """
+        left, mode, right = \
+            cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
+        x = self.random_sample(size=size, dtype=dtype)
+        RandomState._triangular_kernel(x, left, mode, right, x)
+        return x
+
     _scale_kernel = core.ElementwiseKernel(
         'T low, T high', 'T x',
         'x = T(low) + x * T(high - low)',

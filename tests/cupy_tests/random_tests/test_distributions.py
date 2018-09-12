@@ -258,6 +258,29 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'left_shape': [(), (3, 2)],
+    'mode_shape': [(), (3, 2)],
+    'right_shape': [(), (3, 2)],
+    'dtype': _regular_float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsTriangular(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes_combination(
+        _regular_float_dtypes,
+        names=['left_dtype', 'mode_dtype', 'right_dtype'])
+    def test_beta(self, left_dtype, mode_dtype, right_dtype):
+        left = numpy.full(self.left_shape, -1, dtype=left_dtype)
+        mode = numpy.full(self.mode_shape, 0, dtype=mode_dtype)
+        right = numpy.full(self.right_shape, 2, dtype=right_dtype)
+        self.check_distribution('triangular',
+                                {'left': left, 'mode': mode, 'right': right},
+                                self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'low_shape': [(), (3, 2)],
     'high_shape': [(), (3, 2)],
 })
