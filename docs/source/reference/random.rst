@@ -52,6 +52,7 @@ Distributions
    cupy.random.standard_gamma
    cupy.random.standard_normal
    cupy.random.uniform
+   cupy.random.vonmises
 
 
 Random number generator
