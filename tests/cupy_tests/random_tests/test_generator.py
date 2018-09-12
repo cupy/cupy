@@ -353,6 +353,21 @@ class TestStandardCauchy(RandomGeneratorTestCase):
             self.assertTrue(cupy.isfinite(x).all())
 
 
+@testing.parameterize(
+    {'shape': 0.5},
+    {'shape': 1.0},
+    {'shape': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardGamma(RandomGeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_standard_gamma(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+
 @testing.fix_random()
 @testing.gpu
 class TestInterval(RandomGeneratorTestCase):

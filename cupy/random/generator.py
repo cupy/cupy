@@ -382,6 +382,21 @@ class RandomState(object):
         x = self._random_sample_raw(size, dtype)
         return cupy.log(x, out=x)
 
+    def standard_gamma(self, shape, size=None, dtype=float):
+        """Returns an array of samples drawn from a standard gamma distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_gamma` for full documentation,
+            :meth:`numpy.random.RandomState.standard_gamma`
+        """
+        shape = cupy.asarray(shape)
+        if size is None:
+            size = shape.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
 

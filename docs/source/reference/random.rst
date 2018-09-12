@@ -49,6 +49,7 @@ Distributions
    cupy.random.normal
    cupy.random.standard_cauchy
    cupy.random.standard_exponential
+   cupy.random.standard_gamma
    cupy.random.standard_normal
    cupy.random.uniform
 
