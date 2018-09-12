@@ -222,6 +222,22 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsRayleigh(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_rayleigh(self, scale_dtype, dtype):
+        scale = numpy.full(self.scale_shape, 3, dtype=scale_dtype)
+        self.check_distribution('rayleigh',
+                                {'scale': scale}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
 })
 )
 @testing.gpu
