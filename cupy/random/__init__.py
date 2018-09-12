@@ -27,6 +27,7 @@ from cupy.random.distributions import geometric  # NOQA
 from cupy.random.distributions import gumbel  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
+from cupy.random.distributions import negative_binomial  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import pareto  # NOQA
 from cupy.random.distributions import poisson  # NOQA

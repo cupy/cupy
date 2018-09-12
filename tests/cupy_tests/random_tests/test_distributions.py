@@ -243,6 +243,25 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'n_shape': [(), (3, 2)],
+    'p_shape': [(), (3, 2)],
+    'dtype': _int_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsNegativeBinomial(RandomDistributionsTestCase):
+
+    @cupy.testing.for_signed_dtypes('n_dtype')
+    @cupy.testing.for_float_dtypes('p_dtype')
+    def test_negative_binomial(self, n_dtype, p_dtype):
+        n = numpy.full(self.n_shape, 5, dtype=n_dtype)
+        p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
+        self.check_distribution('negative_binomial',
+                                {'n': n, 'p': p}, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })

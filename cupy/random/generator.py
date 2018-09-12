@@ -226,6 +226,16 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
+    def negative_binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the negative binomial distribution.
+
+        .. seealso::
+            :func:`cupy.random.negative_binomial` for full documentation,
+            :meth:`numpy.random.RandomState.negative_binomial`
+        """
+        y = self.gamma(n, (1-p)/p, size)
+        return self.poisson(y, dtype=dtype)
+
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
 

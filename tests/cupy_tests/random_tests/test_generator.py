@@ -286,6 +286,18 @@ class TestLogNormal(RandomGeneratorTestCase):
         self.check_lognormal(numpy.float64)
 
 
+@testing.parameterize(
+    {'n': 5, 'p': 0.5},
+)
+@testing.gpu
+@testing.fix_random()
+class TestNegativeBinomial(RandomGeneratorTestCase):
+    target_method = 'negative_binomial'
+
+    def test_negative_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
