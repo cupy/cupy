@@ -38,15 +38,21 @@ Distributions
 
    cupy.random.beta
    cupy.random.binomial
+   cupy.random.chisquare
    cupy.random.dirichlet
    cupy.random.gamma
+   cupy.random.geometric
    cupy.random.gumbel
    cupy.random.laplace
    cupy.random.lognormal
    cupy.random.multinomial
    cupy.random.normal
+   cupy.random.standard_cauchy
+   cupy.random.standard_exponential
+   cupy.random.standard_gamma
    cupy.random.standard_normal
    cupy.random.uniform
+   cupy.random.vonmises
 
 
 Random number generator
