@@ -442,5 +442,5 @@ Open ``index.html`` with the browser and see if it is rendered as expected.
 
 .. note::
 
-   Docstrings (documentation comments in the source code) are collected from the installed Cupy module.
+   Docstrings (documentation comments in the source code) are collected from the installed CuPy module.
    If you modified docstrings, make sure to install the module (e.g., using `pip install -e .`) before building the documentation.
