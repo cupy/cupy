@@ -554,6 +554,36 @@ __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
 }
 '''
 
+rk_noncentral_chisquare_definition = '''
+__device__ double rk_noncentral_chisquare(
+    rk_state *state, double df, double nonc)
+{
+    if (nonc == 0){
+        return rk_chisquare(state, df);
+    }
+    if(1 < df)
+    {
+        const double Chi2 = rk_chisquare(state, df - 1);
+        const double N = rk_gauss(state) + sqrt(nonc);
+        return Chi2 + N*N;
+    }
+    else
+    {
+        const long i = rk_poisson(state, nonc / 2.0);
+        return rk_chisquare(state, df + 2 * i);
+    }
+}
+'''
+
+rk_noncentral_f_definition = '''
+__device__ double rk_noncentral_f(
+    rk_state *state, double dfnum, double dfden, double nonc)
+{
+    double t = rk_noncentral_chisquare(state, dfnum, nonc) * dfden;
+    return t / (rk_chisquare(state, dfden) * dfnum);
+}
+'''
+
 definitions = [
     rk_basic_difinition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
@@ -680,6 +710,40 @@ vonmises_kernel = core.ElementwiseKernel(
     y = rk_vonmises(&internal_state, mu, kappa);
     ''',
     'vonmises_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_chisquare_definition, rk_poisson_mult_definition,
+    rk_poisson_ptrs_definition, rk_poisson_definition,
+    rk_noncentral_chisquare_definition]
+noncentral_chisquare_kernel = core.ElementwiseKernel(
+    'S df, T nonc, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_noncentral_chisquare(&internal_state, df, nonc);
+    ''',
+    'noncentral_chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_chisquare_definition, rk_poisson_mult_definition,
+    rk_poisson_ptrs_definition, rk_poisson_definition,
+    rk_noncentral_chisquare_definition, rk_noncentral_f_definition]
+noncentral_f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, U nonc, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_noncentral_f(&internal_state, dfnum, dfden, nonc);
+    ''',
+    'noncentral_f_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

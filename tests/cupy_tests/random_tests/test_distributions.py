@@ -243,6 +243,48 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'df_shape': [(), (3, 2)],
+    'nonc_shape': [(), (3, 2)],
+    'dtype': _int_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes_combination(
+        _regular_float_dtypes, names=['df_dtype', 'nonc_dtype'])
+    def test_noncentral_chisquare(self, df_dtype, nonc_dtype):
+        df = numpy.full(self.df_shape, 1, dtype=df_dtype)
+        nonc = numpy.full(self.nonc_shape, 1, dtype=nonc_dtype)
+        self.check_distribution('noncentral_chisquare',
+                                {'df': df, 'nonc': nonc}, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'dfnum_shape': [(), (3, 2)],
+    'dfden_shape': [(), (3, 2)],
+    'nonc_shape': [(), (3, 2)],
+    'dtype': _int_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsNoncentralF(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes_combination(
+        _regular_float_dtypes,
+        names=['dfnum_dtype', 'dfden_dtype', 'nonc_dtype'])
+    def test_noncentral_f(self, dfnum_dtype, dfden_dtype, nonc_dtype):
+        dfnum = numpy.full(self.dfnum_shape, 1, dtype=dfnum_dtype)
+        dfden = numpy.full(self.dfden_shape, 1, dtype=dfden_dtype)
+        nonc = numpy.full(self.nonc_shape, 1, dtype=nonc_dtype)
+        self.check_distribution('noncentral_f',
+                                {'dfnum': dfnum, 'dfden': dfden, 'nonc': nonc},
+                                self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })

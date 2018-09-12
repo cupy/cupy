@@ -48,6 +48,8 @@ Distributions
    cupy.random.laplace
    cupy.random.lognormal
    cupy.random.multinomial
+   cupy.random.noncentral_chisquare
+   cupy.random.noncentral_f
    cupy.random.normal
    cupy.random.pareto
    cupy.random.poisson

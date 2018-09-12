@@ -254,6 +254,38 @@ class RandomState(object):
         cupy.exp(-x/a, out=x)
         return x - 1
 
+    def noncentral_chisquare(self, df, nonc, size=None, dtype=float):
+        """Returns an array of samples drawn from the noncentral chi-square
+        distribution.
+
+        .. seealso::
+            :func:`cupy.random.noncentral_chisquare` for full documentation,
+            :meth:`numpy.random.RandomState.noncentral_chisquare`
+        """
+        df, nonc = cupy.asarray(df), cupy.asarray(nonc)
+        if size is None:
+            size = cupy.broadcast(df, nonc).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.noncentral_chisquare_kernel(df, nonc, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
+        """Returns an array of samples drawn from the noncentral F distribution.
+
+        .. seealso::
+            :func:`cupy.random.noncentral_f` for full documentation,
+            :meth:`numpy.random.RandomState.noncentral_f`
+        """
+        dfnum, dfden, nonc = \
+            cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden, nonc).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def poisson(self, lam=1.0, size=None, dtype=int):
         """Returns an array of samples drawn from the poisson distribution.
 
