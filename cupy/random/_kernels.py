@@ -52,7 +52,7 @@ __device__ double rk_double(rk_state *state) {
 }
 '''
 
-rk_binomial_btpe_definition = '''
+rk_binomial_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
@@ -167,9 +167,7 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     }
     return y;
 }
-'''
 
-rk_binomial_inversion_definition = '''
 __device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
     double q, qn, np, px, U;
     int X, bound;
@@ -205,9 +203,7 @@ __device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
     }
     return X;
 }
-'''
 
-rk_binomial_definition = '''
 __device__ long rk_binomial(rk_state *state, int n, double p) {
     double q;
     if (p <= 0.5) {
@@ -252,7 +248,7 @@ __device__ double rk_gauss(rk_state *state) {
 }
 '''
 
-rk_geometric_search_definition = '''
+rk_geometric_definition = '''
 __device__ long rk_geometric_search(rk_state *state, double p) {
     double U;
     long X;
@@ -268,15 +264,11 @@ __device__ long rk_geometric_search(rk_state *state, double p) {
     }
     return X;
 }
-'''
 
-rk_geometric_inversion_definition = '''
 __device__ long rk_geometric_inversion(rk_state *state, double p) {
     return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
 }
-'''
 
-rk_geometric_definition = '''
 __device__ long rk_geometric(rk_state *state, double p) {
     if (p >= 0.333333333333333333333333) {
         return rk_geometric_search(state, p);
@@ -449,8 +441,7 @@ beta_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_use_binominal, rk_basic_definition, rk_binomial_btpe_definition,
-    rk_binomial_inversion_definition, rk_binomial_definition]
+    rk_use_binominal, rk_basic_definition, rk_binomial_definition]
 binomial_kernel = core.ElementwiseKernel(
     'S n, T p, uint64 seed', 'Y y',
     '''
@@ -478,8 +469,7 @@ chisquare_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_definition, rk_geometric_search_definition,
-     rk_geometric_inversion_definition, rk_geometric_definition]
+    [rk_basic_definition, rk_geometric_definition]
 geometric_kernel = core.ElementwiseKernel(
     'T p, uint32 seed', 'Y y',
     '''
