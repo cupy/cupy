@@ -395,7 +395,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_exponential`
         """
         x = self._random_sample_raw(size, dtype)
-        return cupy.log(x, out=x)
+        return -cupy.log(x, out=x)
 
     def standard_gamma(self, shape, size=None, dtype=float):
         """Returns an array of samples drawn from a standard gamma distribution.
