@@ -70,8 +70,13 @@ class TestQRDecomposition(unittest.TestCase):
 @testing.gpu
 class TestSVD(unittest.TestCase):
 
+    def setUp(self):
+        self.seed = testing.generate_seed()
+
     @testing.for_float_dtypes(no_float16=True)
-    def check_usv(self, array, dtype):
+    def check_usv(self, shape, dtype):
+        array = testing.shaped_random(
+            shape, numpy, dtype=dtype, seed=self.seed)
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
@@ -84,7 +89,8 @@ class TestSVD(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-4)
-    def check_singular(self, array, xp, dtype):
+    def check_singular(self, shape, xp, dtype):
+        array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
         a = xp.asarray(array, dtype=dtype)
         a_copy = a.copy()
         result = xp.linalg.svd(
@@ -99,15 +105,15 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd(self):
-        self.check_usv(numpy.random.randn(2, 3))
-        self.check_usv(numpy.random.randn(2, 2))
-        self.check_usv(numpy.random.randn(3, 2))
+        self.check_usv((2, 3))
+        self.check_usv((2, 2))
+        self.check_usv((3, 2))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
-        self.check_singular(numpy.random.randn(2, 3))
-        self.check_singular(numpy.random.randn(2, 2))
-        self.check_singular(numpy.random.randn(3, 2))
+        self.check_singular((2, 3))
+        self.check_singular((2, 2))
+        self.check_singular((3, 2))
 
     @condition.repeat(3, 10)
     def test_rank2(self):

@@ -161,11 +161,27 @@ cusolverStatus_t cusolverDnDgesvd_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnCgesvd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
 cusolverStatus_t cusolverDnDgesvd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
@@ -177,11 +193,27 @@ cusolverStatus_t cusolverDnDsyevd_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnCheevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZheevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
 cusolverStatus_t cusolverDnDsyevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCheevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZheevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

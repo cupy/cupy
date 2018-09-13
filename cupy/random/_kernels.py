@@ -252,6 +252,13 @@ __device__ double rk_gauss(rk_state *state) {
 }
 '''
 
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
+}
+'''
+
 rk_geometric_search_definition = '''
 __device__ long rk_geometric_search(rk_state *state, double p) {
     double U;
@@ -333,6 +340,12 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
 }
 '''
 
+rk_standard_t_definition = '''
+__device__ double rk_standard_t(rk_state *state, double df) {
+    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
+}
+'''
+
 rk_chisquare_definition = '''
 __device__ double rk_chisquare(rk_state *state, double df) {
     return 2.0*rk_standard_gamma(state, df/2.0);
@@ -371,6 +384,83 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
 }
 '''
 
+rk_vonmises_definition = '''
+__device__ double rk_vonmises(rk_state *state, double mu, double kappa)
+{
+    double s;
+    double U, V, W, Y, Z;
+    double result, mod;
+    int neg;
+
+    if (kappa < 1e-8)
+    {
+        return M_PI * (2*rk_double(state)-1);
+    }
+    else
+    {
+        /* with double precision rho is zero until 1.4e-8 */
+        if (kappa < 1e-5) {
+            /*
+             * second order taylor expansion around kappa = 0
+             * precise until relatively large kappas as second order is 0
+             */
+            s = (1./kappa + kappa);
+        }
+        else {
+            double r = 1 + sqrt(1 + 4*kappa*kappa);
+            double rho = (r - sqrt(2*r)) / (2*kappa);
+            s = (1 + rho*rho)/(2*rho);
+        }
+
+        while (1)
+        {
+        U = rk_double(state);
+            Z = cos(M_PI*U);
+            W = (1 + s*Z)/(s + Z);
+            Y = kappa * (s - W);
+            V = rk_double(state);
+            if ((Y*(2-Y) - V >= 0) || (log(Y/V)+1 - Y >= 0))
+            {
+                break;
+            }
+        }
+
+        U = rk_double(state);
+
+        result = acos(W);
+        if (U < 0.5)
+        {
+        result = -result;
+        }
+        result += mu;
+        neg = (result < 0);
+        mod = fabs(result);
+        mod = (fmod(mod+M_PI, 2*M_PI)-M_PI);
+        if (neg)
+        {
+            mod *= -1;
+        }
+
+        return mod;
+    }
+}
+'''
+
+definitions = [
+    rk_basic_difinition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_beta_definition]
+beta_kernel = core.ElementwiseKernel(
+    'S a, T b, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_beta(&internal_state, a, b);
+    ''',
+    'beta_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
 definitions = [
     rk_use_binominal, rk_basic_difinition, rk_binomial_btpe_definition,
     rk_binomial_inversion_definition, rk_binomial_definition]
@@ -388,6 +478,21 @@ binomial_kernel = core.ElementwiseKernel(
 definitions = \
     [rk_basic_difinition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_standard_t_definition]
+standard_t_kernel = core.ElementwiseKernel(
+    'S df, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_t(&internal_state, df);
+    ''',
+    'standard_t_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
     'T df, uint32 seed', 'Y y',
@@ -396,6 +501,21 @@ chisquare_kernel = core.ElementwiseKernel(
     y = rk_chisquare(&internal_state, df);
     ''',
     'chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition, rk_f_definition]
+f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_f(&internal_state, dfnum, dfden);
+    ''',
+    'f_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
@@ -429,16 +549,14 @@ standard_gamma_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
-    rk_standard_exponential_definition, rk_standard_gamma_definition,
-    rk_beta_definition]
-beta_kernel = core.ElementwiseKernel(
-    'S a, T b, uint64 seed', 'Y y',
+    rk_basic_difinition, rk_vonmises_definition]
+vonmises_kernel = core.ElementwiseKernel(
+    'S mu, T kappa, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
-    y = rk_beta(&internal_state, a, b);
+    y = rk_vonmises(&internal_state, mu, kappa);
     ''',
-    'beta_kernel',
+    'vonmises_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
