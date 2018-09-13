@@ -20,6 +20,7 @@ from cupy.random.distributions import beta  # NOQA
 from cupy.random.distributions import binomial  # NOQA
 from cupy.random.distributions import chisquare  # NOQA
 from cupy.random.distributions import dirichlet  # NOQA
+from cupy.random.distributions import f  # NOQA
 from cupy.random.distributions import gamma  # NOQA
 from cupy.random.distributions import geometric  # NOQA
 from cupy.random.distributions import gumbel  # NOQA

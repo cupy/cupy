@@ -135,6 +135,21 @@ class RandomState(object):
         self.rk_seed += cupy.core.internal.prod(size)
         return y
 
+    def f(self, dfnum, dfden, size=None, dtype=float):
+        """Returns an array of samples drawn from the f distribution.
+
+        .. seealso::
+            :func:`cupy.random.f` for full documentation,
+            :meth:`numpy.random.RandomState.f`
+        """
+        dfnum, dfden = cupy.asarray(dfnum), cupy.asarray(dfden)
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.f_kernel(dfnum, dfden, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a gamma distribution.
 

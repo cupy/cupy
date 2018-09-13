@@ -165,6 +165,21 @@ class TestDirichlet(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestF(RandomGeneratorTestCase):
+
+    target_method = 'f'
+
+    def test_f(self):
+        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},

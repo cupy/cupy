@@ -252,6 +252,13 @@ __device__ double rk_gauss(rk_state *state) {
 }
 '''
 
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
+}
+'''
+
 rk_geometric_search_definition = '''
 __device__ long rk_geometric_search(rk_state *state, double p) {
     double U;
@@ -473,6 +480,21 @@ chisquare_kernel = core.ElementwiseKernel(
     y = rk_chisquare(&internal_state, df);
     ''',
     'chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition, rk_f_definition]
+f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_f(&internal_state, dfnum, dfden);
+    ''',
+    'f_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
