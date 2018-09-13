@@ -373,7 +373,6 @@ def standard_t(df, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the standard Student's t distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.standard_t`
         :func:`numpy.random.standard_t`
     """
     rs = generator.get_random_state()
