@@ -298,6 +298,26 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'df_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardT(unittest.TestCase):
+
+    def check_distribution(self, dist_func, df_dtype, dtype):
+        df = cupy.ones(self.df_shape, dtype=df_dtype)
+        out = dist_func(df, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('df_dtype')
+    def test_standard_t(self, df_dtype, dtype):
+        self.check_distribution(distributions.standard_t, df_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'low_shape': [(), (3, 2)],
     'high_shape': [(), (3, 2)],
 })

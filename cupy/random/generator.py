@@ -422,6 +422,21 @@ class RandomState(object):
         """
         return self.normal(size=size, dtype=dtype)
 
+    def standard_t(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard t distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_t` for full documentation,
+            :meth:`numpy.random.RandomState.standard_t`
+        """
+        df = cupy.asarray(df)
+        if size is None:
+            size = df.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.standard_t_kernel(df, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def tomaxint(self, size=None):
         """Draws integers between 0 and max integer inclusive.
 
