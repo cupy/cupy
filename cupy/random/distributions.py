@@ -26,7 +26,6 @@ def beta(a, b, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the beta distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.beta`
         :func:`numpy.random.beta`
     """
     rs = generator.get_random_state()
@@ -54,7 +53,6 @@ def binomial(n, p, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the binomial distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.binomial`
         :func:`numpy.random.binomial`
     """
     rs = generator.get_random_state()
@@ -81,7 +79,6 @@ def chisquare(df, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the chi-square distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.chisquare`
         :func:`numpy.random.chisquare`
     """
     rs = generator.get_random_state()
@@ -111,7 +108,6 @@ def dirichlet(alpha, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the dirichlet distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.dirichlet`
         :func:`numpy.random.dirichlet`
     """
     rs = generator.get_random_state()
@@ -145,6 +141,39 @@ def exponential(scale, size=None, dtype=float):
     return rs.exponential(scale, size, dtype)
 
 
+def f(dfnum, dfden, size=None, dtype=float):
+    """F distribution.
+
+    Returns an array of samples drawn from the f distribution. Its probability
+    density function is defined as
+
+    .. math::
+        f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+            \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+            x^{\\frac{d_1}{2}-1} \
+            \\left(1+\\frac{d_1}{d_2}x\\right) \
+            ^{-\\frac{d_1+d_2}{2}},
+
+    Args:
+        dfnum (float or array_like of floats): Parameter of the f distribution
+            :math:`d_1`.
+        dfden (float or array_like of floats): Parameter of the f distribution
+            :math:`d_2`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the f distribution.
+
+    .. seealso::
+        :func:`numpy.random.f`
+    """
+    rs = generator.get_random_state()
+    return rs.f(dfnum, dfden, size, dtype)
+
+
 def gamma(shape, scale=1.0, size=None, dtype=float):
     """Gamma distribution.
 
@@ -165,7 +194,6 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     Returns:cupy.ndarray: Samples drawn from the gamma distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.gamma`
         :func:`numpy.random.gamma`
     """
     rs = generator.get_random_state()
@@ -226,7 +254,6 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the Gumbel distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.gumbel`
         :func:`numpy.random.gumbel`
     """
     rs = generator.get_random_state()
@@ -254,7 +281,6 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the laplace distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.laplace`
         :func:`numpy.random.laplace`
     """
     rs = generator.get_random_state()
@@ -359,6 +385,32 @@ def standard_exponential(size=None, dtype=float):
     return rs.standard_exponential(size, dtype)
 
 
+def standard_gamma(shape, size=None, dtype=float):
+    """Standard gamma distribution.
+
+    Returns an array of samples drawn from the standard gamma distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{1}{\\Gamma(k)}x^{k-1}e^{-x},
+
+    Args:
+        shape (array): Parameter of the gamma distribution :math:`k`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard gamma distribution.
+
+    .. seealso::
+        :func:`numpy.random.standard_gamma`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_gamma(shape, size, dtype)
+
+
 def standard_normal(size=None, dtype=float):
     """Returns an array of samples drawn from the standard normal distribution.
 
@@ -376,6 +428,34 @@ def standard_normal(size=None, dtype=float):
 
     """
     return normal(size=size, dtype=dtype)
+
+
+def standard_t(df, size=None, dtype=float):
+    """Standard Student's t distribution.
+
+    Returns an array of samples drawn from the standard Student's t
+    distribution. Its probability density function is defined as
+
+    .. math::
+        f(x) = \\frac{\\Gamma(\\frac{\\nu+1}{2})} \
+            {\\sqrt{\\nu\\pi}\\Gamma(\\frac{\\nu}{2})} \
+            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})},
+
+    Args:
+        df (float or array_like of floats): Degree of freedom :math:`\\nu`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard Student's t distribution.
+
+    .. seealso::
+        :func:`numpy.random.standard_t`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_t(df, size, dtype)
 
 
 def uniform(low=0.0, high=1.0, size=None, dtype=float):
@@ -399,3 +479,30 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
     """
     rs = generator.get_random_state()
     return rs.uniform(low, high, size=size, dtype=dtype)
+
+
+def vonmises(mu, kappa, size=None, dtype=float):
+    """von Mises distribution.
+
+    Returns an array of samples drawn from the von Mises distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{e^{\\kappa \\cos(x-\\mu)}}{2\\pi I_0(\\kappa)},
+
+    Args:
+        mu (float): Parameter of the von Mises distribution :math:`\\mu`.
+        kappa (float): Parameter of the von Mises distribution :math:`\\kappa`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the von Mises distribution.
+
+    .. seealso::
+        :func:`numpy.random.vonmises`
+    """
+    rs = generator.get_random_state()
+    return rs.vonmises(mu, kappa, size=size, dtype=dtype)
