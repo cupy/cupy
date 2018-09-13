@@ -114,6 +114,39 @@ def dirichlet(alpha, size=None, dtype=float):
     return rs.dirichlet(alpha, size, dtype)
 
 
+def f(dfnum, dfden, size=None, dtype=float):
+    """F distribution.
+
+    Returns an array of samples drawn from the f distribution. Its probability
+    density function is defined as
+
+    .. math::
+        f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+            \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+            x^{\\frac{d_1}{2}-1} \
+            \\left(1+\\frac{d_1}{d_2}x\\right) \
+            ^{-\\frac{d_1+d_2}{2}},
+
+    Args:
+        dfnum (float or array_like of floats): Parameter of the f distribution
+            :math:`d_1`.
+        dfden (float or array_like of floats): Parameter of the f distribution
+            :math:`d_2`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the f distribution.
+
+    .. seealso::
+        :func:`numpy.random.f`
+    """
+    rs = generator.get_random_state()
+    return rs.f(dfnum, dfden, size, dtype)
+
+
 def gamma(shape, scale=1.0, size=None, dtype=float):
     """Gamma distribution.
 
@@ -395,6 +428,34 @@ def standard_normal(size=None, dtype=float):
 
     """
     return normal(size=size, dtype=dtype)
+
+
+def standard_t(df, size=None, dtype=float):
+    """Standard Student's t distribution.
+
+    Returns an array of samples drawn from the standard Student's t
+    distribution. Its probability density function is defined as
+
+    .. math::
+        f(x) = \\frac{\\Gamma(\\frac{\\nu+1}{2})} \
+            {\\sqrt{\\nu\\pi}\\Gamma(\\frac{\\nu}{2})} \
+            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})},
+
+    Args:
+        df (float or array_like of floats): Degree of freedom :math:`\\nu`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard Student's t distribution.
+
+    .. seealso::
+        :func:`numpy.random.standard_t`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_t(df, size, dtype)
 
 
 def uniform(low=0.0, high=1.0, size=None, dtype=float):

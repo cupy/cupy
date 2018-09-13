@@ -135,6 +135,21 @@ class RandomState(object):
         self.rk_seed += cupy.core.internal.prod(size)
         return y
 
+    def f(self, dfnum, dfden, size=None, dtype=float):
+        """Returns an array of samples drawn from the f distribution.
+
+        .. seealso::
+            :func:`cupy.random.f` for full documentation,
+            :meth:`numpy.random.RandomState.f`
+        """
+        dfnum, dfden = cupy.asarray(dfnum), cupy.asarray(dfden)
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.f_kernel(dfnum, dfden, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a gamma distribution.
 
@@ -395,7 +410,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_exponential`
         """
         x = self._random_sample_raw(size, dtype)
-        return cupy.log(x, out=x)
+        return -cupy.log(x, out=x)
 
     def standard_gamma(self, shape, size=None, dtype=float):
         """Returns an array of samples drawn from a standard gamma distribution.
@@ -421,6 +436,21 @@ class RandomState(object):
 
         """
         return self.normal(size=size, dtype=dtype)
+
+    def standard_t(self, df, size=None, dtype=float):
+        """Returns an array of samples drawn from the standard t distribution.
+
+        .. seealso::
+            :func:`cupy.random.standard_t` for full documentation,
+            :meth:`numpy.random.RandomState.standard_t`
+        """
+        df = cupy.asarray(df)
+        if size is None:
+            size = df.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.standard_t_kernel(df, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
 
     def tomaxint(self, size=None):
         """Draws integers between 0 and max integer inclusive.

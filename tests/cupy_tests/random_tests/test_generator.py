@@ -165,6 +165,21 @@ class TestDirichlet(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestF(RandomGeneratorTestCase):
+
+    target_method = 'f'
+
+    def test_f(self):
+        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},
@@ -302,6 +317,21 @@ class TestPoisson(RandomGeneratorTestCase):
 
     def test_poisson(self):
         self.generate(lam=self.lam, size=(3, 2))
+
+
+@testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardT(RandomGeneratorTestCase):
+
+    target_method = 'standard_t'
+
+    def test_standard_t(self):
+        self.generate(df=self.df, size=(3, 2))
 
 
 @testing.gpu
