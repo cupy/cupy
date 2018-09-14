@@ -67,7 +67,8 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     observed = observed[indices]  # sort
     ds = numpy.cumsum(numpy.where(indices < n1, -n2, n1).astype(numpy.int64))
     assert ds[-1] == 0
-    ds = ds[:-1][observed[:-1] < observed[1:]]
+    check = numpy.concatenate([observed[:-1] < observed[1:], [True]])
+    ds = ds[check]
     d_plus = float(ds.max()) / (n1 * n2)
     d_minus = -float(ds.min()) / (n1 * n2)
     d = max(d_plus, d_minus)
