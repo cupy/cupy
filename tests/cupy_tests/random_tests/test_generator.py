@@ -231,6 +231,12 @@ class TestBeta(RandomGeneratorTestCase):
     def test_beta(self):
         self.generate(a=self.a, b=self.b, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_beta_ks(self, dtype):
+        self.check_ks(0.05)(
+            a=self.a, b=self.b, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'n': 5, 'p': 0.5},
@@ -264,6 +270,12 @@ class TestChisquare(RandomGeneratorTestCase):
     def test_chisquare(self):
         self.generate(df=self.df, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_chisquare_ks(self, dtype):
+        self.check_ks(0.05)(
+            df=self.df, size=2000, dtype=dtype)
+
 
 @testing.gpu
 @testing.parameterize(
@@ -277,6 +289,8 @@ class TestDirichlet(RandomGeneratorTestCase):
 
     def test_dirichlet(self):
         self.generate(alpha=self.alpha, size=(3, 2, 3))
+
+    # TODO(kataoka): add distribution test
 
 
 @testing.parameterize(
@@ -292,6 +306,12 @@ class TestF(RandomGeneratorTestCase):
 
     def test_f(self):
         self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_f_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.dfnum, self.dfden, size=2000, dtype=dtype)
 
 
 @testing.parameterize(
@@ -317,6 +337,12 @@ class TestGamma(RandomGeneratorTestCase):
     def test_gamma_2(self):
         self.generate(shape=self.shape, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_gamma_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.shape, self.scale, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'p': 0.5},
@@ -332,13 +358,16 @@ class TestGeometric(RandomGeneratorTestCase):
     def test_geometric(self):
         self.generate(p=self.p, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_geometric_ks(self, dtype):
+        self.check_ks(0.05)(
+            p=self.p, size=2000, dtype=dtype)
+
 
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
-    # TODO(niboshi):
-    #   Test soundness of distribution.
-    #   Currently only reprocibility is checked.
 
     target_method = 'laplace'
 
@@ -347,6 +376,18 @@ class TestLaplace(RandomGeneratorTestCase):
 
     def test_laplace_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_laplace_ks_1(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_laplace_ks_2(self, dtype):
+        self.check_ks(0.05)(
+            2.3, 4.5, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -443,6 +484,12 @@ class TestPareto(RandomGeneratorTestCase):
     def test_pareto(self):
         self.generate(a=self.a, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_pareto_ks(self, dtype):
+        self.check_ks(0.05)(
+            a=self.a, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'lam': 1.0},
@@ -458,6 +505,8 @@ class TestPoisson(RandomGeneratorTestCase):
     def test_poisson(self):
         self.generate(lam=self.lam, size=(3, 2))
 
+    # TODO(kataoka): add distribution test
+
 
 @testing.parameterize(
     {'df': 1.0},
@@ -472,6 +521,12 @@ class TestStandardT(RandomGeneratorTestCase):
 
     def test_standard_t(self):
         self.generate(df=self.df, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_standard_t_ks(self, dtype):
+        self.check_ks(0.05)(
+            df=self.df, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -546,6 +601,12 @@ class TestStandardCauchy(RandomGeneratorTestCase):
             x = self.generate(size=10**7)
             self.assertTrue(cupy.isfinite(x).all())
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_standard_cauchy_ks(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'shape': 0.5},
@@ -560,6 +621,12 @@ class TestStandardGamma(RandomGeneratorTestCase):
 
     def test_standard_gamma(self):
         self.generate(shape=self.shape, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_standard_gamma_ks(self, dtype):
+        self.check_ks(0.05)(
+            shape=self.shape, size=2000, dtype=dtype)
 
 
 @testing.fix_random()
@@ -938,6 +1005,12 @@ class TestVonmises(RandomGeneratorTestCase):
     def test_vonmises(self):
         self.generate(mu=self.mu, kappa=self.kappa, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_vonmises_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.mu, self.kappa, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'a': 3, 'size': 5},
@@ -1019,6 +1092,12 @@ class TestStandardExponential(RandomGeneratorTestCase):
         for _ in range(10):
             x = self.generate(size=10**7)
             self.assertTrue(cupy.isfinite(x).all())
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_standard_exponential_ks(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
 
 
 @testing.gpu
