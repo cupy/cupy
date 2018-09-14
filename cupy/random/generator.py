@@ -183,7 +183,7 @@ class RandomState(object):
 
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
-        'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',
+        'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
         'laplace_kernel')
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
@@ -193,11 +193,11 @@ class RandomState(object):
             :func:`cupy.random.laplace` for full documentation,
             :meth:`numpy.random.RandomState.laplace`
         """
-        x = self.random_sample(size=size, dtype=dtype)
-        if not numpy.isscalar(loc):
-            loc = cupy.asarray(loc, dtype)
-        if not numpy.isscalar(scale):
-            scale = cupy.asarray(scale, dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size, dtype)
         RandomState._laplace_kernel(x, loc, scale, x)
         return x
 
