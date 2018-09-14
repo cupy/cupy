@@ -183,7 +183,7 @@ class RandomState(object):
 
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
-        'y = T(loc) + T(scale) * ((x < 0.5) ? log(x + x): -log(2.0 - x - x))',
+        'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
         'laplace_kernel')
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
@@ -193,11 +193,11 @@ class RandomState(object):
             :func:`cupy.random.laplace` for full documentation,
             :meth:`numpy.random.RandomState.laplace`
         """
-        x = self.random_sample(size=size, dtype=dtype)
-        if not numpy.isscalar(loc):
-            loc = cupy.asarray(loc, dtype)
-        if not numpy.isscalar(scale):
-            scale = cupy.asarray(scale, dtype)
+        loc = cupy.asarray(loc, dtype)
+        scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size, dtype)
         RandomState._laplace_kernel(x, loc, scale, x)
         return x
 
@@ -243,6 +243,21 @@ class RandomState(object):
         cupy.log(x, out=x)
         cupy.exp(-x/a, out=x)
         return x - 1
+
+    def poisson(self, lam=1.0, size=None, dtype=int):
+        """Returns an array of samples drawn from the poisson distribution.
+
+        .. seealso::
+            :func:`cupy.random.poisson` for full documentation,
+            :meth:`numpy.random.RandomState.poisson`
+        """
+        lam = cupy.asarray(lam)
+        if size is None:
+            size = lam.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.poisson_kernel(lam, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
 
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
