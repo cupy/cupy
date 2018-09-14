@@ -84,7 +84,7 @@ class RandomState(object):
             size = cupy.broadcast(a, b).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.beta_kernel(a, b, self.rk_seed, y)
-        self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += y.size
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -99,7 +99,7 @@ class RandomState(object):
             size = cupy.broadcast(n, p).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.binomial_kernel(n, p, self.rk_seed, y)
-        self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += y.size
         return y
 
     def chisquare(self, df, size=None, dtype=float):
@@ -134,6 +134,16 @@ class RandomState(object):
         y /= y.sum(axis=-1, keepdims=True)
         self.rk_seed += cupy.core.internal.prod(size)
         return y
+
+    def exponential(self, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a exponential distribution.
+
+        .. seealso::
+            :func:`cupy.random.exponential` for full documentation,
+            :meth:`numpy.random.RandomState.exponential`
+        """
+        x = self.standard_exponential(size, dtype)
+        return cupy.multiply(scale, x, out=x)
 
     def f(self, dfnum, dfden, size=None, dtype=float):
         """Returns an array of samples drawn from the f distribution.
