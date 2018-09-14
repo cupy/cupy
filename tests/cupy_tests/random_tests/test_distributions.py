@@ -116,6 +116,15 @@ class TestDistributionsExponential(RandomDistributionsTestCase):
                                 {'scale': scale}, dtype)
 
 
+@testing.gpu
+class TestDistributionsExponentialError(RandomDistributionsTestCase):
+
+    def test_negative_scale(self):
+        scale = cupy.array([2, -1, 3], dtype=numpy.float32)
+        with self.assertRaises(ValueError):
+            cupy.random.exponential(scale)
+
+
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'dfnum_shape': [(), (3, 2)],

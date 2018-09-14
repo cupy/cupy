@@ -143,6 +143,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.exponential`
         """
         scale = cupy.asarray(scale, dtype)
+        if (scale < 0).any():
+            raise ValueError('scale < 0')
         if size is None:
             size = scale.shape
         x = self.standard_exponential(size, dtype)
