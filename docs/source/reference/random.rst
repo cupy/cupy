@@ -40,6 +40,7 @@ Distributions
    cupy.random.binomial
    cupy.random.chisquare
    cupy.random.dirichlet
+   cupy.random.exponential
    cupy.random.f
    cupy.random.gamma
    cupy.random.geometric

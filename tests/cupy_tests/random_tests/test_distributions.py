@@ -101,6 +101,22 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsExponential(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_exponential(self, scale_dtype, dtype):
+        scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
+        self.check_distribution('exponential',
+                                {'scale': scale}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'dfnum_shape': [(), (3, 2)],
     'dfden_shape': [(), (3, 2)],
     'dtype': _float_dtypes,  # to escape timeout
