@@ -246,6 +246,27 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsPareto(unittest.TestCase):
+
+    def check_distribution(self, dist_func, a_dtype, dtype):
+        a = cupy.ones(self.a_shape, dtype=a_dtype)
+        out = dist_func(a, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_pareto(self, a_dtype, dtype):
+        self.check_distribution(distributions.pareto,
+                                a_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'lam_shape': [(), (3, 2)],
 })
 )

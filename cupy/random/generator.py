@@ -231,6 +231,19 @@ class RandomState(object):
             func = curand.generateNormalDouble
         return self._generate_normal(func, size, dtype, loc, scale)
 
+    def pareto(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the pareto II distribution.
+
+        .. seealso::
+            :func:`cupy.random.pareto_kernel` for full documentation,
+            :meth:`numpy.random.RandomState.pareto`
+        """
+        a = cupy.asarray(a)
+        x = self._random_sample_raw(size, dtype)
+        cupy.log(x, out=x)
+        cupy.exp(-x/a, out=x)
+        return x - 1
+
     def poisson(self, lam=1.0, size=None, dtype=int):
         """Returns an array of samples drawn from the poisson distribution.
 
