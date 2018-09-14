@@ -305,6 +305,21 @@ class TestNormal(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'lam': 1.0},
+    {'lam': 3.0},
+    {'lam': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPoisson(RandomGeneratorTestCase):
+
+    target_method = 'poisson'
+
+    def test_poisson(self):
+        self.generate(lam=self.lam, size=(3, 2))
+
+
+@testing.parameterize(
     {'df': 1.0},
     {'df': 3.0},
     {'df': 10.0},
