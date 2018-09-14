@@ -27,7 +27,6 @@ def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
     Decorated test fixture is required to return samples from the same
     distribution even if ``xp`` is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`cupy.testing.kstest`
     """
     def decorator(impl):
         @functools.wraps(impl)
@@ -144,7 +143,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         vals_cupy = cupy.stack(vals_cupy).ravel()
 
         # numpy
-        kwargs['size'] = 1000
+        kwargs['size'] = numpy_len
         dtype = kwargs.pop('dtype', None)
         numpy_rs = numpy.random.RandomState(self.__seed)
         vals_numpy = getattr(numpy_rs, self.target_method)(*args, **kwargs)
