@@ -1742,6 +1742,14 @@ cdef class ndarray:
         else:
             return NotImplemented
 
+    def __array_function__(self, func, types, args, kwargs):
+        if not hasattr(cupy, func.__name__):
+            return NotImplemented
+        for t in types:
+            if not isinstance(t, ndarray):
+                return NotImplemented
+        return getattr(cupy, func.__name__)(*args, **kwargs)
+
     # Conversion:
 
     def __int__(self):
