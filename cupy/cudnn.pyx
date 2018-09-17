@@ -145,7 +145,9 @@ cpdef _create_tensor_descriptor_as4darray(size_t desc,
     cdef Py_ssize_t dim1, dim2
     assert arr._c_contiguous
     data_type = get_data_type(arr.dtype)
-    dim1 = len(arr)
+    dim1 = 1
+    if arr._shape.size() > 0:
+        dim1 = arr._shape[0]
     dim2 = arr.size // dim1
     cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
                                 dim1, dim2, 1, 1)
