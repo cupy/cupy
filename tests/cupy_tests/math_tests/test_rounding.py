@@ -118,3 +118,41 @@ class TestRoundExtreme(unittest.TestCase):
     def test_round_small(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, scale=1e-100, dtype=dtype)
         return xp.around(a, self.decimals)
+
+
+@testing.parameterize(*testing.product({
+    'value': [
+        (14, -1),
+        (15, -1),
+        (16, -1),
+        (14.0, -1),
+        (15.0, -1),
+        (16.0, -1),
+        (1.4, 0),
+        (1.5, 0),
+        (1.6, 0),
+    ]
+}))
+class TestRoundBorder(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_positive1(self, xp):
+        a, decimals = self.value
+        return xp.around(a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_positive2(self, xp):
+        a, decimals = self.value
+        a = xp.asarray(a)
+        return xp.around(a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_negative1(self, xp):
+        a, decimals = self.value
+        return xp.around(-a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_negative2(self, xp):
+        a, decimals = self.value
+        a = xp.asarray(a)
+        return xp.around(-a, decimals)
