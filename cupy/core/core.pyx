@@ -82,6 +82,9 @@ cdef inline int _normalize_order(order) except? 0:
     return order_char
 
 
+cdef tuple _HANDLED_TYPES
+
+
 cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
@@ -1746,7 +1749,7 @@ cdef class ndarray:
         if not hasattr(cupy, func.__name__):
             return NotImplemented
         for t in types:
-            if not isinstance(t, ndarray):
+            if t not in _HANDLED_TYPES:
                 return NotImplemented
         return getattr(cupy, func.__name__)(*args, **kwargs)
 
@@ -2049,6 +2052,9 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
         strides[-i] = stride
         stride *= x.shape[-i]
     return strides
+
+
+_HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
 include "carray.pxi"
