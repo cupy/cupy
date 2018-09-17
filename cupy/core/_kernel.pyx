@@ -1,3 +1,4 @@
+from __future__ import division
 import string
 
 import numpy
@@ -5,9 +6,21 @@ import numpy
 from cupy.cuda import compiler
 from cupy import util
 
+cimport cpython  # NOQA
+cimport cython  # NOQA
+
+from libcpp cimport vector
+
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
+from cupy.core._dtype cimport get_dtype
+from cupy.core._scalar import get_typename as _get_typename
+from cupy.core.core cimport broadcast
+from cupy.core.core cimport compile_with_cache
+from cupy.core.core cimport Indexer
+from cupy.core.core cimport ndarray
+from cupy.core cimport internal
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -56,12 +69,12 @@ cpdef list _preprocess_args(args, bint use_c_scalar=False):
     for arg in args:
         typ = type(arg)
         if typ is ndarray:
-            arr_dev = (<ndarray?>arg).data.device
-            if arr_dev is not None and arr_dev.id != dev_id:
+            arr_dev_id = (<ndarray?>arg).data.device_id
+            if arr_dev_id != dev_id:
                 raise ValueError(
                     'Array device must be same as the current '
                     'device: array device = %d while current = %d'
-                    % (arr_dev.id, dev_id))
+                    % (arr_dev_id, dev_id))
         else:
             arg = _scalar.convert_scalar(arg, use_c_scalar)
             if arg is None:
@@ -97,9 +110,11 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
             t = _get_typename(dtype)
             if is_array:
                 t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s %s%s' % (t,
-                                '_raw_' if is_array and not p.raw else '',
-                                p.name))
+        ret.append('{}{} {}{}'.format(
+            'const ' if p.is_const else '',
+            t,
+            '_raw_' if is_array and not p.raw else '',
+            p.name))
     return ', '.join(ret)
 
 
@@ -204,6 +219,8 @@ cdef class ParameterInfo:
         for i in s[:-2]:
             if i == 'raw':
                 self.raw = True
+            elif i == '_non_const':
+                self.is_const = False
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
@@ -364,7 +381,7 @@ cdef function.Function _get_elementwise_kernel(
     for p, a in zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))
@@ -497,7 +514,7 @@ cdef class ElementwiseKernel:
 
         values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
-        out_args = values[self.nin:]
+        out_args = args[self.nin:]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
@@ -566,7 +583,8 @@ cdef class ElementwiseKernel:
 
 @util.memoize(for_each_device=True)
 def _get_ufunc_kernel(
-        in_types, out_types, routine, args_info, params, name, preamble):
+        in_types, out_types, routine, args_info, params, name, preamble,
+        loop_prep):
     kernel_params = _get_kernel_params(params, args_info)
 
     types = []
@@ -590,7 +608,7 @@ def _get_ufunc_kernel(
     preamble = '\n'.join(types)
 
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble)
+        kernel_params, operation, name, preamble, loop_prep=loop_prep)
 
 
 cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
@@ -620,7 +638,7 @@ cdef tuple _guess_routine_from_dtype(list ops, object dtype):
     return None
 
 
-cdef bint _check_should_use_min_scalar(list in_args) except *:
+cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars
     all_scalars = True
@@ -678,14 +696,16 @@ class ufunc(object):
 
     """
 
-    def __init__(self, name, nin, nout, ops, preamble='', doc='',
+    def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
         self.name = name
+        self.__name__ = name
         self.nin = nin
         self.nout = nout
         self.nargs = nin + nout
         self._ops = ops
         self._preamble = preamble
+        self._loop_prep = loop_prep
         self.__doc__ = doc
         if default_casting is None:
             self._default_casting = 'same_kind'
@@ -734,6 +754,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
+        from cupy.core import fusion
+
+        thread_local = fusion._thread_local
+        if hasattr(thread_local, 'history'):
+            return thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 
@@ -783,7 +808,8 @@ class ufunc(object):
         inout_args = []
         for i, t in enumerate(in_types):
             x = broad.values[i]
-            inout_args.append(x if isinstance(x, ndarray) else t(x))
+            inout_args.append(x if isinstance(x, ndarray) else
+                              _scalar.get_scalar_from_numpy(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)
@@ -792,14 +818,14 @@ class ufunc(object):
 
         kern = _get_ufunc_kernel(
             in_types, out_types, routine, args_info,
-            self._params, self.name, self._preamble)
+            self._params, self.name, self._preamble, self._loop_prep)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None):
+                   default_casting=None, loop_prep=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -817,6 +843,8 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
-    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc,
-                default_casting=default_casting)
+    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
+                loop_prep, doc, default_casting=default_casting)
     return ret
+
+include "reduction.pxi"

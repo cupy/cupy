@@ -193,10 +193,16 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
-    def check_func(cupy_result, numpy_result):
-        c = cupy_result
-        n = numpy_result
-        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+    def check_func(c, n):
+        c_array = c
+        n_array = n
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(c):
+                c_array = c.A
+            if scipy.sparse.issparse(n):
+                n_array = n.A
+        array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
         if contiguous_check and isinstance(n, numpy.ndarray):
             if n.flags.c_contiguous and not c.flags.c_contiguous:
                 raise AssertionError(
@@ -358,6 +364,13 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(x):
+                x = x.A
+            if scipy.sparse.issparse(y):
+                y = y.A
+
         array.assert_array_equal(x, y, err_msg, verbose)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,

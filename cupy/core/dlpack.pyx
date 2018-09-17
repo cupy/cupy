@@ -100,7 +100,7 @@ cpdef object toDlpack(ndarray array) except +:
 
     cdef DLContext* ctx = &dl_tensor.ctx
     ctx.device_type = DLDeviceType.kDLGPU
-    ctx.device_id = array.device.id
+    ctx.device_id = array.data.device_id
 
     cdef DLDataType* dtype = &dl_tensor.dtype
     if array.dtype.kind == 'u':
@@ -136,7 +136,7 @@ cdef class DLPackMemory(memory.Memory):
         self.dltensor = dltensor
         self.dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
-        self.device = cupy.cuda.Device(self.dlm_tensor.dl_tensor.ctx.device_id)
+        self.device_id = self.dlm_tensor.dl_tensor.ctx.device_id
         self.ptr = self.dlm_tensor.dl_tensor.data
         cdef int n = 0
         cdef int ndim = self.dlm_tensor.dl_tensor.ndim

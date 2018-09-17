@@ -25,7 +25,7 @@ class TestEye(unittest.TestCase):
             self.m, n=self.n, k=self.k, dtype=self.dtype, format=self.format)
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
-        return x.toarray()
+        return x
 
 
 @testing.parameterize(*testing.product({
@@ -40,7 +40,7 @@ class TestIdentity(unittest.TestCase):
         x = sp.identity(3, dtype=self.dtype, format=self.format)
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
-        return x.toarray()
+        return x
 
 
 @testing.parameterize(*testing.product({
@@ -54,7 +54,7 @@ class TestSpdiags(unittest.TestCase):
         data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
         diags = xp.array([0, -1, 2], dtype='i')
         x = sp.spdiags(data, diags, 3, 4)
-        return x.toarray()
+        return x
 
 
 @testing.parameterize(*testing.product({

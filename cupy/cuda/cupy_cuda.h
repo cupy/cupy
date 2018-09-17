@@ -250,6 +250,10 @@ const char* cudaGetErrorString(...) {
     return NULL;
 }
 
+cudaError_t cudaGetLastError() {
+    return cudaSuccess;
+}
+
 
 // Initialization
 cudaError_t cudaDriverGetVersion(...) {
@@ -651,6 +655,10 @@ cublasStatus_t cublasSdgmm(...) {
 }
 
 cublasStatus_t cublasSgetrfBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDgetrfBatched(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

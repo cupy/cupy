@@ -158,6 +158,7 @@ Miscellaneous
    cupy.minimum
    cupy.fmax
    cupy.fmin
+   cupy.nan_to_num
    cupy.blackman
    cupy.hamming
    cupy.hanning
