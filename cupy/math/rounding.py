@@ -1,7 +1,9 @@
 from cupy import core
+from cupy.core import fusion
 from cupy.math import ufunc
 
 
+@fusion._ufunc_wrapper(core.core._round_ufunc)
 def around(a, decimals=0, out=None):
     """Rounds to the given number of decimals.
 
@@ -22,6 +24,7 @@ def around(a, decimals=0, out=None):
     return a.round(decimals, out)
 
 
+@fusion._ufunc_wrapper(core.core._round_ufunc)
 def round_(a, decimals=0, out=None):
     a = core.array(a, copy=False)
     return a.round(decimals, out)
