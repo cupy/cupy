@@ -246,7 +246,7 @@ def create_tensor_nd_descriptor(core.ndarray arr):
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
-    key = (data_type, arr._shape)
+    key = (data_type, tuple(arr._shape))
     cache = _get_nd_tensor_cache()
     if key in cache:
         return cache[key]
