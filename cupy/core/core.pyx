@@ -2240,7 +2240,7 @@ _round_ufunc = create_ufunc(
         // TODO(okuta): Move before loop
         long long x = pow10<long long>(-in1 - 1);
         // TODO(okuta): Check Numpy
-        out0 = ((in0 / x + 5) / 10) * x * 10;
+        out0 = ((in0 / x + (in0 > 0 ? 5 : -5)) / 10) * x * 10;
     } else {
         out0 = in0;
     }''', preamble=_round_preamble)
