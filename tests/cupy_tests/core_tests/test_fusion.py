@@ -864,6 +864,10 @@ class TestFusionUfunc(unittest.TestCase):
                     lambda *args: self.random_real(*args, seed=1),
                     lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
+        self.check(cupy.around, 2,
+                   (self.random_bool,
+                    self.random_int,
+                    self.random_real))
 
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)

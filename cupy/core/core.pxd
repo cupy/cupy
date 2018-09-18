@@ -46,6 +46,7 @@ cdef class ndarray:
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
+    cpdef ndarray round(self, decimals=*, out=*)
 
     cpdef ndarray trace(self, offset=*, axis1=*, axis2=*, dtype=*,
                         out=*)
