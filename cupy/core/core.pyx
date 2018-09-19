@@ -135,6 +135,8 @@ cdef class ndarray:
 
         # Store shape and strides
         if strides is not None:
+            if memptr is None:
+                raise ValueError('memptr is required if strides is given.')
             self._set_shape_and_strides(shape, strides, True, True)
         elif order_char == 'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)

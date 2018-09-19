@@ -62,31 +62,29 @@ class TestNdarrayInit(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     def test_memptr_with_strides(self):
-        a = cupy.arange(12).astype(numpy.float32).reshape((2, 6))[::-1, ::2]
-        memptr = a.data
+        buf = cupy.ndarray(20, numpy.uint8)
+        memptr = buf.data
 
-        b = cupy.ndarray((2, 3), numpy.float32, memptr, strides=a.strides)
-        testing.assert_array_equal(a, b)
-        assert a.strides == b.strides
-
-        b += 1
-        testing.assert_array_equal(a, b)
-
-    def test_strides(self):
-        a = cupy.ndarray((2, 3), numpy.float32, strides=(8, 4))
+        # self-overlapping strides
+        a = cupy.ndarray((2, 3), numpy.float32, memptr, strides=(8, 4))
         assert a.strides == (8, 4)
 
         a[:] = 1
         a[0, 2] = 4
         assert float(a[1, 0]) == 4
 
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_strides_without_memptr(self, xp):
+        xp.ndarray((2, 3), numpy.float32, strides=(20, 4))
+
     def test_strides_is_given_and_order_is_ignored(self):
-        a = cupy.ndarray((2, 3), numpy.float32, strides=(8, 4), order='C')
+        buf = cupy.ndarray(20, numpy.uint8)
+        a = cupy.ndarray((2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
 
-    def test_strides_is_given_but_order_is_invalid(self):
-        with pytest.raises(TypeError):
-            cupy.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_strides_is_given_but_order_is_invalid(self, xp):
+        xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
 
     def test_order(self):
         shape = (2, 3, 4)
