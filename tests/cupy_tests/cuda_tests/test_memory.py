@@ -66,8 +66,9 @@ class TestUnownedMemory(unittest.TestCase):
         # Delete the source object
         del src_mem_ptr
 
-        arr[:] = 2
-        assert (arr == 2).all()
+        with device.Device(device_id):
+            arr[:] = 2
+            assert (arr == 2).all()
 
     def test_device0(self):
         self.check(0)
