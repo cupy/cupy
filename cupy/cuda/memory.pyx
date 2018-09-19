@@ -89,11 +89,12 @@ cdef class UnownedMemory(BaseMemory):
         size (int): Size of the buffer.
         device (int): CUDA device of the buffer. If omitted, the device
             associated to the pointer is retrieved.
-
-    Attributes:
-        ~owner (object): Reference to the owner object to keep the memory
+        owner (object): Reference to the owner object to keep the memory
             alive.
     """
+
+    cdef:
+        readonly object _owner
 
     def __init__(self, size_t ptr, Py_ssize_t size, object owner,
                  int device_id=-1):
@@ -104,7 +105,7 @@ cdef class UnownedMemory(BaseMemory):
         self.size = size
         self.device_id = device_id
         self.ptr = ptr
-        self.owner = owner
+        self._owner = owner
 
 
 @cython.no_gc

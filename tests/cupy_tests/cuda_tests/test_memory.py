@@ -59,7 +59,6 @@ class TestUnownedMemory(unittest.TestCase):
         assert unowned_mem.size == size
         assert unowned_mem.ptr == src_ptr
         assert unowned_mem.device_id == device_id
-        assert unowned_mem.owner is src_mem_ptr
 
         arr = cupy.ndarray(shape, dtype, memory.MemoryPointer(unowned_mem, 0))
 

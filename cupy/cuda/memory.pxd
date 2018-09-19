@@ -15,12 +15,6 @@ cdef class BaseMemory:
         public int device_id
 
 
-cdef class UnownedMemory(BaseMemory):
-
-    cdef:
-        public object owner
-
-
 @cython.final
 cdef class MemoryPointer:
 
