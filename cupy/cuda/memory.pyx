@@ -87,10 +87,10 @@ cdef class UnownedMemory(BaseMemory):
     Args:
         ptr (int): Pointer to the buffer.
         size (int): Size of the buffer.
-        device (int): CUDA device of the buffer. If omitted, the device
-            associated to the pointer is retrieved.
         owner (object): Reference to the owner object to keep the memory
             alive.
+        device_id (int): CUDA device ID of the buffer. If omitted, the device
+            associated to the pointer is retrieved.
     """
 
     cdef:
