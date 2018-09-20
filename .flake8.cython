@@ -1,4 +1,4 @@
 [flake8]
 filename = *.pyx,*.px*
-exclude = .eggs,*.egg,build
+exclude = .eggs,*.egg,build,docs,.git
 ignore = E225,E226,E227,E999
