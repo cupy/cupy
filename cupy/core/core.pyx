@@ -398,7 +398,9 @@ cdef class ndarray:
             for s, i in stride_and_index:
                 strides[-i] = stride
                 stride *= self._shape[-i]
-            newarray = ndarray(self.shape, dtype=dtype, strides=strides)
+            newarray = ndarray(self.shape, dtype=dtype)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
@@ -451,7 +453,9 @@ cdef class ndarray:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(dev_id)
-        newarray = ndarray(x.shape, dtype=x.dtype, strides=x._strides)
+        newarray = ndarray(x.shape, dtype=x.dtype)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        newarray._set_shape_and_strides(x._shape, x._strides, True, True)
         newarray.data.copy_from_device(x.data, x.nbytes)
         return newarray
 
