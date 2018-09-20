@@ -267,6 +267,74 @@ static __device__ double loggam(double x) {
 }
 '''
 
+rk_poisson_mult_definition = '''
+__device__ long rk_poisson_mult(rk_state *state, double lam) {
+    long X;
+    double prod, U, enlam;
+    enlam = exp(-lam);
+    X = 0;
+    prod = 1.0;
+    while (1) {
+        U = rk_double(state);
+        prod *= U;
+        if (prod > enlam) {
+            X += 1;
+        } else {
+            return X;
+        }
+    }
+}
+'''
+
+rk_poisson_ptrs_definition = '''
+/*
+ * The transformed rejection method for generating Poisson random variables
+ * W. Hoermann
+ * Insurance: Mathematics and Economics 12, 39-45 (1993)
+ */
+#define LS2PI 0.91893853320467267
+#define TWELFTH 0.083333333333333333333333
+__device__ long rk_poisson_ptrs(rk_state *state, double lam) {
+    long k;
+    double U, V, slam, loglam, a, b, invalpha, vr, us;
+    slam = sqrt(lam);
+    loglam = log(lam);
+    b = 0.931 + 2.53*slam;
+    a = -0.059 + 0.02483*b;
+    invalpha = 1.1239 + 1.1328/(b-3.4);
+    vr = 0.9277 - 3.6224/(b-2);
+    while (1) {
+        U = rk_double(state) - 0.5;
+        V = rk_double(state);
+        us = 0.5 - fabs(U);
+        k = (long)floor((2*a/us + b)*U + lam + 0.43);
+        if ((us >= 0.07) && (V <= vr)) {
+            return k;
+        }
+        if ((k < 0) ||
+            ((us < 0.013) && (V > us))) {
+            continue;
+        }
+        if ((log(V) + log(invalpha) - log(a/(us*us)+b)) <=
+            (-lam + k*loglam - loggam(k+1))) {
+            return k;
+        }
+    }
+}
+'''
+
+rk_poisson_definition = '''
+__device__ long rk_poisson(rk_state *state, double lam) {
+    if (lam >= 10) {
+        return rk_poisson_ptrs(state, lam);
+    } else if (lam == 0) {
+        return 0;
+    } else {
+        return rk_poisson_mult(state, lam);
+    }
+}
+'''
+
 rk_gauss_definition = '''
 __device__ double rk_gauss(rk_state *state) {
     if (state->has_gauss) {
@@ -289,6 +357,13 @@ __device__ double rk_gauss(rk_state *state) {
         state->has_gauss = 1;
         return f*x2;
     }
+}
+'''
+
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
 }
 '''
 
@@ -370,6 +445,12 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
             if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
         }
     }
+}
+'''
+
+rk_standard_t_definition = '''
+__device__ double rk_standard_t(rk_state *state, double df) {
+    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
 }
 '''
 
@@ -602,6 +683,21 @@ binomial_kernel = core.ElementwiseKernel(
 definitions = \
     [rk_basic_difinition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_standard_t_definition]
+standard_t_kernel = core.ElementwiseKernel(
+    'S df, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_t(&internal_state, df);
+    ''',
+    'standard_t_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
     'T df, uint32 seed', 'Y y',
@@ -610,6 +706,21 @@ chisquare_kernel = core.ElementwiseKernel(
     y = rk_chisquare(&internal_state, df);
     ''',
     'chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition, rk_f_definition]
+f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_f(&internal_state, dfnum, dfden);
+    ''',
+    'f_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
@@ -637,6 +748,21 @@ hypergeometric_kernel = core.ElementwiseKernel(
     y = rk_hypergeometric(&internal_state, good, bad, sample);
     ''',
     'hypergeometric_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, loggam_definition,
+     rk_poisson_mult_definition, rk_poisson_ptrs_definition,
+     rk_poisson_definition]
+poisson_kernel = core.ElementwiseKernel(
+    'T lam, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_poisson(&internal_state, lam);
+    ''',
+    'poisson_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
