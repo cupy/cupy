@@ -1,12 +1,12 @@
 # distutils: language = c++
 
 """Thin wrapper of CUBLAS."""
-cimport cython
+
+cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
-
 
 ###############################################################################
 # Extern
@@ -204,9 +204,16 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
+    int cublasDgetrfBatched(
+        Handle handle, int n, double **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
     int cublasSgetriBatched(
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
+        int batchSize)
+    int cublasDgetriBatched(
+        Handle handle, int n, const double **Aarray, int lda,
+        int *PivotArray, double *Carray[], int ldc, int *infoArray,
         int batchSize)
     int cublasGemmEx(
         Handle handle, Operation transa, Operation transb,
@@ -217,6 +224,18 @@ cdef extern from 'cupy_cuda.h' nogil:
         const void *beta,
         void *C, runtime.DataType Ctype, int ldc,
         runtime.DataType computetype, GemmAlgo algo)
+    int cublasStpttr(
+        Handle handle, FillMode uplo, int n, const float *AP, float *A,
+        int lda)
+    int cublasDtpttr(
+        Handle handle, FillMode uplo, int n, const double *AP, double *A,
+        int lda)
+    int cublasStrttp(
+        Handle handle, FillMode uplo, int n, const float *A, int lda,
+        float *AP)
+    int cublasDtrttp(
+        Handle handle, FillMode uplo, int n, const double *A, int lda,
+        double *AP)
 
 ###############################################################################
 # Util
@@ -271,7 +290,7 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cublasCreate(&handle)
@@ -279,13 +298,13 @@ cpdef size_t create() except *:
     return <size_t>handle
 
 
-cpdef void destroy(size_t handle) except *:
+cpdef destroy(size_t handle):
     with nogil:
         status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
-cpdef int getVersion(size_t handle) except *:
+cpdef int getVersion(size_t handle) except? -1:
     cdef int version
     with nogil:
         status = cublasGetVersion(<Handle>handle, &version)
@@ -293,7 +312,7 @@ cpdef int getVersion(size_t handle) except *:
     return version
 
 
-cpdef int getPointerMode(size_t handle) except *:
+cpdef int getPointerMode(size_t handle) except? -1:
     cdef PointerMode mode
     with nogil:
         status = cublasGetPointerMode(<Handle>handle, &mode)
@@ -317,7 +336,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
+cpdef size_t getStream(size_t handle) except? 0:
     cdef driver.Stream stream
     with nogil:
         status = cublasGetStream(<Handle>handle, &stream)
@@ -335,7 +354,7 @@ cpdef setMathMode(size_t handle, int mode):
     check_status(status)
 
 
-cpdef int getMathMode(size_t handle) except *:
+cpdef int getMathMode(size_t handle) except? -1:
     cdef Math mode
     with nogil:
         status = cublasGetMathMode(<Handle>handle, &mode)
@@ -347,7 +366,7 @@ cpdef int getMathMode(size_t handle) except *:
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx) except *:
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -357,7 +376,7 @@ cpdef int isamax(size_t handle, int n, size_t x, int incx) except *:
     return result
 
 
-cpdef int isamin(size_t handle, int n, size_t x, int incx) except *:
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -367,7 +386,7 @@ cpdef int isamin(size_t handle, int n, size_t x, int incx) except *:
     return result
 
 
-cpdef float sasum(size_t handle, int n, size_t x, int incx) except *:
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -454,7 +473,7 @@ cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *:
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -870,6 +889,16 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
+cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetrfBatched(
+            <Handle>handle, n, <double**>Aarray, lda, <int*>PivotArray,
+            <int*>infoArray, batchSize)
+    check_status(status)
+
+
 cpdef sgetriBatched(
         size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
@@ -878,6 +907,17 @@ cpdef sgetriBatched(
         status = cublasSgetriBatched(
             <Handle>handle, n, <const float**>Aarray, lda, <int*>PivotArray,
             <float**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef dgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetriBatched(
+            <Handle>handle, n, <const double**>Aarray, lda, <int*>PivotArray,
+            <double**>Carray, ldc, <int*>infoArray, batchSize)
     check_status(status)
 
 
@@ -896,4 +936,36 @@ cpdef gemmEx(
             <const void*>beta,
             <void*>C, <runtime.DataType>Ctype, ldc,
             <runtime.DataType>computeType, <GemmAlgo>algo)
+    check_status(status)
+
+
+cpdef stpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasStpttr(<Handle>handle, <FillMode>uplo, n,
+                              <const float*>AP, <float*>A, lda)
+    check_status(status)
+
+
+cpdef dtpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDtpttr(<Handle>handle, <FillMode>uplo, n,
+                              <const double*>AP, <double*>A, lda)
+    check_status(status)
+
+
+cpdef strttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasStrttp(<Handle>handle, <FillMode>uplo, n,
+                              <const float*>A, lda, <float*>AP)
+    check_status(status)
+
+
+cpdef dtrttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDtrttp(<Handle>handle, <FillMode>uplo, n,
+                              <const double*>A, lda, <double*>AP)
     check_status(status)

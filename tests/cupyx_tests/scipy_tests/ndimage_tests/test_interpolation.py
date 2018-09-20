@@ -42,7 +42,7 @@ class TestMapCoordinates(unittest.TestCase):
             return_value = map_coordinates(a, coordinates, output, self.order,
                                            self.mode, self.cval,
                                            self.prefilter)
-            self.assertTrue(return_value is None)
+            self.assertIsNone(return_value)
             return output
         else:
             return map_coordinates(a, coordinates, self.output, self.order,
@@ -91,8 +91,8 @@ class TestAffineTransform(unittest.TestCase):
     _multiprocess_can_split = True
 
     def _affine_transform(self, xp, scp, a, matrix):
-        if (numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0'
-                and matrix.ndim == 2 and matrix.shape[1] == 3):
+        ver = numpy.lib.NumpyVersion(scipy.__version__)
+        if ver < '1.0.0' and matrix.ndim == 2 and matrix.shape[1] == 3:
             return xp.empty(0)
 
         if matrix.shape == (3, 3):
@@ -105,7 +105,7 @@ class TestAffineTransform(unittest.TestCase):
                                             self.output_shape, output,
                                             self.order, self.mode, self.cval,
                                             self.prefilter)
-            self.assertTrue(return_value is None)
+            self.assertIsNone(return_value)
             return output
         else:
             return affine_transform(a, matrix, self.offset, self.output_shape,
@@ -183,7 +183,7 @@ class TestRotate(unittest.TestCase):
             return_value = rotate(a, self.angle, self.axes,
                                   self.reshape, output, self.order,
                                   self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None)
+            self.assertIsNone(return_value)
             return output
         else:
             return rotate(a, self.angle, self.axes,
@@ -271,7 +271,7 @@ class TestShift(unittest.TestCase):
             output = xp.empty_like(a)
             return_value = shift(a, self.shift, output, self.order,
                                  self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None)
+            self.assertIsNone(return_value)
             return output
         else:
             return shift(a, self.shift, self.output, self.order,
@@ -340,7 +340,7 @@ class TestZoom(unittest.TestCase):
                           self.mode, self.cval, self.prefilter)
             return_value = zoom(a, self.zoom, output, self.order,
                                 self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None)
+            self.assertIsNone(return_value)
             return output
         else:
             return zoom(a, self.zoom, self.output, self.order,

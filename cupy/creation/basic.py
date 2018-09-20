@@ -17,7 +17,7 @@ def empty(shape, dtype=float, order='C'):
     .. seealso:: :func:`numpy.empty`
 
     """
-    return cupy.ndarray(shape, dtype=dtype, order=order)
+    return cupy.ndarray(shape, dtype, order=order)
 
 
 def empty_like(a, dtype=None):
@@ -39,7 +39,7 @@ def empty_like(a, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return cupy.ndarray(a.shape, dtype=dtype)
+    return cupy.ndarray(a.shape, dtype)
 
 
 def eye(N, M=None, k=0, dtype=float):
@@ -101,7 +101,7 @@ def ones(shape, dtype=float):
 
     """
     # TODO(beam2d): Support ordering option
-    a = cupy.ndarray(shape, dtype=dtype)
+    a = cupy.ndarray(shape, dtype)
     a.fill(1)
     return a
 
@@ -124,7 +124,7 @@ def ones_like(a, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    a = cupy.ndarray(a.shape, dtype=dtype)
+    a = cupy.ndarray(a.shape, dtype)
     a.fill(1)
     return a
 
@@ -139,7 +139,7 @@ def zeros(shape, dtype=float, order='C'):
             (Fortran-style) order.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros`
 
@@ -159,7 +159,7 @@ def zeros_like(a, dtype=None):
         dtype: Data type specifier. The dtype of ``a`` is used by default.
 
     Returns:
-        cupy.ndarray: An array filled with ones.
+        cupy.ndarray: An array filled with zeros.
 
     .. seealso:: :func:`numpy.zeros_like`
 
@@ -194,7 +194,7 @@ def full(shape, fill_value, dtype=None):
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
-    a = cupy.ndarray(shape, dtype=dtype)
+    a = cupy.ndarray(shape, dtype)
     a.fill(fill_value)
     return a
 
@@ -218,6 +218,6 @@ def full_like(a, fill_value, dtype=None):
     # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    a = cupy.ndarray(a.shape, dtype=dtype)
+    a = cupy.ndarray(a.shape, dtype)
     a.fill(fill_value)
     return a

@@ -6,6 +6,10 @@ import numpy
 from cupy import testing
 
 
+_bool_ok = testing.numpy_satisfies('>=1.10')  # after numpy PR #5946
+_float16_ok = testing.numpy_satisfies('>=1.15')  # after numpy PR #10911
+
+
 def _dec_shape(shape, dec):
     # Test smaller shape
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
@@ -271,8 +275,7 @@ class TestListArgEinSumError(unittest.TestCase):
 @testing.with_requires('numpy!=1.14.0')
 class TestEinSumUnaryOperation(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=not _bool_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -282,8 +285,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
             testing.assert_allclose(optimized_out, out)
         return out
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=not _bool_ok)
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -293,6 +295,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_out'],
+        no_bool=not _bool_ok,
         no_complex=True)  # avoid ComplexWarning
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
@@ -371,7 +374,8 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
 class TestEinSumBinaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
-        no_float16=True)  # Avoid numpy issue #10899
+        no_bool=not _bool_ok,
+        no_float16=not _float16_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
@@ -417,7 +421,8 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b', 'dtype_c'],
-        no_float16=True)  # Avoid numpy issue #10899
+        no_bool=not _bool_ok,
+        no_float16=not _float16_ok)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)

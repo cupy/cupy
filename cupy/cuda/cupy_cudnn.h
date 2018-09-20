@@ -94,6 +94,14 @@ cudnnStatus_t cudnnSetTensorNdDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
+cudnnStatus_t cudnnSetTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnScaleTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
 cudnnStatus_t cudnnDestroyTensorDescriptor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
@@ -390,12 +398,14 @@ extern "C" {
 
 typedef enum {} cudnnRNNMode_t;
 typedef enum {} cudnnDirectionMode_t;
+typedef enum {} cudnnOpTensorOp_t;
 typedef enum {} cudnnRNNInputMode_t;
 
 typedef void* cudnnDropoutDescriptor_t;
 typedef void* cudnnRNNDescriptor_t;
 typedef void* cudnnSpatialTransformerDescriptor_t;
 typedef void* cudnnSamplerType_t;
+typedef void* cudnnOpTensorDescriptor_t;
 
 
 cudnnStatus_t cudnnSetConvolution2dDescriptor_v5(...) {
@@ -522,13 +532,40 @@ cudnnStatus_t cudnnSpatialTfSamplerBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+
+// Tensor operations
+cudnnStatus_t cudnnCreateOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnSetOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnDestroyOpTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnOpTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
 
 typedef enum {} cudnnRNNAlgo_t;
+typedef enum {} cudnnReduceTensorOp_t;
+typedef enum {} cudnnReduceTensorIndices_t;
+typedef enum {} cudnnIndicesType_t;
+
 typedef void* cudnnPersistentRNNPlan_t;
+typedef void* cudnnReduceTensorDescriptor_t;
 
 cudnnStatus_t cudnnCreatePersistentRNNPlan(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -544,6 +581,36 @@ cudnnStatus_t cudnnDestroyPersistentRNNPlan(...) {
 
 cudnnStatus_t cudnnSetRNNDescriptor_v6(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+
+// Tensor reductions
+cudnnStatus_t cudnnCreateReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnSetReduceTensorDescriptor(...){
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnDestroyReduceTensorDescriptor(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReductionIndicesSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetReductionWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnReduceTensor(...) {
+    return CUDNN_STATUS_SUCCESS;
 }
 
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
@@ -701,6 +768,55 @@ typedef struct {
 
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
+
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
+
+typedef void* cudnnRNNDataDescriptor_t;
+
+typedef enum {} cudnnRNNDataLayout_t;
+typedef enum {} cudnnRNNPaddingMode_t;
+  
+cudnnStatus_t cudnnSetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardInferenceEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardTrainingEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardDataEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardWeightsEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
 
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 // TODO: check function names when cuDNN 8 is released.

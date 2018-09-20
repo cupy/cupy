@@ -23,9 +23,8 @@ from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
 
-required_cython_version = pkg_resources.parse_version('0.26.1')
+required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
-    pkg_resources.parse_version('0.27.0'),
 ]
 
 MODULES = [
@@ -33,10 +32,13 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core._dtype',
+            'cupy.core._kernel',
+            'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
             'cupy.cuda.curand',
@@ -161,7 +163,7 @@ def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
     else:
-        return (file, [])
+        return file, []
 
 
 def module_extension_name(file):
@@ -391,6 +393,9 @@ def make_extensions(options, compiler, use_cython):
         if not no_cuda:
             s['libraries'] = module['libraries']
 
+        compile_args = s.setdefault('extra_compile_args', [])
+        link_args = s.setdefault('extra_link_args', [])
+
         if module['name'] == 'cusolver':
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
@@ -564,12 +569,11 @@ def check_extensions(extensions):
     for x in extensions:
         for f in x.sources:
             if not path.isfile(f):
-                raise RuntimeError(
-                    'Missing file: %s\n' % f +
-                    'Please install Cython %s. ' % required_cython_version +
-                    'Please also check the version of Cython.\n' +
-                    'See ' +
-                    'https://docs-cupy.chainer.org/en/stable/install.html')
+                raise RuntimeError('''\
+Missing file: {}
+Please install Cython {} or later. Please also check the version of Cython.
+See https://docs-cupy.chainer.org/en/stable/install.html for details.
+'''.format(f, required_cython_version))
 
 
 def get_ext_modules(use_cython=False):

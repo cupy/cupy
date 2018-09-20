@@ -4,3 +4,4 @@ include cupy_setup_build.py
 recursive-include install *.py
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
+include docs/source/license.rst
