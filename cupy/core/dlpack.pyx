@@ -238,7 +238,6 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     for i in range(ndim):
         strides_vec.push_back(strides[i] * (bits // 8))
 
-    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
-    cupy_array._set_shape_and_strides(shape_vec, strides_vec)
+    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
     return cupy_array

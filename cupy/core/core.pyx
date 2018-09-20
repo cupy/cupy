@@ -114,37 +114,42 @@ cdef class ndarray:
 
     """
 
-    def __init__(self, shape, dtype=float, memptr=None, order='C'):
+    def __init__(self, shape, dtype=float, memptr=None, strides=None,
+                 order='C'):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
-        self._shape.reserve(len(s))
-        self.size = 1
+        cdef int order_char = 'C' if order is None else _normalize_order(order)
+
+        # `strides` is prioritized over `order`, but invalid `order` should be
+        # checked even if `strides` is given.
+        if order_char not in ('C', 'F'):
+            raise TypeError('order not understood. order={}'.format(order))
+
+        # Check for erroneous shape
         for x in s:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
-            self._shape.push_back(x)
-            self.size *= x
+
+        # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
 
+        # Store shape and strides
+        if strides is not None:
+            if memptr is None:
+                raise ValueError('memptr is required if strides is given.')
+            self._set_shape_and_strides(shape, strides, True, True)
+        elif order_char == 'C':
+            self._set_shape_and_contiguous_strides(s, itemsize, True)
+        elif order_char == 'F':
+            self._set_shape_and_contiguous_strides(s, itemsize, False)
+        else:
+            assert False
+
+        # data
         if memptr is None:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        cdef int order_char = 'C'
-        if order is not None:
-            order_char = _normalize_order(order)
-        if order_char == 'C':
-            internal.set_contiguous_strides(
-                self._shape, self._strides, itemsize, True)
-            self._c_contiguous = True
-            self._update_f_contiguity()
-        elif order_char == 'F':
-            internal.set_contiguous_strides(
-                self._shape, self._strides, itemsize, False)
-            self._f_contiguous = True
-            self._update_c_contiguity()
-        else:
-            raise TypeError('order not understood. order={}'.format(order))
 
     @property
     def __cuda_array_interface__(self):
@@ -385,7 +390,6 @@ cdef class ndarray:
                 order_char = 'C'
 
         if order_char == 'K':
-            newarray = ndarray(self.shape, dtype=dtype)
             stride_and_index = [
                 (abs(s), -i) for i, s in enumerate(self._strides)]
             stride_and_index.sort()
@@ -394,7 +398,9 @@ cdef class ndarray:
             for s, i in stride_and_index:
                 strides[-i] = stride
                 stride *= self._shape[-i]
-            newarray._set_shape_and_strides(self._shape, strides)
+            newarray = ndarray(self.shape, dtype=dtype)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
@@ -448,7 +454,8 @@ cdef class ndarray:
         finally:
             runtime.setDevice(dev_id)
         newarray = ndarray(x.shape, dtype=x.dtype)
-        newarray._set_shape_and_strides(x._shape, x._strides)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        newarray._set_shape_and_strides(x._shape, x._strides, True, True)
         newarray.data.copy_from_device(x.data, x.nbytes)
         return newarray
 
@@ -544,7 +551,8 @@ cdef class ndarray:
 
         if shape.size() != strides.size():
             raise ValueError('total size of new array must be unchanged')
-        newarray._set_shape_and_strides(shape, strides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        newarray._set_shape_and_strides(shape, strides, False, True)
         return newarray
 
     def reshape(self, *shape):
@@ -749,7 +757,8 @@ cdef class ndarray:
                 newstrides.push_back(self._strides[i])
 
         v = self.view()
-        v._set_shape_and_strides(newshape, newstrides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        v._set_shape_and_strides(newshape, newstrides, False, True)
         return v
 
     # -------------------------------------------------------------------------
@@ -1509,9 +1518,8 @@ cdef class ndarray:
     def real(self):
         if self.dtype.kind == 'c':
             view = ndarray(
-                shape=(), dtype=get_dtype(self.dtype.char.lower()),
-                memptr=self.data)
-            view._set_shape_and_strides(self._shape, self._strides)
+                shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
+                memptr=self.data, strides=self._strides)
             view.base = self.base if self.base is not None else self
             return view
         return self
@@ -1527,9 +1535,9 @@ cdef class ndarray:
     def imag(self):
         if self.dtype.kind == 'c':
             view = ndarray(
-                shape=(), dtype=get_dtype(self.dtype.char.lower()),
-                memptr=self.data + self.dtype.itemsize // 2)
-            view._set_shape_and_strides(self._shape, self._strides)
+                shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
+                memptr=self.data + self.dtype.itemsize // 2,
+                strides=self._strides)
             view.base = self.base if self.base is not None else self
             return view
         new_array = ndarray(self.shape, dtype=self.dtype)
@@ -1864,7 +1872,8 @@ cdef class ndarray:
             return self
 
         view = self.view(dtype=dtype)
-        view._set_shape_and_strides(shape, strides)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        view._set_shape_and_strides(shape, strides, True, True)
         return view
 
     cpdef _update_c_contiguity(self):
@@ -1896,18 +1905,33 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t] & shape,
+    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
                                  vector.vector[Py_ssize_t] & strides,
-                                 bint update_c_contiguity=True):
+                                 bint update_c_contiguity,
+                                 bint update_f_contiguity):
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
         self._shape = shape
         self._strides = strides
         self.size = internal.prod_ssize_t(shape)
         if update_c_contiguity:
-            self._update_contiguity()
-        else:
+            self._update_c_contiguity()
+        if update_f_contiguity:
             self._update_f_contiguity()
+
+    cpdef _set_shape_and_contiguous_strides(
+            self, vector.vector[Py_ssize_t]& shape,
+            Py_ssize_t itemsize, bint is_c_contiguous):
+
+        self.size = internal.set_contiguous_strides(
+            shape, self._strides, itemsize, is_c_contiguous)
+        self._shape = shape
+        if is_c_contiguous:
+            self._c_contiguous = True
+            self._update_f_contiguity()
+        else:
+            self._f_contiguous = True
+            self._update_c_contiguity()
 
     cdef function.CPointer get_pointer(self):
         return CArray(self)
@@ -2486,7 +2510,8 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
         shape[axis] = index - prev
         v = ary.view()
         v.data = ary.data + prev * stride
-        v._set_shape_and_strides(shape, ary._strides)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        v._set_shape_and_strides(shape, ary._strides, True, True)
         ret.append(v)
 
         prev = index
@@ -2494,7 +2519,8 @@ def array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     shape[axis] = size - prev
     v = ary.view()
     v.data = ary.data + prev * stride
-    v._set_shape_and_strides(shape, ary._strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    v._set_shape_and_strides(shape, ary._strides, True, True)
     ret.append(v)
 
     return ret
@@ -2579,7 +2605,8 @@ cdef class broadcast:
 
             strides.assign(r_strides.rbegin(), r_strides.rend())
             view = a.view()
-            view._set_shape_and_strides(shape, strides)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            view._set_shape_and_strides(shape, strides, True, True)
             broadcasted.append(view)
 
         self.values = tuple(broadcasted)
@@ -2611,7 +2638,8 @@ cpdef ndarray broadcast_to(ndarray array, shape):
             raise ValueError('Broadcasting failed')
 
     view = array.view()
-    view._set_shape_and_strides(_shape, strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    view._set_shape_and_strides(_shape, strides, True, True)
     return view
 
 
@@ -3148,7 +3176,8 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     v = a.view()
     if a.size != 0:
         v.data = a.data + offset
-    v._set_shape_and_strides(shape, strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    v._set_shape_and_strides(shape, strides, True, True)
     return v
 
 cdef _take_kernel_core = '''
@@ -3526,9 +3555,11 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     a = a[..., :diag_size, offset:offset + diag_size]
 
     ret = a.view()
+    # TODO(niboshi): Confirm update_x_contiguity flags
     ret._set_shape_and_strides(
         a.shape[:-2] + (diag_size,),
-        a.strides[:-2] + (a.strides[-1] + a.strides[-2],))
+        a.strides[:-2] + (a.strides[-1] + a.strides[-2],),
+        True, True)
     return ret
 
 
@@ -3802,15 +3833,19 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     # expand dims
     if a.ndim < b.ndim:
         view = a.view()
+        # TODO(niboshi): Confirm update_x_contiguity flags
         view._set_shape_and_strides(
             (1,) * (b.ndim - a.ndim) + a.shape,
-            (0,) * (b.ndim - a.ndim) + a.strides)
+            (0,) * (b.ndim - a.ndim) + a.strides,
+            True, True)
         a = view
     elif a.ndim > b.ndim:
         view = b.view()
+        # TODO(niboshi): Confirm update_x_contiguity flags
         view._set_shape_and_strides(
             (1,) * (a.ndim - b.ndim) + b.shape,
-            (0,) * (a.ndim - b.ndim) + b.strides)
+            (0,) * (a.ndim - b.ndim) + b.strides,
+            True, True)
         b = view
 
     broadcast_pre_shape = numpy.maximum(
@@ -3841,10 +3876,12 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             use_broadcast = True
 
     view = a.view()
-    view._set_shape_and_strides(a_shape, a_strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    view._set_shape_and_strides(a_shape, a_strides, True, True)
     a = view
     view = b.view()
-    view._set_shape_and_strides(b_shape, b_strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    view._set_shape_and_strides(b_shape, b_strides, True, True)
     b = view
 
     out = ndarray(out_shape, dtype=dtype)
@@ -3860,7 +3897,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         out_view_shape += (1,)
         out_view_strides += (0,)
 
-    out_view._set_shape_and_strides(out_view_shape, out_view_strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    out_view._set_shape_and_strides(
+        out_view_shape, out_view_strides, True, True)
 
     # (A B)^T = B^T A^T
     a, b = b, a
