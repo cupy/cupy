@@ -240,7 +240,7 @@ class RandomState(object):
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = ()
-        elif (isinstance(size, collections.Sequence)):
+        elif isinstance(size, collections.Sequence):
             shape = tuple(size)
         else:
             shape = size,

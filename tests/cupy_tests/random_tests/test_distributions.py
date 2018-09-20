@@ -254,14 +254,15 @@ class TestDistributionsMultivariateNormal(unittest.TestCase):
 
     def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
         mean = cupy.zeros(self.d, dtype=mean_dtype)
-        cov = cupy.eye(self.d, dtype=cov_dtype)
+        cov = cupy.random.normal(size=(self.d, self.d), dtype=cov_dtype)
+        cov = cov.T.dot(cov)
         out = dist_func(mean, cov, self.shape, dtype=dtype)
         self.assertEqual(self.shape+(self.d,), out.shape)
         self.assertEqual(out.dtype, dtype)
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('mean_dtype')
-    @cupy.testing.for_float_dtypes('cov_dtype')
+    @cupy.testing.for_float_dtypes('mean_dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('cov_dtype', no_float16=True)
     def test_normal(self, mean_dtype, cov_dtype, dtype):
         self.check_distribution(distributions.multivariate_normal,
                                 mean_dtype, cov_dtype, dtype)
