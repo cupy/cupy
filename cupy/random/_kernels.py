@@ -385,6 +385,38 @@ __device__ long rk_geometric_search(rk_state *state, double p) {
 }
 '''
 
+rk_logseries_definition = '''
+__device__ long rk_logseries(rk_state *state, double p)
+{
+    double q, r, U, V;
+    long result;
+
+    r = log(1.0 - p);
+
+    while (1) {
+        V = rk_double(state);
+        if (V >= p) {
+            return 1;
+        }
+        U = rk_double(state);
+        q = 1.0 - exp(r*U);
+        if (V <= q*q) {
+            result = (long)floor(1 + log(V)/log(q));
+            if (result < 1) {
+                continue;
+            }
+            else {
+                return result;
+            }
+        }
+        if (V >= q) {
+            return 1;
+        }
+        return 2;
+    }
+}
+'''
+
 rk_geometric_inversion_definition = '''
 __device__ long rk_geometric_inversion(rk_state *state, double p) {
     return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
@@ -638,6 +670,19 @@ geometric_kernel = core.ElementwiseKernel(
     y = rk_geometric(&internal_state, p);
     ''',
     'geometric_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_logseries_definition]
+logseries_kernel = core.ElementwiseKernel(
+    'T p, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_logseries(&internal_state, p);
+    ''',
+    'logseries_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

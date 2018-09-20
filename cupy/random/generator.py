@@ -226,40 +226,6 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    _logseries_kernel = core.ElementwiseKernel(
-        'T V, T U, T p', 'Y y',
-        """
-        T q, r;
-        T result;
-
-        r = log(1.0 - p);
-
-        while (1) {
-            if (V >= p) {
-                y = 1;
-                break;
-            }
-            q = 1.0 - exp(r*U);
-            if (V <= q*q) {
-                result = (T)floor(1 + log(V)/log(q));
-                if (result < 1) {
-                    continue;
-                }
-                else {
-                    y = result;
-                    break;
-                }
-            }
-            if (V >= q) {
-                y = 1;
-                break;
-            }
-            y = 2;
-            break;
-        }
-        """,
-        'logseries_kernel')
-
     def logseries(self, p, size=None, dtype=int):
         """Returns an array of samples drawn from a log series distribution.
 
@@ -269,10 +235,11 @@ class RandomState(object):
 
         """
         p = cupy.asarray(p)
-        V = self._random_sample_raw(size, p.dtype)
-        U = self._random_sample_raw(size, p.dtype)
+        if size is None:
+            size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        RandomState._logseries_kernel(V, U, p, y)
+        _kernels.logseries_kernel(p, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
         return y
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
