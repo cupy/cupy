@@ -79,7 +79,8 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_strides_is_given_and_order_is_ignored(self):
         buf = cupy.ndarray(20, numpy.uint8)
-        a = cupy.ndarray((2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
+        a = cupy.ndarray(
+            (2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
 
     @testing.numpy_cupy_raises(accept_error=TypeError)
