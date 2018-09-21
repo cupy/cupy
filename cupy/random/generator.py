@@ -559,6 +559,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.wald`
         """
         mean, scale = cupy.asarray(mean), cupy.asarray(scale)
+        if size is None:
+            size = cupy.broadcast(mean, scale).shape
         x = self.normal(size=size, dtype=dtype)
         u = self.random_sample(size=size, dtype=dtype)
         RandomState._wald_kernel(mean, scale, u, x, x)

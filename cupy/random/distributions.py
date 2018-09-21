@@ -565,16 +565,16 @@ def vonmises(mu, kappa, size=None, dtype=float):
 def wald(mean, scale, size=None, dtype=float):
     """Wald distribution.
 
-    Returns an array of samples drawn from the wald distribution. Its
+    Returns an array of samples drawn from the Wald distribution. Its
     probability density function is defined as
 
     .. math::
-       f(x) = \\sqrt{\\frac{scale}{2\\pi x^3}}\\
-           e^{\\frac{-scale(x-mean)^2}{2mean^2x}},
+       f(x) = \\sqrt{\\frac{\\lambda}{2\\pi x^3}}\\
+           e^{\\frac{-\\lambda(x-\\mu)^2}{2\\mu^2x}},
 
     Args:
-        mean (float): Parameter of the wald distribution :math:`mean`.
-        scale (float): Parameter of the wald distribution :math:`scale`.
+        mean (float): Parameter of the wald distribution :math:`\\mu`.
+        scale (float): Parameter of the wald distribution :math:`\\lambda`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
