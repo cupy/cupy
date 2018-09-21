@@ -537,13 +537,13 @@ class RandomState(object):
         return y
 
     _wald_kernel = core.ElementwiseKernel(
-        'T mean, T scale, T U, T Y', 'T X',
+        'T mean, T scale, T U', 'T X',
         """
             T mu_2l;
-            T Z;
+            T Y;
             mu_2l = mean / (2*scale);
-            Z = mean*Y*Y;
-            X = mean + mu_2l*(Z - sqrt(4*scale*Z + Z*Z));
+            Y = mean*X*X;
+            X = mean + mu_2l*(Y - sqrt(4*scale*Y + Y*Y));
             if (U > mean/(mean+X))
             {
                 X = mean*mean/X;
@@ -552,7 +552,7 @@ class RandomState(object):
         'wald_scale')
 
     def wald(self, mean, scale, size=None, dtype=float):
-        """Returns an array of samples drawn from the wald distribution.
+        """Returns an array of samples drawn from the Wald distribution.
 
          .. seealso::
             :func:`cupy.random.wald` for full documentation,
@@ -564,8 +564,7 @@ class RandomState(object):
             size = cupy.broadcast(mean, scale).shape
         x = self.normal(size=size, dtype=dtype)
         u = self.random_sample(size=size, dtype=dtype)
-        RandomState._wald_kernel(mean, scale, u, x, x)
-        return x
+        return RandomState._wald_kernel(mean, scale, u, x)
 
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
