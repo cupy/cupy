@@ -571,6 +571,8 @@ def zipf(a, size=None, dtype=int):
     .. math::
         f(x) = \\frac{x^{-a}}{ \\zeta (a)},
 
+    where :math:`\\zeta` is the Riemann Zeta function.
+
     Args:
         a (float): Parameter of the beta distribution :math:`a`.
         size (int or tuple of ints): The shape of the array. If ``None``, a

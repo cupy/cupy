@@ -521,21 +521,6 @@ class RandomState(object):
             high = cupy.asarray(high, dtype)
         return RandomState._scale_kernel(low, high, rand)
 
-    def zipf(self, a, size=None, dtype=int):
-        """Returns an array of samples drawn from the Zipf distribution.
-
-        .. seealso::
-            :func:`cupy.random.zipf` for full documentation,
-            :meth:`numpy.random.RandomState.zipf`
-        """
-        a = cupy.asarray(a)
-        if size is None:
-            size = a.shape
-        y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.zipf_kernel(a, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
-        return y
-
     def vonmises(self, mu, kappa, size=None, dtype=float):
         """Returns an array of samples drawn from the von Mises distribution.
 
@@ -548,6 +533,23 @@ class RandomState(object):
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    def zipf(self, a, size=None, dtype=int):
+        """Returns an array of samples drawn from the Zipf distribution.
+
+        .. seealso::
+            :func:`cupy.random.zipf` for full documentation,
+            :meth:`numpy.random.RandomState.zipf`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a <= 1.0):
+            raise ValueError("'a' must be a valid float > 1.0")
+        if size is None:
+            size = a.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.zipf_kernel(a, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
 
