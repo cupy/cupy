@@ -315,6 +315,21 @@ class TestDistributionsPower(RandomDistributionsTestCase):
         a = numpy.full(self.a_shape, 0.5, dtype=a_dtype)
         self.check_distribution('power', {'a': a}, dtype)
 
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_power_for_zero_a(self, a_dtype, dtype):
+        a = numpy.zeros(self.a_shape, dtype=a_dtype)
+        self.check_distribution('power', {'a': a}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_power_for_negative_a(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, -0.5, dtype=a_dtype)
+        with self.assertRaises(ValueError):
+            cp_params = {'a': cupy.asarray(a)}
+            getattr(distributions, 'power')(
+                size=self.shape, dtype=dtype, **cp_params)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
