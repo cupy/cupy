@@ -492,6 +492,18 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
 }
 '''
 
+long_min_max_definition = '''
+__device__ long min(long a, long b)
+{
+    return a < b ? a : b;
+}
+
+__device__ long max(long a, long b)
+{
+    return a > b ? a : b;
+}
+'''
+
 rk_hypergeometric_definition = '''
 __device__ long rk_hypergeometric_hyp(
     rk_state *state, long good, long bad, long sample)
@@ -740,7 +752,8 @@ geometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, loggam_definition, rk_hypergeometric_definition]
+    [rk_basic_difinition, loggam_definition, long_min_max_definition,
+     rk_hypergeometric_definition]
 hypergeometric_kernel = core.ElementwiseKernel(
     'S good, T bad, U sample, uint32 seed', 'Y y',
     '''
