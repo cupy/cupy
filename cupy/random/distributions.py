@@ -397,10 +397,10 @@ def rayleigh(scale=1.0, size=None, dtype=float):
     Its probability density function is defined as
 
       .. math::
-         f(x) = \\frac{x}{scale^2}e^{\\frac{-x^2}{2-scale^2}},
+         f(x) = \\frac{x}{\\sigma^2}e^{\\frac{-x^2}{2-\\sigma^2}},
 
     Args:
-        scale (array): Parameter of the rayleigh distribution :math:`scale`.
+        scale (array): Parameter of the rayleigh distribution :math:`\\sigma`.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
         dtype: Data type specifier. Only :class:`numpy.float32` and
