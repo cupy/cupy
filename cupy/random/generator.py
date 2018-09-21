@@ -544,7 +544,7 @@ class RandomState(object):
             mu_2l = mean / (2*scale);
             Z = mean*Y*Y;
             X = mean + mu_2l*(Z - sqrt(4*scale*Z + Z*Z));
-            if (! U <= mean/(mean+X))
+            if (U > mean/(mean+X))
             {
                 X = mean*mean/X;
             }
