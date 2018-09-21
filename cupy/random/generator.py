@@ -329,6 +329,9 @@ class RandomState(object):
             :func:`cupy.random.rayleigh` for full documentation,
             :meth:`numpy.random.RandomState.rayleigh`
         """
+        scale = cupy.asarray(scale)
+        if size is None:
+            size = scale.shape
         x = self._random_sample_raw(size, dtype)
         x = cupy.log(x, out=x)
         x = cupy.multiply(x, -2., out=x)
