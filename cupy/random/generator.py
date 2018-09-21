@@ -537,7 +537,7 @@ class RandomState(object):
         return y
 
     _wald_kernel = core.ElementwiseKernel(
-        'M mean, S scale, T U, T Y', 'T X',
+        'T mean, T scale, T U, T Y', 'T X',
         """
             T mu_2l;
             T Z;
@@ -558,7 +558,8 @@ class RandomState(object):
             :func:`cupy.random.wald` for full documentation,
             :meth:`numpy.random.RandomState.wald`
         """
-        mean, scale = cupy.asarray(mean), cupy.asarray(scale)
+        mean, scale = \
+            cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
         if size is None:
             size = cupy.broadcast(mean, scale).shape
         x = self.normal(size=size, dtype=dtype)
