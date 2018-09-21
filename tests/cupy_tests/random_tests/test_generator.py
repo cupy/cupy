@@ -803,6 +803,19 @@ class TestVonmises(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'a': 2.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestZipf(RandomGeneratorTestCase):
+
+    target_method = 'zipf'
+
+    def test_zipf(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 3, 'size': 5},
     {'a': [1, 2, 3], 'size': 5},
 )

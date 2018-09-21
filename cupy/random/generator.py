@@ -536,6 +536,23 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def zipf(self, a, size=None, dtype=int):
+        """Returns an array of samples drawn from the Zipf distribution.
+
+        .. seealso::
+            :func:`cupy.random.zipf` for full documentation,
+            :meth:`numpy.random.RandomState.zipf`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a <= 1.0):
+            raise ValueError("'a' must be a valid float > 1.0")
+        if size is None:
+            size = a.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.zipf_kernel(a, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
 

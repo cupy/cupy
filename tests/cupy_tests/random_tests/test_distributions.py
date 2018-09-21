@@ -414,3 +414,18 @@ class TestDistributionsVonmises(unittest.TestCase):
     def test_vonmises(self, mu_dtype, kappa_dtype):
         self.check_distribution(distributions.vonmises,
                                 mu_dtype, kappa_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsZipf(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes([numpy.int32, numpy.int64], 'dtype')
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_zipf(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, 2, dtype=a_dtype)
+        self.check_distribution('zipf', {'a': a}, dtype)
