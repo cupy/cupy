@@ -501,7 +501,7 @@ class RandomState(object):
         return sample
 
     _triangular_kernel = core.ElementwiseKernel(
-        'T U, L left, M mode, R right', 'T x',
+        'L left, M mode, R right', 'T x',
         """
         T base, leftbase, ratio, leftprod, rightprod;
 
@@ -511,12 +511,12 @@ class RandomState(object):
         leftprod = leftbase*base;
         rightprod = (right - mode)*base;
 
-        if (U <= ratio)
+        if (x <= ratio)
         {
-            x = left + sqrt(U*leftprod);
+            x = left + sqrt(x*leftprod);
         } else
         {
-            x = right - sqrt((1.0 - U) * rightprod);
+            x = right - sqrt((1.0 - x) * rightprod);
         }
         """,
         'triangular_kernel'
@@ -534,7 +534,7 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
-        RandomState._triangular_kernel(x, left, mode, right, x)
+        RandomState._triangular_kernel(left, mode, right, x)
         return x
 
     _scale_kernel = core.ElementwiseKernel(
