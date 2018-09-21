@@ -165,6 +165,36 @@ class TestDirichlet(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+    {'scale': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestExponential(RandomGeneratorTestCase):
+
+    target_method = 'exponential'
+
+    def test_exponential(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+
+@testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestF(RandomGeneratorTestCase):
+
+    target_method = 'f'
+
+    def test_f(self):
+        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
+
+
+@testing.parameterize(
     {'shape': 0.5, 'scale': 0.5},
     {'shape': 1.0, 'scale': 0.5},
     {'shape': 3.0, 'scale': 0.5},
@@ -287,6 +317,51 @@ class TestNormal(RandomGeneratorTestCase):
 
     def test_normal_float64(self):
         self.check_normal(numpy.float64)
+
+
+@testing.parameterize(
+    {'a': 1.0},
+    {'a': 3.0},
+    {'a': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPareto(RandomGeneratorTestCase):
+
+    target_method = 'pareto'
+
+    def test_pareto(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
+    {'lam': 1.0},
+    {'lam': 3.0},
+    {'lam': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPoisson(RandomGeneratorTestCase):
+
+    target_method = 'poisson'
+
+    def test_poisson(self):
+        self.generate(lam=self.lam, size=(3, 2))
+
+
+@testing.parameterize(
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardT(RandomGeneratorTestCase):
+
+    target_method = 'standard_t'
+
+    def test_standard_t(self):
+        self.generate(df=self.df, size=(3, 2))
 
 
 @testing.gpu
