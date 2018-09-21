@@ -211,6 +211,10 @@ cdef extern from 'cupy_cuda.h' nogil:
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
         int batchSize)
+    int cublasDgetriBatched(
+        Handle handle, int n, const double **Aarray, int lda,
+        int *PivotArray, double *Carray[], int ldc, int *infoArray,
+        int batchSize)
     int cublasGemmEx(
         Handle handle, Operation transa, Operation transb,
         int m, int n, int k,
@@ -903,6 +907,17 @@ cpdef sgetriBatched(
         status = cublasSgetriBatched(
             <Handle>handle, n, <const float**>Aarray, lda, <int*>PivotArray,
             <float**>Carray, ldc, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef dgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasDgetriBatched(
+            <Handle>handle, n, <const double**>Aarray, lda, <int*>PivotArray,
+            <double**>Carray, ldc, <int*>infoArray, batchSize)
     check_status(status)
 
 

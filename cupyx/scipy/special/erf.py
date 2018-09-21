@@ -29,3 +29,39 @@ erfcx = core.create_ufunc(
     .. seealso:: :meth:`scipy.special.erfcx`
 
     ''')
+
+
+erfinv = core.create_ufunc(
+    'cupyx_scipy_erfinv', ('f->f', 'd->d'),
+    '''
+    if (in0 < -1) {
+        out0 = -1.0 / 0.0;
+    } else if (in0 > 1) {
+        out0 = 1.0 / 0.0;
+    } else {
+        out0 = erfinv(in0);
+    }
+    ''',
+    doc='''Inverse function of error function.
+
+    .. seealso:: :meth:`scipy.special.erfinv`
+
+    ''')
+
+
+erfcinv = core.create_ufunc(
+    'cupyx_scipy_erfcinv', ('f->f', 'd->d'),
+    '''
+    if (in0 < 0) {
+        out0 = 1.0 / 0.0;
+    } else if (in0 > 2) {
+        out0 = -1.0 / 0.0;
+    } else {
+        out0 = erfcinv(in0);
+    }
+    ''',
+    doc='''Inverse function of complementary error function.
+
+    .. seealso:: :meth:`scipy.special.erfcinv`
+
+    ''')
