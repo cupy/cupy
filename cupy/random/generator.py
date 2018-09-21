@@ -235,6 +235,10 @@ class RandomState(object):
 
         """
         p = cupy.asarray(p)
+        if cupy.any(p <= 0):
+            raise ValueError('p <= 0.0')
+        if cupy.any(p >= 1):
+            raise ValueError('p >= 1.0')
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
