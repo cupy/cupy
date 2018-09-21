@@ -806,6 +806,7 @@ class TestVonmises(RandomGeneratorTestCase):
     {'a': 0.5},
     {'a': 1.0},
     {'a': 3.0},
+    {'a': numpy.inf},
 )
 @testing.gpu
 @testing.fix_random()
