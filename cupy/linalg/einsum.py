@@ -38,7 +38,8 @@ def _transpose_ex(a, axeses):
         stride = sum(a.strides[axis] for axis in axes)
         strides.append(stride)
     a = a.view()
-    a._set_shape_and_strides(shape, strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    a._set_shape_and_strides(shape, strides, True, True)
     return a
 
 
