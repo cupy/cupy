@@ -531,6 +531,8 @@ class RandomState(object):
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
+        if size is None:
+            size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
         RandomState._triangular_kernel(x, left, mode, right, x)
         return x
