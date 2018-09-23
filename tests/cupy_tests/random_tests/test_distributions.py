@@ -17,8 +17,9 @@ _int_dtypes = _signed_dtypes + _unsigned_dtypes
 class RandomDistributionsTestCase(unittest.TestCase):
     def check_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
-        np_out = getattr(numpy.random, dist_name)(
-            size=self.shape, **params).astype(dtype)
+        np_out = numpy.asarray(
+            getattr(numpy.random, dist_name)(size=self.shape, **params),
+            dtype)
         cp_out = getattr(distributions, dist_name)(
             size=self.shape, dtype=dtype, **cp_params)
         self.assertEqual(cp_out.shape, np_out.shape)
@@ -100,7 +101,7 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'scale_shape': [(), (3, 2)],
 })
 )
@@ -113,6 +114,15 @@ class TestDistributionsExponential(RandomDistributionsTestCase):
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
         self.check_distribution('exponential',
                                 {'scale': scale}, dtype)
+
+
+@testing.gpu
+class TestDistributionsExponentialError(RandomDistributionsTestCase):
+
+    def test_negative_scale(self):
+        scale = cupy.array([2, -1, 3], dtype=numpy.float32)
+        with self.assertRaises(ValueError):
+            cupy.random.exponential(scale)
 
 
 @testing.parameterize(*testing.product({

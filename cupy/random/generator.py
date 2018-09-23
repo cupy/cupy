@@ -142,8 +142,14 @@ class RandomState(object):
             :func:`cupy.random.exponential` for full documentation,
             :meth:`numpy.random.RandomState.exponential`
         """
+        scale = cupy.asarray(scale, dtype)
+        if (scale < 0).any():
+            raise ValueError('scale < 0')
+        if size is None:
+            size = scale.shape
         x = self.standard_exponential(size, dtype)
-        return cupy.multiply(scale, x, out=x)
+        x *= scale
+        return x
 
     def f(self, dfnum, dfden, size=None, dtype=float):
         """Returns an array of samples drawn from the f distribution.
