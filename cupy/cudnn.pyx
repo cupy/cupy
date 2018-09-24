@@ -76,7 +76,7 @@ cpdef set_max_workspace_size(size):
     _max_workspace_size = size
 
 
-class Descriptor(object):
+cdef class Descriptor(object):
 
     def __init__(self, descriptor, destroyer):
         self.value = descriptor
