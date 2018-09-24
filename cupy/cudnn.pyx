@@ -573,7 +573,7 @@ cpdef bint is_tensor_core_available(dtype) except *:
             int(device.get_compute_capability()) == 70)
 
 
-class DropoutStates(object):
+cdef class DropoutStates(object):
 
     def __init__(self, handle, seed):
         cdef size_t cudnn_handle
