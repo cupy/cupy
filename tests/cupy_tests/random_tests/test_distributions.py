@@ -261,12 +261,10 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
     def test_logseries_for_invalid_p(self, p_dtype, dtype):
         with self.assertRaises(ValueError):
             cp_params = {'p': cupy.zeros(self.p_shape, dtype=p_dtype)}
-            getattr(distributions, 'logseries')(
-                size=self.shape, dtype=dtype, **cp_params)
+            distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
         with self.assertRaises(ValueError):
             cp_params = {'p': cupy.ones(self.p_shape, dtype=p_dtype)}
-            getattr(distributions, 'logseries')(
-                size=self.shape, dtype=dtype, **cp_params)
+            distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
 
 
 @testing.parameterize(*testing.product({
