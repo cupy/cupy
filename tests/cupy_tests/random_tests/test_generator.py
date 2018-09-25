@@ -288,6 +288,42 @@ class TestLogNormal(RandomGeneratorTestCase):
 
 @testing.gpu
 @testing.parameterize(*[
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},
+    {'args': ([10., 10.], [[20., 10.], [10., 20.]]),
+     'size': None, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 10, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (1, 2, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 3, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (3, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (), 'tol': 1e-6},
+])
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.fix_random()
+class TestMultivariateNormal(RandomGeneratorTestCase):
+
+    target_method = 'multivariate_normal'
+
+    def check_multivariate_normal(self, dtype):
+        vals = self.generate_many(
+            mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
+            dtype=dtype, _count=10)
+
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape + (2,)
+
+    def test_multivariate_normal_float32(self):
+        self.check_multivariate_normal(numpy.float32)
+
+    def test_multivariate_normal_float64(self):
+        self.check_multivariate_normal(numpy.float64)
+
+
+@testing.gpu
+@testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},
     {'args': (0.0, 1.0), 'size': 10},

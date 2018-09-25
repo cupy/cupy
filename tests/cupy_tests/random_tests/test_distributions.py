@@ -1,6 +1,7 @@
 import unittest
 
 import cupy
+from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
 
@@ -249,6 +250,32 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
         sigma = numpy.ones(self.sigma_shape, dtype=sigma_dtype)
         self.check_distribution('lognormal',
                                 {'mean': mean, 'sigma': sigma}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'd': [2, 4],
+})
+)
+@testing.gpu
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+class TestDistributionsMultivariateNormal(unittest.TestCase):
+
+    def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
+        mean = cupy.zeros(self.d, dtype=mean_dtype)
+        cov = cupy.random.normal(size=(self.d, self.d), dtype=cov_dtype)
+        cov = cov.T.dot(cov)
+        out = dist_func(mean, cov, self.shape, dtype=dtype)
+        self.assertEqual(self.shape+(self.d,), out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('mean_dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('cov_dtype', no_float16=True)
+    def test_normal(self, mean_dtype, cov_dtype, dtype):
+        self.check_distribution(distributions.multivariate_normal,
+                                mean_dtype, cov_dtype, dtype)
 
 
 @testing.parameterize(*testing.product({
