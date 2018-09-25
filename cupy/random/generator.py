@@ -193,7 +193,12 @@ class RandomState(object):
             :func:`cupy.random.logistic` for full documentation,
             :meth:`numpy.random.RandomState.logistic`
         """
-        x = self._random_sample_raw(size, dtype)
+        loc, scale = cupy.asarray(loc), cupy.asarray(scale)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = cupy.empty(shape=size, dtype=dtype)
+        _kernels.open_uniform_kernel(self.rk_seed, x)
+        self.rk_seed += numpy.prod(size)
         x = (1.0 - x) / x
         cupy.log(x, out=x)
         cupy.multiply(x, scale, out=x)

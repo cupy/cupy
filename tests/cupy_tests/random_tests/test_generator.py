@@ -230,6 +230,11 @@ class TestLogistic(RandomGeneratorTestCase):
     def test_logistic_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
 
+    def test_standard_logistic_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
+
 
 @testing.gpu
 @testing.parameterize(*[
