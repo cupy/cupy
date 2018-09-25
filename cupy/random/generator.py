@@ -16,6 +16,7 @@ from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
+from cupy import util
 
 
 class RandomState(object):
@@ -236,6 +237,7 @@ class RandomState(object):
             :func:`cupy.random.multivariate_normal` for full documentation,
             :meth:`numpy.random.RandomState.multivariate_normal`
         """
+        util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
