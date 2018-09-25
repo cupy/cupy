@@ -44,6 +44,8 @@ Rounding
    :toctree: generated/
    :nosignatures:
 
+   cupy.around
+   cupy.round_
    cupy.rint
    cupy.floor
    cupy.ceil
@@ -83,7 +85,7 @@ Exponential and logarithm functions
 
 
 Other special functions
------------------------------------
+-----------------------
 
 .. autosummary::
    :toctree: generated/

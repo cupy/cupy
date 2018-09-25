@@ -114,6 +114,66 @@ def dirichlet(alpha, size=None, dtype=float):
     return rs.dirichlet(alpha, size, dtype)
 
 
+def exponential(scale, size=None, dtype=float):
+    """Exponential distribution.
+
+    Returns an array of samples drawn from the exponential distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}),
+
+    Args:
+        scale (float or array_like of floats): The scale parameter
+            :math:`\\beta`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the exponential distribution.
+
+    .. seealso::
+        :func:`numpy.random.exponential`
+    """
+    rs = generator.get_random_state()
+    return rs.exponential(scale, size, dtype)
+
+
+def f(dfnum, dfden, size=None, dtype=float):
+    """F distribution.
+
+    Returns an array of samples drawn from the f distribution. Its probability
+    density function is defined as
+
+    .. math::
+        f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+            \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+            x^{\\frac{d_1}{2}-1} \
+            \\left(1+\\frac{d_1}{d_2}x\\right) \
+            ^{-\\frac{d_1+d_2}{2}},
+
+    Args:
+        dfnum (float or array_like of floats): Parameter of the f distribution
+            :math:`d_1`.
+        dfden (float or array_like of floats): Parameter of the f distribution
+            :math:`d_2`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the f distribution.
+
+    .. seealso::
+        :func:`numpy.random.f`
+    """
+    rs = generator.get_random_state()
+    return rs.f(dfnum, dfden, size, dtype)
+
+
 def gamma(shape, scale=1.0, size=None, dtype=float):
     """Gamma distribution.
 
@@ -276,6 +336,60 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     return x
 
 
+def pareto(a, size=None, dtype=float):
+    """Pareto II or Lomax distribution.
+
+    Returns an array of samples drawn from the Pareto II distribution. Its
+    probability density function is defined as
+
+    .. math::
+        f(x) = \\alpha(1+x)^{-(\\alpha+1)},
+
+    Args:
+        a (float or array_like of floats): Parameter of the Pareto II
+            distribution :math:`\\alpha`.
+        size (int or tuple of ints): The shape of the array. If ``None``, this
+            function generate an array whose shape is `a.shape`.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Pareto II distribution.
+
+    .. seealso:: :func:`numpy.random.pareto`
+    """
+    rs = generator.get_random_state()
+    x = rs.pareto(a, size, dtype)
+    return x
+
+
+def poisson(lam=1.0, size=None, dtype=int):
+    """Poisson distribution.
+
+    Returns an array of samples drawn from the poisson distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{\\lambda^xe^{-\\lambda}}{k!},
+
+    Args:
+        lam (array_like of floats): Parameter of the poisson distribution
+            :math:`\\lambda`.
+        size (int or tuple of ints): The shape of the array. If ``None``, this
+            function generate an array whose shape is `lam.shape`.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the poisson distribution.
+
+    .. seealso:: :func:`numpy.random.poisson`
+    """
+    rs = generator.get_random_state()
+    x = rs.poisson(lam, size, dtype)
+    return x
+
+
 def standard_cauchy(size=None, dtype=float):
     """Standard cauchy distribution.
 
@@ -370,6 +484,34 @@ def standard_normal(size=None, dtype=float):
     return normal(size=size, dtype=dtype)
 
 
+def standard_t(df, size=None, dtype=float):
+    """Standard Student's t distribution.
+
+    Returns an array of samples drawn from the standard Student's t
+    distribution. Its probability density function is defined as
+
+    .. math::
+        f(x) = \\frac{\\Gamma(\\frac{\\nu+1}{2})} \
+            {\\sqrt{\\nu\\pi}\\Gamma(\\frac{\\nu}{2})} \
+            \\left(1 + \\frac{x^2}{\\nu} \\right)^{-(\\frac{\\nu+1}{2})},
+
+    Args:
+        df (float or array_like of floats): Degree of freedom :math:`\\nu`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the standard Student's t distribution.
+
+    .. seealso::
+        :func:`numpy.random.standard_t`
+    """
+    rs = generator.get_random_state()
+    return rs.standard_t(df, size, dtype)
+
+
 def uniform(low=0.0, high=1.0, size=None, dtype=float):
     """Returns an array of uniformly-distributed samples over an interval.
 
@@ -418,3 +560,31 @@ def vonmises(mu, kappa, size=None, dtype=float):
     """
     rs = generator.get_random_state()
     return rs.vonmises(mu, kappa, size=size, dtype=dtype)
+
+
+def zipf(a, size=None, dtype=int):
+    """Zipf distribution.
+
+    Returns an array of samples drawn from the Zipf distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{x^{-a}}{ \\zeta (a)},
+
+    where :math:`\\zeta` is the Riemann Zeta function.
+
+    Args:
+        a (float): Parameter of the beta distribution :math:`a`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Zipf distribution.
+
+    .. seealso::
+        :func:`numpy.random.zipf`
+    """
+    rs = generator.get_random_state()
+    return rs.zipf(a, size=size, dtype=dtype)

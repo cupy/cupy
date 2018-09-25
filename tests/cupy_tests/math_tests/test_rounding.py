@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -59,3 +61,98 @@ class TestRounding(unittest.TestCase):
     def test_fix(self):
         self.check_unary('fix')
         self.check_unary_complex_unsupported('fix')
+
+    def test_around(self):
+        self.check_unary('around')
+        self.check_unary_complex_unsupported('around')
+
+    def test_round_(self):
+        self.check_unary('round_')
+        self.check_unary_complex_unsupported('around')
+
+
+@testing.parameterize(*testing.product({
+    'decimals': [-2, -1, 0, 1, 2],
+}))
+class TestRound(unittest.TestCase):
+
+    shape = (20,)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_round(self, xp, dtype):
+        if dtype == numpy.bool_:
+            # avoid cast problem
+            a = testing.shaped_random(self.shape, xp, scale=10, dtype=dtype)
+            return xp.around(a, 0)
+        if dtype == numpy.float16:
+            # avoid accuracy problem
+            a = testing.shaped_random(self.shape, xp, scale=10, dtype=dtype)
+            return xp.around(a, 0)
+        a = testing.shaped_random(self.shape, xp, scale=100, dtype=dtype)
+        return xp.around(a, self.decimals)
+
+    @testing.numpy_cupy_array_equal()
+    def test_round_out(self, xp):
+        a = testing.shaped_random(self.shape, xp, scale=100, dtype='d')
+        out = xp.empty_like(a)
+        xp.around(a, self.decimals, out)
+        return out
+
+
+@testing.parameterize(*testing.product({
+    'decimals': [-100, -99, -90, 0, 90, 99, 100],
+}))
+class TestRoundExtreme(unittest.TestCase):
+
+    shape = (20,)
+
+    @testing.for_dtypes([numpy.float64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_round_large(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, scale=1e100, dtype=dtype)
+        return xp.around(a, self.decimals)
+
+    @testing.for_dtypes([numpy.float64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_round_small(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, scale=1e-100, dtype=dtype)
+        return xp.around(a, self.decimals)
+
+
+@testing.parameterize(*testing.product({
+    'value': [
+        (14, -1),
+        (15, -1),
+        (16, -1),
+        (14.0, -1),
+        (15.0, -1),
+        (16.0, -1),
+        (1.4, 0),
+        (1.5, 0),
+        (1.6, 0),
+    ]
+}))
+class TestRoundBorder(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_positive1(self, xp):
+        a, decimals = self.value
+        return xp.around(a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_positive2(self, xp):
+        a, decimals = self.value
+        a = xp.asarray(a)
+        return xp.around(a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_negative1(self, xp):
+        a, decimals = self.value
+        return xp.around(-a, decimals)
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_around_negative2(self, xp):
+        a, decimals = self.value
+        a = xp.asarray(a)
+        return xp.around(-a, decimals)
