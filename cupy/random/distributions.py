@@ -339,7 +339,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
 def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
                         dtype=float):
-    """Multivariate normal distribution.
+    """(experimental) Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
     distribution. Its probability density function is defined as

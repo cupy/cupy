@@ -231,7 +231,8 @@ class RandomState(object):
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
                             tol=1e-8, dtype=float):
-        """Returns an array of samples drawn from the multivariate normal distribution.
+        """(experimental) Returns an array of samples drawn from the
+        multivariate normal distribution.
 
         .. seealso::
             :func:`cupy.random.multivariate_normal` for full documentation,
