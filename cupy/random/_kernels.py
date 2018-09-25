@@ -645,6 +645,7 @@ f_kernel = core.ElementwiseKernel(
     loop_prep="rk_state internal_state;"
 )
 
+definitions = \
     [rk_basic_definition, rk_geometric_definition]
 geometric_kernel = core.ElementwiseKernel(
     'T p, uint32 seed', 'Y y',
