@@ -616,7 +616,7 @@ standard_t_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
+    [rk_basic_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
@@ -659,7 +659,7 @@ geometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, loggam_definition,
+    [rk_basic_definition, loggam_definition,
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = core.ElementwiseKernel(
@@ -701,7 +701,7 @@ vonmises_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_zipf_definition]
+    rk_basic_definition, rk_zipf_definition]
 zipf_kernel = core.ElementwiseKernel(
     'T a, uint64 seed', 'Y y',
     '''
