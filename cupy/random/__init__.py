@@ -27,6 +27,7 @@ from cupy.random.distributions import geometric  # NOQA
 from cupy.random.distributions import gumbel  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
+from cupy.random.distributions import multivariate_normal  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import pareto  # NOQA
 from cupy.random.distributions import poisson  # NOQA
@@ -38,6 +39,7 @@ from cupy.random.distributions import standard_t  # NOQA
 from cupy.random.distributions import uniform  # NOQA
 from cupy.random.distributions import vonmises  # NOQA
 from cupy.random.distributions import weibull  # NOQA
+from cupy.random.distributions import zipf  # NOQA
 from cupy.random.generator import get_random_state  # NOQA
 from cupy.random.generator import RandomState  # NOQA
 from cupy.random.generator import reset_states  # NOQA
