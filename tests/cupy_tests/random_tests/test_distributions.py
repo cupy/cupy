@@ -1,6 +1,7 @@
 import unittest
 
 import cupy
+from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
 
@@ -17,8 +18,9 @@ _int_dtypes = _signed_dtypes + _unsigned_dtypes
 class RandomDistributionsTestCase(unittest.TestCase):
     def check_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
-        np_out = getattr(numpy.random, dist_name)(
-            size=self.shape, **params).astype(dtype)
+        np_out = numpy.asarray(
+            getattr(numpy.random, dist_name)(size=self.shape, **params),
+            dtype)
         cp_out = getattr(distributions, dist_name)(
             size=self.shape, dtype=dtype, **cp_params)
         self.assertEqual(cp_out.shape, np_out.shape)
@@ -97,6 +99,55 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
         alpha = numpy.ones(self.alpha_shape, dtype=alpha_dtype)
         self.check_distribution('dirichlet',
                                 {'alpha': alpha}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2), None],
+    'scale_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsExponential(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_exponential(self, scale_dtype, dtype):
+        scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
+        self.check_distribution('exponential',
+                                {'scale': scale}, dtype)
+
+
+@testing.gpu
+class TestDistributionsExponentialError(RandomDistributionsTestCase):
+
+    def test_negative_scale(self):
+        scale = cupy.array([2, -1, 3], dtype=numpy.float32)
+        with self.assertRaises(ValueError):
+            cupy.random.exponential(scale)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'dfnum_shape': [(), (3, 2)],
+    'dfden_shape': [(), (3, 2)],
+    'dtype': _float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsF(unittest.TestCase):
+
+    def check_distribution(self, dist_func, dfnum_dtype, dfden_dtype, dtype):
+        dfnum = cupy.ones(self.dfnum_shape, dtype=dfnum_dtype)
+        dfden = cupy.ones(self.dfden_shape, dtype=dfden_dtype)
+        out = dist_func(dfnum, dfden, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dfnum_dtype')
+    @cupy.testing.for_float_dtypes('dfden_dtype')
+    def test_f(self, dfnum_dtype, dfden_dtype):
+        self.check_distribution(distributions.f,
+                                dfnum_dtype, dfden_dtype, self.dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -222,6 +273,32 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'd': [2, 4],
+})
+)
+@testing.gpu
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+class TestDistributionsMultivariateNormal(unittest.TestCase):
+
+    def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
+        mean = cupy.zeros(self.d, dtype=mean_dtype)
+        cov = cupy.random.normal(size=(self.d, self.d), dtype=cov_dtype)
+        cov = cov.T.dot(cov)
+        out = dist_func(mean, cov, self.shape, dtype=dtype)
+        self.assertEqual(self.shape+(self.d,), out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('mean_dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('cov_dtype', no_float16=True)
+    def test_normal(self, mean_dtype, cov_dtype, dtype):
+        self.check_distribution(distributions.multivariate_normal,
+                                mean_dtype, cov_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -237,6 +314,47 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
         self.check_distribution('normal',
                                 {'loc': loc, 'scale': scale}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsPareto(unittest.TestCase):
+
+    def check_distribution(self, dist_func, a_dtype, dtype):
+        a = cupy.ones(self.a_shape, dtype=a_dtype)
+        out = dist_func(a, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_pareto(self, a_dtype, dtype):
+        self.check_distribution(distributions.pareto,
+                                a_dtype, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'lam_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsPoisson(unittest.TestCase):
+
+    def check_distribution(self, dist_func, lam_dtype, dtype):
+        lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
+        out = dist_func(lam, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_int_dtypes('dtype')
+    @cupy.testing.for_float_dtypes('lam_dtype')
+    def test_poisson(self, lam_dtype, dtype):
+        self.check_distribution(distributions.poisson, lam_dtype, dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -265,6 +383,22 @@ class TestDistributionsStandardExponential(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'shape_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardGamma(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('shape_dtype')
+    def test_standard_gamma(self, shape_dtype, dtype):
+        shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
+        self.check_distribution('standard_gamma',
+                                {'shape': shape}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
 })
 )
 @testing.gpu
@@ -273,6 +407,26 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     def test_standard_normal(self, dtype):
         self.check_distribution('standard_normal', {}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'df_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsStandardT(unittest.TestCase):
+
+    def check_distribution(self, dist_func, df_dtype, dtype):
+        df = cupy.ones(self.df_shape, dtype=df_dtype)
+        out = dist_func(df, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('df_dtype')
+    def test_standard_t(self, df_dtype, dtype):
+        self.check_distribution(distributions.standard_t, df_dtype, dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -292,3 +446,42 @@ class TestDistributionsUniform(RandomDistributionsTestCase):
         high = numpy.ones(self.high_shape, dtype=high_dtype) * 2.
         self.check_distribution('uniform',
                                 {'low': low, 'high': high}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'mu_shape': [(), (3, 2)],
+    'kappa_shape': [(), (3, 2)],
+    'dtype': _float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsVonmises(unittest.TestCase):
+
+    def check_distribution(self, dist_func, mu_dtype, kappa_dtype, dtype):
+        mu = cupy.ones(self.mu_shape, dtype=mu_dtype)
+        kappa = cupy.ones(self.kappa_shape, dtype=kappa_dtype)
+        out = dist_func(mu, kappa, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['mu_dtype', 'kappa_dtype'])
+    def test_vonmises(self, mu_dtype, kappa_dtype):
+        self.check_distribution(distributions.vonmises,
+                                mu_dtype, kappa_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsZipf(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes([numpy.int32, numpy.int64], 'dtype')
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_zipf(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, 2, dtype=a_dtype)
+        self.check_distribution('zipf', {'a': a}, dtype)
