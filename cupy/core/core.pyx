@@ -16,6 +16,7 @@ try:
 except ImportError:
     pass
 from cupy import util
+from cupy.cuda.runtime import CUDARuntimeError
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -2087,12 +2088,30 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
             a.fill(a_cpu[()])
             return a
         nbytes = a.nbytes
-        mem = pinned_memory.alloc_pinned_memory(nbytes)
-        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[:] = a_cpu.ravel(order)
         stream = stream_module.get_current_stream()
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
+
+        mem = None
+        error = None
+        try:
+            mem = pinned_memory.alloc_pinned_memory(nbytes)
+        except CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            error = e
+
+        if mem is not None:
+            src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+            src_cpu[:] = a_cpu.ravel(order)
+            a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+            pinned_memory._add_to_watch_list(stream.record(), mem)
+        else:
+            warnings.warn(
+                'Using synchronous transfer as pinned memory ({} bytes) '
+                'could not be allocated. '
+                'This generally occurs because of insufficient host memory. '
+                'The original error was: {}'.format(nbytes, error))
+            a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), nbytes)
+
     return a
 
 
@@ -2160,8 +2179,8 @@ def _has_element(vector.vector[Py_ssize_t] source, Py_ssize_t n):
     return False
 
 
-cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(axis, Py_ssize_t ndim) \
-        except *:
+cpdef vector.vector[Py_ssize_t] normalize_axis_tuple(
+        axis, Py_ssize_t ndim) except *:
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
     Arguments `allow_duplicate` and `axis_name` are not supported.
@@ -2645,7 +2664,7 @@ cdef _concatenate_kernel = ElementwiseKernel(
 )
 
 
-cpdef Py_ssize_t size(ndarray a, axis=None) except *:
+cpdef Py_ssize_t size(ndarray a, axis=None) except? -1:
     """Returns the number of elements along a given axis.
 
     Args:

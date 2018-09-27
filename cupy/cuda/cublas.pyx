@@ -271,7 +271,7 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cublasCreate(&handle)
@@ -279,13 +279,13 @@ cpdef size_t create() except *:
     return <size_t>handle
 
 
-cpdef void destroy(size_t handle) except *:
+cpdef destroy(size_t handle):
     with nogil:
         status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
-cpdef int getVersion(size_t handle) except *:
+cpdef int getVersion(size_t handle) except? -1:
     cdef int version
     with nogil:
         status = cublasGetVersion(<Handle>handle, &version)
@@ -293,7 +293,7 @@ cpdef int getVersion(size_t handle) except *:
     return version
 
 
-cpdef int getPointerMode(size_t handle) except *:
+cpdef int getPointerMode(size_t handle) except? -1:
     cdef PointerMode mode
     with nogil:
         status = cublasGetPointerMode(<Handle>handle, &mode)
@@ -317,7 +317,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
+cpdef size_t getStream(size_t handle) except? 0:
     cdef driver.Stream stream
     with nogil:
         status = cublasGetStream(<Handle>handle, &stream)
@@ -335,7 +335,7 @@ cpdef setMathMode(size_t handle, int mode):
     check_status(status)
 
 
-cpdef int getMathMode(size_t handle) except *:
+cpdef int getMathMode(size_t handle) except? -1:
     cdef Math mode
     with nogil:
         status = cublasGetMathMode(<Handle>handle, &mode)
@@ -347,7 +347,7 @@ cpdef int getMathMode(size_t handle) except *:
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx) except *:
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -357,7 +357,7 @@ cpdef int isamax(size_t handle, int n, size_t x, int incx) except *:
     return result
 
 
-cpdef int isamin(size_t handle, int n, size_t x, int incx) except *:
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -367,7 +367,7 @@ cpdef int isamin(size_t handle, int n, size_t x, int incx) except *:
     return result
 
 
-cpdef float sasum(size_t handle, int n, size_t x, int incx) except *:
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -454,7 +454,7 @@ cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *:
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:

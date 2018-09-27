@@ -19,7 +19,7 @@ cdef extern from "halffloat.h":
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
+cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
     cdef Py_ssize_t arg
     for arg in args:
         init *= arg
@@ -101,7 +101,7 @@ cdef void get_reduced_dims(
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous) except *:
+        bint is_c_contiguous):
     cdef vector.vector[Py_ssize_t] strides
     cdef Py_ssize_t st, sh
     cdef int i
@@ -124,7 +124,7 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
 @cython.profile(False)
 cpdef inline bint get_c_contiguity(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
-        Py_ssize_t itemsize) except *:
+        Py_ssize_t itemsize):
     cdef vector.vector[Py_ssize_t] r_shape, r_strides
     cpdef Py_ssize_t ndim
     ndim = strides.size()
@@ -157,7 +157,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t _extract_slice_element(x) except *:
+cpdef inline Py_ssize_t _extract_slice_element(x) except? 0:
     try:
         return x.__index__()
     except AttributeError:
