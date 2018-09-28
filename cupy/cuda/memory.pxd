@@ -7,7 +7,7 @@ from cupy.cuda cimport device
 
 
 @cython.no_gc
-cdef class Memory:
+cdef class BaseMemory:
 
     cdef:
         public size_t ptr
@@ -21,9 +21,9 @@ cdef class MemoryPointer:
     cdef:
         readonly size_t ptr
         readonly int device_id
-        readonly Memory mem
+        readonly BaseMemory mem
 
-    cdef _init(self, Memory mem, Py_ssize_t offset)
+    cdef _init(self, BaseMemory mem, Py_ssize_t offset)
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size,

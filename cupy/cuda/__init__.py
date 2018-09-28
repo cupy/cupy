@@ -80,12 +80,14 @@ from cupy.cuda.device import get_device_id  # NOQA
 from cupy.cuda.function import Function  # NOQA
 from cupy.cuda.function import Module  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
+from cupy.cuda.memory import BaseMemory  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
 from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
+from cupy.cuda.memory import UnownedMemory  # NOQA
 from cupy.cuda.memory_hook import MemoryHook  # NOQA
 from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
 from cupy.cuda.pinned_memory import PinnedMemory  # NOQA

@@ -100,24 +100,28 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
 
 
 @cython.profile(False)
-cdef inline set_contiguous_strides(
+cdef inline Py_ssize_t set_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
+    cdef Py_ssize_t is_nonzero_size = 1
     cdef int i, ndim = shape.size()
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
-    st = itemsize
+    st = 1
 
     for i in range(ndim):
         if is_c_contiguous:
             idx = ndim - 1 - i
         else:
             idx = i
-        strides[idx] = st
+        strides[idx] = st * itemsize
         sh = shape[idx]
         if sh > 1:
             st *= sh
+        elif sh == 0:
+            is_nonzero_size = 0
+    return st * is_nonzero_size
 
 
 @cython.profile(False)
