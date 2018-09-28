@@ -489,6 +489,8 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
     def test_multivariate_normal_float64(self):
         self.check_multivariate_normal(numpy.float64)
 
+    # TODO(kataoka): add distribution test
+
 
 @testing.gpu
 @testing.parameterize(*[
@@ -1081,6 +1083,8 @@ class TestZipf(RandomGeneratorTestCase):
 
     def test_zipf(self):
         self.generate(a=self.a, size=(3, 2))
+
+    # TODO(kataoka): add distribution test
 
 
 @testing.parameterize(
