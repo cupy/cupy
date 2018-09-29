@@ -180,9 +180,9 @@ def matrix_rank(M, tol=None):
 
 
 def slogdet(a):
-    """Returns sign and logarithm of the determinat of an array.
+    """Returns sign and logarithm of the determinant of an array.
 
-    It calculates the natural logarithm of the deteminant of a given value.
+    It calculates the natural logarithm of the determinant of a given value.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
