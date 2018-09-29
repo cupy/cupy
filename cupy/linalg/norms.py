@@ -190,10 +190,10 @@ def slogdet(a):
     Returns:
         tuple of :class:`~cupy.ndarray`:
             It returns a tuple ``(sign, logdet)``. ``sign`` represents each
-            sign of the deteminant as a real number ``0``, ``1`` or ``-1``.
+            sign of the determinant as a real number ``0``, ``1`` or ``-1``.
             'logdet' represents the natural logarithm of the absolute of the
-            deteminant.
-            If the deteninant is zero, ``sign`` will be ``0`` and ``logdet``
+            determinant.
+            If the determinant is zero, ``sign`` will be ``0`` and ``logdet``
             will be ``-inf``.
             The shapes of both ``sign`` and ``logdet`` are equal to
             ``a.shape[:-2]``.
