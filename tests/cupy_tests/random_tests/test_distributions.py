@@ -1,6 +1,7 @@
 import unittest
 
 import cupy
+from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
 
@@ -17,8 +18,9 @@ _int_dtypes = _signed_dtypes + _unsigned_dtypes
 class RandomDistributionsTestCase(unittest.TestCase):
     def check_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
-        np_out = getattr(numpy.random, dist_name)(
-            size=self.shape, **params).astype(dtype)
+        np_out = numpy.asarray(
+            getattr(numpy.random, dist_name)(size=self.shape, **params),
+            dtype)
         cp_out = getattr(distributions, dist_name)(
             size=self.shape, dtype=dtype, **cp_params)
         self.assertEqual(cp_out.shape, np_out.shape)
@@ -100,7 +102,7 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'scale_shape': [(), (3, 2)],
 })
 )
@@ -113,6 +115,15 @@ class TestDistributionsExponential(RandomDistributionsTestCase):
         scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
         self.check_distribution('exponential',
                                 {'scale': scale}, dtype)
+
+
+@testing.gpu
+class TestDistributionsExponentialError(RandomDistributionsTestCase):
+
+    def test_negative_scale(self):
+        scale = cupy.array([2, -1, 3], dtype=numpy.float32)
+        with self.assertRaises(ValueError):
+            cupy.random.exponential(scale)
 
 
 @testing.parameterize(*testing.product({
@@ -252,6 +263,25 @@ class TestDistributionsLaplace(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'loc_shape': [(), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsLogistic(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['loc_dtype', 'scale_dtype'])
+    def test_logistic(self, loc_dtype, scale_dtype, dtype):
+        loc = numpy.ones(self.loc_shape, dtype=loc_dtype)
+        scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
+        self.check_distribution('logistic',
+                                {'loc': loc, 'scale': scale}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'mean_shape': [()],
     'sigma_shape': [()],
 })
@@ -267,6 +297,32 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
         sigma = numpy.ones(self.sigma_shape, dtype=sigma_dtype)
         self.check_distribution('lognormal',
                                 {'mean': mean, 'sigma': sigma}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'd': [2, 4],
+})
+)
+@testing.gpu
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+class TestDistributionsMultivariateNormal(unittest.TestCase):
+
+    def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
+        mean = cupy.zeros(self.d, dtype=mean_dtype)
+        cov = cupy.random.normal(size=(self.d, self.d), dtype=cov_dtype)
+        cov = cov.T.dot(cov)
+        out = dist_func(mean, cov, self.shape, dtype=dtype)
+        self.assertEqual(self.shape+(self.d,), out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('mean_dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('cov_dtype', no_float16=True)
+    def test_normal(self, mean_dtype, cov_dtype, dtype):
+        self.check_distribution(distributions.multivariate_normal,
+                                mean_dtype, cov_dtype, dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -442,3 +498,49 @@ class TestDistributionsVonmises(unittest.TestCase):
     def test_vonmises(self, mu_dtype, kappa_dtype):
         self.check_distribution(distributions.vonmises,
                                 mu_dtype, kappa_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsWeibull(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_weibull(self, a_dtype, dtype):
+        a = numpy.ones(self.a_shape, dtype=a_dtype)
+        self.check_distribution('weibull',
+                                {'a': a}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_weibull_for_inf_a(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, numpy.inf, dtype=a_dtype)
+        self.check_distribution('weibull', {'a': a}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_weibull_for_negative_a(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, -0.5, dtype=a_dtype)
+        with self.assertRaises(ValueError):
+            cp_params = {'a': cupy.asarray(a)}
+            getattr(distributions, 'weibull')(
+                size=self.shape, dtype=dtype, **cp_params)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
+    'a_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsZipf(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes([numpy.int32, numpy.int64], 'dtype')
+    @cupy.testing.for_float_dtypes('a_dtype')
+    def test_zipf(self, a_dtype, dtype):
+        a = numpy.full(self.a_shape, 2, dtype=a_dtype)
+        self.check_distribution('zipf', {'a': a}, dtype)
