@@ -250,6 +250,24 @@ class TestLaplace(RandomGeneratorTestCase):
 
 
 @testing.gpu
+@testing.fix_random()
+class TestLogistic(RandomGeneratorTestCase):
+
+    target_method = 'logistic'
+
+    def test_logistic_1(self):
+        self.generate()
+
+    def test_logistic_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+    def test_standard_logistic_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
+
+
+@testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},

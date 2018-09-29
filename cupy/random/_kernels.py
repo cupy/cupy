@@ -580,6 +580,20 @@ __device__ long rk_zipf(rk_state *state, double a)
 }
 '''
 
+open_uniform_definition = '''
+__device__ void open_uniform(rk_state *state, double *U) {
+    do {
+        *U = rk_double(state);
+    } while (*U <= 0.0 || *U >= 1.0);
+}
+
+__device__ void open_uniform(rk_state *state, float *U) {
+    do {
+        *U = rk_double(state);
+    } while (*U <= 0.0 || *U >= 1.0);
+}
+'''
+
 definitions = [
     rk_basic_difinition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
@@ -719,6 +733,19 @@ zipf_kernel = core.ElementwiseKernel(
     y = rk_zipf(&internal_state, a);
     ''',
     'zipf_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, open_uniform_definition]
+open_uniform_kernel = core.ElementwiseKernel(
+    'uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    open_uniform(&internal_state, &y);
+    ''',
+    'open_uniform_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

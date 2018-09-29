@@ -235,6 +235,25 @@ class TestDistributionsLaplace(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'loc_shape': [(), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+})
+)
+@testing.gpu
+class TestDistributionsLogistic(RandomDistributionsTestCase):
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['loc_dtype', 'scale_dtype'])
+    def test_logistic(self, loc_dtype, scale_dtype, dtype):
+        loc = numpy.ones(self.loc_shape, dtype=loc_dtype)
+        scale = numpy.ones(self.scale_shape, dtype=scale_dtype)
+        self.check_distribution('logistic',
+                                {'loc': loc, 'scale': scale}, dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'mean_shape': [()],
     'sigma_shape': [()],
 })
