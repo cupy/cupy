@@ -616,6 +616,20 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def weibull(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the weibull distribution.
+
+        .. seealso::
+            :func:`cupy.random.weibull` for full documentation,
+            :meth:`numpy.random.RandomState.weibull`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a < 0):
+            raise ValueError("a < 0")
+        x = self.standard_exponential(size, dtype)
+        cupy.power(x, 1./a, out=x)
+        return x
+
     def zipf(self, a, size=None, dtype=int):
         """Returns an array of samples drawn from the Zipf distribution.
 

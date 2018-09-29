@@ -39,6 +39,7 @@ from cupy.random.distributions import standard_normal  # NOQA
 from cupy.random.distributions import standard_t  # NOQA
 from cupy.random.distributions import uniform  # NOQA
 from cupy.random.distributions import vonmises  # NOQA
+from cupy.random.distributions import weibull  # NOQA
 from cupy.random.distributions import zipf  # NOQA
 from cupy.random.generator import get_random_state  # NOQA
 from cupy.random.generator import RandomState  # NOQA
