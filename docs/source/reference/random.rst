@@ -46,9 +46,11 @@ Distributions
    cupy.random.geometric
    cupy.random.gumbel
    cupy.random.laplace
+   cupy.random.logistic
    cupy.random.lognormal
    cupy.random.logseries
    cupy.random.multinomial
+   cupy.random.multivariate_normal
    cupy.random.normal
    cupy.random.pareto
    cupy.random.poisson
@@ -59,6 +61,8 @@ Distributions
    cupy.random.standard_t
    cupy.random.uniform
    cupy.random.vonmises
+   cupy.random.weibull
+   cupy.random.zipf
 
 
 Random number generator
