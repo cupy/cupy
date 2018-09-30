@@ -16,82 +16,64 @@ cpdef _get_simple_reduction_kernel(
     if identity is None:
         identity = ''
     module_code = string.Template('''
-    ${type_preamble}
-    ${preamble}
-    #define REDUCE(a, b) (${reduce_expr})
-    #define POST_MAP(a) (${post_map_expr})
-    #define _REDUCE(_offset) if (_tid < _offset) { \
-      _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
-      _sdata[_tid] = REDUCE(_a, _b); \
+${type_preamble}
+${preamble}
+#define REDUCE(a, b) (${reduce_expr})
+#define POST_MAP(a) (${post_map_expr})
+#define _REDUCE(_offset) if (_tid < _offset) { \
+  _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
+  _sdata[_tid] = REDUCE(_a, _b); \
+}
+
+typedef ${reduce_type} _type_reduce;
+extern "C" __global__ void ${name}(${params}) {
+  __shared__ _type_reduce _sdata[${block_size}];
+  unsigned int _tid = threadIdx.x;
+
+  int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
+  int _j_offset = _J_offset * _out_ind.size();
+  int _J_stride = ${block_size} >> __popc(_block_stride - 1);
+  long long _j_stride = (long long)_J_stride * _out_ind.size();
+
+  for (int _i_base = blockIdx.x * _block_stride;
+       _i_base < _out_ind.size();
+       _i_base += gridDim.x * _block_stride) {
+    _type_reduce _s = _type_reduce(${identity});
+    int _i = _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
+    int _J = _J_offset;
+    for (long long _j = _i + _j_offset; _j < _in_ind.size();
+         _j += _j_stride, _J += _J_stride) {
+      _in_ind.set(_j);
+      ${input_expr}
+      _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
+      _s = REDUCE(_s, _a);
     }
-
-    typedef ${reduce_type} _type_reduce;
-    extern "C" __global__ void ${name}(${params}) {
-      extern __shared__ _type_reduce _sdata_raw[];
-      _type_reduce *_sdata = _sdata_raw;
-      unsigned int _tid = threadIdx.x;
-
-      int _J_offset = _tid / _block_stride;
-      int _j_offset = _J_offset * _out_ind.size();
-      int _J_stride = ${block_size} / _block_stride;
-      long long _j_stride = (long long)_J_stride * _out_ind.size();
-
-      for (int _i_base = blockIdx.x * _block_stride;
-           _i_base < _out_ind.size();
-           _i_base += gridDim.x * _block_stride) {
-        _type_reduce _s = _type_reduce(${identity});
-        int _i = _i_base + _tid % _block_stride;
-        int _J = _J_offset;
-        for (long long _j = _i + _j_offset; _j < _in_ind.size();
-             _j += _j_stride, _J += _J_stride) {
-          _in_ind.set(_j);
-          ${input_expr}
-          _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
-          _s = REDUCE(_s, _a);
+    if (_block_stride < ${block_size}) {
+      _sdata[_tid] = _s;
+      __syncthreads();
+      for (unsigned int _block = ${block_size} / 2;
+           _block >= max(64, _block_stride); _block >>= 1) {
+        if (_tid < _block) {
+          _REDUCE(_block);
         }
-        if (_block_stride < ${block_size}) {
-          _sdata[_tid] = _s;
-          __syncthreads();
-          if (_block_stride <= 256) {
-            _REDUCE(256);
-            __syncthreads();
-            if (_block_stride <= 128) {
-              _REDUCE(128);
-              __syncthreads();
-              if (_block_stride <= 64) {
-                _REDUCE(64);
-                __syncthreads();
-                if (_block_stride <= 32) {
-                  _REDUCE(32);
-                  if (_block_stride <= 16) {
-                    _REDUCE(16);
-                    if (_block_stride <= 8) {
-                      _REDUCE(8);
-                      if (_block_stride <= 4) {
-                        _REDUCE(4);
-                        if (_block_stride <= 2) {
-                          _REDUCE(2);
-                          if (_block_stride <= 1) {
-                            _REDUCE(1);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          _s = _sdata[_tid];
-          __syncthreads();
-        }
-        if (_J_offset == 0 && _i < _out_ind.size()) {
-          _out_ind.set(_i);
-          ${output_expr}
-          POST_MAP(_s);
+        __syncthreads();
+      }
+      if (_tid < 32) {
+        for (unsigned int _block = 32;
+             _block >= _block_stride; _block >>= 1) {
+          _REDUCE(_block);
         }
       }
-    }''').substitute(
+      _s = _sdata[_tid];
+      __syncthreads();
+    }
+    if (_J_offset == 0 && _i < _out_ind.size()) {
+      _out_ind.set(_i);
+      ${output_expr}
+      POST_MAP(_s);
+    }
+  }
+}''').substitute(
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
