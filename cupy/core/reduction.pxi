@@ -248,7 +248,7 @@ class simple_reduction_function(object):
 
 @util.memoize(for_each_device=True)
 def _get_reduction_kernel(
-        params, args_info, types,
+        nin, nout, params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
     kernel_params = _get_kernel_params(params, args_info)
@@ -259,10 +259,11 @@ def _get_reduction_kernel(
         for k, v in types)
     input_expr = '\n'.join(
         [(('const {0} {1}' if p.is_const else '{0}& {1}') +
-          ' = _raw_{1}[_j];').format(p.ctype, p.name) for p in arrays])
+          ' = _raw_{1}[_in_ind.get()];').format(p.ctype, p.name)
+         for p in arrays[:nin]])
     output_expr = '\n'.join(
-        ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
-         for p in arrays if not p.is_const])
+        ['{0} &{1} = _raw_{1}[_out_ind.get()];'.format(p.ctype, p.name)
+         for p in arrays[nin:nin + nout] if not p.is_const])
 
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, kernel_params, identity,
@@ -420,7 +421,7 @@ class ReductionKernel(object):
         args_info = _get_args_info(inout_args)
 
         kern = _get_reduction_kernel(
-            self.params, args_info, types,
+            self.nin, self.nout, self.params, args_info, types,
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
