@@ -216,6 +216,34 @@ class TestDistributionsGumbel(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'ngood_shape': [(), (3, 2)],
+    'nbad_shape': [(), (3, 2)],
+    'nsample_shape': [(), (3, 2)],
+    'nsample_dtype': [numpy.int32, numpy.int64],  # to escape timeout
+    'dtype': [numpy.int32, numpy.int64],  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsHyperGeometric(unittest.TestCase):
+
+    def check_distribution(self, dist_func, ngood_dtype, nbad_dtype,
+                           nsample_dtype, dtype):
+        ngood = cupy.ones(self.ngood_shape, dtype=ngood_dtype)
+        nbad = cupy.ones(self.nbad_shape, dtype=nbad_dtype)
+        nsample = cupy.ones(self.nsample_shape, dtype=nsample_dtype)
+        out = dist_func(ngood, nbad, nsample, self.shape, dtype)
+        self.assertEqual(self.shape, out.shape)
+        self.assertEqual(out.dtype, dtype)
+
+    @cupy.testing.for_dtypes_combination(
+        [numpy.int32, numpy.int64], names=['ngood_dtype', 'nbad_dtype'])
+    def test_hypergeometric(self, ngood_dtype, nbad_dtype):
+        self.check_distribution(distributions.hypergeometric, ngood_dtype,
+                                nbad_dtype, self.nsample_dtype, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })

@@ -25,6 +25,7 @@ from cupy.random.distributions import f  # NOQA
 from cupy.random.distributions import gamma  # NOQA
 from cupy.random.distributions import geometric  # NOQA
 from cupy.random.distributions import gumbel  # NOQA
+from cupy.random.distributions import hypergeometric  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import logistic  # NOQA
 from cupy.random.distributions import lognormal  # NOQA

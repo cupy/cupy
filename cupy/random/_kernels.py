@@ -492,6 +492,115 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
 }
 '''
 
+long_min_max_definition = '''
+__device__ long min(long a, long b)
+{
+    return a < b ? a : b;
+}
+
+__device__ long max(long a, long b)
+{
+    return a > b ? a : b;
+}
+'''
+
+rk_hypergeometric_definition = '''
+__device__ long rk_hypergeometric_hyp(
+    rk_state *state, long good, long bad, long sample)
+{
+    long d1, K, Z;
+    double d2, U, Y;
+
+    d1 = bad + good - sample;
+    d2 = (double)min(bad, good);
+
+    Y = d2;
+    K = sample;
+    while (Y > 0.0)
+    {
+        U = rk_double(state);
+        Y -= (long)floor(U + Y/(d1 + K));
+        K--;
+        if (K == 0) break;
+    }
+    Z = (long)(d2 - Y);
+    if (good > bad) Z = sample - Z;
+    return Z;
+}
+
+/* D1 = 2*sqrt(2/e) */
+/* D2 = 3 - 2*sqrt(3/e) */
+#define D1 1.7155277699214135
+#define D2 0.8989161620588988
+__device__ long rk_hypergeometric_hrua(
+    rk_state *state, long good, long bad, long sample)
+{
+    long mingoodbad, maxgoodbad, popsize, m, d9;
+    double d4, d5, d6, d7, d8, d10, d11;
+    long Z;
+    double T, W, X, Y;
+
+    mingoodbad = min(good, bad);
+    popsize = good + bad;
+    maxgoodbad = max(good, bad);
+    m = min(sample, popsize - sample);
+    d4 = ((double)mingoodbad) / popsize;
+    d5 = 1.0 - d4;
+    d6 = m*d4 + 0.5;
+    d7 = sqrt((double)(popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
+    d8 = D1*d7 + D2;
+    d9 = (long)floor((double)(m + 1) * (mingoodbad + 1) / (popsize + 2));
+    d10 = (loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) +
+           loggam(maxgoodbad-m+d9+1));
+    d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
+    /* 16 for 16-decimal-digit precision in D1 and D2 */
+
+    while (1)
+    {
+        X = rk_double(state);
+        Y = rk_double(state);
+        W = d6 + d8*(Y- 0.5)/X;
+
+        /* fast rejection: */
+        if ((W < 0.0) || (W >= d11)) continue;
+
+        Z = (long)floor(W);
+        T = d10 - (loggam(Z+1) + loggam(mingoodbad-Z+1) + loggam(m-Z+1) +
+                   loggam(maxgoodbad-m+Z+1));
+
+        /* fast acceptance: */
+        if ((X*(4.0-X)-3.0) <= T) break;
+
+        /* fast rejection: */
+        if (X*(X-T) >= 1) continue;
+
+        if (2.0*log(X) <= T) break;  /* acceptance */
+    }
+
+    /* this is a correction to HRUA* by Ivan Frohne in rv.py */
+    if (good > bad) Z = m - Z;
+
+    /* another fix from rv.py to allow sample to exceed popsize/2 */
+    if (m < sample) Z = good - Z;
+
+    return Z;
+}
+#undef D1
+#undef D2
+
+__device__ long rk_hypergeometric(
+    rk_state *state, long good, long bad, long sample)
+{
+    if (sample > 10)
+    {
+        return rk_hypergeometric_hrua(state, good, bad, sample);
+    } else
+    {
+        return rk_hypergeometric_hyp(state, good, bad, sample);
+    }
+}
+'''
+
 rk_vonmises_definition = '''
 __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
 {
@@ -678,6 +787,20 @@ geometric_kernel = core.ElementwiseKernel(
     y = rk_geometric(&internal_state, p);
     ''',
     'geometric_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, loggam_definition, long_min_max_definition,
+     rk_hypergeometric_definition]
+hypergeometric_kernel = core.ElementwiseKernel(
+    'S good, T bad, U sample, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_hypergeometric(&internal_state, good, bad, sample);
+    ''',
+    'hypergeometric_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
