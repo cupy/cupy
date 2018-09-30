@@ -52,23 +52,19 @@ extern "C" __global__ void ${name}(${params}) {
       _sdata[_tid] = _s;
       __syncthreads();
       for (unsigned int _block = ${block_size} / 2;
-           _block >= max(64, _block_stride); _block >>= 1) {
+           _block >= _block_stride; _block >>= 1) {
         if (_tid < _block) {
           _REDUCE(_block);
         }
         __syncthreads();
       }
-      if (_tid < 32) {
-        for (unsigned int _block = 32;
-             _block >= _block_stride; _block >>= 1) {
-          _REDUCE(_block);
-        }
+      if (_tid < _block_stride) {
+        _s = _sdata[_tid];
       }
-      _s = _sdata[_tid];
       __syncthreads();
     }
-    if (_J_offset == 0 && _i < _out_ind.size()) {
-      _out_ind.set(_i);
+    if (_tid < _block_stride && _i < _out_ind.size()) {
+      _out_ind.set(static_cast<ptrdiff_t>(_i));
       ${output_expr}
       POST_MAP(_s);
     }
