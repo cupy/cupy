@@ -242,14 +242,11 @@ class simple_reduction_function(object):
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
-        # TODO(okuta) set actual size
-        shared_mem = 32 * block_size
         out_block_num = (
             out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            out_block_num * block_size,
-            inout_args, shared_mem, block_size)
+            out_block_num * block_size, inout_args, 0, block_size)
         return ret
 
 
@@ -432,14 +429,11 @@ class ReductionKernel(object):
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
 
-        # TODO(okuta) set actual size
-        shared_mem = 32 * block_size
         out_block_num = (
             out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            out_block_num * block_size,
-            inout_args, shared_mem, block_size, stream)
+            out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
 
