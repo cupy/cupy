@@ -233,6 +233,21 @@ class TestGeometric(RandomGeneratorTestCase):
         self.generate(p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'ngood': 1, 'nbad': 1, 'nsample': 1},
+    {'ngood': 1, 'nbad': 1, 'nsample': 2},
+)
+@testing.gpu
+@testing.fix_random()
+class TestHypergeometric(RandomGeneratorTestCase):
+
+    target_method = 'hypergeometric'
+
+    def test_hypergeometric(self):
+        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
+                      size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
@@ -247,6 +262,24 @@ class TestLaplace(RandomGeneratorTestCase):
 
     def test_laplace_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
+
+
+@testing.gpu
+@testing.fix_random()
+class TestLogistic(RandomGeneratorTestCase):
+
+    target_method = 'logistic'
+
+    def test_logistic_1(self):
+        self.generate()
+
+    def test_logistic_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+    def test_standard_logistic_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
 
 
 @testing.gpu
@@ -284,6 +317,21 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     def test_lognormal_float64(self):
         self.check_lognormal(numpy.float64)
+
+
+@testing.parameterize(
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 0.9},
+)
+@testing.gpu
+@testing.fix_random()
+class TestLogseries(RandomGeneratorTestCase):
+
+    target_method = 'logseries'
+
+    def test_logseries(self):
+        self.generate(p=self.p, size=(3, 2))
 
 
 @testing.gpu
@@ -447,6 +495,20 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestRayleigh(RandomGeneratorTestCase):
+
+    target_method = 'rayleigh'
+
+    def test_rayleigh(self):
+        self.generate(scale=self.scale, size=(3, 2))
 
 
 @testing.gpu
@@ -839,6 +901,37 @@ class TestVonmises(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'mean': 1.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWald(RandomGeneratorTestCase):
+
+    target_method = 'wald'
+
+    def test_wald(self):
+        self.generate(mean=self.mean, scale=self.scale, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 0.5},
+    {'a': 1.0},
+    {'a': 3.0},
+    {'a': numpy.inf},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWeibull(RandomGeneratorTestCase):
+
+    target_method = 'weibull'
+
+    def test_weibull(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 2.0},
 )
 @testing.gpu
@@ -931,6 +1024,20 @@ class TestStandardExponential(RandomGeneratorTestCase):
         for _ in range(10):
             x = self.generate(size=10**7)
             self.assertTrue(cupy.isfinite(x).all())
+
+
+@testing.parameterize(
+    {'left': -1.0, 'mode': 0.0, 'right': 2.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestTriangular(RandomGeneratorTestCase):
+
+    target_method = 'triangular'
+
+    def test_triangular(self):
+        self.generate(
+            left=self.left, mode=self.mode, right=self.right, size=(3, 2))
 
 
 @testing.gpu
