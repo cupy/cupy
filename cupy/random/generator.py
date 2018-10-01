@@ -263,6 +263,10 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.noncentral_chisquare`
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
+        if cupy.any(df <= 0):
+            raise ValueError("df <= 0")
+        if cupy.any(nonc < 0):
+            raise ValueError("nonc < 0")
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
@@ -279,6 +283,12 @@ class RandomState(object):
         """
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
+        if cupy.any(dfnum <= 0):
+            raise ValueError("dfnum <= 0")
+        if cupy.any(dfden <= 0):
+            raise ValueError("dfden <= 0")
+        if cupy.any(nonc < 0):
+            raise ValueError("nonc < 0")
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)

@@ -259,6 +259,20 @@ class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
         self.check_distribution('noncentral_chisquare',
                                 {'df': df, 'nonc': nonc}, self.dtype)
 
+    @cupy.testing.for_float_dtypes('param_dtype', no_float16=True)
+    def test_noncentral_chisquare_for_invalid_params(self, param_dtype):
+        df = cupy.full(self.df_shape, -1, dtype=param_dtype)
+        nonc = cupy.full(self.nonc_shape, 1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.noncentral_chisquare(
+                df, nonc, size=self.shape, dtype=self.dtype)
+
+        df = cupy.full(self.df_shape, 1, dtype=param_dtype)
+        nonc = cupy.full(self.nonc_shape, -1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.noncentral_chisquare(
+                df, nonc, size=self.shape, dtype=self.dtype)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
@@ -281,6 +295,29 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
         self.check_distribution('noncentral_f',
                                 {'dfnum': dfnum, 'dfden': dfden, 'nonc': nonc},
                                 self.dtype)
+
+    @cupy.testing.for_float_dtypes('param_dtype', no_float16=True)
+    def test_noncentral_chisquare_for_invalid_params(self, param_dtype):
+        dfnum = numpy.full(self.dfnum_shape, -1, dtype=param_dtype)
+        dfden = numpy.full(self.dfden_shape, 1, dtype=param_dtype)
+        nonc = numpy.full(self.nonc_shape, 1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.noncentral_f(
+                dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
+
+        dfnum = numpy.full(self.dfnum_shape, 1, dtype=param_dtype)
+        dfden = numpy.full(self.dfden_shape, -1, dtype=param_dtype)
+        nonc = numpy.full(self.nonc_shape, 1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.noncentral_f(
+                dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
+
+        dfnum = numpy.full(self.dfnum_shape, 1, dtype=param_dtype)
+        dfden = numpy.full(self.dfden_shape, 1, dtype=param_dtype)
+        nonc = numpy.full(self.nonc_shape, -1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.noncentral_f(
+                dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
 
 
 @testing.parameterize(*testing.product({
