@@ -301,6 +301,32 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'p_shape': [()],
+})
+)
+@testing.gpu
+class TestDistributionsLogseries(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes([numpy.int64, numpy.int32], 'dtype')
+    @cupy.testing.for_float_dtypes('p_dtype', no_float16=True)
+    def test_logseries(self, p_dtype, dtype):
+        p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
+        self.check_distribution('logseries',
+                                {'p': p}, dtype)
+
+    @cupy.testing.for_dtypes([numpy.int64, numpy.int32], 'dtype')
+    @cupy.testing.for_float_dtypes('p_dtype', no_float16=True)
+    def test_logseries_for_invalid_p(self, p_dtype, dtype):
+        with self.assertRaises(ValueError):
+            cp_params = {'p': cupy.zeros(self.p_shape, dtype=p_dtype)}
+            distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
+        with self.assertRaises(ValueError):
+            cp_params = {'p': cupy.ones(self.p_shape, dtype=p_dtype)}
+            distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'd': [2, 4],
 })
 )

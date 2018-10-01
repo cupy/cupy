@@ -270,6 +270,26 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
+    def logseries(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from a log series distribution.
+
+        .. seealso::
+            :func:`cupy.random.logseries` for full documentation,
+            :meth:`numpy.random.RandomState.logseries`
+
+        """
+        p = cupy.asarray(p)
+        if cupy.any(p <= 0):
+            raise ValueError('p <= 0.0')
+        if cupy.any(p >= 1):
+            raise ValueError('p >= 1.0')
+        if size is None:
+            size = p.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.logseries_kernel(p, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
                             tol=1e-8, dtype=float):
         """(experimental) Returns an array of samples drawn from the

@@ -319,6 +319,21 @@ class TestLogNormal(RandomGeneratorTestCase):
         self.check_lognormal(numpy.float64)
 
 
+@testing.parameterize(
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 0.9},
+)
+@testing.gpu
+@testing.fix_random()
+class TestLogseries(RandomGeneratorTestCase):
+
+    target_method = 'logseries'
+
+    def test_logseries(self):
+        self.generate(p=self.p, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(*[
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},

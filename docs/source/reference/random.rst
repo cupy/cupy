@@ -49,6 +49,7 @@ Distributions
    cupy.random.laplace
    cupy.random.logistic
    cupy.random.lognormal
+   cupy.random.logseries
    cupy.random.multinomial
    cupy.random.multivariate_normal
    cupy.random.normal

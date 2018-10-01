@@ -29,6 +29,7 @@ from cupy.random.distributions import hypergeometric  # NOQA
 from cupy.random.distributions import laplace  # NOQA
 from cupy.random.distributions import logistic  # NOQA
 from cupy.random.distributions import lognormal  # NOQA
+from cupy.random.distributions import logseries  # NOQA
 from cupy.random.distributions import multivariate_normal  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import pareto  # NOQA
