@@ -418,6 +418,25 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
+    def rayleigh(self, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a rayleigh distribution.
+
+        .. seealso::
+            :func:`cupy.random.rayleigh` for full documentation,
+            :meth:`numpy.random.RandomState.rayleigh`
+        """
+        scale = cupy.asarray(scale)
+        if size is None:
+            size = scale.shape
+        if cupy.any(scale < 0):
+            raise ValueError('scale < 0')
+        x = self._random_sample_raw(size, dtype)
+        x = cupy.log(x, out=x)
+        x = cupy.multiply(x, -2., out=x)
+        x = cupy.sqrt(x, out=x)
+        x = cupy.multiply(x, scale, out=x)
+        return x
+
     def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 

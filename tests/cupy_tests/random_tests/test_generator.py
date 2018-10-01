@@ -482,6 +482,20 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
+@testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestRayleigh(RandomGeneratorTestCase):
+
+    target_method = 'rayleigh'
+
+    def test_rayleigh(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestStandardCauchy(RandomGeneratorTestCase):
