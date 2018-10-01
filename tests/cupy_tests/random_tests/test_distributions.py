@@ -251,10 +251,18 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsNegativeBinomial(RandomDistributionsTestCase):
 
-    @cupy.testing.for_signed_dtypes('n_dtype')
+    @cupy.testing.for_float_dtypes('n_dtype')
     @cupy.testing.for_float_dtypes('p_dtype')
     def test_negative_binomial(self, n_dtype, p_dtype):
         n = numpy.full(self.n_shape, 5, dtype=n_dtype)
+        p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
+        self.check_distribution('negative_binomial',
+                                {'n': n, 'p': p}, self.dtype)
+
+    @cupy.testing.for_float_dtypes('n_dtype')
+    @cupy.testing.for_float_dtypes('p_dtype')
+    def test_negative_binomial_for_noninteger_n(self, n_dtype, p_dtype):
+        n = numpy.full(self.n_shape, 5.5, dtype=n_dtype)
         p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
         self.check_distribution('negative_binomial',
                                 {'n': n, 'p': p}, self.dtype)

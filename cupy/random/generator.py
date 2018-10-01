@@ -233,6 +233,14 @@ class RandomState(object):
             :func:`cupy.random.negative_binomial` for full documentation,
             :meth:`numpy.random.RandomState.negative_binomial`
         """
+        n = cupy.asarray(n)
+        p = cupy.asarray(p)
+        if cupy.any(n <= 0):
+            raise ValueError("n <= 0")
+        if cupy.any(p < 0):
+            raise ValueError("p < 0")
+        if cupy.any(p > 1):
+            raise ValueError("p > 1")
         y = self.gamma(n, (1-p)/p, size)
         return self.poisson(y, dtype=dtype)
 
