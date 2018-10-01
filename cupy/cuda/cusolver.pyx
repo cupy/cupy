@@ -71,18 +71,18 @@ cdef extern from 'cupy_cusolver.h' nogil:
                                     cuComplex* A, int lda, int* lwork)
     int cusolverDnZgeqrf_bufferSize(Handle handle, int m, int n,
                                     cuDoubleComplex* A, int lda, int* lwork)
-    int cusolverDnSgeqrf(Handle handle, int m, int n, float* A, int lda,
-                         float* tau, float* work, int lwork,
-                         int* devInfo)
-    int cusolverDnDgeqrf(Handle handle, int m, int n, double* A, int lda,
-                         double* tau, double* work, int lwork,
-                         int* devInfo)
-    int cusolverDnCgeqrf(Handle handle, int m, int n, cuComplex* A, int lda,
-                         cuComplex* tau, cuComplex* work, int lwork,
-                         int* devInfo)
-    int cusolverDnZgeqrf(Handle handle, int m, int n, cuDoubleComplex* A, int lda,
-                         cuDoubleComplex* tau, cuDoubleComplex* work, int lwork,
-                         int* devInfo)
+    int cusolverDnSgeqrf(
+        Handle handle, int m, int n, float* A, int lda,
+        float* tau, float* work, int lwork, int* devInfo)
+    int cusolverDnDgeqrf(
+        Handle handle, int m, int n, double* A, int lda,
+        double* tau, double* work, int lwork, int* devInfo)
+    int cusolverDnCgeqrf(
+        Handle handle, int m, int n, cuComplex* A, int lda,
+        cuComplex* tau, cuComplex* work, int lwork, int* devInfo)
+    int cusolverDnZgeqrf(
+        Handle handle, int m, int n, cuDoubleComplex* A, int lda,
+        cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* devInfo)
 
     # The actual definition of cusolverDn(S|D)orgqr_bufferSize
     # is different from the reference
@@ -107,20 +107,22 @@ cdef extern from 'cupy_cusolver.h' nogil:
 
     int cusolverDnSormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const float* A, int lda,
-                         const float* tau, float* C, int ldc, float* work,
-                         int lwork, int* devInfo)
+                         const float* tau, float* C, int ldc,
+                         float* work, int lwork, int* devInfo)
     int cusolverDnDormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const double* A, int lda,
-                         const double* tau, double* C, int ldc, double* work,
-                         int lwork, int* devInfo)
-    int cusolverDnCunmqr(Handle handle, SideMode side, Operation trans,
-                         int m, int n, int k, const cuComplex* A, int lda,
-                         const cuComplex* tau, cuComplex* C, int ldc, cuComplex* work,
-                         int lwork, int* devInfo)
-    int cusolverDnZunmqr(Handle handle, SideMode side, Operation trans,
-                         int m, int n, int k, const cuDoubleComplex* A, int lda,
-                         const cuDoubleComplex* tau, cuDoubleComplex* C, int ldc, cuDoubleComplex* work,
-                         int lwork, int* devInfo)
+                         const double* tau, double* C, int ldc,
+                         double* work, int lwork, int* devInfo)
+    int cusolverDnCunmqr(
+        Handle handle, SideMode side, Operation trans, int m, int n, int k,
+        const cuComplex* A, int lda, const cuComplex* tau,
+        cuComplex* C, int ldc, cuComplex* work, int lwork,
+        int* devInfo)
+    int cusolverDnZunmqr(
+        Handle handle, SideMode side, Operation trans, int m, int n, int k,
+        const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau,
+        cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork,
+        int* devInfo)
 
     int cusolverDnSsytrf(Handle handle, FillMode uplo, int n, float* A,
                          int lda, int* ipiv, float* work, int lwork,
@@ -491,7 +493,8 @@ cpdef zgeqrf(size_t handle, int m, int n, size_t A, int lda,
     with nogil:
         status = cusolverDnZgeqrf(
             <Handle>handle, m, n, <cuDoubleComplex*>A, lda,
-            <cuDoubleComplex*>tau, <cuDoubleComplex*>work, lwork, <int*>devInfo)
+            <cuDoubleComplex*>tau, <cuDoubleComplex*>work, lwork,
+            <int*>devInfo)
     check_status(status)
 
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
@@ -585,7 +588,8 @@ cpdef cormqr(size_t handle, int side, int trans,
     with nogil:
         status = cusolverDnCunmqr(
             <Handle>handle, <SideMode>side, <Operation>trans, m, n, k,
-            <const cuComplex*>A, lda, <const cuComplex*>tau, <cuComplex*>C, ldc,
+            <const cuComplex*>A, lda, <const cuComplex*>tau,
+            <cuComplex*>C, ldc,
             <cuComplex*>work, lwork, <int*>devInfo)
     check_status(status)
 
@@ -597,7 +601,8 @@ cpdef zormqr(size_t handle, int side, int trans,
     with nogil:
         status = cusolverDnZunmqr(
             <Handle>handle, <SideMode>side, <Operation>trans, m, n, k,
-            <const cuDoubleComplex*>A, lda, <const cuDoubleComplex*>tau, <cuDoubleComplex*>C, ldc,
+            <const cuDoubleComplex*>A, lda, <const cuDoubleComplex*>tau,
+            <cuDoubleComplex*>C, ldc,
             <cuDoubleComplex*>work, lwork, <int*>devInfo)
     check_status(status)
 
