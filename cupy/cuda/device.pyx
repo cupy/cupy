@@ -223,15 +223,17 @@ cdef class Device:
         with self:
             return runtime.memGetInfo()
 
-    def __richcmp__(Device self, Device other, int op):
+    def __richcmp__(Device self, object other, int op):
+        if op == 2:
+            return isinstance(other, Device) and self.id == other.id
+        if op == 3:
+            return not (isinstance(other, Device) and self.id == other.id)
+        if not isinstance(other, Device):
+            return NotImplemented
         if op == 0:
             return self.id < other.id
         if op == 1:
             return self.id <= other.id
-        if op == 2:
-            return self.id == other.id
-        if op == 3:
-            return self.id != other.id
         if op == 4:
             return self.id > other.id
         if op == 5:
