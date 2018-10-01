@@ -397,7 +397,7 @@ def rayleigh(scale=1.0, size=None, dtype=float):
     Its probability density function is defined as
 
       .. math::
-         f(x) = \\frac{x}{\\sigma^2}e^{\\frac{-x^2}{2-\\sigma^2}},
+         f(x) = \\frac{x}{\\sigma^2}e^{\\frac{-x^2}{2-\\sigma^2}}, x \\ge 0,
 
     Args:
         scale (array): Parameter of the rayleigh distribution :math:`\\sigma`.

@@ -332,6 +332,8 @@ class RandomState(object):
         scale = cupy.asarray(scale)
         if size is None:
             size = scale.shape
+        if cupy.any(scale < 0):
+            raise ValueError('scale < 0')
         x = self._random_sample_raw(size, dtype)
         x = cupy.log(x, out=x)
         x = cupy.multiply(x, -2., out=x)

@@ -316,6 +316,22 @@ class TestDistributionsRayleigh(RandomDistributionsTestCase):
         self.check_distribution('rayleigh',
                                 {'scale': scale}, dtype)
 
+    @testing.with_requires('numpy>=1.12')
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_rayleigh_for_zero_scale(self, scale_dtype, dtype):
+        scale = numpy.zeros(self.scale_shape, dtype=scale_dtype)
+        self.check_distribution('rayleigh',
+                                {'scale': scale}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('scale_dtype')
+    def test_rayleigh_for_negative_scale(self, scale_dtype, dtype):
+        scale = numpy.full(self.scale_shape, -0.5, dtype=scale_dtype)
+        with self.assertRaises(ValueError):
+            cp_params = {'scale': cupy.asarray(scale)}
+            distributions.rayleigh(size=self.shape, dtype=dtype, **cp_params)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
