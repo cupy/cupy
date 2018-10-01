@@ -315,6 +315,7 @@ class TestDistributionsPower(RandomDistributionsTestCase):
         a = numpy.full(self.a_shape, 0.5, dtype=a_dtype)
         self.check_distribution('power', {'a': a}, dtype)
 
+    @testing.with_requires('numpy>=1.12')
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('a_dtype')
     def test_power_for_zero_a(self, a_dtype, dtype):
