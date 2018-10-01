@@ -498,6 +498,19 @@ class TestRandAndRandN(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'a': 0.5},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPower(RandomGeneratorTestCase):
+
+    target_method = 'power'
+
+    def test_power(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
     {'scale': 1.0},
     {'scale': 3.0},
 )

@@ -385,6 +385,24 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def power(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the power distribution.
+
+        .. seealso::
+            :func:`cupy.random.power` for full documentation,
+            :meth:`numpy.random.RandomState.power`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a < 0):
+            raise ValueError('a < 0')
+        if size is None:
+            size = a.shape
+        x = self.standard_exponential(size=size, dtype=dtype)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
+
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
 

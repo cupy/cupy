@@ -55,6 +55,7 @@ Distributions
    cupy.random.normal
    cupy.random.pareto
    cupy.random.poisson
+   cupy.random.power
    cupy.random.rayleigh
    cupy.random.standard_cauchy
    cupy.random.standard_exponential

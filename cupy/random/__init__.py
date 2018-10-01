@@ -34,6 +34,7 @@ from cupy.random.distributions import multivariate_normal  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import pareto  # NOQA
 from cupy.random.distributions import poisson  # NOQA
+from cupy.random.distributions import power  # NOQA
 from cupy.random.distributions import rayleigh  # NOQA
 from cupy.random.distributions import standard_cauchy  # NOQA
 from cupy.random.distributions import standard_exponential  # NOQA
