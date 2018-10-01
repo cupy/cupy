@@ -52,6 +52,7 @@ class TestFloating(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_nextafter_2(self, xp, dtype):
-        a = xp.array([-5, -3, 0, 3, 5], dtype=dtype)[:, None]
+        # TODO(kataoka): test 0
+        a = xp.array([-5, -3, 3, 5], dtype=dtype)[:, None]
         b = xp.array([-xp.inf, -4, 0, 4, xp.inf], dtype=dtype)[None, :]
         return xp.nextafter(a, b)
