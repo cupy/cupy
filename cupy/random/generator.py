@@ -531,11 +531,16 @@ class RandomState(object):
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
+        if cupy.any(left > mode):
+            raise ValueError("left > mode")
+        if cupy.any(mode > right):
+            raise ValueError("mode > right")
+        if cupy.any(left == right):
+            raise ValueError("left == right")
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
-        RandomState._triangular_kernel(left, mode, right, x)
-        return x
+        return RandomState._triangular_kernel(left, mode, right, x)
 
     _scale_kernel = core.ElementwiseKernel(
         'T low, T high', 'T x',

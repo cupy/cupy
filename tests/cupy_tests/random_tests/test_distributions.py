@@ -387,13 +387,36 @@ class TestDistributionsTriangular(RandomDistributionsTestCase):
     @cupy.testing.for_dtypes_combination(
         _regular_float_dtypes,
         names=['left_dtype', 'mode_dtype', 'right_dtype'])
-    def test_beta(self, left_dtype, mode_dtype, right_dtype):
+    def test_triangular(self, left_dtype, mode_dtype, right_dtype):
         left = numpy.full(self.left_shape, -1, dtype=left_dtype)
         mode = numpy.full(self.mode_shape, 0, dtype=mode_dtype)
         right = numpy.full(self.right_shape, 2, dtype=right_dtype)
         self.check_distribution('triangular',
                                 {'left': left, 'mode': mode, 'right': right},
                                 self.dtype)
+
+    @cupy.testing.for_float_dtypes('param_dtype', no_float16=True)
+    def test_triangular_for_invalid_params(self, param_dtype):
+        left = cupy.full(self.left_shape, 1, dtype=param_dtype)
+        mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
+        right = cupy.full(self.right_shape, 2, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.triangular(
+                left, mode, right, size=self.shape, dtype=self.dtype)
+
+        left = cupy.full(self.left_shape, -2, dtype=param_dtype)
+        mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
+        right = cupy.full(self.right_shape, -1, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.triangular(
+                left, mode, right, size=self.shape, dtype=self.dtype)
+
+        left = cupy.full(self.left_shape, 0, dtype=param_dtype)
+        mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
+        right = cupy.full(self.right_shape, 0, dtype=param_dtype)
+        with self.assertRaises(ValueError):
+            distributions.triangular(
+                left, mode, right, size=self.shape, dtype=self.dtype)
 
 
 @testing.parameterize(*testing.product({
