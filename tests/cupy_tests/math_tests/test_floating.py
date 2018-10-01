@@ -48,3 +48,10 @@ class TestFloating(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return xp.nextafter(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_nextafter_2(self, xp, dtype):
+        a = xp.array([-5, -3, 0, 3, 5], dtype=dtype)[:, None]
+        b = xp.array([-xp.inf, -4, 0, 4, xp.inf], dtype=dtype)[None, :]
+        return xp.nextafter(a, b)
