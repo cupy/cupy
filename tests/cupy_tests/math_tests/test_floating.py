@@ -15,7 +15,8 @@ class TestFloating(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.signbit(a)
 
-    @testing.for_all_dtypes_combination(('dtype_a', 'dtype_b'), no_complex=True)
+    @testing.for_all_dtypes_combination(
+        ('dtype_a', 'dtype_b'), no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_copysign_combination(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange((2, 3), xp, dtype_a)
@@ -49,7 +50,8 @@ class TestFloating(unittest.TestCase):
         testing.assert_array_equal(cupy_b, numpy_b)
         testing.assert_array_equal(cupy_c, numpy_c)
 
-    @testing.for_all_dtypes_combination(('dtype_a', 'dtype_b'), no_complex=True)
+    @testing.for_all_dtypes_combination(
+        ('dtype_a', 'dtype_b'), no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_nextafter_combination(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange((2, 3), xp, dtype_a)
