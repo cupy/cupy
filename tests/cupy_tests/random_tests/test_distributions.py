@@ -534,6 +534,25 @@ class TestDistributionsVonmises(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
+    'mean_shape': [(), (3, 2)],
+    'scale_shape': [(), (3, 2)],
+    'dtype': _regular_float_dtypes,  # to escape timeout
+})
+)
+@testing.gpu
+class TestDistributionsWald(RandomDistributionsTestCase):
+
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['mean_dtype', 'scale_dtype'])
+    def test_wald(self, mean_dtype, scale_dtype):
+        mean = numpy.full(self.mean_shape, 3, dtype=mean_dtype)
+        scale = numpy.full(self.scale_shape, 3, dtype=scale_dtype)
+        self.check_distribution('wald',
+                                {'mean': mean, 'scale': scale}, self.dtype)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (3, 2)],
     'a_shape': [(), (3, 2)],
 })
 )

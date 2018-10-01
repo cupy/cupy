@@ -651,6 +651,36 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    _wald_kernel = core.ElementwiseKernel(
+        'T mean, T scale, T U', 'T X',
+        """
+            T mu_2l;
+            T Y;
+            mu_2l = mean / (2*scale);
+            Y = mean*X*X;
+            X = mean + mu_2l*(Y - sqrt(4*scale*Y + Y*Y));
+            if (U > mean/(mean+X))
+            {
+                X = mean*mean/X;
+            }
+        """,
+        'wald_scale')
+
+    def wald(self, mean, scale, size=None, dtype=float):
+        """Returns an array of samples drawn from the Wald distribution.
+
+         .. seealso::
+            :func:`cupy.random.wald` for full documentation,
+            :meth:`numpy.random.RandomState.wald`
+        """
+        mean, scale = \
+            cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
+        if size is None:
+            size = cupy.broadcast(mean, scale).shape
+        x = self.normal(size=size, dtype=dtype)
+        u = self.random_sample(size=size, dtype=dtype)
+        return RandomState._wald_kernel(mean, scale, u, x)
+
     def weibull(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the weibull distribution.
 

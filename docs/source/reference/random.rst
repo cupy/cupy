@@ -62,6 +62,7 @@ Distributions
    cupy.random.standard_t
    cupy.random.uniform
    cupy.random.vonmises
+   cupy.random.wald
    cupy.random.weibull
    cupy.random.zipf
 
