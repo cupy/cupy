@@ -27,7 +27,8 @@ ${preamble}
 
 typedef ${reduce_type} _type_reduce;
 extern "C" __global__ void ${name}(${params}) {
-  __shared__ _type_reduce _sdata[${block_size}];
+  __shared__ char _sdata_raw[${block_size} * sizeof(_type_reduce)];
+  _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
   unsigned int _tid = threadIdx.x;
 
   int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
