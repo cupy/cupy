@@ -1026,6 +1026,20 @@ class TestStandardExponential(RandomGeneratorTestCase):
             self.assertTrue(cupy.isfinite(x).all())
 
 
+@testing.parameterize(
+    {'left': -1.0, 'mode': 0.0, 'right': 2.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestTriangular(RandomGeneratorTestCase):
+
+    target_method = 'triangular'
+
+    def test_triangular(self):
+        self.generate(
+            left=self.left, mode=self.mode, right=self.right, size=(3, 2))
+
+
 @testing.gpu
 class TestRandomStateThreadSafe(unittest.TestCase):
 

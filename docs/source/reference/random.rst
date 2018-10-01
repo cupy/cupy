@@ -61,6 +61,7 @@ Distributions
    cupy.random.standard_gamma
    cupy.random.standard_normal
    cupy.random.standard_t
+   cupy.random.triangular
    cupy.random.uniform
    cupy.random.vonmises
    cupy.random.wald

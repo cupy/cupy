@@ -40,6 +40,7 @@ from cupy.random.distributions import standard_exponential  # NOQA
 from cupy.random.distributions import standard_gamma  # NOQA
 from cupy.random.distributions import standard_normal  # NOQA
 from cupy.random.distributions import standard_t  # NOQA
+from cupy.random.distributions import triangular  # NOQA
 from cupy.random.distributions import uniform  # NOQA
 from cupy.random.distributions import vonmises  # NOQA
 from cupy.random.distributions import wald  # NOQA
