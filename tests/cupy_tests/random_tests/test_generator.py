@@ -233,6 +233,21 @@ class TestGeometric(RandomGeneratorTestCase):
         self.generate(p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'ngood': 1, 'nbad': 1, 'nsample': 1},
+    {'ngood': 1, 'nbad': 1, 'nsample': 2},
+)
+@testing.gpu
+@testing.fix_random()
+class TestHypergeometric(RandomGeneratorTestCase):
+
+    target_method = 'hypergeometric'
+
+    def test_hypergeometric(self):
+        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
+                      size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
@@ -480,6 +495,20 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestRayleigh(RandomGeneratorTestCase):
+
+    target_method = 'rayleigh'
+
+    def test_rayleigh(self):
+        self.generate(scale=self.scale, size=(3, 2))
 
 
 @testing.gpu
@@ -869,6 +898,21 @@ class TestVonmises(RandomGeneratorTestCase):
 
     def test_vonmises(self):
         self.generate(mu=self.mu, kappa=self.kappa, size=(3, 2))
+
+
+@testing.parameterize(
+    {'mean': 1.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWald(RandomGeneratorTestCase):
+
+    target_method = 'wald'
+
+    def test_wald(self):
+        self.generate(mean=self.mean, scale=self.scale, size=(3, 2))
 
 
 @testing.parameterize(

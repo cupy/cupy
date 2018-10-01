@@ -200,6 +200,22 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+        """Returns an array of samples drawn from the hypergeometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.hypergeometric` for full documentation,
+            :meth:`numpy.random.RandomState.hypergeometric`
+        """
+        ngood, nbad, nsample = \
+            cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
+        if size is None:
+            size = cupy.broadcast(ngood, nbad, nsample).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
@@ -422,6 +438,25 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
+    def rayleigh(self, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a rayleigh distribution.
+
+        .. seealso::
+            :func:`cupy.random.rayleigh` for full documentation,
+            :meth:`numpy.random.RandomState.rayleigh`
+        """
+        scale = cupy.asarray(scale)
+        if size is None:
+            size = scale.shape
+        if cupy.any(scale < 0):
+            raise ValueError('scale < 0')
+        x = self._random_sample_raw(size, dtype)
+        x = cupy.log(x, out=x)
+        x = cupy.multiply(x, -2., out=x)
+        x = cupy.sqrt(x, out=x)
+        x = cupy.multiply(x, scale, out=x)
+        return x
+
     def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
@@ -635,6 +670,36 @@ class RandomState(object):
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
+
+    _wald_kernel = core.ElementwiseKernel(
+        'T mean, T scale, T U', 'T X',
+        """
+            T mu_2l;
+            T Y;
+            mu_2l = mean / (2*scale);
+            Y = mean*X*X;
+            X = mean + mu_2l*(Y - sqrt(4*scale*Y + Y*Y));
+            if (U > mean/(mean+X))
+            {
+                X = mean*mean/X;
+            }
+        """,
+        'wald_scale')
+
+    def wald(self, mean, scale, size=None, dtype=float):
+        """Returns an array of samples drawn from the Wald distribution.
+
+         .. seealso::
+            :func:`cupy.random.wald` for full documentation,
+            :meth:`numpy.random.RandomState.wald`
+        """
+        mean, scale = \
+            cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
+        if size is None:
+            size = cupy.broadcast(mean, scale).shape
+        x = self.normal(size=size, dtype=dtype)
+        u = self.random_sample(size=size, dtype=dtype)
+        return RandomState._wald_kernel(mean, scale, u, x)
 
     def weibull(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the weibull distribution.

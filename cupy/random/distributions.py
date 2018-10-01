@@ -261,6 +261,37 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     return rs.gumbel(loc, scale, size, dtype)
 
 
+def hypergeometric(ngood, nbad, nsample, size=None, dtype=int):
+    """hypergeometric distribution.
+
+    Returns an array of samples drawn from the hypergeometric distribution. Its
+    probability mass function is defined as
+
+    .. math::
+        f(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}},
+
+    Args:
+        ngood (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`n`.
+        nbad (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`m`.
+        nsample (int or array_like of ints): Parameter of the hypergeometric
+            distribution :math:`N`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.int32` and
+            :class:`numpy.int64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the hypergeometric distribution.
+
+    .. seealso::
+        :func:`numpy.random.hypergeometric`
+    """
+    rs = generator.get_random_state()
+    return rs.hypergeometric(ngood, nbad, nsample, size, dtype)
+
+
 def logistic(loc=0.0, scale=1.0, size=None, dtype=float):
     """Logistic distribution.
 
@@ -483,6 +514,32 @@ def poisson(lam=1.0, size=None, dtype=int):
     return x
 
 
+def rayleigh(scale=1.0, size=None, dtype=float):
+    """Rayleigh distribution.
+
+    Returns an array of samples drawn from the rayleigh distribution.
+    Its probability density function is defined as
+
+      .. math::
+         f(x) = \\frac{x}{\\sigma^2}e^{\\frac{-x^2}{2-\\sigma^2}}, x \\ge 0,
+
+    Args:
+        scale (array): Parameter of the rayleigh distribution :math:`\\sigma`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the rayleigh distribution.
+
+    .. seealso:: :func:`numpy.random.rayleigh`
+    """
+    rs = generator.get_random_state()
+    x = rs.rayleigh(scale, size, dtype)
+    return x
+
+
 def standard_cauchy(size=None, dtype=float):
     """Standard cauchy distribution.
 
@@ -653,6 +710,35 @@ def vonmises(mu, kappa, size=None, dtype=float):
     """
     rs = generator.get_random_state()
     return rs.vonmises(mu, kappa, size=size, dtype=dtype)
+
+
+def wald(mean, scale, size=None, dtype=float):
+    """Wald distribution.
+
+    Returns an array of samples drawn from the Wald distribution. Its
+    probability density function is defined as
+
+    .. math::
+       f(x) = \\sqrt{\\frac{\\lambda}{2\\pi x^3}}\\
+           e^{\\frac{-\\lambda(x-\\mu)^2}{2\\mu^2x}},
+
+    Args:
+        mean (float): Parameter of the wald distribution :math:`\\mu`.
+        scale (float): Parameter of the wald distribution :math:`\\lambda`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the wald distribution.
+
+    .. seealso::
+        :func:`cupy.random.RandomState.wald`
+        :func:`numpy.random.wald`
+    """
+    rs = generator.get_random_state()
+    return rs.wald(mean, scale, size, dtype)
 
 
 def weibull(a, size=None, dtype=float):
