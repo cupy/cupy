@@ -11,23 +11,20 @@ from cupy.testing import condition
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
+@testing.fix_random()
 class TestSolve(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
-    @condition.retry(10)
-    def check_x(self, a_shape, b_shape, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
-        b_gpu = cupy.asarray(b_cpu)
-        a_gpu_copy = a_gpu.copy()
-        b_gpu_copy = b_gpu.copy()
-        result_cpu = numpy.linalg.solve(a_cpu, b_cpu)
-        result_gpu = cupy.linalg.solve(a_gpu, b_gpu)
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
-        cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
-        cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
-        cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    def check_x(self, a_shape, b_shape, xp, dtype):
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
+        a_copy = a.copy()
+        b_copy = b.copy()
+        result = xp.linalg.solve(a, b)
+        cupy.testing.assert_array_equal(a_copy, a)
+        cupy.testing.assert_array_equal(b_copy, b)
+        return result
 
     def test_solve(self):
         self.check_x((4, 4), (4,))
