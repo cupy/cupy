@@ -233,6 +233,21 @@ class TestGeometric(RandomGeneratorTestCase):
         self.generate(p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'ngood': 1, 'nbad': 1, 'nsample': 1},
+    {'ngood': 1, 'nbad': 1, 'nsample': 2},
+)
+@testing.gpu
+@testing.fix_random()
+class TestHypergeometric(RandomGeneratorTestCase):
+
+    target_method = 'hypergeometric'
+
+    def test_hypergeometric(self):
+        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
+                      size=(3, 2))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
@@ -247,6 +262,24 @@ class TestLaplace(RandomGeneratorTestCase):
 
     def test_laplace_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
+
+
+@testing.gpu
+@testing.fix_random()
+class TestLogistic(RandomGeneratorTestCase):
+
+    target_method = 'logistic'
+
+    def test_logistic_1(self):
+        self.generate()
+
+    def test_logistic_2(self):
+        self.generate(0.0, 1.0, size=(3, 2))
+
+    def test_standard_logistic_isfinite(self):
+        for _ in range(10):
+            x = self.generate(size=10**7)
+            self.assertTrue(cupy.isfinite(x).all())
 
 
 @testing.gpu
@@ -284,6 +317,57 @@ class TestLogNormal(RandomGeneratorTestCase):
 
     def test_lognormal_float64(self):
         self.check_lognormal(numpy.float64)
+
+
+@testing.parameterize(
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 0.9},
+)
+@testing.gpu
+@testing.fix_random()
+class TestLogseries(RandomGeneratorTestCase):
+
+    target_method = 'logseries'
+
+    def test_logseries(self):
+        self.generate(p=self.p, size=(3, 2))
+
+
+@testing.gpu
+@testing.parameterize(*[
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},
+    {'args': ([10., 10.], [[20., 10.], [10., 20.]]),
+     'size': None, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 10, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (1, 2, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': 3, 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (3, 3), 'tol': 1e-6},
+    {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (), 'tol': 1e-6},
+])
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.fix_random()
+class TestMultivariateNormal(RandomGeneratorTestCase):
+
+    target_method = 'multivariate_normal'
+
+    def check_multivariate_normal(self, dtype):
+        vals = self.generate_many(
+            mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
+            dtype=dtype, _count=10)
+
+        shape = core.get_size(self.size)
+        for val in vals:
+            assert isinstance(val, cupy.ndarray)
+            assert val.dtype == dtype
+            assert val.shape == shape + (2,)
+
+    def test_multivariate_normal_float32(self):
+        self.check_multivariate_normal(numpy.float32)
+
+    def test_multivariate_normal_float64(self):
+        self.check_multivariate_normal(numpy.float64)
 
 
 @testing.parameterize(
@@ -423,6 +507,33 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.parameterize(
+    {'a': 0.5},
+)
+@testing.gpu
+@testing.fix_random()
+class TestPower(RandomGeneratorTestCase):
+
+    target_method = 'power'
+
+    def test_power(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
+    {'scale': 1.0},
+    {'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestRayleigh(RandomGeneratorTestCase):
+
+    target_method = 'rayleigh'
+
+    def test_rayleigh(self):
+        self.generate(scale=self.scale, size=(3, 2))
 
 
 @testing.gpu
@@ -815,6 +926,50 @@ class TestVonmises(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'mean': 1.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 3.0},
+    {'mean': 3.0, 'scale': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWald(RandomGeneratorTestCase):
+
+    target_method = 'wald'
+
+    def test_wald(self):
+        self.generate(mean=self.mean, scale=self.scale, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 0.5},
+    {'a': 1.0},
+    {'a': 3.0},
+    {'a': numpy.inf},
+)
+@testing.gpu
+@testing.fix_random()
+class TestWeibull(RandomGeneratorTestCase):
+
+    target_method = 'weibull'
+
+    def test_weibull(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
+    {'a': 2.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestZipf(RandomGeneratorTestCase):
+
+    target_method = 'zipf'
+
+    def test_zipf(self):
+        self.generate(a=self.a, size=(3, 2))
+
+
+@testing.parameterize(
     {'a': 3, 'size': 5},
     {'a': [1, 2, 3], 'size': 5},
 )
@@ -894,6 +1049,20 @@ class TestStandardExponential(RandomGeneratorTestCase):
         for _ in range(10):
             x = self.generate(size=10**7)
             self.assertTrue(cupy.isfinite(x).all())
+
+
+@testing.parameterize(
+    {'left': -1.0, 'mode': 0.0, 'right': 2.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestTriangular(RandomGeneratorTestCase):
+
+    target_method = 'triangular'
+
+    def test_triangular(self):
+        self.generate(
+            left=self.left, mode=self.mode, right=self.right, size=(3, 2))
 
 
 @testing.gpu
