@@ -15,11 +15,18 @@ class TestFloating(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.signbit(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(('dtype_a', 'dtype_b'), no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_copysign(self, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def test_copysign_combination(self, xp, dtype_a, dtype_b):
+        a = testing.shaped_arange((2, 3), xp, dtype_a)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype_b)
+        return xp.copysign(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copysign_float(self, xp, dtype):
+        a = xp.array([-xp.inf, -3, -0.0, 0, 3, xp.inf], dtype=dtype)[:, None]
+        b = xp.array([-xp.inf, -3, -0.0, 0, 3, xp.inf], dtype=dtype)[None, :]
         return xp.copysign(a, b)
 
     @testing.for_float_dtypes(name='ftype')
@@ -42,16 +49,16 @@ class TestFloating(unittest.TestCase):
         testing.assert_array_equal(cupy_b, numpy_b)
         testing.assert_array_equal(cupy_c, numpy_c)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(('dtype_a', 'dtype_b'), no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_nextafter(self, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def test_nextafter_combination(self, xp, dtype_a, dtype_b):
+        a = testing.shaped_arange((2, 3), xp, dtype_a)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype_b)
         return xp.nextafter(a, b)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_nextafter_2(self, xp, dtype):
+    def test_nextafter_float(self, xp, dtype):
         # TODO(kataoka): test 0
         a = xp.array([-5, -3, 3, 5], dtype=dtype)[:, None]
         b = xp.array([-xp.inf, -4, 0, 4, xp.inf], dtype=dtype)[None, :]
