@@ -372,7 +372,9 @@ def noncentral_chisquare(df, nonc, size=None, dtype=float):
     .. math::
        f(x) = \\frac{1}{2}e^{-(x+\\lambda)/2} \\
         \\left(\\frac{x}{\\lambda}\\right)^{k/4 - 1/2} \\
-        I_{k/2 - 1}(\\sqrt{\\lambda x})
+        I_{k/2 - 1}(\\sqrt{\\lambda x}),
+
+    where :math:`I` is the modified Bessel function of the first kind.
 
     Args:
         df (float): Parameter of the noncentral chisquare distribution

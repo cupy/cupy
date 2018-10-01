@@ -241,6 +241,7 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
                                 {'mean': mean, 'sigma': sigma}, dtype)
 
 
+@testing.with_requires('numpy>=1.10')
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'df_shape': [(), (3, 2)],
@@ -274,6 +275,7 @@ class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
                 df, nonc, size=self.shape, dtype=self.dtype)
 
 
+@testing.with_requires('numpy>=1.14')
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
     'dfnum_shape': [(), (3, 2)],
