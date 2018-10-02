@@ -52,6 +52,55 @@ __device__ double rk_double(rk_state *state) {
 }
 '''
 
+
+# The kernels for distributions are based on
+# numpy/random/mtrand/distributions.c
+# with the following licenses:
+"""
+/* Copyright 2005 Robert Kern (robert.kern@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/* The implementations of rk_hypergeometric_hyp(), rk_hypergeometric_hrua(),
+ * and rk_triangular() were adapted from Ivan Frohne's rv.py which has this
+ * license:
+ *
+ *            Copyright 1998 by Ivan Frohne; Wasilla, Alaska, U.S.A.
+ *                            All Rights Reserved
+ *
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation for any purpose, free of charge, is granted subject to the
+ * following conditions:
+ *   The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the software.
+ *
+ *   THE SOFTWARE AND DOCUMENTATION IS PROVIDED WITHOUT WARRANTY OF ANY KIND,
+ *   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHOR
+ *   OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM OR DAMAGES IN A CONTRACT
+ *   ACTION, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ *   SOFTWARE OR ITS DOCUMENTATION.
+ */
+"""  # NOQA
+
 rk_binomial_btpe_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
