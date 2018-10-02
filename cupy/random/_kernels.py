@@ -101,6 +101,168 @@ __device__ double rk_double(rk_state *state) {
  */
 """
 
+loggam_definition = '''
+/*
+ * log-gamma function to support some of these distributions. The
+ * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
+ * book "Computation of Special Functions", 1996, John Wiley & Sons, Inc.
+ */
+static __device__ double loggam(double x) {
+    double x0, x2, xp, gl, gl0;
+    long k, n;
+    double a[10] = {8.333333333333333e-02,-2.777777777777778e-03,
+         7.936507936507937e-04,-5.952380952380952e-04,
+         8.417508417508418e-04,-1.917526917526918e-03,
+         6.410256410256410e-03,-2.955065359477124e-02,
+         1.796443723688307e-01,-1.39243221690590e+00};
+    x0 = x;
+    n = 0;
+    if ((x == 1.0) || (x == 2.0)) {
+        return 0.0;
+    } else if (x <= 7.0) {
+        n = (long)(7 - x);
+        x0 = x + n;
+    }
+    x2 = 1.0/(x0*x0);
+    xp = 2*M_PI;
+    gl0 = a[9];
+    for (k=8; k>=0; k--) {
+        gl0 *= x2;
+        gl0 += a[k];
+    }
+    gl = gl0/x0 + 0.5*log(xp) + (x0-0.5)*log(x0) - x0;
+    if (x <= 7.0) {
+        for (k=1; k<=n; k++) {
+            gl -= log(x0-1.0);
+            x0 -= 1.0;
+        }
+    }
+    return gl;
+}
+'''
+
+rk_standard_exponential_definition = '''
+__device__ double rk_standard_exponential(rk_state *state) {
+    /* We use -log(1-U) since U is [0, 1) */
+    return -log(1.0 - rk_double(state));
+}
+'''
+
+rk_standard_gamma_definition = '''
+__device__ double rk_standard_gamma(rk_state *state, double shape) {
+    double b, c;
+    double U, V, X, Y;
+    if (shape == 1.0) {
+        return rk_standard_exponential(state);
+    } else if (shape < 1.0) {
+        for (;;) {
+            U = rk_double(state);
+            V = rk_standard_exponential(state);
+            if (U <= 1.0 - shape) {
+                X = pow(U, 1./shape);
+                if (X <= V) {
+                    return X;
+                }
+            } else {
+                Y = -log((1-U)/shape);
+                X = pow(1.0 - shape + shape*Y, 1./shape);
+                if (X <= (V + Y)) {
+                    return X;
+                }
+            }
+        }
+    } else {
+        b = shape - 1./3.;
+        c = 1./sqrt(9*b);
+        for (;;) {
+            do {
+                X = rk_gauss(state);
+                V = 1.0 + c*X;
+            } while (V <= 0.0);
+            V = V*V*V;
+            U = rk_double(state);
+            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
+            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
+        }
+    }
+}
+'''
+
+rk_beta_definition = '''
+__device__ double rk_beta(rk_state *state, double a, double b) {
+    double Ga, Gb;
+    if ((a <= 1.0) && (b <= 1.0)) {
+        double U, V, X, Y;
+        /* Use Johnk's algorithm */
+        while (1) {
+            U = rk_double(state);
+            V = rk_double(state);
+            X = pow(U, 1.0/a);
+            Y = pow(V, 1.0/b);
+            if ((X + Y) <= 1.0) {
+                if (X +Y > 0) {
+                    return X / (X + Y);
+                } else {
+                    double logX = log(U) / a;
+                    double logY = log(V) / b;
+                    double logM = logX > logY ? logX : logY;
+                    logX -= logM;
+                    logY -= logM;
+                    return exp(logX - log(exp(logX) + exp(logY)));
+                }
+            }
+        }
+    } else {
+        Ga = rk_standard_gamma(state, a);
+        Gb = rk_standard_gamma(state, b);
+        return Ga/(Ga + Gb);
+    }
+}
+'''
+
+rk_chisquare_definition = '''
+__device__ double rk_chisquare(rk_state *state, double df) {
+    return 2.0*rk_standard_gamma(state, df/2.0);
+}
+'''
+
+rk_noncentral_chisquare_definition = '''
+__device__ double rk_noncentral_chisquare(
+    rk_state *state, double df, double nonc)
+{
+    if (nonc == 0){
+        return rk_chisquare(state, df);
+    }
+    if(1 < df)
+    {
+        const double Chi2 = rk_chisquare(state, df - 1);
+        const double N = rk_gauss(state) + sqrt(nonc);
+        return Chi2 + N*N;
+    }
+    else
+    {
+        const long i = rk_poisson(state, nonc / 2.0);
+        return rk_chisquare(state, df + 2 * i);
+    }
+}
+'''
+
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
+}
+'''
+
+rk_noncentral_f_definition = '''
+__device__ double rk_noncentral_f(
+    rk_state *state, double dfnum, double dfden, double nonc)
+{
+    double t = rk_noncentral_chisquare(state, dfnum, nonc) * dfden;
+    return t / (rk_chisquare(state, dfden) * dfnum);
+}
+'''
+
 rk_binomial_btpe_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
@@ -276,46 +438,6 @@ __device__ long rk_binomial(rk_state *state, int n, double p) {
 }
 '''
 
-loggam_definition = '''
-/*
- * log-gamma function to support some of these distributions. The
- * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
- * book "Computation of Special Functions", 1996, John Wiley & Sons, Inc.
- */
-static __device__ double loggam(double x) {
-    double x0, x2, xp, gl, gl0;
-    long k, n;
-    double a[10] = {8.333333333333333e-02,-2.777777777777778e-03,
-         7.936507936507937e-04,-5.952380952380952e-04,
-         8.417508417508418e-04,-1.917526917526918e-03,
-         6.410256410256410e-03,-2.955065359477124e-02,
-         1.796443723688307e-01,-1.39243221690590e+00};
-    x0 = x;
-    n = 0;
-    if ((x == 1.0) || (x == 2.0)) {
-        return 0.0;
-    } else if (x <= 7.0) {
-        n = (long)(7 - x);
-        x0 = x + n;
-    }
-    x2 = 1.0/(x0*x0);
-    xp = 2*M_PI;
-    gl0 = a[9];
-    for (k=8; k>=0; k--) {
-        gl0 *= x2;
-        gl0 += a[k];
-    }
-    gl = gl0/x0 + 0.5*log(xp) + (x0-0.5)*log(x0) - x0;
-    if (x <= 7.0) {
-        for (k=1; k<=n; k++) {
-            gl -= log(x0-1.0);
-            x0 -= 1.0;
-        }
-    }
-    return gl;
-}
-'''
-
 rk_poisson_mult_definition = '''
 __device__ long rk_poisson_mult(rk_state *state, double lam) {
     long X;
@@ -384,35 +506,97 @@ __device__ long rk_poisson(rk_state *state, double lam) {
 }
 '''
 
-rk_gauss_definition = '''
-__device__ double rk_gauss(rk_state *state) {
-    if (state->has_gauss) {
-        const double tmp = state->gauss;
-        state->gauss = 0;
-        state->has_gauss = 0;
-        return tmp;
-    } else {
-        double f, x1, x2, r2;
-        do {
-            x1 = 2.0*rk_double(state) - 1.0;
-            x2 = 2.0*rk_double(state) - 1.0;
-            r2 = x1*x1 + x2*x2;
+rk_standard_t_definition = '''
+__device__ double rk_standard_t(rk_state *state, double df) {
+    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
+}
+'''
+
+rk_vonmises_definition = '''
+__device__ double rk_vonmises(rk_state *state, double mu, double kappa)
+{
+    double s;
+    double U, V, W, Y, Z;
+    double result, mod;
+    int neg;
+
+    if (kappa < 1e-8)
+    {
+        return M_PI * (2*rk_double(state)-1);
+    }
+    else
+    {
+        /* with double precision rho is zero until 1.4e-8 */
+        if (kappa < 1e-5) {
+            /*
+             * second order taylor expansion around kappa = 0
+             * precise until relatively large kappas as second order is 0
+             */
+            s = (1./kappa + kappa);
         }
-        while (r2 >= 1.0 || r2 == 0.0);
-        /* Box-Muller transform */
-        f = sqrt(-2.0*log(r2)/r2);
-        /* Keep for next call */
-        state->gauss = f*x1;
-        state->has_gauss = 1;
-        return f*x2;
+        else {
+            double r = 1 + sqrt(1 + 4*kappa*kappa);
+            double rho = (r - sqrt(2*r)) / (2*kappa);
+            s = (1 + rho*rho)/(2*rho);
+        }
+
+        while (1)
+        {
+        U = rk_double(state);
+            Z = cos(M_PI*U);
+            W = (1 + s*Z)/(s + Z);
+            Y = kappa * (s - W);
+            V = rk_double(state);
+            if ((Y*(2-Y) - V >= 0) || (log(Y/V)+1 - Y >= 0))
+            {
+                break;
+            }
+        }
+
+        U = rk_double(state);
+
+        result = acos(W);
+        if (U < 0.5)
+        {
+        result = -result;
+        }
+        result += mu;
+        neg = (result < 0);
+        mod = fabs(result);
+        mod = (fmod(mod+M_PI, 2*M_PI)-M_PI);
+        if (neg)
+        {
+            mod *= -1;
+        }
+
+        return mod;
     }
 }
 '''
 
-rk_f_definition = '''
-__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
-    return ((rk_chisquare(state, dfnum) * dfden) /
-            (rk_chisquare(state, dfden) * dfnum));
+rk_zipf_definition = '''
+__device__ long rk_zipf(rk_state *state, double a)
+{
+    double am1, b;
+
+    am1 = a - 1.0;
+    b = pow(2.0, am1);
+    while (1) {
+        double T, U, V, X;
+
+        U = 1.0 - rk_double(state);
+        V = rk_double(state);
+        X = floor(pow(U, -1.0/am1));
+
+        if (X < 1.0) {
+            continue;
+        }
+
+        T = pow(1.0 + 1.0/X, am1);
+        if (V*X*(T - 1.0)/(b - 1.0) <= T/b) {
+            return (long)X;
+        }
+    }
 }
 '''
 
@@ -434,38 +618,6 @@ __device__ long rk_geometric_search(rk_state *state, double p) {
 }
 '''
 
-rk_logseries_definition = '''
-__device__ long rk_logseries(rk_state *state, double p)
-{
-    double q, r, U, V;
-    long result;
-
-    r = log(1.0 - p);
-
-    while (1) {
-        V = rk_double(state);
-        if (V >= p) {
-            return 1;
-        }
-        U = rk_double(state);
-        q = 1.0 - exp(r*U);
-        if (V <= q*q) {
-            result = (long)floor(1 + log(V)/log(q));
-            if (result < 1) {
-                continue;
-            }
-            else {
-                return result;
-            }
-        }
-        if (V >= q) {
-            return 1;
-        }
-        return 2;
-    }
-}
-'''
-
 rk_geometric_inversion_definition = '''
 __device__ long rk_geometric_inversion(rk_state *state, double p) {
     return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
@@ -478,97 +630,6 @@ __device__ long rk_geometric(rk_state *state, double p) {
         return rk_geometric_search(state, p);
     } else {
         return rk_geometric_inversion(state, p);
-    }
-}
-'''
-
-rk_standard_exponential_definition = '''
-__device__ double rk_standard_exponential(rk_state *state) {
-    /* We use -log(1-U) since U is [0, 1) */
-    return -log(1.0 - rk_double(state));
-}
-'''
-
-rk_standard_gamma_definition = '''
-__device__ double rk_standard_gamma(rk_state *state, double shape) {
-    double b, c;
-    double U, V, X, Y;
-    if (shape == 1.0) {
-        return rk_standard_exponential(state);
-    } else if (shape < 1.0) {
-        for (;;) {
-            U = rk_double(state);
-            V = rk_standard_exponential(state);
-            if (U <= 1.0 - shape) {
-                X = pow(U, 1./shape);
-                if (X <= V) {
-                    return X;
-                }
-            } else {
-                Y = -log((1-U)/shape);
-                X = pow(1.0 - shape + shape*Y, 1./shape);
-                if (X <= (V + Y)) {
-                    return X;
-                }
-            }
-        }
-    } else {
-        b = shape - 1./3.;
-        c = 1./sqrt(9*b);
-        for (;;) {
-            do {
-                X = rk_gauss(state);
-                V = 1.0 + c*X;
-            } while (V <= 0.0);
-            V = V*V*V;
-            U = rk_double(state);
-            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
-            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
-        }
-    }
-}
-'''
-
-rk_standard_t_definition = '''
-__device__ double rk_standard_t(rk_state *state, double df) {
-    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
-}
-'''
-
-rk_chisquare_definition = '''
-__device__ double rk_chisquare(rk_state *state, double df) {
-    return 2.0*rk_standard_gamma(state, df/2.0);
-}
-'''
-
-rk_beta_definition = '''
-__device__ double rk_beta(rk_state *state, double a, double b) {
-    double Ga, Gb;
-    if ((a <= 1.0) && (b <= 1.0)) {
-        double U, V, X, Y;
-        /* Use Johnk's algorithm */
-        while (1) {
-            U = rk_double(state);
-            V = rk_double(state);
-            X = pow(U, 1.0/a);
-            Y = pow(V, 1.0/b);
-            if ((X + Y) <= 1.0) {
-                if (X +Y > 0) {
-                    return X / (X + Y);
-                } else {
-                    double logX = log(U) / a;
-                    double logY = log(V) / b;
-                    double logM = logX > logY ? logX : logY;
-                    logX -= logM;
-                    logY -= logM;
-                    return exp(logX - log(exp(logX) + exp(logY)));
-                }
-            }
-        }
-    } else {
-        Ga = rk_standard_gamma(state, a);
-        Gb = rk_standard_gamma(state, b);
-        return Ga/(Ga + Gb);
     }
 }
 '''
@@ -682,120 +743,59 @@ __device__ long rk_hypergeometric(
 }
 '''
 
-rk_vonmises_definition = '''
-__device__ double rk_vonmises(rk_state *state, double mu, double kappa)
+rk_logseries_definition = '''
+__device__ long rk_logseries(rk_state *state, double p)
 {
-    double s;
-    double U, V, W, Y, Z;
-    double result, mod;
-    int neg;
+    double q, r, U, V;
+    long result;
 
-    if (kappa < 1e-8)
-    {
-        return M_PI * (2*rk_double(state)-1);
-    }
-    else
-    {
-        /* with double precision rho is zero until 1.4e-8 */
-        if (kappa < 1e-5) {
-            /*
-             * second order taylor expansion around kappa = 0
-             * precise until relatively large kappas as second order is 0
-             */
-            s = (1./kappa + kappa);
-        }
-        else {
-            double r = 1 + sqrt(1 + 4*kappa*kappa);
-            double rho = (r - sqrt(2*r)) / (2*kappa);
-            s = (1 + rho*rho)/(2*rho);
-        }
+    r = log(1.0 - p);
 
-        while (1)
-        {
+    while (1) {
+        V = rk_double(state);
+        if (V >= p) {
+            return 1;
+        }
         U = rk_double(state);
-            Z = cos(M_PI*U);
-            W = (1 + s*Z)/(s + Z);
-            Y = kappa * (s - W);
-            V = rk_double(state);
-            if ((Y*(2-Y) - V >= 0) || (log(Y/V)+1 - Y >= 0))
-            {
-                break;
+        q = 1.0 - exp(r*U);
+        if (V <= q*q) {
+            result = (long)floor(1 + log(V)/log(q));
+            if (result < 1) {
+                continue;
+            }
+            else {
+                return result;
             }
         }
-
-        U = rk_double(state);
-
-        result = acos(W);
-        if (U < 0.5)
-        {
-        result = -result;
+        if (V >= q) {
+            return 1;
         }
-        result += mu;
-        neg = (result < 0);
-        mod = fabs(result);
-        mod = (fmod(mod+M_PI, 2*M_PI)-M_PI);
-        if (neg)
-        {
-            mod *= -1;
-        }
-
-        return mod;
+        return 2;
     }
 }
 '''
 
-rk_noncentral_chisquare_definition = '''
-__device__ double rk_noncentral_chisquare(
-    rk_state *state, double df, double nonc)
-{
-    if (nonc == 0){
-        return rk_chisquare(state, df);
-    }
-    if(1 < df)
-    {
-        const double Chi2 = rk_chisquare(state, df - 1);
-        const double N = rk_gauss(state) + sqrt(nonc);
-        return Chi2 + N*N;
-    }
-    else
-    {
-        const long i = rk_poisson(state, nonc / 2.0);
-        return rk_chisquare(state, df + 2 * i);
-    }
-}
-'''
-
-rk_noncentral_f_definition = '''
-__device__ double rk_noncentral_f(
-    rk_state *state, double dfnum, double dfden, double nonc)
-{
-    double t = rk_noncentral_chisquare(state, dfnum, nonc) * dfden;
-    return t / (rk_chisquare(state, dfden) * dfnum);
-}
-'''
-
-rk_zipf_definition = '''
-__device__ long rk_zipf(rk_state *state, double a)
-{
-    double am1, b;
-
-    am1 = a - 1.0;
-    b = pow(2.0, am1);
-    while (1) {
-        double T, U, V, X;
-
-        U = 1.0 - rk_double(state);
-        V = rk_double(state);
-        X = floor(pow(U, -1.0/am1));
-
-        if (X < 1.0) {
-            continue;
+rk_gauss_definition = '''
+__device__ double rk_gauss(rk_state *state) {
+    if (state->has_gauss) {
+        const double tmp = state->gauss;
+        state->gauss = 0;
+        state->has_gauss = 0;
+        return tmp;
+    } else {
+        double f, x1, x2, r2;
+        do {
+            x1 = 2.0*rk_double(state) - 1.0;
+            x2 = 2.0*rk_double(state) - 1.0;
+            r2 = x1*x1 + x2*x2;
         }
-
-        T = pow(1.0 + 1.0/X, am1);
-        if (V*X*(T - 1.0)/(b - 1.0) <= T/b) {
-            return (long)X;
-        }
+        while (r2 >= 1.0 || r2 == 0.0);
+        /* Box-Muller transform */
+        f = sqrt(-2.0*log(r2)/r2);
+        /* Keep for next call */
+        state->gauss = f*x1;
+        state->has_gauss = 1;
+        return f*x2;
     }
 }
 '''
