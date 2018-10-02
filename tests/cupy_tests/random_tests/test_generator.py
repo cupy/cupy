@@ -371,6 +371,18 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    {'n': 5, 'p': 0.5},
+)
+@testing.gpu
+@testing.fix_random()
+class TestNegativeBinomial(RandomGeneratorTestCase):
+    target_method = 'negative_binomial'
+
+    def test_negative_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+
+@testing.parameterize(
     {'df': 1.0, 'nonc': 1.0},
 )
 @testing.gpu

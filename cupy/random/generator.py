@@ -342,6 +342,24 @@ class RandomState(object):
         x += mean
         return x
 
+    def negative_binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the negative binomial distribution.
+
+        .. seealso::
+            :func:`cupy.random.negative_binomial` for full documentation,
+            :meth:`numpy.random.RandomState.negative_binomial`
+        """
+        n = cupy.asarray(n)
+        p = cupy.asarray(p)
+        if cupy.any(n <= 0):
+            raise ValueError("n <= 0")
+        if cupy.any(p < 0):
+            raise ValueError("p < 0")
+        if cupy.any(p > 1):
+            raise ValueError("p > 1")
+        y = self.gamma(n, (1-p)/p, size)
+        return self.poisson(y, dtype=dtype)
+
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
 

@@ -52,6 +52,7 @@ Distributions
    cupy.random.logseries
    cupy.random.multinomial
    cupy.random.multivariate_normal
+   cupy.random.negative_binomial
    cupy.random.noncentral_chisquare
    cupy.random.noncentral_f
    cupy.random.normal
