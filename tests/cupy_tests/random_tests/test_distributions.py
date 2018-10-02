@@ -1,11 +1,11 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
-
-import numpy
 
 
 _regular_float_dtypes = (numpy.float64, numpy.float32)
