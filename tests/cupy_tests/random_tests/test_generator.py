@@ -11,6 +11,7 @@ from cupy import core
 from cupy import cuda
 from cupy.random import generator
 from cupy import testing
+from cupy.testing import attr
 from cupy.testing import condition
 from cupy.testing import hypothesis
 
@@ -439,10 +440,11 @@ class TestLogistic(RandomGeneratorTestCase):
     def test_logistic_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
 
+    @attr.slow
+    @condition.repeat(10)
     def test_standard_logistic_isfinite(self):
-        for _ in range(10):
-            x = self.generate(size=10**7)
-            self.assertTrue(cupy.isfinite(x).all())
+        x = self.generate(size=10**7)
+        self.assertTrue(cupy.isfinite(x).all())
 
 
 @testing.gpu
@@ -770,10 +772,11 @@ class TestStandardCauchy(RandomGeneratorTestCase):
     def test_standard_cauchy(self):
         self.generate(size=(3, 2))
 
+    @attr.slow
+    @condition.repeat(10)
     def test_standard_cauchy_isfinite(self):
-        for _ in range(10):
-            x = self.generate(size=10**7)
-            self.assertTrue(cupy.isfinite(x).all())
+        x = self.generate(size=10**7)
+        self.assertTrue(cupy.isfinite(x).all())
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
@@ -1308,10 +1311,11 @@ class TestStandardExponential(RandomGeneratorTestCase):
     def test_standard_exponential(self):
         self.generate(size=(3, 2))
 
+    @attr.slow
+    @condition.repeat(10)
     def test_standard_exponential_isfinite(self):
-        for _ in range(10):
-            x = self.generate(size=10**7)
-            self.assertTrue(cupy.isfinite(x).all())
+        x = self.generate(size=10**7)
+        self.assertTrue(cupy.isfinite(x).all())
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(5, 3)
