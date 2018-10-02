@@ -402,6 +402,8 @@ class TestHypergeometric(RandomGeneratorTestCase):
         self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
                       size=(3, 2))
 
+    # TODO(kataoka): add distribution test
+
 
 @testing.gpu
 @testing.fix_random()
@@ -445,6 +447,18 @@ class TestLogistic(RandomGeneratorTestCase):
     def test_standard_logistic_isfinite(self):
         x = self.generate(size=10**7)
         self.assertTrue(cupy.isfinite(x).all())
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_logistic_ks_1(self, dtype):
+        self.check_ks(0.05)(
+            size=2000, dtype=dtype)
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_logistic_ks_2(self, dtype):
+        self.check_ks(0.05)(
+            2.3, 4.5, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -503,6 +517,8 @@ class TestLogseries(RandomGeneratorTestCase):
     def test_logseries(self):
         self.generate(p=self.p, size=(3, 2))
 
+    # TODO(kataoka): add distribution test
+
 
 @testing.gpu
 @testing.parameterize(*[
@@ -553,9 +569,12 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     def test_negative_binomial(self):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
+    # TODO(kataoka): add distribution test
+
 
 @testing.parameterize(
-    {'df': 1.0, 'nonc': 1.0},
+    {'df': 1.5, 'nonc': 2.0},
+    {'df': 2.0, 'nonc': 0.0},
 )
 @testing.gpu
 @testing.fix_random()
@@ -566,9 +585,16 @@ class TestNoncentralChisquare(RandomGeneratorTestCase):
     def test_noncentral_chisquare(self):
         self.generate(df=self.df, nonc=self.nonc, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_noncentral_chisquare_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.df, self.nonc, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
-    {'dfnum': 1.0, 'dfden': 1.0, 'nonc': 1.0},
+    {'dfnum': 2.0, 'dfden': 3.0, 'nonc': 4.0},
+    {'dfnum': 2.5, 'dfden': 1.5, 'nonc': 0.0},
 )
 @testing.gpu
 @testing.fix_random()
@@ -579,6 +605,12 @@ class TestNoncentralF(RandomGeneratorTestCase):
     def test_noncentral_f(self):
         self.generate(
             dfnum=self.dfnum, dfden=self.dfden, nonc=self.nonc, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_noncentral_f_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.dfnum, self.dfden, self.nonc, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -748,6 +780,12 @@ class TestPower(RandomGeneratorTestCase):
     def test_power(self):
         self.generate(a=self.a, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_power_ks(self, dtype):
+        self.check_ks(0.05)(
+            a=self.a, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'scale': 1.0},
@@ -761,6 +799,12 @@ class TestRayleigh(RandomGeneratorTestCase):
 
     def test_rayleigh(self):
         self.generate(scale=self.scale, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_rayleigh_ks(self, dtype):
+        self.check_ks(0.05)(
+            scale=self.scale, size=2000, dtype=dtype)
 
 
 @testing.gpu
@@ -1203,6 +1247,12 @@ class TestWald(RandomGeneratorTestCase):
     def test_wald(self):
         self.generate(mean=self.mean, scale=self.scale, size=(3, 2))
 
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_wald_ks(self, dtype):
+        self.check_ks(0.05)(
+            self.mean, self.scale, size=2000, dtype=dtype)
+
 
 @testing.parameterize(
     {'a': 0.5},
@@ -1218,6 +1268,12 @@ class TestWeibull(RandomGeneratorTestCase):
 
     def test_weibull(self):
         self.generate(a=self.a, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @condition.repeat_with_success_at_least(5, 3)
+    def test_weibull_ks(self, dtype):
+        self.check_ks(0.05)(
+            a=self.a, size=2000, dtype=dtype)
 
 
 @testing.parameterize(
