@@ -14,7 +14,7 @@ from cupy.testing import condition
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     # TODO(kataoka): Fix contiguity
     @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
     def check_x(self, a_shape, b_shape, xp, dtype):
