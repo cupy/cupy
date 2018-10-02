@@ -52,6 +52,7 @@ Distributions
    cupy.random.logseries
    cupy.random.multinomial
    cupy.random.multivariate_normal
+   cupy.random.negative_binomial
    cupy.random.normal
    cupy.random.pareto
    cupy.random.poisson
