@@ -379,7 +379,7 @@ class TestNoncentralChisquare(RandomGeneratorTestCase):
 
     target_method = 'noncentral_chisquare'
 
-    def test_chisquare(self):
+    def test_noncentral_chisquare(self):
         self.generate(df=self.df, nonc=self.nonc, size=(3, 2))
 
 
@@ -392,7 +392,7 @@ class TestNoncentralF(RandomGeneratorTestCase):
 
     target_method = 'noncentral_f'
 
-    def test_chisquare(self):
+    def test_noncentral_f(self):
         self.generate(
             dfnum=self.dfnum, dfden=self.dfden, nonc=self.nonc, size=(3, 2))
 
