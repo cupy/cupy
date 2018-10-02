@@ -66,7 +66,7 @@ class TestRandintDtype(unittest.TestCase):
         size = (1000,)
         low = numpy.iinfo(dtype).min
         high = numpy.iinfo(dtype).max + 1
-        x = random.randint(low, high, size, dtype)
+        x = random.randint(low, high, size, dtype).get()
         self.assertLessEqual(low, min(x))
         self.assertLessEqual(max(x), high)
 
@@ -81,7 +81,7 @@ class TestRandintDtype(unittest.TestCase):
         iinfo = numpy.iinfo(dtype)
         size = (10000,)
 
-        x = random.randint(iinfo.min, iinfo.max + 1, size, dtype)
+        x = random.randint(iinfo.min, iinfo.max + 1, size, dtype).get()
         self.assertEqual(x.dtype, dtype)
         self.assertLessEqual(iinfo.min, min(x))
         self.assertLessEqual(max(x), iinfo.max)
