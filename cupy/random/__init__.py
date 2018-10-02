@@ -32,6 +32,8 @@ from cupy.random.distributions import lognormal  # NOQA
 from cupy.random.distributions import logseries  # NOQA
 from cupy.random.distributions import multivariate_normal  # NOQA
 from cupy.random.distributions import negative_binomial  # NOQA
+from cupy.random.distributions import noncentral_chisquare  # NOQA
+from cupy.random.distributions import noncentral_f  # NOQA
 from cupy.random.distributions import normal  # NOQA
 from cupy.random.distributions import pareto  # NOQA
 from cupy.random.distributions import poisson  # NOQA

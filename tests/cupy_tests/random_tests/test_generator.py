@@ -382,6 +382,33 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
+@testing.parameterize(
+    {'df': 1.0, 'nonc': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestNoncentralChisquare(RandomGeneratorTestCase):
+
+    target_method = 'noncentral_chisquare'
+
+    def test_noncentral_chisquare(self):
+        self.generate(df=self.df, nonc=self.nonc, size=(3, 2))
+
+
+@testing.parameterize(
+    {'dfnum': 1.0, 'dfden': 1.0, 'nonc': 1.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestNoncentralF(RandomGeneratorTestCase):
+
+    target_method = 'noncentral_f'
+
+    def test_noncentral_f(self):
+        self.generate(
+            dfnum=self.dfnum, dfden=self.dfden, nonc=self.nonc, size=(3, 2))
+
+
 @testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
