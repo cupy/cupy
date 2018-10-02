@@ -99,7 +99,7 @@ __device__ double rk_double(rk_state *state) {
  *   ACTION, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  *   SOFTWARE OR ITS DOCUMENTATION.
  */
-"""
+"""  # NOQA
 
 rk_binomial_btpe_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
