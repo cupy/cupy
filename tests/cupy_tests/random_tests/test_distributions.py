@@ -1,11 +1,11 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
-
-import numpy
 
 
 _regular_float_dtypes = (numpy.float64, numpy.float32)
@@ -436,7 +436,7 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
                                 self.dtype)
 
     @cupy.testing.for_float_dtypes('param_dtype', no_float16=True)
-    def test_noncentral_chisquare_for_invalid_params(self, param_dtype):
+    def test_noncentral_f_for_invalid_params(self, param_dtype):
         dfnum = numpy.full(self.dfnum_shape, -1, dtype=param_dtype)
         dfden = numpy.full(self.dfden_shape, 1, dtype=param_dtype)
         nonc = numpy.full(self.nonc_shape, 1, dtype=param_dtype)

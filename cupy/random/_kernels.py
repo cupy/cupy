@@ -99,7 +99,7 @@ __device__ double rk_double(rk_state *state) {
  *   ACTION, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  *   SOFTWARE OR ITS DOCUMENTATION.
  */
-"""
+"""  # NOQA
 
 loggam_definition = '''
 /*
