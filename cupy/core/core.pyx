@@ -3439,12 +3439,17 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
     elif op == 'add':
         # There is constraints on types because atomicAdd() in CUDA 7.5
         # only supports int32, uint32, uint64, and float32.
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32,
-                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+        supported_types = (numpy.int32, numpy.float32,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)
+        global _cuda_runtime_version
+        if _cuda_runtime_version is None:
+            _cuda_runtime_version = runtime.runtimeGetVersion()
+        if _cuda_runtime_version >= 9000:
+            supported_types += (numpy.float16,)
+        if not issubclass(v.dtype.type, supported_types):
             raise TypeError(
-                'scatter_add only supports int32, float32, uint32, uint64 as '
-                'data type')
+                'scatter_add only supports int32, float32, uint32, uint64, '
+                'float16 (CUDA >= 9.0) as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:
