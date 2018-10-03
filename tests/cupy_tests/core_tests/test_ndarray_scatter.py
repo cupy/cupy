@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
+import pytest
 
 
 @testing.parameterize(
@@ -112,9 +113,12 @@ from cupy import testing
 class TestScatterAddParametrized(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong])
+                         numpy.uint64, numpy.ulonglong, numpy.float16])
     @testing.numpy_cupy_array_equal()
     def test_scatter_add(self, xp, dtype):
+        if (cupy.cuda.runtime.runtimeGetVersion() < 9000 and
+                dtype == numpy.float16):
+            pytest.skip()
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
             a.scatter_add(self.slices, self.value)
@@ -127,8 +131,11 @@ class TestScatterAddParametrized(unittest.TestCase):
 class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong])
+                         numpy.uint64, numpy.ulonglong, numpy.float16])
     def test_scatter_add_cupy_arguments(self, dtype):
+        if (cupy.cuda.runtime.runtimeGetVersion() < 9000 and
+                dtype == numpy.float16):
+            pytest.skip()
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([1, 1]), slice(None))
@@ -137,8 +144,11 @@ class TestScatterAdd(unittest.TestCase):
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong])
+                         numpy.uint64, numpy.ulonglong, numpy.float16])
     def test_scatter_add_cupy_arguments_mask(self, dtype):
+        if (cupy.cuda.runtime.runtimeGetVersion() < 9000 and
+                dtype == numpy.float16):
+            pytest.skip()
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([True, False]), slice(None))
@@ -148,8 +158,11 @@ class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong], names=['src_dtype', 'dst_dtype'])
+         numpy.ulonglong, numpy.float16], names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes(self, src_dtype, dst_dtype):
+        if (cupy.cuda.runtime.runtimeGetVersion() < 9000 and
+                numpy.float16 in (src_dtype, dst_dtype)):
+            pytest.skip()
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
@@ -162,8 +175,11 @@ class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong], names=['src_dtype', 'dst_dtype'])
+         numpy.ulonglong, numpy.float16], names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes_mask(self, src_dtype, dst_dtype):
+        if (cupy.cuda.runtime.runtimeGetVersion() < 9000 and
+                numpy.float16 in (src_dtype, dst_dtype)):
+            pytest.skip()
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
