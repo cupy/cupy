@@ -2,6 +2,7 @@ import atexit
 import binascii
 import collections
 import functools
+import hashlib
 import operator
 import os
 import time
@@ -621,6 +622,8 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
+            if isinstance(seed, numpy.ndarray):
+                seed = int(hashlib.md5(seed).hexdigest(), 16) // 2 ** 64
             seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
