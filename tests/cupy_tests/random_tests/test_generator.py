@@ -577,7 +577,7 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     {'df': 2.0, 'nonc': 0.0},
 )
 @testing.gpu
-@testing.with_require('numpy>=1.11')
+@testing.with_requires('numpy>=1.11')
 @testing.fix_random()
 class TestNoncentralChisquare(RandomGeneratorTestCase):
 
