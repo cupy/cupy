@@ -19,7 +19,9 @@ script:
   - flake8 --config=.flake8.cython
   - autopep8 -r . --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
+  # To workaround Travis issue (https://github.com/travis-ci/travis-ci/issues/7261),
+  # ignore DeprecationWarning raised in `site.py`.
+  - python -Werror::DeprecationWarning -Wignore::DeprecationWarning:site -m compileall -f -q cupy cupyx examples tests docs
   - pushd docs
   - make html
   - popd
