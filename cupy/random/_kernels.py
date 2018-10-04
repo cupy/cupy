@@ -626,18 +626,6 @@ __device__ long rk_geometric(rk_state *state, double p) {
 }
 '''
 
-long_min_max_definition = '''
-__device__ long min(long a, long b)
-{
-    return a < b ? a : b;
-}
-
-__device__ long max(long a, long b)
-{
-    return a > b ? a : b;
-}
-'''
-
 rk_hypergeometric_definition = '''
 __device__ long rk_hypergeometric_hyp(
     rk_state *state, long good, long bad, long sample)
@@ -646,7 +634,7 @@ __device__ long rk_hypergeometric_hyp(
     double d2, U, Y;
 
     d1 = bad + good - sample;
-    d2 = (double)min(bad, good);
+    d2 = (double)(bad < good ? bad : good);  // min(bad, good);
 
     Y = d2;
     K = sample;
@@ -674,9 +662,9 @@ __device__ long rk_hypergeometric_hrua(
     long Z;
     double T, W, X, Y;
 
-    mingoodbad = min(good, bad);
+    mingoodbad = good < bad ? good : bad;
     popsize = good + bad;
-    maxgoodbad = max(good, bad);
+    maxgoodbad = good > bad ? good : bad;
     m = min(sample, popsize - sample);
     d4 = ((double)mingoodbad) / popsize;
     d5 = 1.0 - d4;
@@ -893,7 +881,7 @@ geometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_definition, loggam_definition, long_min_max_definition,
+    [rk_basic_definition, loggam_definition,
      rk_hypergeometric_definition]
 hypergeometric_kernel = core.ElementwiseKernel(
     'S good, T bad, U sample, uint32 seed', 'Y y',
