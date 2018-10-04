@@ -1,8 +1,7 @@
 from cupy import core
-import cupy.core.fusion
 
 
-_gamma = core.create_ufunc(
+gamma = core.create_ufunc(
     'cupyx_scipy_gamma', ('f->f', 'd->d'),
     '''
     if (isinf(in0) && in0 < 0) {
@@ -24,6 +23,3 @@ _gamma = core.create_ufunc(
     .. seealso:: :data:`scipy.special.gamma`
 
     """)
-
-
-gamma = cupy.core.fusion.ufunc(_gamma)

@@ -52,6 +52,217 @@ __device__ double rk_double(rk_state *state) {
 }
 '''
 
+
+# The kernels for distributions are based on
+# numpy/random/mtrand/distributions.c
+# with the following licenses:
+"""
+/* Copyright 2005 Robert Kern (robert.kern@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/* The implementations of rk_hypergeometric_hyp(), rk_hypergeometric_hrua(),
+ * and rk_triangular() were adapted from Ivan Frohne's rv.py which has this
+ * license:
+ *
+ *            Copyright 1998 by Ivan Frohne; Wasilla, Alaska, U.S.A.
+ *                            All Rights Reserved
+ *
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation for any purpose, free of charge, is granted subject to the
+ * following conditions:
+ *   The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the software.
+ *
+ *   THE SOFTWARE AND DOCUMENTATION IS PROVIDED WITHOUT WARRANTY OF ANY KIND,
+ *   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHOR
+ *   OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM OR DAMAGES IN A CONTRACT
+ *   ACTION, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ *   SOFTWARE OR ITS DOCUMENTATION.
+ */
+"""  # NOQA
+
+loggam_definition = '''
+/*
+ * log-gamma function to support some of these distributions. The
+ * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
+ * book "Computation of Special Functions", 1996, John Wiley & Sons, Inc.
+ */
+static __device__ double loggam(double x) {
+    double x0, x2, xp, gl, gl0;
+    long k, n;
+    double a[10] = {8.333333333333333e-02,-2.777777777777778e-03,
+         7.936507936507937e-04,-5.952380952380952e-04,
+         8.417508417508418e-04,-1.917526917526918e-03,
+         6.410256410256410e-03,-2.955065359477124e-02,
+         1.796443723688307e-01,-1.39243221690590e+00};
+    x0 = x;
+    n = 0;
+    if ((x == 1.0) || (x == 2.0)) {
+        return 0.0;
+    } else if (x <= 7.0) {
+        n = (long)(7 - x);
+        x0 = x + n;
+    }
+    x2 = 1.0/(x0*x0);
+    xp = 2*M_PI;
+    gl0 = a[9];
+    for (k=8; k>=0; k--) {
+        gl0 *= x2;
+        gl0 += a[k];
+    }
+    gl = gl0/x0 + 0.5*log(xp) + (x0-0.5)*log(x0) - x0;
+    if (x <= 7.0) {
+        for (k=1; k<=n; k++) {
+            gl -= log(x0-1.0);
+            x0 -= 1.0;
+        }
+    }
+    return gl;
+}
+'''
+
+rk_standard_exponential_definition = '''
+__device__ double rk_standard_exponential(rk_state *state) {
+    /* We use -log(1-U) since U is [0, 1) */
+    return -log(1.0 - rk_double(state));
+}
+'''
+
+rk_standard_gamma_definition = '''
+__device__ double rk_standard_gamma(rk_state *state, double shape) {
+    double b, c;
+    double U, V, X, Y;
+    if (shape == 1.0) {
+        return rk_standard_exponential(state);
+    } else if (shape < 1.0) {
+        for (;;) {
+            U = rk_double(state);
+            V = rk_standard_exponential(state);
+            if (U <= 1.0 - shape) {
+                X = pow(U, 1./shape);
+                if (X <= V) {
+                    return X;
+                }
+            } else {
+                Y = -log((1-U)/shape);
+                X = pow(1.0 - shape + shape*Y, 1./shape);
+                if (X <= (V + Y)) {
+                    return X;
+                }
+            }
+        }
+    } else {
+        b = shape - 1./3.;
+        c = 1./sqrt(9*b);
+        for (;;) {
+            do {
+                X = rk_gauss(state);
+                V = 1.0 + c*X;
+            } while (V <= 0.0);
+            V = V*V*V;
+            U = rk_double(state);
+            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
+            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
+        }
+    }
+}
+'''
+
+rk_beta_definition = '''
+__device__ double rk_beta(rk_state *state, double a, double b) {
+    double Ga, Gb;
+    if ((a <= 1.0) && (b <= 1.0)) {
+        double U, V, X, Y;
+        /* Use Johnk's algorithm */
+        while (1) {
+            U = rk_double(state);
+            V = rk_double(state);
+            X = pow(U, 1.0/a);
+            Y = pow(V, 1.0/b);
+            if ((X + Y) <= 1.0) {
+                if (X +Y > 0) {
+                    return X / (X + Y);
+                } else {
+                    double logX = log(U) / a;
+                    double logY = log(V) / b;
+                    double logM = logX > logY ? logX : logY;
+                    logX -= logM;
+                    logY -= logM;
+                    return exp(logX - log(exp(logX) + exp(logY)));
+                }
+            }
+        }
+    } else {
+        Ga = rk_standard_gamma(state, a);
+        Gb = rk_standard_gamma(state, b);
+        return Ga/(Ga + Gb);
+    }
+}
+'''
+
+rk_chisquare_definition = '''
+__device__ double rk_chisquare(rk_state *state, double df) {
+    return 2.0*rk_standard_gamma(state, df/2.0);
+}
+'''
+
+rk_noncentral_chisquare_definition = '''
+__device__ double rk_noncentral_chisquare(
+    rk_state *state, double df, double nonc)
+{
+    if (nonc == 0){
+        return rk_chisquare(state, df);
+    }
+    if(1 < df)
+    {
+        const double Chi2 = rk_chisquare(state, df - 1);
+        const double N = rk_gauss(state) + sqrt(nonc);
+        return Chi2 + N*N;
+    }
+    else
+    {
+        const long i = rk_poisson(state, nonc / 2.0);
+        return rk_chisquare(state, df + 2 * i);
+    }
+}
+'''
+
+rk_f_definition = '''
+__device__ double rk_f(rk_state *state, double dfnum, double dfden) {
+    return ((rk_chisquare(state, dfnum) * dfden) /
+            (rk_chisquare(state, dfden) * dfnum));
+}
+'''
+
+rk_noncentral_f_definition = '''
+__device__ double rk_noncentral_f(
+    rk_state *state, double dfnum, double dfden, double nonc)
+{
+    double t = rk_noncentral_chisquare(state, dfnum, nonc) * dfden;
+    return t / (rk_chisquare(state, dfden) * dfnum);
+}
+'''
+
 rk_binomial_btpe_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
@@ -227,6 +438,343 @@ __device__ long rk_binomial(rk_state *state, int n, double p) {
 }
 '''
 
+rk_poisson_mult_definition = '''
+__device__ long rk_poisson_mult(rk_state *state, double lam) {
+    long X;
+    double prod, U, enlam;
+    enlam = exp(-lam);
+    X = 0;
+    prod = 1.0;
+    while (1) {
+        U = rk_double(state);
+        prod *= U;
+        if (prod > enlam) {
+            X += 1;
+        } else {
+            return X;
+        }
+    }
+}
+'''
+
+rk_poisson_ptrs_definition = '''
+/*
+ * The transformed rejection method for generating Poisson random variables
+ * W. Hoermann
+ * Insurance: Mathematics and Economics 12, 39-45 (1993)
+ */
+#define LS2PI 0.91893853320467267
+#define TWELFTH 0.083333333333333333333333
+__device__ long rk_poisson_ptrs(rk_state *state, double lam) {
+    long k;
+    double U, V, slam, loglam, a, b, invalpha, vr, us;
+    slam = sqrt(lam);
+    loglam = log(lam);
+    b = 0.931 + 2.53*slam;
+    a = -0.059 + 0.02483*b;
+    invalpha = 1.1239 + 1.1328/(b-3.4);
+    vr = 0.9277 - 3.6224/(b-2);
+    while (1) {
+        U = rk_double(state) - 0.5;
+        V = rk_double(state);
+        us = 0.5 - fabs(U);
+        k = (long)floor((2*a/us + b)*U + lam + 0.43);
+        if ((us >= 0.07) && (V <= vr)) {
+            return k;
+        }
+        if ((k < 0) ||
+            ((us < 0.013) && (V > us))) {
+            continue;
+        }
+        if ((log(V) + log(invalpha) - log(a/(us*us)+b)) <=
+            (-lam + k*loglam - loggam(k+1))) {
+            return k;
+        }
+    }
+}
+'''
+
+rk_poisson_definition = '''
+__device__ long rk_poisson(rk_state *state, double lam) {
+    if (lam >= 10) {
+        return rk_poisson_ptrs(state, lam);
+    } else if (lam == 0) {
+        return 0;
+    } else {
+        return rk_poisson_mult(state, lam);
+    }
+}
+'''
+
+rk_standard_t_definition = '''
+__device__ double rk_standard_t(rk_state *state, double df) {
+    return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
+}
+'''
+
+rk_vonmises_definition = '''
+__device__ double rk_vonmises(rk_state *state, double mu, double kappa)
+{
+    double s;
+    double U, V, W, Y, Z;
+    double result, mod;
+    int neg;
+
+    if (kappa < 1e-8)
+    {
+        return M_PI * (2*rk_double(state)-1);
+    }
+    else
+    {
+        /* with double precision rho is zero until 1.4e-8 */
+        if (kappa < 1e-5) {
+            /*
+             * second order taylor expansion around kappa = 0
+             * precise until relatively large kappas as second order is 0
+             */
+            s = (1./kappa + kappa);
+        }
+        else {
+            double r = 1 + sqrt(1 + 4*kappa*kappa);
+            double rho = (r - sqrt(2*r)) / (2*kappa);
+            s = (1 + rho*rho)/(2*rho);
+        }
+
+        while (1)
+        {
+        U = rk_double(state);
+            Z = cos(M_PI*U);
+            W = (1 + s*Z)/(s + Z);
+            Y = kappa * (s - W);
+            V = rk_double(state);
+            if ((Y*(2-Y) - V >= 0) || (log(Y/V)+1 - Y >= 0))
+            {
+                break;
+            }
+        }
+
+        U = rk_double(state);
+
+        result = acos(W);
+        if (U < 0.5)
+        {
+        result = -result;
+        }
+        result += mu;
+        neg = (result < 0);
+        mod = fabs(result);
+        mod = (fmod(mod+M_PI, 2*M_PI)-M_PI);
+        if (neg)
+        {
+            mod *= -1;
+        }
+
+        return mod;
+    }
+}
+'''
+
+rk_zipf_definition = '''
+__device__ long rk_zipf(rk_state *state, double a)
+{
+    double am1, b;
+
+    am1 = a - 1.0;
+    b = pow(2.0, am1);
+    while (1) {
+        double T, U, V, X;
+
+        U = 1.0 - rk_double(state);
+        V = rk_double(state);
+        X = floor(pow(U, -1.0/am1));
+
+        if (X < 1.0) {
+            continue;
+        }
+
+        T = pow(1.0 + 1.0/X, am1);
+        if (V*X*(T - 1.0)/(b - 1.0) <= T/b) {
+            return (long)X;
+        }
+    }
+}
+'''
+
+rk_geometric_search_definition = '''
+__device__ long rk_geometric_search(rk_state *state, double p) {
+    double U;
+    long X;
+    double sum, prod, q;
+    X = 1;
+    sum = prod = p;
+    q = 1.0 - p;
+    U = rk_double(state);
+    while (U > sum) {
+        prod *= q;
+        sum += prod;
+        X++;
+    }
+    return X;
+}
+'''
+
+rk_geometric_inversion_definition = '''
+__device__ long rk_geometric_inversion(rk_state *state, double p) {
+    return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
+}
+'''
+
+rk_geometric_definition = '''
+__device__ long rk_geometric(rk_state *state, double p) {
+    if (p >= 0.333333333333333333333333) {
+        return rk_geometric_search(state, p);
+    } else {
+        return rk_geometric_inversion(state, p);
+    }
+}
+'''
+
+long_min_max_definition = '''
+__device__ long min(long a, long b)
+{
+    return a < b ? a : b;
+}
+
+__device__ long max(long a, long b)
+{
+    return a > b ? a : b;
+}
+'''
+
+rk_hypergeometric_definition = '''
+__device__ long rk_hypergeometric_hyp(
+    rk_state *state, long good, long bad, long sample)
+{
+    long d1, K, Z;
+    double d2, U, Y;
+
+    d1 = bad + good - sample;
+    d2 = (double)min(bad, good);
+
+    Y = d2;
+    K = sample;
+    while (Y > 0.0)
+    {
+        U = rk_double(state);
+        Y -= (long)floor(U + Y/(d1 + K));
+        K--;
+        if (K == 0) break;
+    }
+    Z = (long)(d2 - Y);
+    if (good > bad) Z = sample - Z;
+    return Z;
+}
+
+/* D1 = 2*sqrt(2/e) */
+/* D2 = 3 - 2*sqrt(3/e) */
+#define D1 1.7155277699214135
+#define D2 0.8989161620588988
+__device__ long rk_hypergeometric_hrua(
+    rk_state *state, long good, long bad, long sample)
+{
+    long mingoodbad, maxgoodbad, popsize, m, d9;
+    double d4, d5, d6, d7, d8, d10, d11;
+    long Z;
+    double T, W, X, Y;
+
+    mingoodbad = min(good, bad);
+    popsize = good + bad;
+    maxgoodbad = max(good, bad);
+    m = min(sample, popsize - sample);
+    d4 = ((double)mingoodbad) / popsize;
+    d5 = 1.0 - d4;
+    d6 = m*d4 + 0.5;
+    d7 = sqrt((double)(popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
+    d8 = D1*d7 + D2;
+    d9 = (long)floor((double)(m + 1) * (mingoodbad + 1) / (popsize + 2));
+    d10 = (loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) +
+           loggam(maxgoodbad-m+d9+1));
+    d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
+    /* 16 for 16-decimal-digit precision in D1 and D2 */
+
+    while (1)
+    {
+        X = rk_double(state);
+        Y = rk_double(state);
+        W = d6 + d8*(Y- 0.5)/X;
+
+        /* fast rejection: */
+        if ((W < 0.0) || (W >= d11)) continue;
+
+        Z = (long)floor(W);
+        T = d10 - (loggam(Z+1) + loggam(mingoodbad-Z+1) + loggam(m-Z+1) +
+                   loggam(maxgoodbad-m+Z+1));
+
+        /* fast acceptance: */
+        if ((X*(4.0-X)-3.0) <= T) break;
+
+        /* fast rejection: */
+        if (X*(X-T) >= 1) continue;
+
+        if (2.0*log(X) <= T) break;  /* acceptance */
+    }
+
+    /* this is a correction to HRUA* by Ivan Frohne in rv.py */
+    if (good > bad) Z = m - Z;
+
+    /* another fix from rv.py to allow sample to exceed popsize/2 */
+    if (m < sample) Z = good - Z;
+
+    return Z;
+}
+#undef D1
+#undef D2
+
+__device__ long rk_hypergeometric(
+    rk_state *state, long good, long bad, long sample)
+{
+    if (sample > 10)
+    {
+        return rk_hypergeometric_hrua(state, good, bad, sample);
+    } else
+    {
+        return rk_hypergeometric_hyp(state, good, bad, sample);
+    }
+}
+'''
+
+rk_logseries_definition = '''
+__device__ long rk_logseries(rk_state *state, double p)
+{
+    double q, r, U, V;
+    long result;
+
+    r = log(1.0 - p);
+
+    while (1) {
+        V = rk_double(state);
+        if (V >= p) {
+            return 1;
+        }
+        U = rk_double(state);
+        q = 1.0 - exp(r*U);
+        if (V <= q*q) {
+            result = (long)floor(1 + log(V)/log(q));
+            if (result < 1) {
+                continue;
+            }
+            else {
+                return result;
+            }
+        }
+        if (V >= q) {
+            return 1;
+        }
+        return 2;
+    }
+}
+'''
+
 rk_gauss_definition = '''
 __device__ double rk_gauss(rk_state *state) {
     if (state->has_gauss) {
@@ -252,84 +800,34 @@ __device__ double rk_gauss(rk_state *state) {
 }
 '''
 
-rk_standard_exponential_definition = '''
-__device__ double rk_standard_exponential(rk_state *state) {
-    /* We use -log(1-U) since U is [0, 1) */
-    return -log(1.0 - rk_double(state));
+open_uniform_definition = '''
+__device__ void open_uniform(rk_state *state, double *U) {
+    do {
+        *U = rk_double(state);
+    } while (*U <= 0.0 || *U >= 1.0);
+}
+
+__device__ void open_uniform(rk_state *state, float *U) {
+    do {
+        *U = rk_double(state);
+    } while (*U <= 0.0 || *U >= 1.0);
 }
 '''
 
-rk_standard_gamma_definition = '''
-__device__ double rk_standard_gamma(rk_state *state, double shape) {
-    double b, c;
-    double U, V, X, Y;
-    if (shape == 1.0) {
-        return rk_standard_exponential(state);
-    } else if (shape < 1.0) {
-        for (;;) {
-            U = rk_double(state);
-            V = rk_standard_exponential(state);
-            if (U <= 1.0 - shape) {
-                X = pow(U, 1./shape);
-                if (X <= V) {
-                    return X;
-                }
-            } else {
-                Y = -log((1-U)/shape);
-                X = pow(1.0 - shape + shape*Y, 1./shape);
-                if (X <= (V + Y)) {
-                    return X;
-                }
-            }
-        }
-    } else {
-        b = shape - 1./3.;
-        c = 1./sqrt(9*b);
-        for (;;) {
-            do {
-                X = rk_gauss(state);
-                V = 1.0 + c*X;
-            } while (V <= 0.0);
-            V = V*V*V;
-            U = rk_double(state);
-            if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
-            if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
-        }
-    }
-}
-'''
-
-rk_beta_definition = '''
-__device__ double rk_beta(rk_state *state, double a, double b) {
-    double Ga, Gb;
-    if ((a <= 1.0) && (b <= 1.0)) {
-        double U, V, X, Y;
-        /* Use Johnk's algorithm */
-        while (1) {
-            U = rk_double(state);
-            V = rk_double(state);
-            X = pow(U, 1.0/a);
-            Y = pow(V, 1.0/b);
-            if ((X + Y) <= 1.0) {
-                if (X +Y > 0) {
-                    return X / (X + Y);
-                } else {
-                    double logX = log(U) / a;
-                    double logY = log(V) / b;
-                    double logM = logX > logY ? logX : logY;
-                    logX -= logM;
-                    logY -= logM;
-                    return exp(logX - log(exp(logX) + exp(logY)));
-                }
-            }
-        }
-    } else {
-        Ga = rk_standard_gamma(state, a);
-        Gb = rk_standard_gamma(state, b);
-        return Ga/(Ga + Gb);
-    }
-}
-'''
+definitions = [
+    rk_basic_difinition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_beta_definition]
+beta_kernel = core.ElementwiseKernel(
+    'S a, T b, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_beta(&internal_state, a, b);
+    ''',
+    'beta_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
 
 definitions = [
     rk_use_binominal, rk_basic_difinition, rk_binomial_btpe_definition,
@@ -341,6 +839,141 @@ binomial_kernel = core.ElementwiseKernel(
     y = rk_binomial(&internal_state, n, p);
     ''',
     'binomial_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_standard_t_definition]
+standard_t_kernel = core.ElementwiseKernel(
+    'S df, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_standard_t(&internal_state, df);
+    ''',
+    'standard_t_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition]
+chisquare_kernel = core.ElementwiseKernel(
+    'T df, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_chisquare(&internal_state, df);
+    ''',
+    'chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_gauss_definition,
+     rk_standard_exponential_definition, rk_standard_gamma_definition,
+     rk_chisquare_definition, rk_f_definition]
+f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_f(&internal_state, dfnum, dfden);
+    ''',
+    'f_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_geometric_search_definition,
+     rk_geometric_inversion_definition, rk_geometric_definition]
+geometric_kernel = core.ElementwiseKernel(
+    'T p, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_geometric(&internal_state, p);
+    ''',
+    'geometric_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, loggam_definition, long_min_max_definition,
+     rk_hypergeometric_definition]
+hypergeometric_kernel = core.ElementwiseKernel(
+    'S good, T bad, U sample, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_hypergeometric(&internal_state, good, bad, sample);
+    ''',
+    'hypergeometric_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, rk_logseries_definition]
+logseries_kernel = core.ElementwiseKernel(
+    'T p, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_logseries(&internal_state, p);
+    ''',
+    'logseries_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_chisquare_definition, rk_poisson_mult_definition,
+    rk_poisson_ptrs_definition, rk_poisson_definition,
+    rk_noncentral_chisquare_definition]
+noncentral_chisquare_kernel = core.ElementwiseKernel(
+    'S df, T nonc, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_noncentral_chisquare(&internal_state, df, nonc);
+    ''',
+    'noncentral_chisquare_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_standard_exponential_definition, rk_standard_gamma_definition,
+    rk_chisquare_definition, rk_poisson_mult_definition,
+    rk_poisson_ptrs_definition, rk_poisson_definition,
+    rk_noncentral_chisquare_definition, rk_noncentral_f_definition]
+noncentral_f_kernel = core.ElementwiseKernel(
+    'S dfnum, T dfden, U nonc, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_noncentral_f(&internal_state, dfnum, dfden, nonc);
+    ''',
+    'noncentral_f_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = \
+    [rk_basic_difinition, loggam_definition,
+     rk_poisson_mult_definition, rk_poisson_ptrs_definition,
+     rk_poisson_definition]
+poisson_kernel = core.ElementwiseKernel(
+    'T lam, uint32 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_poisson(&internal_state, lam);
+    ''',
+    'poisson_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )
@@ -360,16 +993,40 @@ standard_gamma_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
-    rk_standard_exponential_definition, rk_standard_gamma_definition,
-    rk_beta_definition]
-beta_kernel = core.ElementwiseKernel(
-    'S a, T b, uint64 seed', 'Y y',
+    rk_basic_difinition, rk_vonmises_definition]
+vonmises_kernel = core.ElementwiseKernel(
+    'S mu, T kappa, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
-    y = rk_beta(&internal_state, a, b);
+    y = rk_vonmises(&internal_state, mu, kappa);
     ''',
-    'beta_kernel',
+    'vonmises_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, rk_zipf_definition]
+zipf_kernel = core.ElementwiseKernel(
+    'T a, uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    y = rk_zipf(&internal_state, a);
+    ''',
+    'zipf_kernel',
+    preamble=''.join(definitions),
+    loop_prep="rk_state internal_state;"
+)
+
+definitions = [
+    rk_basic_difinition, open_uniform_definition]
+open_uniform_kernel = core.ElementwiseKernel(
+    'uint64 seed', 'Y y',
+    '''
+    rk_seed(seed + i, &internal_state);
+    open_uniform(&internal_state, &y);
+    ''',
+    'open_uniform_kernel',
     preamble=''.join(definitions),
     loop_prep="rk_state internal_state;"
 )

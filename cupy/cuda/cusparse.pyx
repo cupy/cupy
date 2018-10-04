@@ -460,7 +460,7 @@ cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
 ########################################
 # cuSPARSE Helper Function
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     status = cusparseCreate(& handle)
     check_status(status)
@@ -474,17 +474,17 @@ cpdef size_t createMatDescr():
     return <size_t>desc
 
 
-cpdef void destroy(size_t handle):
+cpdef destroy(size_t handle):
     status = cusparseDestroy(<Handle >handle)
     check_status(status)
 
 
-cpdef void destroyMatDescr(size_t descr):
+cpdef destroyMatDescr(size_t descr):
     status = cusparseDestroyMatDescr(<MatDescr>descr)
     check_status(status)
 
 
-cpdef void setMatIndexBase(size_t descr, base):
+cpdef setMatIndexBase(size_t descr, base):
     status = cusparseSetMatIndexBase(<MatDescr>descr, base)
     check_status(status)
 
@@ -507,7 +507,7 @@ cpdef setStream(size_t handle, size_t stream):
 
 
 # cusparseGetStream is only available from CUDA 8.0
-# cpdef size_t getStream(size_t handle) except *:
+# cpdef size_t getStream(size_t handle) except? 0:
 #     cdef driver.Stream stream
 #     status = cusparseGetStream(<Handle>handle, &stream)
 #     check_status(status)

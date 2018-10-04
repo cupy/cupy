@@ -1,3 +1,4 @@
+from __future__ import division
 import string
 
 import numpy
@@ -5,9 +6,21 @@ import numpy
 from cupy.cuda import compiler
 from cupy import util
 
+cimport cpython  # NOQA
+cimport cython  # NOQA
+
+from libcpp cimport vector
+
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
+from cupy.core._dtype cimport get_dtype
+from cupy.core._scalar import get_typename as _get_typename
+from cupy.core.core cimport broadcast
+from cupy.core.core cimport compile_with_cache
+from cupy.core.core cimport Indexer
+from cupy.core.core cimport ndarray
+from cupy.core cimport internal
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -136,7 +149,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = args[i]
             arr = arr.view()
             newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
-            arr._set_shape_and_strides(newshape, newstrides, False)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            arr._set_shape_and_strides(newshape, newstrides, False, True)
             args[i] = arr
         return total_size,
 
@@ -168,7 +182,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newstrides.clear()
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
-        arr._set_shape_and_strides(newshape, newstrides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        arr._set_shape_and_strides(newshape, newstrides, False, True)
         args[i] = arr
     return tuple(newshape)
 
@@ -625,7 +640,7 @@ cdef tuple _guess_routine_from_dtype(list ops, object dtype):
     return None
 
 
-cdef bint _check_should_use_min_scalar(list in_args) except *:
+cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars
     all_scalars = True
@@ -686,6 +701,7 @@ class ufunc(object):
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
         self.name = name
+        self.__name__ = name
         self.nin = nin
         self.nout = nout
         self.nargs = nin + nout
@@ -740,6 +756,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
+        from cupy.core import fusion
+
+        thread_local = fusion._thread_local
+        if hasattr(thread_local, 'history'):
+            return thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 
@@ -827,3 +848,5 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
     ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
                 loop_prep, doc, default_casting=default_casting)
     return ret
+
+include "reduction.pxi"

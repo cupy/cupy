@@ -3,8 +3,10 @@ import six
 
 import cupy
 from cupy import core
+from cupy.core import fusion
 
 
+@fusion._reduction_wrapper(core.core._sum_auto_dtype)
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
 
@@ -26,6 +28,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.sum(axis, dtype, out, keepdims)
 
 
+@fusion._reduction_wrapper(core.core._prod_auto_dtype)
 def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the product of an array along given axes.
 

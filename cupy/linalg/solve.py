@@ -53,37 +53,55 @@ def solve(a, b):
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
 
+    cublas_handle = device.get_cublas_handle()
+    cusolver_handle = device.get_cusolver_handle()
+
     a = a.astype(dtype)
     b = b.astype(dtype)
     if a.ndim == 2:
-        return _solve(a, b)
+        return _solve(a, b, cublas_handle, cusolver_handle)
+
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in six.moves.range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = _solve(a[index], b[index])
+        x[index] = _solve(a[index], b[index], cublas_handle, cusolver_handle)
     return x
 
 
-def _solve(a, b):
+def _solve(a, b, cublas_handle, cusolver_handle):
     a = cupy.asfortranarray(a)
     b = cupy.asfortranarray(b)
     dtype = a.dtype
     m, k = (b.size, 1) if b.ndim == 1 else b.shape
-    cusolver_handle = device.get_cusolver_handle()
-    cublas_handle = device.get_cublas_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
     if dtype == 'f':
         geqrf = cusolver.sgeqrf
         geqrf_bufferSize = cusolver.sgeqrf_bufferSize
         ormqr = cusolver.sormqr
+        trans = cublas.CUBLAS_OP_T
         trsm = cublas.strsm
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         geqrf = cusolver.dgeqrf
         geqrf_bufferSize = cusolver.dgeqrf_bufferSize
         ormqr = cusolver.dormqr
+        trans = cublas.CUBLAS_OP_T
         trsm = cublas.dtrsm
+    elif dtype == 'F':
+        geqrf = cusolver.cgeqrf
+        geqrf_bufferSize = cusolver.cgeqrf_bufferSize
+        ormqr = cusolver.cormqr
+        trans = cublas.CUBLAS_OP_C
+        trsm = cublas.ctrsm
+    elif dtype == 'D':
+        geqrf = cusolver.zgeqrf
+        geqrf_bufferSize = cusolver.zgeqrf_bufferSize
+        ormqr = cusolver.zormqr
+        trans = cublas.CUBLAS_OP_C
+        trsm = cublas.ztrsm
+    else:
+        raise NotImplementedError(dtype)
 
     # 1. QR decomposition (A = Q * R)
     buffersize = geqrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
@@ -95,7 +113,7 @@ def _solve(a, b):
     _check_status(dev_info)
     # 2. ormqr (Q^T * B)
     ormqr(
-        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_OP_T,
+        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans,
         m, k, m, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
         workspace.data.ptr, buffersize, dev_info.data.ptr)
     _check_status(dev_info)

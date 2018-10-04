@@ -13,17 +13,41 @@ def _syevd(a, UPLO, with_eigen_vector):
 
     if a.dtype == 'f' or a.dtype == 'e':
         dtype = 'f'
-        ret_type = a.dtype
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'f'
+        ret_w_dtype = a.dtype
+        ret_v_dtype = a.dtype
+    elif a.dtype == 'd':
+        dtype = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
+    elif a.dtype == 'F':
+        dtype = 'F'
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'F'
+        ret_w_dtype = 'f'
+        ret_v_dtype = 'F'
+    elif a.dtype == 'D':
+        dtype = 'D'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'D'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'D'
     else:
         # NumPy uses float64 when an input is not floating point number.
         dtype = 'd'
-        ret_type = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
 
     # Note that cuSolver assumes fortran array
-    v = a.astype(dtype, order='F', copy=True)
+    v = a.astype(inp_v_dtype, order='F', copy=True)
 
     m, lda = a.shape
-    w = cupy.empty(m, dtype)
+    w = cupy.empty(m, inp_w_dtype)
     dev_info = cupy.empty((), 'i')
     handle = device.Device().cusolver_handle
 
@@ -43,17 +67,24 @@ def _syevd(a, UPLO, with_eigen_vector):
     elif dtype == 'd':
         buffer_size = cupy.cuda.cusolver.dsyevd_bufferSize
         syevd = cupy.cuda.cusolver.dsyevd
+    elif dtype == 'F':
+        buffer_size = cupy.cuda.cusolver.cheevd_bufferSize
+        syevd = cupy.cuda.cusolver.cheevd
+    elif dtype == 'D':
+        buffer_size = cupy.cuda.cusolver.zheevd_bufferSize
+        syevd = cupy.cuda.cusolver.zheevd
     else:
-        raise RuntimeError('Only float and double are supported')
+        raise RuntimeError('Only float and double and cuComplex and '
+                           + 'cuDoubleComplex are supported')
 
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
-    work = cupy.empty(work_size, dtype)
+    work = cupy.empty(work_size, inp_v_dtype)
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
 
-    return w.astype(ret_type, copy=False), v.astype(ret_type, copy=False)
+    return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
 
 
 # TODO(okuta): Implement eig

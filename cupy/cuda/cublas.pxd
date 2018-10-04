@@ -58,10 +58,10 @@ cpdef enum:
 # Context
 ###############################################################################
 
-cpdef size_t create() except *
-cpdef void destroy(size_t handle) except *
-cpdef int getVersion(size_t handle) except *
-cpdef int getPointerMode(size_t handle) except *
+cpdef size_t create() except? 0
+cpdef destroy(size_t handle)
+cpdef int getVersion(size_t handle) except? -1
+cpdef int getPointerMode(size_t handle) except? -1
 cpdef setPointerMode(size_t handle, int mode)
 
 
@@ -70,7 +70,7 @@ cpdef setPointerMode(size_t handle, int mode)
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle) except *
+cpdef size_t getStream(size_t handle) except? 0
 
 
 ###############################################################################
@@ -78,16 +78,16 @@ cpdef size_t getStream(size_t handle) except *
 ###############################################################################
 
 cpdef setMathMode(size_t handle, int mode)
-cpdef int getMathMode(size_t handle) except *
+cpdef int getMathMode(size_t handle) except? -1
 
 
 ###############################################################################
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx) except *
-cpdef int isamin(size_t handle, int n, size_t x, int incx) except *
-cpdef float sasum(size_t handle, int n, size_t x, int incx) except *
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0
 cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
@@ -104,7 +104,7 @@ cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
-cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0
 cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx)
 
 
@@ -202,6 +202,12 @@ cpdef strsm(size_t handle, int side, int uplo, int trans, int diag,
 cpdef dtrsm(size_t handle, int side, int uplo, int trans, int diag,
             int m, int n, double alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
+cpdef ctrsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, float complex alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
+cpdef ztrsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, double complex alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
 
 ###############################################################################
 # BLAS extension
@@ -221,8 +227,23 @@ cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,
               int ldc)
 cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
+cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
+cpdef cgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
+cpdef zgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
 
 cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef dgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef cgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef zgetriBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)
 cpdef gemmEx(size_t handle, int transa, int transb, int m, int n, int k,
