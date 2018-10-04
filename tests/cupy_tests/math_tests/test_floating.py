@@ -51,7 +51,8 @@ class TestFloating(unittest.TestCase):
         testing.assert_array_equal(cupy_c, numpy_c)
 
     @testing.for_all_dtypes_combination(
-        ('dtype_a', 'dtype_b'), no_complex=True)
+        # TODO(kataoka): Revert skipping bool
+        ('dtype_a', 'dtype_b'), no_complex=True, no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_nextafter_combination(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange((2, 3), xp, dtype_a)
