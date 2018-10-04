@@ -9,30 +9,30 @@ from cupy import testing
 @testing.gpu
 class TestFloating(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xp, dtype, no_complex=False):
-        if no_complex and numpy.dtype(dtype).kind == 'c':
-            return dtype(True)
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(xp, name)(a)
-
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xp, dtype):
+    @testing.numpy_cupy_array_equal()
+    def test_signbit(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
-        return getattr(xp, name)(a, b)
+        return xp.signbit(a)
 
-    def test_signbit(self):
-        self.check_unary('signbit', no_complex=True)
+    @testing.for_all_dtypes_combination(
+        ('dtype_a', 'dtype_b'), no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_copysign_combination(self, xp, dtype_a, dtype_b):
+        a = testing.shaped_arange((2, 3), xp, dtype_a)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype_b)
+        return xp.copysign(a, b)
 
-    def test_copysign(self):
-        self.check_binary('copysign')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copysign_float(self, xp, dtype):
+        a = xp.array([-xp.inf, -3, -0.0, 0, 3, xp.inf], dtype=dtype)[:, None]
+        b = xp.array([-xp.inf, -3, -0.0, 0, 3, xp.inf], dtype=dtype)[None, :]
+        return xp.copysign(a, b)
 
     @testing.for_float_dtypes(name='ftype')
     @testing.for_dtypes(['i', 'l'], name='itype')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_ldexp(self, xp, ftype, itype):
         a = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=ftype)
         b = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=itype)
@@ -47,8 +47,22 @@ class TestFloating(unittest.TestCase):
         cupy_a = cupy.array(numpy_a)
         cupy_b, cupy_c = cupy.frexp(cupy_a)
 
-        testing.assert_allclose(cupy_b, numpy_b)
+        testing.assert_array_equal(cupy_b, numpy_b)
         testing.assert_array_equal(cupy_c, numpy_c)
 
-    def test_nextafter(self):
-        self.check_binary('nextafter')
+    @testing.for_all_dtypes_combination(
+        # TODO(kataoka): Revert skipping bool
+        ('dtype_a', 'dtype_b'), no_complex=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_nextafter_combination(self, xp, dtype_a, dtype_b):
+        a = testing.shaped_arange((2, 3), xp, dtype_a)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype_b)
+        return xp.nextafter(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_nextafter_float(self, xp, dtype):
+        # TODO(kataoka): test 0
+        a = xp.array([-5, -3, 3, 5], dtype=dtype)[:, None]
+        b = xp.array([-xp.inf, -4, 0, 4, xp.inf], dtype=dtype)[None, :]
+        return xp.nextafter(a, b)
