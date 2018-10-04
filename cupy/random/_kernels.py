@@ -5,7 +5,7 @@ rk_use_binominal = '''
 #define CUPY_USE_BINOMIAL
 '''
 
-rk_basic_difinition = '''
+rk_basic_definition = '''
 typedef struct {
     unsigned int xor128[4];
     double gauss;
@@ -263,7 +263,7 @@ __device__ double rk_noncentral_f(
 }
 '''
 
-rk_binomial_btpe_definition = '''
+rk_binomial_definition = '''
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
@@ -378,9 +378,7 @@ __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     }
     return y;
 }
-'''
 
-rk_binomial_inversion_definition = '''
 __device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
     double q, qn, np, px, U;
     int X, bound;
@@ -416,9 +414,7 @@ __device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
     }
     return X;
 }
-'''
 
-rk_binomial_definition = '''
 __device__ long rk_binomial(rk_state *state, int n, double p) {
     double q;
     if (p <= 0.5) {
@@ -600,7 +596,7 @@ __device__ long rk_zipf(rk_state *state, double a)
 }
 '''
 
-rk_geometric_search_definition = '''
+rk_geometric_definition = '''
 __device__ long rk_geometric_search(rk_state *state, double p) {
     double U;
     long X;
@@ -616,15 +612,11 @@ __device__ long rk_geometric_search(rk_state *state, double p) {
     }
     return X;
 }
-'''
 
-rk_geometric_inversion_definition = '''
 __device__ long rk_geometric_inversion(rk_state *state, double p) {
     return (long)ceil(log(1.0-rk_double(state))/log(1.0-p));
 }
-'''
 
-rk_geometric_definition = '''
 __device__ long rk_geometric(rk_state *state, double p) {
     if (p >= 0.333333333333333333333333) {
         return rk_geometric_search(state, p);
@@ -815,7 +807,7 @@ __device__ void open_uniform(rk_state *state, float *U) {
 '''
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
+    rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
     rk_beta_definition]
 beta_kernel = core.ElementwiseKernel(
@@ -830,8 +822,7 @@ beta_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_use_binominal, rk_basic_difinition, rk_binomial_btpe_definition,
-    rk_binomial_inversion_definition, rk_binomial_definition]
+    rk_use_binominal, rk_basic_definition, rk_binomial_definition]
 binomial_kernel = core.ElementwiseKernel(
     'S n, T p, uint64 seed', 'Y y',
     '''
@@ -844,7 +835,7 @@ binomial_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
+    [rk_basic_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_standard_t_definition]
 standard_t_kernel = core.ElementwiseKernel(
@@ -859,7 +850,7 @@ standard_t_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
+    [rk_basic_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
@@ -874,7 +865,7 @@ chisquare_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_gauss_definition,
+    [rk_basic_definition, rk_gauss_definition,
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition, rk_f_definition]
 f_kernel = core.ElementwiseKernel(
@@ -889,8 +880,7 @@ f_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_geometric_search_definition,
-     rk_geometric_inversion_definition, rk_geometric_definition]
+    [rk_basic_definition, rk_geometric_definition]
 geometric_kernel = core.ElementwiseKernel(
     'T p, uint32 seed', 'Y y',
     '''
@@ -903,7 +893,7 @@ geometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, loggam_definition, long_min_max_definition,
+    [rk_basic_definition, loggam_definition, long_min_max_definition,
      rk_hypergeometric_definition]
 hypergeometric_kernel = core.ElementwiseKernel(
     'S good, T bad, U sample, uint32 seed', 'Y y',
@@ -917,7 +907,7 @@ hypergeometric_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, rk_logseries_definition]
+    [rk_basic_definition, rk_logseries_definition]
 logseries_kernel = core.ElementwiseKernel(
     'T p, uint32 seed', 'Y y',
     '''
@@ -930,7 +920,7 @@ logseries_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_basic_definition, loggam_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
     rk_chisquare_definition, rk_poisson_mult_definition,
     rk_poisson_ptrs_definition, rk_poisson_definition,
@@ -947,7 +937,7 @@ noncentral_chisquare_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, loggam_definition, rk_gauss_definition,
+    rk_basic_definition, loggam_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
     rk_chisquare_definition, rk_poisson_mult_definition,
     rk_poisson_ptrs_definition, rk_poisson_definition,
@@ -964,7 +954,7 @@ noncentral_f_kernel = core.ElementwiseKernel(
 )
 
 definitions = \
-    [rk_basic_difinition, loggam_definition,
+    [rk_basic_definition, loggam_definition,
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = core.ElementwiseKernel(
@@ -979,7 +969,7 @@ poisson_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_gauss_definition,
+    rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition]
 standard_gamma_kernel = core.ElementwiseKernel(
     'T shape, uint64 seed', 'Y y',
@@ -993,7 +983,7 @@ standard_gamma_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_vonmises_definition]
+    rk_basic_definition, rk_vonmises_definition]
 vonmises_kernel = core.ElementwiseKernel(
     'S mu, T kappa, uint64 seed', 'Y y',
     '''
@@ -1006,7 +996,7 @@ vonmises_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, rk_zipf_definition]
+    rk_basic_definition, rk_zipf_definition]
 zipf_kernel = core.ElementwiseKernel(
     'T a, uint64 seed', 'Y y',
     '''
@@ -1019,7 +1009,7 @@ zipf_kernel = core.ElementwiseKernel(
 )
 
 definitions = [
-    rk_basic_difinition, open_uniform_definition]
+    rk_basic_definition, open_uniform_definition]
 open_uniform_kernel = core.ElementwiseKernel(
     'uint64 seed', 'Y y',
     '''
