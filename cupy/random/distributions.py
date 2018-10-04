@@ -239,7 +239,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
        f(x) = \\frac{1}{\\eta} \
            \\exp\\left\\{ - \\frac{x - \\mu}{\\eta} \\right\\} \
            \\exp\\left[-\\exp\\left\\{-\\frac{x - \\mu}{\\eta} \
-           \\right\\}\\right].
+           \\right\\}\\right],
 
     where :math:`\\mu` is ``loc`` and :math:`\\eta` is ``scale``.
 
