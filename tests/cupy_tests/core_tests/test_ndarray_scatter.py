@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 from cupy import testing
-import pytest
 
 
 @testing.parameterize(
