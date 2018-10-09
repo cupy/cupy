@@ -136,13 +136,14 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    cuda_path = cuda.get_cuda_path()
-    if cuda_path is None:
-        warnings.warn('Please set the CUDA path ' +
-                      'to environment variable `CUDA_PATH`')
-    else:
-        path = os.path.join(cuda_path, 'include')
-        options += ('-I ' + path,)
+    if _cuda_runtime_version >= 9000:
+        cuda_path = cuda.get_cuda_path()
+        if cuda_path is None:
+            warnings.warn('Please set the CUDA path ' +
+                          'to environment variable `CUDA_PATH`')
+        else:
+            path = os.path.join(cuda_path, 'include')
+            options += ('-I ' + path,)
 
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
                                    extra_source)
