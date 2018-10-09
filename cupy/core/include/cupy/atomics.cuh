@@ -17,7 +17,7 @@ __device__ double atomicAdd(double *address, double val)
 
 #endif
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#include <device_functions_decls.h>
 
 __device__ float16 atomicAdd(float16* address, float16 val) {
   unsigned int *aligned = (unsigned int*)((size_t)address - ((size_t)address & 2));
@@ -26,14 +26,11 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
   do {
     assumed = old;
     unsigned short old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
-    __half sum = __ushort_as_half(old_as_us) + __float2half((float)val);
-    unsigned short sum_as_us = __half_as_ushort(sum);
+    unsigned short sum_as_us = __nv_float2half_rn(__nv_half2float(old_as_us) + float(val));
     unsigned int sum_as_ui = (size_t)address & 2 ? (sum_as_us << 16) | (old & 0xffff)
                                                  : (old & 0xffff0000) | sum_as_us;
     old = atomicCAS(aligned, assumed, sum_as_ui);
   } while(assumed != old);
   unsigned short old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
-  return float16((__half_raw)__ushort_as_half(old_as_us));
+  return float16(old_as_us);
 }
-
-#endif  // #if __CUDACC_VER_MAJOR__ >= 9
