@@ -626,6 +626,7 @@ __device__ long rk_geometric(rk_state *state, double p) {
 }
 '''
 
+# min and max for the long type are not defined in cuda75
 long_min_max_definition = '''
 __device__ long long_min(long a, long b)
 {
