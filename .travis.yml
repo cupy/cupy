@@ -22,6 +22,7 @@ script:
   # To workaround Travis issue (https://github.com/travis-ci/travis-ci/issues/7261),
   # ignore DeprecationWarning raised in `site.py`.
   - python -Werror::DeprecationWarning -Wignore::DeprecationWarning:site -m compileall -f -q cupy cupyx examples tests docs
+  - pip install scipy
   - pushd docs
   - make html
   - popd
