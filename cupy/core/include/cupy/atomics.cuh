@@ -17,10 +17,6 @@ __device__ double atomicAdd(double *address, double val)
 
 #endif
 
-#if __CUDACC_VER_MAJOR__ >= 9
-#include <device_functions_decls.h>
-#endif
-
 __device__ float16 atomicAdd(float16* address, float16 val) {
   unsigned int *aligned = (unsigned int*)((size_t)address - ((size_t)address & 2));
   unsigned int old = *aligned;
@@ -30,7 +26,8 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
     assumed = old;
     old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
 #if __CUDACC_VER_MAJOR__ >= 9
-    unsigned short sum_as_us = __nv_float2half_rn(__nv_half2float(old_as_us) + float(val));
+    half sum = __ushort_as_half(old_as_us) + half(float(val));
+    unsigned short sum_as_us = __half_as_ushort(sum);
 #else
     unsigned short sum_as_us = __float2half_rn(__half2float(old_as_us) + float(val));
 #endif
