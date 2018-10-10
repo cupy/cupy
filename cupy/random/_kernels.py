@@ -627,12 +627,12 @@ __device__ long rk_geometric(rk_state *state, double p) {
 '''
 
 long_min_max_definition = '''
-__device__ long min(long a, long b)
+__device__ long long_min(long a, long b)
 {
     return a < b ? a : b;
 }
 
-__device__ long max(long a, long b)
+__device__ long long_max(long a, long b)
 {
     return a > b ? a : b;
 }
@@ -646,7 +646,7 @@ __device__ long rk_hypergeometric_hyp(
     double d2, U, Y;
 
     d1 = bad + good - sample;
-    d2 = (double)min(bad, good);
+    d2 = (double)long_min(bad, good);
 
     Y = d2;
     K = sample;
@@ -674,10 +674,10 @@ __device__ long rk_hypergeometric_hrua(
     long Z;
     double T, W, X, Y;
 
-    mingoodbad = min(good, bad);
+    mingoodbad = long_min(good, bad);
     popsize = good + bad;
-    maxgoodbad = max(good, bad);
-    m = min(sample, popsize - sample);
+    maxgoodbad = long_max(good, bad);
+    m = long_min(sample, popsize - sample);
     d4 = ((double)mingoodbad) / popsize;
     d5 = 1.0 - d4;
     d6 = m*d4 + 0.5;
@@ -686,7 +686,7 @@ __device__ long rk_hypergeometric_hrua(
     d9 = (long)floor((double)(m + 1) * (mingoodbad + 1) / (popsize + 2));
     d10 = (loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) +
            loggam(maxgoodbad-m+d9+1));
-    d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
+    d11 = min(long_min(m, mingoodbad)+1.0, floor(d6+16*d7));
     /* 16 for 16-decimal-digit precision in D1 and D2 */
 
     while (1)
