@@ -26,7 +26,7 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
     assumed = old;
     old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
 #if __CUDACC_VER_MAJOR__ >= 9
-    half sum = __ushort_as_half(old_as_us) + half(float(val));
+    half sum = __float2half_rn(__half2float(__ushort_as_half(old_as_us)) + float(val));
     unsigned short sum_as_us = __half_as_ushort(sum);
 #else
     unsigned short sum_as_us = __float2half_rn(__half2float(old_as_us) + float(val));
