@@ -820,6 +820,7 @@ def fuse(*args, **kwargs):
     Args:
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
+        const_params (dict): Compile time constants in kernel function.
 
     .. note::
        This API is currently experimental and the interface may be changed in
