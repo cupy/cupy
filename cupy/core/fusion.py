@@ -647,7 +647,7 @@ class _FusionHistory(object):
             operation=operation)
         return module_code
 
-    def get_fusion(self, func, in_dtypes, name, constexpr):
+    def get_fusion(self, func, in_dtypes, name, const_params):
         """This generates CUDA kernel from the given function and dtypes.
 
         This function generates ElementwiseKernel or ReductioKernel from the
@@ -664,7 +664,7 @@ class _FusionHistory(object):
         """
         in_params = [self._fresh_premap_param(t) for t in in_dtypes]
         in_pvars = [FusionVarPython(_, False) for _ in in_params]
-        return_value = func(*in_pvars, **constexpr)
+        return_value = func(*in_pvars, **const_params)
 
         if isinstance(return_value, tuple):
             return_tuple = True
@@ -760,11 +760,11 @@ class Fusion(object):
         name (str): The name of the function.
     """
 
-    def __init__(self, func, name=None, constexpr=None):
+    def __init__(self, func, name=None, const_params=None):
         self.func = func
         self.name = name or func.__name__
         self._memo = {}
-        self._constexpr = {} if constexpr is None else constexpr
+        self._const_params = {} if const_params is None else const_params
 
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
@@ -775,7 +775,7 @@ class Fusion(object):
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
         if hasattr(_thread_local, 'history'):
-            return self.func(*args, **self._constexpr)
+            return self.func(*args, **self._const_params)
 
         # Invalid argument types
         if builtins.any(
@@ -792,14 +792,14 @@ class Fusion(object):
                 types_str = '.'.join(repr(type(_)) for _ in args)
                 message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
                 warnings.warn(message)
-            return self.func(*args, **self._constexpr)
+            return self.func(*args, **self._const_params)
 
         dtypes = tuple(_.dtype for _ in args)
         if dtypes not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
                 self._memo[dtypes] = _thread_local.history.get_fusion(
-                    self.func, dtypes, self.name, self._constexpr)
+                    self.func, dtypes, self.name, self._const_params)
             finally:
                 del _thread_local.history
         kernel, kwargs = self._memo[dtypes]
@@ -827,8 +827,8 @@ def fuse(*args, **kwargs):
 
     """
 
-    def wrapper(f, kernel_name=None, constexpr=None):
-        return Fusion(f, kernel_name, constexpr)
+    def wrapper(f, kernel_name=None, const_params=None):
+        return Fusion(f, kernel_name, const_params)
 
     if len(args) >= 1 and callable(args[0]):
         return functools.update_wrapper(wrapper(*args, **kwargs), args[0])
