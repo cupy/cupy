@@ -84,6 +84,10 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
+cpdef int cgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+cpdef int zgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
 cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
 cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
@@ -92,6 +96,10 @@ cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
 cpdef sgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo)
+cpdef cgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo)
+cpdef zgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
@@ -107,6 +115,12 @@ cpdef sormqr(size_t handle, int side, int trans,
              int m, int n, int k, size_t A, int lda, size_t tau,
              size_t C, int ldc, size_t work, int lwork, size_t devInfo)
 cpdef dormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo)
+cpdef cormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo)
+cpdef zormqr(size_t handle, int side, int trans,
              int m, int n, int k, size_t A, int lda, size_t tau,
              size_t C, int ldc, size_t work, int lwork, size_t devInfo)
 

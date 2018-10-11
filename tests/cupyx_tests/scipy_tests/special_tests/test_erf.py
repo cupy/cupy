@@ -1,8 +1,16 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+
+
+def _boundary_inputs(boundary, rtol, atol):
+    left = boundary * (1 - numpy.copysign(rtol, boundary)) - atol
+    right = boundary * (1 + numpy.copysign(rtol, boundary)) + atol
+    return [left, boundary, right]
 
 
 class _TestBase(object):
@@ -54,10 +62,8 @@ class TestSpecial(unittest.TestCase, _TestBase):
     def check_unary_boundary(self, name, xp, scp, dtype, boundary):
         import scipy.special  # NOQA
 
-        x = boundary * (1 - 1.0 / 1024)
-        y = boundary
-        z = boundary * (1 + 1.0 / 1024)
-        a = xp.array([x, y, z], dtype=dtype)
+        a = _boundary_inputs(boundary, 1.0 / 1024, 1.0 / 1024)
+        a = xp.array(a, dtype=dtype)
         return getattr(scp.special, name)(a)
 
 
@@ -96,10 +102,8 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
     def check_unary_boundary(self, name, xp, scp, dtype, boundary):
         import scipy.special  # NOQA
 
-        x = boundary * (1 - 1.0 / 1024)
-        y = boundary
-        z = boundary * (1 + 1.0 / 1024)
-        a = xp.array([x, y, z], dtype=dtype)
+        a = _boundary_inputs(boundary, 1.0 / 1024, 1.0 / 1024)
+        a = xp.array(a, dtype=dtype)
 
         @cupy.fuse()
         def f(x):
