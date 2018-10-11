@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy.cuda import compiler
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -13,6 +14,7 @@ def _compile_func(kernel_name, code):
 
 
 @testing.gpu
+@unittest.skipIf(runtime.is_hip, "Not support on HIP")
 class TestFunction(unittest.TestCase):
 
     def test_python_scalar(self):

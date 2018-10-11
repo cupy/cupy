@@ -1,7 +1,7 @@
 import unittest
 
 import cupy
-
+from cupy.cuda import runtime
 
 _test_source = r'''
 extern "C" __global__
@@ -12,6 +12,7 @@ void test_sum(const float* x1, const float* x2, float* y) {
 '''
 
 
+@unittest.skipIf(runtime.is_hip, "Not support on HIP")
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
