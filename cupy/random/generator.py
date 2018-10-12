@@ -491,8 +491,8 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _1m_kernel = core.ElementwiseKernel(
-        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
+    _mod1_kernel = core.ElementwiseKernel(
+        '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
@@ -513,7 +513,7 @@ class RandomState(object):
 
         """
         out = self._random_sample_raw(size, dtype)
-        RandomState._1m_kernel(out)
+        RandomState._mod1_kernel(out)
         return out
 
     def rayleigh(self, scale=1.0, size=None, dtype=float):
