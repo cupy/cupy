@@ -186,18 +186,25 @@ class FusionVarPython(object):
 
     Args:
         var (_FusionVarCUDA)
+        ndim (int or None)
+        is_postmap (bool)
 
     Attributes:
         dtype (dtype): The data type.
     """
 
-    def __init__(self, var, is_postmap):
+    def __init__(self, var, ndim, is_postmap):
         self._var = var
         self.dtype = var.dtype
+        self.ndim = ndim
         self._is_postmap = is_postmap
 
     def __repr__(self):
-        return '<FusionVarPython, dtype={}>'.format(self.dtype)
+        if self.ndim is None:
+            dim = 'scalar'
+        else:
+            dim = '{}-dim array'.format(self.ndim)
+        return '<FusionVarPython, {} {}>'.format(self.dtype, dim)
 
     def __neg__(self):
         return cupy.negative(self)
@@ -651,7 +658,7 @@ class _FusionHistory(object):
             operation=operation)
         return module_code
 
-    def get_fusion(self, func, in_dtypes, name):
+    def get_fusion(self, func, in_params_info, name):
         """This generates CUDA kernel from the given function and dtypes.
 
         This function generates ElementwiseKernel or ReductioKernel from the
@@ -666,8 +673,11 @@ class _FusionHistory(object):
             The second element of return values is kwargs that will give into
             the elementwise kernel or reduction kernel.
         """
-        in_params = [self._fresh_premap_param(t) for t in in_dtypes]
-        in_pvars = [FusionVarPython(_, False) for _ in in_params]
+        in_dtypes = [t for t, d in in_params_info]
+        in_ndims = [d for t, d in in_params_info]
+        in_params = [self._fresh_premap_param(t) for t, _ in in_params_info]
+        in_pvars = [FusionVarPython(v, d, False)
+                    for v, d in zip(in_params, in_ndims)]
         return_value = func(*in_pvars)
 
         if isinstance(return_value, tuple):
@@ -772,46 +782,46 @@ class Fusion(object):
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
+    def _is_cupy_data(self, a):
+        return isinstance(a, (core.ndarray, numpy.generic))
+
     def __call__(self, *args, **kwargs):
-        if not hasattr(_thread_local, 'history'):
-            func, kw = self._compile(*args, **kwargs)
-            kwargs = dict(kwargs, **kw)
-            return func(*args, **kwargs)
-        else:
-            return self.func(*args, **kwargs)
+        # Inner function of composition of multiple fused functions.
+        if hasattr(_thread_local, 'history'):
+            return self.func(*args)
 
-    def _compile_from_dtypes(self, *dtypes):
-        assert not hasattr(_thread_local, 'history')
-        _thread_local.history = _FusionHistory()
-        try:
-            key = tuple(dtypes)
-            if key not in self._memo:
-                self._memo[key] = _thread_local.history.get_fusion(
-                    self.func, dtypes, self.name)
-            return self._memo[key]
-        finally:
-            del _thread_local.history
-
-    def _compile(self, *args, **kwargs):
-        if builtins.any(
-                not isinstance(_, (core.ndarray, numpy.ndarray, numpy.generic))
-                for _ in args):
+        # Invalid argument types
+        acceptable_types = six.integer_types + (
+            core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
+        if not all(isinstance(p, acceptable_types) for p in args):
             raise TypeError('Invalid argument type for \'{}\': ({})'.format(
                 self.name,
                 ', '.join(repr(type(_)) for _ in args)))
 
-        def is_cupy_data(a):
-            return isinstance(a, (core.ndarray, numpy.generic))
-        if builtins.all(is_cupy_data(_) for _ in args):
-            dtypes = [_.dtype for _ in args]
-            return self._compile_from_dtypes(*dtypes)
-        else:
-            if builtins.any(type(_) is core.ndarray for _ in args):
-                types_str = '.'.join(repr(type(_)) for _ in args)
-                message = 'Can\'t fuse \n {}({})'.format(self.name, types_str)
+        # Fail to fuse
+        exec_cupy = any(isinstance(p, core.ndarray) for p in args)
+        exec_numpy = any(isinstance(p, numpy.ndarray) for p in args)
+        if exec_numpy:
+            if exec_cupy:
+                types_str = ', '.join(repr(type(_)) for _ in args)
+                message = 'Can\'t fuse {}({})'.format(self.name, types_str)
                 warnings.warn(message)
-            else:
-                return self.func, {}
+            # Call function with NumPy mode
+            return self.func(*args)
+
+        # Cache the result of execution path analysis
+        params_info = tuple(
+            (numpy.dtype(p), (p.ndim if isinstance(p, core.ndarray) else -1))
+            for p in args)
+        if params_info not in self._memo:
+            try:
+                _thread_local.history = _FusionHistory()
+                self._memo[params_info] = _thread_local.history.get_fusion(
+                    self.func, params_info, self.name)
+            finally:
+                del _thread_local.history
+        kernel, kwargs = self._memo[params_info]
+        return kernel(*args, **kwargs)
 
     def clear_cache(self):
         self._memo = {}
