@@ -1,4 +1,7 @@
-def as_strided(x, shape=None, strides=None, subok=False):
+import cupy
+
+
+def as_strided(x, shape=None, strides=None):
     """
     Create a view into the array with the given shape and strides.
     .. warning:: This function has to be used with extreme care, see notes.
@@ -28,13 +31,8 @@ def as_strided(x, shape=None, strides=None, subok=False):
     ndarray and, if done incorrectly, the array elements can point to
     invalid memory and can corrupt results or crash your program.
     """
-    interface = dict(x.__cuda_array_interface__)
-    if shape is not None:
-        interface['shape'] = tuple(shape)
-    if strides is not None:
-        interface['strides'] = tuple(strides)
+    shape = x.shape if shape is None else tuple(shape)
+    strides = x.strides if strides is None else tuple(strides)
 
-    array = cp.ndarray(shape=interface['shape'], dtype=x.dtype,
-                       memptr=x.data, strides=interface['strides'])
-
-    return array
+    return cupy.ndarray(shape=shape, dtype=x.dtype,
+                        memptr=x.data, strides=strides)

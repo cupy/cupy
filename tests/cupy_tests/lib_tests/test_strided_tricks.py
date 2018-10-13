@@ -1,36 +1,34 @@
 import unittest
 
 import numpy as np
-import six
 
 import cupy as cp
-from cupy import cuda
 from cupy import testing
-from cupy.testing import condition
 from cupy.testing.array import assert_array_equal
-from cupy.lib.stride_tricks import as_strided
+from cupy.lib import stride_tricks
 
 
 @testing.gpu
 class TestAsStrided(unittest.TestCase):
     def test_as_strided(self):
         a = cp.array([1, 2, 3, 4])
-        a_view = as_strided(a, shape=(2,), strides=(2 * a.itemsize,))
+        a_view = stride_tricks.as_strided(
+            a, shape=(2,), strides=(2 * a.itemsize,))
         expected = cp.array([1, 3])
         assert_array_equal(a_view, expected)
 
         a = cp.array([1, 2, 3, 4])
-        a_view = as_strided(a, shape=(3, 4), strides=(0, 1 * a.itemsize))
+        a_view = stride_tricks.as_strided(
+            a, shape=(3, 4), strides=(0, 1 * a.itemsize))
         expected = cp.array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]])
         assert_array_equal(a_view, expected)
 
-    def test_rolling_window(self):
-        for shape, window, axis in [((3, 4), 2, 0), ((10, 30, 4), 4, -2)]:
-            a = np.random.randn(*shape)
-            a_rw = rolling_window(a, window, axis)
-            b = cp.array(a)
-            b_rw = rolling_window(b, window, axis)
-            assert_array_equal(a_rw, b_rw)
+    @testing.numpy_cupy_array_equal()
+    def test_rolling_window(self, xp):
+        a = testing.shaped_arange((3, 4), xp)
+        a_rolling = rolling_window(a, 2, 0)
+
+        return a_rolling
 
 
 def rolling_window(a, window, axis=-1):
@@ -46,5 +44,5 @@ def rolling_window(a, window, axis=-1):
         rolling = np.lib.stride_tricks.as_strided(
             a, shape=shape, strides=strides)
     elif isinstance(a, cp.ndarray):
-        rolling = as_strided(a, shape=shape, strides=strides)
+        rolling = stride_tricks.as_strided(a, shape=shape, strides=strides)
     return rolling.swapaxes(-2, axis)
