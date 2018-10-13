@@ -37,11 +37,11 @@ def rolling_window(a, window, axis=-1):
     This function is taken from https://github.com/numpy/numpy/pull/31
     but slightly modified to accept axis option.
     """
-    a = np.swapaxes(a, axis, -1)
+    a = numpy.swapaxes(a, axis, -1)
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
-    if isinstance(a, np.ndarray):
-        rolling = np.lib.stride_tricks.as_strided(
+    if isinstance(a, numpy.ndarray):
+        rolling = numpy.lib.stride_tricks.as_strided(
             a, shape=shape, strides=strides)
     elif isinstance(a, cupy.ndarray):
         rolling = stride_tricks.as_strided(a, shape=shape, strides=strides)
