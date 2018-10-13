@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 from cupy import testing
-from cupy.testing.array import assert_array_equal
 from cupy.lib import stride_tricks
 
 
@@ -15,13 +14,13 @@ class TestAsStrided(unittest.TestCase):
         a_view = stride_tricks.as_strided(
             a, shape=(2,), strides=(2 * a.itemsize,))
         expected = cupy.array([1, 3])
-        assert_array_equal(a_view, expected)
+        testing.assert_array_equal(a_view, expected)
 
         a = cupy.array([1, 2, 3, 4])
         a_view = stride_tricks.as_strided(
             a, shape=(3, 4), strides=(0, 1 * a.itemsize))
         expected = cupy.array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]])
-        assert_array_equal(a_view, expected)
+        testing.assert_array_equal(a_view, expected)
 
     @testing.numpy_cupy_array_equal()
     def test_rolling_window(self, xp):
