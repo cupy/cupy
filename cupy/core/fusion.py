@@ -611,13 +611,14 @@ class _FusionHistory(object):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
-                        v = self._fresh_local(out_dtypes[i])
-                        v = make_fusion_var(v, ndim)
-                        out_vars.append(v)
+                        out_var = self._fresh_local(out_dtypes[i])
+                        out_var = make_fusion_var(out_var, ndim)
+                        out_vars.append(out_var)
+                        ret.append(out_var)
                     elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
                                         'same_kind'):
-                        v = out_vars[i]
-                        ret.append(v)
+                        out_var = out_vars[i]
+                        ret.append(out_var)
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
