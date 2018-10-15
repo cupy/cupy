@@ -186,7 +186,7 @@ class FusionVarScalar(object):
 
     Args:
         var (_FusionVarCUDA)
-        ndim (int or None)
+        ndim (int)
         is_postmap (bool)
 
     Attributes:
@@ -198,6 +198,7 @@ class FusionVarScalar(object):
         self.dtype = var.dtype
         self.ndim = ndim
         self._is_postmap = is_postmap
+        assert ndim == -1
 
     def __repr__(self):
         return '<FusionVar {} scalar>'.format(self.dtype)
@@ -331,6 +332,13 @@ class FusionVarScalar(object):
 
 
 class FusionVarArray(FusionVarScalar):
+
+    def __init__(self, var, ndim, is_postmap):
+        self._var = var
+        self.dtype = var.dtype
+        self.ndim = ndim
+        self._is_postmap = is_postmap
+        assert ndim >= 0
 
     def __repr__(self):
         return '<FusionVar {} {}-dim array>'.format(self.dtype, self.ndim)
@@ -490,7 +498,7 @@ class _FusionHistory(object):
             (input_type,), (output_type,), _ = op
             if numpy.can_cast(arg.dtype.type, input_type):
                 return_dtype = numpy.dtype(output_type)
-                self.premap_ret = self._get_cuda_var(arg)
+                self.premap_ret = self._get_fusion_var(arg)._var
                 self.reduce_op = op
                 self.reduce_identity = raw.identity
                 self.reduce_kwargs = kwargs
@@ -502,24 +510,25 @@ class _FusionHistory(object):
     def _add_preamble(self, preamble):
         self.preamble_set.add(preamble)
 
-    def _get_cuda_var(self, arg):
-        """This converts `arg` to _FusionVarCUDA data.
+    def _get_fusion_var(self, arg):
+        """This converts `arg` to FusionVarScalr or FusionVarArray data.
 
         Args:
-            arg (FusionVarPython or a primitive type)
+            arg (FusionVarScalar, FusionVarArray or a primitive type)
 
-        Return value: _FusionVarCUDA
+        Return value:
+            FusionVarScalar or FusionVarArray
         """
-        if isinstance(arg, FusionVarPython):
+        if isinstance(arg, (FusionVarScalar, FusionVarArray)):
             if arg._is_postmap == self._has_reduction():
-                return arg._var
+                return arg
             else:
                 # Map operation between pre-map variable and post-map variable
                 raise Exception('Shape mismatch')
-        is_scalar = isinstance(arg, six.integer_types + (float, bool, complex))
-        is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
-        if is_scalar or is_ndarray:
-            return self._fresh_local(numpy.dtype(type(arg)), const=arg)
+        if isinstance(arg, six.integer_types +
+                      (float, bool, complex, numpy.generic)):
+            var = self._fresh_local(numpy.dtype(type(arg)), const=arg)
+            return FusionVarScalar(var, -1, self._has_reduction())
         raise Exception('Unsupported type {}'.format(type(type)))
 
     def call_ufunc(self, ufunc, args, kwargs):
@@ -533,21 +542,29 @@ class _FusionHistory(object):
             max_scalar_kind = -1
             for arg in in_args:
                 kind = _kind_score[arg.dtype.kind]
-                if arg.const is None:
+                if isinstance(arg, FusionVarArray):
                     max_array_kind = max(max_array_kind, kind)
-                else:
+                elif isinstance(arg, FusionVarScalar):
                     max_scalar_kind = max(max_scalar_kind, kind)
+                else:
+                    assert False
             return (max_scalar_kind != -1 and
                     max_array_kind >= max_scalar_kind)
 
         def can_cast1(args, in_dtypes):
             for i in six.moves.range(nin):
-                if args[i].const is None:
-                    if not numpy.can_cast(args[i].dtype, in_dtypes[i]):
+                arg = args[i]
+                if isinstance(arg, FusionVarArray):
+                    if not numpy.can_cast(arg.dtype, in_dtypes[i]):
+                        return False
+                elif isinstance(arg, FusionVarScalar):
+                    scalar_value = arg._var.const
+                    if scalar_value is None:
+                        scalar_value = arg.dtype.type(0)
+                    if not numpy.can_cast(scalar_value, in_dtypes[i]):
                         return False
                 else:
-                    if not numpy.can_cast(args[i].const, in_dtypes[i]):
-                        return False
+                    assert False
             return True
 
         def can_cast2(args, in_dtypes):
@@ -556,27 +573,49 @@ class _FusionHistory(object):
                     return False
             return True
 
-        var_list = [self._get_cuda_var(_) for _ in args]
+        def make_fusion_var(var, ndim):
+            if ndim == -1:
+                return FusionVarScalar(var, ndim, self._has_reduction())
+            else:
+                return FusionVarArray(var, ndim, self._has_reduction())
+
+        # Make FusionVar list
+        var_list = [self._get_fusion_var(_) for _ in args]
         if 'out' in kwargs:
-            var_list.append(self._get_cuda_var(kwargs.pop('out')))
+            out_var = self._get_fusion_var(kwargs.pop('out'))
+            var_list.append(out_var)
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
+
         assert nin <= len(var_list) <= nin + nout
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
+
+        if not all(isinstance(_, FusionVarArray) for _ in out_vars):
+            raise TypeError('Can\'t take scalar value as out argument')
+
+        # Broadcast
+        if max(_.ndim for _ in in_vars) < self.ndim:
+            # TODO(imanishi): warning message
+            warnings.warn("warning")
+        ndim = max(_.ndim for _ in var_list)
+
+        # Typecast and add an operation
         can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
         for in_dtypes, out_dtypes, op in ufunc._ops:
-            in_dtypes = [numpy.dtype(_) for _ in in_dtypes]
-            out_dtypes = [numpy.dtype(_) for _ in out_dtypes]
+            in_dtypes = [numpy.dtype(t) for t in in_dtypes]
+            out_dtypes = [numpy.dtype(t) for t in out_dtypes]
             if can_cast(in_vars, in_dtypes):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
                         v = self._fresh_local(out_dtypes[i])
+                        v = make_fusion_var(v, ndim)
                         out_vars.append(v)
                     elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
+                        ret.append(v)
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -587,14 +626,14 @@ class _FusionHistory(object):
                     v.mutate()
                     ret.append(FusionVarPython(v, self._has_reduction()))
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
-                             for i, t in enumerate(in_vars)]
+                             for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
-                              for i, t in enumerate(out_vars)]
+                              for i, _ in enumerate(out_vars)]
                 subm = Submodule(ufunc, in_params, out_params, op)
-                self.add_op(subm, in_vars + out_vars)
+                self.add_op(subm, [v._var for v in in_vars + out_vars])
                 return ret[0] if len(ret) == 1 else tuple(ret)
-        in_dtypes = [_.dtype for _ in in_vars]
-        out_dtypes = [_.dtype for _ in out_vars]
+        in_dtypes = [v.dtype for v in in_vars]
+        out_dtypes = [v.dtype for v in out_vars]
         raise TypeError('Invalid type cast in \'{}\': {} -> {}'.format(
             ufunc.name, in_dtypes, out_dtypes))
 
@@ -677,6 +716,7 @@ class _FusionHistory(object):
         """
         in_dtypes = [t for t, d in in_params_info]
         in_ndims = [d for t, d in in_params_info]
+        self.ndim = max(in_ndims)
         in_params = [self._fresh_premap_param(t) for t in in_dtypes]
         in_pvars = [FusionVarScalar(v, d, False)
                     if d == -1
@@ -688,7 +728,7 @@ class _FusionHistory(object):
             return_tuple = True
             no_return = False
             out_pvars = return_value
-        elif isinstance(return_value, FusionVarPython):
+        elif isinstance(return_value, (FusionVarScalar, FusionVarArray)):
             return_tuple = False
             no_return = False
             out_pvars = [return_value]
@@ -701,7 +741,7 @@ class _FusionHistory(object):
                 'Fusion function can\'t return {}'.format(type(return_value)))
 
         out_pvars = [_ for _ in out_pvars if _ is not None]
-        out_cvars = [self._get_cuda_var(_) for _ in out_pvars]
+        out_cvars = [self._get_fusion_var(_)._var for _ in out_pvars]
 
         out_dtypes = [_.dtype for _ in out_pvars]
         out_params = [self._fresh_premap_param(t) for t in out_dtypes]
@@ -882,9 +922,28 @@ def _reduction_wrapper(fusion_op):
             if len(args) != 1:
                 mes = '{}() takes 1 positional argument but {} were given'
                 raise TypeError(mes.format(fusion_op._ops.name, len(args)))
-            return FusionVarPython(
-                _thread_local.history.set_reduce_op(fusion_op, arg, kwargs),
-                True)
+
+            var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
+
+            src_ndim = max(0, arg.ndim)
+            if 'axis' in kwargs:
+                axis = kwargs['axis']
+                if isinstance(axis, (tuple, list)):
+                    ndim = src_ndim - len(axis)
+                else:
+                    ndim = src_ndim - 1
+            else:
+                ndim = 0
+            if ndim < 0:
+                mes = 'axis {} is out of bounds for array of dimension {}'
+                raise core._AxisError(mes.format(axis, src_ndim))
+
+            _thread_local.history.ndim = ndim
+            if ndim >= 1:
+                return FusionVarArray(var, ndim, True)
+            else:
+                return FusionVarScalar(var, -1, True)
+
         return functools.update_wrapper(call, f)
     return func
 
