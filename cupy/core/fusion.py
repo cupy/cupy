@@ -592,13 +592,15 @@ class _FusionHistory(object):
         out_vars = var_list[nin:]
 
         if not all(isinstance(_, FusionVarArray) for _ in out_vars):
-            raise TypeError('Can\'t take scalar value as out argument')
+            raise TypeError('return arrays must be of ArrayType')
 
         # Broadcast
-        if max(_.ndim for _ in in_vars) < self.ndim:
+        if max(v.ndim for v in in_vars) < self.ndim:
             # TODO(imanishi): warning message
             warnings.warn("warning")
-        ndim = max(_.ndim for _ in var_list)
+        ndim = max(v.ndim for v in var_list)
+        if len(out_vars) >= 1 and min(v.ndim for v in out_vars) < ndim:
+            raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
         can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
@@ -623,8 +625,7 @@ class _FusionHistory(object):
                             'according to the casting rule '
                             '"same_kind"'.format(
                                 out_dtypes[i].char, out_vars[i].dtype.char))
-                    v.mutate()
-                    ret.append(FusionVarPython(v, self._has_reduction()))
+                    out_var._var.mutate()
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
@@ -829,7 +830,15 @@ class Fusion(object):
     def _is_cupy_data(self, a):
         return isinstance(a, (core.ndarray, numpy.generic))
 
-    def __call__(self, *args, **kwargs):
+    def _get_param_info(self, arg):
+        if isinstance(arg, core.ndarray):
+            return arg.dtype, arg.ndim
+        elif isinstance(arg, numpy.generic):
+            return arg.dtype, -1
+        else:
+            return numpy.array(arg).dtype, -1
+
+    def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
         if hasattr(_thread_local, 'history'):
             return self.func(*args)
@@ -854,9 +863,7 @@ class Fusion(object):
             return self.func(*args)
 
         # Cache the result of execution path analysis
-        params_info = tuple(
-            (numpy.dtype(p), (p.ndim if isinstance(p, core.ndarray) else -1))
-            for p in args)
+        params_info = tuple(self._get_param_info(p) for p in args)
         if params_info not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
