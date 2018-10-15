@@ -1,6 +1,5 @@
 import functools
 import six
-from six.moves import builtins
 import string
 import threading
 import warnings
