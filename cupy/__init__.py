@@ -675,7 +675,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion.FusionVarPython)):
+                            cupy.core.fusion.FusionVarScalar,
+                            cupy.core.fusion.FusionVarArray)):
             return _cupy
     return numpy
 
