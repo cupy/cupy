@@ -1,6 +1,7 @@
 import unittest
 
 import pytest
+import six
 
 from cupy import cuda
 
@@ -65,6 +66,8 @@ class TestDeviceComparison(unittest.TestCase):
         with pytest.raises(TypeError):
             obj2 >= obj1
 
+    @unittest.skipIf(
+        six.PY2, 'Python 2 comparison result of objects is arbitrary')
     def test_comparison_other_type(self):
         self.check_comparison_other_type(cuda.Device(0), 0)
         self.check_comparison_other_type(cuda.Device(0), 1)
