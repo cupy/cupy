@@ -180,7 +180,7 @@ class FusionOp(object):
         return code
 
 
-class FusionVarPython(object):
+class FusionVarScalar(object):
 
     """The values of variables in target function of fusion.
 
@@ -200,11 +200,7 @@ class FusionVarPython(object):
         self._is_postmap = is_postmap
 
     def __repr__(self):
-        if self.ndim is None:
-            dim = 'scalar'
-        else:
-            dim = '{}-dim array'.format(self.ndim)
-        return '<FusionVarPython, {} {}>'.format(self.dtype, dim)
+        return '<FusionVar {} scalar>'.format(self.dtype)
 
     def __neg__(self):
         return cupy.negative(self)
@@ -212,17 +208,11 @@ class FusionVarPython(object):
     def __add__(self, other):
         return cupy.add(self, other)
 
-    def __iadd__(self, other):
-        return cupy.add(self, other, self)
-
     def __radd__(self, other):
         return cupy.add(other, self)
 
     def __sub__(self, other):
         return cupy.subtract(self, other)
-
-    def __isub__(self, other):
-        return cupy.subtract(self, other, self)
 
     def __rsub__(self, other):
         return cupy.subtract(other, self)
@@ -230,17 +220,11 @@ class FusionVarPython(object):
     def __mul__(self, other):
         return cupy.multiply(self, other)
 
-    def __imul__(self, other):
-        return cupy.multiply(self, other, self)
-
     def __rmul__(self, other):
         return cupy.multiply(other, self)
 
     def __div__(self, other):
         return cupy.divide(self, other)
-
-    def __idiv__(self, other):
-        return cupy.divide(self, other, self)
 
     def __rdiv__(self, other):
         return cupy.divide(other, self)
@@ -248,17 +232,11 @@ class FusionVarPython(object):
     def __truediv__(self, other):
         return cupy.true_divide(self, other)
 
-    def __itruediv__(self, other):
-        return cupy.true_divide(self, other, self)
-
     def __rtruediv__(self, other):
         return cupy.true_divide(other, self)
 
     def __floordiv__(self, other):
         return cupy.floor_divide(self, other)
-
-    def __ifloordiv__(self, other):
-        return cupy.floor_divide(self, other, self)
 
     def __rfloordiv__(self, other):
         return cupy.floor_divide(other, self)
@@ -266,23 +244,14 @@ class FusionVarPython(object):
     def __mod__(self, other):
         return cupy.remainder(self, other)
 
-    def __imod__(self, other):
-        return cupy.remainder(self, other, self)
-
     def __rmod__(self, other):
         return cupy.remainder(other, self)
 
     def __pow__(x, y):
         return cupy.power(x, y)
 
-    def __ipow__(self, other):
-        return cupy.power(self, other, self)
-
     def __lshift__(self, other):
         return cupy.left_shift(self, other)
-
-    def __ilshift__(self, other):
-        return cupy.left_shift(self, other, self)
 
     def __rlshift__(self, other):
         return cupy.left_shift(other, self)
@@ -290,17 +259,11 @@ class FusionVarPython(object):
     def __rshift__(self, other):
         return cupy.right_shift(self, other)
 
-    def __irshift__(self, other):
-        return cupy.right_shift(self, other, self)
-
     def __rrshift__(self, other):
         return cupy.right_shift(other, self)
 
     def __and__(self, other):
         return cupy.bitwise_and(self, other)
-
-    def __iand__(self, other):
-        return cupy.bitwise_and(self, other, self)
 
     def __rand__(self, other):
         return cupy.bitwise_and(other, self)
@@ -308,17 +271,11 @@ class FusionVarPython(object):
     def __or__(self, other):
         return cupy.bitwise_or(self, other)
 
-    def __ior__(self, other):
-        return cupy.bitwise_or(self, other, self)
-
     def __ror__(self, other):
         return cupy.bitwise_or(other, self)
 
     def __xor__(self, other):
         return cupy.bitwise_xor(self, other)
-
-    def __ixor__(self, other):
-        return cupy.bitwise_xor(self, other, self)
 
     def __rxor__(self, other):
         return cupy.bitwise_xor(other, self)
@@ -371,6 +328,51 @@ class FusionVarPython(object):
         if not copy and self.dtype == dtype:
             return self
         return _dtype_to_astype(dtype)(self)
+
+
+class FusionVarArray(FusionVarScalar):
+
+    def __repr__(self):
+        return '<FusionVar {} {}-dim array>'.format(self.dtype, self.ndim)
+
+    def __iadd__(self, other):
+        return cupy.add(self, other, self)
+
+    def __isub__(self, other):
+        return cupy.subtract(self, other, self)
+
+    def __imul__(self, other):
+        return cupy.multiply(self, other, self)
+
+    def __idiv__(self, other):
+        return cupy.divide(self, other, self)
+
+    def __itruediv__(self, other):
+        return cupy.true_divide(self, other, self)
+
+    def __ifloordiv__(self, other):
+        return cupy.floor_divide(self, other, self)
+
+    def __imod__(self, other):
+        return cupy.remainder(self, other, self)
+
+    def __ipow__(self, other):
+        return cupy.power(self, other, self)
+
+    def __ilshift__(self, other):
+        return cupy.left_shift(self, other, self)
+
+    def __irshift__(self, other):
+        return cupy.right_shift(self, other, self)
+
+    def __iand__(self, other):
+        return cupy.bitwise_and(self, other, self)
+
+    def __ior__(self, other):
+        return cupy.bitwise_or(self, other, self)
+
+    def __ixor__(self, other):
+        return cupy.bitwise_xor(self, other, self)
 
 
 class _FusionHistory(object):
@@ -675,8 +677,10 @@ class _FusionHistory(object):
         """
         in_dtypes = [t for t, d in in_params_info]
         in_ndims = [d for t, d in in_params_info]
-        in_params = [self._fresh_premap_param(t) for t, _ in in_params_info]
-        in_pvars = [FusionVarPython(v, d, False)
+        in_params = [self._fresh_premap_param(t) for t in in_dtypes]
+        in_pvars = [FusionVarScalar(v, d, False)
+                    if d == -1
+                    else FusionVarArray(v, d, False)
                     for v, d in zip(in_params, in_ndims)]
         return_value = func(*in_pvars)
 
