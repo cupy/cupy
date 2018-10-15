@@ -25,3 +25,4 @@ These functions cover a subset of
    sorting
    statistics
    ext
+   lib.stride_tricks.as_strided
