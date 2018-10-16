@@ -878,6 +878,6 @@ def _dtype_to_astype(dtype):
     global _dtype_to_astype_dict
     if _dtype_to_astype_dict is None:
         _dtype_to_astype_dict = dict([
-            (dtype, _create_astype_ufunc(dtype))
-            for dtype in _dtype_list])
+            (dt, _create_astype_ufunc(dt))
+            for dt in _dtype_list])
     return _dtype_to_astype_dict[dtype]
