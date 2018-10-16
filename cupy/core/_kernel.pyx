@@ -4,6 +4,7 @@ import string
 import numpy
 
 from cupy.cuda import compiler
+from cupy.core import fusion
 from cupy import util
 
 cimport cpython  # NOQA
@@ -756,8 +757,6 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        from cupy.core import fusion
-
         thread_local = fusion._thread_local
         if hasattr(thread_local, 'history'):
             return thread_local.history.call_ufunc(self, args, kwargs)
