@@ -4,7 +4,6 @@ import string
 import numpy
 
 from cupy.cuda import compiler
-from cupy.core import fusion
 from cupy import util
 
 cimport cpython  # NOQA
@@ -22,6 +21,11 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+
+
+# We can't directly import cupy.core.fusion at module level due to cyclic
+# imports. Importing it every time at the point of use is too slow.
+_fusion_module = None
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -757,7 +761,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        thread_local = fusion._thread_local
+        global _fusion_module
+        if _fusion_module is None:
+            from cupy.core import fusion as _fusion_module
+
+        thread_local = _fusion_module._thread_local
         if hasattr(thread_local, 'history'):
             return thread_local.history.call_ufunc(self, args, kwargs)
 
