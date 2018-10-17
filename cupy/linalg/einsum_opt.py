@@ -171,7 +171,7 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
         # Compute all unique pairs
         for curr in full_results:
             cost, positions, remaining = curr
-            for con in itertools.combinations(range(len(input_sets) - iteration), 2):
+            for con in itertools.combinations(range(len(input_sets) - iteration), 2):  # NOQA
 
                 # Find the contraction
                 cont = _find_contraction(con, remaining, output_set)
@@ -205,7 +205,7 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
     return path
 
 
-def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost, naive_cost):
+def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost, naive_cost):  # NOQA
     """Copied from _parse_possible_contraction in numpy/core/einsumfunc.py
 
     Compute the cost (removed size + flops) and resultant indices for
@@ -237,7 +237,7 @@ def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, mem
     new_input_sets : list of sets
         The resulting new list of indices if this proposed contraction is performed.
 
-    """
+    """  # NOQA
 
     # Find the contraction
     contract = _find_contraction(positions, input_sets, output_set)
@@ -283,7 +283,7 @@ def _update_other_results(results, best):
     Returns
     -------
     mod_results : list
-        The list of modifed results, updated with outcome of ``best`` contraction.
+        The list of modifed results, updated with outcome of ``best`` contraction.  # NOQA
     """
 
     best_con = best[1]
@@ -366,29 +366,29 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
 
     for iteration in range(len(input_sets) - 1):
 
-        # Iterate over all pairs on first step, only previously found pairs on subsequent steps
+        # Iterate over all pairs on first step, only previously found pairs on subsequent steps  # NOQA
         for positions in comb_iter:
 
             # Always initially ignore outer products
             if input_sets[positions[0]].isdisjoint(input_sets[positions[1]]):
                 continue
 
-            result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost,
+            result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost,  # NOQA
                                                  naive_cost)
             if result is not None:
                 known_contractions.append(result)
 
-        # If we do not have a inner contraction, rescan pairs including outer products
+        # If we do not have a inner contraction, rescan pairs including outer products  # NOQA
         if len(known_contractions) == 0:
 
             # Then check the outer products
             for positions in itertools.combinations(range(len(input_sets)), 2):
-                result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit,
+                result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit,  # NOQA
                                                      path_cost, naive_cost)
                 if result is not None:
                     known_contractions.append(result)
 
-            # If we still did not find any remaining contractions, default back to einsum like behavior
+            # If we still did not find any remaining contractions, default back to einsum like behavior  # NOQA
             if len(known_contractions) == 0:
                 path.append(tuple(range(len(input_sets))))
                 break
@@ -396,7 +396,7 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
         # Sort based on first index
         best = min(known_contractions, key=lambda x: x[0])
 
-        # Now propagate as many unused contractions as possible to next iteration
+        # Now propagate as many unused contractions as possible to next iteration  # NOQA
         known_contractions = _update_other_results(known_contractions, best)
 
         # Next iteration only compute contractions with the new tensor
