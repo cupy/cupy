@@ -1,3 +1,6 @@
+import itertools
+
+
 def _flop_count(idx_contraction, inner, num_terms, size_dictionary):
     """Copied from _flop_count in numpy/core/einsumfunc.py
 
