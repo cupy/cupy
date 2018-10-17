@@ -40,6 +40,7 @@ def _flop_count(idx_contraction, inner, num_terms, size_dictionary):
 
     return overall_size * op_factor
 
+
 def _compute_size_by_dict(indices, idx_dict):
     """Copied from _compute_size_by_dict in numpy/core/einsumfunc.py
 
@@ -182,7 +183,8 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
                     continue
 
                 # Build (total_cost, positions, indices_remaining)
-                total_cost =  cost + _flop_count(idx_contract, idx_removed, len(con), idx_dict)
+                total_cost = cost + \
+                    _flop_count(idx_contract, idx_removed, len(con), idx_dict)
                 new_pos = positions + [con]
                 iter_results.append((total_cost, new_pos, new_input_sets))
 
@@ -202,9 +204,10 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
     path = min(full_results, key=lambda x: x[0])[1]
     return path
 
+
 def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost, naive_cost):
     """Copied from _parse_possible_contraction in numpy/core/einsumfunc.py
-    
+
     Compute the cost (removed size + flops) and resultant indices for
     performing the contraction specified by ``positions``.
 
@@ -246,7 +249,8 @@ def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, mem
         return None
 
     # Build sort tuple
-    old_sizes = (_compute_size_by_dict(input_sets[p], idx_dict) for p in positions)
+    old_sizes = (_compute_size_by_dict(
+        input_sets[p], idx_dict) for p in positions)
     removed_size = sum(old_sizes) - new_size
 
     # NB: removed_size used to be just the size of any removed indices i.e.:
@@ -303,6 +307,7 @@ def _update_other_results(results, best):
 
     return mod_results
 
+
 def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
     """Copied from _greedy_path in numpy/core/einsumfunc.py
 
@@ -346,9 +351,11 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
         return [(0, 1)]
 
     # Build up a naive cost
-    contract = _find_contraction(range(len(input_sets)), input_sets, output_set)
+    contract = _find_contraction(
+        range(len(input_sets)), input_sets, output_set)
     idx_result, new_input_sets, idx_removed, idx_contract = contract
-    naive_cost = _flop_count(idx_contract, idx_removed, len(input_sets), idx_dict)
+    naive_cost = _flop_count(idx_contract, idx_removed,
+                             len(input_sets), idx_dict)
 
     # Initially iterate over all pairs
     comb_iter = itertools.combinations(range(len(input_sets)), 2)
