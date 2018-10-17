@@ -355,7 +355,7 @@ class FusionVarPython(object):
             raise TypeError('subok is not supported yet')
         if not copy and self.dtype == dtype:
             return self
-        return _dtype_to_astype[dtype](self)
+        return _dtype_to_astype(dtype)(self)
 
 
 class _FusionHistory(object):
@@ -875,5 +875,13 @@ def _create_astype_ufunc(dtype):
     return core.create_ufunc(name, rules, command)
 
 
-_dtype_to_astype = dict([(dtype, _create_astype_ufunc(dtype))
-                         for dtype in _dtype_list])
+_dtype_to_astype_dict = None
+
+
+def _dtype_to_astype(dtype):
+    global _dtype_to_astype_dict
+    if _dtype_to_astype_dict is None:
+        _dtype_to_astype_dict = dict([
+            (dt, _create_astype_ufunc(dt))
+            for dt in _dtype_list])
+    return _dtype_to_astype_dict[dtype]
