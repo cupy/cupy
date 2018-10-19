@@ -19,7 +19,8 @@ def _import(mod, klass):
         obj = getattr(obj, klass)
         return obj, ':meth:`{}.{}.{{}}`'.format(mod, klass)
     else:
-        return obj, ':func:`{}.{{}}`'.format(mod)
+        # ufunc is not a function
+        return obj, ':obj:`{}.{{}}`'.format(mod)
 
 
 def _generate_comparison_rst(
