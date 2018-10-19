@@ -51,8 +51,9 @@ nextafter = ufunc.create_math_ufunc(
     '''Computes the nearest neighbor float values towards the second argument.
 
     .. note::
-        Result of :func:`cupy.nextafter` may be different from that of
-        :func:`numpy.nextafter` because CuPy sets ``-ftz=true``.
+        For values that are close to zero (or denormal numbers),
+        results of :func:`cupy.nextafter` may be different from those of
+        :func:`numpy.nextafter`, because CuPy sets ``-ftz=true``.
 
     .. seealso:: :data:`numpy.nextafter`
 
