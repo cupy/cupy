@@ -1,4 +1,4 @@
-FROM nvidia/cuda:8.0-cudnn6-devel
+FROM nvidia/cuda:9.2-cudnn7-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install --no-cache-dir cupy-cuda80==5.0.0rc1
+RUN pip install --no-cache-dir cupy-cuda92==5.0.0rc1
