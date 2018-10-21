@@ -3875,10 +3875,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             b._c_contiguous = b._f_contiguous = False
             use_broadcast = True
 
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    a._update_contiguity()
-    b._update_contiguity()
-
     if orig_a_ndim != 1:
         out_shape.append(a_part_outshape)
     if orig_b_ndim != 1:
