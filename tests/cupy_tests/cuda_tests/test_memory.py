@@ -4,6 +4,7 @@ import threading
 import unittest
 
 import cupy.cuda
+from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import stream as stream_module
 from cupy import testing
@@ -27,8 +28,53 @@ def mock_alloc(size):
     mem = MockMemory(size)
     return memory.MemoryPointer(mem, 0)
 
-# -----------------------------------------------------------------------------
-# Memory pointer
+
+class TestUnownedMemoryClass(unittest.TestCase):
+
+    def test_inherits_base_memory(self):
+        assert issubclass(memory.UnownedMemory, memory.BaseMemory)
+
+
+@testing.parameterize(*testing.product({
+    'allocator': [memory._malloc, memory.malloc_managed],
+    'specify_device_id': [True, False],
+}))
+@testing.gpu
+class TestUnownedMemory(unittest.TestCase):
+
+    def check(self, device_id):
+        size = 24
+        shape = (2, 3)
+        dtype = cupy.float32
+        with device.Device(device_id):
+            src_mem_ptr = self.allocator(size)
+        src_ptr = src_mem_ptr.ptr
+
+        args = (src_ptr, size, src_mem_ptr)
+        kwargs = {}
+        if self.specify_device_id:
+            kwargs = {'device_id': device_id}
+
+        unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        assert unowned_mem.size == size
+        assert unowned_mem.ptr == src_ptr
+        assert unowned_mem.device_id == device_id
+
+        arr = cupy.ndarray(shape, dtype, memory.MemoryPointer(unowned_mem, 0))
+
+        # Delete the source object
+        del src_mem_ptr
+
+        with device.Device(device_id):
+            arr[:] = 2
+            assert (arr == 2).all()
+
+    def test_device0(self):
+        self.check(0)
+
+    @testing.multi_gpu(2)
+    def test_device1(self):
+        self.check(1)
 
 
 @testing.gpu
@@ -426,7 +472,7 @@ class TestMemoryPool(unittest.TestCase):
     def test_free_all_blocks(self):
         with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
-            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.BaseMemory)
             self.assertIsInstance(mem, memory.PooledMemory)
             self.assertEqual(self.pool.n_free_blocks(), 0)
             mem.free()
@@ -443,7 +489,7 @@ class TestMemoryPool(unittest.TestCase):
     def test_free_all_free(self):
         with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
-            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.BaseMemory)
             self.assertIsInstance(mem, memory.PooledMemory)
             self.assertEqual(self.pool.n_free_blocks(), 0)
             mem.free()

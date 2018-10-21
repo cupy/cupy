@@ -21,7 +21,7 @@ def _get_functions(obj):
             and not isinstance(getattr(obj, n), type)  # not class
             and n[0].islower()  # starts with lower char
             and not n.startswith('__')  # not special methods
-        )
+            )
     ])
 
 
@@ -37,10 +37,10 @@ def _generate_comparison_rst(base_obj, cupy_obj, base_type):
     ]
     for f in sorted(base_funcs):
         if f in cp_funcs:
-            line = '   :obj:`{0}.{1}`, :obj:`{2}.{1}`'.format(
+            line = r'   :obj:`{0}.{1}`, :obj:`{2}.{1}`'.format(
                 base_obj, f, cupy_obj)
         else:
-            line = '   :obj:`{0}.{1}`, \-'.format(base_obj, f)
+            line = r'   :obj:`{0}.{1}`, \-'.format(base_obj, f)
         buf.append(line)
 
     buf += [
@@ -48,7 +48,7 @@ def _generate_comparison_rst(base_obj, cupy_obj, base_type):
         '.. Summary:',
         '   Number of NumPy functions: {}'.format(len(base_funcs)),
         '   Number of functions covered by CuPy: {}'.format(
-                len(cp_funcs & base_funcs)),
+            len(cp_funcs & base_funcs)),
         '   CuPy specific functions:',
     ] + [
         '   - {}'.format(f) for f in (cp_funcs - base_funcs)

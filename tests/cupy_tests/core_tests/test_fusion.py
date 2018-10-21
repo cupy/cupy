@@ -864,6 +864,10 @@ class TestFusionUfunc(unittest.TestCase):
                     lambda *args: self.random_real(*args, seed=1),
                     lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
+        self.check(cupy.around, 2,
+                   (self.random_bool,
+                    self.random_int,
+                    self.random_real))
 
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
@@ -985,6 +989,18 @@ class TestFusionMisc(unittest.TestCase):
 
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
+
+    @testing.for_all_dtypes_combination(
+        names=['src_dtype', 'dst_dtype'], no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_astype_class(self, xp, src_dtype, dst_dtype):
+
+        @cupy.fuse()
+        def f(x):
+            return x.astype(dst_dtype)
+
+        x = xp.arange(6).astype(src_dtype).reshape(2, 3)
+        return f(x)
 
 
 @testing.gpu

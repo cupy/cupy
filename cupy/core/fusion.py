@@ -8,6 +8,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy.core._dtype import get_dtype
 from cupy.core import core
 
 
@@ -339,6 +340,18 @@ class FusionVarPython(object):
 
     def copy(self):
         return cupy.copy(self)
+
+    def astype(self, dtype, order=None, casting=None, subok=None, copy=True):
+        dtype = get_dtype(dtype)
+        if order is not None:
+            raise TypeError('order is not supported yet')
+        if casting is not None:
+            raise TypeError('casting is not supported yet')
+        if subok is not None:
+            raise TypeError('subok is not supported yet')
+        if not copy and self.dtype == dtype:
+            return self
+        return _dtype_to_astype(dtype)(self)
 
 
 class _FusionHistory(object):
@@ -848,3 +861,23 @@ def _reduction_wrapper(fusion_op):
                 True)
         return functools.update_wrapper(call, f)
     return func
+
+
+def _create_astype_ufunc(dtype):
+    name = 'astype_{}'.format(dtype)
+    rules = tuple(['{}->{}'.format(cast_from.char, dtype.char)
+                   for cast_from in _dtype_list])
+    command = 'out0 = static_cast<{}>(in0)'.format(_dtype_to_ctype[dtype])
+    return core.create_ufunc(name, rules, command)
+
+
+_dtype_to_astype_dict = None
+
+
+def _dtype_to_astype(dtype):
+    global _dtype_to_astype_dict
+    if _dtype_to_astype_dict is None:
+        _dtype_to_astype_dict = dict([
+            (dt, _create_astype_ufunc(dt))
+            for dt in _dtype_list])
+    return _dtype_to_astype_dict[dtype]

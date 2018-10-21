@@ -17,6 +17,12 @@ CuPy v5
 :mod:`cupyx.scipy` namespace has been introduced to provide CUDA-enabled SciPy functions.
 :mod:`cupy.sparse` module has been renamed to :mod:`cupyx.scipy.sparse`; :mod:`cupy.sparse` will be kept as an alias for backward compatibility.
 
+Dropped Support for CUDA 7.0 / 7.5
+----------------------------------
+
+CuPy v5 no longer supports CUDA 7.0 / 7.5.
+
+
 CuPy v4
 =======
 

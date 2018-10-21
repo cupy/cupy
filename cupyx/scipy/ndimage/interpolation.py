@@ -9,16 +9,15 @@ import six
 def _get_output(output, input, shape=None):
     if shape is None:
         shape = input.shape
-    if output is None:
-        output = input.dtype
     if isinstance(output, cupy.ndarray):
         if output.shape != tuple(shape):
             raise ValueError("output shape is not correct")
-        return_value = None
     else:
-        output = cupy.zeros(shape, dtype=output)
-        return_value = output
-    return output, return_value
+        dtype = output
+        if dtype is None:
+            dtype = input.dtype
+        output = cupy.zeros(shape, dtype)
+    return output
 
 
 def _check_parameter(func_name, order, mode):
@@ -89,7 +88,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         coordinates = cupy.add(coordinates, 1)
         mode = 'constant'
 
-    output, return_value = _get_output(output, input, coordinates.shape[1:])
+    ret = _get_output(output, input, coordinates.shape[1:])
 
     if mode == 'nearest':
         for i in six.moves.range(input.ndim):
@@ -104,7 +103,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
                 coordinates[i] = 2 * cupy.minimum(
                     coordinates[i], length) - coordinates[i]
 
-    if cupy.issubdtype(input.dtype, cupy.integer):
+    if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
 
     if order == 0:
@@ -147,11 +146,10 @@ def map_coordinates(input, coordinates, output=None, order=None,
         out[mask] = cval
         del mask
 
-    if cupy.issubdtype(output.dtype, cupy.integer):
+    if ret.dtype.kind in 'iu':
         out = cupy.rint(out)
-
-    cupy.copyto(output, out.astype(output.dtype))
-    return return_value
+    ret[:] = out
+    return ret
 
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
@@ -209,8 +207,6 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
 
     _check_parameter('affine_transform', order, mode)
 
-    output, return_value = _get_output(output, input, output_shape)
-
     if not hasattr(offset, '__iter__') and type(offset) is not cupy.ndarray:
         offset = [offset] * input.ndim
 
@@ -224,9 +220,6 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         offset = matrix[:-1, -1]
         matrix = matrix[:-1, :-1]
 
-    if output_shape is None:
-        output_shape = input.shape
-
     if mode == 'opencv':
         m = cupy.zeros((input.ndim + 1, input.ndim + 1))
         m[:-1, :-1] = matrix
@@ -238,13 +231,16 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         matrix = m[:-1, :-1]
         offset = m[:-1, -1]
 
+    if output_shape is None:
+        output_shape = input.shape
+
     coordinates = cupy.indices(output_shape, dtype=cupy.float64)
     coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
     coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
-    out = map_coordinates(input, coordinates, output.dtype, order, mode, cval,
-                          prefilter)
-    cupy.copyto(output, out.astype(output.dtype))
-    return return_value
+    ret = _get_output(output, input, output_shape)
+    ret[:] = map_coordinates(input, coordinates, ret.dtype, order, mode, cval,
+                             prefilter).reshape(output_shape)
+    return ret
 
 
 def _minmax(coor, minc, maxc):

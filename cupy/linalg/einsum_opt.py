@@ -1,5 +1,48 @@
+import itertools
+
+
+def _flop_count(idx_contraction, inner, num_terms, size_dictionary):
+    """Copied from _flop_count in numpy/core/einsumfunc.py
+
+    Computes the number of FLOPS in the contraction.
+
+    Parameters
+    ----------
+    idx_contraction : iterable
+        The indices involved in the contraction
+    inner : bool
+        Does this contraction require an inner product?
+    num_terms : int
+        The number of terms in a contraction
+    size_dictionary : dict
+        The size of each of the indices in idx_contraction
+
+    Returns
+    -------
+    flop_count : int
+        The total number of FLOPS required for the contraction.
+
+    Examples
+    --------
+
+    >>> _flop_count('abc', False, 1, {'a': 2, 'b':3, 'c':5})
+    90
+
+    >>> _flop_count('abc', True, 2, {'a': 2, 'b':3, 'c':5})
+    270
+
+    """
+
+    overall_size = _compute_size_by_dict(idx_contraction, size_dictionary)
+    op_factor = max(1, num_terms - 1)
+    if inner:
+        op_factor += 1
+
+    return overall_size * op_factor
+
+
 def _compute_size_by_dict(indices, idx_dict):
-    """Copied from NumPy's _compute_size_by_dict
+    """Copied from _compute_size_by_dict in numpy/core/einsumfunc.py
 
     Computes the product of the elements in indices based on the dictionary
     idx_dict.
@@ -29,7 +72,7 @@ def _compute_size_by_dict(indices, idx_dict):
 
 
 def _find_contraction(positions, input_sets, output_set):
-    """Copied from NumPy's _find_contraction
+    """Copied from _find_contraction in numpy/core/einsumfunc.py
 
     Finds the contraction for a given set of input and output sets.
 
@@ -90,7 +133,7 @@ def _find_contraction(positions, input_sets, output_set):
 
 
 def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
-    """Copied from NumPy's _optimal_path
+    """Copied from _optimal_path in numpy/core/einsumfunc.py
 
     Computes all possible pair contractions, sieves the results based
     on ``memory_limit`` and returns the lowest cost path. This algorithm
@@ -126,14 +169,9 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
         iter_results = []
 
         # Compute all unique pairs
-        comb_iter = []
-        for x in range(len(input_sets) - iteration):
-            for y in range(x + 1, len(input_sets) - iteration):
-                comb_iter.append((x, y))
-
         for curr in full_results:
             cost, positions, remaining = curr
-            for con in comb_iter:
+            for con in itertools.combinations(range(len(input_sets) - iteration), 2):  # NOQA
 
                 # Find the contraction
                 cont = _find_contraction(con, remaining, output_set)
@@ -144,15 +182,11 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
                 if new_size > memory_limit:
                     continue
 
-                # Find cost
-                new_cost = _compute_size_by_dict(idx_contract, idx_dict)
-                if idx_removed:
-                    new_cost *= 2
-
                 # Build (total_cost, positions, indices_remaining)
-                new_cost += cost
+                total_cost = cost + \
+                    _flop_count(idx_contract, idx_removed, len(con), idx_dict)
                 new_pos = positions + [con]
-                iter_results.append((new_cost, new_pos, new_input_sets))
+                iter_results.append((total_cost, new_pos, new_input_sets))
 
         # Update combinatorial list, if we did not find anything return best
         # path + remaining contractions
@@ -171,8 +205,111 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
     return path
 
 
+def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost, naive_cost):  # NOQA
+    """Copied from _parse_possible_contraction in numpy/core/einsumfunc.py
+
+    Compute the cost (removed size + flops) and resultant indices for
+    performing the contraction specified by ``positions``.
+
+    Parameters
+    ----------
+    positions : tuple of int
+        The locations of the proposed tensors to contract.
+    input_sets : list of sets
+        The indices found on each tensors.
+    output_set : set
+        The output indices of the expression.
+    idx_dict : dict
+        Mapping of each index to its size.
+    memory_limit : int
+        The total allowed size for an intermediary tensor.
+    path_cost : int
+        The contraction cost so far.
+    naive_cost : int
+        The cost of the unoptimized expression.
+
+    Returns
+    -------
+    cost : (int, int)
+        A tuple containing the size of any indices removed, and the flop cost.
+    positions : tuple of int
+        The locations of the proposed tensors to contract.
+    new_input_sets : list of sets
+        The resulting new list of indices if this proposed contraction is performed.
+
+    """  # NOQA
+
+    # Find the contraction
+    contract = _find_contraction(positions, input_sets, output_set)
+    idx_result, new_input_sets, idx_removed, idx_contract = contract
+
+    # Sieve the results based on memory_limit
+    new_size = _compute_size_by_dict(idx_result, idx_dict)
+    if new_size > memory_limit:
+        return None
+
+    # Build sort tuple
+    old_sizes = (_compute_size_by_dict(
+        input_sets[p], idx_dict) for p in positions)
+    removed_size = sum(old_sizes) - new_size
+
+    # NB: removed_size used to be just the size of any removed indices i.e.:
+    #     helpers.compute_size_by_dict(idx_removed, idx_dict)
+    cost = _flop_count(idx_contract, idx_removed, len(positions), idx_dict)
+    sort = (-removed_size, cost)
+
+    # Sieve based on total cost as well
+    if (path_cost + cost) > naive_cost:
+        return None
+
+    # Add contraction to possible choices
+    return [sort, positions, new_input_sets]
+
+
+def _update_other_results(results, best):
+    """Copied from _update_other_results in numpy/core/einsumfunc.py
+
+    Update the positions and provisional input_sets of ``results`` based on
+    performing the contraction result ``best``. Remove any involving the tensors
+    contracted.
+
+    Parameters
+    ----------
+    results : list
+        List of contraction results produced by ``_parse_possible_contraction``.
+    best : list
+        The best contraction of ``results`` i.e. the one that will be performed.
+
+    Returns
+    -------
+    mod_results : list
+        The list of modifed results, updated with outcome of ``best`` contraction.  # NOQA
+    """
+
+    best_con = best[1]
+    bx, by = best_con
+    mod_results = []
+
+    for cost, (x, y), con_sets in results:
+
+        # Ignore results involving tensors just contracted
+        if x in best_con or y in best_con:
+            continue
+
+        # Update the input_sets
+        del con_sets[by - int(by > x) - int(by > y)]
+        del con_sets[bx - int(bx > x) - int(bx > y)]
+        con_sets.insert(-1, best[2][-1])
+
+        # Update the position indices
+        mod_con = x - int(x > bx) - int(x > by), y - int(y > bx) - int(y > by)
+        mod_results.append((cost, mod_con, con_sets))
+
+    return mod_results
+
+
 def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
-    """Copied from NumPy's _greedy_path
+    """Copied from _greedy_path in numpy/core/einsumfunc.py
 
     Finds the path by contracting the best pair until the input list is
     exhausted. The best pair is found by minimizing the tuple
@@ -207,45 +344,69 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
     [(0, 2), (0, 1)]
     """
 
+    # Handle trivial cases that leaked through
     if len(input_sets) == 1:
         return [(0,)]
+    elif len(input_sets) == 2:
+        return [(0, 1)]
 
+    # Build up a naive cost
+    contract = _find_contraction(
+        range(len(input_sets)), input_sets, output_set)
+    idx_result, new_input_sets, idx_removed, idx_contract = contract
+    naive_cost = _flop_count(idx_contract, idx_removed,
+                             len(input_sets), idx_dict)
+
+    # Initially iterate over all pairs
+    comb_iter = itertools.combinations(range(len(input_sets)), 2)
+    known_contractions = []
+
+    path_cost = 0
     path = []
+
     for iteration in range(len(input_sets) - 1):
-        iteration_results = []
-        comb_iter = []
 
-        # Compute all unique pairs
-        for x in range(len(input_sets)):
-            for y in range(x + 1, len(input_sets)):
-                comb_iter.append((x, y))
-
+        # Iterate over all pairs on first step, only previously found pairs on subsequent steps  # NOQA
         for positions in comb_iter:
 
-            # Find the contraction
-            contract = _find_contraction(positions, input_sets, output_set)
-            idx_result, new_input_sets, idx_removed, idx_contract = contract
-
-            # Sieve the results based on memory_limit
-            if _compute_size_by_dict(idx_result, idx_dict) > memory_limit:
+            # Always initially ignore outer products
+            if input_sets[positions[0]].isdisjoint(input_sets[positions[1]]):
                 continue
 
-            # Build sort tuple
-            removed_size = _compute_size_by_dict(idx_removed, idx_dict)
-            cost = _compute_size_by_dict(idx_contract, idx_dict)
-            sort = (-removed_size, cost)
+            result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost,  # NOQA
+                                                 naive_cost)
+            if result is not None:
+                known_contractions.append(result)
 
-            # Add contraction to possible choices
-            iteration_results.append([sort, positions, new_input_sets])
+        # If we do not have a inner contraction, rescan pairs including outer products  # NOQA
+        if len(known_contractions) == 0:
 
-        # If we did not find a new contraction contract remaining
-        if len(iteration_results) == 0:
-            path.append(tuple(range(len(input_sets))))
-            break
+            # Then check the outer products
+            for positions in itertools.combinations(range(len(input_sets)), 2):
+                result = _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit,  # NOQA
+                                                     path_cost, naive_cost)
+                if result is not None:
+                    known_contractions.append(result)
+
+            # If we still did not find any remaining contractions, default back to einsum like behavior  # NOQA
+            if len(known_contractions) == 0:
+                path.append(tuple(range(len(input_sets))))
+                break
 
         # Sort based on first index
-        best = min(iteration_results, key=lambda x: x[0])
-        path.append(best[1])
+        best = min(known_contractions, key=lambda x: x[0])
+
+        # Now propagate as many unused contractions as possible to next iteration  # NOQA
+        known_contractions = _update_other_results(known_contractions, best)
+
+        # Next iteration only compute contractions with the new tensor
+        # All other contractions have been accounted for
         input_sets = best[2]
+        new_tensor_pos = len(input_sets) - 1
+        comb_iter = ((i, new_tensor_pos) for i in range(new_tensor_pos))
+
+        # Update path and total cost
+        path.append(best[1])
+        path_cost += best[0][1]
 
     return path
