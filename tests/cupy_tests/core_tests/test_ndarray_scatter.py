@@ -112,7 +112,8 @@ from cupy import testing
 class TestScatterAddParametrized(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong, numpy.float16])
+                         numpy.uint64, numpy.ulonglong, numpy.float16,
+                         numpy.float64])
     @testing.numpy_cupy_array_equal()
     def test_scatter_add(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
@@ -127,7 +128,8 @@ class TestScatterAddParametrized(unittest.TestCase):
 class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong, numpy.float16])
+                         numpy.uint64, numpy.ulonglong, numpy.float16,
+                         numpy.float64])
     def test_scatter_add_cupy_arguments(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
@@ -137,7 +139,8 @@ class TestScatterAdd(unittest.TestCase):
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
-                         numpy.uint64, numpy.ulonglong, numpy.float16])
+                         numpy.uint64, numpy.ulonglong, numpy.float16,
+                         numpy.float64])
     def test_scatter_add_cupy_arguments_mask(self, dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
@@ -148,7 +151,8 @@ class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong, numpy.float16], names=['src_dtype', 'dst_dtype'])
+         numpy.ulonglong, numpy.float16, numpy.float64],
+        names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes(self, src_dtype, dst_dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
@@ -162,7 +166,8 @@ class TestScatterAdd(unittest.TestCase):
 
     @testing.for_dtypes_combination(
         [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
-         numpy.ulonglong, numpy.float16], names=['src_dtype', 'dst_dtype'])
+         numpy.ulonglong, numpy.float16, numpy.float64],
+        names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes_mask(self, src_dtype, dst_dtype):
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
