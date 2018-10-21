@@ -14,12 +14,18 @@ from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
 
 
-cdef inline core.CPointer _pointer(x):
-    if isinstance(x, core.CPointer):
+cdef inline CPointer _pointer(x):
+    if isinstance(x, CPointer):
         return x
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
-    return _scalar.convert_scalar(x, True)
+    if isinstance(x, core.Indexer):
+        return (<core.Indexer>x).get_pointer()
+
+    ret = _scalar.convert_scalar(x, True)
+    if ret is None:
+        raise TypeError('Unsupported type %s' % type(x))
+    return ret
 
 
 cdef inline size_t _get_stream(stream) except *:
@@ -34,7 +40,7 @@ cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
              args, Py_ssize_t shared_mem, size_t stream):
     cdef list pargs = []
     cdef vector.vector[void*] kargs
-    cdef core.CPointer cp
+    cdef CPointer cp
     kargs.reserve(len(args))
     for a in args:
         if a is None:

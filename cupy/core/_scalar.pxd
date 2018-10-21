@@ -1,6 +1,6 @@
 from libc.stdint cimport int8_t
 
-from cupy.core.core cimport CPointer
+from cupy.cuda.function cimport CPointer
 
 
 cdef class CScalar(CPointer):

@@ -44,6 +44,9 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
+DEF MAX_NDIM = 25
+
+
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
     xp = getattr(x, '__array_priority__', 0)
@@ -1915,7 +1918,21 @@ cdef class ndarray:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cdef CPointer get_pointer(self):
+    cpdef _set_shape_and_contiguous_strides(
+            self, vector.vector[Py_ssize_t]& shape,
+            Py_ssize_t itemsize, bint is_c_contiguous):
+
+        self.size = internal.set_contiguous_strides(
+            shape, self._strides, itemsize, is_c_contiguous)
+        self._shape = shape
+        if is_c_contiguous:
+            self._c_contiguous = True
+            self._update_f_contiguity()
+        else:
+            self._f_contiguous = True
+            self._update_c_contiguity()
+
+    cdef function.CPointer get_pointer(self):
         return CArray(self)
 
     cpdef object toDlpack(self):
