@@ -51,18 +51,18 @@ class TestFloating(unittest.TestCase):
         testing.assert_array_equal(cupy_c, numpy_c)
 
     @testing.for_all_dtypes_combination(
-        # TODO(kataoka): Revert skipping bool
-        ('dtype_a', 'dtype_b'), no_complex=True, no_bool=True)
+        ('dtype_a', 'dtype_b'), no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_nextafter_combination(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange((2, 3), xp, dtype_a)
+        # skip 0 because cupy (may) handle denormals differently (-ftz=true)
+        a[a == 0] = 1
         b = testing.shaped_reverse_arange((2, 3), xp, dtype_b)
         return xp.nextafter(a, b)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_nextafter_float(self, xp, dtype):
-        # TODO(kataoka): test 0
         a = xp.array([-5, -3, 3, 5], dtype=dtype)[:, None]
         b = xp.array([-xp.inf, -4, 0, 4, xp.inf], dtype=dtype)[None, :]
         return xp.nextafter(a, b)
