@@ -591,7 +591,7 @@ def rnn_forward_inference(
         n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
-    cdef handle = get_handle()
+    cdef size_t handle = get_handle()
 
     cdef Descriptor rnn_desc = create_rnn_descriptor(
         n_units, n_layers, states._desc,
@@ -660,7 +660,7 @@ def rnn_forward_training(
 
     print(xs.shape, input_units)
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
-    cdef handle = get_handle()
+    cdef size_t handle = get_handle()
 
     cdef Descriptor rnn_desc = create_rnn_descriptor(
         n_units, n_layers, states._desc,
