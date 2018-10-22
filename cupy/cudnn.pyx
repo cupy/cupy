@@ -580,13 +580,15 @@ def rnn_forward_inference(
     xs = core.ascontiguousarray(xs)
 
     cdef int length = len(lengths)
-    cdef int n_layers = hx.shape[0]
+    cdef int n_layers
     cdef int n_units = hx.shape[2]
     cdef int input_units
     if direction_mode == py_cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
+        n_layers = hx.shape[0] // 2
     else:  # py_cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
+        n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
     cdef handle = get_handle()
@@ -645,14 +647,16 @@ def rnn_forward_training(
     xs = core.ascontiguousarray(xs)
 
     cdef int length = len(lengths)
-    cdef int n_layers = hx.shape[0]
+    cdef int n_layers
     cdef int n_units = hx.shape[2]
     cdef int input_units
 
     if direction_mode == py_cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
+        n_layers = hx.shape[0] // 2
     else:  # py_cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
+        n_layers = hx.shape[0]
 
     print(xs.shape, input_units)
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
