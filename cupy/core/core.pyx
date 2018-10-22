@@ -1720,10 +1720,21 @@ cdef class ndarray:
             if ufunc.signature is not None:
                 # we don't support generalised-ufuncs (gufuncs)
                 return NotImplemented
+            name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, ufunc.__name__)
+                cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            if name in [
+                    'greater', 'greater_equal', 'less', 'less_equal',
+                    'equal', 'not_equal']:
+                # workaround for numpy/numpy#12142
+                inputs = tuple([
+                    x.item()
+                    if isinstance(x, numpy.ndarray) and x.shape == ()
+                    else x
+                    for x in inputs
+                ])
             return cp_ufunc(*inputs, **kwargs)
         # Don't use for now, interface uncertain
         # elif method =='at' and name == 'add':
