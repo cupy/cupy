@@ -694,6 +694,10 @@ cpdef bint is_tensor_core_available(dtype) except *:
 
 cdef class DropoutStates(object):
 
+    cdef public:
+        memory.MemoryPointer _states
+        Descriptor _desc
+
     def __init__(self, handle, seed):
         cdef size_t cudnn_handle
         if handle is None:
