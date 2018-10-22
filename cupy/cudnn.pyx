@@ -581,9 +581,24 @@ def rnn_forward_inference(
     y_list = core.array_split(ys, sections[:-1], 0)
     c_y_descs = _make_tensor_descriptor_array(y_list)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
-    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
-    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
+
+    cdef Descriptor cx_desc, cy_desc
+    cdef core.ndarray cy
+    if cx is not None:
+        cx_ptr = cx.data.ptr
+        cx_desc = create_tensor_nd_descriptor(cx)
+        cx_desc_value = cx_desc.value
+        cy = core.ndarray(cx.shape, cx.dtype)
+        cy_ptr = cy.data.ptr
+        cy_desc = create_tensor_nd_descriptor(cy)
+        cy_desc_value = cy_desc.value
+    else:
+        cx_ptr = 0
+        cx_desc_value = 0
+        cy = None
+        cy_ptr = 0
+        cy_desc_value = 0
 
     cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
         handle, rnn_desc.value, length, c_x_descs.data)
@@ -592,9 +607,9 @@ def rnn_forward_inference(
     py_cudnn.RNNForwardInference(
         handle, rnn_desc.value, length,
         c_x_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
-        cx_desc.data, cx.data.ptr, w_desc.value, w.data.ptr,
+        cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         c_y_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
-        cy_desc.data, cy.data.ptr, workspace.data.ptr, work_size)
+        cy_desc_value, cy_ptr, workspace.data.ptr, work_size)
 
     return hy, cy, ys
 
