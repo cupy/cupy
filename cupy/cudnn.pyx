@@ -78,6 +78,9 @@ cpdef set_max_workspace_size(size):
 
 cdef class Descriptor(object):
 
+    cdef public size_t value
+    cdef object destroy
+
     def __init__(self, descriptor, destroyer):
         self.value = descriptor
         self.destroy = destroyer
@@ -85,7 +88,7 @@ cdef class Descriptor(object):
     def __del__(self):
         if self.value:
             self.destroy(self.value)
-            self.value = None
+            self.value = 0
 
 
 cpdef int get_data_type(dtype) except? -1:
