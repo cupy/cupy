@@ -635,6 +635,77 @@ def rnn_forward_inference(
     return hy, cy, ys
 
 
+def rnn_forward_training(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = len(lengths)
+    cdef int n_layers = hx.shape[0]
+    cdef int n_units = hx.shape[2]
+    cdef int input_units
+
+    if direction_mode == py_cudnn.CUDNN_BIDIRECTIONAL:
+        input_units = n_units * 2
+    else:  # py_cudnn.CUDNN_UNIDIRECTIONAL
+        input_units = n_units
+
+    print(xs.shape, input_units)
+    cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
+    cdef handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        py_cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    c_x_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+
+    c_y_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+
+    cdef Descriptor cx_desc, cy_desc
+    cdef core.ndarray cy
+    if cx is not None:
+        cx_ptr = cx.data.ptr
+        cx_desc = create_tensor_nd_descriptor(cx)
+        cx_desc_value = cx_desc.value
+        cy = core.ndarray(cx.shape, cx.dtype)
+        cy_ptr = cy.data.ptr
+        cy_desc = create_tensor_nd_descriptor(cy)
+        cy_desc_value = cy_desc.value
+    else:
+        cx_ptr = 0
+        cx_desc_value = 0
+        cy = None
+        cy_ptr = 0
+        cy_desc_value = 0
+
+    cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
+        handle, rnn_desc.value, length, c_x_descs.data)
+    cdef core.ndarray workspace = core.ndarray((work_size,), dtype='b')
+    
+    cdef size_t reserve_size = py_cudnn.getRNNTrainingReserveSize(
+        handle, rnn_desc.value, length, c_x_descs.data)
+    cdef core.ndarray reserve_space = core.ndarray((reserve_size,), dtype='b')
+    py_cudnn.RNNForwardTraining(
+        handle, rnn_desc.value, length,
+        c_x_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
+        cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
+        c_y_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
+        cy_desc_value, cy_ptr, workspace.data.ptr, work_size,
+        reserve_space.data.ptr, reserve_size)
+
+    return reserve_space, hy, cy, ys
+
+
 def create_dropout_states(handle):
     warnings.warn('create_dropout_states is deprecated.'
                   'Please use DropoutStates class instead.',
