@@ -518,38 +518,62 @@ def get_rnn_lin_layer_bias_params(
     bias = w[offset: offset + size]
     return bias
 
-class PointerArray(object):
 
-    def __init__(self, lst, back_pointer):
-        self._value = numpy.array(lst, dtype=numpy.intp)
-        # Store back_pointer to prevent the GC removes the original variable
-        self._back_pointer = back_pointer
+cdef class DescriptorArray(object):
+
+    cdef:
+        vector.vector[size_t] _value
+        object _destroy
+
+    def __init__(self, destroyer):
+        self._destroy = destroyer
+
+    def __del__(self):
+        for desc in self._value:
+            self._destroy(desc)
+
+    def append(self, desc):
+        self._value.push_back(desc)
 
     @property
     def data(self):
-        return self._value.ctypes.data
+        return <size_t>&self._value[0]
+    
 
-
-def _make_tensor_descriptor_array(xs):
+cpdef DescriptorArray _make_tensor_descriptor_array(xs, lengths):
     """Make an array of pointers denoting pointers of tensor descriptors.
 
     """
-    descs = []
-    for x in xs:
-        if x.ndim < 3:
-            shape = x.shape + (1,) * (3 - x.ndim)
-            x = x.reshape(shape)
-        desc = create_tensor_nd_descriptor(x)
+    cdef DescriptorArray descs = DescriptorArray(
+        py_cudnn.destroyTensorDescriptor)
+    cdef size_t desc
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef vector.vector[int] c_shape, c_strides
+    cdef Py_ssize_t itemsize = xs.itemsize
+    cdef Py_ssize_t s
+    cdef int length
+
+    for s in xs._strides:
+        c_strides.push_back(s // itemsize)
+    c_strides.push_back(1)
+    for s in xs._shape:
+        c_shape.push_back(s)
+    c_shape.push_back(1)
+
+    for length in lengths:
+        c_shape[0] = length
+        desc = cudnn.createTensorDescriptor()
         descs.append(desc)
-    return PointerArray([d.value for d in descs], descs)
+        cudnn.setTensorNdDescriptor(
+            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+
+    return descs
 
 
 def rnn_forward_inference(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    sections = numpy.cumsum(lengths)
-
     hx = core.ascontiguousarray(hx)
     cx = core.ascontiguousarray(cx)
     w = core.ascontiguousarray(w)
@@ -572,14 +596,11 @@ def rnn_forward_inference(
         py_cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    x_list = core.array_split(xs, sections[:-1], 0)
-    c_x_descs = _make_tensor_descriptor_array(x_list)
+    c_x_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
-    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
 
-    y_list = core.array_split(ys, sections[:-1], 0)
-    c_y_descs = _make_tensor_descriptor_array(y_list)
+    c_y_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
 
