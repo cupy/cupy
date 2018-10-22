@@ -570,6 +570,14 @@ cpdef DescriptorArray _make_tensor_descriptor_array(xs, lengths):
     return descs
 
 
+cdef core.ndarray _make_rnn_workspace(
+    Descriptor rnn_desc, int length, DescriptorArray descs):
+    cdef size_t handle = get_handle()
+    cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
+        handle, rnn_desc.value, length, descs.data)
+    return core.ndarray((work_size,), dtype='b')
+
+
 def rnn_forward_inference(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
@@ -623,16 +631,15 @@ def rnn_forward_inference(
         cy_ptr = 0
         cy_desc_value = 0
 
-    cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
-    cdef core.ndarray workspace = core.ndarray((work_size,), dtype='b')
+    cdef core.ndarray workspace = _make_rnn_workspace(
+        rnn_desc, length, c_x_descs)
     
     py_cudnn.RNNForwardInference(
         handle, rnn_desc.value, length,
         c_x_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         c_y_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_ptr, workspace.data.ptr, work_size)
+        cy_desc_value, cy_ptr, workspace.data.ptr, workspace.size)
 
     return hy, cy, ys
 
@@ -692,9 +699,8 @@ def rnn_forward_training(
         cy_ptr = 0
         cy_desc_value = 0
 
-    cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
-    cdef core.ndarray workspace = core.ndarray((work_size,), dtype='b')
+    cdef core.ndarray workspace = _make_rnn_workspace(
+        rnn_desc, length, c_x_descs)
     
     cdef size_t reserve_size = py_cudnn.getRNNTrainingReserveSize(
         handle, rnn_desc.value, length, c_x_descs.data)
@@ -704,7 +710,7 @@ def rnn_forward_training(
         c_x_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         c_y_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_ptr, workspace.data.ptr, work_size,
+        cy_desc_value, cy_ptr, workspace.data.ptr, workspace.size,
         reserve_space.data.ptr, reserve_size)
 
     return reserve_space, hy, cy, ys
@@ -744,9 +750,8 @@ def rnn_backward_data(
     cdef DescriptorArray c_y_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef DescriptorArray c_dy_descs = _make_tensor_descriptor_array(dys, lengths)
     
-    work_size = py_cudnn.getRNNWorkspaceSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
-    workspace = core.ndarray((work_size,), dtype='b')
+    cdef core.ndarray workspace = _make_rnn_workspace(
+        rnn_desc, length, c_x_descs)
 
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
@@ -786,7 +791,7 @@ def rnn_backward_data(
         dcy_desc_value, dcy_ptr, w_desc.value, w.data.ptr,
         hx_desc.value, hx.data.ptr, cx_desc_value, cx_ptr,
         c_dx_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
-        dcx_desc_value, dcx_ptr, workspace.data.ptr, work_size,
+        dcx_desc_value, dcx_ptr, workspace.data.ptr, workspace.size,
         reserve_space.data.ptr, reserve_space.size)
 
     return dhx, dcx, dxs
@@ -821,9 +826,8 @@ def rnn_backward_weights(
     cdef DescriptorArray c_y_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
 
-    cdef size_t work_size = py_cudnn.getRNNWorkspaceSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
-    cdef core.ndarray workspace = core.ndarray((work_size,), dtype='b')
+    cdef core.ndarray workspace = _make_rnn_workspace(
+        rnn_desc, length, c_x_descs)
 
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
     dw[...] = 0
@@ -833,7 +837,7 @@ def rnn_backward_weights(
         handle, rnn_desc.value, length,
         c_x_descs.data, xs.data.ptr,
         hx_desc.value, hx.data.ptr, c_y_descs.data, ys.data.ptr,
-        workspace.data.ptr, work_size, dw_desc.value, dw.data.ptr,
+        workspace.data.ptr, workspace.size, dw_desc.value, dw.data.ptr,
         reserve_space.data.ptr, reserve_space.size)
     return dw
 
