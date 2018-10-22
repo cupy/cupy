@@ -665,7 +665,6 @@ def rnn_forward_training(
         input_units = n_units
         n_layers = hx.shape[0]
 
-    print(xs.shape, input_units)
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
     cdef size_t handle = get_handle()
 
