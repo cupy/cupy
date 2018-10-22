@@ -1334,7 +1334,7 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
-        if isinstance(other, numpy.ndarray) and other.shape == ():
+        if isinstance(other, numpy.ndarray) and other.ndim == 0:
             other = other.item()  # Workaround for numpy<1.13
         if op == 0:
             return less(self, other)
@@ -1733,7 +1733,7 @@ cdef class ndarray:
                 # workaround for numpy/numpy#12142
                 inputs = tuple([
                     x.item()
-                    if isinstance(x, numpy.ndarray) and x.shape == ()
+                    if isinstance(x, numpy.ndarray) and x.ndim == 0
                     else x
                     for x in inputs
                 ])
