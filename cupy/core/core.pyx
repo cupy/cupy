@@ -1334,6 +1334,8 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
+        if isinstance(other, numpy.ndarray) and other.ndim == 0:
+            other = other.item()  # Workaround for numpy<1.13
         if op == 0:
             return less(self, other)
         if op == 1:
@@ -1720,10 +1722,21 @@ cdef class ndarray:
             if ufunc.signature is not None:
                 # we don't support generalised-ufuncs (gufuncs)
                 return NotImplemented
+            name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, ufunc.__name__)
+                cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            if name in [
+                    'greater', 'greater_equal', 'less', 'less_equal',
+                    'equal', 'not_equal']:
+                # workaround for numpy/numpy#12142
+                inputs = tuple([
+                    x.item()
+                    if isinstance(x, numpy.ndarray) and x.ndim == 0
+                    else x
+                    for x in inputs
+                ])
             return cp_ufunc(*inputs, **kwargs)
         # Don't use for now, interface uncertain
         # elif method =='at' and name == 'add':
