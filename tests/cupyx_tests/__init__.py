@@ -12,4 +12,4 @@ if ver.major == 3 and ver.minor == 4:
 
         # This imports `numpy.testing.*` module, which emits
         # DeprecationWarning during import (in NumPy 1.15+).
-        from scipy import stats
+        from scipy import stats  # NOQA
