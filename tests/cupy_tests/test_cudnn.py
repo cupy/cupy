@@ -80,19 +80,19 @@ class TestCudnnDropout(unittest.TestCase):
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.gy = testing.shaped_arange((3, 4), cupy, self.dtype)
-        self.states = cudnn.DropoutStates(cudnn.get_handle(), self.seed)
+        self.states = cudnn.DropoutStates(None, self.seed)
 
     def test_dropout_forward(self):
-        _, y = self.states.forward(cudnn.get_handle(), self.x, self.ratio)
+        _, y = self.states.forward(None, self.x, self.ratio)
         if self.ratio == 0:
             self.assertTrue(cupy.all(self.x == y))
         else:
             self.assertTrue(cupy.all(self.x != y))
 
     def test_dropout_backward(self):
-        rspace, y = self.states.forward(cudnn.get_handle(), self.x, self.ratio)
+        rspace, y = self.states.forward(None, self.x, self.ratio)
         gx = self.states.backward(
-            cudnn.get_handle(), self.gy, self.ratio, rspace)
+            None, self.gy, self.ratio, rspace)
 
         forward_mask = y / self.x
         backward_mask = gx / self.gy
@@ -101,18 +101,16 @@ class TestCudnnDropout(unittest.TestCase):
         self.assertTrue(cupy.all(forward_mask == backward_mask))
 
     def test_dropout_seed(self):
-        handle = cudnn.get_handle()
-
         # initialize Dropoutstates with the same seed
-        states2 = cudnn.DropoutStates(handle, self.seed)
+        states2 = cudnn.DropoutStates(None, self.seed)
 
-        rspace, y = self.states.forward(handle, self.x, self.ratio)
-        rspace2, y2 = states2.forward(handle, self.x, self.ratio)
+        rspace, y = self.states.forward(None, self.x, self.ratio)
+        rspace2, y2 = states2.forward(None, self.x, self.ratio)
         # forward results must be the same
         self.assertTrue(cupy.all(y == y2))
 
-        gx = self.states.backward(handle, self.gy, self.ratio, rspace)
-        gx2 = states2.backward(handle, self.gy, self.ratio, rspace2)
+        gx = self.states.backward(None, self.gy, self.ratio, rspace)
+        gx2 = states2.backward(None, self.gy, self.ratio, rspace2)
         # backward results must be the same
         self.assertTrue(cupy.all(gx == gx2))
 
