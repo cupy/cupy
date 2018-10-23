@@ -28,6 +28,7 @@ Update of Docker Images
 CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
 
 To use these images, you may need to upgrade the NVIDIA driver on your host.
+See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
 
 
 CuPy v4
