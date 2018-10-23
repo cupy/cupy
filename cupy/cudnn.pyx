@@ -606,11 +606,11 @@ def rnn_forward_inference(
         py_cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    c_x_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
 
-    c_y_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
 
@@ -699,16 +699,16 @@ def rnn_forward_training(
         cy_desc_value = 0
 
     cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, c_x_descs)
+        rnn_desc, length, xs_descs)
     
     cdef size_t reserve_size = py_cudnn.getRNNTrainingReserveSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
+        handle, rnn_desc.value, length, xs_descs.data)
     cdef core.ndarray reserve_space = core.ndarray((reserve_size,), dtype='b')
     py_cudnn.RNNForwardTraining(
         handle, rnn_desc.value, length,
-        c_x_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
+        xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
-        c_y_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
+        ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
         cy_desc_value, cy_ptr, workspace.data.ptr, workspace.size,
         reserve_space.data.ptr, reserve_size)
 
@@ -745,19 +745,19 @@ def rnn_backward_data(
         py_cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef DescriptorArray c_x_descs = _make_tensor_descriptor_array(xs, lengths)
-    cdef DescriptorArray c_y_descs = _make_tensor_descriptor_array(ys, lengths)
-    cdef DescriptorArray c_dy_descs = _make_tensor_descriptor_array(dys, lengths)
+    cdef DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef DescriptorArray dys_descs = _make_tensor_descriptor_array(dys, lengths)
     
     cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, c_x_descs)
+        rnn_desc, length, xs_descs)
 
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
     
     cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
-    cdef DescriptorArray c_dx_descs = _make_tensor_descriptor_array(dxs, lengths)
+    cdef DescriptorArray dxs_descs = _make_tensor_descriptor_array(dxs, lengths)
     cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
 
@@ -785,11 +785,11 @@ def rnn_backward_data(
 
     py_cudnn.RNNBackwardData(
         handle, rnn_desc.value, length,
-        c_y_descs.data, ys.data.ptr,
-        c_dy_descs.data, dys.data.ptr, dhy_desc.value, dhy.data.ptr,
+        ys_descs.data, ys.data.ptr,
+        dys_descs.data, dys.data.ptr, dhy_desc.value, dhy.data.ptr,
         dcy_desc_value, dcy_ptr, w_desc.value, w.data.ptr,
         hx_desc.value, hx.data.ptr, cx_desc_value, cx_ptr,
-        c_dx_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
+        dxs_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
         dcx_desc_value, dcx_ptr, workspace.data.ptr, workspace.size,
         reserve_space.data.ptr, reserve_space.size)
 
@@ -821,12 +821,12 @@ def rnn_backward_weights(
         py_cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef DescriptorArray c_x_descs = _make_tensor_descriptor_array(xs, lengths)
-    cdef DescriptorArray c_y_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
 
     cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, c_x_descs)
+        rnn_desc, length, xs_descs)
 
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
     dw[...] = 0
@@ -834,8 +834,8 @@ def rnn_backward_weights(
 
     py_cudnn.RNNBackwardWeights(
         handle, rnn_desc.value, length,
-        c_x_descs.data, xs.data.ptr,
-        hx_desc.value, hx.data.ptr, c_y_descs.data, ys.data.ptr,
+        xs_descs.data, xs.data.ptr,
+        hx_desc.value, hx.data.ptr, ys_descs.data, ys.data.ptr,
         workspace.data.ptr, workspace.size, dw_desc.value, dw.data.ptr,
         reserve_space.data.ptr, reserve_space.size)
     return dw
