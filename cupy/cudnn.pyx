@@ -508,6 +508,10 @@ class DropoutStates(object):
             cudnn_handle, 0., self._states.ptr,
             state_size, seed)
 
+    def set_dropout_ratio(self, dropout_ratio):
+        cudnn_handle = get_handle()
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
+
     def forward(self, handle, core.ndarray x, dropout_ratio):
         cdef core.ndarray y, reserve_space
         cdef size_t cudnn_handle
