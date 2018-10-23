@@ -1,3 +1,4 @@
+import operator
 import unittest
 
 import numpy
@@ -33,6 +34,44 @@ class TestComparison(unittest.TestCase):
 
     def test_equal(self):
         self.check_binary('equal')
+
+
+@testing.gpu
+class TestComparisonOperator(unittest.TestCase):
+
+    operators = [
+        operator.lt, operator.le,
+        operator.eq, operator.ne,
+        operator.gt, operator.ge,
+    ]
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_binary_npscalar_array(self, xp, dtype):
+        a = numpy.int16(3)
+        b = testing.shaped_arange((2, 3), xp, dtype)
+        return [op(a, b) for op in self.operators]
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_binary_pyscalar_array(self, xp, dtype):
+        a = 3.0
+        b = testing.shaped_arange((2, 3), xp, dtype)
+        return [op(a, b) for op in self.operators]
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_binary_array_npscalar(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = numpy.float32(3.0)
+        return [op(a, b) for op in self.operators]
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_binary_array_pyscalar(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = 3
+        return [op(a, b) for op in self.operators]
 
 
 class TestAllclose(unittest.TestCase):
