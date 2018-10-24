@@ -1,11 +1,52 @@
+import functools
 import unittest
 
 import numpy as np
 
 import cupy
 from cupy import testing
+from cupy.fft import config
+from cupy.fft.fft import _default_plan_type
 
 import six
+
+
+def nd_planning_states(states=[True, False], name='enable_nd'):
+    """Decorator for parameterized tests with and wihout nd planning
+
+    Tests are repeated with config.enable_nd_planning set to True and False
+
+    Args:
+         states(list of bool): The boolean cases to test.
+         name(str): Argument name to which specified dtypes are passed.
+
+    This decorator adds a keyword argument specified by ``name``
+    to the test fixture. Then, it runs the fixtures in parallel
+    by passing the each element of ``dtypes`` to the named
+    argument.
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            # get original global planning state
+            planning_state = config.enable_nd_planning
+            try:
+                for nd_planning in states:
+                    try:
+                        # enable or disable nd planning
+                        config.enable_nd_planning = nd_planning
+
+                        kw[name] = nd_planning
+                        impl(self, *args, **kw)
+                    except Exception:
+                        print(name, 'is', nd_planning)
+                        raise
+            finally:
+                # restore original global planning state
+                config.enable_nd_planning = planning_state
+
+        return test_func
+    return decorator
 
 
 @testing.parameterize(*testing.product({
@@ -17,10 +58,13 @@ import six
 @testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype):
+    def test_fft(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
@@ -30,10 +74,13 @@ class TestFft(unittest.TestCase):
 
         return out
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype):
+    def test_ifft(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
@@ -84,10 +131,13 @@ class TestFftAllocate(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft2(self, xp, dtype):
+    def test_fft2(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
@@ -96,10 +146,13 @@ class TestFft2(unittest.TestCase):
 
         return out
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft2(self, xp, dtype):
+    def test_ifft2(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
@@ -122,6 +175,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
@@ -131,10 +185,13 @@ class TestFft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fftn(self, xp, dtype):
+    def test_fftn(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -143,10 +200,13 @@ class TestFftn(unittest.TestCase):
 
         return out
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifftn(self, xp, dtype):
+    def test_ifftn(self, xp, dtype, enable_nd):
+        if config.enable_nd_planning != enable_nd:
+            assert 0
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
