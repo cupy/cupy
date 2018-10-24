@@ -216,6 +216,61 @@ class TestFftn(unittest.TestCase):
         return out
 
 
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+)
+@testing.gpu
+class TestFftnContiguity(unittest.TestCase):
+
+    @nd_planning_states([True])
+    @testing.for_all_dtypes()
+    def test_fftn_orders(self, dtype, enable_nd):
+        for order in ['C', 'F']:
+            a = testing.shaped_random(self.shape, cupy, dtype)
+            if order == 'F':
+                a = cupy.asfortranarray(a)
+            out = cupy.fft.fftn(a, s=self.s, axes=self.axes)
+
+            plan_type = _default_plan_type(a, s=self.s, axes=self.axes)
+            if plan_type == 'nd':
+                # nd plans have output with contiguity matching the input
+                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
+                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+            else:
+                # 1d planning case doesn't guarantee preserved contiguity
+                pass
+
+    @nd_planning_states([True])
+    @testing.for_all_dtypes()
+    def test_ifftn_orders(self, dtype, enable_nd):
+        for order in ['C', 'F']:
+
+            a = testing.shaped_random(self.shape, cupy, dtype)
+            if order == 'F':
+                a = cupy.asfortranarray(a)
+            out = cupy.fft.ifftn(a, s=self.s, axes=self.axes)
+
+            plan_type = _default_plan_type(a, s=self.s, axes=self.axes)
+            if plan_type == 'nd':
+                # nd plans have output with contiguity matching the input
+                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
+                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+            else:
+                # 1d planning case doesn't guarantee preserved contiguity
+                pass
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
