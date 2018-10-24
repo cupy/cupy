@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 import numpy
+cimport numpy as cnp
 
 import cupy
 from cupy.cuda cimport driver
@@ -23,9 +24,21 @@ cdef extern from "cupy_cufft.h" nogil:
     # cuFFT Stream Function
     Result cufftSetStream(Handle plan, driver.Stream streamId)
 
-    # cuFFT Plan Function
+    # cuFFT Plan Functions
     Result cufftMakePlan1d(Handle plan, int nx, Type type, int batch,
                            size_t *workSize)
+    Result cufftMakePlanMany(Handle plan, int rank, int *n, int *inembed,
+                             int istride, int idist, int *onembed, int ostride,
+                             int odist, Type type, int batch,
+                             size_t *workSize)
+    # could use cufftMakePlanMany64 instead to support >int32 size/stride
+    # Result cufftMakePlanMany64(Handle plan, int rank, long long int *n,
+    #                            long long int *inembed, long long int istride,
+    #                            long long int idist, long long int *onembed,
+    #                            long long int ostride, long long int odist,
+    #                            Type type, long long int batch,
+    #                            size_t *workSize)
+
 
     # cuFFT Exec Function
     Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata,
@@ -125,24 +138,148 @@ class Plan1d(object):
         else:
             execZ2D(self.plan, a.data, out.data)
 
-    def get_output_array(self, a):
+    def _output_dtype_and_shape(self, a):
         shape = list(a.shape)
         if self.fft_type == CUFFT_C2C:
-            return cupy.empty(shape, numpy.complex64)
+            dtype = numpy.complex64
         elif self.fft_type == CUFFT_R2C:
+            dtype = numpy.complex64
             shape[-1] = shape[-1] // 2 + 1
-            return cupy.empty(shape, numpy.complex64)
         elif self.fft_type == CUFFT_C2R:
             shape[-1] = self.nx
-            return cupy.empty(shape, numpy.float32)
+            dtype = numpy.float32
         elif self.fft_type == CUFFT_Z2Z:
-            return cupy.empty(shape, numpy.complex128)
+            dtype = numpy.complex128
         elif self.fft_type == CUFFT_D2Z:
             shape[-1] = shape[-1] // 2 + 1
-            return cupy.empty(shape, numpy.complex128)
+            dtype = numpy.complex128
         else:
             shape[-1] = self.nx
-            return cupy.empty(shape, numpy.float64)
+            dtype = numpy.float64
+        return tuple(shape), dtype
+
+    def get_output_array(self, a):
+        shape, dtype = self._output_dtype_and_shape(a)
+        return cupy.empty(shape, shape)
+
+    def check_output_array(self, a, out):
+        """Verify shape and dtype of the output array.
+
+        Parameters
+        ----------
+        a : cupy.array
+            The input to the transform
+        out : cupy.array
+            The array where the output of the transform will be stored.
+        """
+        shape, dtype = self._output_dtype_and_shape(a)
+        if out.shape != shape:
+            raise ValueError(
+                ("out must have shape {}.").format(shape))
+        if out.dtype != dtype:
+            raise ValueError(
+                "out dtype mismatch: found {}, expected {}".format(
+                    out.dtype, a.dtype))
+
+
+
+class PlanNd(object):
+    def __init__(self, object shape, object inembed, int istride,
+                 int idist, object onembed, int ostride, int odist,
+                 int fft_type, int batch):
+        cdef Handle plan
+        cdef size_t work_size
+        cdef int ndim
+        cdef int* shape_ptr
+        cdef int* inembed_ptr
+        cdef int* onembed_ptr
+        shape = numpy.asarray(shape, dtype=numpy.intc)
+        ndim = len(shape)
+        shape_ptr = <int *>cnp.PyArray_DATA(shape)
+
+        if inembed is None:
+            inembed_ptr = NULL  # ignore istride and use default strides
+        else:
+            inembed = numpy.asarray(inembed, dtype=numpy.intc)
+            inembed_ptr = <int *>cnp.PyArray_DATA(inembed)
+
+        if onembed is None:
+            onembed_ptr = NULL  # ignore ostride and use default strides
+        else:
+            onembed = numpy.asarray(onembed, dtype=numpy.intc)
+            onembed_ptr = <int *>cnp.PyArray_DATA(onembed)
+
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftCreate(&plan)
+            if result == 0:
+                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            if result == 0:
+                result = cufftSetAutoAllocation(plan, 0)
+            if result == 0:
+                result = cufftMakePlanMany(plan, ndim, shape_ptr,
+                                           inembed_ptr, istride, idist,
+                                           onembed_ptr, ostride, odist,
+                                           <Type>fft_type, batch,
+                                           &work_size)
+
+        # cufftMakePlanMany could use a large amount of memory
+        if result == 2:
+            cupy.get_default_memory_pool().free_all_blocks()
+            with nogil:
+                result = cufftMakePlanMany(plan, ndim, shape_ptr,
+                                           inembed_ptr, istride, idist,
+                                           onembed_ptr, ostride, odist,
+                                           <Type>fft_type, batch,
+                                           &work_size)
+
+        check_result(result)
+
+        # TODO: for CUDA>=9.2 could also allow setting a work area policy
+        # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
+
+        work_area = memory.alloc(work_size)
+        with nogil:
+            result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
+        check_result(result)
+        self.shape = tuple(shape)
+        self.fft_type = fft_type
+        self.plan = plan
+        self.work_area = work_area
+
+    def __del__(self):
+        cdef Handle plan = self.plan
+        with nogil:
+            result = cufftDestroy(plan)
+        check_result(result)
+
+    def fft(self, a, out, direction):
+        if self.fft_type == CUFFT_C2C:
+            execC2C(self.plan, a.data, out.data, direction)
+        elif self.fft_type == CUFFT_Z2Z:
+            execZ2Z(self.plan, a.data, out.data, direction)
+        else:
+            raise NotImplementedError("only C2C and Z2Z implemented")
+
+    def get_output_array(self, a, order='C'):
+        shape = list(a.shape)
+        if self.fft_type == CUFFT_C2C:
+            return cupy.empty(shape, numpy.complex64, order=order)
+        elif self.fft_type == CUFFT_Z2Z:
+            return cupy.empty(shape, numpy.complex128, order=order)
+        else:
+            raise NotImplementedError("only C2C and Z2Z implemented")
+
+    def check_output_array(self, a, out):
+        if out is a:
+            return
+        if out.dtype != a.dtype:
+            raise ValueError("output dtype mismatch")
+        if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
+                (out.flags.c_contiguous == a.flags.c_contiguous)):
+            raise ValueError("output contiguity mismatch")
+        if out.shape != a.shape:
+            raise ValueError("output shape mismatch")
 
 
 cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):
