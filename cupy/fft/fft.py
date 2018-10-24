@@ -7,20 +7,25 @@ from cupy.cuda import cufft
 from math import sqrt
 
 
-def _convert_dtype(a, value_type):
+def _output_dtype(a, value_type):
     if value_type != 'R2C':
         if a.dtype in [np.float16, np.float32]:
-            return a.astype(np.complex64)
+            return np.complex64
         elif a.dtype not in [np.complex64, np.complex128]:
-            return a.astype(np.complex128)
+            return np.complex128
     else:
         if a.dtype in [np.complex64, np.complex128]:
-            return a.real
+            return a.real.dtype
         elif a.dtype == np.float16:
-            return a.astype(np.float32)
+            return np.float32
         elif a.dtype not in [np.float32, np.float64]:
-            return a.astype(np.float64)
-    return a
+            return np.float64
+    return a.dtype
+
+
+def _convert_dtype(a, value_type):
+    out_dtype = _output_dtype(a, value_type)
+    return a.astype(out_dtype, copy=False)
 
 
 def _cook_shape(a, s, axes, value_type):
