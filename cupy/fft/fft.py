@@ -4,6 +4,7 @@ import numpy as np
 
 import cupy
 from cupy.cuda import cufft
+from math import sqrt
 
 
 def _convert_dtype(a, value_type):
@@ -86,7 +87,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if direction == cufft.CUFFT_INVERSE:
             out /= sz
     else:
-        out /= cupy.sqrt(sz)
+        out /= sqrt(sz)
 
     if axis % a.ndim != a.ndim - 1:
         out = out.swapaxes(axis, -1)
