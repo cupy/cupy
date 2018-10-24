@@ -1,6 +1,7 @@
 import numpy
 
 import scipy
+import scipy.fftpack
 import scipy.linalg
 import scipy.special
 import scipy.ndimage
@@ -8,6 +9,7 @@ import scipy.ndimage
 import cupy
 
 import cupyx.scipy
+import cupyx.scipy.fftpack
 import cupyx.scipy.linalg
 import cupyx.scipy.ndimage
 import cupyx.scipy.special
@@ -98,6 +100,9 @@ def generate():
     buf += _section(
         'Sparse Matrices',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy')
+    buf += _section(
+        'Discrete Fourier Transform',
+        'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy')
     buf += _section(
         'Sparse Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy')
