@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from math import sqrt
-from . import enable_nd_planning
+from cupy.fft.config import enable_nd_planning
 
 
 def _output_dtype(a, value_type):
@@ -31,8 +31,8 @@ def _convert_dtype(a, value_type):
     return a.astype(out_dtype, copy=False)
 
 
-def _cook_shape(a, s, axes, value_type):
-    if s is None:
+def _cook_shape(a, s, axes, value_type, order='C'):
+    if s is None or s == a.shape:
         return a
     if (value_type == 'C2R') and (s[-1] is not None):
         s = list(s)
@@ -48,7 +48,7 @@ def _cook_shape(a, s, axes, value_type):
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, shape[axis])
                 shape[axis] = sz
-                z = cupy.zeros(shape, a.dtype.char)
+                z = cupy.zeros(shape, a.dtype.char, order=order)
                 z[index] = a
                 a = z
     return a
@@ -358,8 +358,6 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     # sort the provided axes in ascending order
     axes = tuple(sorted(np.mod(axes, a.ndim)))
 
-    a = _cook_shape(a, s, axes, value_type)
-
     if order == 'A':
         if a.flags.f_contiguous:
             order = 'F'
@@ -368,8 +366,11 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         else:
             a = cupy.ascontiguousarray(a)
             order = 'C'
+    elif order not in ['C', 'F']:
+        raise ValueError("Unsupported order: {}".format(order))
 
-    elif order == 'C' and not a.flags.c_contiguous:
+    a = _cook_shape(a, s, axes, value_type, order=order)
+    if order == 'C' and not a.flags.c_contiguous:
         a = cupy.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
@@ -411,9 +412,9 @@ def _default_plan_type(a, s=None, axes=None):
 def _default_fft_func(a, s=None, axes=None):
     plan_type = _default_plan_type(a, s, axes)
     if plan_type == 'nd':
-        func = _fftn
+        return _fftn
     else:
-        func = _fft
+        return _fft
 
 
 def fft(a, n=None, axis=-1, norm=None):
@@ -434,7 +435,7 @@ def fft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.fft`
     """
-    func = _default_fft_func(a, n, (axis, ))
+    func = _default_fft_func(a, (n,), (axis,))
     return func(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
 
 
@@ -456,7 +457,7 @@ def ifft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft`
     """
-    func = _default_fft_func(a, n, (axis, ))
+    func = _default_fft_func(a, (n,), (axis,))
     return func(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE)
 
 

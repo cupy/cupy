@@ -143,8 +143,8 @@ class Plan1d(object):
         if self.fft_type == CUFFT_C2C:
             dtype = numpy.complex64
         elif self.fft_type == CUFFT_R2C:
-            dtype = numpy.complex64
             shape[-1] = shape[-1] // 2 + 1
+            dtype = numpy.complex64
         elif self.fft_type == CUFFT_C2R:
             shape[-1] = self.nx
             dtype = numpy.float32
@@ -160,7 +160,7 @@ class Plan1d(object):
 
     def get_output_array(self, a):
         shape, dtype = self._output_dtype_and_shape(a)
-        return cupy.empty(shape, shape)
+        return cupy.empty(shape, dtype)
 
     def check_output_array(self, a, out):
         """Verify shape and dtype of the output array.
