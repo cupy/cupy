@@ -29,7 +29,7 @@ You need to have the following components to use CuPy.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
-    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+ and 3.6.0+.
+    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+ and 3.7.0+.
 * `NumPy <http://www.numpy.org/>`_
     * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14 and 1.15.
     * NumPy will be installed automatically during the installation of CuPy.
