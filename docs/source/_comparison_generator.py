@@ -1,18 +1,4 @@
-import numpy
-
-import scipy
-import scipy.fftpack
-import scipy.linalg
-import scipy.special
-import scipy.ndimage
-
-import cupy
-
-import cupyx.scipy
-import cupyx.scipy.fftpack
-import cupyx.scipy.linalg
-import cupyx.scipy.ndimage
-import cupyx.scipy.special
+import importlib
 
 
 def _get_functions(obj):
@@ -27,9 +13,28 @@ def _get_functions(obj):
     ])
 
 
-def _generate_comparison_rst(base_obj, cupy_obj, base_type):
-    base_funcs = _get_functions(eval(base_obj))
-    cp_funcs = _get_functions(eval(cupy_obj))
+def _import(mod, klass):
+    obj = importlib.import_module(mod)
+    if klass:
+        obj = getattr(obj, klass)
+        return obj, ':meth:`{}.{}.{{}}`'.format(mod, klass)
+    else:
+        # ufunc is not a function
+        return obj, ':obj:`{}.{{}}`'.format(mod)
+
+
+def _generate_comparison_rst(
+        base_mod, cupy_mod, base_type, klass, exclude_mod):
+    base_obj, base_fmt = _import(base_mod, klass)
+    base_funcs = _get_functions(base_obj)
+    cp_obj, cp_fmt = _import(cupy_mod, klass)
+    cp_funcs = _get_functions(cp_obj)
+
+    if exclude_mod:
+        exclude_obj, _ = _import(exclude_mod, klass)
+        exclude_funcs = _get_functions(exclude_obj)
+        base_funcs -= exclude_funcs
+        cp_funcs -= exclude_funcs
 
     buf = []
     buf += [
@@ -38,11 +43,9 @@ def _generate_comparison_rst(base_obj, cupy_obj, base_type):
         '',
     ]
     for f in sorted(base_funcs):
-        if f in cp_funcs:
-            line = r'   :obj:`{0}.{1}`, :obj:`{2}.{1}`'.format(
-                base_obj, f, cupy_obj)
-        else:
-            line = r'   :obj:`{0}.{1}`, \-'.format(base_obj, f)
+        base_cell = base_fmt.format(f)
+        cp_cell = cp_fmt.format(f) if f in cp_funcs else r'\-'
+        line = '   {}, {}'.format(base_cell, cp_cell)
         buf.append(line)
 
     buf += [
@@ -58,12 +61,16 @@ def _generate_comparison_rst(base_obj, cupy_obj, base_type):
     return buf
 
 
-def _section(header, base_obj, cupy_obj, base_type='NumPy'):
+def _section(
+        header, base_mod, cupy_mod,
+        base_type='NumPy', klass=None, exclude=None):
     return [
         header,
         '~' * len(header),
         '',
-    ] + _generate_comparison_rst(base_obj, cupy_obj, base_type) + [
+    ] + _generate_comparison_rst(
+        base_mod, cupy_mod, base_type, klass, exclude
+    ) + [
         '',
     ]
 
@@ -81,7 +88,7 @@ def generate():
         'numpy', 'cupy')
     buf += _section(
         'Multi-Dimensional Array',
-        'numpy.ndarray', 'cupy.ndarray')
+        'numpy', 'cupy', klass='ndarray')
     buf += _section(
         'Linear Algebra',
         'numpy.linalg', 'cupy.linalg')
@@ -105,7 +112,10 @@ def generate():
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy')
     buf += _section(
         'Sparse Linear Algebra',
-        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy')
+        'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy')
+    buf += _section(
+        'Advanced Linear Algebra',
+        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy', exclude='numpy.linalg')
     buf += _section(
         'Multidimensional Image Processing',
         'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy')
