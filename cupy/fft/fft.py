@@ -323,7 +323,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x, order,
 
     if overwrite_x and value_type == 'C2C':
         out = a
-    if out is None:
+    elif out is None:
         out = plan.get_output_array(a, order=order)
     else:
         plan.check_output_array(a, out)
