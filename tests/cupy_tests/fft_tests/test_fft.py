@@ -58,13 +58,10 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
 @testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
 
-    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+    def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
@@ -74,13 +71,10 @@ class TestFft(unittest.TestCase):
 
         return out
 
-    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+    def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
@@ -88,6 +82,35 @@ class TestFft(unittest.TestCase):
             out = out.astype(np.complex64)
 
         return out
+
+
+@testing.gpu
+class TestDefaultPlanType(unittest.TestCase):
+
+    @nd_planning_states()
+    def test_default_plan_type(self, enable_nd):
+        # test cases where nd CUFFT plan is possible
+        ca = cupy.ones((16, 16, 16))
+        for axes in [(0, 1), (1, 2), None, (0, 1, 2)]:
+            plan_type = _default_plan_type(ca, axes=axes)
+            if enable_nd:
+                self.assertEqual(plan_type, 'nd')
+            else:
+                self.assertEqual(plan_type, '1d')
+
+        # only a single axis is transformed -> 1d plan preferred
+        for axes in [(0, ), (1, ), (2, )]:
+            self.assertEqual(_default_plan_type(ca, axes=axes), '1d')
+
+        # non-contiguous axes -> nd plan not possible
+        self.assertEqual(_default_plan_type(ca, axes=(0, 2)), '1d')
+
+        # >3 axes transformed -> nd plan not possible
+        ca = cupy.ones((2, 4, 6, 8))
+        self.assertEqual(_default_plan_type(ca), '1d')
+
+        # first or last axis not included -> nd plan not possible
+        self.assertEqual(_default_plan_type(ca, axes=(1, )), '1d')
 
 
 @testing.gpu

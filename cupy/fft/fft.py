@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from math import sqrt
-from cupy.fft.config import enable_nd_planning
+from cupy.fft import config
 
 
 def _output_dtype(a, value_type):
@@ -383,7 +383,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
 def _default_plan_type(a, s=None, axes=None):
     """Determine whether to use separable 1d planning or nd planning."""
     ndim = a.ndim
-    if ndim == 1 or not enable_nd_planning:
+    if ndim == 1 or not config.enable_nd_planning:
         return '1d'
 
     if axes is None:
@@ -396,15 +396,14 @@ def _default_plan_type(a, s=None, axes=None):
         # sort the provided axes in ascending order
         axes = tuple(sorted([i % ndim for i in axes]))
 
-    if (len(axes) == 1) and ((a.ndim - 1) in axes):
-        # Prefer Plan1D for 1d transforms where swapaxes will not be required
+    if len(axes) == 1:
+        # use Plan1d to transform a  single axis
         return '1d'
     if len(axes) > 3 or not (np.all(np.diff(sorted(axes)) == 1)):
         # PlanNd supports 1d, 2d or 3d transforms over contiguous axes
         return '1d'
-    if ndim > 3 and (0 not in axes) and ((ndim - 1) not in axes):
-        # ndim > 3 only supported by PlanNd if the first or last axis is
-        # in axes.
+    if (0 not in axes) and ((ndim - 1) not in axes):
+        # PlanNd only possible if the first or last axis is in axes.
         return '1d'
     return 'nd'
 
@@ -435,8 +434,7 @@ def fft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.fft`
     """
-    func = _default_fft_func(a, (n,), (axis,))
-    return func(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
+    return _fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
 
 
 def ifft(a, n=None, axis=-1, norm=None):
@@ -457,8 +455,7 @@ def ifft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft`
     """
-    func = _default_fft_func(a, (n,), (axis,))
-    return func(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE)
+    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE)
 
 
 def fft2(a, s=None, axes=(-2, -1), norm=None):
