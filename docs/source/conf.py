@@ -343,7 +343,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-    'chainer': ('https://docs.chainer.org/en/latest/', None),
+    'chainer': ('https://docs.chainer.org/en/stable/', None),
 }
 
 doctest_global_setup = '''
