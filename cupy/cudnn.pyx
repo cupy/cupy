@@ -368,6 +368,83 @@ def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
     return gx
 
 
+cdef int _create_tensor_descriptor_for_softmax(
+        size_t desc, core.ndarray arr, int axis) except?-1:
+    cdef Py_ssize_t left, center, right
+    assert arr._c_contiguous
+    data_type = get_data_type(arr.dtype)
+    if axis < 0:
+        axis += arr._shape.size()
+    left = 1
+    for i in range(0, axis):
+        left *= arr._shape[i]
+    center = arr._shape[axis]
+    right = 1
+    for i in range(axis + 1, arr._shape.size()):
+        right *= arr._shape[i]
+    cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
+                                left, center, right, 1)
+    if center == 1 and right == 1:
+        return cudnn.CUDNN_SOFTMAX_MODE_INSTANCE
+    else:
+        return cudnn.CUDNN_SOFTMAX_MODE_CHANNEL
+
+
+def softmax_forward(core.ndarray x, int axis, int algorithm):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    cdef core.ndarray y
+    if x.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
+    else:
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
+
+    x = core.ascontiguousarray(x)
+    y = core.ndarray(x._shape, x.dtype)
+
+    handle = get_handle()
+    desc = cudnn.createTensorDescriptor()
+    try:
+        cudnn_mode = _create_tensor_descriptor_for_softmax(desc, x, axis)
+        cudnn.softmaxForward(
+            handle, algorithm, cudnn_mode,
+            one, desc, x.data.ptr, zero, desc, y.data.ptr)
+    finally:
+        cudnn.destroyTensorDescriptor(desc)
+    return y
+
+
+def softmax_backward(core.ndarray y, core.ndarray gy, int axis, int algorithm):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    cdef core.ndarray gx
+    if y.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
+    else:
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
+
+    gx = core.ndarray(y._shape, y.dtype)
+    y = core.ascontiguousarray(y)
+    gy = core.ascontiguousarray(gy)
+
+    handle = get_handle()
+    desc = cudnn.createTensorDescriptor()
+    try:
+        cudnn_mode = _create_tensor_descriptor_for_softmax(desc, y, axis)
+        cudnn.softmaxBackward(
+            handle, algorithm, cudnn_mode,
+            one, desc, y.data.ptr, desc, gy.data.ptr, zero, desc, gx.data.ptr)
+    finally:
+        cudnn.destroyTensorDescriptor(desc)
+    return gx
+
+
 def create_dropout_descriptor(
         handle, dropout, states, state_size_in_bytes, seed):
     desc = Descriptor(cudnn.createDropoutDescriptor(),
