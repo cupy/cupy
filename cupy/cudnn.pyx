@@ -382,6 +382,13 @@ def set_dropout_descriptor(desc, handle, dropout):
     cudnn.setDropoutDescriptor(desc.value, handle, dropout, 0, 0, 0)
 
 
+def create_ctc_loss_descriptor(data_type):
+  desc = Descriptor(cudnn.createCTCLossDescriptor(),
+                    py_cudnn.destroyCTCLossDescriptor)
+  cudnn.setCTCLossDescriptor(desc.value, data_type)
+  return desc
+
+
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type, algo=None):
     desc = Descriptor(cudnn.createRNNDescriptor(),

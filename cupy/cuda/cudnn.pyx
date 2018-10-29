@@ -73,6 +73,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int NanPropagation 'cudnnNanPropagation_t'
     ctypedef int PoolingMode 'cudnnPoolingMode_t'
     ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
+    ctypedef int CTCLossAlgo 'cudnnCTCLossAlgo_t'
     ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
     ctypedef int RNNDataLayout 'cudnnRNNDataLayout_t'
@@ -94,6 +95,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+    ctypedef void* CTCLossDescriptor 'cudnnCTCLossDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* RNNDataDescriptor 'cudnnRNNDataDescriptor_t'
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
@@ -445,6 +447,24 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dydesc, void* dy, TensorDescriptor dxdesc,
         void* dx, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
+    # CTC
+    int cudnnCreateCTCLossDescriptor(CTCLossDescriptor* ctcLossDesc)
+    int cudnnDestroyCTCLossDescriptor(CTCLossDescriptor ctcLossDesc)
+    int cudnnSetCTCLossDescriptor(CTCLossDescriptor ctcLossDesc,
+        DataType dataType)
+    int cudnnGetCTCLossDescriptor(CTCLossDescriptor ctcLossDesc,
+        DataType* dataType)
+    int cudnnGetCTCLossWorkspaceSize(
+        Handle handle, TensorDescriptor probsDesc,
+        TensorDescriptor gradientsDesc, int* labels,
+        int* labelLengths, int* inputLengths, CTCLossAlgo algo,
+        CTCLossDescriptor ctcLossDesc, size_t* sizeInBytes)
+    int cudnnCTCLoss(
+        Handle handle, TensorDescriptor probsDesc,
+        void* probs, int* labels, int* labelLengths, int* inputLengths,
+        void* costs, TensorDescriptor gradientsDesc, void* gradients,
+        CTCLossAlgo algo, CTCLossDescriptor ctcLossDesc,
+        void* workspace, size_t workSpaceSizeInBytes)
     # RNN
     int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
     int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
@@ -1681,6 +1701,59 @@ cpdef dropoutBackward(
             <TensorDescriptor>dyDesc, <void*>dyData,
             <TensorDescriptor>dxDesc, <void*>dxData,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+###############################################################################
+# CTC
+###############################################################################
+cpdef size_t createCTCLossDescriptor() except? 0:
+    cdef CTCLossDescriptor desc
+    status = cudnnCreateCTCLossDescriptor(&desc)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc):
+    status = cudnnDestroyCTCLossDescriptor(<CTCLossDescriptor>ctcLossDesc)
+    check_status(status)
+
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType):
+    status = cudnnSetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, <DataType>dataType)
+    check_status(status)
+
+cpdef getCTCLossDescriptor(size_t ctcLossDesc):
+    cdef DataType compType
+    status = cudnnGetCTCLossDescriptor(<CTCLossDescriptor>ctcLossDesc,
+        &compType)
+    check_status(status)
+    return compType
+
+cpdef getCTCLossWorkspaceSize(
+        size_t handle, size_t probsDesc, size_t gradientsDesc,
+        size_t labels, size_t labelLengths, size_t inputLengths,
+        int algo, size_t ctcLossDesc):
+    cdef size_t sizeInBytes
+    status = cudnnGetCTCLossWorkspaceSize(
+        <Handle>handle, <TensorDescriptor>probsDesc,
+        <TensorDescriptor>gradientsDesc,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+cpdef CTCLoss(
+        size_t handle, size_t probsDesc,
+        size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+        size_t costs, size_t gradientsDesc, size_t gradients,
+        int algo, size_t ctcLossDesc,
+        size_t workspace, size_t workSpaceSizeInBytes):
+    status = cudnnCTCLoss(
+        <Handle>handle, <TensorDescriptor>probsDesc, <void*>probs,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <void*>costs, <TensorDescriptor>gradientsDesc, <void*>gradients,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc,
+        <void*>workspace, <size_t>workSpaceSizeInBytes)
     check_status(status)
 
 

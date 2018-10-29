@@ -660,6 +660,28 @@ cudnnStatus_t cudnnReduceTensor(...) {
 
 
 typedef enum {} cudnnMathType_t;
+typedef enum {} cudnnCTCLossAlgo_t;
+typedef void* cudnnCTCLossDescriptor_t;
+
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
 
 cudnnStatus_t cudnnSetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -775,7 +797,7 @@ typedef void* cudnnRNNDataDescriptor_t;
 
 typedef enum {} cudnnRNNDataLayout_t;
 typedef enum {} cudnnRNNPaddingMode_t;
-  
+
 cudnnStatus_t cudnnSetRNNPaddingMode(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }

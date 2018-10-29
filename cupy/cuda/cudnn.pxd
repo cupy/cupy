@@ -115,6 +115,9 @@ cpdef enum:
     CUDNN_BATCHNORM_SPATIAL = 1
     CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
 
+    CUDNN_CTC_LOSS_ALGO_DETERMINISTIC = 0
+    CUDNN_CTC_LOSS_ALGO_NON_DETERMINISTIC = 1
+
     CUDNN_RNN_RELU = 0
     CUDNN_RNN_TANH = 1
     CUDNN_LSTM = 2
@@ -443,6 +446,26 @@ cpdef dropoutBackward(
     size_t dyDesc, size_t dyData,
     size_t dxtDesc, size_t dxData,
     size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+
+###############################################################################
+# CTC
+###############################################################################
+
+cpdef size_t createCTCLossDescriptor() except? 0
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc)
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType)
+cpdef getCTCLossDescriptor(size_t ctcLossDesc)
+cpdef getCTCLossWorkspaceSize(
+    size_t handle, size_t probsDesc, size_t gradientsDesc,
+    size_t labels, size_t labelLengths, size_t inputLengths,
+    int algo, size_t ctcLossDesc)
+cpdef CTCLoss(
+    size_t handle, size_t probsDesc,
+    size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+    size_t costs, size_t gradientsDesc, size_t gradients,
+    int algo, size_t ctcLossDesc,
+    size_t workspace, size_t workSpaceSizeInBytes)
 
 
 ###############################################################################
