@@ -68,7 +68,7 @@ class TestUserkernel(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'value': [-1, 2 * 32, 2 ** 63 - 1, -(2 ** 63)],
+    'value': [-1, 2 ** 32, 2 ** 63 - 1, -(2 ** 63)],
 }))
 class TestUserkernelScalar(unittest.TestCase):
 
