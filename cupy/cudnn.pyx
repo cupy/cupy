@@ -1255,14 +1255,12 @@ def batch_normalization_forward_training(
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
 
-    cdef float float_zero = 0, float_one = 1
+    cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
-    cdef size_t zero, one
+    cdef size_t zero = <size_t>&double_zero, one
     if x.dtype == 'd':
-        zero = <size_t>&double_zero
         one = <size_t>&double_one
     else:
-        zero = <size_t>&float_zero
         one = <size_t>&float_one
 
     handle = get_handle()
@@ -1329,14 +1327,12 @@ def batch_normalization_forward_inference(
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
 
-    cdef float float_zero = 0, float_one = 1
+    cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
-    cdef size_t zero, one
+    cdef size_t zero = <size_t>&double_zero, one
     if x.dtype == 'd':
-        zero = <size_t>&double_zero
         one = <size_t>&double_one
     else:
-        zero = <size_t>&float_zero
         one = <size_t>&float_one
 
     handle = get_handle()
@@ -1376,14 +1372,12 @@ def batch_normalization_backward(
     ggamma = core.ndarray(gamma._shape, gamma.dtype)
     gbeta = core.ndarray(gamma._shape, gamma.dtype)
 
-    cdef float float_zero = 0, float_one = 1
+    cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
-    cdef size_t zero, one
+    cdef size_t zero = <size_t>&double_zero, one
     if x.dtype == 'd':
-        zero = <size_t>&double_zero
         one = <size_t>&double_one
     else:
-        zero = <size_t>&float_zero
         one = <size_t>&float_one
 
     handle = get_handle()
