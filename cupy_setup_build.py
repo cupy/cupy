@@ -42,7 +42,6 @@ MODULES = [
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
             'cupy.cuda.curand',
-            'cupy.cuda.cusolver',
             'cupy.cuda.cusparse',
             'cupy.cuda.device',
             'cupy.cuda.driver',
@@ -63,7 +62,6 @@ MODULES = [
             'cuda_runtime.h',
             'cufft.h',
             'curand.h',
-            'cusolverDn.h',
             'cusparse.h',
             'nvrtc.h',
         ],
@@ -73,7 +71,6 @@ MODULES = [
             'cudart',
             'cufft',
             'curand',
-            'cusolver',
             'cusparse',
             'nvrtc',
         ],
@@ -108,6 +105,19 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
+    },
+    {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
