@@ -2312,12 +2312,6 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-    elif (hasattr(obj, '__cuda_array_interface__') and
-          obj.__cuda_array_interface__['version'] <= 0):
-        desc = obj.__cuda_array_interface__
-        a = ndarray(desc['shape'], dtype=numpy.dtype(desc['typestr']))
-        runtime.memcpy(a.data.ptr, desc['data'][0], a.nbytes,
-                       runtime.memcpyDefault)
     else:
         if order is not None and len(order) >= 1 and order[0] in 'KAka':
             if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
