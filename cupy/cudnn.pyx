@@ -1193,7 +1193,6 @@ def pooling_backward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-
     gx = core.ndarray(x._shape, x.dtype)
     x = core.ascontiguousarray(x)
     gy = core.ascontiguousarray(gy)
