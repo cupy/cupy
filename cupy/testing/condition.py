@@ -63,7 +63,13 @@ def repeat_with_success_at_least(times, min_success):
                         tearDown=ins.tearDown))
 
                 result = QuietTestRunner().run(suite)
-                if result.wasSuccessful():
+                if len(result.skipped) == 1:
+                    # "Skipped" is a special case of "Successful".
+                    # When the test has been skipped, immedeately quit the
+                    # test regardleess of `times` and `min_success` by raising
+                    # SkipTest exception using the original reason.
+                    instance.skipTest(result.skipped[0][1])
+                elif result.wasSuccessful():
                     success_counter += 1
                 else:
                     results.append(result)
