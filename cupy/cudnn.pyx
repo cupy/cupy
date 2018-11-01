@@ -280,25 +280,31 @@ def create_convolution_descriptor(pad, stride, dtype,
     return desc
 
 
-def create_pooling_descriptor(ksize, stride, pad, int mode):
+cdef _create_pooling_descriptor(
+        size_t desc, tuple ksize, tuple stride, tuple pad, int mode):
     cdef vector.vector[int] c_ksize, c_pad, c_stride
     cdef int ndim = len(ksize)
     if ndim != len(stride) or ndim != len(pad):
         raise ValueError('ksize, stride, and pad must be of same length')
-    desc = Descriptor(cudnn.createPoolingDescriptor(),
-                      py_cudnn.destroyPoolingDescriptor)
     if ndim == 2:
         cudnn.setPooling2dDescriptor_v4(
-            desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ksize[0],
+            desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ksize[0],
             ksize[1], pad[0], pad[1], stride[0], stride[1])
     else:
         c_ksize = ksize
         c_pad = pad
         c_stride = stride
         cudnn.setPoolingNdDescriptor_v4(
-            desc.value, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
+            desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
             <size_t>&c_ksize[0], <size_t>&c_pad[0], <size_t>&c_stride[0])
 
+    return desc
+
+
+def create_pooling_descriptor(ksize, stride, pad, int mode):
+    desc = Descriptor(cudnn.createPoolingDescriptor(),
+                      py_cudnn.destroyPoolingDescriptor)
+    _create_pooling_descriptor(desc.value, ksize, stride, pad, mode)
     return desc
 
 
@@ -1140,3 +1146,73 @@ def convolution_backward_data(
         cudnn.destroyTensorDescriptor(b_desc)
         cudnn.destroyFilterDescriptor(filter_desc)
         cudnn.destroyConvolutionDescriptor(conv_desc)
+
+
+def pooling_forward(
+        core.ndarray x, core.ndarray y,
+        tuple ksize, tuple stride, tuple pad, int mode):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    if x.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
+    else:
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
+
+    x = core.ascontiguousarray(x)
+
+    handle = get_handle()
+    x_desc = cudnn.createTensorDescriptor()
+    y_desc = cudnn.createTensorDescriptor()
+    pool_desc = cudnn.createPoolingDescriptor()
+    try:
+        _create_tensor_nd_descriptor(x_desc, x)
+        _create_tensor_nd_descriptor(y_desc, y)
+        _create_pooling_descriptor(pool_desc, ksize, stride, pad, mode)
+        cudnn.poolingForward(
+            handle, pool_desc, one, x_desc,
+            x.data.ptr, zero, y_desc, y.data.ptr)
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(y_desc)
+        cudnn.destroyPoolingDescriptor(pool_desc)
+    return y
+
+
+def pooling_backward(
+        core.ndarray x, core.ndarray y, core.ndarray gy,
+        tuple ksize, tuple stride, tuple pad, int mode):
+    cdef float float_zero = 0, float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero, one
+    cdef core.ndarray gx
+    if x.dtype == 'd':
+        zero = <size_t>&double_zero
+        one = <size_t>&double_one
+    else:
+        zero = <size_t>&float_zero
+        one = <size_t>&float_one
+
+    gx = core.ndarray(x._shape, x.dtype)
+    x = core.ascontiguousarray(x)
+    gy = core.ascontiguousarray(gy)
+
+    handle = get_handle()
+    x_desc = cudnn.createTensorDescriptor()
+    y_desc = cudnn.createTensorDescriptor()
+    pool_desc = cudnn.createPoolingDescriptor()
+    try:
+        _create_tensor_nd_descriptor(x_desc, x)
+        _create_tensor_nd_descriptor(y_desc, y)
+        _create_pooling_descriptor(pool_desc, ksize, stride, pad, mode)
+        cudnn.poolingBackward(
+            handle, pool_desc,
+            one, y_desc, y.data.ptr, y_desc, gy.data.ptr,
+            x_desc, x.data.ptr, zero, x_desc, gx.data.ptr)
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(y_desc)
+        cudnn.destroyPoolingDescriptor(pool_desc)
+    return gx
