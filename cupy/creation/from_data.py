@@ -51,7 +51,11 @@ def _convert_object_with_cuda_array_interface(a):
     nbytes = numpy.prod(shape) * dtype.itemsize
     mem = memory.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
-    return ndarray(shape, dtype=dtype, memptr=memptr, strides=desc['strides'])
+    if 'strides' in desc:
+        strides = desc['strides']
+    else:
+        strides = None
+    return ndarray(shape, dtype=dtype, memptr=memptr, strides=strides)
 
 
 def asarray(a, dtype=None):
