@@ -456,16 +456,15 @@ cpdef size_t createCTCLossDescriptor() except? 0
 cpdef destroyCTCLossDescriptor(size_t ctcLossDesc)
 cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType)
 cpdef getCTCLossDescriptor(size_t ctcLossDesc)
-cpdef getCTCLossWorkspaceSize(
+cpdef size_t getCTCLossWorkspaceSize(
     size_t handle, size_t probsDesc, size_t gradientsDesc,
     size_t labels, size_t labelLengths, size_t inputLengths,
-    int algo, size_t ctcLossDesc)
+    int algo, size_t ctcLossDesc) except? 0
 cpdef CTCLoss(
     size_t handle, size_t probsDesc,
     size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
-    size_t costs, size_t gradientsDesc, size_t gradients,
-    int algo, size_t ctcLossDesc,
-    size_t workspace, size_t workSpaceSizeInBytes)
+    size_t costs, size_t gradientsDesc, size_t gradients, int algo,
+    size_t ctcLossDesc, size_t workspace, size_t workSpaceSizeInBytes)
 
 
 ###############################################################################
