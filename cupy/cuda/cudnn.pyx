@@ -1732,7 +1732,7 @@ cpdef getCTCLossDescriptor(size_t ctcLossDesc):
 cpdef getCTCLossWorkspaceSize(
         size_t handle, size_t probsDesc, size_t gradientsDesc,
         size_t labels, size_t labelLengths, size_t inputLengths,
-        int algo, size_t ctcLossDesc):
+        int algo, size_t ctcLossDesc) except? 0:
     cdef size_t sizeInBytes
     status = cudnnGetCTCLossWorkspaceSize(
         <Handle>handle, <TensorDescriptor>probsDesc,
