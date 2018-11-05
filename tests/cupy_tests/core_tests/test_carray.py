@@ -58,17 +58,19 @@ class TestCArray(unittest.TestCase):
 @testing.slow
 class TestCArray32BitBoundary(unittest.TestCase):
     # This test case is intended to confirm CArray indexing work correctly
-    # with arrays whose size is so large that it crosses the 32-bit boundary.
+    # with input/output arrays whose size is so large that it crosses the
+    # 32-bit boundary (in terms of both number of elements and size in bytes).
+    # This test requires approx. 8 GiB GPU memory to run.
     # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
 
     def tearDown(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_allclose()
     def test(self, xp):
         # Elementwise
-        a = xp.ones(self.size, dtype='b')
+        a = xp.ones((1, self.size), dtype=xp.int8)
         # Reduction
-        result = a.sum()
+        result = a.sum(axis=0, dtype=xp.int8)
         return result
