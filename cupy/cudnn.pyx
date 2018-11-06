@@ -1295,8 +1295,8 @@ def batch_normalization_forward_training(
             handle, cudnn_mode, one, zero,
             x_desc, x.data.ptr, x_desc, y.data.ptr,
             derivedBnDesc, gamma.data.ptr,
-            beta.data.ptr, factor, running_mean.data.ptr,
-            running_var.data.ptr, eps,
+            beta.data.ptr, factor, running_mean_tmp.data.ptr,
+            running_var_tmp.data.ptr, eps,
             mean.data.ptr, inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
