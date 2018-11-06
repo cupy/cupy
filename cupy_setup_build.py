@@ -117,7 +117,7 @@ MODULES = [
         'libraries': [
             'cusolver',
         ],
-        'check_method': build.check_cusolver_version,
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
