@@ -208,12 +208,8 @@ cpdef _create_convolution_descriptor(
                 raise ValueError('dilation must be one when cuDNN < 6.0')
         p0, p1 = pad
         s0, s1 = stride
-        if _cudnn_version >= 5000:
-            cudnn.setConvolution2dDescriptor_v5(
-                desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
-        else:
-            cudnn.setConvolution2dDescriptor_v4(
-                desc, p0, p1, s0, s1, 1, 1, mode)
+        cudnn.setConvolution2dDescriptor_v5(
+            desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
     if _cudnn_version >= 7000:
         if use_tensor_core:
             math_type = cudnn.CUDNN_TENSOR_OP_MATH
@@ -934,7 +930,7 @@ def convolution_forward(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if auto_tune and _cudnn_version >= 5000:
+        if auto_tune:
             perf = _find_algorithm_fwd(
                 x, W, y, conv_param, handle, x_desc, filter_desc,
                 conv_desc, y_desc, max_workspace_size, use_tensor_core)
@@ -1020,7 +1016,7 @@ def convolution_backward_filter(
             math_type = cudnn.CUDNN_DEFAULT_MATH
             # TODO(okuta): check workspace size
         else:
-            if auto_tune and _cudnn_version >= 5000:
+            if auto_tune:
                 perf = _find_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
                     filter_desc, max_workspace_size, use_tensor_core)
@@ -1108,7 +1104,7 @@ def convolution_backward_data(
             math_type = cudnn.CUDNN_DEFAULT_MATH
             # TODO(okuta): check workspace size
         else:
-            if auto_tune and _cudnn_version >= 5000:
+            if auto_tune:
                 perf = _find_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
                     conv_desc, y_desc, max_workspace_size, use_tensor_core)

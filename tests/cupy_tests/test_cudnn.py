@@ -48,9 +48,7 @@ class TestCudnnActivation(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'mode': coef_modes,
 }))
-@unittest.skipUnless(
-    cudnn_enabled and libcudnn.getVersion() >= 5000,
-    'cuDNN >= 5.0 is supported')
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestCudnnActivationCoef(unittest.TestCase):
 
     def setUp(self):
@@ -72,9 +70,7 @@ class TestCudnnActivationCoef(unittest.TestCase):
     'ratio': [0.0, 0.1, 0.2, 0.5],
     'seed': [0, 100]
 }))
-@unittest.skipUnless(
-    cudnn_enabled and libcudnn.getVersion() >= 5000,
-    'cuDNN >= 5.0 is supported')
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestCudnnDropout(unittest.TestCase):
 
     def setUp(self):
@@ -294,7 +290,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif deterministic and (self.dilate > 1 or
-                                (ndim > 2 and 5000 <= version < 6000) or
+                                (ndim > 2 and version < 6000) or
                                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
         self._workspace_size = cudnn.get_max_workspace_size()
