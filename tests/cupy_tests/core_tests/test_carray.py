@@ -67,10 +67,9 @@ class TestCArray32BitBoundary(unittest.TestCase):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
-    @testing.numpy_cupy_allclose()
-    def test(self, xp):
+    def test(self):
         # Elementwise
-        a = xp.ones((1, self.size), dtype=xp.int8)
+        a = cupy.ones((1, self.size), dtype=cupy.int8)
         # Reduction
-        result = a.sum(axis=0, dtype=xp.int8)
-        return result
+        result = a.sum(axis=0, dtype=cupy.int8)
+        assert result.sum() == self.size
