@@ -515,6 +515,7 @@ class DropoutStates(object):
     def forward(self, handle, core.ndarray x, dropout_ratio):
         cdef core.ndarray y, reserve_space
         cdef size_t cudnn_handle
+        # This is for backward compatibility.
         if handle is None:
             cudnn_handle = get_handle()
         else:
@@ -541,6 +542,7 @@ class DropoutStates(object):
                  core.ndarray reserve_space):
         cdef core.ndarray dx
         cdef size_t cudnn_handle
+        # This is for backward compatibility.
         if handle is None:
             cudnn_handle = get_handle()
         else:
