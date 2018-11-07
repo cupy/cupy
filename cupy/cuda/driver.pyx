@@ -13,6 +13,8 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 
+from cupy.cuda.driver_types cimport *
+
 
 ###############################################################################
 # Extern

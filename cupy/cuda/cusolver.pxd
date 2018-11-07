@@ -5,7 +5,7 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Stream
+from cupy.cuda.driver_types cimport Stream
 
 cdef extern from *:
     ctypedef void* Handle 'cusolverDnHandle_t'

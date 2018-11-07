@@ -12,7 +12,7 @@ There are four differences compared to the original C API.
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cupy.cuda cimport driver
+from cupy.cuda cimport driver_types as driver
 
 cdef class PointerAttributes:
 

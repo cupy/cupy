@@ -8,9 +8,13 @@ import tempfile
 
 import six
 
-from cupy.cuda import device
-from cupy.cuda import function
-from cupy.cuda import nvrtc
+try:
+    from cupy.cuda import device
+    from cupy.cuda import function
+    from cupy.cuda import nvrtc
+except ImportError:
+    pass
+
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
