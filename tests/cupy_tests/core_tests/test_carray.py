@@ -48,12 +48,12 @@ class TestCArray(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"size": 2 ** 32 + 1024},
-    {"size": 2 ** 32},
-    {"size": 2 ** 32 - 1024},
-    {"size": 2 ** 31 + 1024},
-    {"size": 2 ** 31},
     {"size": 2 ** 31 - 1024},
+    {"size": 2 ** 31},
+    {"size": 2 ** 31 + 1024},
+    {"size": 2 ** 32 - 1024},
+    {"size": 2 ** 32},
+    {"size": 2 ** 32 + 1024},
 )
 @testing.slow
 class TestCArray32BitBoundary(unittest.TestCase):
