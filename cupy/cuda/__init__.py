@@ -18,11 +18,8 @@ _available = None
 _cuda_path = None
 
 
-if driver.get_build_version() >= 8000:
-    from cupy.cuda import cusolver  # NOQA
-    cusolver_enabled = True
-else:
-    cusolver_enabled = False
+from cupy.cuda import cusolver  # NOQA
+cusolver_enabled = True
 
 try:
     from cupy.cuda import nvtx  # NOQA
