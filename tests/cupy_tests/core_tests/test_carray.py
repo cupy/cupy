@@ -69,7 +69,7 @@ class TestCArray32BitBoundary(unittest.TestCase):
 
     def test(self):
         # Elementwise
-        a = cupy.ones((1, self.size), dtype=cupy.int8)
+        a = cupy.full((1, self.size), 7, dtype=cupy.int8)
         # Reduction
         result = a.sum(axis=0, dtype=cupy.int8)
-        assert result.sum() == self.size
+        assert result.sum() == self.size * 7
