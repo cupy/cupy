@@ -732,7 +732,7 @@ cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
     check_status(status)
 
 
-cpdef getTensor4dDescriptor(size_t tensorDesc):
+cpdef tuple getTensor4dDescriptor(size_t tensorDesc):
     cdef DataType dataType
     cdef int n, c, h, w, nStride, cStride, hStride, wStride
     status = cudnnGetTensor4dDescriptor(
