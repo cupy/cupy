@@ -1156,9 +1156,7 @@ def pooling_forward(
     else:
         zero = <size_t>&float_zero
         one = <size_t>&float_one
-
     x = core.ascontiguousarray(x)
-
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1212,3 +1210,208 @@ def pooling_backward(
         cudnn.destroyTensorDescriptor(y_desc)
         cudnn.destroyPoolingDescriptor(pool_desc)
     return gx
+
+
+cdef _create_tensor_descriptor_for_bn(
+        size_t desc, core.ndarray arr, bint is_for_conv2d):
+    assert arr._c_contiguous
+    data_type = get_data_type(arr.dtype)
+    if is_for_conv2d:
+        _create_tensor_nd_descriptor(desc, arr, data_type)
+        return
+    cdef Py_ssize_t dim1, dim2
+    cdef int ndim = arr._shape.size()
+    dim2 = 1
+    if ndim > 0:
+        dim2 = arr._shape[ndim - 1]
+    dim1 = arr.size // dim2
+    cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
+                                dim1, dim2, 1, 1)
+
+
+cdef _get_dtype_of_tensor_descriptor(size_t desc):
+    cudnn_dtype, _, _, _, _, _, _, _, _ = cudnn.getTensor4dDescriptor(desc)
+    if cudnn_dtype == cudnn.CUDNN_DATA_DOUBLE:
+        return numpy.dtype(numpy.float64)
+    elif cudnn_dtype == cudnn.CUDNN_DATA_FLOAT:
+        return numpy.dtype(numpy.float32)
+    elif cudnn_dtype == cudnn.CUDNN_DATA_HALF:
+        return numpy.dtype(numpy.float16)
+    else:
+        raise RuntimeError('Unknown cudnn data type {} '.format(cudnn_dtype))
+
+
+def batch_normalization_forward_training(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        core.ndarray mean, core.ndarray inv_std,
+        double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    y = core.ndarray(x._shape, dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+            beta = beta.astype(dtype_param)
+            running_mean_tmp = running_mean.astype(dtype_param)
+            running_var_tmp = running_var.astype(dtype_param)
+        else:
+            running_mean_tmp = running_mean
+            running_var_tmp = running_var
+            gamma = core.ascontiguousarray(gamma)
+            beta = core.ascontiguousarray(beta)
+
+        # Factor used in the moving average
+        factor = 1.0 - decay
+
+        # Note: cuDNN computes the mini-batch mean and variance
+        # internally. We can simply (optionally) pass
+        # it the running-average mean and variance arrays.
+        # Note: This API seems to set the inverse of the standard deviation
+        # (instead of variance) to resultSaveInvVariance argument. The
+        # current implementation of our BN depends on this behavior so that
+        # we can reduce the number of reduction kernels.
+        cudnn.batchNormalizationForwardTraining(
+            handle, cudnn_mode, one, zero,
+            x_desc, x.data.ptr, x_desc, y.data.ptr,
+            derivedBnDesc, gamma.data.ptr,
+            beta.data.ptr, factor, running_mean_tmp.data.ptr,
+            running_var_tmp.data.ptr, eps,
+            mean.data.ptr, inv_std.data.ptr)
+
+        # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
+        # there is a possibility of numerical overflow. You can use
+        # queryRuntimeError() to make sure whether the overflow actually
+        # occured or not during the batch normalization.
+        if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
+            query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
+            rstatus = cudnn.queryRuntimeError(handle, query_mode)
+            if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
+                warnings.warn(
+                    'A numerical overflow might have happend in cuDNN'
+                    'batch normalization (status:{})'.format(rstatus))
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+    if running_mean is not running_mean_tmp:
+        running_mean[...] = running_mean_tmp
+        running_var[...] = running_var_tmp
+    return y
+
+
+def batch_normalization_forward_inference(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray mean, core.ndarray var,
+        double eps, bint is_for_conv2d, int cudnn_mode):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    y = core.ndarray(x._shape, dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+            beta = beta.astype(dtype_param)
+            mean = mean.astype(dtype_param)
+            var = var.astype(dtype_param)
+        else:
+            gamma = core.ascontiguousarray(gamma)
+            beta = core.ascontiguousarray(beta)
+
+        cudnn.batchNormalizationForwardInference(
+            handle, cudnn_mode, one, zero,
+            x_desc, x.data.ptr, x_desc, y.data.ptr,
+            derivedBnDesc, gamma.data.ptr, beta.data.ptr,
+            mean.data.ptr, var.data.ptr, eps)
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+    return y
+
+
+def batch_normalization_backward(
+        core.ndarray x, core.ndarray gamma, core.ndarray gy,
+        core.ndarray mean, core.ndarray inv_std,
+        double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    gx = core.ndarray(x._shape, dtype)
+    ggamma = core.ndarray(gamma._shape, gamma.dtype)
+    gbeta = core.ndarray(gamma._shape, gamma.dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+        else:
+            gamma = core.ascontiguousarray(gamma)
+            gy = core.ascontiguousarray(gy)
+
+        cudnn.batchNormalizationBackward(
+            handle, cudnn_mode, one, zero, one, zero,
+            x_desc, x.data.ptr,
+            x_desc, gy.data.ptr, x_desc, gx.data.ptr,
+            derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
+            eps, mean.data.ptr, inv_std.data.ptr)
+
+        # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
+        # there is a possibility of numerical overflow. You can use
+        # queryRuntimeError() to make sure whether the overflow actually
+        # occured or not during the batch normalization.
+        if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
+            query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
+            rstatus = cudnn.queryRuntimeError(handle, query_mode)
+            if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
+                warnings.warn(
+                    'A numerical overflow might have happend in cuDNN'
+                    'batch normalization (status:{})'.format(rstatus))
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+
+    if dtype_param is not dtype:
+        ggamma = ggamma.astype(dtype)
+        gbeta = gbeta.astype(dtype)
+    return gx, ggamma, gbeta
