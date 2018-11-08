@@ -5,6 +5,13 @@ Here are the environment variables CuPy uses.
 
 
 +------------------------------------+----------------------------------------------------+
+| ``CUDA_PATH``                      | Path to the directory containing CUDA.             |
+|                                    | The parent of the directory containing ``nvcc`` is |
+|                                    | used as default.                                   |
+|                                    | When ``nvcc`` is not found, ``/usr/local/cuda`` is |
+|                                    | used.                                              |
+|                                    | See :ref:`install_cuda` for details.               |
++------------------------------------+----------------------------------------------------+
 | ``CUPY_CACHE_DIR``                 | Path to the directory to store kernel cache.       |
 |                                    | ``${HOME}/.cupy/kernel_cache`` is used by default. |
 |                                    | See :ref:`overview` for details.                   |
@@ -27,10 +34,7 @@ For install
 These environment variables are only used during installation.
 
 +---------------+---------------------------------------------------------------------+
-| ``CUDA_PATH`` | Path to the directory containing CUDA.                              |
-|               | The parent of the directory containing ``nvcc`` is used as default. |
-|               | When ``nvcc`` is not found, ``/usr/local/cuda`` is used.            |
-|               | See :ref:`install_cuda` for details.                                |
+| ``CUDA_PATH`` | See the description above.                                          |
 +---------------+---------------------------------------------------------------------+
 | ``NVCC``      | Define the compiler to use when compiling CUDA files.               |
 +---------------+---------------------------------------------------------------------+
