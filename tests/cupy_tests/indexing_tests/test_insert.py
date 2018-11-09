@@ -1,6 +1,104 @@
 import unittest
 
+import numpy
+
 from cupy import testing
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(7,), (2, 3), (4, 3, 2)],
+    'n_vals': [0, 1, 3, 15],
+}))
+@testing.gpu
+class TestPlace(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_place(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.n_vals == 0:
+            mask = xp.zeros(self.shape, dtype=numpy.bool_)
+        else:
+            mask = testing.shaped_random(self.shape, xp, numpy.bool_)
+        vals = testing.shaped_random((self.n_vals,), xp, dtype)
+        xp.place(a, mask, vals)
+        return a
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(7,), (2, 3), (4, 3, 2)],
+}))
+@testing.gpu
+class TestPlaceRaises(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_place_empty_value_error(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        mask = testing.shaped_arange(self.shape, xp, numpy.int) % 2 == 0
+        vals = testing.shaped_random((0,), xp, dtype)
+        xp.place(a, mask, vals)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_place_shape_unmatch_error(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        mask = testing.shaped_random((3, 4), xp, numpy.bool_)
+        vals = testing.shaped_random((1,), xp, dtype)
+        xp.place(a, mask, vals)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(7,), (2, 3), (4, 3, 2)],
+    'mode': ['raise', 'wrap', 'clip'],
+    'n_vals': [0, 1, 3, 4, 5],
+}))
+@testing.gpu
+class TestPut(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_put(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        # Take care so that actual indices don't overlap.
+        if self.mode == 'raise':
+            inds = xp.array([2, -1, 3, 0])
+        else:
+            inds = xp.array([2, -8, 3, 7])
+        vals = testing.shaped_random((self.n_vals,), xp, dtype)
+        xp.put(a, inds, vals, self.mode)
+        return a
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(7,), (2, 3)],
+}))
+@testing.gpu
+class TestPutRaises(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_put_inds_underflow_error(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        inds = xp.array([2, -8, 3, 0])
+        vals = testing.shaped_random((4,), xp, dtype)
+        xp.put(a, inds, vals, mode='raise')
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_put_inds_overflow_error(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        inds = xp.array([2, -1, 3, 7])
+        vals = testing.shaped_random((4,), xp, dtype)
+        xp.put(a, inds, vals, mode='raise')
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_put_mode_error(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        inds = xp.array([2, -1, 3, 0])
+        vals = testing.shaped_random((4,), xp, dtype)
+        xp.put(a, inds, vals, mode='unknown')
 
 
 @testing.parameterize(*testing.product({
@@ -9,7 +107,7 @@ from cupy import testing
     'wrap': [True, False],
 }))
 @testing.gpu
-class TestInsert(unittest.TestCase):
+class TestFillDiagonal(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

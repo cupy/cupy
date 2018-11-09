@@ -578,7 +578,14 @@ cdef class ndarray:
         """
         return _indexing._ndarray_take(self, indices, axis, out)
 
-    # TODO(okuta): Implement put
+    cpdef put(self, indices, values, mode='wrap'):
+        """Replaces specified elements of an array with given values.
+
+        .. seealso::
+           :func:`cupy.put` for full documentation,
+           :meth:`numpy.ndarray.put`
+        """
+        return _indexing._ndarray_put(self, indices, values, mode)
 
     cpdef repeat(self, repeats, axis=None):
         """Returns an array with repeated arrays along an axis.
