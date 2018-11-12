@@ -389,6 +389,34 @@ def create_ctc_loss_descriptor(data_type):
   return desc
 
 
+def ctc_loss(core.ndarray probs, core.ndarray labels,
+             numpy.ndarray label_length, numpy.ndarray input_length, int algo):
+  batch_size = len(label_length)
+  handle = get_handle()
+  data_type = get_data_type(probs.dtype)
+  ctc_desc = Descriptor(cudnn.createCTCLossDescriptor(),
+                        py_cudnn.destroyCTCLossDescriptor)
+  cudnn.setCTCLossDescriptor(ctc_desc.value, data_type)
+
+  gradients = core.ndarray(probs._shape, data_type)
+  loss = core.ndarray((batch_size, ), data_type)
+  probs_desc = create_tensor_descriptor(probs)
+  gradients_desc = create_tensor_descriptor(gradients)
+
+  work_size = libcudnn.getCTCLossWorkspaceSize(
+                handle, probs_desc.value, gradients_desc.value,
+                labels.ctypes.data, label_length.ctypes.data,
+                input_length.ctypes.data, algo, ctc_desc.value)
+  workspace = core.ndarray((work_size,), 'b')
+
+  libcudnn.CTCLoss(handle, probs_desc.value, probs.data.ptr,
+      labels.ctypes.data, label_length.ctypes.data,
+      input_length.ctypes.data, loss.data.ptr, gradients_desc.value,
+      gradients.data.ptr, algo, ctc_desc.value,
+      workspace.data.ptr, work_size)
+  return loss, gradients
+
+
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type, algo=None):
     desc = Descriptor(cudnn.createRNNDescriptor(),
