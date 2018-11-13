@@ -163,7 +163,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
 
     ptx = compile_using_nvrtc(source, options, arch)
     ls = function.LinkState()
-    ls.add_ptr_data(ptx, six.u('cupy.ptx'))
+    ls.add_ptr_data(ptx, u'cupy.ptx')
     cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 

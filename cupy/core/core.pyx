@@ -68,15 +68,15 @@ except AttributeError:
 @cython.profile(False)
 cdef inline int _normalize_order(order) except? 0:
     cdef int order_char
-    order_char = 'C' if len(order) == 0 else ord(order[0])
-    if order_char == 'K' or order_char == 'k':
-        order_char = 'K'
-    elif order_char == 'A' or order_char == 'a':
-        order_char = 'A'
-    elif order_char == 'C' or order_char == 'c':
-        order_char = 'C'
-    elif order_char == 'F' or order_char == 'f':
-        order_char = 'F'
+    order_char = b'C' if len(order) == 0 else ord(order[0])
+    if order_char == b'K' or order_char == b'k':
+        order_char = b'K'
+    elif order_char == b'A' or order_char == b'a':
+        order_char = b'A'
+    elif order_char == b'C' or order_char == b'c':
+        order_char = b'C'
+    elif order_char == b'F' or order_char == b'f':
+        order_char = b'F'
     else:
         raise TypeError('order not understood')
     return order_char
@@ -118,12 +118,13 @@ cdef class ndarray:
                  order='C'):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
-        cdef int order_char = 'C' if order is None else _normalize_order(order)
+        cdef int order_char
+        order_char = b'C' if order is None else _normalize_order(order)
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
-        if order_char not in ('C', 'F'):
-            raise TypeError('order not understood. order={}'.format(order))
+        if order_char != b'C' and order_char != b'F':
+            raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         for x in s:
@@ -138,9 +139,9 @@ cdef class ndarray:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
             self._set_shape_and_strides(shape, strides, True, True)
-        elif order_char == 'C':
+        elif order_char == b'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)
-        elif order_char == 'F':
+        elif order_char == b'F':
             self._set_shape_and_contiguous_strides(s, itemsize, False)
         else:
             assert False
@@ -371,25 +372,25 @@ cdef class ndarray:
         dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
-                    order_char == 'K' or
-                    order_char == 'A' and (self._c_contiguous or
+                    order_char == b'K' or
+                    order_char == b'A' and (self._c_contiguous or
                                            self._f_contiguous) or
-                    order_char == 'C' and self._c_contiguous or
-                    order_char == 'F' and self._f_contiguous):
+                    order_char == b'C' and self._c_contiguous or
+                    order_char == b'F' and self._f_contiguous):
                 return self
 
-        if order_char == 'A':
+        if order_char == b'A':
             if self._f_contiguous:
-                order_char = 'F'
+                order_char = b'F'
             else:
-                order_char = 'C'
-        elif order_char == 'K':
+                order_char = b'C'
+        elif order_char == b'K':
             if self._f_contiguous:
-                order_char = 'F'
+                order_char = b'F'
             elif self._c_contiguous:
-                order_char = 'C'
+                order_char = b'C'
 
-        if order_char == 'K':
+        if order_char == b'K':
             stride_and_index = [
                 (abs(s), -i) for i, s in enumerate(self._strides)]
             stride_and_index.sort()
@@ -2289,7 +2290,7 @@ _round_ufunc = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
+cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
@@ -3023,7 +3024,7 @@ right_shift = _create_bit_op(
 cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
-    cdef str kind
+    cdef int kind
     cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
@@ -3057,10 +3058,10 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
             slice_list[i] = s
         elif not isinstance(s, ndarray):
             continue
-        kind = s.dtype.kind
-        if kind == 'i' or kind == 'u':
+        kind = ord(s.dtype.kind)
+        if kind == b'i' or kind == b'u':
             advanced = True
-        elif kind == 'b':
+        elif kind == b'b':
             mask_exists = True
         else:
             raise IndexError(

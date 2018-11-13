@@ -90,11 +90,11 @@ class Descriptor(object):
 
 cpdef int get_data_type(dtype) except? -1:
     cdef char t = ord(dtype.char)
-    if t == 'f':
+    if t == b'f':
         return cudnn.CUDNN_DATA_FLOAT
-    elif t == 'd':
+    elif t == b'd':
         return cudnn.CUDNN_DATA_DOUBLE
-    elif t == 'e':
+    elif t == b'e':
         return cudnn.CUDNN_DATA_HALF
     else:
         raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
