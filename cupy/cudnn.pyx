@@ -208,12 +208,8 @@ cpdef _create_convolution_descriptor(
                 raise ValueError('dilation must be one when cuDNN < 6.0')
         p0, p1 = pad
         s0, s1 = stride
-        if _cudnn_version >= 5000:
-            cudnn.setConvolution2dDescriptor_v5(
-                desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
-        else:
-            cudnn.setConvolution2dDescriptor_v4(
-                desc, p0, p1, s0, s1, 1, 1, mode)
+        cudnn.setConvolution2dDescriptor_v5(
+            desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
     if _cudnn_version >= 7000:
         if use_tensor_core:
             math_type = cudnn.CUDNN_TENSOR_OP_MATH
@@ -580,15 +576,30 @@ cpdef bint is_tensor_core_available(dtype) except *:
 class DropoutStates(object):
 
     def __init__(self, handle, seed):
-        state_size = cudnn.dropoutGetStatesSize(handle)
+        cdef size_t cudnn_handle
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        state_size = cudnn.dropoutGetStatesSize(cudnn_handle)
         self._states = memory.alloc(state_size)
         self._desc = create_dropout_descriptor(
-            handle, 0., self._states.ptr,
+            cudnn_handle, 0., self._states.ptr,
             state_size, seed)
+
+    def set_dropout_ratio(self, dropout_ratio):
+        cudnn_handle = get_handle()
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
     def forward(self, handle, core.ndarray x, dropout_ratio):
         cdef core.ndarray y, reserve_space
-        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+        cdef size_t cudnn_handle
+        # This is for backward compatibility.
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         x = core.ascontiguousarray(x)
         y = core.ndarray(x._shape, x.dtype)
@@ -599,7 +610,7 @@ class DropoutStates(object):
             reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc)
             reserve_space = core.ndarray((reserve_size,), 'b')
 
-            cudnn.dropoutForward(handle, self._desc.value,
+            cudnn.dropoutForward(cudnn_handle, self._desc.value,
                                  x_desc, x.data.ptr, x_desc, y.data.ptr,
                                  reserve_space.data.ptr, reserve_size)
         finally:
@@ -609,7 +620,13 @@ class DropoutStates(object):
     def backward(self, handle, core.ndarray dy, dropout_ratio,
                  core.ndarray reserve_space):
         cdef core.ndarray dx
-        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+        cdef size_t cudnn_handle
+        # This is for backward compatibility.
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         dy = core.ascontiguousarray(dy)
         dx = core.ndarray(dy._shape, dy.dtype)
@@ -617,7 +634,7 @@ class DropoutStates(object):
         dy_desc = cudnn.createTensorDescriptor()
         try:
             _create_tensor_descriptor_as4darray(dy_desc, dy)
-            cudnn.dropoutBackward(handle, self._desc.value,
+            cudnn.dropoutBackward(cudnn_handle, self._desc.value,
                                   dy_desc, dy.data.ptr,
                                   dy_desc, dx.data.ptr,
                                   reserve_space.data.ptr,
@@ -934,7 +951,7 @@ def convolution_forward(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if auto_tune and _cudnn_version >= 5000:
+        if auto_tune:
             perf = _find_algorithm_fwd(
                 x, W, y, conv_param, handle, x_desc, filter_desc,
                 conv_desc, y_desc, max_workspace_size, use_tensor_core)
@@ -1020,7 +1037,7 @@ def convolution_backward_filter(
             math_type = cudnn.CUDNN_DEFAULT_MATH
             # TODO(okuta): check workspace size
         else:
-            if auto_tune and _cudnn_version >= 5000:
+            if auto_tune:
                 perf = _find_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
                     filter_desc, max_workspace_size, use_tensor_core)
@@ -1108,7 +1125,7 @@ def convolution_backward_data(
             math_type = cudnn.CUDNN_DEFAULT_MATH
             # TODO(okuta): check workspace size
         else:
-            if auto_tune and _cudnn_version >= 5000:
+            if auto_tune:
                 perf = _find_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
                     conv_desc, y_desc, max_workspace_size, use_tensor_core)
@@ -1160,9 +1177,7 @@ def pooling_forward(
     else:
         zero = <size_t>&float_zero
         one = <size_t>&float_one
-
     x = core.ascontiguousarray(x)
-
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1216,3 +1231,208 @@ def pooling_backward(
         cudnn.destroyTensorDescriptor(y_desc)
         cudnn.destroyPoolingDescriptor(pool_desc)
     return gx
+
+
+cdef _create_tensor_descriptor_for_bn(
+        size_t desc, core.ndarray arr, bint is_for_conv2d):
+    assert arr._c_contiguous
+    data_type = get_data_type(arr.dtype)
+    if is_for_conv2d:
+        _create_tensor_nd_descriptor(desc, arr, data_type)
+        return
+    cdef Py_ssize_t dim1, dim2
+    cdef int ndim = arr._shape.size()
+    dim2 = 1
+    if ndim > 0:
+        dim2 = arr._shape[ndim - 1]
+    dim1 = arr.size // dim2
+    cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
+                                dim1, dim2, 1, 1)
+
+
+cdef _get_dtype_of_tensor_descriptor(size_t desc):
+    cudnn_dtype, _, _, _, _, _, _, _, _ = cudnn.getTensor4dDescriptor(desc)
+    if cudnn_dtype == cudnn.CUDNN_DATA_DOUBLE:
+        return numpy.dtype(numpy.float64)
+    elif cudnn_dtype == cudnn.CUDNN_DATA_FLOAT:
+        return numpy.dtype(numpy.float32)
+    elif cudnn_dtype == cudnn.CUDNN_DATA_HALF:
+        return numpy.dtype(numpy.float16)
+    else:
+        raise RuntimeError('Unknown cudnn data type {} '.format(cudnn_dtype))
+
+
+def batch_normalization_forward_training(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        core.ndarray mean, core.ndarray inv_std,
+        double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    y = core.ndarray(x._shape, dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+            beta = beta.astype(dtype_param)
+            running_mean_tmp = running_mean.astype(dtype_param)
+            running_var_tmp = running_var.astype(dtype_param)
+        else:
+            running_mean_tmp = running_mean
+            running_var_tmp = running_var
+            gamma = core.ascontiguousarray(gamma)
+            beta = core.ascontiguousarray(beta)
+
+        # Factor used in the moving average
+        factor = 1.0 - decay
+
+        # Note: cuDNN computes the mini-batch mean and variance
+        # internally. We can simply (optionally) pass
+        # it the running-average mean and variance arrays.
+        # Note: This API seems to set the inverse of the standard deviation
+        # (instead of variance) to resultSaveInvVariance argument. The
+        # current implementation of our BN depends on this behavior so that
+        # we can reduce the number of reduction kernels.
+        cudnn.batchNormalizationForwardTraining(
+            handle, cudnn_mode, one, zero,
+            x_desc, x.data.ptr, x_desc, y.data.ptr,
+            derivedBnDesc, gamma.data.ptr,
+            beta.data.ptr, factor, running_mean_tmp.data.ptr,
+            running_var_tmp.data.ptr, eps,
+            mean.data.ptr, inv_std.data.ptr)
+
+        # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
+        # there is a possibility of numerical overflow. You can use
+        # queryRuntimeError() to make sure whether the overflow actually
+        # occured or not during the batch normalization.
+        if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
+            query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
+            rstatus = cudnn.queryRuntimeError(handle, query_mode)
+            if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
+                warnings.warn(
+                    'A numerical overflow might have happend in cuDNN'
+                    'batch normalization (status:{})'.format(rstatus))
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+    if running_mean is not running_mean_tmp:
+        running_mean[...] = running_mean_tmp
+        running_var[...] = running_var_tmp
+    return y
+
+
+def batch_normalization_forward_inference(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray mean, core.ndarray var,
+        double eps, bint is_for_conv2d, int cudnn_mode):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    y = core.ndarray(x._shape, dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+            beta = beta.astype(dtype_param)
+            mean = mean.astype(dtype_param)
+            var = var.astype(dtype_param)
+        else:
+            gamma = core.ascontiguousarray(gamma)
+            beta = core.ascontiguousarray(beta)
+
+        cudnn.batchNormalizationForwardInference(
+            handle, cudnn_mode, one, zero,
+            x_desc, x.data.ptr, x_desc, y.data.ptr,
+            derivedBnDesc, gamma.data.ptr, beta.data.ptr,
+            mean.data.ptr, var.data.ptr, eps)
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+    return y
+
+
+def batch_normalization_backward(
+        core.ndarray x, core.ndarray gamma, core.ndarray gy,
+        core.ndarray mean, core.ndarray inv_std,
+        double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
+    x = core.ascontiguousarray(x)
+    dtype = x.dtype
+    gx = core.ndarray(x._shape, dtype)
+    ggamma = core.ndarray(gamma._shape, gamma.dtype)
+    gbeta = core.ndarray(gamma._shape, gamma.dtype)
+
+    cdef float float_one = 1
+    cdef double double_zero = 0, double_one = 1
+    cdef size_t zero = <size_t>&double_zero, one
+    if x.dtype == 'd':
+        one = <size_t>&double_one
+    else:
+        one = <size_t>&float_one
+
+    handle = get_handle()
+    cdef size_t x_desc = cudnn.createTensorDescriptor()
+    cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
+    try:
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
+        dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
+        if dtype_param != dtype:
+            gamma = gamma.astype(dtype_param)
+        else:
+            gamma = core.ascontiguousarray(gamma)
+            gy = core.ascontiguousarray(gy)
+
+        cudnn.batchNormalizationBackward(
+            handle, cudnn_mode, one, zero, one, zero,
+            x_desc, x.data.ptr,
+            x_desc, gy.data.ptr, x_desc, gx.data.ptr,
+            derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
+            eps, mean.data.ptr, inv_std.data.ptr)
+
+        # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
+        # there is a possibility of numerical overflow. You can use
+        # queryRuntimeError() to make sure whether the overflow actually
+        # occured or not during the batch normalization.
+        if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
+            query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
+            rstatus = cudnn.queryRuntimeError(handle, query_mode)
+            if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
+                warnings.warn(
+                    'A numerical overflow might have happend in cuDNN'
+                    'batch normalization (status:{})'.format(rstatus))
+    finally:
+        cudnn.destroyTensorDescriptor(x_desc)
+        cudnn.destroyTensorDescriptor(derivedBnDesc)
+
+    if dtype_param is not dtype:
+        ggamma = ggamma.astype(dtype)
+        gbeta = gbeta.astype(dtype)
+    return gx, ggamma, gbeta

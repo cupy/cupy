@@ -318,7 +318,7 @@ cusparseStatus_t cusparseXcscsort(...) {
 
 extern "C" {
 
-#if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+#if defined(CUPY_NO_CUDA)
 
 cusparseStatus_t cusparseSnnz_compress(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -352,7 +352,7 @@ cusparseStatus_t cusparseZcsr2csr_compress(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-#endif  // #if defined(CUPY_NO_CUDA) || (CUDA_VERSION < 8000)
+#endif  // #if defined(CUPY_NO_CUDA)
 
 }  // extern "C"
 
