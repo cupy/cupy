@@ -1704,3 +1704,25 @@ class TestFusionConstParams(unittest.TestCase):
 
         x = testing.shaped_arange((3, 4), xp, dtype)
         return g(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_const_params_extra(self, xp, dtype):
+
+        @cupy.fuse(const_params={'const_x': 1, 'xp': xp, 'extra': 1})
+        def f(x, const_x, xp):
+            return xp.square(x + const_x)
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return f(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_const_params_lack(self, xp, dtype):
+
+        @cupy.fuse(const_params={'const_x': 1})
+        def f(x, const_x, xp):
+            return xp.square(x + const_x)
+
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return f(x)
