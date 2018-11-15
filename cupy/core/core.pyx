@@ -242,7 +242,7 @@ cdef class ndarray:
 
     @property
     def nbytes(self):
-        """Size of whole elements in bytes.
+        """Total size of all elements in bytes.
 
         It does not count skips between elements.
 
