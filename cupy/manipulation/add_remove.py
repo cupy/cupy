@@ -1,4 +1,7 @@
+import numpy
+
 import cupy
+from cupy import core
 
 
 # TODO(okuta): Implement delete
@@ -7,10 +10,67 @@ import cupy
 # TODO(okuta): Implement insert
 
 
-# TODO(okuta): Implement append
+def append(arr, values, axis=None):
+    """
+    Append values to the end of an array.
+
+    Args:
+        arr(array_like):
+            Values are appended to a copy of this array.
+        values(array_like):
+            These values are appended to a copy of `arr`.  It must be of the
+            correct shape (the same shape as `arr`, excluding `axis`).  If
+            `axis` is not specified, `values` can be any shape and will be
+            flattened before use.
+        axis(int, optional):
+            The axis along which `values` are appended.  If `axis` is not
+            given, both `arr` and `values` are flattened before use.
+
+    Returns:
+        ndarray
+            A copy of `arr` with `values` appended to `axis`.  Note that
+            `append` does not occur in-place: a new array is allocated and
+            filled.  If `axis` is None, `out` is a flattened array.
+
+    .. seealso:: :func:`numpy.append`
+    """
+    arr = cupy.asarray(arr)
+    values = cupy.asarray(values)
+    if axis is None:
+        return core.concatenate_method(
+            (arr.ravel(), values.ravel()), 0).ravel()
+    return core.concatenate_method((arr, values), axis)
 
 
-# TODO(okuta): Implement resize
+def resize(a, new_shape):
+    """Return a new array with the specified shape.
+
+    If the new array is larger than the original array, then the new
+    array is filled with repeated copies of `a`.  Note that this behavior
+    is different from a.resize(new_shape) which fills with zeros instead
+    of repeated copies of `a`.
+
+    Args:
+        a(array_like): Array to be resized.
+        new_shape(int or tuple of int): Shape of resized array.
+
+    Returns:
+        ndarray:
+            The new array is formed from the data in the old array, repeated
+            if necessary to fill out the required number of elements.  The
+            data are repeated in the order that they are stored in memory.
+
+    .. seealso:: :func:`numpy.resize`
+    """
+    if numpy.isscalar(a):
+        return cupy.full(new_shape, a)
+    if a.shape == () or len(a) == 0:
+        # 0-dim or empty array
+        return cupy.zeros(new_shape, dtype=a.dtype)
+    a = a.ravel()
+    reps, remainder = divmod(numpy.prod(new_shape), len(a))
+    return core.concatenate_method(
+        [a] * reps + [a[:remainder]], 0).reshape(new_shape)
 
 
 # TODO(okuta): Implement trim_zeros
