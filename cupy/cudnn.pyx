@@ -553,12 +553,15 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
     cdef Py_ssize_t s
     cdef int length
 
+    # RNN APIs assumes ndim == 3.
     for s in xs._strides:
         c_strides.push_back(s // itemsize)
-    c_strides.push_back(1)
+    for _ in range(3 - len(xs._strides)):
+        c_strides.push_back(1)
     for s in xs._shape:
         c_shape.push_back(s)
-    c_shape.push_back(1)
+    for _ in range(3 - len(xs._strides)):
+        c_shape.push_back(1)
 
     for length in lengths:
         c_shape[0] = length
