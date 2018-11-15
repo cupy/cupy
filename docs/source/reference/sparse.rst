@@ -19,6 +19,14 @@ That means, SciPy functions cannot take ``cupyx.scipy.sparse.*_matrix`` objects 
 Note that converting between CuPy and SciPy incurs data transfer between
 the host (CPU) device and the GPU device, which is costly in terms of performance.
 
+Conversion to/from CuPy ndarrays
+--------------------------------
+
+- To convert CuPy ndarray to CuPy sparse matrices, pass it to the constructor of each CuPy sparse matrix class.
+- To convert CuPy sparse matrices to CuPy ndarray, use ``toarray`` of each CuPy sparse matrix instance (e.g., :func:`cupyx.scipy.sparse.csr_matrix.toarray`).
+
+Converting between CuPy ndarray and CuPy sparse matrices does not incur data transfer; it is copied inside the GPU device.
+
 Sparse matrix classes
 ---------------------
 
