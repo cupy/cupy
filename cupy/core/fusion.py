@@ -19,7 +19,7 @@ _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 _dtype_to_ctype = {
