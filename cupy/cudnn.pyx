@@ -832,7 +832,7 @@ def rnn_backward_weights(
 
     cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
     cdef memory.MemoryPointer workspace = memory.alloc(work_size)
-    
+
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
     dw[...] = 0
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
