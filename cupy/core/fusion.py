@@ -173,9 +173,10 @@ class FusionOp(object):
         code += ''.join('{} = static_cast< {} >(v{});\n'.format(s, t, v.index)
                         for v, s, t in args_list)
         code += self.submodule.fcall(args_sub)
-        code += ''.join('v{} = static_cast< {} >({});\n'.format(v.index, t, s)
-                        for v, s, t in
-                        args_list[len(self.submodule.in_params):])
+        code += ''.join('v{} = static_cast< {} >({});\n'.format(
+            v.index, _dtype_to_ctype[v.dtype], s)
+            for v, s, _ in
+            args_list[len(self.submodule.in_params):])
         return code
 
 
