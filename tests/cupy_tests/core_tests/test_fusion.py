@@ -469,7 +469,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('divide')
+            self.check_binary_without_bool('divide')
 
     def test_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -484,7 +484,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_true_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('true_divide')
+            self.check_binary_without_bool('true_divide')
 
     def test_true_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
