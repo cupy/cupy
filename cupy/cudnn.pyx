@@ -538,7 +538,7 @@ cdef class _DescriptorArray:
     @property
     def data(self):
         return <size_t>&self._value[0]
-    
+
 
 cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
     """Make an array of pointers denoting pointers of tensor descriptors.
@@ -571,7 +571,7 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
 
 
 cdef size_t _get_rnn_workspace_size(
-    Descriptor rnn_desc, int length, _DescriptorArray descs):
+        Descriptor rnn_desc, int length, _DescriptorArray descs):
     cdef size_t handle = get_handle()
     cdef size_t work_size = cudnn.getRNNWorkspaceSize(
         handle, rnn_desc.value, length, descs.data)
@@ -633,7 +633,7 @@ def rnn_forward_inference(
 
     cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
     cdef memory.MemoryPointer workspace = memory.alloc(work_size)
-    
+
     cudnn.RNNForwardInference(
         handle, rnn_desc.value, length,
         xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
@@ -700,7 +700,7 @@ def rnn_forward_training(
 
     cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
     cdef memory.MemoryPointer workspace = memory.alloc(work_size)
-    
+
     cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
         handle, rnn_desc.value, length, xs_descs.data)
     cdef core.ndarray reserve_space = core.ndarray((reserve_size,), dtype='b')
@@ -747,17 +747,19 @@ def rnn_backward_data(
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
-    cdef _DescriptorArray dys_descs = _make_tensor_descriptor_array(dys, lengths)
-    
+    cdef _DescriptorArray dys_descs = _make_tensor_descriptor_array(
+        dys, lengths)
+
     cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
     cdef memory.MemoryPointer workspace = memory.alloc(work_size)
-    
+
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
-    
+
     cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
-    cdef _DescriptorArray dxs_descs = _make_tensor_descriptor_array(dxs, lengths)
+    cdef _DescriptorArray dxs_descs = _make_tensor_descriptor_array(
+        dxs, lengths)
     cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
 
