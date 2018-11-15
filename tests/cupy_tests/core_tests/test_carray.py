@@ -48,27 +48,28 @@ class TestCArray(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"size": 2 ** 32 + 1024},
-    {"size": 2 ** 32},
-    {"size": 2 ** 32 - 1024},
-    {"size": 2 ** 31 + 1024},
-    {"size": 2 ** 31},
     {"size": 2 ** 31 - 1024},
+    {"size": 2 ** 31},
+    {"size": 2 ** 31 + 1024},
+    {"size": 2 ** 32 - 1024},
+    {"size": 2 ** 32},
+    {"size": 2 ** 32 + 1024},
 )
 @testing.slow
 class TestCArray32BitBoundary(unittest.TestCase):
     # This test case is intended to confirm CArray indexing work correctly
-    # with arrays whose size is so large that it crosses the 32-bit boundary.
+    # with input/output arrays whose size is so large that it crosses the
+    # 32-bit boundary (in terms of both number of elements and size in bytes).
+    # This test requires approx. 8 GiB GPU memory to run.
     # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
 
     def tearDown(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
-    @testing.numpy_cupy_equal()
-    def test(self, xp):
+    def test(self):
         # Elementwise
-        a = xp.ones(self.size, dtype='b')
+        a = cupy.full((1, self.size), 7, dtype=cupy.int8)
         # Reduction
-        result = a.sum()
-        return result
+        result = a.sum(axis=0, dtype=cupy.int8)
+        assert result.sum() == self.size * 7
