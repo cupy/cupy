@@ -901,6 +901,8 @@ cpdef bint is_tensor_core_available(dtype) except *:
 cdef class DropoutStates:
 
     cdef public:
+        # TODO(unno): Make these attributes private. This is for backward
+        # compatibility.
         memory.MemoryPointer _states
         Descriptor _desc
 
