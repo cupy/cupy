@@ -576,15 +576,30 @@ cpdef bint is_tensor_core_available(dtype) except *:
 class DropoutStates(object):
 
     def __init__(self, handle, seed):
-        state_size = cudnn.dropoutGetStatesSize(handle)
+        cdef size_t cudnn_handle
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        state_size = cudnn.dropoutGetStatesSize(cudnn_handle)
         self._states = memory.alloc(state_size)
         self._desc = create_dropout_descriptor(
-            handle, 0., self._states.ptr,
+            cudnn_handle, 0., self._states.ptr,
             state_size, seed)
+
+    def set_dropout_ratio(self, dropout_ratio):
+        cudnn_handle = get_handle()
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
     def forward(self, handle, core.ndarray x, dropout_ratio):
         cdef core.ndarray y, reserve_space
-        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+        cdef size_t cudnn_handle
+        # This is for backward compatibility.
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         x = core.ascontiguousarray(x)
         y = core.ndarray(x._shape, x.dtype)
@@ -595,7 +610,7 @@ class DropoutStates(object):
             reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc)
             reserve_space = core.ndarray((reserve_size,), 'b')
 
-            cudnn.dropoutForward(handle, self._desc.value,
+            cudnn.dropoutForward(cudnn_handle, self._desc.value,
                                  x_desc, x.data.ptr, x_desc, y.data.ptr,
                                  reserve_space.data.ptr, reserve_size)
         finally:
@@ -605,7 +620,13 @@ class DropoutStates(object):
     def backward(self, handle, core.ndarray dy, dropout_ratio,
                  core.ndarray reserve_space):
         cdef core.ndarray dx
-        set_dropout_descriptor(self._desc, handle, dropout_ratio)
+        cdef size_t cudnn_handle
+        # This is for backward compatibility.
+        if handle is None:
+            cudnn_handle = get_handle()
+        else:
+            cudnn_handle = handle
+        set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         dy = core.ascontiguousarray(dy)
         dx = core.ndarray(dy._shape, dy.dtype)
@@ -613,7 +634,7 @@ class DropoutStates(object):
         dy_desc = cudnn.createTensorDescriptor()
         try:
             _create_tensor_descriptor_as4darray(dy_desc, dy)
-            cudnn.dropoutBackward(handle, self._desc.value,
+            cudnn.dropoutBackward(cudnn_handle, self._desc.value,
                                   dy_desc, dy.data.ptr,
                                   dy_desc, dx.data.ptr,
                                   reserve_space.data.ptr,
