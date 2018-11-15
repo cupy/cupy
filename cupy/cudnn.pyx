@@ -570,12 +570,12 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
     return descs
 
 
-cdef core.ndarray _make_rnn_workspace(
+cdef size_t _get_rnn_workspace_size(
     Descriptor rnn_desc, int length, _DescriptorArray descs):
     cdef size_t handle = get_handle()
     cdef size_t work_size = cudnn.getRNNWorkspaceSize(
         handle, rnn_desc.value, length, descs.data)
-    return core.ndarray((work_size,), dtype='b')
+    return work_size
 
 
 def rnn_forward_inference(
@@ -631,15 +631,15 @@ def rnn_forward_inference(
         cy_ptr = 0
         cy_desc_value = 0
 
-    cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, xs_descs)
+    cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer workspace = memory.alloc(work_size)
     
     cudnn.RNNForwardInference(
         handle, rnn_desc.value, length,
         xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_ptr, workspace.data.ptr, workspace.size)
+        cy_desc_value, cy_ptr, workspace.ptr, work_size)
 
     return hy, cy, ys
 
@@ -698,8 +698,8 @@ def rnn_forward_training(
         cy_ptr = 0
         cy_desc_value = 0
 
-    cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, xs_descs)
+    cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer workspace = memory.alloc(work_size)
     
     cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
         handle, rnn_desc.value, length, xs_descs.data)
@@ -709,7 +709,7 @@ def rnn_forward_training(
         xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_ptr, workspace.data.ptr, workspace.size,
+        cy_desc_value, cy_ptr, workspace.ptr, work_size,
         reserve_space.data.ptr, reserve_size)
 
     return reserve_space, hy, cy, ys
@@ -749,9 +749,9 @@ def rnn_backward_data(
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef _DescriptorArray dys_descs = _make_tensor_descriptor_array(dys, lengths)
     
-    cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, xs_descs)
-
+    cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer workspace = memory.alloc(work_size)
+    
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -790,7 +790,7 @@ def rnn_backward_data(
         dcy_desc_value, dcy_ptr, w_desc.value, w.data.ptr,
         hx_desc.value, hx.data.ptr, cx_desc_value, cx_ptr,
         dxs_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
-        dcx_desc_value, dcx_ptr, workspace.data.ptr, workspace.size,
+        dcx_desc_value, dcx_ptr, workspace.ptr, work_size,
         reserve_space.data.ptr, reserve_space.size)
 
     return dhx, dcx, dxs
@@ -825,9 +825,9 @@ def rnn_backward_weights(
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
 
-    cdef core.ndarray workspace = _make_rnn_workspace(
-        rnn_desc, length, xs_descs)
-
+    cdef size_t work_size = _get_rnn_workspace_size(rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer workspace = memory.alloc(work_size)
+    
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
     dw[...] = 0
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
@@ -836,7 +836,7 @@ def rnn_backward_weights(
         handle, rnn_desc.value, length,
         xs_descs.data, xs.data.ptr,
         hx_desc.value, hx.data.ptr, ys_descs.data, ys.data.ptr,
-        workspace.data.ptr, workspace.size, dw_desc.value, dw.data.ptr,
+        workspace.ptr, work_size, dw_desc.value, dw.data.ptr,
         reserve_space.data.ptr, reserve_space.size)
     return dw
 
