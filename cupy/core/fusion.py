@@ -8,6 +8,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy.core._dtype import get_dtype
 from cupy.core import core
 
 
@@ -104,9 +105,13 @@ class _FusionVarCUDA(object):
         self.index = index
         self.dtype = dtype
         self.const = const
+        self.mutable = False
 
     def __repr__(self):
         return 'v{}'.format(self.index)
+
+    def mutate(self):
+        self.mutable = True
 
     def declaration(self):
         c = self.const
@@ -126,7 +131,11 @@ class _FusionVarCUDA(object):
             raise TypeError('Invalid constant type: {}'.format(type(c)))
         return 'const {} v{} {};\n'.format(ctype, self.index, init)
 
-    def declaration_param(self):
+    def declaration_in_param(self):
+        non_const = '_non_const ' if self.mutable else ''
+        return '{}{} v{}'.format(non_const, self.dtype, self.index)
+
+    def declaration_out_param(self):
         return '{} v{}'.format(self.dtype, self.index)
 
 
@@ -340,6 +349,18 @@ class FusionVarPython(object):
     def copy(self):
         return cupy.copy(self)
 
+    def astype(self, dtype, order=None, casting=None, subok=None, copy=True):
+        dtype = get_dtype(dtype)
+        if order is not None:
+            raise TypeError('order is not supported yet')
+        if casting is not None:
+            raise TypeError('casting is not supported yet')
+        if subok is not None:
+            raise TypeError('subok is not supported yet')
+        if not copy and self.dtype == dtype:
+            return self
+        return _dtype_to_astype(dtype)(self)
+
 
 class _FusionHistory(object):
 
@@ -540,11 +561,9 @@ class _FusionHistory(object):
                     if i >= len(out_vars):
                         v = self._fresh_local(out_dtypes[i])
                         out_vars.append(v)
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -552,6 +571,8 @@ class _FusionHistory(object):
                             'according to the casting rule '
                             '"same_kind"'.format(
                                 out_dtypes[i].char, out_vars[i].dtype.char))
+                    v.mutate()
+                    ret.append(FusionVarPython(v, self._has_reduction()))
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, t in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
@@ -667,9 +688,9 @@ class _FusionHistory(object):
         out_dtypes = [_.dtype for _ in out_pvars]
         out_params = [self._fresh_premap_param(t) for t in out_dtypes]
 
-        in_params_code = ', '.join('_non_const ' + var.declaration_param()
+        in_params_code = ', '.join(var.declaration_in_param()
                                    for var in in_params)
-        out_params_code = ', '.join(var.declaration_param()
+        out_params_code = ', '.join(var.declaration_out_param()
                                     for var in out_params)
 
         operation = self._emit_operation_code()
@@ -848,3 +869,23 @@ def _reduction_wrapper(fusion_op):
                 True)
         return functools.update_wrapper(call, f)
     return func
+
+
+def _create_astype_ufunc(dtype):
+    name = 'astype_{}'.format(dtype)
+    rules = tuple(['{}->{}'.format(cast_from.char, dtype.char)
+                   for cast_from in _dtype_list])
+    command = 'out0 = static_cast<{}>(in0)'.format(_dtype_to_ctype[dtype])
+    return core.create_ufunc(name, rules, command)
+
+
+_dtype_to_astype_dict = None
+
+
+def _dtype_to_astype(dtype):
+    global _dtype_to_astype_dict
+    if _dtype_to_astype_dict is None:
+        _dtype_to_astype_dict = dict([
+            (dt, _create_astype_ufunc(dt))
+            for dt in _dtype_list])
+    return _dtype_to_astype_dict[dtype]

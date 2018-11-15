@@ -23,6 +23,11 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 
 
+# We can't directly import cupy.core.fusion at module level due to cyclic
+# imports. Importing it every time at the point of use is too slow.
+_fusion_module = None
+
+
 cpdef _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
@@ -149,7 +154,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = args[i]
             arr = arr.view()
             newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
-            arr._set_shape_and_strides(newshape, newstrides, False)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            arr._set_shape_and_strides(newshape, newstrides, False, True)
             args[i] = arr
         return total_size,
 
@@ -181,7 +187,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newstrides.clear()
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
-        arr._set_shape_and_strides(newshape, newstrides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        arr._set_shape_and_strides(newshape, newstrides, False, True)
         args[i] = arr
     return tuple(newshape)
 
@@ -529,6 +536,11 @@ cdef class ElementwiseKernel:
             shape = size,
             is_size_specified = True
 
+        for i in range(self.nin):
+            if not (self.params[i].is_const or
+                    internal.vector_equal(args[i].shape, shape)):
+                raise ValueError('Shape is mismatched')
+
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
@@ -754,9 +766,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        from cupy.core import fusion
+        global _fusion_module
+        if _fusion_module is None:
+            from cupy.core import fusion as _fusion_module
 
-        thread_local = fusion._thread_local
+        thread_local = _fusion_module._thread_local
         if hasattr(thread_local, 'history'):
             return thread_local.history.call_ufunc(self, args, kwargs)
 

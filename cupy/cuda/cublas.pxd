@@ -202,6 +202,12 @@ cpdef strsm(size_t handle, int side, int uplo, int trans, int diag,
 cpdef dtrsm(size_t handle, int side, int uplo, int trans, int diag,
             int m, int n, double alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
+cpdef ctrsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, float complex alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
+cpdef ztrsm(size_t handle, int side, int uplo, int trans, int diag,
+            int m, int n, double complex alpha, size_t Aarray, int lda,
+            size_t Barray, int ldb)
 
 ###############################################################################
 # BLAS extension
@@ -223,8 +229,21 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
 cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
+cpdef cgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
+cpdef zgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
 
 cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef dgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef cgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)
+cpdef zgetriBatched(size_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)
 cpdef gemmEx(size_t handle, int transa, int transb, int m, int n, int k,
