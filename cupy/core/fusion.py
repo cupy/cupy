@@ -159,12 +159,16 @@ class FusionOp(object):
     def code(self):
         args_sub = ['v{}_{}'.format(self.index, i)
                     for i in six.moves.range(len(self.args))]
-        args_list = list(zip(self.args, args_sub))
+        ctypes = [_dtype_to_ctype[t] for t in self.dtypes]
+        args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
-        code += ''.join('{} = v{};\n'.format(s, v.index) for v, s in args_list)
+        code += ''.join('{} = static_cast< {} >(v{});\n'.format(s, t, v.index)
+                        for v, s, t in args_list)
         code += self.submodule.fcall(args_sub)
-        code += ''.join('v{} = {};\n'.format(v.index, s)
-                        for v, s in args_list[len(self.submodule.in_params):])
+        code += ''.join('v{} = static_cast< {} >({});\n'.format(
+            v.index, _dtype_to_ctype[v.dtype], s)
+            for v, s, _ in
+            args_list[len(self.submodule.in_params):])
         return code
 
 
