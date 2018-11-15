@@ -898,7 +898,7 @@ cpdef bint is_tensor_core_available(dtype) except *:
             int(device.get_compute_capability()) == 70)
 
 
-cdef class DropoutStates(object):
+cdef class DropoutStates:
 
     cdef public:
         memory.MemoryPointer _states
