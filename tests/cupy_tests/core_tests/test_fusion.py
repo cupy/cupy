@@ -10,11 +10,11 @@ from cupy import testing
 
 def fusion_default_array_equal():
     def deco(func):
-        def wrapper(self_x, name, xp, dtype):
+        def wrapper(self_x, name, xp, **dtypes):
             @cupy.fuse()
             def f(*args):
                 return getattr(xp, name)(*args)
-            args = func(self_x, name, xp, dtype)
+            args = func(self_x, name, xp, **dtypes)
             return f(*args)
         return wrapper
     return deco
@@ -60,12 +60,13 @@ class TestFusionElementwise(unittest.TestCase):
 @testing.gpu
 class TestFusionComparison(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     def test_greater(self):
@@ -127,12 +128,13 @@ class TestFusionOps(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     def test_logical_and(self):
@@ -158,12 +160,13 @@ class TestFusionTrigonometric(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     @testing.for_dtypes(['e', 'f', 'd'])
@@ -293,12 +296,13 @@ class TestFusionExplog(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     def test_exp(self):
@@ -342,12 +346,13 @@ class TestFusionFloating(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     @testing.for_float_dtypes(name='ftype')
@@ -401,28 +406,30 @@ class TestFusionArithmetic(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return (a,)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(
+        no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary_without_complex(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary_without_complex(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes_combination(
+        no_bool=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary_without_bool(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_binary_without_bool(self, name, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3), xp, dtype1)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
@@ -432,20 +439,22 @@ class TestFusionArithmetic(unittest.TestCase):
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         return (a,)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
+    @testing.for_dtypes_combination(
+        ['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'], names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary_negative(self, name, xp, dtype):
-        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
-        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+    def check_binary_negative(self, name, xp, dtype1, dtype2):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype1)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype2)
         return a, b
 
-    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.for_dtypes_combination(
+        ['e', 'f', 'd'], names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary_negative_float(self, name, xp, dtype):
-        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
-        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
+    def check_binary_negative_float(self, name, xp, dtype1, dtype2):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype1)
+        b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype2)
         return a, b
 
     def test_add(self):
