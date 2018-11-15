@@ -415,10 +415,10 @@ class TestFusionArithmetic(unittest.TestCase):
         return a, b
 
     @testing.for_all_dtypes_combination(
-        no_complex=True, names=['dtype1', 'dtype2'])
+        no_bool=True, no_complex=True, names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     @fusion_default_array_equal()
-    def check_binary_without_complex(self, name, xp, dtype1, dtype2):
+    def check_binary_without_complex_bool(self, name, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3), xp, dtype1)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype2)
         return a, b
@@ -492,7 +492,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_floor_divide(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_without_complex('floor_divide')
+            self.check_binary_without_complex_bool('floor_divide')
 
     def test_floor_divide_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -500,7 +500,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_without_complex('fmod')
+            self.check_binary_without_complex_bool('fmod')
 
     def test_fmod_negative(self):
         with testing.NumpyError(divide='ignore'):
@@ -523,7 +523,7 @@ class TestFusionArithmetic(unittest.TestCase):
 
     def test_remainder(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_without_complex('remainder')
+            self.check_binary_without_complex_bool('remainder')
 
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
