@@ -11,8 +11,7 @@ from cupy import testing
 @testing.gpu
 class TestArrayElementwiseOp(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'],
-                                        no_complex=True)
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
                               no_bool=False, no_complex=False):
