@@ -1435,23 +1435,23 @@ class TestFusionKernelName(unittest.TestCase):
 @testing.gpu
 class TestFusionPythonConstant(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
-    def test_python_scalar(self, xp, dtype):
+    def test_python_scalar(self, xp, dtype1, dtype2):
 
         @cupy.fuse()
         def f(x):
-            return x * numpy.asscalar(dtype(1))
-        return f(testing.shaped_arange((1,), xp, dtype))
+            return x * numpy.asscalar(dtype2(1))
+        return f(testing.shaped_arange((1,), xp, dtype1))
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
-    def test_numpy_scalar(self, xp, dtype):
+    def test_numpy_scalar(self, xp, dtype1, dtype2):
 
         @cupy.fuse()
         def f(x):
-            return x * dtype(1)
-        return f(testing.shaped_arange((1,), xp, dtype))
+            return x * dtype2(1)
+        return f(testing.shaped_arange((1,), xp, dtype1))
 
 
 @testing.gpu

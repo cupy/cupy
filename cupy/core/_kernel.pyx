@@ -52,7 +52,7 @@ cdef dict _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 
