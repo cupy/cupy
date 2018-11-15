@@ -1,8 +1,10 @@
 Array Manipulation Routines
 ===========================
 
-Basic manipulations
--------------------
+.. https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html
+
+Basic operations
+----------------
 
 .. autosummary::
    :toctree: generated/
@@ -11,8 +13,8 @@ Basic manipulations
    cupy.copyto
 
 
-Shape manipulation
-------------------
+Changing array shape
+--------------------
 
 .. autosummary::
    :toctree: generated/
@@ -22,8 +24,8 @@ Shape manipulation
    cupy.ravel
 
 
-Transposition
--------------
+Transpose-like operations
+-------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -32,10 +34,11 @@ Transposition
    cupy.moveaxis
    cupy.rollaxis
    cupy.swapaxes
+   cupy.ndarray.T
    cupy.transpose
 
 
-Edit dimensionalities
+Changing number of dimensions
 ---------------------
 
 .. autosummary::
@@ -46,8 +49,8 @@ Edit dimensionalities
    cupy.atleast_2d
    cupy.atleast_3d
    cupy.broadcast
-   cupy.broadcast_arrays
    cupy.broadcast_to
+   cupy.broadcast_arrays
    cupy.expand_dims
    cupy.squeeze
 
@@ -65,8 +68,8 @@ Changing kind of array
    cupy.ascontiguousarray
 
 
-Joining arrays along axis
--------------------------
+Joining arrays
+--------------
 
 .. autosummary::
    :toctree: generated/
@@ -80,8 +83,8 @@ Joining arrays along axis
    cupy.vstack
 
 
-Splitting arrays along axis
----------------------------
+Splitting arrays
+----------------
 
 .. autosummary::
    :toctree: generated/
@@ -94,7 +97,7 @@ Splitting arrays along axis
    cupy.vsplit
 
 
-Repeating part of arrays along axis
+Tiling arrays
 -----------------------------------
 
 .. autosummary::
