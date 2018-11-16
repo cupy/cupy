@@ -1475,6 +1475,48 @@ class TestFusionScalar(unittest.TestCase):
         y = dtype2(1)
         return f(x, y)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4, 4), xp, dtype)
+        y = testing.shaped_arange((4,), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_non_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4,), xp, dtype)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_scalar_update_with_broadcast(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = numpy.dtype(dtype).type(1)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
+
 
 @testing.gpu
 class TestFusionReturnsConstantValue(unittest.TestCase):
