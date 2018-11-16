@@ -1576,17 +1576,17 @@ class TestFusionComposition(unittest.TestCase):
 
 class TestFusionCompile(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_compile_from_dtypes(self, xp, dtype):
-        @cupy.fuse()
-        def f(x, y):
-            return x - y * 2
+    # @testing.for_all_dtypes(no_bool=True)
+    # @testing.numpy_cupy_array_equal()
+    # def test_compile_from_dtypes(self, xp, dtype):
+    #     @cupy.fuse()
+    #     def f(x, y):
+    #         return x - y * 2
 
-        x = testing.shaped_arange((3, 3), xp, dtype)
-        y = testing.shaped_arange((3, 3), xp, dtype)
-        f._compile_from_dtypes(x.dtype, y.dtype)
-        return f(x, y)
+    #     x = testing.shaped_arange((3, 3), xp, dtype)
+    #     y = testing.shaped_arange((3, 3), xp, dtype)
+    #     f._compile_from_dtypes(x.dtype, y.dtype)
+    #     return f(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
