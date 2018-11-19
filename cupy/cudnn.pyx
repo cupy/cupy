@@ -468,9 +468,12 @@ def create_ctc_loss_descriptor(data_type):
     return desc
 
 
-def ctc_loss(core.ndarray probs, labels_ptr,
-             label_length_ptr, input_length_ptr, int algo):
+def ctc_loss(core.ndarray probs, labels,
+             label_length, input_length, int algo):
     batch_size = probs.shape[1]
+    labels_ptr = labels.ctypes.data
+    label_length_ptr = label_length.ctypes.data
+    input_length_ptr = input_length.ctypes.data
     handle = get_handle()
     data_type = get_data_type(probs.dtype)
     ctc_desc = Descriptor(cudnn.createCTCLossDescriptor(),
