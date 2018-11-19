@@ -450,10 +450,10 @@ cdef extern from "cupy_cudnn.h" nogil:
     # CTC
     int cudnnCreateCTCLossDescriptor(CTCLossDescriptor* ctcLossDesc)
     int cudnnDestroyCTCLossDescriptor(CTCLossDescriptor ctcLossDesc)
-    int cudnnSetCTCLossDescriptor(CTCLossDescriptor ctcLossDesc,
-        DataType dataType)
-    int cudnnGetCTCLossDescriptor(CTCLossDescriptor ctcLossDesc,
-        DataType* dataType)
+    int cudnnSetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType dataType)
+    int cudnnGetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType* dataType)
     int cudnnGetCTCLossWorkspaceSize(
         Handle handle, TensorDescriptor probsDesc,
         TensorDescriptor gradientsDesc, int* labels,
@@ -1724,8 +1724,8 @@ cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType):
 
 cpdef getCTCLossDescriptor(size_t ctcLossDesc):
     cdef DataType compType
-    status = cudnnGetCTCLossDescriptor(<CTCLossDescriptor>ctcLossDesc,
-        &compType)
+    status = cudnnGetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, &compType)
     check_status(status)
     return compType
 
