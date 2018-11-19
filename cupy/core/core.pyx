@@ -3782,7 +3782,7 @@ cdef ndarray _mat_ptrs(ndarray a):
 
 cpdef int _get_stride_for_strided_batched_gemm(ndarray a):
     if a.ndim > 2:
-        return a.strides[-3] / a.itemsize
+        return a.strides[-3] // a.itemsize
     else:
         return a.shape[-2] * a.shape[-1]
 
