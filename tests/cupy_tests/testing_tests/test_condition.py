@@ -3,12 +3,16 @@ import unittest
 from cupy.testing import condition
 
 
+SKIP_REASON = 'test skip reason'
+
+
 # The test fixtures of this TestCase is used to be decorated by
 # decorator in test. So we do not run them alone.
 class MockUnitTest(unittest.TestCase):
 
     failure_case_counter = 0
     success_case_counter = 0
+    skip_case_counter = 0
     probabilistic_case_counter = 0
     probabilistic_case_success_counter = 0
     probabilistic_case_failure_counter = 0
@@ -17,6 +21,7 @@ class MockUnitTest(unittest.TestCase):
     def clear_counter():
         MockUnitTest.failure_case_counter = 0
         MockUnitTest.success_case_counter = 0
+        MockUnitTest.skip_case_counter = 0
         MockUnitTest.probabilistic_case_counter = 0
         MockUnitTest.probabilistic_case_success_counter = 0
         MockUnitTest.probabilistic_case_failure_counter = 0
@@ -28,6 +33,10 @@ class MockUnitTest(unittest.TestCase):
     def success_case(self):
         MockUnitTest.success_case_counter += 1
         self.assertTrue(True)
+
+    def skip_case(self):
+        MockUnitTest.skip_case_counter += 1
+        self.skipTest(SKIP_REASON)
 
     def error_case(self):
         raise Exception()
@@ -57,6 +66,15 @@ def _should_fail(self, f):
 
 def _should_pass(self, f):
     f(self.unit_test)
+
+
+def _should_skip(self, f):
+    try:
+        f(self.unit_test)
+        self.fail(
+            'SkipTest is expected to be raised, but none is raised')
+    except unittest.SkipTest as e:
+        self.assertIn(SKIP_REASON, str(e))
 
 
 class TestRepeatWithSuccessAtLeast(unittest.TestCase):
@@ -131,6 +149,11 @@ class TestRepeat(unittest.TestCase):
         _should_pass(self, f)
         self.assertEqual(self.unit_test.success_case_counter, 10)
 
+    def test_skip_case(self):
+        f = self._decorate(MockUnitTest.skip_case, 10)
+        _should_skip(self, f)
+        self.assertEqual(self.unit_test.skip_case_counter, 1)
+
     def test_probabilistic_case(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10)
         _should_fail(self, f)
@@ -158,6 +181,11 @@ class TestRetry(unittest.TestCase):
         f = self._decorate(MockUnitTest.success_case, 10)
         _should_pass(self, f)
         self.assertLessEqual(self.unit_test.success_case_counter, 10)
+
+    def test_skip_case(self):
+        f = self._decorate(MockUnitTest.skip_case, 10)
+        _should_skip(self, f)
+        self.assertEqual(self.unit_test.skip_case_counter, 1)
 
     def test_probabilistic_case(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10)

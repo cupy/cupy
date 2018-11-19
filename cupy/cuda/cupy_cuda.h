@@ -9,16 +9,6 @@
 #include <cuda.h>
 #endif
 
-#ifdef __APPLE__
-#if CUDA_VERSION == 7050
-// To avoid redefinition error of cudaDataType_t
-// caused by including library_types.h.
-// https://github.com/pfnet/chainer/issues/1700
-// https://github.com/pfnet/chainer/pull/1819
-#define __LIBRARY_TYPES_H__
-#endif // #if CUDA_VERSION == 7050
-#endif // #ifdef __APPLE__
-
 #ifndef CUPY_NO_CUDA
 #include <cublas_v2.h>
 #include <cuda_profiler_api.h>
@@ -29,63 +19,6 @@
 #endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
-
-#if CUDA_VERSION < 8000
-#if CUDA_VERSION >= 7050
-typedef cublasDataType_t cudaDataType;
-#else
-enum cudaDataType_t {};
-typedef enum cudaDataType_t cudaDataType;
-#endif // #if CUDA_VERSION >= 7050
-#endif // #if CUDA_VERSION < 8000
-
-
-#if CUDA_VERSION < 7050
-cublasStatus_t cublasSgemmEx(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-#endif // #if CUDA_VERSION < 7050
-
-
-#if CUDA_VERSION < 8000
-
-enum cudaMemoryAdvise {};
-
-cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
-                                 int dstDevice, cudaStream_t stream) {
-    return cudaErrorUnknown;
-}
-
-cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
-                          enum cudaMemoryAdvise advice, int device) {
-    return cudaErrorUnknown;
-}
-
-typedef enum {} cublasGemmAlgo_t;
-
-cublasStatus_t cublasSgemmStridedBatched(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasDgemmStridedBatched(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasCgemmStridedBatched(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasZgemmStridedBatched(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasGemmEx(...) {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-#endif // #if CUDA_VERSION < 8000
-
 
 #if CUDA_VERSION < 9000
 

@@ -242,7 +242,7 @@ cdef class ndarray:
 
     @property
     def nbytes(self):
-        """Size of whole elements in bytes.
+        """Total size of all elements in bytes.
 
         It does not count skips between elements.
 
@@ -3948,7 +3948,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     handle = cuda.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
-    if not use_broadcast and _cuda_runtime_version >= 8000:
+    if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(out_view)
@@ -4075,8 +4075,7 @@ cpdef ndarray tensordot_core(
     if _cuda_runtime_version is None:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    use_sgemmEx = (_cuda_runtime_version >= 7500 and
-                   a.dtype == 'e' and b.dtype == 'e' and
+    use_sgemmEx = (a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
     use_tensor_core = (use_sgemmEx and
                        _cuda_runtime_version >= 9000 and
@@ -4152,17 +4151,11 @@ cpdef ndarray tensordot_core(
                 b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
                 runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
-        if _cuda_runtime_version >= 7500:
-            cublas.sgemmEx(
-                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-                b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
-                c.data.ptr, runtime.CUDA_R_32F, <int>m)
-        else:
-            cublas.sgemm(
-                handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
-                b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr,
-                <int>m)
+        cublas.sgemmEx(
+            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
+            a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
+            c.data.ptr, runtime.CUDA_R_32F, <int>m)
     elif dtype == 'd':
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,

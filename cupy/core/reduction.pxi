@@ -32,17 +32,18 @@ extern "C" __global__ void ${name}(${params}) {
   unsigned int _tid = threadIdx.x;
 
   int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
-  int _j_offset = _J_offset * _out_ind.size();
+  ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
   int _J_stride = ${block_size} >> __popc(_block_stride - 1);
-  long long _j_stride = (long long)_J_stride * _out_ind.size();
+  ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
 
-  for (int _i_base = blockIdx.x * _block_stride;
+  for (ptrdiff_t _i_base = (ptrdiff_t)blockIdx.x * _block_stride;
        _i_base < _out_ind.size();
-       _i_base += gridDim.x * _block_stride) {
+       _i_base += (ptrdiff_t)gridDim.x * _block_stride) {
     _type_reduce _s = _type_reduce(${identity});
-    int _i = _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
+    ptrdiff_t _i =
+        _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
     int _J = _J_offset;
-    for (long long _j = _i + _j_offset; _j < _in_ind.size();
+    for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
          _j += _j_stride, _J += _J_stride) {
       _in_ind.set(_j);
       ${input_expr}

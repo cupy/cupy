@@ -19,7 +19,7 @@ _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 _dtype_to_ctype = {
@@ -105,9 +105,13 @@ class _FusionVarCUDA(object):
         self.index = index
         self.dtype = dtype
         self.const = const
+        self.mutable = False
 
     def __repr__(self):
         return 'v{}'.format(self.index)
+
+    def mutate(self):
+        self.mutable = True
 
     def declaration(self):
         c = self.const
@@ -127,7 +131,11 @@ class _FusionVarCUDA(object):
             raise TypeError('Invalid constant type: {}'.format(type(c)))
         return 'const {} v{} {};\n'.format(ctype, self.index, init)
 
-    def declaration_param(self):
+    def declaration_in_param(self):
+        non_const = '_non_const ' if self.mutable else ''
+        return '{}{} v{}'.format(non_const, self.dtype, self.index)
+
+    def declaration_out_param(self):
         return '{} v{}'.format(self.dtype, self.index)
 
 
@@ -159,12 +167,16 @@ class FusionOp(object):
     def code(self):
         args_sub = ['v{}_{}'.format(self.index, i)
                     for i in six.moves.range(len(self.args))]
-        args_list = list(zip(self.args, args_sub))
+        ctypes = [_dtype_to_ctype[t] for t in self.dtypes]
+        args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
-        code += ''.join('{} = v{};\n'.format(s, v.index) for v, s in args_list)
+        code += ''.join('{} = static_cast< {} >(v{});\n'.format(s, t, v.index)
+                        for v, s, t in args_list)
         code += self.submodule.fcall(args_sub)
-        code += ''.join('v{} = {};\n'.format(v.index, s)
-                        for v, s in args_list[len(self.submodule.in_params):])
+        code += ''.join('v{} = static_cast< {} >({});\n'.format(
+            v.index, _dtype_to_ctype[v.dtype], s)
+            for v, s, _ in
+            args_list[len(self.submodule.in_params):])
         return code
 
 
@@ -553,11 +565,9 @@ class _FusionHistory(object):
                     if i >= len(out_vars):
                         v = self._fresh_local(out_dtypes[i])
                         out_vars.append(v)
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
                                         'same_kind'):
                         v = out_vars[i]
-                        ret.append(FusionVarPython(v, self._has_reduction()))
                     else:
                         raise TypeError(
                             'output (typecode \'{}\') could not be coerced '
@@ -565,6 +575,8 @@ class _FusionHistory(object):
                             'according to the casting rule '
                             '"same_kind"'.format(
                                 out_dtypes[i].char, out_vars[i].dtype.char))
+                    v.mutate()
+                    ret.append(FusionVarPython(v, self._has_reduction()))
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, t in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
@@ -680,9 +692,9 @@ class _FusionHistory(object):
         out_dtypes = [_.dtype for _ in out_pvars]
         out_params = [self._fresh_premap_param(t) for t in out_dtypes]
 
-        in_params_code = ', '.join('_non_const ' + var.declaration_param()
+        in_params_code = ', '.join(var.declaration_in_param()
                                    for var in in_params)
-        out_params_code = ', '.join(var.declaration_param()
+        out_params_code = ', '.join(var.declaration_out_param()
                                     for var in out_params)
 
         operation = self._emit_operation_code()

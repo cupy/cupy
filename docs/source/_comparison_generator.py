@@ -44,7 +44,11 @@ def _generate_comparison_rst(
     ]
     for f in sorted(base_funcs):
         base_cell = base_fmt.format(f)
-        cp_cell = cp_fmt.format(f) if f in cp_funcs else r'\-'
+        cp_cell = r'\-'
+        if f in cp_funcs:
+            cp_cell = cp_fmt.format(f)
+            if getattr(base_obj, f) is getattr(cp_obj, f):
+                cp_cell = '{} (*alias of* {})'.format(cp_cell, base_cell)
         line = '   {}, {}'.format(base_cell, cp_cell)
         buf.append(line)
 

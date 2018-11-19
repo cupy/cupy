@@ -57,7 +57,7 @@ cdef dict _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 
@@ -535,6 +535,11 @@ cdef class ElementwiseKernel:
         if size != -1:
             shape = size,
             is_size_specified = True
+
+        for i in range(self.nin):
+            if not (self.params[i].is_const or
+                    internal.vector_equal(args[i].shape, shape)):
+                raise ValueError('Shape is mismatched')
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
