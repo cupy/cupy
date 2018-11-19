@@ -374,7 +374,7 @@ cdef class ndarray:
             if not copy and (
                     order_char == b'K' or
                     order_char == b'A' and (self._c_contiguous or
-                                           self._f_contiguous) or
+                                            self._f_contiguous) or
                     order_char == b'C' and self._c_contiguous or
                     order_char == b'F' and self._f_contiguous):
                 return self
