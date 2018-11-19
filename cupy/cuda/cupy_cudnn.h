@@ -296,6 +296,26 @@ cudnnStatus_t cudnnActivationBackward_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 typedef enum {} cudnnMathType_t;
 
 cudnnStatus_t cudnnSetConvolutionMathType(...) {
