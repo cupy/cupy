@@ -24,6 +24,7 @@ typedef enum {} cudnnActivationMode_t;
 typedef enum {} cudnnConvolutionFwdAlgo_t;
 typedef enum {} cudnnConvolutionFwdPreference_t;
 typedef enum {} cudnnConvolutionMode_t;
+typedef enum {} cudnnCTCLossAlgo_t;
 typedef enum {} cudnnDataType_t;
 typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
@@ -33,6 +34,7 @@ typedef enum {} cudnnErrQueryMode_t;
 typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
 typedef void* cudnnConvolutionDescriptor_t;
+typedef void* cudnnCTCLossDescriptor_t;
 typedef void* cudnnFilterDescriptor_t;
 typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
