@@ -330,7 +330,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
-                        str casting):
+                        casting):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
