@@ -7,7 +7,7 @@ logical_and = core.create_comparison(
     .. seealso:: :data:`numpy.logical_and`
 
     ''',
-    require_sortable_dtype=False)
+    require_sortable_dtype=True)
 
 
 logical_or = core.create_comparison(
@@ -17,7 +17,7 @@ logical_or = core.create_comparison(
     .. seealso:: :data:`numpy.logical_or`
 
     ''',
-    require_sortable_dtype=False)
+    require_sortable_dtype=True)
 
 
 logical_not = core.create_ufunc(
