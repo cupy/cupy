@@ -1000,7 +1000,9 @@ class TestFusionMisc(unittest.TestCase):
         self.check_binary_nan('fmin')
 
     @testing.for_all_dtypes_combination(
-        names=['src_dtype', 'dst_dtype'], no_complex=True)
+        names=['src_dtype'], no_complex=True)
+    @testing.for_all_dtypes_combination(
+        names=['dst_dtype'])
     @testing.numpy_cupy_array_equal()
     def test_astype_class(self, xp, src_dtype, dst_dtype):
 

@@ -959,7 +959,7 @@ def _create_astype_ufunc(dtype):
     name = 'astype_{}'.format(dtype)
     rules = tuple(['{}->{}'.format(cast_from.char, dtype.char)
                    for cast_from in _dtype_list])
-    command = 'out0 = static_cast<{}>(in0)'.format(_dtype_to_ctype[dtype])
+    command = 'out0 = static_cast< {} >(in0)'.format(_dtype_to_ctype[dtype])
     return core.create_ufunc(name, rules, command)
 
 
