@@ -706,14 +706,14 @@ def rnn_forward_training(
 
     cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
         handle, rnn_desc.value, length, xs_descs.data)
-    cdef core.ndarray reserve_space = core.ndarray((reserve_size,), dtype='b')
+    cdef memory.MemoryPointer reserve_space = memory.alloc(reserve_size)
     cudnn.RNNForwardTraining(
         handle, rnn_desc.value, length,
         xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
         cx_desc_value, cx_ptr, w_desc.value, w.data.ptr,
         ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
         cy_desc_value, cy_ptr, workspace.ptr, workspace.mem.size,
-        reserve_space.data.ptr, reserve_size)
+        reserve_space.ptr, reserve_space.mem.size)
 
     return reserve_space, hy, cy, ys
 
@@ -721,7 +721,7 @@ def rnn_forward_training(
 def rnn_backward_data(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
-        core.ndarray ys, core.ndarray reserve_space,
+        core.ndarray ys, memory.MemoryPointer reserve_space,
         core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
         lengths):
     hx = core.ascontiguousarray(hx)
@@ -796,7 +796,7 @@ def rnn_backward_data(
         hx_desc.value, hx.data.ptr, cx_desc_value, cx_ptr,
         dxs_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
         dcx_desc_value, dcx_ptr, workspace.ptr, workspace.mem.size,
-        reserve_space.data.ptr, reserve_space.size)
+        reserve_space.ptr, reserve_space.mem.size)
 
     return dhx, dcx, dxs
 
@@ -805,7 +805,7 @@ def rnn_backward_weights(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray xs, core.ndarray hx, core.ndarray ys,
         core.ndarray w,
-        core.ndarray reserve_space, lengths):
+        memory.MemoryPointer reserve_space, lengths):
     xs = core.ascontiguousarray(xs)
     hx = core.ascontiguousarray(hx)
     ys = core.ascontiguousarray(ys)
@@ -842,7 +842,7 @@ def rnn_backward_weights(
         xs_descs.data, xs.data.ptr,
         hx_desc.value, hx.data.ptr, ys_descs.data, ys.data.ptr,
         workspace.ptr, workspace.mem.size, dw_desc.value, dw.data.ptr,
-        reserve_space.data.ptr, reserve_space.size)
+        reserve_space.ptr, reserve_space.mem.size)
     return dw
 
 
