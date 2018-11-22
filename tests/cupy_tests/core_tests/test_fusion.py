@@ -1633,6 +1633,8 @@ class TestFusionComposition(unittest.TestCase):
 
 class TestFusionCompile(unittest.TestCase):
 
+    # TODO(asi1024): Support it
+
     # @testing.for_all_dtypes(no_bool=True)
     # @testing.numpy_cupy_array_equal()
     # def test_compile_from_dtypes(self, xp, dtype):

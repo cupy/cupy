@@ -559,6 +559,11 @@ class _FusionHistory(object):
                 elif isinstance(arg, _FusionVarScalar):
                     scalar_value = arg._var.const
                     if scalar_value is None:
+                        # This typecast is not safe.
+                        # The result of a typecast of an element-wise operation
+                        # between a numpy ndarray and a numpy scalar is not
+                        # decidable statically, because it depends on the value
+                        # of the scalar variable.
                         scalar_value = arg.dtype.type(0)
                     if not numpy.can_cast(scalar_value, in_dtypes[i]):
                         return False
