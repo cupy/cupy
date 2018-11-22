@@ -74,6 +74,12 @@ Random number generator
    cupy.random.set_random_state
    cupy.random.RandomState
 
+.. note::
+
+    CuPy does not provide ``cupy.random.get_state`` nor ``cupy.random.set_state`` at this time.
+    Use :func:`cupy.random.get_random_state` and :func:`cupy.random.set_random_state` instead.
+    Note that these functions use :class:`cupy.random.RandomState` instance to represent the internal state, which cannot be serialized.
+
 
 Permutations
 ------------
