@@ -1475,6 +1475,19 @@ class TestFusionScalar(unittest.TestCase):
         y = dtype2(1)
         return f(x, y)
 
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_numpy_scalar_binop(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y, z):
+            dtype = (x + y).dtype
+            return z.astype(dtype)
+        x = dtype1(1)
+        y = dtype2(1)
+        z = xp.zeros(10)
+        return f(x, y, z)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_broadcastable(self, xp, dtype):
