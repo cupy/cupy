@@ -39,7 +39,7 @@ def _new_like_order_and_strides(a, dtype, order):
             order = 'F'
 
     if order in ['C', 'F']:
-        return order, None
+        return order, None, None
 
     elif order == 'K':
         """
@@ -56,13 +56,16 @@ def _new_like_order_and_strides(a, dtype, order):
         perm = tmp_sorted['axes']
 
         # fill in strides based on the sorted order
+        order = 'C'
         stride = numpy.dtype(dtype).itemsize
         strides = numpy.zeros(a.ndim, dtype=numpy.intp)
         for idim in range(a.ndim-1, -1, -1):
             i_perm = perm[idim]
             strides[i_perm] = stride
             stride *= a.shape[i_perm]
-        return order, strides
+
+        memptr = cupy.empty(a.size, dtype=dtype).data
+        return order, strides, memptr
     else:
         raise ValueError("unknown order, {}".format(order))
 
@@ -90,8 +93,8 @@ def empty_like(a, dtype=None, order='K'):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides = _new_like_order_and_strides(a, dtype, order)
-    return cupy.ndarray(a.shape, dtype, strides=strides, order=order)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    return cupy.ndarray(a.shape, dtype, memptr, strides, order)
 
 
 def eye(N, M=None, k=0, dtype=float):
@@ -179,8 +182,8 @@ def ones_like(a, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, order=order, strides=strides)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.fill(1)
     return a
 
@@ -226,8 +229,8 @@ def zeros_like(a, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, order=order, strides=strides)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.data.memset_async(0, a.nbytes)
     return a
 
@@ -281,7 +284,7 @@ def full_like(a, fill_value, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, order=order, strides=strides)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.fill(fill_value)
     return a
