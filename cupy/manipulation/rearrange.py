@@ -1,3 +1,7 @@
+import itertools
+import numpy
+from numpy.core.numeric import normalize_axis_tuple
+
 import cupy
 from cupy import core
 
@@ -92,13 +96,12 @@ def roll(a, shift, axis=None):
     .. seealso:: :func:`numpy.roll`
 
     """
-    a = asanyarray(a)
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
 
     else:
         axis = normalize_axis_tuple(axis, a.ndim, allow_duplicate=True)
-        broadcasted = broadcast(shift, axis)
+        broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.ndim > 1:
             raise ValueError(
                 "'shift' and 'axis' should be scalars or 1D sequences")
@@ -114,7 +117,7 @@ def roll(a, shift, axis=None):
                 rolls[ax] = ((slice(None, -offset), slice(offset, None)),
                              (slice(-offset, None), slice(None, offset)))
 
-        result = empty_like(a)
+        result = cupy.empty_like(a)
         for indices in itertools.product(*rolls):
             arr_index, res_index = zip(*indices)
             result[res_index] = a[arr_index]
