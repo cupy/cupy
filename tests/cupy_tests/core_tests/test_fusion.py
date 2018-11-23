@@ -1000,7 +1000,9 @@ class TestFusionMisc(unittest.TestCase):
         self.check_binary_nan('fmin')
 
     @testing.for_all_dtypes_combination(
-        names=['src_dtype', 'dst_dtype'], no_complex=True)
+        names=['src_dtype'], no_complex=True)
+    @testing.for_all_dtypes_combination(
+        names=['dst_dtype'])
     @testing.numpy_cupy_array_equal()
     def test_astype_class(self, xp, src_dtype, dst_dtype):
 
@@ -1433,7 +1435,7 @@ class TestFusionKernelName(unittest.TestCase):
 
 
 @testing.gpu
-class TestFusionPythonConstant(unittest.TestCase):
+class TestFusionScalar(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
@@ -1452,6 +1454,83 @@ class TestFusionPythonConstant(unittest.TestCase):
         def f(x):
             return x * dtype2(1)
         return f(testing.shaped_arange((1,), xp, dtype1))
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_python_scalar(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y
+        x = testing.shaped_arange((10,), xp, dtype1)
+        y = numpy.asscalar(dtype2(1))
+        return f(x, y)
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_numpy_scalar(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y
+        x = testing.shaped_arange((10,), xp, dtype1)
+        y = dtype2(1)
+        return f(x, y)
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_numpy_scalar_binop(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y, z):
+            dtype = (x + y).dtype
+            return z.astype(dtype)
+        x = dtype1(1)
+        y = dtype2(1)
+        z = xp.zeros(10)
+        return f(x, y, z)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4, 4), xp, dtype)
+        y = testing.shaped_arange((4,), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_non_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4,), xp, dtype)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_scalar_update_with_broadcast(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = numpy.dtype(dtype).type(1)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
 
 
 @testing.gpu
@@ -1554,17 +1633,19 @@ class TestFusionComposition(unittest.TestCase):
 
 class TestFusionCompile(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_compile_from_dtypes(self, xp, dtype):
-        @cupy.fuse()
-        def f(x, y):
-            return x - y * 2
+    # TODO(asi1024): Support it
 
-        x = testing.shaped_arange((3, 3), xp, dtype)
-        y = testing.shaped_arange((3, 3), xp, dtype)
-        f._compile_from_dtypes(x.dtype, y.dtype)
-        return f(x, y)
+    # @testing.for_all_dtypes(no_bool=True)
+    # @testing.numpy_cupy_array_equal()
+    # def test_compile_from_dtypes(self, xp, dtype):
+    #     @cupy.fuse()
+    #     def f(x, y):
+    #         return x - y * 2
+
+    #     x = testing.shaped_arange((3, 3), xp, dtype)
+    #     y = testing.shaped_arange((3, 3), xp, dtype)
+    #     f._compile_from_dtypes(x.dtype, y.dtype)
+    #     return f(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
