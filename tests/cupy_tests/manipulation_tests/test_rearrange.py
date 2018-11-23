@@ -56,6 +56,20 @@ class TestRoll(unittest.TestCase):
         return xp.roll(x, 5)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.12')
+    @testing.numpy_cupy_array_equal()
+    def test_roll_scalar_shift_multi_axis(self, xp, dtype):
+        x = testing.shaped_arange((5, 2), xp, dtype)
+        return xp.roll(x, 1, axis=(0, 1))
+
+    @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.12')
+    @testing.numpy_cupy_array_equal()
+    def test_roll_multi_shift_multi_axis(self, xp, dtype):
+        x = testing.shaped_arange((5, 2), xp, dtype)
+        return xp.roll(x, (2, 1), axis=(0, 1))
+
+    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_roll_invalid_axis1(self, xp, dtype):
@@ -67,6 +81,13 @@ class TestRoll(unittest.TestCase):
         x = testing.shaped_arange((5, 2), cupy, dtype)
         with self.assertRaises(cupy.core.core._AxisError):
             return cupy.roll(x, 1, axis=2)
+
+    @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.12')
+    def test_roll_invalid_axis3(self, dtype):
+        x = testing.shaped_arange((5, 2, 2), cupy, dtype)
+        with self.assertRaises(ValueError):
+            return cupy.roll(x, shift=(1, 0), axis=(0, 1, 2))
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
