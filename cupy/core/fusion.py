@@ -848,7 +848,11 @@ class Fusion(object):
         if hasattr(_thread_local, 'history'):
             return self.func(*args)
 
-        # Invalid argument types
+        # Fails to fuse
+        if cupy.get_array_module(*args) is not cupy:
+            return self.func(*args)
+
+        # Checks argument types
         acceptable_types = six.integer_types + (
             core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
         if not all(isinstance(p, acceptable_types) for p in args):
@@ -856,18 +860,7 @@ class Fusion(object):
                 self.name,
                 ', '.join(repr(type(_)) for _ in args)))
 
-        # Fail to fuse
-        exec_cupy = any(isinstance(p, core.ndarray) for p in args)
-        exec_numpy = any(isinstance(p, numpy.ndarray) for p in args)
-        if exec_numpy:
-            if exec_cupy:
-                types_str = ', '.join(repr(type(_)) for _ in args)
-                message = 'Can\'t fuse {}({})'.format(self.name, types_str)
-                warnings.warn(message)
-            # Call function with NumPy mode
-            return self.func(*args)
-
-        # Cache the result of execution path analysis
+        # Caches the result of execution path analysis
         params_info = tuple(self._get_param_info(p) for p in args)
         if params_info not in self._memo:
             try:
