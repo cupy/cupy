@@ -77,6 +77,102 @@ class TestBasic(unittest.TestCase):
         b.fill(0)
         return b
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_C_order(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.empty_like(a, order='C')
+        b.fill(0)
+        self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_F_order(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order='F')
+        b.fill(0)
+        self.assertTrue(b.flags.f_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_A_order(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order='A')
+        b.fill(0)
+        self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_A_order2(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.empty_like(a, order='A')
+        b.fill(0)
+        self.assertTrue(b.flags.f_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_A_order3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a[:, ::2, :], order='A')
+        b.fill(0)
+        self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_K_order(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order='K')
+        b.fill(0)
+        self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_K_order2(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.empty_like(a, order='K')
+        b.fill(0)
+        self.assertTrue(b.flags.f_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_K_order3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        # test strides that are both non-contiguous and non-descending
+        a = a[:, ::2, :].swapaxes(0, 1)
+        b = xp.empty_like(a, order='K')
+        b.fill(0)
+        self.assertFalse(b.flags.c_contiguous)
+        self.assertFalse(b.flags.f_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    def test_empty_like_K_strides(self, dtype):
+        # test strides that are both non-contiguous and non-descending
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        a = a[:, ::2, :].swapaxes(0, 1)
+        b = numpy.empty_like(a, order='K')
+        b.fill(0)
+
+        # GPU case
+        ag = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        ag = ag[:, ::2, :].swapaxes(0, 1)
+        bg = cupy.empty_like(ag, order='K')
+        bg.fill(0)
+
+        # make sure NumPy and CuPy strides agree
+        self.assertEqual(b.strides, bg.strides)
+        return
+
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
