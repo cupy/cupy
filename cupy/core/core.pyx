@@ -290,7 +290,19 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Array conversion
     # -------------------------------------------------------------------------
-    # TODO(okuta): Implement item
+    cpdef item(self):
+        """Converts the array with one element to a Python scalar
+
+        Returns:
+            int or float or complex: The element of the array.
+
+        .. seealso:: :meth:`numpy.ndarray.item`
+
+        """
+        if self.size != 1:
+            raise ValueError(
+                'can only convert an array of size 1 to a Python scalar')
+        return self.get().item()
 
     cpdef tolist(self):
         """Converts the array to a (possibly nested) Python list.
