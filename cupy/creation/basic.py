@@ -20,7 +20,6 @@ def empty(shape, dtype=float, order='C'):
     return cupy.ndarray(shape, dtype, order=order)
 
 
-
 def _new_like_order_and_strides(a, dtype, order):
     """
     Determine order and strides as in NumPy's PyArray_NewLikeArray.
