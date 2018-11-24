@@ -10,7 +10,6 @@ try:
 except ImportError:
     # TODO: remove this copy once minimum supported is numpy >= 1.13.
 
-
     def normalize_axis_tuple(axis, ndim, argname=None, allow_duplicate=False):
         """
         Normalizes an axis argument into a tuple of non-negative integer axes.
