@@ -2097,6 +2097,17 @@ __device__ min_max_st<T> my_min_float(
     if (is_nan(b.value)) return b;
     return min_max_st<T>(min(a.value, b.value));
 }
+template <typename T>
+__device__ min_max_st<T> my_min_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return min_max_st<T>(min(a.value, b.value));
+}
 
 template <typename T>
 __device__ min_max_st<T> my_max(
@@ -2112,6 +2123,17 @@ __device__ min_max_st<T> my_max_float(
     if (b.index == -1) return a;
     if (is_nan(a.value)) return a;
     if (is_nan(b.value)) return b;
+    return min_max_st<T>(max(a.value, b.value));
+}
+template <typename T>
+__device__ min_max_st<T> my_max_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
     return min_max_st<T>(max(a.value, b.value));
 }
 
@@ -2135,6 +2157,19 @@ __device__ min_max_st<T> my_argmin_float(
     if (is_nan(b.value)) return b;
     return (a.value <= b.value) ? a : b;
 }
+template <typename T>
+__device__ min_max_st<T> my_argmin_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return (a.value <= b.value) ? a : b;
+}
 
 template <typename T>
 __device__ min_max_st<T> my_argmax(
@@ -2156,6 +2191,19 @@ __device__ min_max_st<T> my_argmax_float(
     if (is_nan(b.value)) return b;
     return (a.value >= b.value) ? a : b;
 }
+template <typename T>
+__device__ min_max_st<T> my_argmax_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return (a.value >= b.value) ? a : b;
+}
 '''
 
 
@@ -2165,7 +2213,9 @@ _amin = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
-     ('d->d', (None, 'my_min_float(a, b)', None, None))),
+     ('d->d', (None, 'my_min_float(a, b)', None, None)),
+     ('F->F', (None, 'my_min_complex(a, b)', None, None)),
+     ('D->D', (None, 'my_min_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2177,7 +2227,10 @@ _amax = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
-     ('d->d', (None, 'my_max_float(a, b)', None, None))),
+     ('d->d', (None, 'my_max_float(a, b)', None, None)),
+     ('F->F', (None, 'my_max_complex(a, b)', None, None)),
+     ('D->D', (None, 'my_max_complex(a, b)', None, None)),
+     ),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2207,7 +2260,9 @@ cdef _argmin = create_reduction_func(
      'q->q', 'Q->q',
      ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmin_float(a, b)', None, None))),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2219,7 +2274,9 @@ cdef _argmax = create_reduction_func(
      'q->q', 'Q->q',
      ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmax_float(a, b)', None, None))),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -4210,6 +4267,7 @@ cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
+
     return create_ufunc(
         'cupy_' + name,
         ops,
@@ -4223,7 +4281,8 @@ greater = create_comparison(
 
     .. seealso:: :data:`numpy.greater`
 
-    ''')
+    ''',
+    require_sortable_dtype=False)
 
 
 greater_equal = create_comparison(
@@ -4232,7 +4291,8 @@ greater_equal = create_comparison(
 
     .. seealso:: :data:`numpy.greater_equal`
 
-    ''')
+    ''',
+    require_sortable_dtype=False)
 
 
 less = create_comparison(
@@ -4241,7 +4301,8 @@ less = create_comparison(
 
     .. seealso:: :data:`numpy.less`
 
-    ''')
+    ''',
+    require_sortable_dtype=False)
 
 
 less_equal = create_comparison(
@@ -4250,7 +4311,8 @@ less_equal = create_comparison(
 
     .. seealso:: :data:`numpy.less_equal`
 
-    ''')
+    ''',
+    require_sortable_dtype=False)
 
 
 equal = create_comparison(
@@ -4259,7 +4321,8 @@ equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''', False)
+    ''',
+    require_sortable_dtype=False)
 
 
 not_equal = create_comparison(
@@ -4268,7 +4331,8 @@ not_equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''', False)
+    ''',
+    require_sortable_dtype=False)
 
 
 _all = create_reduction_func(
