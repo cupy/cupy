@@ -140,16 +140,16 @@ class TestArrayElementwiseOp(unittest.TestCase):
                                        no_complex=True)
 
     def test_lt_scalar(self):
-        self.check_array_scalar_op(operator.lt, no_complex=True)
+        self.check_array_scalar_op(operator.lt, no_complex=False)
 
     def test_le_scalar(self):
-        self.check_array_scalar_op(operator.le, no_complex=True)
+        self.check_array_scalar_op(operator.le, no_complex=False)
 
     def test_gt_scalar(self):
-        self.check_array_scalar_op(operator.gt, no_complex=True)
+        self.check_array_scalar_op(operator.gt, no_complex=False)
 
     def test_ge_scalar(self):
-        self.check_array_scalar_op(operator.ge, no_complex=True)
+        self.check_array_scalar_op(operator.ge, no_complex=False)
 
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
