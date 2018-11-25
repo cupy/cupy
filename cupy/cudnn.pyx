@@ -1719,11 +1719,12 @@ def batch_normalization_backward(
         core.ndarray x, core.ndarray gamma, core.ndarray gy,
         core.ndarray mean, core.ndarray inv_std,
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
+    cdef core.ndarray ggamma, gbeta
+    cdef bint need_cast
     x = core.ascontiguousarray(x)
+    gy = core.ascontiguousarray(gy)
     dtype = x.dtype
     gx = core.ndarray(x._shape, dtype)
-    ggamma = core.ndarray(gamma._shape, gamma.dtype)
-    gbeta = core.ndarray(gamma._shape, gamma.dtype)
 
     cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -1740,11 +1741,13 @@ def batch_normalization_backward(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        need_cast = dtype_param != dtype
+        if need_cast:
             gamma = gamma.astype(dtype_param)
         else:
             gamma = core.ascontiguousarray(gamma)
-            gy = core.ascontiguousarray(gy)
+        ggamma = core.ndarray(gamma._shape, dtype_param)
+        gbeta = core.ndarray(gamma._shape, dtype_param)
 
         cudnn.batchNormalizationBackward(
             handle, cudnn_mode, one, zero, one, zero,
@@ -1768,7 +1771,7 @@ def batch_normalization_backward(
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(derivedBnDesc)
 
-    if dtype_param is not dtype:
+    if need_cast:
         ggamma = ggamma.astype(dtype)
         gbeta = gbeta.astype(dtype)
     return gx, ggamma, gbeta
