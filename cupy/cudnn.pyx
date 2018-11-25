@@ -887,7 +887,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
 
 
 cpdef bint _should_use_tensor_core(
-        str tensor_core_mode, object dtype) except *:
+        tensor_core_mode, object dtype) except *:
     if tensor_core_mode == 'auto':
         return is_tensor_core_available(dtype)
     elif tensor_core_mode == 'always':
@@ -903,7 +903,7 @@ cpdef bint _should_use_tensor_core(
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint auto_tune, str tensor_core):
+        bint auto_tune, tensor_core):
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
     assert dev_id == y.data.device.id
@@ -990,7 +990,7 @@ def convolution_forward(
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, str tensor_core):
+        bint deterministic, bint auto_tune, tensor_core):
     cdef int dev_id = x.data.device.id
     assert dev_id == gy.data.device.id
     assert dev_id == gW.data.device.id
@@ -1068,7 +1068,7 @@ def convolution_backward_filter(
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, str tensor_core):
+        bint deterministic, bint auto_tune, tensor_core):
     cdef int dev_id = W.data.device.id
     assert dev_id == x.data.device.id
     assert dev_id == y.data.device.id
