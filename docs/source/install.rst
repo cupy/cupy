@@ -25,7 +25,7 @@ You need to have the following components to use CuPy.
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_
     * Compute Capability of the GPU must be at least 3.0.
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-zone>`_
-    * Supported Versions: 8.0, 9.0, 9.1 and 9.2.
+    * Supported Versions: 8.0, 9.0, 9.1, 9.2 and 10.0.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
