@@ -13,7 +13,7 @@ from cupy.core import core
 
 _thread_local = threading.local()
 
-_kind_score = {
+cdef dict _kind_score = {
     'b': 0,
     'u': 1,
     'i': 1,
@@ -21,7 +21,7 @@ _kind_score = {
     'c': 2,
 }
 
-_dtype_to_ctype = {
+cdef dict _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
@@ -38,7 +38,10 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+
+cdef tuple _acceptable_types = six.integer_types + (
+    core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
 
 
 class _Submodule(object):
@@ -849,16 +852,19 @@ class Fusion(object):
             return self.func(*args)
 
         # Invalid argument types
-        acceptable_types = six.integer_types + (
-            core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
-        if not all(isinstance(p, acceptable_types) for p in args):
-            raise TypeError('Invalid argument type for \'{}\': ({})'.format(
-                self.name,
-                ', '.join(repr(type(_)) for _ in args)))
+        cdef bint exec_cupy = False
+        cdef bint exec_numpy = False
+        for arg in args:
+            if not isinstance(arg, _acceptable_types):
+                mes = 'Invalid argument type for \'{}\': ({})'
+                arg_types = ', '.join(repr(type(a)) for a in args)
+                raise TypeError(mes.format(self.name, arg_types))
+            if isinstance(arg, core.ndarray):
+                exec_cupy = True
+            if isinstance(arg, numpy.ndarray):
+                exec_numpy = True
 
         # Fail to fuse
-        exec_cupy = any(isinstance(p, core.ndarray) for p in args)
-        exec_numpy = any(isinstance(p, numpy.ndarray) for p in args)
         if exec_numpy:
             if exec_cupy:
                 types_str = ', '.join(repr(type(_)) for _ in args)
@@ -868,7 +874,7 @@ class Fusion(object):
             return self.func(*args)
 
         # Cache the result of execution path analysis
-        params_info = tuple(self._get_param_info(p) for p in args)
+        cdef tuple params_info = tuple([self._get_param_info(p) for p in args])
         if params_info not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
