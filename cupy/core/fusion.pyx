@@ -97,13 +97,13 @@ class _FusionVarCUDA(object):
     Attributes:
         index (int): The name of the variable.
         dtype (dtype): The dtype of the variable.
-        const (any of primitive types): The constant value (or None)
+        const_value (any of primitive types): The constant value (or None)
     """
 
-    def __init__(self, index, dtype, const=None):
+    def __init__(self, index, dtype, const_value=None):
         self.index = index
         self.dtype = dtype
-        self.const = const
+        self.const_value = const_value
         self.mutable = False
 
     def __repr__(self):
@@ -113,11 +113,11 @@ class _FusionVarCUDA(object):
         self.mutable = True
 
     def declaration(self):
-        c = self.const
+        c = self.const_value
         val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
         ctype = _dtype_to_ctype[self.dtype]
 
-        if self.const is None:
+        if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
         if isinstance(val, bool):
@@ -526,7 +526,7 @@ class _FusionHistory(object):
                 raise Exception('Shape mismatch')
         if isinstance(arg, six.integer_types +
                       (float, bool, complex, numpy.generic)):
-            var = self._fresh_local(numpy.dtype(type(arg)), const=arg)
+            var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise Exception('Unsupported type {}'.format(type(type)))
 
@@ -557,7 +557,7 @@ class _FusionHistory(object):
                     if not numpy.can_cast(arg.dtype, in_dtypes[i]):
                         return False
                 elif isinstance(arg, _FusionVarScalar):
-                    scalar_value = arg._var.const
+                    scalar_value = arg._var.const_value
                     if scalar_value is None:
                         # This typecast is not safe.
                         # The result of a typecast of an element-wise operation
