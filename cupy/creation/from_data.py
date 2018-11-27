@@ -4,6 +4,7 @@ from cupy import core
 from cupy.core import fusion
 from cupy.core import ndarray
 from cupy.cuda import memory
+from cupy.cuda import runtime
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
@@ -51,12 +52,14 @@ def _convert_object_with_cuda_array_interface(a):
     dtype = numpy.dtype(desc['typestr'])
     if 'strides' in desc:
         strides = desc['strides']
-        # this should be fixed.
         nbytes = numpy.max(numpy.array(shape) * numpy.array(strides))
     else:
         strides = None
         nbytes = numpy.prod(shape) * dtype.itemsize
-    mem = memory.UnownedMemory(desc['data'][0], nbytes, a)
+    dataptr = desc['data'][0]
+    attrs = runtime.pointerGetAttributes(dataptr)
+    runtime.setDevice(attrs.device)
+    mem = memory.UnownedMemory(dataptr, nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
     return ndarray(shape, dtype=dtype, memptr=memptr, strides=strides)
 
