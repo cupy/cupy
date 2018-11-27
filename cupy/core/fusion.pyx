@@ -815,6 +815,14 @@ class _FusionHistory(object):
             return kernel, self.reduce_kwargs
 
 
+cdef inline tuple _get_param_info(arg):
+    if isinstance(arg, core.ndarray):
+        return (arg.dtype, arg.ndim)
+    elif isinstance(arg, numpy.generic):
+        return (arg.dtype, -1)
+    return (numpy.dtype(type(arg)), -1)
+
+
 class Fusion(object):
 
     """Function class.
@@ -837,14 +845,6 @@ class Fusion(object):
 
     def _is_cupy_data(self, a):
         return isinstance(a, (core.ndarray, numpy.generic))
-
-    def _get_param_info(self, arg):
-        if isinstance(arg, core.ndarray):
-            return arg.dtype, arg.ndim
-        elif isinstance(arg, numpy.generic):
-            return arg.dtype, -1
-        else:
-            return numpy.array(arg).dtype, -1
 
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
@@ -874,7 +874,7 @@ class Fusion(object):
             return self.func(*args)
 
         # Cache the result of execution path analysis
-        cdef tuple params_info = tuple([self._get_param_info(p) for p in args])
+        cdef tuple params_info = tuple([_get_param_info(arg) for arg in args])
         if params_info not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
