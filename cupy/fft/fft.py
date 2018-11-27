@@ -159,14 +159,14 @@ def get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
 
     Args:
         shape (tuple of int): The shape of the array to transform
+        fft_type ({cufft.CUFFT_C2C, cufft.CUFFT_Z2Z}): The FFT type to perform.
+            Currently only complex-to-complex transforms are supported.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
             axes and must nclude either the first or the last axis of the
             array.  If `None`, it is assumed that all axes are transformed.
         order ({'C', 'F'}): Specify whether the data to be transformed has C or
             Fortran ordered data layout.
-        fft_type ({cufft.CUFFT_C2C, cufft.CUFFT_Z2Z}): The FFT type to perform.
-            Currently only complex-to-complex transforms are supported.
 
     Returns:
         plan (cufft.PlanNd): The CUFFT Plan. This can be used with
@@ -296,7 +296,7 @@ def get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
     return plan
 
 
-def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x, order,
+def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None):
 
     fft_type = _convert_fft_type(a, value_type)
@@ -306,19 +306,31 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x, order,
     if a.base is not None:
         a = a.copy()
 
+    if a.flags.c_contiguous:
+        order = 'C'
+    elif a.flags.f_contiguous:
+        order = 'F'
+    else:
+        raise ValueError("a must be contiguous")
+
     if plan is None:
         # generate a plan
         plan = get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError("expected plan to have type cufft.PlanNd")
-        if tuple(a.shape[ax] for ax in axes) != plan.shape:
+        if a.flags.c_contiguous:
+            expected_shape = tuple(a.shape[ax] for ax in axes)
+        else:
+            # plan.shape will be reversed for Fortran-ordered inputs
+            expected_shape = tuple(a.shape[ax] for ax in axes[::-1])
+        if expected_shape != plan.shape:
             raise ValueError(
                 "The CUFFT plan and a.shape do not match: "
-                "plan.shape = {}, a.shape = {}".format(
-                    plan.shape, tuple(a.shape[ax] for ax in axes)))
+                "plan.shape = {}, expected_shape={}, a.shape = {}".format(
+                    plan.shape, expected_shape, a.shape))
         if fft_type != plan.fft_type:
-            raise ValueError("The CUFFT plan has a.dtype do not match.")
+            raise ValueError("CUFFT plan dtype mismatch.")
         # TODO: also check the strides and axes of the plan?
 
     if overwrite_x and value_type == 'C2C':
@@ -376,7 +388,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         a = cupy.asfortranarray(a)
 
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes,
-                   overwrite_x=overwrite_x, order=order, plan=plan, out=out)
+                   overwrite_x=overwrite_x, plan=plan, out=out)
     return a
 
 
