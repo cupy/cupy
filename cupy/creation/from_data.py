@@ -1,5 +1,9 @@
+import numpy
+
 from cupy import core
 from cupy.core import fusion
+from cupy.core import ndarray
+from cupy.cuda import memory
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
@@ -41,6 +45,21 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     return core.array(obj, dtype, copy, order, subok, ndmin)
 
 
+def _convert_object_with_cuda_array_interface(a):
+    desc = a.__cuda_array_interface__
+    shape = desc['shape']
+    dtype = numpy.dtype(desc['typestr'])
+    if 'strides' in desc:
+        strides = desc['strides']
+        nbytes = numpy.max(numpy.array(shape) * numpy.array(strides))
+    else:
+        strides = None
+        nbytes = numpy.prod(shape) * dtype.itemsize
+    mem = memory.UnownedMemory(desc['data'][0], nbytes, a)
+    memptr = memory.MemoryPointer(mem, 0)
+    return ndarray(shape, dtype=dtype, memptr=memptr, strides=strides)
+
+
 def asarray(a, dtype=None):
     """Converts an object to array.
 
@@ -58,6 +77,8 @@ def asarray(a, dtype=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
+    if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
+        return _convert_object_with_cuda_array_interface(a)
     return core.array(a, dtype, False)
 
 
@@ -72,6 +93,8 @@ def asanyarray(a, dtype=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
+    if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
+        return _convert_object_with_cuda_array_interface(a)
     return core.array(a, dtype, False)
 
 
