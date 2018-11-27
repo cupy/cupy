@@ -4,6 +4,10 @@ from cupy.core import fusion
 
 
 @fusion._reduction_wrapper(core._all)
+def _all(a, axis, out, keepdims):
+    return a.all(axis=axis, out=out, keepdims=keepdims)
+
+
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -22,10 +26,14 @@ def all(a, axis=None, out=None, keepdims=False):
 
     """
     assert isinstance(a, cupy.ndarray)
-    return a.all(axis=axis, out=out, keepdims=keepdims)
+    return _all(a, axis=axis, out=out, keepdims=keepdims)
 
 
 @fusion._reduction_wrapper(core._any)
+def _any(a, axis, out, keepdims):
+    return a.any(axis=axis, out=out, keepdims=keepdims)
+
+
 def any(a, axis=None, out=None, keepdims=False):
     """Tests whether any array elements along a given axis evaluate to True.
 
@@ -44,4 +52,4 @@ def any(a, axis=None, out=None, keepdims=False):
 
     """
     assert isinstance(a, cupy.ndarray)
-    return a.any(axis=axis, out=out, keepdims=keepdims)
+    return _any(a, axis=axis, out=out, keepdims=keepdims)

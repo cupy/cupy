@@ -7,6 +7,10 @@ from cupy.logic import content
 
 
 @fusion._reduction_wrapper(core.core._amin)
+def _amin(a, axis, out, keepdims, dtype):
+    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -31,10 +35,14 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
 
     """
     # TODO(okuta): check type
-    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return _amin(a, axis=axis, out=out, keepdims=keepdims, dtype=dtype)
 
 
 @fusion._reduction_wrapper(core.core._amax)
+def _amax(a, axis, out, keepdims, dtype):
+    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the maximum of an array or the maximum along an axis.
 
@@ -59,7 +67,7 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
 
     """
     # TODO(okuta): check type
-    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return _amax(a, axis=axis, out=out, keepdims=keepdims, dtype=dtype)
 
 
 def nanmin(a, axis=None, out=None, keepdims=False):
