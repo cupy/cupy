@@ -338,15 +338,13 @@ def rnn_forward_inference_ex(
 
     cdef int length, batch
     length, batch, _ = xs._shape
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
     cdef int input_units
     if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
-        n_layers = hx.shape[0] // 2
     else:  # cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
-        n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray(
         (length, batch, input_units), dtype=xs.dtype)
@@ -414,16 +412,14 @@ def rnn_forward_training_ex(
 
     cdef int length, batch
     length, batch, _ = xs._shape
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
     cdef int input_units
 
     if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
-        n_layers = hx.shape[0] // 2
     else:  # cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
-        n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray(
         (length, batch, input_units), dtype=xs.dtype)
@@ -502,13 +498,8 @@ def rnn_backward_data_ex(
 
     cdef int length, batch
     length, batch, _ = xs._shape
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
-
-    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
-        n_layers = hx.shape[0] // 2
-    else:  # cudnn.CUDNN_UNIDIRECTIONAL
-        n_layers = hx.shape[0]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
@@ -589,13 +580,8 @@ def rnn_backward_weights_ex(
 
     cdef int length, batch
     length, batch, _ = xs._shape
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
-
-    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
-        n_layers = hx.shape[0] // 2
-    else:  # cudnn.CUDNN_UNIDIRECTIONAL
-        n_layers = hx.shape[0]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
