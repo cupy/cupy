@@ -355,6 +355,8 @@ def rnn_forward_inference_ex(
         n_units, n_layers, states._desc,
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
     l = numpy.full(xs.shape[1], xs.shape[0], dtype='i')
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs.reshape(-1, xs.shape[-1]), l)
