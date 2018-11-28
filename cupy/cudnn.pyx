@@ -242,6 +242,8 @@ def create_uninitialized_tensor_descriptor():
 
 def create_tensor_nd_descriptor(core.ndarray arr):
     cdef dict cache
+    if arr.size == 0:
+        return Descriptor(0, None)
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
@@ -614,6 +616,10 @@ def rnn_forward_inference(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -621,16 +627,8 @@ def rnn_forward_inference(
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
-
-    cdef Descriptor cx_desc, cy_desc
-    cdef core.ndarray cy
-    if cx is None:
-        cx = cy = core.ndarray(0, dtype=xs.dtype)
-        cx_desc = cy_desc = Descriptor(0, None)
-    else:
-        cy = core.ndarray(cx.shape, cx.dtype)
-        cx_desc = create_tensor_nd_descriptor(cx)
-        cy_desc = create_tensor_nd_descriptor(cy)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
 
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
@@ -672,6 +670,10 @@ def rnn_forward_training(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -679,16 +681,8 @@ def rnn_forward_training(
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
-
-    cdef Descriptor cx_desc, cy_desc
-    cdef core.ndarray cy
-    if cx is None:
-        cx = cy = core.ndarray(0, dtype=xs.dtype)
-        cx_desc = cy_desc = Descriptor(0, None)
-    else:
-        cy = core.ndarray(cx.shape, cx.dtype)
-        cx_desc = create_tensor_nd_descriptor(cx)
-        cy_desc = create_tensor_nd_descriptor(cy)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
 
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
@@ -740,6 +734,10 @@ def rnn_backward_data(
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
+    if cx is None:
+        cx = dcy = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
+
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -749,17 +747,9 @@ def rnn_backward_data(
         dxs, lengths)
     cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
-
-    cdef Descriptor cx_desc, dcx_desc, dcy_desc
-    cdef core.ndarray dcx
-    if cx is None:
-        cx = dcx = dcy = core.ndarray(0, dtype=xs.dtype)
-        cx_desc = dcx_desc = dcy_desc = Descriptor(0, None)
-    else:
-        dcx = core.ndarray(cx.shape, cx.dtype)
-        cx_desc = create_tensor_nd_descriptor(cx)
-        dcx_desc = create_tensor_nd_descriptor(dcx)
-        dcy_desc = create_tensor_nd_descriptor(dcy)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor dcx_desc = create_tensor_nd_descriptor(dcx)
+    cdef Descriptor dcy_desc = create_tensor_nd_descriptor(dcy)
 
     cudnn.RNNBackwardData(
         handle, rnn_desc.value, length,
