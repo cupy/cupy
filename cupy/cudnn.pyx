@@ -327,61 +327,156 @@ def make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
     return descriptor
 
 
-def rnn_forward_inference_ex(rnn_desc, lengths, xs, hx, cx, w):
-    c_x_descs = _make_tensor_descriptor_array(xs)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace()
-    x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
-    hx_desc = create_tensor_nd_descriptor(hx)
-    cx_desc = create_tensor_nd_descriptor(cx)
-    w_desc = cudnn.create_filter_descriptor(w)
+def rnn_forward_inference_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w,
+        core.ndarray xs, lengths):
+    hx = core.ascontiguousarray(hx)
+    cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
 
-    ys = cuda.cupy.empty(
-        xs.shape[0:2] + (n_units * self.rnn_direction,), dtype=xs.dtype)
-    y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
-    hy = cuda.cupy.empty_like(hx)
-    hy_desc = create_tensor_nd_descriptor(hy)
-    cy = cuda.cupy.empty_like(cx)
-    cy_desc = cudnn.create_tensor_nd_descriptor(cy)
+    cdef int length = len(lengths)
+    cdef int n_layers
+    cdef int n_units = hx.shape[2]
+    cdef int input_units
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        input_units = n_units * 2
+        n_layers = hx.shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        input_units = n_units
+        n_layers = hx.shape[0]
+
+    cdef core.ndarray ys = core.ndarray(
+        (xs._shape[0], xs._shape[1], input_units), dtype=xs.dtype)
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+
+    cdef Descriptor y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+
+    cdef Descriptor cx_desc, cy_desc
+    cdef core.ndarray cy
+    if cx is not None:
+        cx_ptr = cx.data.ptr
+        cx_desc = create_tensor_nd_descriptor(cx)
+        cx_desc_value = cx_desc.value
+        cy = core.ndarray(cx.shape, cx.dtype)
+        cy_ptr = cy.data.ptr
+        cy_desc = create_tensor_nd_descriptor(cy)
+        cy_desc_value = cy_desc.value
+    else:
+        cx_ptr = 0
+        cx_desc_value = 0
+        cy = None
+        cy_ptr = 0
+        cy_desc_value = 0
     
-    length = xs.shape[0]
-    n_units = hx.shape[2]
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
 
-    ys = cuda.cupy.empty(
-        xs.shape[0:2] + (n_units * self.rnn_direction,), dtype=xs.dtype)
-
-    py_cudnn.RNNForwardInferenceEx(
+    cudnn.RNNForwardInferenceEx(
         handle, rnn_desc.value,
         x_data_desc.value, xs.data.ptr,
         hx_desc.value, hx.data.ptr,
-        cx_desc_value, cx_data_ptr,
+        cx_desc_value, cx_ptr,
         w_desc.value, w.data.ptr,
         y_data_desc.value, ys.data.ptr,
         hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_data_ptr,
+        cy_desc_value, cy_ptr,
         0, 0, 0, 0, 0, 0, 0, 0,
         workspace.ptr, workspace.mem.size)
 
-    return workspace, ys, hy, cy
+    return hy, cy, ys
 
 
-def rnn_forward_training_ex(rnn_desc, lengths, xs, hx, cx, w):
-    c_x_descs = _make_tensor_descriptor_array(xs)
-    reserve_size = libcudnn.getRNNTrainingReserveSize(
-        handle, rnn_desc.value, length, c_x_descs.data)
-    self.reserve_space = cuda.cupy.empty((reserve_size,), dtype='b')
-    libcudnn.RNNForwardTrainingEx(
+def rnn_forward_training_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = len(lengths)
+    cdef int n_layers
+    cdef int n_units = hx.shape[2]
+    cdef int input_units
+
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        input_units = n_units * 2
+        n_layers = hx.shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        input_units = n_units
+        n_layers = hx.shape[0]
+
+    cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+
+    cdef Descriptor y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+
+    cdef Descriptor cx_desc, cy_desc
+    cdef core.ndarray cy
+    if cx is not None:
+        cx_ptr = cx.data.ptr
+        cx_desc = create_tensor_nd_descriptor(cx)
+        cx_desc_value = cx_desc.value
+        cy = core.ndarray(cx.shape, cx.dtype)
+        cy_ptr = cy.data.ptr
+        cy_desc = create_tensor_nd_descriptor(cy)
+        cy_desc_value = cy_desc.value
+    else:
+        cx_ptr = 0
+        cx_desc_value = 0
+        cy = None
+        cy_ptr = 0
+        cy_desc_value = 0
+
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
+        handle, rnn_desc.value, length, xs_descs.data)
+    cdef memory.MemoryPointer reserve_space = memory.alloc(reserve_size)
+
+    cudnn.RNNForwardTrainingEx(
         handle, rnn_desc.value,
         x_data_desc.value, xs.data.ptr,
         hx_desc.value, hx.data.ptr,
-        cx_desc_value, cx_data_ptr,
+        cx_desc_value, cx_ptr,
         w_desc.value, w.data.ptr,
         y_data_desc.value, ys.data.ptr,
         hy_desc.value, hy.data.ptr,
-        cy_desc_value, cy_data_ptr,
+        cy_desc_value, cy_ptr,
         0, 0, 0, 0, 0, 0, 0, 0,
-        workspace.data.ptr, work_size,
-        self.reserve_space.data.ptr, reserve_size)
-    
+        workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_size)
+
+    return reserve_space, hy, cy, ys
+
 
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
