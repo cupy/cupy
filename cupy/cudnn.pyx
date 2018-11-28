@@ -309,17 +309,17 @@ def create_pooling_descriptor(ksize, stride, pad, int mode):
     return desc
 
 
-def create_rnn_data_descriptor():
+cdef Descriptor _create_rnn_data_descriptor():
     return Descriptor(cudnn.createRNNDataDescriptor(),
                       py_cudnn.destroyRNNDataDescriptor)
 
 
-def make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
-    descriptor = create_rnn_data_descriptor()
+cdef Descriptor _make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
+    cdef Descriptor descriptor = _create_rnn_data_descriptor()
     cdef int data_type = get_data_type(xs.dtype)
     cdef max_length, batch, n_dim
     max_length, batch, n_dim = xs.shape
-    py_cudnn.setRNNDataDescriptor(
+    cudnn.setRNNDataDescriptor(
         descriptor.value, data_type,
         cudnn.CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED,
         max_length, batch, n_dim,
@@ -359,11 +359,11 @@ def rnn_forward_inference_ex(
     cudnn.setRNNPaddingMode(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
-    cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
 
-    cdef Descriptor y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
 
@@ -432,11 +432,11 @@ def rnn_forward_training_ex(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
 
-    cdef Descriptor y_data_desc = make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
 
