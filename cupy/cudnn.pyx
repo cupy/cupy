@@ -412,7 +412,8 @@ def rnn_forward_training_ex(
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
 
-    cdef int length = len(lengths)
+    cdef int length, batch
+    length, batch, _ = xs._shape
     cdef int n_layers
     cdef int n_units = hx.shape[2]
     cdef int input_units
@@ -424,13 +425,16 @@ def rnn_forward_training_ex(
         input_units = n_units
         n_layers = hx.shape[0]
 
-    cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
+    cdef core.ndarray ys = core.ndarray(
+        (length, batch, input_units), dtype=xs.dtype)
     cdef size_t handle = get_handle()
 
     cdef Descriptor rnn_desc = create_rnn_descriptor(
         n_units, n_layers, states._desc,
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
     cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
