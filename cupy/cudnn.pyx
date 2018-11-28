@@ -359,8 +359,6 @@ def rnn_forward_inference_ex(
     cudnn.setRNNPaddingMode(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
-    l = numpy.full(xs.shape[1], xs.shape[0], dtype='i')
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs.reshape(-1, xs.shape[-1]), l)
     cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -386,6 +384,7 @@ def rnn_forward_inference_ex(
         cy_ptr = 0
         cy_desc_value = 0
     
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
@@ -433,7 +432,6 @@ def rnn_forward_training_ex(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
@@ -459,6 +457,7 @@ def rnn_forward_training_ex(
         cy_ptr = 0
         cy_desc_value = 0
 
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
@@ -740,6 +739,29 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
 
     for length in lengths:
         c_shape[0] = length
+        desc = cudnn.createTensorDescriptor()
+        descs.append(desc)
+        cudnn.setTensorNdDescriptor(
+            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+
+    return descs
+
+
+cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
+    assert xs.ndim == 3
+
+    cdef _DescriptorArray descs = _DescriptorArray(
+        py_cudnn.destroyTensorDescriptor)
+    cdef size_t desc
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef Py_ssize_t itemsize = xs.itemsize
+
+    # RNN APIs assumes ndim == 3.
+    cdef vector.vector[int] c_shape = [xs._shape[1], xs._shape[2], 1]
+    cdef vector.vector[int] c_strides = [
+        xs._strides[1] // itemsize, xs._strides[2] // itemsize, 1]
+
+    for _ in range(xs._shape[0]):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
