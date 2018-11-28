@@ -356,7 +356,8 @@ def rnn_forward_inference_ex(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    l = numpy.full(xs.shape[1], xs.shape[0], dtype='i')
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs.reshape(-1, xs.shape[-1]), l)
     cdef Descriptor x_data_desc = make_unpacked_rnn_data_descriptor(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
