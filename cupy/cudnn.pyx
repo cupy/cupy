@@ -485,6 +485,149 @@ def rnn_forward_training_ex(
     return reserve_space, hy, cy, ys
 
 
+def rnn_backward_data_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        core.ndarray ys, memory.MemoryPointer reserve_space,
+        core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+    ys = core.ascontiguousarray(ys)
+    dhy = core.ascontiguousarray(dhy)
+    dcy = core.ascontiguousarray(dcy)
+    dys = core.ascontiguousarray(dys)
+
+    cdef int length, batch
+    length, batch, _ = xs._shape
+    cdef int n_layers
+    cdef int n_units = hx.shape[2]
+
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        n_layers = hx.shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        n_layers = hx.shape[0]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor dy_data_desc = _make_unpacked_rnn_data_descriptor(dys, lengths)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+
+    cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
+    cdef Descriptor dx_data_desc = _make_unpacked_rnn_data_descriptor(dxs, lengths)
+    cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
+    cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
+
+    cdef Descriptor cx_desc, cy_desc
+    cdef core.ndarray cy
+    if cx is not None:
+        cx_ptr = cx.data.ptr
+        cx_desc = create_tensor_nd_descriptor(cx)
+        cx_desc_value = cx_desc.value
+        dcx = core.ndarray(cx.shape, cx.dtype)
+        dcx_ptr = dcx.data.ptr
+        dcx_desc = create_tensor_nd_descriptor(dcx)
+        dcx_desc_value = dcx_desc.value
+        dcy_ptr = dcy.data.ptr
+        dcy_desc = create_tensor_nd_descriptor(dcy)
+        dcy_desc_value = dcy_desc.value
+    else:
+        cx_ptr = 0
+        cx_desc_value = 0
+        dcx = None
+        dcx_ptr = 0
+        dcx_desc_value = 0
+        dcy_ptr = 0
+        dcy_desc_value = 0
+
+    cudnn.RNNBackwardDataEx(
+        handle, rnn_desc.value,
+        y_data_desc.value, ys.data.ptr,
+        dy_data_desc.value, dys.data.ptr,
+        0, 0,
+        dhy_desc.value, dhy.data.ptr,
+        dcy_desc_value, dcy_ptr,
+        w_desc.value, w.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc_value, cx_ptr,
+        dx_data_desc.value, dxs.data.ptr,
+        dhx_desc.value, dhx.data.ptr,
+        dcx_desc_value, dcx_ptr,
+        0, 0,
+        workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_space.mem.size)
+
+    return dhx, dcx, dxs
+
+
+def rnn_backward_weights_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray xs, core.ndarray hx, core.ndarray ys,
+        core.ndarray w,
+        memory.MemoryPointer reserve_space, lengths):
+    xs = core.ascontiguousarray(xs)
+    hx = core.ascontiguousarray(hx)
+    ys = core.ascontiguousarray(ys)
+    w = core.ascontiguousarray(w)
+
+    cdef int length, batch
+    length, batch, _ = xs._shape
+    cdef int n_layers
+    cdef int n_units = hx.shape[2]
+
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        n_layers = hx.shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        n_layers = hx.shape[0]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
+    dw[...] = 0
+    cdef Descriptor dw_desc = create_filter_descriptor(dw)
+
+    cudnn.RNNBackwardWeightsEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        workspace.ptr, workspace.mem.size,
+        dw_desc.value, dw.data.ptr,
+        reserve_space.ptr, reserve_space.mem.size)
+    return dw
+
+
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
