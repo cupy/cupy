@@ -336,7 +336,8 @@ def rnn_forward_inference_ex(
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
 
-    cdef int length = len(lengths)
+    cdef int length, batch
+    length, batch, _ = xs._shape
     cdef int n_layers
     cdef int n_units = hx.shape[2]
     cdef int input_units
@@ -348,7 +349,7 @@ def rnn_forward_inference_ex(
         n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray(
-        (xs._shape[0], xs._shape[1], input_units), dtype=xs.dtype)
+        (length, batch, input_units), dtype=xs.dtype)
     cdef size_t handle = get_handle()
 
     cdef Descriptor rnn_desc = create_rnn_descriptor(
