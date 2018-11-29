@@ -29,10 +29,23 @@ class TestShape(unittest.TestCase):
         b[1] = 1
         return a
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_nocopy_reshape_F_order(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
+        b = a.reshape(4, 3, 2, order='F')
+        b[1] = 1
+        return a
+
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp).T
         return a.reshape(4, 6)
+
+    @testing.numpy_cupy_array_equal()
+    def test_transposed_reshape_F_order(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp).T
+        return a.reshape(4, 6, order='F')
 
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape2(self, xp):
@@ -40,9 +53,19 @@ class TestShape(unittest.TestCase):
         return a.reshape(2, 3, 4)
 
     @testing.numpy_cupy_array_equal()
+    def test_transposed_reshape2_F_order(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
+        return a.reshape(2, 3, 4, order='F')
+
+    @testing.numpy_cupy_array_equal()
     def test_reshape_with_unknown_dimension(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.reshape(3, -1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_reshape_with_unknown_dimension_F_order(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return a.reshape(3, -1, order='F')
 
     @testing.numpy_cupy_raises()
     def test_reshape_with_multiple_unknown_dimensions(self):
@@ -53,6 +76,11 @@ class TestShape(unittest.TestCase):
     def test_reshape_with_changed_arraysize(self):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4)
+
+    @testing.numpy_cupy_raises()
+    def test_reshape_invalid_order(self):
+        a = testing.shaped_arange((2, 3, 4))
+        a.reshape(2, 4, 4, order='K')
 
     @testing.numpy_cupy_array_equal()
     def test_external_reshape(self, xp):
@@ -87,3 +115,20 @@ class TestShape(unittest.TestCase):
         b = a.T.reshape(2, 3)
         self.assertTrue(b.flags.c_contiguous)
         self.assertFalse(b.flags.f_contiguous)
+
+    def test_reshape_fortran_order_contiguity(self):
+        a = cupy.arange(6).reshape(2, 3, order='F')
+        self.assertFalse(a.flags.c_contiguous)
+        self.assertTrue(a.flags.f_contiguous)
+
+        a = a.reshape(1, 6, 1, order='F')
+        self.assertTrue(a.flags.c_contiguous)
+        self.assertTrue(a.flags.f_contiguous)
+
+        b = a.T.reshape(1, 6, 1, order='F')
+        self.assertTrue(b.flags.c_contiguous)
+        self.assertTrue(b.flags.f_contiguous)
+
+        b = a.T.reshape(2, 3, order='F')
+        self.assertFalse(b.flags.c_contiguous)
+        self.assertTrue(b.flags.f_contiguous)
