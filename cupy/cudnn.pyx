@@ -421,10 +421,8 @@ def rnn_forward_training_ex(
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
-
-    cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
-        handle, rnn_desc.value, length, xs_descs.data)
-    cdef memory.MemoryPointer reserve_space = memory.alloc(reserve_size)
+    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+        rnn_desc, length, xs_descs)
 
     cudnn.RNNForwardTrainingEx(
         handle, rnn_desc.value,
@@ -437,7 +435,7 @@ def rnn_forward_training_ex(
         cy_desc.value, cy.data.ptr,
         0, 0, 0, 0, 0, 0, 0, 0,
         workspace.ptr, workspace.mem.size,
-        reserve_space.ptr, reserve_size)
+        reserve_space.ptr, reserve_space.mem.size)
 
     return reserve_space, hy, cy, ys
 
@@ -852,6 +850,14 @@ cdef memory.MemoryPointer _make_rnn_workspace(
     return memory.alloc(work_size)
 
 
+cdef memory.MemoryPointer _make_rnn_reserve_space(
+        Descriptor rnn_desc, int length, _DescriptorArray descs):
+    cdef size_t handle = get_handle()
+    cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
+        handle, rnn_desc.value, length, descs.data)
+    return memory.alloc(reserve_size)
+
+
 cdef Py_ssize_t _get_n_layers(int direction_mode, core.ndarray hx):
     if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
         return hx._shape[0] // 2
@@ -956,10 +962,9 @@ def rnn_forward_training(
 
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+        rnn_desc, length, xs_descs)
 
-    cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
-        handle, rnn_desc.value, length, xs_descs.data)
-    cdef memory.MemoryPointer reserve_space = memory.alloc(reserve_size)
     cudnn.RNNForwardTraining(
         handle, rnn_desc.value, length,
         xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
