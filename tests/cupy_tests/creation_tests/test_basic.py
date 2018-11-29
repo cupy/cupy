@@ -183,6 +183,12 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(b.strides, bg.strides)
         return
 
+    @testing.numpy_cupy_raises()
+    def test_empty_like_invalid_order(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order='Q')
+        return b
+
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
