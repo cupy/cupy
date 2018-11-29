@@ -59,6 +59,8 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
     @cupy.testing.for_signed_dtypes('n_dtype')
     @cupy.testing.for_float_dtypes('p_dtype')
     def test_binomial(self, n_dtype, p_dtype):
+        if numpy.dtype('l') == numpy.int32 and n_dtype == numpy.int64:
+            self.skipTest('n must be able to cast to long')
         n = numpy.full(self.n_shape, 5, dtype=n_dtype)
         p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
         self.check_distribution('binomial',
