@@ -581,6 +581,13 @@ cdef memory.MemoryPointer _make_rnn_workspace(
     return memory.alloc(work_size)
 
 
+cdef Py_ssize_t _get_n_layers(int direction_mode, core.ndarray hx):
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        return hx._shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        return hx._shape[0]
+
+
 def rnn_forward_inference(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
@@ -591,15 +598,13 @@ def rnn_forward_inference(
     xs = core.ascontiguousarray(xs)
 
     cdef int length = len(lengths)
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
     cdef int input_units
     if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
-        n_layers = hx.shape[0] // 2
     else:  # cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
-        n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
     cdef size_t handle = get_handle()
@@ -657,16 +662,14 @@ def rnn_forward_training(
     xs = core.ascontiguousarray(xs)
 
     cdef int length = len(lengths)
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
     cdef int input_units
 
     if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
         input_units = n_units * 2
-        n_layers = hx.shape[0] // 2
     else:  # cudnn.CUDNN_UNIDIRECTIONAL
         input_units = n_units
-        n_layers = hx.shape[0]
 
     cdef core.ndarray ys = core.ndarray((len(xs), input_units), dtype=xs.dtype)
     cdef size_t handle = get_handle()
@@ -734,13 +737,8 @@ def rnn_backward_data(
     dys = core.ascontiguousarray(dys)
 
     cdef int length = len(lengths)
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
-
-    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
-        n_layers = hx.shape[0] // 2
-    else:  # cudnn.CUDNN_UNIDIRECTIONAL
-        n_layers = hx.shape[0]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
@@ -812,13 +810,8 @@ def rnn_backward_weights(
     w = core.ascontiguousarray(w)
 
     cdef int length = len(lengths)
-    cdef int n_layers
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
     cdef int n_units = hx.shape[2]
-
-    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
-        n_layers = hx.shape[0] // 2
-    else:  # cudnn.CUDNN_UNIDIRECTIONAL
-        n_layers = hx.shape[0]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
