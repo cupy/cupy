@@ -886,6 +886,9 @@ class TestFusionUfunc(unittest.TestCase):
         self.check_reduce(lambda x: x, 1, cupy.amax, self.random_int)
         self.check_reduce(lambda x: x, 1, cupy.amin, self.random_int)
 
+        self.check_reduce(lambda x: x, 1, cupy.all, self.random_bool)
+        self.check_reduce(lambda x: x, 1, cupy.any, self.random_bool)
+
 
 @testing.gpu
 class TestFusionMisc(unittest.TestCase):

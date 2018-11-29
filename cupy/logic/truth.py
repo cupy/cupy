@@ -5,6 +5,7 @@ from cupy.core import fusion
 
 @fusion._reduction_wrapper(core._all)
 def _all(a, axis, out, keepdims):
+    assert isinstance(a, cupy.ndarray)
     return a.all(axis=axis, out=out, keepdims=keepdims)
 
 
@@ -25,12 +26,12 @@ def all(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.all`
 
     """
-    assert isinstance(a, cupy.ndarray)
     return _all(a, axis=axis, out=out, keepdims=keepdims)
 
 
 @fusion._reduction_wrapper(core._any)
 def _any(a, axis, out, keepdims):
+    assert isinstance(a, cupy.ndarray)
     return a.any(axis=axis, out=out, keepdims=keepdims)
 
 
@@ -51,5 +52,4 @@ def any(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.any`
 
     """
-    assert isinstance(a, cupy.ndarray)
     return _any(a, axis=axis, out=out, keepdims=keepdims)
