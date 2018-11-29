@@ -189,22 +189,24 @@ class TestBasic(unittest.TestCase):
         b = cupy.zeros((2, 3), dtype='d', order=order)
         self.assertEqual(b.strides, a.strides)
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros_like(self, xp, dtype):
+    def test_zeros_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
-        return xp.zeros_like(a)
+        return xp.zeros_like(a, order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ones(self, xp, dtype):
         return xp.ones((2, 3, 4), dtype=dtype)
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_ones_like(self, xp, dtype):
+    def test_ones_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
-        return xp.ones_like(a)
+        return xp.ones_like(a, order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -223,8 +225,9 @@ class TestBasic(unittest.TestCase):
     def test_full_default_dtype_cpu_input(self, xp, dtype):
         return xp.full((2, 3, 4), numpy.array(1, dtype=dtype))
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_full_like(self, xp, dtype):
+    def test_full_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
-        return xp.full_like(a, 1)
+        return xp.full_like(a, 1, order=order)
