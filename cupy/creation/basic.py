@@ -58,7 +58,7 @@ def _new_like_order_and_strides(a, dtype, order):
         order = 'C'
         stride = numpy.dtype(dtype).itemsize
         strides = numpy.zeros(a.ndim, dtype=numpy.intp)
-        for idim in range(a.ndim-1, -1, -1):
+        for idim in range(a.ndim - 1, -1, -1):
             i_perm = perm[idim]
             strides[i_perm] = stride
             stride *= a.shape[i_perm]
@@ -66,7 +66,7 @@ def _new_like_order_and_strides(a, dtype, order):
         memptr = cupy.empty(a.size, dtype=dtype).data
         return order, strides, memptr
     else:
-        raise ValueError("unknown order, {}".format(order))
+        raise TypeError('order not understood: {}'.format(order))
 
 
 def empty_like(a, dtype=None, order='K'):
