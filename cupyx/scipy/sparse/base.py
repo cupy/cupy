@@ -260,14 +260,12 @@ class spmatrix(object):
         If the matrix is of non-complex data type and `copy` is False,
         this method does nothing and the data is not copied.
 
-        Parameters
-        ----------
-        copy : bool, optional
-            If True, the result is guaranteed to not share data with self.
+        Args:
+            copy (bool):
+                If True, the result is guaranteed to not share data with self.
 
-        Returns
-        -------
-        A : The element-wise complex conjugate.
+        Returns:
+            cupyx.scipy.sparse.spmatrix : The element-wise complex conjugate.
 
         """
         if cupy.issubdtype(self.dtype, cupy.complexfloating):
