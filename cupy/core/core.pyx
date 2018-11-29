@@ -28,6 +28,7 @@ from cupy.cuda.runtime import CUDARuntimeError
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
@@ -66,10 +67,10 @@ except AttributeError:
 
 
 @cython.profile(False)
-cdef inline int _normalize_order(order) except? 0:
+cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
     order_char = 'C' if len(order) == 0 else ord(order[0])
-    if order_char == 'K' or order_char == 'k':
+    if allow_k and (order_char == 'K' or order_char == 'k'):
         order_char = 'K'
     elif order_char == 'A' or order_char == 'a':
         order_char = 'A'
@@ -565,17 +566,12 @@ cdef class ndarray:
             shape = shape[0]
 
         if 'order' in kwargs:
-            if kwargs['order'] == 'A':
-                if self.flags.f_contiguous:
+            order_char = _normalize_order(kwargs['order'], False)
+            if order_char == 'A':
+                if self._f_contiguous:
                     order_char = 'F'
                 else:
                     order_char = 'C'
-            elif kwargs['order'] == 'F':
-                order_char = 'F'
-            elif kwargs['order'] != 'C':
-                raise ValueError(
-                    "order '{}' is not permitted for reshaping".format(
-                        kwargs['order']))
         if order_char == 'C':
             return self._reshape(shape)
         else:

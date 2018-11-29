@@ -61,6 +61,11 @@ class TestShape(unittest.TestCase):
         return a.reshape(4, 6, order='A')
 
     @testing.numpy_cupy_array_equal()
+    def test_transposed_reshape_lowercase_order(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp).T
+        return a.reshape(4, 6, order='a')
+
+    @testing.numpy_cupy_array_equal()
     def test_transposed_reshape2(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
         return a.reshape(2, 3, 4)
