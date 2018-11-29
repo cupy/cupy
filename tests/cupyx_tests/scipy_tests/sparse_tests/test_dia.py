@@ -22,6 +22,17 @@ def _make(xp, sp, dtype):
     return sp.dia_matrix((data, offsets), shape=(3, 4))
 
 
+def _make_complex(xp, sp, dtype):
+    data = xp.array([[0, 1, 2], [3, 4, 5]], dtype)
+    if dtype in [numpy.complex64, numpy.complex128]:
+        data = data - 1j
+    offsets = xp.array([0, -1], 'i')
+    # 0, 0, 0, 0
+    # 3 - 1j, 1 - 1j, 0, 0
+    # 0, 4 - 1j, 2 - 1j, 0
+    return sp.dia_matrix((data, offsets), shape=(3, 4))
+
+
 def _make_empty(xp, sp, dtype):
     data = xp.array([[]], 'f')
     offsets = xp.array([0], 'i')
@@ -57,6 +68,10 @@ class TestDiaMatrix(unittest.TestCase):
 
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 5)
+
+    def test_conj(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
@@ -124,6 +139,11 @@ class TestDiaMatrixInit(unittest.TestCase):
         offsets = xp.array([1, 1], 'i')
         sp.dia_matrix(
             (self.data(xp), offsets), shape=self.shape)
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_conj(self, xp, sp):
+        n = _make_complex(xp, sp, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
 
 @testing.parameterize(*testing.product({
