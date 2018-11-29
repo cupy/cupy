@@ -21,69 +21,35 @@ class TestShape(unittest.TestCase):
             return a.reshape((1, 1, 1, 4, 1, 2)).strides
         self.assertEqual(func(numpy), func(cupy))
 
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_nocopy_reshape(self, xp, dtype):
+    def test_nocopy_reshape(self, xp, dtype, order):
         a = xp.zeros((2, 3, 4), dtype=dtype)
-        b = a.reshape(4, 3, 2)
+        b = a.reshape(4, 3, 2, order=order)
         b[1] = 1
         return a
 
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_nocopy_reshape_F_order(self, xp, dtype):
+    def test_nocopy_reshape_with_order(self, xp, dtype, order):
         a = xp.zeros((2, 3, 4), dtype=dtype)
-        b = a.reshape(4, 3, 2, order='F')
+        b = a.reshape(4, 3, 2, order=order)
         b[1] = 1
         return a
 
-    @testing.for_all_dtypes()
+    @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
-    def test_nocopy_reshape_A_order(self, xp, dtype):
-        a = xp.zeros((2, 3, 4), dtype=dtype)
-        b = a.reshape(4, 3, 2, order='A')
-        b[1] = 1
-        return a
-
-    @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp).T
-        return a.reshape(4, 6)
-
-    @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape_F_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp).T
-        return a.reshape(4, 6, order='F')
-
-    @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape_A_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp).T
-        return a.reshape(4, 6, order='A')
-
-    @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape_lowercase_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp).T
-        return a.reshape(4, 6, order='a')
-
-    @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape2(self, xp):
+    def test_transposed_reshape2(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
-        return a.reshape(2, 3, 4)
+        return a.reshape(2, 3, 4, order=order)
 
+    @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
-    def test_transposed_reshape2_F_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
-        return a.reshape(2, 3, 4, order='F')
-
-    @testing.numpy_cupy_array_equal()
-    def test_reshape_with_unknown_dimension(self, xp):
+    def test_reshape_with_unknown_dimension(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
-        return a.reshape(3, -1)
-
-    @testing.numpy_cupy_array_equal()
-    def test_reshape_with_unknown_dimension_F_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp)
-        return a.reshape(3, -1, order='F')
+        return a.reshape(3, -1, order=order)
 
     @testing.numpy_cupy_raises()
     def test_reshape_with_multiple_unknown_dimensions(self):
@@ -100,15 +66,11 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4, order='K')
 
+    @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
-    def test_external_reshape(self, xp):
+    def test_external_reshape(self, xp, order):
         a = xp.zeros((8,), dtype=xp.float32)
-        return xp.reshape(a, (1, 1, 1, 4, 1, 2))
-
-    @testing.numpy_cupy_array_equal()
-    def test_external_reshape_F_order(self, xp):
-        a = xp.zeros((8,), dtype=xp.float32)
-        return xp.reshape(a, (1, 1, 1, 4, 1, 2), order='F')
+        return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
     @testing.numpy_cupy_array_equal()
     def test_ravel(self, xp):
