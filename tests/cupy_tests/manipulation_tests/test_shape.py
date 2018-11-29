@@ -88,6 +88,11 @@ class TestShape(unittest.TestCase):
         return xp.reshape(a, (1, 1, 1, 4, 1, 2))
 
     @testing.numpy_cupy_array_equal()
+    def test_external_reshape_F_order(self, xp):
+        a = xp.zeros((8,), dtype=xp.float32)
+        return xp.reshape(a, (1, 1, 1, 4, 1, 2), order='F')
+
+    @testing.numpy_cupy_array_equal()
     def test_ravel(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
