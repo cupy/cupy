@@ -1,6 +1,8 @@
 import cupy
 import numpy
 
+from cupy.core.core import _update_order_char, _get_strides_for_order_K
+
 
 def empty(shape, dtype=float, order='C'):
     """Returns an array without initializing the elements.
@@ -26,47 +28,18 @@ def _new_like_order_and_strides(a, dtype, order):
 
     (see: numpy/core/src/multiarray/ctors.c)
     """
-    if order == 'A':
-        if a.flags.f_contiguous:
-            order = 'F'
-        else:
-            order = 'C'
-    elif order == 'K':
-        if a.flags.c_contiguous or a.ndim <= 1:
-            order = 'C'
-        elif a.flags.f_contiguous:
-            order = 'F'
+    if order not in ['C', 'F', 'K', 'A']:
+        raise TypeError('order not understood: {}'.format(order))
 
-    if order in ['C', 'F']:
-        return order, None, None
+    order = chr(_update_order_char(a, ord(order)))
 
-    elif order == 'K':
-        """
-        stable sort of strides in descending order
-        axes are included so the sort will always be stable
-        (mimics numpy's PyArray_CreateSortedStridePerm)
-        """
-        tmp = numpy.empty(len(a.strides),
-                          dtype=[('strides', numpy.intp),
-                                 ('axes', numpy.intp)])
-        tmp['strides'] = a.strides
-        tmp['axes'] = numpy.arange(a.ndim, dtype=numpy.intp)
-        tmp_sorted = numpy.sort(tmp, order=['strides', 'axes'])[::-1]
-        perm = tmp_sorted['axes']
-
-        # fill in strides based on the sorted order
+    if order == 'K':
+        strides = _get_strides_for_order_K(a, numpy.dtype(dtype))
         order = 'C'
-        stride = numpy.dtype(dtype).itemsize
-        strides = numpy.zeros(a.ndim, dtype=numpy.intp)
-        for idim in range(a.ndim - 1, -1, -1):
-            i_perm = perm[idim]
-            strides[i_perm] = stride
-            stride *= a.shape[i_perm]
-
         memptr = cupy.empty(a.size, dtype=dtype).data
         return order, strides, memptr
     else:
-        raise TypeError('order not understood: {}'.format(order))
+        return order, None, None
 
 
 def empty_like(a, dtype=None, order='K'):
