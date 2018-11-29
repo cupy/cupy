@@ -689,7 +689,7 @@ cdef class ndarray:
         newarray._f_contiguous = True
         return newarray
 
-    cpdef ndarray ravel(self):
+    cpdef ndarray ravel(self, order='C'):
         """Returns an array flattened into one dimension.
 
         .. seealso::
@@ -697,10 +697,24 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        # TODO(beam2d): Support ordering option
+        # TODO(beam2d): Support K ordering option
+        cdef int order_char
         cdef vector.vector[Py_ssize_t] shape
         shape.push_back(self.size)
-        return self._reshape(shape)
+
+        order_char = _normalize_order(order, True)
+        if order_char == 'A':
+            if self._f_contiguous:
+                order_char = 'F'
+            else:
+                order_char = 'C'
+        if order_char == 'C':
+            return self._reshape(shape)
+        elif order_char == 'F':
+            return self.transpose()._reshape(shape)
+        elif order_char == 'K':
+            raise NotImplementedError(
+                "ravel with order='K' not yet implemented.")
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.

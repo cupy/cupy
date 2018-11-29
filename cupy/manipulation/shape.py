@@ -33,15 +33,27 @@ def reshape(a, newshape, order='C'):
     return a.reshape(newshape, order=order)
 
 
-def ravel(a):
+def ravel(a, order='C'):
     """Returns a flattened array.
 
     It tries to return a view if possible, otherwise returns a copy.
 
-    This function currently does not support ``order`` option.
+    This function currently does not support the ``order = 'K'`` option.
 
     Args:
         a (cupy.ndarray): Array to be flattened.
+        order ({'C', 'F', 'A'}):
+            Read the elements of ``a`` using this index order, and place the
+            elements into the reshaped array using this index order.
+            'C' means to read / write the elements using C-like index order,
+            with the last axis index changing fastest, back to the first axis
+            index changing slowest. 'F' means to read / write the elements
+            using Fortran-like index order, with the first index changing
+            fastest, and the last index changing slowest. Note that the 'C'
+            and 'F' options take no account of the memory layout of the
+            underlying array, and only refer to the order of indexing. 'A'
+            means to read / write the elements in Fortran-like index order if
+            a is Fortran contiguous in memory, C-like order otherwise.
 
     Returns:
         cupy.ndarray: A flattened view of ``a`` if possible, otherwise a copy.
@@ -49,6 +61,6 @@ def ravel(a):
     .. seealso:: :func:`numpy.ravel`
 
     """
-    # TODO(beam2d): Support ordering option
+    # TODO(beam2d): Support ordering option K
     # TODO(okuta): check type
-    return a.ravel()
+    return a.ravel(order)

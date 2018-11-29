@@ -72,11 +72,25 @@ class TestShape(unittest.TestCase):
         a = xp.zeros((8,), dtype=xp.float32)
         return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
+    @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
-    def test_ravel(self, xp):
+    def test_ravel(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
-        return a.ravel()
+        return a.ravel(order)
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel2(self, xp, order):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return a.ravel(order)
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel3(self, xp, order):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        a = xp.asfortranarray(a)
+        return a.ravel(order)
 
     @testing.numpy_cupy_array_equal()
     def test_external_ravel(self, xp):

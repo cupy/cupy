@@ -31,7 +31,7 @@ cdef class ndarray:
     cpdef ndarray _transpose(self, vector.vector[Py_ssize_t] axes)
     cpdef ndarray swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
     cpdef ndarray flatten(self)
-    cpdef ndarray ravel(self)
+    cpdef ndarray ravel(self, order=*)
     cpdef ndarray squeeze(self, axis=*)
     cpdef ndarray take(self, indices, axis=*, out=*)
     cpdef repeat(self, repeats, axis=*)
