@@ -89,6 +89,16 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_empty_like_lowercase(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.empty_like(a, order='c')
+        b.fill(0)
+        self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_empty_like_F_order(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.empty_like(a, order='F')

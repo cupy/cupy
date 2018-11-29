@@ -28,6 +28,7 @@ def _new_like_order_and_strides(a, dtype, order):
 
     (see: numpy/core/src/multiarray/ctors.c)
     """
+    order = order.upper()
     if order not in ['C', 'F', 'K', 'A']:
         raise TypeError('order not understood: {}'.format(order))
 
