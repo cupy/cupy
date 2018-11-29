@@ -37,6 +37,14 @@ class TestShape(unittest.TestCase):
         b[1] = 1
         return a
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_nocopy_reshape_A_order(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
+        b = a.reshape(4, 3, 2, order='A')
+        b[1] = 1
+        return a
+
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp).T
@@ -46,6 +54,11 @@ class TestShape(unittest.TestCase):
     def test_transposed_reshape_F_order(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp).T
         return a.reshape(4, 6, order='F')
+
+    @testing.numpy_cupy_array_equal()
+    def test_transposed_reshape_A_order(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp).T
+        return a.reshape(4, 6, order='A')
 
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape2(self, xp):
