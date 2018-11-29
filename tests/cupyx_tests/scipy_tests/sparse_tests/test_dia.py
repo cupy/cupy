@@ -73,6 +73,10 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
+    def test_conjugate(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
+
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
         if numpy.dtype(self.dtype).kind == 'f':
