@@ -27,10 +27,6 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.sum(a)
 
-    @testing.numpy_cupy_allclose()
-    def test_external_sum_arraylike(self, xp):
-        return xp.sum((1, 2, 3))
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_sum_all2(self, xp, dtype):
@@ -160,10 +156,6 @@ class TestSumprod(unittest.TestCase):
     def test_external_prod_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.prod(a)
-
-    @testing.numpy_cupy_allclose()
-    def test_external_prod_arraylike(self, xp):
-        return xp.sum((1, 2, 3))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()

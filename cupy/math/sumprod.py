@@ -25,7 +25,6 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
-    a = cupy.asarray(a)
     return a.sum(axis, dtype, out, keepdims)
 
 
@@ -48,7 +47,6 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
-    a = cupy.asarray(a)
     return a.prod(axis, dtype, out, keepdims)
 
 
