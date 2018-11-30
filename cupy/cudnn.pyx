@@ -136,9 +136,13 @@ cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     if arr._shape.size() == 4:
         data_type = get_data_type(arr.dtype)
-        cudnn.setTensor4dDescriptor(desc, format, data_type,
-                                    arr._shape[0], arr._shape[1],
-                                    arr._shape[2], arr._shape[3])
+        if format == cudnn.CUDNN_TENSOR_NCHW:
+            n, c, h, w = arr._shape
+        elif format == cudnn.CUDNN_TENSOR_NHWC:
+            n, h, w, c = arr._shape
+        else:
+            raise ValueError('unknown cudnnTensorFormat: {}'.format(format))
+        cudnn.setTensor4dDescriptor(desc, format, data_type, n, c, h, w)
     else:
         _create_tensor_nd_descriptor(desc, arr)
 
