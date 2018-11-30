@@ -25,6 +25,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
+    a = cupy.asarray(a)
     return a.sum(axis, dtype, out, keepdims)
 
 
@@ -47,6 +48,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
+    a = cupy.asarray(a)
     return a.prod(axis, dtype, out, keepdims)
 
 
@@ -80,6 +82,7 @@ def _proc_as_batch(proc, x, axis):
 
 
 def _cum_core(a, axis, dtype, out, kern, batch_kern):
+    a = cupy.asarray(a)
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
