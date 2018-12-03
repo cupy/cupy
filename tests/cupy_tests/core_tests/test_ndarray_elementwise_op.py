@@ -11,8 +11,7 @@ from cupy import testing
 @testing.gpu
 class TestArrayElementwiseOp(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'],
-                                        no_complex=True)
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
                               no_bool=False, no_complex=False):
@@ -141,16 +140,16 @@ class TestArrayElementwiseOp(unittest.TestCase):
                                        no_complex=True)
 
     def test_lt_scalar(self):
-        self.check_array_scalar_op(operator.lt, no_complex=True)
+        self.check_array_scalar_op(operator.lt, no_complex=False)
 
     def test_le_scalar(self):
-        self.check_array_scalar_op(operator.le, no_complex=True)
+        self.check_array_scalar_op(operator.le, no_complex=False)
 
     def test_gt_scalar(self):
-        self.check_array_scalar_op(operator.gt, no_complex=True)
+        self.check_array_scalar_op(operator.gt, no_complex=False)
 
     def test_ge_scalar(self):
-        self.check_array_scalar_op(operator.ge, no_complex=True)
+        self.check_array_scalar_op(operator.ge, no_complex=False)
 
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
