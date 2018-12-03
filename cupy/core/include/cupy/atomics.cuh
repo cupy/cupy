@@ -36,5 +36,5 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
     old = atomicCAS(aligned, assumed, sum_as_ui);
   } while(assumed != old);
   __half_raw raw = {old_as_us};
-  return float16(half(raw));
+  return float16(raw);
 };
