@@ -4059,7 +4059,6 @@ cpdef ndarray tensordot_core(
     cdef vector.vector[Py_ssize_t] shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
-    cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
