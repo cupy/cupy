@@ -7,6 +7,10 @@ from cupy.core import fusion
 
 
 @fusion._reduction_wrapper(core.core._sum_auto_dtype)
+def _sum(a, axis, dtype, out, keepdims):
+    return a.sum(axis, dtype, out, keepdims)
+
+
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
 
@@ -25,10 +29,14 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
-    return a.sum(axis, dtype, out, keepdims)
+    return _sum(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 @fusion._reduction_wrapper(core.core._prod_auto_dtype)
+def _prod(a, axis, dtype, out, keepdims):
+    return a.prod(axis, dtype, out, keepdims)
+
+
 def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the product of an array along given axes.
 
@@ -47,7 +55,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 
     """
     # TODO(okuta): check type
-    return a.prod(axis, dtype, out, keepdims)
+    return _prod(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nansum
