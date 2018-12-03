@@ -932,14 +932,19 @@ def _reduction_wrapper(fusion_op):
         def call(*args, **kwargs):
             if not hasattr(_thread_local, 'history'):
                 return f(*args, **kwargs)
+
+            if len(args) != 1:
+                mes = '{}() takes 1 positional argument but {} were given'
+                raise TypeError(mes.format(fusion_op._ops.name, len(args)))
+
             arg = args[0]
+            kwargs = dict([(key, value) for key, value in kwargs.items()
+                           if (key in ('axis', 'out') and value is not None)])
+
             if arg._is_postmap:
                 # Multiple reduction
                 raise NotImplementedError(
                     'Multiple reduction is not implemented yet')
-            if len(args) != 1:
-                mes = '{}() takes 1 positional argument but {} were given'
-                raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
             var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
 
