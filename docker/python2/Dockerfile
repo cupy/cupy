@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install --no-cache-dir cupy-cuda92==5.0.0
+RUN pip install --no-cache-dir cupy-cuda92==5.1.0
