@@ -49,6 +49,18 @@ The folowing is a simple example code borrowed from `numba/numba#2860 <https://g
 
 	print(out)  # => [ 0  3  6  9 12 15 18 21 24 27]
 
+In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA array to CuPy array.
+
+.. code:: python
+
+    import numpy
+    import numba
+    import cupy
+
+    x = numpy.arange(10)  # type: numpy.ndarray
+    x_numba = numba.cuda.to_device(x)  # type: numba.cuda.cudadrv.devicearray.DeviceNDArray
+    x_cupy = cupy.asarray(x_numba)  # type: cupy.ndarray
+
 DLPack
 ------
 
