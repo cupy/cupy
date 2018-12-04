@@ -46,21 +46,52 @@ typedef enum {
     ncclUint64     = 6,
     nccl_NUM_TYPES = 7 } ncclDataType_t;
 
-const char* ncclGetErrorString(...);
-ncclResult_t ncclGetUniqueId(...);
-ncclResult_t ncclCommInitRank(...);
-void ncclCommDestroy(...);
-ncclResult_t ncclCommCuDevice(...);
-ncclResult_t ncclCommUserRank(...);
-ncclResult_t ncclAllReduce(...);
-ncclResult_t ncclReduce(...);
-ncclResult_t ncclBcast(...);
-ncclResult_t ncclReduceScatter(...);
-ncclResult_t ncclAllGather(...);
+const char* ncclGetErrorString(...) {
+    return "";
+}
+
+ncclResult_t ncclGetUniqueId(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommInitRank(...) {
+    return ncclSuccess;
+}
+
+void ncclCommDestroy(...) {
+}
+
+ncclResult_t ncclCommCuDevice(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommUserRank(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclAllReduce(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclReduce(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclBcast(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclReduceScatter(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclAllGather(...) {
+    return ncclSuccess;
+}
 
 typedef struct CUstream_st *cudaStream_t;
 
-}
+}  // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
 
