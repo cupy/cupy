@@ -4270,9 +4270,9 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 # Logic functions
 # -----------------------------------------------------------------------------
 
-cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
+cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
-    if require_sortable_dtype:
+    if no_complex_dtype:
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
     else:
@@ -4294,7 +4294,7 @@ greater = create_comparison(
     .. seealso:: :data:`numpy.greater`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 greater_equal = create_comparison(
@@ -4304,7 +4304,7 @@ greater_equal = create_comparison(
     .. seealso:: :data:`numpy.greater_equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 less = create_comparison(
@@ -4314,7 +4314,7 @@ less = create_comparison(
     .. seealso:: :data:`numpy.less`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 less_equal = create_comparison(
@@ -4324,7 +4324,7 @@ less_equal = create_comparison(
     .. seealso:: :data:`numpy.less_equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 equal = create_comparison(
@@ -4334,7 +4334,7 @@ equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 not_equal = create_comparison(
@@ -4344,7 +4344,7 @@ not_equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 _all = create_reduction_func(
