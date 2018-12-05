@@ -197,6 +197,31 @@ In other words, you have control over grid size, block size, shared memory size 
           [30., 32., 34., 36., 38.],
           [40., 42., 44., 46., 48.]], dtype=float32)
 
+Raw kernels operating on complex-valued arrays can be created as well:
+
+.. doctest::
+
+   >>> complex_kernel = cp.RawKernel(r'''
+   ... #include <cupy/complex.cuh>
+   ... extern "C" __global__
+   ... void my_func(const complex<float>* x1, const complex<float>* x2,
+   ...              complex<float>* y, float a) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + a * x2[tid];
+   ... }
+   ... ''', 'my_func')
+   >>> x1 = cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> x2 = 1j*cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> y = cupy.zeros((5, 5), dtype=cupy.complex64)
+   >>> complex_kernel((5,), (5,), (x1, x2, y, cupy.float32(2.0)))  # grid, block and arguments
+   >>> y
+   array([[ 0. +0.j,  1. +2.j,  2. +4.j,  3. +6.j,  4. +8.j],
+          [ 5.+10.j,  6.+12.j,  7.+14.j,  8.+16.j,  9.+18.j],
+          [10.+20.j, 11.+22.j, 12.+24.j, 13.+26.j, 14.+28.j],
+          [15.+30.j, 16.+32.j, 17.+34.j, 18.+36.j, 19.+38.j],
+          [20.+40.j, 21.+42.j, 22.+44.j, 23.+46.j, 24.+48.j]],
+         dtype=complex64)
+
 The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
 attributes:
@@ -229,6 +254,7 @@ Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runti
     Especially note that when passing :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally).
     For example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``.
     For Python primitive types, ``int``, ``float`` and ``bool`` map to ``long long``, ``double`` and ``bool``, respectively.
+    To use complex types, the user must include ``<cupy/complex.cuh>`` as in the complex-valued example above.
 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
