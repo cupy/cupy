@@ -1,4 +1,4 @@
-recursive-include cupy *.h
+recursive-include cupy *.h *.hpp
 recursive-exclude cupy *.pyx *.pxd *.pxi
 include cupy_setup_build.py
 recursive-include install *.py
