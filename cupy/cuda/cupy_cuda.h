@@ -119,6 +119,7 @@ typedef enum {
 } CUresult;
 enum CUjit_option {};
 enum CUjitInputType {};
+enum CUfunction_attribute {};
 
 
 typedef void* CUdeviceptr;
@@ -210,6 +211,10 @@ CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
 
+// Function attribute
+CUresult cuFuncGetAttribute(...) {
+    return CUDA_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h

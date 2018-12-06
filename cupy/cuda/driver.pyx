@@ -13,6 +13,23 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 
+cdef class FuncAttributes:
+
+    def __init__(self, size_t sharedSizeBytes, size_t constSizeBytes,
+                 size_t localSizeBytes, int maxThreadsPerBlock, int numRegs,
+                 int ptxVersion, int binaryVersion, int cacheModeCA,
+                 int maxDynamicSharedSizeBytes, int preferredShmemCarveout):
+        self.sharedSizeBytes = sharedSizeBytes
+        self.constSizeBytes = constSizeBytes
+        self.localSizeBytes = localSizeBytes
+        self.maxThreadsPerBlock = maxThreadsPerBlock
+        self.numRegs = numRegs
+        self.ptxVersion = ptxVersion
+        self.binaryVersion = binaryVersion
+        self.cacheModeCA = cacheModeCA
+        self.maxDynamicSharedSizeBytes = maxDynamicSharedSizeBytes
+        self.preferredShmemCarveout = preferredShmemCarveout
+
 
 ###############################################################################
 # Extern
@@ -53,6 +70,10 @@ cdef extern from "cupy_cuda.h" nogil:
         unsigned int blockDimY, unsigned int blockDimZ,
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra)
+
+    # Kernel attributes
+    int cuFuncGetAttribute(int *pi, CUfunction_attribute attrib,
+                           Function hfunc)
 
     # Build-time version
     int CUDA_VERSION
@@ -226,3 +247,76 @@ cpdef launchKernel(
             shared_mem_bytes, <Stream>stream,
             <void**>kernel_params, <void**>extra)
     check_status(status)
+
+
+cpdef FuncAttributes funcGetAttributes(size_t func):
+    cdef:
+        int sharedSizeBytes, constSizeBytes, localSizeBytes
+        int maxThreadsPerBlock, numRegs, ptxVersion, binaryVersion
+        int cacheModeCA, maxDynamicSharedSizeBytes, preferredShmemCarveout
+
+    status = cuFuncGetAttribute(
+        &sharedSizeBytes,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &constSizeBytes,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &localSizeBytes,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &maxThreadsPerBlock,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &numRegs,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_NUM_REGS,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &ptxVersion,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_PTX_VERSION,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &binaryVersion,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_BINARY_VERSION,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &cacheModeCA,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_CACHE_MODE_CA,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &maxDynamicSharedSizeBytes,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
+        <Function> func)
+    check_status(status)
+
+    status = cuFuncGetAttribute(
+        &preferredShmemCarveout,
+        <CUfunction_attribute>CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT,
+        <Function> func)
+    check_status(status)
+
+    return FuncAttributes(
+        <size_t> sharedSizeBytes, <size_t> constSizeBytes,
+        <size_t> localSizeBytes, maxThreadsPerBlock, numRegs, ptxVersion,
+        binaryVersion, cacheModeCA, maxDynamicSharedSizeBytes,
+        preferredShmemCarveout)

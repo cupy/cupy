@@ -45,6 +45,17 @@ cdef class RawKernel:
         kern = _get_raw_kernel(self.code, self.name, self.options)
         kern(grid, block, args, **kwargs)
 
+    @property
+    def attributes(self):
+        """Returns an object containing runtime kernel attributes.
+
+        Returns:
+            attributes (FuncAttributes): A python class containing the
+                kernel's attributes. For example, ``attributes.numRegs``
+                corresponds to the number of registers used by the kernel.
+        """
+        kern = _get_raw_kernel(self.code, self.name, self.options)
+        return cupy.cuda.driver.funcGetAttributes(kern.ptr)
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=()):
