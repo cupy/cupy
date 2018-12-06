@@ -69,6 +69,18 @@ def get_cuda_path():
     return _cuda_path
 
 
+def get_attributes_dict(device_id):
+    """Return a dict containing all device attributes."""
+    d = {}
+    for k, v in runtime.__dict__.items():
+        if 'cudaDevAttr' in k:
+            try:
+                name = k.replace('cudaDevAttr', '')
+                d[name] = runtime.deviceGetAttribute(v, device_id)
+            except runtime.CUDARuntimeError:
+                pass
+    return d
+
 # import class and function
 from cupy.cuda.compiler import compile_with_cache  # NOQA
 from cupy.cuda.device import Device  # NOQA
