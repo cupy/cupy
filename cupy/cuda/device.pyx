@@ -7,7 +7,6 @@ import six
 from cupy.cuda cimport cublas
 from cupy.cuda cimport cusparse
 from cupy.cuda cimport runtime
-from cupy.cuda import get_attributes_dict
 
 try:
     from cupy.cuda import cusolver
@@ -226,6 +225,7 @@ cdef class Device:
 
     @property
     def attributes(self):
+        from cupy.cuda import get_attributes_dict
         return get_attributes_dict(self.id)
 
     def __richcmp__(Device self, object other, int op):
