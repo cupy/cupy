@@ -13,10 +13,12 @@ Sorting
    cupy.sort
    cupy.lexsort
    cupy.argsort
-   cupy.ndarray.sort
    cupy.msort
    cupy.partition
    cupy.argpartition
+
+.. seealso::
+   :func:`cupy.ndarray.sort`
 
 Searching
 ---------

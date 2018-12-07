@@ -34,9 +34,10 @@ Transpose-like operations
    cupy.moveaxis
    cupy.rollaxis
    cupy.swapaxes
-   cupy.ndarray.T
    cupy.transpose
 
+.. seealso::
+   :attr:`cupy.ndarray.T`
 
 Changing number of dimensions
 ---------------------
