@@ -40,7 +40,7 @@ Transpose-like operations
    :attr:`cupy.ndarray.T`
 
 Changing number of dimensions
----------------------
+-----------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -99,7 +99,7 @@ Splitting arrays
 
 
 Tiling arrays
------------------------------------
+-------------
 
 .. autosummary::
    :toctree: generated/
