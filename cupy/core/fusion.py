@@ -850,14 +850,21 @@ class Fusion(object):
         else:
             return numpy.array(arg).dtype, -1
 
-    def __call__(self, *args, out=None):
-        if out is not None:
+    def __call__(self, *args, **kwargs):
+        if 'out' in kwargs:
+            out = kwargs.pop('out')
             if isinstance(out, tuple):
                 if any(out_ary is None for out_ary in out):
                     raise NotImplementedError("None in 'out' argument is "
                                               "not yet supported.")
             else:
                 out = (out,)
+            args_and_out = args + out
+        else:
+            out = None
+            args_and_out = args
+        if kwargs:
+            raise TypeError('Wrong arguments {}'.format(kwargs))
 
         # Inner function of composition of multiple fused functions.
         if hasattr(_thread_local, 'history'):
@@ -873,11 +880,10 @@ class Fusion(object):
                 return ret
 
         # Fails to fuse
-        if out is None:
-            if cupy.get_array_module(*args) is not cupy:
+        if cupy.get_array_module(*args_and_out) is not cupy:
+            if out is None:
                 return self.func(*args)
-        else:
-            if cupy.get_array_module(*args, *out) is not cupy:
+            else:
                 ret = self.func(*args)
                 if isinstance(ret, tuple):
                     for out_ary, ret_ary in zip(out, ret):
@@ -904,10 +910,7 @@ class Fusion(object):
             finally:
                 del _thread_local.history
         kernel, kwargs = self._memo[params_info]
-        if out is None:
-            return kernel(*args, **kwargs)
-        else:
-            return kernel(*args, *out, **kwargs)
+        return kernel(*args_and_out, **kwargs)
 
     def clear_cache(self):
         self._memo = {}
