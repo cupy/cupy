@@ -26,8 +26,8 @@ See the example code below for details:
 
 .. code-block:: py
 
-   import numpy
    import cupy
+   import numpy
 
    mempool = cupy.get_default_memory_pool()
    pinned_mempool = cupy.get_default_pinned_memory_pool()
@@ -35,6 +35,7 @@ See the example code below for details:
    # Create an array on CPU.
    # NumPy allocates 400 bytes in CPU (not managed by CuPy memory pool).
    a_cpu = numpy.ndarray(100, dtype=numpy.float32)
+   print(a_cpu.nbytes)                      # 400
 
    # You can access statistics of these memory pools.
    print(mempool.used_bytes())              # 0
@@ -42,12 +43,13 @@ See the example code below for details:
    print(pinned_mempool.n_free_blocks())    # 0
 
    # Transfer the array from CPU to GPU.
-   # This allocates 400 bytes on from the device memory pool, and another 400
+   # This allocates 400 bytes from the device memory pool, and another 400
    # bytes from the pinned memory pool.  The allocated pinned memory will be
    # released just after the transfer is complete.  Note that the actual
    # allocation size may be rounded to larger value than the requested size
    # for performance.
    a = cupy.array(a_cpu)
+   print(a.nbytes)                          # 400
    print(mempool.used_bytes())              # 512
    print(mempool.total_bytes())             # 512
    print(pinned_mempool.n_free_blocks())    # 1
