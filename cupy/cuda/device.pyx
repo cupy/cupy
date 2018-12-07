@@ -225,6 +225,16 @@ cdef class Device:
 
     @property
     def attributes(self):
+        """A dictionary of device attributes.
+
+        Returns:
+            attributes (dict):
+                Dictionary of attribute values with the names as keys.
+                The string `cudaDevAttr` has been trimmed from the names.
+                For example, the attribute corresponding to the enumerated
+                value `cudaDevAttrMaxThreadsPerBlock` will have key
+                `MaxThreadsPerBlock`.
+        """
         from cupy.cuda import get_attributes_dict
         return get_attributes_dict(self.id)
 
