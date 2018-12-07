@@ -77,7 +77,7 @@ def get_attributes_dict(device_id):
     for k, v in runtime.__dict__.items():
         if 'cudaDevAttr' in k:
             try:
-                name = k.replace('cudaDevAttr', '')
+                name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime.CUDARuntimeError:
                 pass
