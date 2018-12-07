@@ -757,7 +757,10 @@ class ufunc(object):
         Args:
             args: Input arguments. Each of them can be a :class:`cupy.ndarray`
                 object or a scalar. The output arguments can be omitted or be
-                specified by the ``out`` argument.
+                specified by the ``out`` argument. This argument can be
+                an :class:`cupy.ndarray` instance or a tuple of
+                :class:`cupy.ndarray` instances. Currently CuPy raises an error
+                if `None` is included in the tuple.
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
             dtype: Data type specifier.
@@ -794,14 +797,18 @@ class ufunc(object):
             in_args = args[:self.nin]
             out_args = args[self.nin:]
         else:
-            if self.nout != 1:
-                raise ValueError("Cannot use 'out' in %s" % self.name)
             if n_args != self.nin:
                 raise ValueError("Cannot specify 'out' as both "
                                  "a positional and keyword argument")
+            if isinstance(out, tuple):
+                if any(out_ary is None for out_ary in out):
+                    raise NotImplementedError("None in 'out' argument is "
+                                              "not yet supported.")
+            else:
+                out = (out,)
 
             in_args = list(args)
-            out_args = _preprocess_args((out,))
+            out_args = _preprocess_args(out)
             args += out_args
 
         broad = broadcast(*args)

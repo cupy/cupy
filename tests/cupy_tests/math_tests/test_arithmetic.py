@@ -250,3 +250,15 @@ class TestArithmeticModf(unittest.TestCase):
         d[0] = b
         d[1] = c
         return d
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_modf_out(self, xp, dtype):
+        a = xp.array([-2.5, -1.5, -0.5, 0, 0.5, 1.5, 2.5], dtype=dtype)
+        b = xp.empty(7, dtype=dtype)
+        c = xp.empty(7, dtype=dtype)
+        xp.modf(a, out=(b, c))
+        d = xp.empty((2, 7), dtype=dtype)
+        d[0] = b
+        d[1] = c
+        return d
