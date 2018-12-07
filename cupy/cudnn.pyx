@@ -332,7 +332,8 @@ def rnn_forward_inference_ex(
         core.ndarray hx, core.ndarray cx, core.ndarray w,
         core.ndarray xs, lengths):
     hx = core.ascontiguousarray(hx)
-    cx = core.ascontiguousarray(cx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
 
@@ -387,7 +388,8 @@ def rnn_forward_training_ex(
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
     hx = core.ascontiguousarray(hx)
-    cx = core.ascontiguousarray(cx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
 
@@ -447,12 +449,14 @@ def rnn_backward_data_ex(
         core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
         lengths):
     hx = core.ascontiguousarray(hx)
-    cx = core.ascontiguousarray(cx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
     ys = core.ascontiguousarray(ys)
     dhy = core.ascontiguousarray(dhy)
-    dcy = core.ascontiguousarray(dcy)
+    if dcy is not None:
+        dcy = core.ascontiguousarray(dcy)
     dys = core.ascontiguousarray(dys)
 
     cdef int length = xs._shape[0]
