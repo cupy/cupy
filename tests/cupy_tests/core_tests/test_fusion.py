@@ -1766,3 +1766,64 @@ class TestBroadcast(unittest.TestCase):
         x = testing.shaped_arange((3, 4), xp, xp.int64)
         y = testing.shaped_arange((2, 3, 4), xp, xp.int64)
         return f(x, y)
+
+
+@testing.gpu
+class TestOutArgument(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_out_single(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x + y
+            return z
+
+        x = testing.shaped_arange((3, 4), xp, xp.int64)
+        y = testing.shaped_arange((3, 4), xp, xp.int64)
+
+        z1 = xp.empty((3, 4), xp.int64)
+        f(x, y, out=z1)
+        z2 = f(x, y)
+
+        testing.assert_array_equal(z1, z2)
+        return z1
+
+    @testing.numpy_cupy_array_equal()
+    def test_out_tuple(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            z1 = x + y
+            z2 = z1 + x
+            return z1, z2
+
+        x = testing.shaped_arange((3, 4), xp, xp.int64)
+        y = testing.shaped_arange((3, 4), xp, xp.int64)
+
+        z1 = xp.empty((3, 4), xp.int64)
+        z2 = xp.empty((3, 4), xp.int64)
+        f(x, y, out=(z1, z2))
+        z3, z4 = f(x, y)
+
+        testing.assert_array_equal(z1, z3)
+        testing.assert_array_equal(z2, z4)
+        return xp.concatenate((z1, z2))
+
+    @testing.numpy_cupy_array_equal()
+    def test_out_broadcast(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x + y
+            return z
+
+        x = testing.shaped_arange((2, 3, 4), xp, xp.int64)
+        y = testing.shaped_arange((3, 4), xp, xp.int64)
+
+        z1 = xp.empty((2, 3, 4), xp.int64)
+        f(x, y, out=z1)
+        z2 = f(x, y)
+
+        testing.assert_array_equal(z1, z2)
+        return z1

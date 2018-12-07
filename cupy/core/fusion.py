@@ -586,8 +586,15 @@ class _FusionHistory(object):
         # Make FusionVar list
         var_list = [self._get_fusion_var(_) for _ in args]
         if 'out' in kwargs:
-            out_var = self._get_fusion_var(kwargs.pop('out'))
-            var_list.append(out_var)
+            out_args = kwargs.pop('out')
+            if isinstance(out_args, tuple):
+                if any(out_ary is None for out_ary in out_args):
+                    raise NotImplementedError("None in 'out' argument is "
+                                              "not yet supported.")
+            else:
+                out_args = (out_args,)
+            var_list.extend(self._get_fusion_var(out_ary)
+                            for out_ary in out_args)
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
 
@@ -843,14 +850,41 @@ class Fusion(object):
         else:
             return numpy.array(arg).dtype, -1
 
-    def __call__(self, *args):
+    def __call__(self, *args, out=None):
+        if out is not None:
+            if isinstance(out, tuple):
+                if any(out_ary is None for out_ary in out):
+                    raise NotImplementedError("None in 'out' argument is "
+                                              "not yet supported.")
+            else:
+                out = (out,)
+
         # Inner function of composition of multiple fused functions.
         if hasattr(_thread_local, 'history'):
-            return self.func(*args)
+            if out is None:
+                return self.func(*args)
+            else:
+                ret = self.func(*args)
+                if isinstance(ret, tuple):
+                    for out_val, ret_val in zip(out, ret):
+                        out_val[:] = ret_val
+                else:
+                    out[0][:] = ret
+                return ret
 
         # Fails to fuse
-        if cupy.get_array_module(*args) is not cupy:
-            return self.func(*args)
+        if out is None:
+            if cupy.get_array_module(*args) is not cupy:
+                return self.func(*args)
+        else:
+            if cupy.get_array_module(*args, *out) is not cupy:
+                ret = self.func(*args)
+                if isinstance(ret, tuple):
+                    for out_ary, ret_ary in zip(out, ret):
+                        numpy.copyto(out_ary, ret_ary)
+                else:
+                    numpy.copyto(out[0], ret)
+                return ret
 
         # Checks argument types
         acceptable_types = six.integer_types + (
@@ -870,7 +904,10 @@ class Fusion(object):
             finally:
                 del _thread_local.history
         kernel, kwargs = self._memo[params_info]
-        return kernel(*args, **kwargs)
+        if out is None:
+            return kernel(*args, **kwargs)
+        else:
+            return kernel(*args, *out, **kwargs)
 
     def clear_cache(self):
         self._memo = {}
