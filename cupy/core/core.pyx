@@ -1809,13 +1809,16 @@ cdef class ndarray:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None):
+    cpdef get(self, stream=None, order='C'):
         """Returns a copy of the array on host memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
+            order ({'C', 'F', 'A'}): The desired memory layout of the host
+                array. When ``order`` is 'A', it uses 'F' if the array is
+                fortran-contiguous and 'C' otherwise.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1824,9 +1827,21 @@ cdef class ndarray:
         if self.size == 0:
             return numpy.ndarray(self._shape, dtype=self.dtype)
 
+        order = order.upper()
+        if order == 'A':
+            if self._f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
+
         with self.device:
-            a_gpu = ascontiguousarray(self)
-        a_cpu = numpy.empty(self._shape, dtype=self.dtype)
+            if order == 'C':
+                a_gpu = ascontiguousarray(self)
+            elif order == 'F':
+                a_gpu = asfortranarray(self)
+            else:
+                raise ValueError("unsupported order: {}".format(order))
+        a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
