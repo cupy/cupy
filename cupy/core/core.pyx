@@ -2366,6 +2366,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
     cdef size_t nbytes
     if subok:
         raise NotImplementedError
+    if order is None:
+        order = 'K'
     if isinstance(obj, ndarray):
         src = obj
         if dtype is None:

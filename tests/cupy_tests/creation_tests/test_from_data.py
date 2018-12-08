@@ -149,6 +149,16 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
+    def test_asarray_preserves_numpy_array_order(self, dtype, order):
+        a_cpu = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        if order in ['f', 'F']:
+            a_cpu = numpy.asfortranarray(a_cpu)
+        a_gpu = cupy.asarray(a_cpu)
+        assert a_gpu.flags.f_contiguous == a_cpu.flags.f_contiguous
+        assert a_gpu.flags.c_contiguous == a_cpu.flags.c_contiguous
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_asanyarray_with_order(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
