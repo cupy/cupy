@@ -1000,13 +1000,14 @@ def numpy_satisfies(version_range):
     return True
 
 
-def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
+def shaped_arange(shape, xp=cupy, dtype=numpy.float32, order='C'):
     """Returns an array with given shape, array module, and dtype.
 
     Args:
          shape(tuple of int): Shape of returned ndarray.
          xp(numpy or cupy): Array module to use.
          dtype(dtype): Dtype of returned ndarray.
+         order({'C', 'F'}): Order of returned ndarray.
 
     Returns:
          numpy.ndarray or cupy.ndarray:
@@ -1023,7 +1024,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
         a = a % 2 == 0
     elif dtype.kind == 'c':
         a = a + a * 1j
-    return xp.array(a.astype(dtype).reshape(shape))
+    return xp.array(a.astype(dtype).reshape(shape), order=order)
 
 
 def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
