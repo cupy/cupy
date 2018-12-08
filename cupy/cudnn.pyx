@@ -356,15 +356,18 @@ def rnn_forward_inference_ex(
     cudnn.setRNNPaddingMode(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
-    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
-    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
     cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
-    
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
@@ -412,15 +415,18 @@ def rnn_forward_training_ex(
         cx = core.ndarray(0, dtype=xs.dtype)
     cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
 
-    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
     cdef Descriptor w_desc = create_filter_descriptor(w)
-    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
     cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
 
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
     cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
@@ -477,18 +483,22 @@ def rnn_backward_data_ex(
         cx = dcy = core.ndarray(0, dtype=xs.dtype)
     cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
 
-    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
-    cdef Descriptor dy_data_desc = _make_unpacked_rnn_data_descriptor(dys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
+    cdef Descriptor dy_data_desc = _make_unpacked_rnn_data_descriptor(
+        dys, lengths)
     cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
     cdef Descriptor dcy_desc = create_tensor_nd_descriptor(dcy)
     cdef Descriptor w_desc = create_filter_descriptor(w)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
-    cdef Descriptor dx_data_desc = _make_unpacked_rnn_data_descriptor(dxs, lengths)
+    cdef Descriptor dx_data_desc = _make_unpacked_rnn_data_descriptor(
+        dxs, lengths)
     cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
     cdef Descriptor dcx_desc = create_tensor_nd_descriptor(dcx)
 
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
@@ -534,11 +544,14 @@ def rnn_backward_weights_ex(
     cudnn.setRNNPaddingMode(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
-    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(xs, lengths)
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
-    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(ys, lengths)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
 
-    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(xs)
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
