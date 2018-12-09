@@ -24,7 +24,4 @@ def asfortranarray(a, dtype=None):
 # TODO(okuta): Implement asarray_chkfinite
 
 
-# TODO(okuta): Implement asscalar
-
-
 # TODO(okuta): Implement require
