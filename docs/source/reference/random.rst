@@ -3,6 +3,8 @@
 Random Sampling (``cupy.random``)
 =================================
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.random.html
+
 The big difference of :mod:`cupy.random` from :mod:`numpy.random` is that :mod:`cupy.random` supports ``dtype`` option for most functions.
 This option enables us to generate float32 values directly without any space overhead.
 
@@ -17,7 +19,6 @@ Sample random data
    :toctree: generated/
    :nosignatures:
 
-   cupy.random.choice
    cupy.random.rand
    cupy.random.randn
    cupy.random.randint
@@ -26,6 +27,7 @@ Sample random data
    cupy.random.random
    cupy.random.ranf
    cupy.random.sample
+   cupy.random.choice
    cupy.random.bytes
 
 
@@ -62,17 +64,17 @@ Distributions
    cupy.random.zipf
 
 
-Random number generator
------------------------
+Random generator
+----------------
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
+   cupy.random.RandomState
    cupy.random.seed
    cupy.random.get_random_state
    cupy.random.set_random_state
-   cupy.random.RandomState
 
 .. note::
 
