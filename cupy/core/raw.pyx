@@ -57,6 +57,7 @@ cdef class RawKernel:
         kern = _get_raw_kernel(self.code, self.name, self.options)
         return cupy.cuda.driver.funcGetAttributes(kern.ptr)
 
+
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=()):
     module = cupy.core.core.compile_with_cache(

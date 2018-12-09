@@ -20,3 +20,18 @@ class TestRaw(unittest.TestCase):
         y = cupy.zeros((10, 10), dtype=cupy.float32)
         kern((10,), (10,), (x1, x2, y))
         assert (y == x1 + x2).all()
+
+        attributes = kern.attributes
+        assert hasattr(attributes, 'binaryVersion')
+        assert hasattr(attributes, 'cacheModeCA')
+        assert hasattr(attributes, 'constSizeBytes')
+        assert hasattr(attributes, 'localSizeBytes')
+        assert hasattr(attributes, 'maxDynamicSharedSizeBytes')
+        assert hasattr(attributes, 'maxThreadsPerBlock')
+        assert hasattr(attributes, 'numRegs')
+        assert hasattr(attributes, 'preferredShmemCarveout')
+        assert hasattr(attributes, 'ptxVersion')
+        assert hasattr(attributes, 'sharedSizeBytes')
+        assert attributes.numRegs > 0
+        assert attributes.maxThreadsPerBlock > 0
+        assert attributes.sharedSizeBytes == 0
