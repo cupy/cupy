@@ -51,6 +51,8 @@ cpdef enum:
     CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES = 8
     CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT = 9
 
+    CUDA_ERROR_INVALID_VALUE = 1
+
 
 ###############################################################################
 # Primary context management
