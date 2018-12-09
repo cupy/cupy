@@ -41,9 +41,16 @@ class TestArrayBoolOp(unittest.TestCase):
 @testing.gpu
 class TestArrayUnaryOp(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def check_array_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return op(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    @testing.with_requires('numpy<1.16')
+    def check_array_op2(self, op, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return op(a)
 
@@ -59,9 +66,16 @@ class TestArrayUnaryOp(unittest.TestCase):
     def test_abs_array(self):
         self.check_array_op(operator.abs)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def check_zerodim_op(self, op, xp, dtype):
+        a = xp.array(-2, dtype)
+        return op(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    @testing.with_requires('numpy<1.16')
+    def check_zerodim_op2(self, op, xp, dtype):
         a = xp.array(-2, dtype)
         return op(a)
 
