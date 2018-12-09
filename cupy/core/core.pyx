@@ -2670,7 +2670,11 @@ cdef class broadcast:
                 if a_sh == r_shape[i]:
                     r_strides[i] = a._strides[a_ndim - i - 1]
                 elif a_sh != 1:
-                    raise ValueError('Broadcasting failed')
+                    raise ValueError(
+                        'operands could not be broadcast together with shapes '
+                        '{}'.format(
+                            ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                       else '()' for x in arrays])))
 
             strides.assign(r_strides.rbegin(), r_strides.rend())
             view = a.view()
@@ -2704,7 +2708,9 @@ cpdef ndarray broadcast_to(ndarray array, shape):
         if sh == a_sh:
             strides[j] = array._strides[i]
         elif a_sh != 1:
-            raise ValueError('Broadcasting failed')
+            raise ValueError(
+                'operands could not be broadcast together with shape {} and '
+                'requested shape {}'.format(array.shape, shape))
 
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
