@@ -1,8 +1,10 @@
 Input and Output
 ================
 
-NPZ files
----------
+.. https://docs.scipy.org/doc/numpy/reference/routines.io.html
+
+NumPy binary files (NPY, NPZ)
+-----------------------------
 
 .. autosummary::
    :toctree: generated/

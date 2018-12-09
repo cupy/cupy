@@ -1,6 +1,8 @@
 Indexing Routines
 =================
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.indexing.html
+
 .. autosummary::
    :toctree: generated/
    :nosignatures:
