@@ -75,7 +75,7 @@ def get_attributes_dict(device_id):
     """Return a dict containing all device attributes."""
     d = {}
     for k, v in runtime.__dict__.items():
-        if 'cudaDevAttr' in k:
+        if k.startswith('cudaDevAttr'):
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)

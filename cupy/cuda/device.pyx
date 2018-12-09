@@ -7,6 +7,8 @@ import six
 from cupy.cuda cimport cublas
 from cupy.cuda cimport cusparse
 from cupy.cuda cimport runtime
+from cupy.cuda import runtime
+from cupy import util
 
 try:
     from cupy.cuda import cusolver
@@ -63,6 +65,21 @@ cpdef str get_compute_capability():
     if ret is not None:
         return ret
     return Device().compute_capability
+
+
+@util.memoize()
+def _get_attributes(device_id):
+    """Return a dict containing all device attributes."""
+    d = {}
+    for k, v in runtime.__dict__.items():
+        if k.startswith('cudaDevAttr'):
+            try:
+                name = k.replace('cudaDevAttr', '', 1)
+                d[name] = runtime.deviceGetAttribute(v, device_id)
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.errorInvalidValue:
+                    raise
+    return d
 
 
 cdef class Device:
@@ -235,8 +252,7 @@ cdef class Device:
                 value `cudaDevAttrMaxThreadsPerBlock` will have key
                 `MaxThreadsPerBlock`.
         """
-        from cupy.cuda import get_attributes_dict
-        return get_attributes_dict(self.id)
+        return _get_attributes(self.id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:
