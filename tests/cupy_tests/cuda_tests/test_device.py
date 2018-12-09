@@ -87,3 +87,8 @@ class TestDeviceAttributes(unittest.TestCase):
         assert all(isinstance(a, int) for a in attributes.values())
         # test a specific attribute that would be present on any supported GPU
         assert 'MaxThreadsPerBlock' in attributes
+
+    def test_device_attributes_error(self):
+        with pytest.raises(cuda.runtime.CUDARuntimeError):
+            # try to retrieve attributes from a non-existent device
+            cuda.device.Device(cuda.runtime.getDeviceCount()).attributes
