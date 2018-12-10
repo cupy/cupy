@@ -725,6 +725,7 @@ def set_default_memory_pool(memory_pool):
     if not hasattr(memory_pool, 'malloc'):
         raise ValueError('Memory pool must provide a malloc method.')
 
+    global _default_memory_pool
     _default_memory_pool = memory_pool
     cuda.set_allocator(memory_pool.malloc)
 
@@ -735,6 +736,7 @@ def set_default_pinned_memory_pool(pinned_memory_pool):
     if not hasattr(pinned_memory_pool, 'malloc'):
         raise ValueError('Pinned memory pool must provide a malloc method.')
 
+    global _default_pinned_memory_pool
     _default_pinned_memory_pool = pinned_memory_pool
     cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
 
