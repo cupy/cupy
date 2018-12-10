@@ -1187,11 +1187,13 @@ cdef class ExternalMemoryPool(MemoryPool):
         self._pools[device_id] = single_device_memory_pool
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         return mp.malloc(size)
 
     cpdef free_all_blocks(self, stream=None):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         mp.free_all_blocks(stream=stream)
 
     cpdef free_all_free(self):
@@ -1201,19 +1203,21 @@ cdef class ExternalMemoryPool(MemoryPool):
         self.free_all_blocks()
 
     cpdef n_free_blocks(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         return mp.n_free_blocks()
 
     cpdef used_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         return mp.used_bytes()
 
     cpdef free_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         return mp.free_bytes()
 
     cpdef total_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[
+            device.get_device_id()]
         return mp.total_bytes()
-
-
