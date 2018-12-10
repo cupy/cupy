@@ -56,3 +56,8 @@ cdef class MemoryPool:
     cpdef used_bytes(self)
     cpdef free_bytes(self)
     cpdef total_bytes(self)
+
+
+cdef class ExternalMemoryPool(MemoryPool):
+
+    pass

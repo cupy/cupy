@@ -685,13 +685,8 @@ fuse = cupy.core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
-
-# set default allocator
-_default_memory_pool = cuda.MemoryPool()
-_default_pinned_memory_pool = cuda.PinnedMemoryPool()
-
-cuda.set_allocator(_default_memory_pool.malloc)
-cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
+_default_memory_pool = None
+_default_pinned_memory_pool = None
 
 
 def get_default_memory_pool():
@@ -724,7 +719,32 @@ def get_default_pinned_memory_pool():
     return _default_pinned_memory_pool
 
 
+def set_default_memory_pool(memory_pool):
+    """Sets the CuPy default memory pool.
+    """
+    if not hasattr(memory_pool, 'malloc'):
+        raise ValueError('Memory pool must provide a malloc method.')
+
+    _default_memory_pool = memory_pool
+    cuda.set_allocator(memory_pool.malloc)
+
+
+def set_default_pinned_memory_pool(pinned_memory_pool):
+    """Sets the CuPy default pinned memory pool.
+    """
+    if not hasattr(pinned_memory_pool, 'malloc'):
+        raise ValueError('Pinned memory pool must provide a malloc method.')
+
+    _default_pinned_memory_pool = pinned_memory_pool
+    cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
+
+
 def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
+
+
+# set default allocator
+set_default_memory_pool(cuda.MemoryPool())
+set_default_pinned_memory_pool(cuda.PinnedMemoryPool())

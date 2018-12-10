@@ -1137,3 +1137,83 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
+
+
+@cython.final
+cdef class ExternalSingleDeviceMemoryPool:
+
+    cdef:
+        object _allocator
+        object _free
+        readonly int _device_id
+
+    def __init__(self, allocator, free, device_id):
+        self._allocator = allocator
+        self._free = free
+        self._device_id = device_id
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        ptr = self._allocator(size)
+        mem = UnownedMemory(ptr, size, None, self._device_id)
+        return MemoryPointer(mem, 0)
+
+    cpdef free(self, size_t ptr):
+        self.free(ptr)
+
+    cpdef free_all_blocks(self, stream=None):
+        raise NotImplementedError
+
+    cpdef n_free_blocks(self):
+        raise NotImplementedError
+
+    cpdef used_bytes(self):
+        raise NotImplementedError
+
+    cpdef free_bytes(self):
+        raise NotImplementedError
+
+    cpdef total_bytes(self):
+        raise NotImplementedError
+
+
+cdef class ExternalMemoryPool(MemoryPool):
+
+    def __init__(self):
+        self._pools = {}
+
+    def register_single_device_memory_pool(self, device_id, allocator, free):
+        single_device_memory_pool = ExternalSingleDeviceMemoryPool(
+            allocator, free, device_id)
+        self._pools[device_id] = single_device_memory_pool
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.malloc(size)
+
+    cpdef free_all_blocks(self, stream=None):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp.free_all_blocks(stream=stream)
+
+    cpdef free_all_free(self):
+        warnings.warn(
+            'free_all_free is deprecated. Use free_all_blocks instead.',
+            DeprecationWarning)
+        self.free_all_blocks()
+
+    cpdef n_free_blocks(self):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.n_free_blocks()
+
+    cpdef used_bytes(self):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.used_bytes()
+
+    cpdef free_bytes(self):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.free_bytes()
+
+    cpdef total_bytes(self):
+        mp = <ExternalSingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.total_bytes()
+
+
