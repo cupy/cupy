@@ -309,14 +309,6 @@ def create_pooling_descriptor(ksize, stride, pad, int mode):
     return desc
 
 
-def create_activation_descriptor(mode, nan_prop_mode=cudnn.CUDNN_PROPAGATE_NAN,
-                                 coef=0.0):
-    desc = Descriptor(cudnn.createActivationDescriptor(),
-                      py_cudnn.destroyActivationDescriptor)
-    cudnn.setActivationDescriptor(desc.value, mode, nan_prop_mode, coef)
-    return desc
-
-
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1

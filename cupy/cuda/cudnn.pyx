@@ -1650,7 +1650,7 @@ cpdef size_t getBatchNormalizationForwardTrainingExWorkspaceSize(
         <ActivationDescriptor> activationDesc,
         &sizeInBytes)
     check_status(status)
-    return <Py_ssize_t>sizeInBytes
+    return sizeInBytes
 
 
 cpdef batchNormalizationBackwardEx(
@@ -1716,7 +1716,7 @@ cpdef size_t getBatchNormalizationBackwardExWorkspaceSize(
         <ActivationDescriptor> activationDesc,
         &sizeInBytes)
     check_status(status)
-    return <Py_ssize_t>sizeInBytes
+    return sizeInBytes
 
 
 cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
@@ -1732,7 +1732,7 @@ cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
         <TensorDescriptor> xDesc,
         &sizeInBytes)
     check_status(status)
-    return <Py_ssize_t>sizeInBytes
+    return sizeInBytes
 
 
 ###############################################################################
