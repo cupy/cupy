@@ -101,6 +101,9 @@ class TestRandomState(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.rs.seed(dtype(0))
 
+    def test_array_seed(self):
+        self.check_seed(numpy.random.randint(0, 2**32, size=40))
+
 
 @testing.parameterize(
     {'a': 1.0, 'b': 3.0},
