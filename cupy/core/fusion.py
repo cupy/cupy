@@ -586,8 +586,9 @@ class _FusionHistory(object):
         # Make FusionVar list
         var_list = [self._get_fusion_var(_) for _ in args]
         if 'out' in kwargs:
-            out_var = self._get_fusion_var(kwargs.pop('out'))
-            var_list.append(out_var)
+            out = kwargs.pop('out')
+            if out is not None:
+                var_list.append(self._get_fusion_var(out))
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
 
