@@ -155,3 +155,17 @@ They do not accept other objects (e.g., lists or :class:`numpy.ndarray`).
   Traceback (most recent call last):
     File "<stdin>", line 1, in <module>
   TypeError: Unsupported type <class 'list'>
+
+
+Random seed arrays are hashed to scalars
+----------------------------------------
+
+Like Numpy, CuPy's RandomState objects accept seeds either as numbers or as
+full numpy arrays.
+
+  >>> seed = np.array([1, 2, 3, 4, 5])
+  >>> rs = cupy.random.RandomState(seed=seed)
+
+However, unlike Numpy, array seeds will be hashed down to a single number and
+so may not communicate as much entropy to the underlying random number
+generator.

@@ -589,8 +589,9 @@ class _FusionHistory(object):
         # Make FusionVar list
         var_list = [self._get_fusion_var(_) for _ in args]
         if 'out' in kwargs:
-            out_var = self._get_fusion_var(kwargs.pop('out'))
-            var_list.append(out_var)
+            out = kwargs.pop('out')
+            if out is not None:
+                var_list.append(self._get_fusion_var(out))
         if kwargs:
             raise TypeError('Wrong arguments {}'.format(kwargs))
 
@@ -847,34 +848,24 @@ class Fusion(object):
         return isinstance(a, (core.ndarray, numpy.generic))
 
     def __call__(self, *args):
-        # Inner function of composition of multiple fused functions.
+        # Inner function of composition of multiple fused functions
         if hasattr(_thread_local, 'history'):
             return self.func(*args)
 
+        # No cupy ndarray exists in the arguments
+        if cupy.get_array_module(*args) is not cupy:
+            return self.func(*args)
+
         # Invalid argument types
-        cdef bint exec_cupy = False
-        cdef bint exec_numpy = False
         for arg in args:
             if not isinstance(arg, _acceptable_types):
                 mes = 'Invalid argument type for \'{}\': ({})'
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
-            if isinstance(arg, core.ndarray):
-                exec_cupy = True
-            if isinstance(arg, numpy.ndarray):
-                exec_numpy = True
-
-        # Fail to fuse
-        if exec_numpy:
-            if exec_cupy:
-                types_str = ', '.join(repr(type(_)) for _ in args)
-                message = 'Can\'t fuse {}({})'.format(self.name, types_str)
-                warnings.warn(message)
-            # Call function with NumPy mode
-            return self.func(*args)
 
         # Cache the result of execution path analysis
         cdef tuple params_info = tuple([_get_param_info(arg) for arg in args])
+
         if params_info not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()

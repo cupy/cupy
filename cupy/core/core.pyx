@@ -2682,7 +2682,11 @@ cdef class broadcast:
                 if a_sh == r_shape[i]:
                     r_strides[i] = a._strides[a_ndim - i - 1]
                 elif a_sh != 1:
-                    raise ValueError('Broadcasting failed')
+                    raise ValueError(
+                        'operands could not be broadcast together with shapes '
+                        '{}'.format(
+                            ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                       else '()' for x in arrays])))
 
             strides.assign(r_strides.rbegin(), r_strides.rend())
             view = a.view()
@@ -2716,7 +2720,9 @@ cpdef ndarray broadcast_to(ndarray array, shape):
         if sh == a_sh:
             strides[j] = array._strides[i]
         elif a_sh != 1:
-            raise ValueError('Broadcasting failed')
+            raise ValueError(
+                'operands could not be broadcast together with shape {} and '
+                'requested shape {}'.format(array.shape, shape))
 
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
@@ -4270,9 +4276,9 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 # Logic functions
 # -----------------------------------------------------------------------------
 
-cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
+cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
-    if require_sortable_dtype:
+    if no_complex_dtype:
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
     else:
@@ -4294,7 +4300,7 @@ greater = create_comparison(
     .. seealso:: :data:`numpy.greater`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 greater_equal = create_comparison(
@@ -4304,7 +4310,7 @@ greater_equal = create_comparison(
     .. seealso:: :data:`numpy.greater_equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 less = create_comparison(
@@ -4314,7 +4320,7 @@ less = create_comparison(
     .. seealso:: :data:`numpy.less`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 less_equal = create_comparison(
@@ -4324,7 +4330,7 @@ less_equal = create_comparison(
     .. seealso:: :data:`numpy.less_equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 equal = create_comparison(
@@ -4334,7 +4340,7 @@ equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 not_equal = create_comparison(
@@ -4344,7 +4350,7 @@ not_equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    require_sortable_dtype=False)
+    no_complex_dtype=False)
 
 
 _all = create_reduction_func(
