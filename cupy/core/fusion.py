@@ -41,6 +41,10 @@ _dtype_to_ctype = {
 _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 
+def _is_fusing():
+    return hasattr(_thread_local, 'history')
+
+
 class _Submodule(object):
     """Ufunc or elementwise kernel with types.
 
@@ -310,7 +314,7 @@ class _FusionVarScalar(object):
     def __setitem__(self, slices, value):
         if slices is Ellipsis or (isinstance(slices, slice) and
                                   slices == slice(None)):
-            cupy.copy(value, self)
+            _call_ufunc(core.elementwise_copy, value, out=self)
         else:
             raise ValueError('The fusion supports `[...]` or `[:]`.')
 
@@ -846,7 +850,7 @@ class Fusion(object):
 
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
-        if hasattr(_thread_local, 'history'):
+        if _is_fusing():
             return self.func(*args)
 
         # Fails to fuse
@@ -905,58 +909,44 @@ def fuse(*args, **kwargs):
             wrapper(f, *args, **kwargs), f)
 
 
-def _ufunc_wrapper(fusion_op):
-    def func(f):
-        def call(*args, **kwargs):
-            if not hasattr(_thread_local, 'history'):
-                return f(*args, **kwargs)
-            return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
-        return functools.update_wrapper(call, f)
-    return func
+def _call_ufunc(fusion_op, *args, **kwargs):
+    return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
 
 
-def _reduction_wrapper(fusion_op):
-    def func(f):
-        def call(*args, **kwargs):
-            if not hasattr(_thread_local, 'history'):
-                return f(*args, **kwargs)
+def _call_reduction(fusion_op, *args, **kwargs):
+    if len(args) != 1:
+        mes = '{}() takes 1 positional argument but {} were given'
+        raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
-            if len(args) != 1:
-                mes = '{}() takes 1 positional argument but {} were given'
-                raise TypeError(mes.format(fusion_op._ops.name, len(args)))
+    arg = args[0]
+    kwargs = dict([(key, value) for key, value in kwargs.items()
+                   if (key in ('axis', 'out') and value is not None)])
 
-            arg = args[0]
-            kwargs = dict([(key, value) for key, value in kwargs.items()
-                           if (key in ('axis', 'out') and value is not None)])
+    if arg._is_postmap:
+        # Multiple reduction
+        raise NotImplementedError(
+            'Multiple reduction is not implemented yet')
 
-            if arg._is_postmap:
-                # Multiple reduction
-                raise NotImplementedError(
-                    'Multiple reduction is not implemented yet')
+    var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
 
-            var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
+    src_ndim = max(0, arg.ndim)
+    if 'axis' in kwargs:
+        axis = kwargs['axis']
+        if isinstance(axis, (tuple, list)):
+            ndim = src_ndim - len(axis)
+        else:
+            ndim = src_ndim - 1
+    else:
+        ndim = 0
+    if ndim < 0:
+        mes = 'axis {} is out of bounds for array of dimension {}'
+        raise core._AxisError(mes.format(axis, src_ndim))
 
-            src_ndim = max(0, arg.ndim)
-            if 'axis' in kwargs:
-                axis = kwargs['axis']
-                if isinstance(axis, (tuple, list)):
-                    ndim = src_ndim - len(axis)
-                else:
-                    ndim = src_ndim - 1
-            else:
-                ndim = 0
-            if ndim < 0:
-                mes = 'axis {} is out of bounds for array of dimension {}'
-                raise core._AxisError(mes.format(axis, src_ndim))
-
-            _thread_local.history.ndim = ndim
-            if ndim >= 1:
-                return _FusionVarArray(var, ndim, True)
-            else:
-                return _FusionVarScalar(var, -1, True)
-
-        return functools.update_wrapper(call, f)
-    return func
+    _thread_local.history.ndim = ndim
+    if ndim >= 1:
+        return _FusionVarArray(var, ndim, True)
+    else:
+        return _FusionVarScalar(var, -1, True)
 
 
 def _create_astype_ufunc(dtype):
