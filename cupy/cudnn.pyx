@@ -131,7 +131,7 @@ cpdef _create_tensor_nd_descriptor(
 
 
 cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
-                                int format):
+                                int format=cudnn.CUDNN_TENSOR_NCHW):
     if not arr._c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     if arr._shape.size() == 4:
@@ -195,7 +195,6 @@ cpdef _create_convolution_descriptor(
     #     storing precision of FP16.
     if compute_type == cudnn.CUDNN_DATA_HALF:
         compute_type = cudnn.CUDNN_DATA_FLOAT
-        # compute_type = cudnn.CUDNN_DATA_HALF
 
     if ndim != 2:
         c_pad = pad
