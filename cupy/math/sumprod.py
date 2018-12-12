@@ -88,6 +88,7 @@ def _proc_as_batch(proc, x, axis):
 
 
 def _cum_core(a, axis, dtype, out, kern, batch_kern):
+    a = cupy.asarray(a)
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
