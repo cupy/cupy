@@ -15,7 +15,9 @@ void test_sum(const float* x1, const float* x2, float* y) {
 _test_source2 = r'''
 extern "C"{
 
-__global__ void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
+__global__ void test_sum(const float* x1, const float* x2, float* y, \
+                         unsigned int N)
+{
     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
     {
@@ -23,7 +25,9 @@ __global__ void test_sum(const float* x1, const float* x2, float* y, unsigned in
     }
 }
 
-__global__ void test_multiply(const float* x1, const float* x2, float* y, unsigned int N) {
+__global__ void test_multiply(const float* x1, const float* x2, float* y, \
+                              unsigned int N)
+{
     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
     {
@@ -50,7 +54,9 @@ _test_source3 = r'''
 
 extern "C"{
 
-__global__ void test_sum(const TYPE* x1, const TYPE* x2, TYPE* y, unsigned int N) {
+__global__ void test_sum(const TYPE* x1, const TYPE* x2, TYPE* y, \
+                         unsigned int N)
+{
     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
     {
@@ -58,7 +64,9 @@ __global__ void test_sum(const TYPE* x1, const TYPE* x2, TYPE* y, unsigned int N
     }
 }
 
-__global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, unsigned int N) {
+__global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
+                              unsigned int N)
+{
     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
     {
@@ -79,40 +87,41 @@ class TestRaw(unittest.TestCase):
         kern((10,), (10,), (x1, x2, y))
         assert (y == x1 + x2).all()
 
-    # test compiling using the compile() method and invoking multiple kernels in one single .cubin
+    # test compiling using the compile() method and invoking multiple kernels
+    # in one single .cubin
     def test_multiple(self):
         ker = cupy.RawKernel(_test_source2, None)
-        #module = ker.compile(_test_source2)
+        # module = ker.compile(_test_source2)
         module = ker.compile()
         ker_sum = module.get_function('test_sum')
         ker_times = module.get_function('test_multiply')
-        
+
         N = 10
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        
+
         ker_sum((N,), (N,), (x1, x2, y, N**2))
         assert (y == x1 + x2).all()
-        
+
         ker_times((N,), (N,), (x1, x2, y, N**2))
         assert (y == x1 * x2).all()
 
     # test setting C macros using compiler options
     def test_macro(self):
         ker = cupy.RawKernel(_test_source3, None, ("-DPRECISION=1",))
-        #module = ker.compile(_test_source3, ("-DPRECISION=1",))
+        # module = ker.compile(_test_source3, ("-DPRECISION=1",))
         module = ker.compile()
         ker_sum = module.get_function('test_sum')
         ker_times = module.get_function('test_multiply')
-        
+
         N = 10
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        
+
         ker_sum((N,), (N,), (x1, x2, y, N**2))
         assert (y == x1 + x2).all()
-        
+
         ker_times((N,), (N,), (x1, x2, y, N**2))
         assert (y == x1 * x2).all()
