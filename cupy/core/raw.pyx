@@ -14,9 +14,10 @@ cdef class RawKernel:
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
     binary is reused by other processes.
 
-    Alternatively, this class can also compile an existing codebase (ex: reading
-    a .cu source file) by the :meth:`~RawKernel.compile` method, which returns a
-    cp.cuda.function.Module instance that contains the kernels in the source.
+    Alternatively, this class can also compile an existing codebase (ex:
+    reading a .cu source file) by the :meth:`~RawKernel.compile` method, which
+    returns a cp.cuda.function.Module instance that contains the kernels in the
+    source.
 
     Args:
         code (str): CUDA source code.
