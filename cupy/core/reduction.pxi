@@ -12,12 +12,24 @@ from cupy import util
 cpdef _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options):
+        type_preamble, input_expr, output_expr, preamble, options,
+        use_special_variable_in_pre_map_expr):
     if identity is None:
         identity = ''
+    if use_special_variable_in_pre_map_expr:
+        a_in_pre_map_expr_flag = 'true'
+    else:
+        a_in_pre_map_expr_flag = 'false'
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
+
+#if ${a_in_pre_map_expr_flag}
+  #define PRE_MAP(a) (${pre_map_expr})
+#else
+  #define PRE_MAP(a) (a = static_cast<_type_reduce>(${pre_map_expr}))
+#endif
+
 #define REDUCE(a, b) (${reduce_expr})
 #define POST_MAP(a) (${post_map_expr})
 #define _REDUCE(_offset) if (_tid < _offset) { \
@@ -47,7 +59,8 @@ extern "C" __global__ void ${name}(${params}) {
          _j += _j_stride, _J += _J_stride) {
       _in_ind.set(_j);
       ${input_expr}
-      _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
+      _type_reduce _a;
+      PRE_MAP(_a);
       _s = REDUCE(_s, _a);
     }
     if (_block_stride < ${block_size}) {
@@ -83,7 +96,8 @@ extern "C" __global__ void ${name}(${params}) {
         type_preamble=type_preamble,
         input_expr=input_expr,
         output_expr=output_expr,
-        preamble=preamble)
+        preamble=preamble,
+        a_in_pre_map_expr_flag=a_in_pre_map_expr_flag)
     module = compile_with_cache(module_code, options)
     return module.get_function(name)
 
@@ -151,7 +165,7 @@ cpdef list _get_inout_args(
 def _get_simple_reduction_function(
         routine, params, args_info, in_arg_dtype, out_arg_dtype, out_types,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options):
+        options, use_special_variable_in_map_expr):
     reduce_type = routine[3]
     if reduce_type is None:
         reduce_type = _get_typename(out_types[0])
@@ -163,7 +177,8 @@ def _get_simple_reduction_function(
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         routine[0], routine[1], routine[2],
-        type_preamble, input_expr, output_expr, _preamble, options)
+        type_preamble, input_expr, output_expr, _preamble, options,
+        use_special_variable_in_map_expr)
 
 
 class simple_reduction_function(object):
@@ -186,6 +201,7 @@ class simple_reduction_function(object):
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
+        self._use_special_variable_in_map_expr = False
 
     def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
@@ -238,7 +254,8 @@ class simple_reduction_function(object):
             routine, self._params, args_info,
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            self._input_expr, self._output_expr, self._preamble, (),
+            self._use_special_variable_in_map_expr)
 
         out_block_num = (
             out_indexer.size + block_stride - 1) // block_stride
@@ -252,7 +269,7 @@ class simple_reduction_function(object):
 def _get_reduction_kernel(
         nin, nout, params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
-        post_map_expr, preamble, options):
+        post_map_expr, preamble, options, use_special_variable_in_map_expr):
     kernel_params = _get_kernel_params(params, args_info)
     params = params[:nin + nout]
     args_info = args_info[:nin + nout]
@@ -274,7 +291,8 @@ def _get_reduction_kernel(
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, kernel_params, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options)
+        type_preamble, input_expr, output_expr, preamble, options,
+        use_special_variable_in_map_expr)
 
 
 class ReductionKernel(object):
@@ -311,7 +329,8 @@ class ReductionKernel(object):
     def __init__(self, in_params, out_params,
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
-                 reduce_dims=True, preamble='', options=()):
+                 reduce_dims=True, preamble='', options=(),
+                 use_special_variable_in_map_expr=False):
         if not compiler.is_valid_kernel_name(name):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
@@ -332,6 +351,7 @@ class ReductionKernel(object):
         self.options = options
         self.reduce_dims = reduce_dims
         self.post_map_expr = post_map_expr
+        self.use_special_variable_in_map_expr = use_special_variable_in_map_expr
         if reduce_type is None:
             self.reduce_type = self.out_params[0].ctype
         else:
@@ -430,7 +450,7 @@ class ReductionKernel(object):
             self.nin, self.nout, self.params, args_info, types,
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
-            self.preamble, self.options)
+            self.preamble, self.options, self.use_special_variable_in_map_expr)
 
         out_block_num = (
             out_indexer.size + block_stride - 1) // block_stride
