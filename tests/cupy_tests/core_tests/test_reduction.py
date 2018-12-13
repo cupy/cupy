@@ -55,11 +55,21 @@ class SimpleReductionFunction(unittest.TestCase):
 
 
 @testing.gpu
+@testing.parameterize(
+    {'use_special_variable_in_map_expr': True},
+    {'use_special_variable_in_map_expr': False},
+)
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
-        self.my_sum = core.ReductionKernel(
-            'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
+        if self.use_special_variable_in_map_expr:
+            self.my_sum = core.ReductionKernel(
+                'T x', 'T out', 'a = x', 'a + b', 'out = a', '0', 'my_sum',
+                use_special_variable_in_map_expr=True)
+        else:
+            self.my_sum = core.ReductionKernel(
+                'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum',
+                use_special_variable_in_map_expr=False)
 
     @testing.numpy_cupy_allclose()
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
@@ -96,9 +106,19 @@ class TestReductionKernel(unittest.TestCase):
 
 
 @testing.gpu
+@testing.parameterize(
+    {'use_special_variable_in_map_expr': True},
+    {'use_special_variable_in_map_expr': False},
+)
 class TestReductionKernelInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
         with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
-            core.ReductionKernel(
-                'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
+            if self.use_special_variable_in_map_expr:
+                core.ReductionKernel(
+                    'T x', 'T y', 'a = x', 'a + b', 'y = a', '0', name='1',
+                    use_special_variable_in_map_expr=True)
+            else:
+                core.ReductionKernel(
+                    'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1',
+                    use_special_variable_in_map_expr=False)
