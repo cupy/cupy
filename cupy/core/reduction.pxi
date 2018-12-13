@@ -351,7 +351,8 @@ class ReductionKernel(object):
         self.options = options
         self.reduce_dims = reduce_dims
         self.post_map_expr = post_map_expr
-        self.use_special_variable_in_map_expr = use_special_variable_in_map_expr
+        self.use_special_variable_in_map_expr = \
+            use_special_variable_in_map_expr
         if reduce_type is None:
             self.reduce_type = self.out_params[0].ctype
         else:
