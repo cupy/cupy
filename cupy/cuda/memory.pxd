@@ -28,7 +28,6 @@ cdef class Memory(BaseMemory):
     pass
 
 
-@cython.final
 cdef class MemoryPointer:
 
     cdef:
@@ -51,13 +50,14 @@ cdef class MemoryPointer:
     cpdef memset_async(self, int value, size_t size, stream=?)
 
 
-cpdef MemoryPointer alloc(size)
-
-
-cpdef set_allocator(allocator=*)
-
-
 cdef class BaseSingleDeviceMemoryPool:
+
+    cdef:
+        object __weakref__
+
+        object allocator
+        object weakref
+        readonly int device_id
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
     cpdef free(self, size_t ptr, Py_ssize_t size)
@@ -72,8 +72,6 @@ cdef class BaseSingleDeviceMemoryPool:
 cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
 
     cdef:
-        object _allocator
-
         # Map from memory pointer of the chunk (size_t) to the corresponding
         # Chunk object. All chunks currently allocated to the application from
         # this pool are stored.
@@ -84,11 +82,8 @@ cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
         # `_free_lock` must be acquired to access.
         dict _free
 
-        object __weakref__
-        object _weakref
         object _free_lock
         object _in_use_lock
-        readonly int _device_id
 
         # Map from stream pointer to its arena index.
         # `_free_lock` must be acquired to access.
@@ -112,23 +107,16 @@ cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
     cpdef total_bytes(self)
 
 
-#@cython.final
 cdef class ExternalSingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
 
     cdef:
-        object __weakref__
-        object _weakref
-        object _allocator
-        object _free
-        readonly int _device_id
-
+        object _deallocator
 
 
 cdef class BaseMemoryPool:
 
     cdef:
-        object _pools
-        object _allocator
+        object pools
 
     cpdef BaseSingleDeviceMemoryPool create_single_device_memory_pool(self)
 
@@ -141,14 +129,19 @@ cdef class BaseMemoryPool:
     cpdef total_bytes(self)
 
 
-#@cython.final
 cdef class MemoryPool(BaseMemoryPool):
 
-    pass
+    cdef:
+        object _allocator
 
 
-# @cython.final
 cdef class ExternalMemoryPool(BaseMemoryPool):
 
     cdef:
         object _single_device_memory_pool_args
+
+
+cpdef MemoryPointer alloc(size)
+
+
+cpdef set_allocator(allocator=*)
