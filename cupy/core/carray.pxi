@@ -133,7 +133,7 @@ cpdef function.Module compile_with_cache(
     # The variable _cuda_runtime_version is declared in cupy/core/core.pyx,
     # but it might not have been set appropriately before coming here.
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     if _cuda_runtime_version >= 9000:
