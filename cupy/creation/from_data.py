@@ -118,7 +118,6 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-@fusion._ufunc_wrapper(core.elementwise_copy)
 def copy(a, order='K'):
     """Creates a copy of a given array on the current device.
 
@@ -141,6 +140,12 @@ def copy(a, order='K'):
     See: :func:`numpy.copy`, :meth:`cupy.ndarray.copy`
 
     """
+    if fusion._is_fusing():
+        if order != 'K':
+            raise NotImplementedError(
+                'cupy.copy does not support `order` in fusion yet.')
+        return fusion._call_ufunc(core.elementwise_copy, a)
+
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the
     # contents over the devices.
