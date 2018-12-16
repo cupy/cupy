@@ -242,7 +242,7 @@ cdef class ndarray:
 
     @property
     def nbytes(self):
-        """Size of whole elements in bytes.
+        """Total size of all elements in bytes.
 
         It does not count skips between elements.
 
@@ -290,7 +290,19 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Array conversion
     # -------------------------------------------------------------------------
-    # TODO(okuta): Implement item
+    cpdef item(self):
+        """Converts the array with one element to a Python scalar
+
+        Returns:
+            int or float or complex: The element of the array.
+
+        .. seealso:: :meth:`numpy.ndarray.item`
+
+        """
+        if self.size != 1:
+            raise ValueError(
+                'can only convert an array of size 1 to a Python scalar')
+        return self.get().item()
 
     cpdef tolist(self):
         """Converts the array to a (possibly nested) Python list.
@@ -1334,6 +1346,8 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
+        if isinstance(other, numpy.ndarray) and other.ndim == 0:
+            other = other.item()  # Workaround for numpy<1.13
         if op == 0:
             return less(self, other)
         if op == 1:
@@ -1720,10 +1734,21 @@ cdef class ndarray:
             if ufunc.signature is not None:
                 # we don't support generalised-ufuncs (gufuncs)
                 return NotImplemented
+            name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, ufunc.__name__)
+                cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            if name in [
+                    'greater', 'greater_equal', 'less', 'less_equal',
+                    'equal', 'not_equal']:
+                # workaround for numpy/numpy#12142
+                inputs = tuple([
+                    x.item()
+                    if isinstance(x, numpy.ndarray) and x.ndim == 0
+                    else x
+                    for x in inputs
+                ])
             return cp_ufunc(*inputs, **kwargs)
         # Don't use for now, interface uncertain
         # elif method =='at' and name == 'add':
@@ -2084,6 +2109,17 @@ __device__ min_max_st<T> my_min_float(
     if (is_nan(b.value)) return b;
     return min_max_st<T>(min(a.value, b.value));
 }
+template <typename T>
+__device__ min_max_st<T> my_min_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return min_max_st<T>(min(a.value, b.value));
+}
 
 template <typename T>
 __device__ min_max_st<T> my_max(
@@ -2099,6 +2135,17 @@ __device__ min_max_st<T> my_max_float(
     if (b.index == -1) return a;
     if (is_nan(a.value)) return a;
     if (is_nan(b.value)) return b;
+    return min_max_st<T>(max(a.value, b.value));
+}
+template <typename T>
+__device__ min_max_st<T> my_max_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
     return min_max_st<T>(max(a.value, b.value));
 }
 
@@ -2122,6 +2169,19 @@ __device__ min_max_st<T> my_argmin_float(
     if (is_nan(b.value)) return b;
     return (a.value <= b.value) ? a : b;
 }
+template <typename T>
+__device__ min_max_st<T> my_argmin_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return (a.value <= b.value) ? a : b;
+}
 
 template <typename T>
 __device__ min_max_st<T> my_argmax(
@@ -2143,6 +2203,19 @@ __device__ min_max_st<T> my_argmax_float(
     if (is_nan(b.value)) return b;
     return (a.value >= b.value) ? a : b;
 }
+template <typename T>
+__device__ min_max_st<T> my_argmax_complex(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value.real())) return a;
+    if (is_nan(a.value.imag())) return a;
+    if (is_nan(b.value.real())) return b;
+    if (is_nan(b.value.imag())) return b;
+    return (a.value >= b.value) ? a : b;
+}
 '''
 
 
@@ -2152,7 +2225,9 @@ _amin = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
-     ('d->d', (None, 'my_min_float(a, b)', None, None))),
+     ('d->d', (None, 'my_min_float(a, b)', None, None)),
+     ('F->F', (None, 'my_min_complex(a, b)', None, None)),
+     ('D->D', (None, 'my_min_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2164,7 +2239,10 @@ _amax = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
-     ('d->d', (None, 'my_max_float(a, b)', None, None))),
+     ('d->d', (None, 'my_max_float(a, b)', None, None)),
+     ('F->F', (None, 'my_max_complex(a, b)', None, None)),
+     ('D->D', (None, 'my_max_complex(a, b)', None, None)),
+     ),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2194,7 +2272,9 @@ cdef _argmin = create_reduction_func(
      'q->q', 'Q->q',
      ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmin_float(a, b)', None, None))),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2206,7 +2286,9 @@ cdef _argmax = create_reduction_func(
      'q->q', 'Q->q',
      ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmax_float(a, b)', None, None))),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -2600,7 +2682,11 @@ cdef class broadcast:
                 if a_sh == r_shape[i]:
                     r_strides[i] = a._strides[a_ndim - i - 1]
                 elif a_sh != 1:
-                    raise ValueError('Broadcasting failed')
+                    raise ValueError(
+                        'operands could not be broadcast together with shapes '
+                        '{}'.format(
+                            ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                       else '()' for x in arrays])))
 
             strides.assign(r_strides.rbegin(), r_strides.rend())
             view = a.view()
@@ -2634,7 +2720,9 @@ cpdef ndarray broadcast_to(ndarray array, shape):
         if sh == a_sh:
             strides[j] = array._strides[i]
         elif a_sh != 1:
-            raise ValueError('Broadcasting failed')
+            raise ValueError(
+                'operands could not be broadcast together with shape {} and '
+                'requested shape {}'.format(array.shape, shape))
 
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
@@ -3439,11 +3527,12 @@ cpdef _scatter_op_single(ndarray a, ndarray indices, v,
         # There is constraints on types because atomicAdd() in CUDA 7.5
         # only supports int32, uint32, uint64, and float32.
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32,
-                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+                          (numpy.int32, numpy.float16, numpy.float32,
+                           numpy.float64, numpy.uint32, numpy.uint64,
+                           numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float32, uint32, uint64 as '
-                'data type')
+                'scatter_add only supports int32, float16, float32, float64, '
+                'uint32, uint64, as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:
@@ -3919,7 +4008,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     handle = device.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
-    if not use_broadcast and _cuda_runtime_version >= 8000:
+    if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(out_view)
@@ -4046,8 +4135,7 @@ cpdef ndarray tensordot_core(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    use_sgemmEx = (_cuda_runtime_version >= 7500 and
-                   a.dtype == 'e' and b.dtype == 'e' and
+    use_sgemmEx = (a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
     use_tensor_core = (use_sgemmEx and
                        _cuda_runtime_version >= 9000 and
@@ -4123,17 +4211,11 @@ cpdef ndarray tensordot_core(
                 b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
                 runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
     elif dtype == 'f':
-        if _cuda_runtime_version >= 7500:
-            cublas.sgemmEx(
-                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-                b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
-                c.data.ptr, runtime.CUDA_R_32F, <int>m)
-        else:
-            cublas.sgemm(
-                handle, <int>transb, <int>transa, <int>m, <int> n, <int> k, 1,
-                b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr,
-                <int>m)
+        cublas.sgemmEx(
+            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
+            b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
+            a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
+            c.data.ptr, runtime.CUDA_R_32F, <int>m)
     elif dtype == 'd':
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
@@ -4179,15 +4261,16 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 # Logic functions
 # -----------------------------------------------------------------------------
 
-cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
+cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
-    if require_sortable_dtype:
+    if no_complex_dtype:
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
     else:
         ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
+
     return create_ufunc(
         'cupy_' + name,
         ops,
@@ -4201,7 +4284,8 @@ greater = create_comparison(
 
     .. seealso:: :data:`numpy.greater`
 
-    ''')
+    ''',
+    no_complex_dtype=False)
 
 
 greater_equal = create_comparison(
@@ -4210,7 +4294,8 @@ greater_equal = create_comparison(
 
     .. seealso:: :data:`numpy.greater_equal`
 
-    ''')
+    ''',
+    no_complex_dtype=False)
 
 
 less = create_comparison(
@@ -4219,7 +4304,8 @@ less = create_comparison(
 
     .. seealso:: :data:`numpy.less`
 
-    ''')
+    ''',
+    no_complex_dtype=False)
 
 
 less_equal = create_comparison(
@@ -4228,7 +4314,8 @@ less_equal = create_comparison(
 
     .. seealso:: :data:`numpy.less_equal`
 
-    ''')
+    ''',
+    no_complex_dtype=False)
 
 
 equal = create_comparison(
@@ -4237,7 +4324,8 @@ equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''', False)
+    ''',
+    no_complex_dtype=False)
 
 
 not_equal = create_comparison(
@@ -4246,7 +4334,8 @@ not_equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''', False)
+    ''',
+    no_complex_dtype=False)
 
 
 _all = create_reduction_func(

@@ -1,6 +1,8 @@
 Universal Functions (ufunc)
 ===========================
 
+.. https://docs.scipy.org/doc/numpy/reference/ufuncs.html
+
 CuPy provides universal functions (a.k.a. ufuncs) to support various elementwise operations.
 CuPy's ufunc supports following features of NumPy's one:
 
@@ -122,8 +124,8 @@ Comparison functions
    cupy.fmin
 
 
-Floating point values
-~~~~~~~~~~~~~~~~~~~~~
+Floating functions
+~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/

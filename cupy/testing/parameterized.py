@@ -41,6 +41,8 @@ def _gen_case(base, module, i, param):
         def wrap(*args, **kwargs):
             try:
                 return method(*args, **kwargs)
+            except unittest.SkipTest:
+                raise
             except Exception as e:
                 s = six.StringIO()
                 s.write('Parameterized test failed.\n\n')

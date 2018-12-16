@@ -107,6 +107,8 @@ package_data = {
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
         'core/include/cupy/atomics.cuh',
+        'core/include/cupy/_cuda/cuda-*/*.h',
+        'core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
     ],
 }

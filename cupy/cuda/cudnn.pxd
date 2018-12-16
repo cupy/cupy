@@ -179,6 +179,7 @@ cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
                               int n, int c, int h, int w, int nStride,
                               int cStride, int hStride, int wStride)
+cpdef tuple getTensor4dDescriptor(size_t tensorDesc)
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)

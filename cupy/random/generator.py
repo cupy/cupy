@@ -1,7 +1,7 @@
 import atexit
 import binascii
-import collections
 import functools
+import hashlib
 import operator
 import os
 import time
@@ -304,7 +304,7 @@ class RandomState(object):
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = ()
-        elif isinstance(size, collections.Sequence):
+        elif isinstance(size, cupy.util.collections_abc.Sequence):
             shape = tuple(size)
         else:
             shape = size,
@@ -491,8 +491,8 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _1m_kernel = core.ElementwiseKernel(
-        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
+    _mod1_kernel = core.ElementwiseKernel(
+        '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
@@ -513,7 +513,7 @@ class RandomState(object):
 
         """
         out = self._random_sample_raw(size, dtype)
-        RandomState._1m_kernel(out)
+        RandomState._mod1_kernel(out)
         return out
 
     def rayleigh(self, scale=1.0, size=None, dtype=float):
@@ -621,6 +621,8 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
+            if isinstance(seed, numpy.ndarray):
+                seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)

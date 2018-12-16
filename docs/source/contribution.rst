@@ -212,7 +212,7 @@ You can use ``autopep8`` and ``flake8`` commands to check your code.
 In order to avoid confusion from using different tool versions, we pin the versions of those tools.
 Install them with the following command (from within the top directory of CuPy repository)::
 
-  $ pip install -e .[stylecheck]
+  $ pip install -e '.[stylecheck]'
 
 And check your code with::
 
