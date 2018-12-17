@@ -76,10 +76,10 @@ from cupy.cuda.device import get_cublas_handle  # NOQA
 from cupy.cuda.device import get_device_id  # NOQA
 from cupy.cuda.function import Function  # NOQA
 from cupy.cuda.function import Module  # NOQA
-from cupy.cuda.memory import AbstractMemoryPool  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
 from cupy.cuda.memory import Allocator  # NOQA
 from cupy.cuda.memory import BaseMemory  # NOQA
+from cupy.cuda.memory import BaseMemoryPool  # NOQA
 from cupy.cuda.memory import get_current_allocator  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
 from cupy.cuda.memory import ManagedMemory  # NOQA

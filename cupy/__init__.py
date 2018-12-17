@@ -701,7 +701,7 @@ def get_default_memory_pool():
 
     """
     allocator = cuda.get_current_allocator()
-    if not isinstance(allocator, cuda.AbstractMemoryPool):
+    if not isinstance(allocator, cuda.BaseMemoryPool):
         raise RuntimeError('Current allocator is not a memory pool.')
     return allocator
 

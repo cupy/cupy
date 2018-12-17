@@ -43,6 +43,12 @@ cdef class Allocator:
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
 
 
+cdef class MallocAllocator(Allocator):
+
+    cdef:
+        object _malloc
+
+
 cdef class BaseMemoryPool(Allocator):
 
     cpdef free_all_blocks(self, stream=?)
@@ -53,18 +59,26 @@ cdef class BaseMemoryPool(Allocator):
     cpdef total_bytes(self)
 
 
-# Default memory pool.
-cdef class MemoryPool(BaseMemoryPool):
+cdef class BaseMultiDeviceMemoryPool(BaseMemoryPool):
 
     cdef:
         object _pools
+
+    cpdef BaseMemoryPool create_single_device_memory_pool(self)
+
+
+# Default memory pool.
+cdef class MemoryPool(BaseMultiDeviceMemoryPool):
+
+    cdef:
+        object _allocator
 
 
 # External memory pool that may define malloc, free, etc. outside CuPy.
-cdef class ExternalMemoryPool(BaseMemoryPool):
+cdef class ExternalMemoryPool(BaseMultiDeviceMemoryPool):
 
     cdef:
-        object _pools
+        object _single_device_memory_pool_args
 
 
 cpdef set_allocator(allocator=*)

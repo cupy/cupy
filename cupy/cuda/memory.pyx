@@ -500,7 +500,7 @@ cpdef MemoryPointer malloc_managed(Py_ssize_t size):
     return MemoryPointer(mem, 0)
 
 
-cdef object _current_allocator = _malloc
+cdef object _current_allocator = None
 
 
 cpdef get_current_allocator():
@@ -519,7 +519,42 @@ cpdef MemoryPointer alloc(size):
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
     """
-    return _current_allocator(size)
+    return _current_allocator.malloc(size)
+
+
+cdef class Allocator:
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        """Allocates the memory, from the pool if possible.
+
+        This method can be used as a CuPy memory allocator. The simplest way to
+        use a memory pool as the default allocator is the following code::
+
+            set_allocator(MemoryPool().malloc)
+
+        Also, the way to use a memory pool of Managed memory (Unified memory)
+        as the default allocator is the following code::
+
+            set_allocator(MemoryPool(malloc_managed).malloc)
+
+        Args:
+            size (int): Size of the memory buffer to allocate in bytes.
+
+        Returns:
+            ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+
+        """
+        raise NotImplementedError('Concrete allocator must implement malloc.')
+
+
+
+cdef class MallocAllocator(Allocator):
+
+    def __init__(self, malloc):
+        self._malloc = malloc
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        return self._malloc(size)
 
 
 cpdef set_allocator(allocator=None):
@@ -536,9 +571,9 @@ cpdef set_allocator(allocator=None):
     global _current_allocator
 
     if allocator is None:
-        allocator = Allocator.from_malloc(_malloc)
+        allocator = MallocAllocator(_malloc)
     elif not isinstance(allocator, Allocator):
-        allocator = Allocator.from_malloc(allocator)
+        allocator = MallocAllocator(allocator)
 
     _current_allocator = allocator
 
@@ -777,68 +812,6 @@ cpdef int _bin_index_from_size(Py_ssize_t size):
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
-cdef class Allocator:
-
-    cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        """Allocates the memory, from the pool if possible.
-
-        This method can be used as a CuPy memory allocator. The simplest way to
-        use a memory pool as the default allocator is the following code::
-
-            set_allocator(MemoryPool().malloc)
-
-        Also, the way to use a memory pool of Managed memory (Unified memory)
-        as the default allocator is the following code::
-
-            set_allocator(MemoryPool(malloc_managed).malloc)
-
-        Args:
-            size (int): Size of the memory buffer to allocate in bytes.
-
-        Returns:
-            ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
-
-        """
-        raise NotImplementedError('Concrete allocator must implement malloc.')
-
-
-    @classmethod
-    def from_malloc(cls, malloc):
-        self = cls()
-        setattr(self, 'malloc', malloc)
-        return self
-
-
-cdef class BaseSingleDeviceMemoryPool:
-
-    cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        raise NotImplementedError()
-
-    cpdef free(self, size_t ptr, Py_ssize_t size):
-        raise NotImplementedError()
-
-    cpdef free_all_blocks(self, stream=None):
-        raise NotImplementedError()
-
-    cpdef free_all_free(self):
-        warnings.warn(
-            'free_all_free is deprecated. Use free_all_blocks instead.',
-            DeprecationWarning)
-        self.free_all_blocks()
-
-    cpdef n_free_blocks(self):
-        raise NotImplementedError()
-
-    cpdef used_bytes(self):
-        raise NotImplementedError()
-
-    cpdef free_bytes(self):
-        raise NotImplementedError()
-
-    cpdef total_bytes(self):
-        raise NotImplementedError()
-
-
 cdef class BaseMemoryPool(Allocator):
 
     """Memory pool for all GPU devices on the host.
@@ -916,7 +889,7 @@ cdef class BaseMemoryPool(Allocator):
         raise NotImplementedError()
 
 
-cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
+cdef class SingleDeviceMemoryPool(BaseMemoryPool):
     """Memory pool implementation for single device.
 
     - The allocator attempts to find the smallest cached block that will fit
@@ -1171,35 +1144,50 @@ cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
         return self.used_bytes() + self.free_bytes()
 
 
-cdef class MemoryPool(BaseMemoryPool):
+cdef class BaseMultiDeviceMemoryPool(BaseMemoryPool):
 
-    def __init__(self, allocator=_malloc):
+    def __init__(self):
         self._pools = collections.defaultdict(
-            lambda: SingleDeviceMemoryPool(allocator))
+            self.create_single_device_memory_pool)
+
+    cpdef BaseMemoryPool create_single_device_memory_pool(self):
+        raise NotImplementedError(
+            'Concrete multi device memory pool must implement '
+            'create_single_device_memory_pool(self).')
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         return mp.malloc(size)
 
     cpdef free_all_blocks(self, stream=None):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         mp.free_all_blocks(stream=stream)
 
     cpdef n_free_blocks(self):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         return mp.n_free_blocks()
 
     cpdef used_bytes(self):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         return mp.used_bytes()
 
     cpdef free_bytes(self):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         return mp.free_bytes()
 
     cpdef total_bytes(self):
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <BaseMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
+
+
+cdef class MemoryPool(BaseMultiDeviceMemoryPool):
+
+    def __init__(self, allocator=_malloc):
+        super(MemoryPool, self).__init__()
+        self._allocator = allocator
+
+    cpdef BaseMemoryPool create_single_device_memory_pool(self):
+        return SingleDeviceMemoryPool(self._allocator)
 
 
 @cython.final
@@ -1226,7 +1214,7 @@ cdef class ExternalPooledMemory(BaseMemory):
         self.free()
 
 
-cdef class ExternalSingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
+cdef class ExternalSingleDeviceMemoryPool(BaseMemoryPool):
 
     cdef:
         object __weakref__
@@ -1279,10 +1267,21 @@ cdef class ExternalSingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
         return self._total_bytes()
 
 
-cdef class ExternalMemoryPool(BaseMemoryPool):
+cdef class ExternalMemoryPool(BaseMultiDeviceMemoryPool):
 
-    def __init__(self):
-        self._pools = {}
+    def __init__(self, allocator=_malloc):
+        super(ExternalMemoryPool, self).__init__()
+        self._single_device_memory_pool_args = {}
+
+    cpdef BaseMemoryPool create_single_device_memory_pool(self):
+        device_id = device.get_device_id()
+        if not device_id in self._single_device_memory_pool_args:
+            raise RuntimeError(
+                'Memory pool for device {} is not '
+                'registered.'.format(device_id))
+
+        return ExternalSingleDeviceMemoryPool(
+            **self._single_device_memory_pool_args[device_id])
 
     # TODO(hvy): Remove default `None` values. This is currently needed since
     # ChainerX, which is the only external source for calling this method does
@@ -1291,36 +1290,14 @@ cdef class ExternalMemoryPool(BaseMemoryPool):
             self, device_id, malloc, free, free_all_blocks=None,
             n_free_blocks=None, used_bytes=None, free_bytes=None,
             total_bytes=None):
-        self._pools[device_id] = ExternalSingleDeviceMemoryPool(
-            device_id, malloc, free, free_all_blocks, n_free_blocks,
-            used_bytes, free_bytes, total_bytes)
 
-    cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        return mp.malloc(size)
-
-    cpdef free_all_blocks(self, stream=None):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        mp.free_all_blocks(stream=stream)
-
-    cpdef n_free_blocks(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        return mp.n_free_blocks()
-
-    cpdef used_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        return mp.used_bytes()
-
-    cpdef free_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        return mp.free_bytes()
-
-    cpdef total_bytes(self):
-        mp = <ExternalSingleDeviceMemoryPool>self._pools[
-            device.get_device_id()]
-        return mp.total_bytes()
+        self._single_device_memory_pool_args[device_id] = {
+            'device_id': device_id,
+            'malloc': malloc,
+            'free': free,
+            'free_all_blocks': free_all_blocks,
+            'n_free_blocks': n_free_blocks,
+            'used_bytes': used_bytes,
+            'free_bytes': free_bytes,
+            'total_bytes': total_bytes,
+        }
