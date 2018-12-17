@@ -1,6 +1,5 @@
 cimport cython  # NOQA
 
-from libc.stdint cimport int8_t
 from libcpp cimport vector
 from libcpp cimport map
 
@@ -16,18 +15,7 @@ cdef class BaseMemory:
         public int device_id
 
 
-@cython.no_gc
-cdef class Memory(BaseMemory):
-    """Memory allocation on a CUDA device.
-
-    This class provides an RAII interface of the CUDA memory allocation.
-
-    Args:
-        size (int): Size of the memory allocation in bytes.
-    """
-    pass
-
-
+@cython.final
 cdef class MemoryPointer:
 
     cdef:

@@ -586,7 +586,7 @@ cdef class PooledMemory(BaseMemory):
                                          mem_ptr=ptr,
                                          pmem_id=pmem_id)
                 try:
-                    pool.free(ptr, size)
+                    (<SingleDeviceMemoryPool>pool).free(ptr, size)
                 finally:
                     for hook in hooks_values:
                         hook.free_postprocess(device_id=device_id,
@@ -594,7 +594,7 @@ cdef class PooledMemory(BaseMemory):
                                               mem_ptr=ptr,
                                               pmem_id=pmem_id)
                 return
-        pool.free(ptr, size)
+        (<SingleDeviceMemoryPool>pool).free(ptr, size)
 
     def __dealloc__(self):
         if _exit_mode:
@@ -671,6 +671,28 @@ cdef object _get_chunk(SingleDeviceMemoryPool pool, Py_ssize_t size,
         assert chunk.stream_ptr == stream_ptr
         return chunk
     return None
+
+
+cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, Py_ssize_t size):
+    try:
+        return pool._alloc(size).mem
+    except runtime.CUDARuntimeError as e:
+        if e.status != runtime.errorMemoryAllocation:
+            raise
+        pool.free_all_blocks()
+        try:
+            return pool._alloc(size).mem
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            gc.collect()
+            try:
+                return pool._alloc(size).mem
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.errorMemoryAllocation:
+                    raise
+    total = size + pool.total_bytes()
+    raise OutOfMemoryError(size, total)
 
 
 cdef _append_to_free_list(list arena, vector.vector[int]* a_index,
@@ -1044,27 +1066,6 @@ cdef class SingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
                 return memptr
         return self._malloc(rounded_size)
 
-    cdef BaseMemory _try_malloc(self, Py_ssize_t size):
-        try:
-            return self._alloc(size).mem
-        except runtime.CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
-                raise
-            self.free_all_blocks()
-            try:
-                return self._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
-                if e.status != runtime.errorMemoryAllocation:
-                    raise
-                gc.collect()
-                try:
-                    return self._alloc(size).mem
-                except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.errorMemoryAllocation:
-                        raise
-        total = size + self.total_bytes()
-        raise OutOfMemoryError(size, total)
-
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef _Chunk chunk
         cdef long current_thread
@@ -1084,7 +1085,7 @@ cdef class SingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
             rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is None:
-            mem = self._try_malloc(size)
+            mem = _try_malloc(self, size)
             chunk = _Chunk.__new__(_Chunk)
             # cudaMalloc if a cache is not found
             chunk._init(mem, 0, size, stream_ptr)
