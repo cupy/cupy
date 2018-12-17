@@ -534,8 +534,12 @@ cpdef set_allocator(allocator=None):
 
     """
     global _current_allocator
+
     if allocator is None:
-        allocator = _malloc
+        allocator = Allocator.from_malloc(_malloc)
+    elif not isinstance(allocator, Allocator):
+        allocator = Allocator.from_malloc(allocator)
+
     _current_allocator = allocator
 
 
@@ -797,8 +801,12 @@ cdef class Allocator:
         """
         raise NotImplementedError('Concrete allocator must implement malloc.')
 
-    def __call__(self, size):
-        return self.malloc(size)
+
+    @classmethod
+    def from_malloc(cls, malloc):
+        self = cls()
+        setattr(self, 'malloc', malloc)
+        return self
 
 
 cdef class AbstractSingleDeviceMemoryPool:
