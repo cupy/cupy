@@ -855,12 +855,6 @@ cdef class AbstractMemoryPool(Allocator):
 
     """
 
-    '''
-    def __init__(self, allocator=_malloc):
-        self._pools = collections.defaultdict(
-            lambda: SingleDeviceMemoryPool(allocator))
-    '''
-
     cpdef free_all_blocks(self, stream=None):
         """Release free blocks.
 
@@ -920,32 +914,6 @@ cdef class SingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
     - If the cudaMalloc fails, the allocator will free all cached blocks that
       are not split and retry the allocation.
     """
-
-    '''
-    cdef:
-        object _allocator
-
-        # Map from memory pointer of the chunk (size_t) to the corresponding
-        # Chunk object. All chunks currently allocated to the application from
-        # this pool are stored.
-        # `_in_use_lock` must be acquired to access.
-        dict _in_use
-
-        # Map from stream pointer (int) to its arena (list) for the stream.
-        # `_free_lock` must be acquired to access.
-        dict _free
-
-        object __weakref__
-        object _weakref
-        object _free_lock
-        object _in_use_lock
-        readonly int _device_id
-
-        # Map from stream pointer to its arena index.
-        # `_free_lock` must be acquired to access.
-        map.map[size_t, vector.vector[int]] _index
-        map.map[size_t, vector.vector[int8_t]] _flag
-    '''
 
     cdef:
         object __weakref__
