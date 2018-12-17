@@ -43,7 +43,7 @@ cdef class Allocator:
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
 
 
-cdef class AbstractMemoryPool(Allocator):
+cdef class BaseMemoryPool(Allocator):
 
     cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
@@ -54,14 +54,14 @@ cdef class AbstractMemoryPool(Allocator):
 
 
 # Default memory pool.
-cdef class MemoryPool(AbstractMemoryPool):
+cdef class MemoryPool(BaseMemoryPool):
 
     cdef:
         object _pools
 
 
 # External memory pool that may define malloc, free, etc. outside CuPy.
-cdef class ExternalMemoryPool(AbstractMemoryPool):
+cdef class ExternalMemoryPool(BaseMemoryPool):
 
     cdef:
         object _pools

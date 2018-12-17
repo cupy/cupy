@@ -809,7 +809,7 @@ cdef class Allocator:
         return self
 
 
-cdef class AbstractSingleDeviceMemoryPool:
+cdef class BaseSingleDeviceMemoryPool:
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         raise NotImplementedError()
@@ -839,7 +839,7 @@ cdef class AbstractSingleDeviceMemoryPool:
         raise NotImplementedError()
 
 
-cdef class AbstractMemoryPool(Allocator):
+cdef class BaseMemoryPool(Allocator):
 
     """Memory pool for all GPU devices on the host.
 
@@ -916,7 +916,7 @@ cdef class AbstractMemoryPool(Allocator):
         raise NotImplementedError()
 
 
-cdef class SingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
+cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
     """Memory pool implementation for single device.
 
     - The allocator attempts to find the smallest cached block that will fit
@@ -1171,7 +1171,7 @@ cdef class SingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
         return self.used_bytes() + self.free_bytes()
 
 
-cdef class MemoryPool(AbstractMemoryPool):
+cdef class MemoryPool(BaseMemoryPool):
 
     def __init__(self, allocator=_malloc):
         self._pools = collections.defaultdict(
@@ -1226,7 +1226,7 @@ cdef class ExternalPooledMemory(BaseMemory):
         self.free()
 
 
-cdef class ExternalSingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
+cdef class ExternalSingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
 
     cdef:
         object __weakref__
@@ -1279,7 +1279,7 @@ cdef class ExternalSingleDeviceMemoryPool(AbstractSingleDeviceMemoryPool):
         return self._total_bytes()
 
 
-cdef class ExternalMemoryPool(AbstractMemoryPool):
+cdef class ExternalMemoryPool(BaseMemoryPool):
 
     def __init__(self):
         self._pools = {}
