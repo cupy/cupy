@@ -685,17 +685,7 @@ fuse = cupy.core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
-_default_allocator = None
 _default_pinned_memory_pool = None
-
-
-def get_allocator():
-    """Returns CuPy default allocator for GPU memory.
-
-    Returns:
-        cupy.cuda.Allocator: The allocator object.
-    """
-    return _default_allocator
 
 
 def get_default_memory_pool():
@@ -710,9 +700,10 @@ def get_default_memory_pool():
        >>> cupy.cuda.set_allocator(None)
 
     """
-    if not isinstance(_default_allocator, cuda.AbstractMemoryPool):
+    allocator = cuda.get_current_allocator()
+    if not isinstance(allocator, cuda.AbstractMemoryPool):
         raise RuntimeError('Current allocator is not a memory pool.')
-    return _default_allocator
+    return allocator
 
 
 def get_default_pinned_memory_pool():
@@ -737,8 +728,7 @@ def show_config():
 
 
 # Set the default memory allocator to CuPy's memory pool.
-_default_allocator = cuda.MemoryPool()
-cuda.set_allocator(_default_allocator)
+cuda.set_allocator(cuda.MemoryPool())
 
 # Set the default pinned memory pool.
 _default_pinned_memory_pool = cuda.PinnedMemoryPool()

@@ -503,6 +503,10 @@ cpdef MemoryPointer malloc_managed(Py_ssize_t size):
 cdef object _current_allocator = _malloc
 
 
+cpdef get_current_allocator():
+    return _current_allocator
+
+
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
 

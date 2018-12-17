@@ -80,6 +80,7 @@ from cupy.cuda.memory import AbstractMemoryPool  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
 from cupy.cuda.memory import Allocator  # NOQA
 from cupy.cuda.memory import BaseMemory  # NOQA
+from cupy.cuda.memory import get_current_allocator  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
 from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
