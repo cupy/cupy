@@ -118,7 +118,7 @@ class _FusionVarCUDA(object):
 
     def declaration(self):
         c = self.const
-        val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
+        val = c.item() if hasattr(c, 'dtype') else c
         ctype = _dtype_to_ctype[self.dtype]
 
         if self.const is None:
