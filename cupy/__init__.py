@@ -685,8 +685,17 @@ fuse = cupy.core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
-_default_memory_pool = None
+_default_allocator = None
 _default_pinned_memory_pool = None
+
+
+def get_allocator():
+    """Returns CuPy default allocator for GPU memory.
+
+    Returns:
+        cupy.cuda.Allocator: The allocator object.
+    """
+    return _default_allocator
 
 
 def get_default_memory_pool():
@@ -701,7 +710,9 @@ def get_default_memory_pool():
        >>> cupy.cuda.set_allocator(None)
 
     """
-    return _default_memory_pool
+    if not isinstance(_default_allocator, cuda.AbstractMemoryPool):
+        raise RuntimeError('Current allocator is not a memory pool.')
+    return _default_allocator
 
 
 def get_default_pinned_memory_pool():
@@ -719,34 +730,16 @@ def get_default_pinned_memory_pool():
     return _default_pinned_memory_pool
 
 
-def set_default_memory_pool(memory_pool):
-    """Sets the CuPy default memory pool.
-    """
-    if not hasattr(memory_pool, 'malloc'):
-        raise ValueError('Memory pool must provide a malloc method.')
-
-    global _default_memory_pool
-    _default_memory_pool = memory_pool
-    cuda.set_allocator(memory_pool.malloc)
-
-
-def set_default_pinned_memory_pool(pinned_memory_pool):
-    """Sets the CuPy default pinned memory pool.
-    """
-    if not hasattr(pinned_memory_pool, 'malloc'):
-        raise ValueError('Pinned memory pool must provide a malloc method.')
-
-    global _default_pinned_memory_pool
-    _default_pinned_memory_pool = pinned_memory_pool
-    cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
-
-
 def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
 
 
-# set default allocator
-set_default_memory_pool(cuda.MemoryPool())
-set_default_pinned_memory_pool(cuda.PinnedMemoryPool())
+# Set the default memory allocator to CuPy's memory pool.
+_default_allocator = cuda.MemoryPool()
+cuda.set_allocator(_default_allocator)
+
+# Set the default pinned memory pool.
+_default_pinned_memory_pool = cuda.PinnedMemoryPool()
+cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)

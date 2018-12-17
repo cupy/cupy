@@ -50,17 +50,13 @@ cdef class MemoryPointer:
     cpdef memset_async(self, int value, size_t size, stream=?)
 
 
-cdef class BaseSingleDeviceMemoryPool:
-
-    cdef:
-        object __weakref__
-
-        object allocator
-        object weakref
-        readonly int device_id
+cdef class Allocator:
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
-    cpdef free(self, size_t ptr, Py_ssize_t size)
+
+
+cdef class AbstractMemoryPool(Allocator):
+
     cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
     cpdef n_free_blocks(self)
@@ -69,79 +65,21 @@ cdef class BaseSingleDeviceMemoryPool:
     cpdef total_bytes(self)
 
 
-cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
+# Default memory pool.
+cdef class MemoryPool(AbstractMemoryPool):
 
     cdef:
-        # Map from memory pointer of the chunk (size_t) to the corresponding
-        # Chunk object. All chunks currently allocated to the application from
-        # this pool are stored.
-        # `_in_use_lock` must be acquired to access.
-        dict _in_use
-
-        # Map from stream pointer (int) to its arena (list) for the stream.
-        # `_free_lock` must be acquired to access.
-        dict _free
-
-        object _free_lock
-        object _in_use_lock
-
-        # Map from stream pointer to its arena index.
-        # `_free_lock` must be acquired to access.
-        map.map[size_t, vector.vector[int]] _index
-        map.map[size_t, vector.vector[int8_t]] _flag
-
-    cpdef list _arena(self, size_t stream_ptr)
-    cdef inline vector.vector[int]* _arena_index(self, size_t stream_ptr)
-    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr)
-    cdef Memory _try_malloc(self, Py_ssize_t size)
-    cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size)
-    cpdef MemoryPointer _malloc(self, Py_ssize_t size)
-
-    cpdef MemoryPointer malloc(self, Py_ssize_t size)
-    cpdef free(self, size_t ptr, Py_ssize_t size)
-    cpdef free_all_blocks(self, stream=?)
-    cpdef free_all_free(self)
-    cpdef n_free_blocks(self)
-    cpdef used_bytes(self)
-    cpdef free_bytes(self)
-    cpdef total_bytes(self)
+        object _pools
 
 
-cdef class ExternalSingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
+# External memory pool that may define malloc, free, etc. outside CuPy.
+cdef class ExternalMemoryPool(AbstractMemoryPool):
 
     cdef:
-        object _deallocator
-
-
-cdef class BaseMemoryPool:
-
-    cdef:
-        object pools
-
-    cpdef BaseSingleDeviceMemoryPool create_single_device_memory_pool(self)
-
-    cpdef MemoryPointer malloc(self, Py_ssize_t size)
-    cpdef free_all_blocks(self, stream=?)
-    cpdef free_all_free(self)
-    cpdef n_free_blocks(self)
-    cpdef used_bytes(self)
-    cpdef free_bytes(self)
-    cpdef total_bytes(self)
-
-
-cdef class MemoryPool(BaseMemoryPool):
-
-    cdef:
-        object _allocator
-
-
-cdef class ExternalMemoryPool(BaseMemoryPool):
-
-    cdef:
-        object _single_device_memory_pool_args
-
-
-cpdef MemoryPointer alloc(size)
+        object _pools
 
 
 cpdef set_allocator(allocator=*)
+
+
+cpdef MemoryPointer alloc(size)
