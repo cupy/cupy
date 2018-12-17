@@ -997,7 +997,7 @@ cdef class SingleDeviceMemoryPool(BaseSingleDeviceMemoryPool):
             self._in_use[chunk.ptr()] = chunk
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
-        pmem = PooledMemory(chunk, self._weakref)
+        pmem = PooledMemory(chunk, self.weakref)
         return MemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
