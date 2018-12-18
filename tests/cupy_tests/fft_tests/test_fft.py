@@ -159,8 +159,7 @@ class TestFft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft2(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+        assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
@@ -174,8 +173,7 @@ class TestFft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft2(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+        assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
@@ -213,8 +211,7 @@ class TestFftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+        assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -228,8 +225,7 @@ class TestFftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, enable_nd):
-        if config.enable_nd_planning != enable_nd:
-            assert 0
+        assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
