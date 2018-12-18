@@ -1,6 +1,8 @@
 import unittest
 
+import cupy
 from cupy.core import flags
+from cupy import testing
 
 
 class TestFlags(unittest.TestCase):
@@ -25,3 +27,23 @@ class TestFlags(unittest.TestCase):
         self.assertEqual('''  C_CONTIGUOUS : 1
   F_CONTIGUOUS : 2
   OWNDATA : 3''', repr(self.flags))
+
+    def test_fnc(self):
+        a_1d_c = testing.shaped_random((4, ), cupy)
+        a_2d_c = testing.shaped_random((4, 4), cupy)
+        a_2d_f = cupy.asfortranarray(testing.shaped_random((4, 4), cupy))
+        a_2d_noncontig = testing.shaped_random((4, 8), cupy)[:, ::2]
+        assert a_1d_c.flags.fnc is False
+        assert a_2d_c.flags.fnc is False
+        assert a_2d_f.flags.fnc is True
+        assert a_2d_noncontig.flags.fnc is False
+
+    def test_forc(self):
+        a_1d_c = testing.shaped_random((4, ), cupy)
+        a_2d_c = testing.shaped_random((4, 4), cupy)
+        a_2d_f = cupy.asfortranarray(testing.shaped_random((4, 4), cupy))
+        a_2d_noncontig = testing.shaped_random((4, 8), cupy)[:, ::2]
+        assert a_1d_c.flags.forc is True
+        assert a_2d_c.flags.forc is True
+        assert a_2d_f.flags.forc is True
+        assert a_2d_noncontig.flags.forc is False
