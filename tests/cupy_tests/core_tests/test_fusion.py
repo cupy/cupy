@@ -1441,7 +1441,7 @@ class TestFusionPythonConstant(unittest.TestCase):
 
         @cupy.fuse()
         def f(x):
-            return x * numpy.asscalar(dtype2(1))
+            return x * dtype2(1).item()
         return f(testing.shaped_arange((1,), xp, dtype1))
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
