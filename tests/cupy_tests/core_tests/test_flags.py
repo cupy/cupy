@@ -1,6 +1,5 @@
 import unittest
 
-import cupy
 from cupy.core import flags
 from cupy import testing
 
@@ -28,22 +27,41 @@ class TestFlags(unittest.TestCase):
   F_CONTIGUOUS : 2
   OWNDATA : 3''', repr(self.flags))
 
-    def test_fnc(self):
-        a_1d_c = testing.shaped_random((4, ), cupy)
-        a_2d_c = testing.shaped_random((4, 4), cupy)
-        a_2d_f = cupy.asfortranarray(testing.shaped_random((4, 4), cupy))
-        a_2d_noncontig = testing.shaped_random((4, 8), cupy)[:, ::2]
-        assert a_1d_c.flags.fnc is False
-        assert a_2d_c.flags.fnc is False
-        assert a_2d_f.flags.fnc is True
-        assert a_2d_noncontig.flags.fnc is False
 
-    def test_forc(self):
-        a_1d_c = testing.shaped_random((4, ), cupy)
-        a_2d_c = testing.shaped_random((4, 4), cupy)
-        a_2d_f = cupy.asfortranarray(testing.shaped_random((4, 4), cupy))
-        a_2d_noncontig = testing.shaped_random((4, 8), cupy)[:, ::2]
-        assert a_1d_c.flags.forc is True
-        assert a_2d_c.flags.forc is True
-        assert a_2d_f.flags.forc is True
-        assert a_2d_noncontig.flags.forc is False
+@testing.parameterize(
+    *testing.product({
+        'order': ['C', 'F', 'non-contiguous'],
+        'shape': [(8, ), (4, 8)],
+    })
+)
+class TestContiguityFlags(unittest.TestCase):
+
+    def setUp(self):
+        self.flags = None
+
+    def init_flags(self, xp):
+        if self.order == 'non-contiguous':
+            a = xp.empty(self.shape)[::2]
+        else:
+            a = xp.empty(self.shape, order=self.order)
+        self.flags = a.flags
+
+    @testing.numpy_cupy_equal()
+    def test_fnc(self, xp):
+        self.init_flags(xp)
+        return self.flags.fnc
+
+    @testing.numpy_cupy_equal()
+    def test_forc(self, xp):
+        self.init_flags(xp)
+        return self.flags.forc
+
+    @testing.numpy_cupy_equal()
+    def test_f_contiguous(self, xp):
+        self.init_flags(xp)
+        return self.flags.f_contiguous
+
+    @testing.numpy_cupy_equal()
+    def test_c_contiguous(self, xp):
+        self.init_flags(xp)
+        return self.flags.c_contiguous
