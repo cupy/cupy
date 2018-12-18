@@ -4017,10 +4017,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         batchCount *= i
 
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    handle = cuda.get_cublas_handle()
+    handle = device.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
@@ -4028,7 +4028,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(out_view)
         if dtype == numpy.float32:
-            cuda.cublas.sgemmStridedBatched(
+            cublas.sgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4038,7 +4038,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.float64:
-            cuda.cublas.dgemmStridedBatched(
+            cublas.dgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4048,7 +4048,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex64:
-            cuda.cublas.cgemmStridedBatched(
+            cublas.cgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4058,7 +4058,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex128:
-            cuda.cublas.zgemmStridedBatched(
+            cublas.zgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4074,7 +4074,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         bp = _mat_ptrs(b)
         outp = _mat_ptrs(out_view)
         if dtype == numpy.float32:
-            cuda.cublas.sgemmBatched(
+            cublas.sgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4083,7 +4083,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
-            cuda.cublas.dgemmBatched(
+            cublas.dgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4092,7 +4092,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
-            cuda.cublas.cgemmBatched(
+            cublas.cgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4101,7 +4101,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
-            cuda.cublas.zgemmBatched(
+            cublas.zgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4120,7 +4120,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         return ret
 
 
-cdef _cuda_runtime_version = None
+cdef int _cuda_runtime_version = -1
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
@@ -4147,7 +4147,7 @@ cpdef ndarray tensordot_core(
         return out
 
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     use_sgemmEx = (a.dtype == 'e' and b.dtype == 'e' and
