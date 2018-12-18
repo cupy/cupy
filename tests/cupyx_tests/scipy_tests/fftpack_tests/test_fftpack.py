@@ -13,7 +13,7 @@ if cupyx.scipy._scipy_available:
     'axis': [-1, 0],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=0.19.0')
 class TestFft(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -67,7 +67,7 @@ class TestFft(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
 )
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=0.19.0')
 class TestFft2(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -121,7 +121,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
 )
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=0.19.0')
 class TestFftn(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -167,7 +167,7 @@ class TestFftn(unittest.TestCase):
     'axis': [-1, 0],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=0.19.0')
 class TestRfft(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
