@@ -105,21 +105,6 @@ class TestRoll(unittest.TestCase):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, (2, 1, 3), axis=None)
 
-    @testing.numpy_cupy_raises(accept_error=numpy.AxisError)
-    def test_roll_invalid_axis1(self, xp):
-        x = testing.shaped_arange((5, 2), xp)
-        return xp.roll(x, 2, axis=(1, 2))
-
-    @testing.numpy_cupy_raises(accept_error=numpy.AxisError)
-    def test_roll_invalid_axis2(self, xp):
-        x = testing.shaped_arange((5, 2), xp)
-        return xp.roll(x, 2, axis=-2)
-
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_roll_invalid_axis3(self, xp):
-        x = testing.shaped_arange((5, 2), xp)
-        return xp.roll(x, 2, axis='0')
-
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_roll_invalid_shift(self, xp):
         x = testing.shaped_arange((5, 2), xp)
@@ -130,25 +115,28 @@ class TestRoll(unittest.TestCase):
         x = testing.shaped_arange((5, 2, 3), xp)
         return xp.roll(x, (2, 2, 2), axis=(0, 1))
 
-    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
+    @testing.numpy_cupy_raises(accept_error=numpy.AxisError)
     def test_roll_invalid_axis1(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
+        x = testing.shaped_arange((5, 2), xp)
         return xp.roll(x, 1, axis=2)
 
-    @testing.for_all_dtypes()
-    def test_roll_invalid_axis2(self, dtype):
-        x = testing.shaped_arange((5, 2), cupy, dtype)
-        with self.assertRaises(cupy.core.core._AxisError):
-            return cupy.roll(x, 1, axis=2)
+    @testing.with_requires('numpy>=1.13')
+    @testing.numpy_cupy_raises(accept_error=numpy.AxisError)
+    def test_roll_invalid_axis2(self, xp):
+        x = testing.shaped_arange((5, 2), xp)
+        return xp.roll(x, 1, axis=-3)
 
-    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.12')
-    def test_roll_invalid_axis3(self, dtype):
-        x = testing.shaped_arange((5, 2, 2), cupy, dtype)
-        with self.assertRaises(ValueError):
-            return cupy.roll(x, shift=(1, 0), axis=(0, 1, 2))
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_roll_invalid_axis_length(self, xp):
+        x = testing.shaped_arange((5, 2, 2), xp)
+        return cupy.roll(x, shift=(1, 0), axis=(0, 1, 2))
+
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_roll_invalid_axis_type(self, xp):
+        x = testing.shaped_arange((5, 2), xp)
+        return xp.roll(x, 2, axis='0')
 
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.13')
