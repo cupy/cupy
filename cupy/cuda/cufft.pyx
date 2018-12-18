@@ -31,14 +31,6 @@ cdef extern from "cupy_cufft.h" nogil:
                              int istride, int idist, int *onembed, int ostride,
                              int odist, Type type, int batch,
                              size_t *workSize)
-    # could use cufftMakePlanMany64 instead to support >int32 size/stride
-    # Result cufftMakePlanMany64(Handle plan, int rank, long long int *n,
-    #                            long long int *inembed, long long int istride,
-    #                            long long int idist, long long int *onembed,
-    #                            long long int ostride, long long int odist,
-    #                            Type type, long long int batch,
-    #                            size_t *workSize)
-
 
     # cuFFT Exec Function
     Result cufftExecC2C(Handle plan, Complex *idata, Complex *odata,
