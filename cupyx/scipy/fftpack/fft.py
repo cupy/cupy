@@ -7,7 +7,7 @@ def fft(x, n=None, axis=-1, overwrite_x=False):
     """Compute the one-dimensional FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         n (None or int): Length of the transformed axis of the output. If ``n``
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
@@ -17,7 +17,7 @@ def fft(x, n=None, axis=-1, overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``n`` and type
-            will convert to complex if the input is other.
+            will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.fft`
     """
@@ -29,7 +29,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False):
     """Compute the one-dimensional inverse FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         n (None or int): Length of the transformed axis of the output. If ``n``
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
@@ -39,7 +39,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``n`` and type
-            will convert to complex if the input is other.
+            will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.ifft`
     """
@@ -51,7 +51,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
     """Compute the two-dimensional FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
@@ -61,7 +61,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``shape`` and
-            type will convert to complex if the input is other.
+            type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.fft2`
     """
@@ -73,7 +73,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
     """Compute the two-dimensional inverse FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
@@ -83,7 +83,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``shape`` and
-            type will convert to complex if the input is other.
+            type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.ifft2`
     """
@@ -95,7 +95,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False):
     """Compute the N-dimensional FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
@@ -105,7 +105,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``shape`` and
-            type will convert to complex if the input is other.
+            type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.fftn`
     """
@@ -117,7 +117,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False):
     """Compute the N-dimensional inverse FFT.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
@@ -127,7 +127,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False):
     Returns:
         cupy.ndarray:
             The transformed array which shape is specified by ``shape`` and
-            type will convert to complex if the input is other.
+            type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.ifftn`
     """
@@ -146,7 +146,7 @@ def rfft(x, n=None, axis=-1, overwrite_x=False):
         [y(0),Re(y(1)),Im(y(1)),...,Re(y(n/2)),Im(y(n/2))]  # if n is odd
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         n (None or int): Length of the transformed axis of the output. If ``n``
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
@@ -190,7 +190,7 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
     """Compute the one-dimensional inverse FFT for real input.
 
     Args:
-        x (cupy.ndarray): Array to be transform.
+        x (cupy.ndarray): Array to be transformed.
         n (None or int): Length of the transformed axis of the output. If ``n``
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
