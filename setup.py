@@ -160,6 +160,7 @@ setup(
         'cupy.testing',
         'cupyx',
         'cupyx.scipy',
+        'cupyx.scipy.fftpack',
         'cupyx.scipy.ndimage',
         'cupyx.scipy.sparse',
         'cupyx.scipy.sparse.linalg',
