@@ -12,7 +12,6 @@ from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
-from cupy import util
 
 
 _available = None
@@ -68,20 +67,6 @@ def get_cuda_path():
             _cuda_path = '/usr/local/cuda'
 
     return _cuda_path
-
-
-@util.memoize()
-def get_attributes_dict(device_id):
-    """Return a dict containing all device attributes."""
-    d = {}
-    for k, v in runtime.__dict__.items():
-        if k.startswith('cudaDevAttr'):
-            try:
-                name = k.replace('cudaDevAttr', '', 1)
-                d[name] = runtime.deviceGetAttribute(v, device_id)
-            except runtime.CUDARuntimeError:
-                pass
-    return d
 
 
 # import class and function
