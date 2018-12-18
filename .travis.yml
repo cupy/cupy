@@ -11,7 +11,7 @@ python:
 
 install:
   - pip install -U pip wheel
-  - pip install cython
+  - pip install cython numpy
   - READTHEDOCS=True travis_wait pip install -U -e .[travis]
 
 script:
