@@ -1,6 +1,5 @@
 cimport cython  # NOQA
 import numpy
-cimport numpy
 
 import cupy
 from cupy.cuda cimport driver
@@ -174,32 +173,32 @@ class Plan1d(object):
                     out.dtype, a.dtype))
 
 
-
 class PlanNd(object):
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
                  int fft_type, int batch):
         cdef Handle plan
         cdef size_t work_size
-        cdef int ndim
-        cdef int* shape_ptr
+        cdef int ndim, i
+        cdef int[:] shape_arr = numpy.asarray(shape, dtype=numpy.intc)
+        cdef int[:] inembed_arr
+        cdef int[:] onembed_arr
+        cdef int* shape_ptr = &shape_arr[0]
         cdef int* inembed_ptr
         cdef int* onembed_ptr
-        shape = numpy.asarray(shape, dtype=numpy.intc)
         ndim = len(shape)
-        shape_ptr = <int *>numpy.PyArray_DATA(shape)
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
         else:
-            inembed = numpy.asarray(inembed, dtype=numpy.intc)
-            inembed_ptr = <int *>numpy.PyArray_DATA(inembed)
+            inembed_arr = numpy.asarray(inembed, dtype=numpy.intc)
+            inembed_ptr = &inembed_arr[0]
 
         if onembed is None:
             onembed_ptr = NULL  # ignore ostride and use default strides
         else:
-            onembed = numpy.asarray(onembed, dtype=numpy.intc)
-            onembed_ptr = <int *>numpy.PyArray_DATA(onembed)
+            onembed_arr = numpy.asarray(onembed, dtype=numpy.intc)
+            onembed_ptr = &onembed_arr[0]
 
         stream = stream_module.get_current_stream_ptr()
         with nogil:
@@ -224,7 +223,6 @@ class PlanNd(object):
                                            onembed_ptr, ostride, odist,
                                            <Type>fft_type, batch,
                                            &work_size)
-
         check_result(result)
 
         # TODO: for CUDA>=9.2 could also allow setting a work area policy
