@@ -1,6 +1,6 @@
 cimport cython  # NOQA
 import numpy
-cimport numpy as cnp
+cimport numpy
 
 import cupy
 from cupy.cuda cimport driver
@@ -187,19 +187,19 @@ class PlanNd(object):
         cdef int* onembed_ptr
         shape = numpy.asarray(shape, dtype=numpy.intc)
         ndim = len(shape)
-        shape_ptr = <int *>cnp.PyArray_DATA(shape)
+        shape_ptr = <int *>numpy.PyArray_DATA(shape)
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
         else:
             inembed = numpy.asarray(inembed, dtype=numpy.intc)
-            inembed_ptr = <int *>cnp.PyArray_DATA(inembed)
+            inembed_ptr = <int *>numpy.PyArray_DATA(inembed)
 
         if onembed is None:
             onembed_ptr = NULL  # ignore ostride and use default strides
         else:
             onembed = numpy.asarray(onembed, dtype=numpy.intc)
-            onembed_ptr = <int *>cnp.PyArray_DATA(onembed)
+            onembed_ptr = <int *>numpy.PyArray_DATA(onembed)
 
         stream = stream_module.get_current_stream_ptr()
         with nogil:
