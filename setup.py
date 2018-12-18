@@ -145,6 +145,7 @@ setup(
         'cupy.fft',
         'cupy.indexing',
         'cupy.io',
+        'cupy.lib',
         'cupy.linalg',
         'cupy.logic',
         'cupy.manipulation',
