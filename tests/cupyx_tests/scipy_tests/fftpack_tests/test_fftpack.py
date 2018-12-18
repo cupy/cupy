@@ -171,7 +171,7 @@ class TestFftn(unittest.TestCase):
 class TestRfft(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
     def test_rfft(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -181,7 +181,7 @@ class TestRfft(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
     def test_rfft_overwrite(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
