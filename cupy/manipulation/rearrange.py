@@ -1,6 +1,6 @@
 import itertools
-import numpy
 
+import numpy
 
 import cupy
 from cupy import core
