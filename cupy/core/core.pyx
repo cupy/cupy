@@ -552,7 +552,7 @@ cdef class ndarray:
         newarray._set_shape_and_strides(shape, strides, False, True)
         return newarray
 
-    def reshape(self, *shape, **kwargs):
+    def reshape(self, *shape, order='C'):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -560,28 +560,25 @@ cdef class ndarray:
            :meth:`numpy.ndarray.reshape`
 
         """
-        cdef int order_char = 'C'
+        cdef int order_char = _normalize_order(order, False)
 
         if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
             shape = shape[0]
 
-        if 'order' in kwargs:
-            order_char = _normalize_order(kwargs['order'], False)
-            if order_char == 'A':
-                if self._f_contiguous:
-                    order_char = 'F'
-                else:
-                    order_char = 'C'
+        if order_char == 'A':
+            if self._f_contiguous:
+                order_char = 'F'
+            else:
+                order_char = 'C'
         if order_char == 'C':
             return self._reshape(shape)
         else:
-            # TODO(beam2d): Support ordering option within _reshape instead
-            """
-            The Fortran-ordered case is equivalent to:
-                1.) reverse the axes via transpose
-                2.) C-ordered reshape using reversed shape
-                3.) reverse the axes via transpose
-            """
+            # TODO(grlee77): Support order within _reshape instead
+
+            # The Fortran-ordered case is equivalent to:
+            #     1.) reverse the axes via transpose
+            #     2.) C-ordered reshape using reversed shape
+            #     3.) reverse the axes via transpose
             return self.transpose()._reshape(shape[::-1]).transpose()
 
     # TODO(okuta): Implement resize
@@ -697,7 +694,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        # TODO(beam2d): Support K ordering option
+        # TODO(beam2d, grlee77): Support K ordering option
         cdef int order_char
         cdef vector.vector[Py_ssize_t] shape
         shape.push_back(self.size)

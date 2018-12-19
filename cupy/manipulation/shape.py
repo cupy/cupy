@@ -61,6 +61,6 @@ def ravel(a, order='C'):
     .. seealso:: :func:`numpy.ravel`
 
     """
-    # TODO(beam2d): Support ordering option K
+    # TODO(beam2d, grlee77): Support ordering option K
     # TODO(okuta): check type
     return a.ravel(order)
