@@ -98,36 +98,30 @@ class TestShape(unittest.TestCase):
         a = a.transpose(2, 0, 1)
         return xp.ravel(a)
 
+
+@testing.parameterize(*testing.product({
+    'order_init': ['C', 'F'],
+    'order_reshape': ['C', 'F', 'A', 'c', 'f', 'a'],
+    'shape_in_out': [((2, 3), (1, 6, 1)),  # (shape_init, shape_final)
+                     ((6,), (2, 3)),
+                     ((3, 3, 3), (9, 3))],
+}))
+@testing.gpu
+class TestReshapeOrder(unittest.TestCase):
+
     def test_reshape_contiguity(self):
-        a = cupy.arange(6).reshape(2, 3)
-        self.assertTrue(a.flags.c_contiguous)
-        self.assertFalse(a.flags.f_contiguous)
+        shape_init, shape_final = self.shape_in_out
 
-        a = a.reshape(1, 6, 1)
-        self.assertTrue(a.flags.c_contiguous)
-        self.assertTrue(a.flags.f_contiguous)
+        a_cupy = testing.shaped_arange(shape_init, xp=cupy)
+        a_cupy = cupy.asarray(a_cupy, order=self.order_init)
+        b_cupy = a_cupy.reshape(shape_final, order=self.order_reshape)
 
-        b = a.T.reshape(1, 6, 1)
-        self.assertTrue(b.flags.c_contiguous)
-        self.assertTrue(b.flags.f_contiguous)
+        a_numpy = testing.shaped_arange(shape_init, xp=numpy)
+        a_numpy = numpy.asarray(a_numpy, order=self.order_init)
+        b_numpy = a_numpy.reshape(shape_final, order=self.order_reshape)
 
-        b = a.T.reshape(2, 3)
-        self.assertTrue(b.flags.c_contiguous)
-        self.assertFalse(b.flags.f_contiguous)
+        assert b_cupy.flags.f_contiguous == b_numpy.flags.f_contiguous
+        assert b_cupy.flags.c_contiguous == b_numpy.flags.c_contiguous
 
-    def test_reshape_fortran_order_contiguity(self):
-        a = cupy.arange(6).reshape(2, 3, order='F')
-        self.assertFalse(a.flags.c_contiguous)
-        self.assertTrue(a.flags.f_contiguous)
-
-        a = a.reshape(1, 6, 1, order='F')
-        self.assertTrue(a.flags.c_contiguous)
-        self.assertTrue(a.flags.f_contiguous)
-
-        b = a.T.reshape(1, 6, 1, order='F')
-        self.assertTrue(b.flags.c_contiguous)
-        self.assertTrue(b.flags.f_contiguous)
-
-        b = a.T.reshape(2, 3, order='F')
-        self.assertFalse(b.flags.c_contiguous)
-        self.assertTrue(b.flags.f_contiguous)
+        testing.assert_array_equal(b_cupy.strides, b_numpy.strides)
+        testing.assert_array_equal(b_cupy, b_numpy)
