@@ -67,6 +67,13 @@ class TestRoll(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.12')
     @testing.numpy_cupy_array_equal()
+    def test_roll_scalar_shift_duplicate_axis(self, xp, dtype):
+        x = testing.shaped_arange((5, 2), xp, dtype)
+        return xp.roll(x, 1, axis=(0, 0))
+
+    @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.12')
+    @testing.numpy_cupy_array_equal()
     def test_roll_large_shift(self, xp, dtype):
         x = testing.shaped_arange((5, 2), xp, dtype)
         return xp.roll(x, 50, axis=0)
