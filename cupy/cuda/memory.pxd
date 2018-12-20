@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 from libcpp cimport map
 
@@ -56,3 +57,21 @@ cdef class MemoryPool:
     cpdef used_bytes(self)
     cpdef free_bytes(self)
     cpdef total_bytes(self)
+
+
+@cython.no_gc
+cdef class ExternalMemoryPoolMemory(BaseMemory):
+
+    cdef:
+        intptr_t _memory_pool
+        intptr_t _free
+
+
+cdef class ExternalMemoryPool:
+
+    cdef:
+        object _memory_pools
+        intptr_t _malloc
+        intptr_t _free
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size)

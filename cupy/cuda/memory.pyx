@@ -12,6 +12,7 @@ from cpython cimport pythread
 from cython.operator cimport dereference
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
+from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
 
 from cupy.cuda import runtime
@@ -1137,3 +1138,51 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
+
+
+ctypedef void*(*malloc_func)(void*, size_t)
+ctypedef void(*free_func)(void*, void*)
+
+
+cpdef size_t _malloc_with_memory_pool(intptr_t memory_pool, intptr_t malloc,
+                                      Py_ssize_t size):
+    return <size_t>((<malloc_func>malloc)(<void*>memory_pool, size))
+
+
+cpdef void _free_with_memory_pool(intptr_t memory_pool, intptr_t free,
+                                  intptr_t ptr):
+    (<free_func>free)(<void*>memory_pool, <void*>ptr)
+
+
+@cython.no_gc
+cdef class ExternalMemoryPoolMemory(BaseMemory):
+
+    def __init__(
+            self, Py_ssize_t size, int device_id, intptr_t memory_pool,
+            intptr_t malloc, intptr_t free):
+        self._memory_pool = memory_pool
+        self._free = free
+        self.device_id = device_id
+        self.ptr = 0
+        if size > 0:
+            self.ptr = _malloc_with_memory_pool(self._memory_pool, malloc,
+                                                size)
+
+    def __dealloc__(self):
+        if self.ptr:
+            _free_with_memory_pool(self._memory_pool, self._free, self.ptr)
+
+
+cdef class ExternalMemoryPool:
+
+    def __init__(self, memory_pools, malloc, free):
+        self._memory_pools = memory_pools
+        self._malloc = malloc
+        self._free = free
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        device_id = device.get_device_id()
+        mem = ExternalMemoryPoolMemory(size, device_id,
+                                       self._memory_pools[device_id],
+                                       self._malloc, self._free)
+        return MemoryPointer(mem, 0)
