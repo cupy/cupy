@@ -390,26 +390,10 @@ cdef class ndarray:
                     order_char == 'F' and self._f_contiguous):
                 return self
 
-        if order_char == 'A':
-            if self._f_contiguous:
-                order_char = 'F'
-            else:
-                order_char = 'C'
-        elif order_char == 'K':
-            if self._f_contiguous:
-                order_char = 'F'
-            elif self._c_contiguous:
-                order_char = 'C'
+        order_char = _update_order_char(self, order_char)
 
         if order_char == 'K':
-            stride_and_index = [
-                (abs(s), -i) for i, s in enumerate(self._strides)]
-            stride_and_index.sort()
-            strides.resize(self.ndim)
-            stride = dtype.itemsize
-            for s, i in stride_and_index:
-                strides[-i] = stride
-                stride *= self._shape[-i]
+            strides = _get_strides_for_order_K(self, dtype)
             newarray = ndarray(self.shape, dtype=dtype)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
@@ -2028,6 +2012,35 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
         if shape[dim] == 1:
             dim += 1
     return newstrides
+
+
+cpdef int _update_order_char(ndarray x, int order_char):
+    # update order_char based on array contiguity
+    if order_char == 'A':
+        if x._f_contiguous:
+            order_char = 'F'
+        else:
+            order_char = 'C'
+    elif order_char == 'K':
+        if x._f_contiguous:
+            order_char = 'F'
+        elif x._c_contiguous:
+            order_char = 'C'
+    return order_char
+
+
+cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
+    cdef vector.vector[Py_ssize_t] strides
+    # strides used when order='K' for astype, empty_like, etc.
+    stride_and_index = [
+        (abs(s), -i) for i, s in enumerate(x.strides)]
+    stride_and_index.sort()
+    strides.resize(x.ndim)
+    stride = dtype.itemsize
+    for s, i in stride_and_index:
+        strides[-i] = stride
+        stride *= x.shape[-i]
+    return strides
 
 
 include "carray.pxi"

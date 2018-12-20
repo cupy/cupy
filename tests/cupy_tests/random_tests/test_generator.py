@@ -219,7 +219,7 @@ class TestRandomState(unittest.TestCase):
             self.rs.seed(dtype(0))
 
     def test_array_seed(self):
-        self.check_seed(numpy.random.randint(0, 2**32, size=40))
+        self.check_seed(numpy.random.randint(0, 2**31, size=40))
 
 
 @testing.parameterize(

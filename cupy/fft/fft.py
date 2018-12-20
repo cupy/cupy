@@ -60,7 +60,8 @@ def _convert_fft_type(a, value_type):
         return cufft.CUFFT_Z2D
 
 
-def _exec_fft(a, direction, value_type, norm, axis, out_size=None):
+def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
+              out_size=None):
     fft_type = _convert_fft_type(a, value_type)
 
     if axis % a.ndim != a.ndim - 1:
@@ -71,8 +72,12 @@ def _exec_fft(a, direction, value_type, norm, axis, out_size=None):
 
     plan = cufft.Plan1d(a.shape[-1] if out_size is None else out_size,
                         fft_type, a.size // a.shape[-1])
-    out = plan.get_output_array(a)
-    plan.fft(a, out, direction)
+    if overwrite_x and value_type == 'C2C':
+        plan.fft(a, a, direction)
+        out = a
+    else:
+        out = plan.get_output_array(a)
+        plan.fft(a, out, direction)
 
     sz = out.shape[-1]
     if fft_type == cufft.CUFFT_R2C or fft_type == cufft.CUFFT_D2Z:
@@ -89,13 +94,13 @@ def _exec_fft(a, direction, value_type, norm, axis, out_size=None):
     return out
 
 
-def _fft_c2c(a, direction, norm, axes):
+def _fft_c2c(a, direction, norm, axes, overwrite_x):
     for axis in axes:
-        a = _exec_fft(a, direction, 'C2C', norm, axis)
+        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x)
     return a
 
 
-def _fft(a, s, axes, norm, direction, value_type='C2C'):
+def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False):
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
                          % norm)
@@ -119,17 +124,18 @@ def _fft(a, s, axes, norm, direction, value_type='C2C'):
     a = _cook_shape(a, s, axes, value_type)
 
     if value_type == 'C2C':
-        a = _fft_c2c(a, direction, norm, axes)
+        a = _fft_c2c(a, direction, norm, axes, overwrite_x)
     elif value_type == 'R2C':
-        a = _exec_fft(a, direction, value_type, norm, axes[-1])
-        a = _fft_c2c(a, direction, norm, axes[:-1])
+        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
+        a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
     else:
-        a = _fft_c2c(a, direction, norm, axes[:-1])
+        a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
         if (s is None) or (s[-1] is None):
             out_size = a.shape[axes[-1]] * 2 - 2
         else:
             out_size = s[-1]
-        a = _exec_fft(a, direction, value_type, norm, axes[-1], out_size)
+        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
+                      out_size)
 
     return a
 

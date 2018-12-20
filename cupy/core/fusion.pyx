@@ -13,7 +13,7 @@ from cupy.core import core
 
 _thread_local = threading.local()
 
-_kind_score = {
+cdef dict _kind_score = {
     'b': 0,
     'u': 1,
     'i': 1,
@@ -21,7 +21,7 @@ _kind_score = {
     'c': 2,
 }
 
-_dtype_to_ctype = {
+cdef dict _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
@@ -38,10 +38,13 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+
+cdef tuple _acceptable_types = six.integer_types + (
+    core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
 
 
-def _is_fusing():
+cpdef inline _is_fusing():
     return hasattr(_thread_local, 'history')
 
 
@@ -101,13 +104,13 @@ class _FusionVarCUDA(object):
     Attributes:
         index (int): The name of the variable.
         dtype (dtype): The dtype of the variable.
-        const (any of primitive types): The constant value (or None)
+        const_value (any of primitive types): The constant value (or None)
     """
 
-    def __init__(self, index, dtype, const=None):
+    def __init__(self, index, dtype, const_value=None):
         self.index = index
         self.dtype = dtype
-        self.const = const
+        self.const_value = const_value
         self.mutable = False
 
     def __repr__(self):
@@ -117,11 +120,11 @@ class _FusionVarCUDA(object):
         self.mutable = True
 
     def declaration(self):
-        c = self.const
-        val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
+        c = self.const_value
+        val = c.item() if hasattr(c, 'dtype') else c
         ctype = _dtype_to_ctype[self.dtype]
 
-        if self.const is None:
+        if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
         if isinstance(val, bool):
@@ -530,7 +533,7 @@ class _FusionHistory(object):
                 raise Exception('Shape mismatch')
         if isinstance(arg, six.integer_types +
                       (float, bool, complex, numpy.generic)):
-            var = self._fresh_local(numpy.dtype(type(arg)), const=arg)
+            var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise Exception('Unsupported type {}'.format(type(type)))
 
@@ -561,7 +564,7 @@ class _FusionHistory(object):
                     if not numpy.can_cast(arg.dtype, in_dtypes[i]):
                         return False
                 elif isinstance(arg, _FusionVarScalar):
-                    scalar_value = arg._var.const
+                    scalar_value = arg._var.const_value
                     if scalar_value is None:
                         # This typecast is not safe.
                         # The result of a typecast of an element-wise operation
@@ -817,6 +820,14 @@ class _FusionHistory(object):
             return kernel, self.reduce_kwargs
 
 
+cdef inline tuple _get_param_info(arg):
+    if isinstance(arg, core.ndarray):
+        return (arg.dtype, arg.ndim)
+    elif isinstance(arg, numpy.generic):
+        return (arg.dtype, -1)
+    return (numpy.dtype(type(arg)), -1)
+
+
 class Fusion(object):
 
     """Function class.
@@ -840,33 +851,25 @@ class Fusion(object):
     def _is_cupy_data(self, a):
         return isinstance(a, (core.ndarray, numpy.generic))
 
-    def _get_param_info(self, arg):
-        if isinstance(arg, core.ndarray):
-            return arg.dtype, arg.ndim
-        elif isinstance(arg, numpy.generic):
-            return arg.dtype, -1
-        else:
-            return numpy.array(arg).dtype, -1
-
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
         if _is_fusing():
             return self.func(*args)
 
-        # Fails to fuse
+        # No cupy ndarray exists in the arguments
         if cupy.get_array_module(*args) is not cupy:
             return self.func(*args)
 
-        # Checks argument types
-        acceptable_types = six.integer_types + (
-            core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
-        if not all(isinstance(p, acceptable_types) for p in args):
-            raise TypeError('Invalid argument type for \'{}\': ({})'.format(
-                self.name,
-                ', '.join(repr(type(_)) for _ in args)))
+        # Invalid argument types
+        for arg in args:
+            if not isinstance(arg, _acceptable_types):
+                mes = 'Invalid argument type for \'{}\': ({})'
+                arg_types = ', '.join(repr(type(a)) for a in args)
+                raise TypeError(mes.format(self.name, arg_types))
 
-        # Caches the result of execution path analysis
-        params_info = tuple(self._get_param_info(p) for p in args)
+        # Cache the result of execution path analysis
+        cdef tuple params_info = tuple([_get_param_info(arg) for arg in args])
+
         if params_info not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()

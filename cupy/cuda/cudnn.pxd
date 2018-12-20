@@ -106,6 +106,7 @@ cpdef enum:
     CUDNN_ACTIVATION_TANH = 2
     CUDNN_ACTIVATION_CLIPPED_RELU = 3
     CUDNN_ACTIVATION_ELU = 4
+    CUDNN_ACTIVATION_IDENTITY = 5
 
     CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
 
@@ -114,6 +115,10 @@ cpdef enum:
     CUDNN_BATCHNORM_PER_ACTIVATION = 0
     CUDNN_BATCHNORM_SPATIAL = 1
     CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
+
+    CUDNN_BATCHNORM_OPS_BN = 0
+    CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1
+    CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION = 2
 
     CUDNN_RNN_RELU = 0
     CUDNN_RNN_TANH = 1
@@ -397,6 +402,62 @@ cpdef batchNormalizationBackward(
     size_t dBnScaleBiasDesc, size_t bnScale,
     size_t dBnScaleResult, size_t dBnBiasResult,
     double epsilon, size_t savedMean, size_t savedInvVariance)
+
+cpdef batchNormalizationForwardTrainingEx(
+    size_t handle, int mode, int bnOps,
+    size_t alpha, size_t beta,
+    size_t xDesc, size_t x,
+    size_t zDesc, size_t z,
+    size_t yDesc, size_t y,
+    size_t bnScaleBiasMeanVarDesc,
+    size_t bnScale, size_t bnBias,
+    double exponentialAverageFactor,
+    size_t resultRunningMean, size_t resultRunningVariance,
+    double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance,
+    size_t activationDesc,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+cpdef size_t getBatchNormalizationForwardTrainingExWorkspaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t xDesc,
+    size_t zDesc,
+    size_t yDesc,
+    size_t bnScaleBiasMeanVarDesc,
+    size_t activationDesc) except? 0
+
+cpdef batchNormalizationBackwardEx(
+    size_t handle, int mode, int bnops,
+    size_t alphaDataDiff, size_t betaDataDiff,
+    size_t alphaParamDiff, size_t betaParamDiff,
+    size_t xDesc, size_t x,
+    size_t yDesc, size_t y,
+    size_t dyDesc, size_t dy,
+    size_t dzDesc, size_t dz,
+    size_t dxDesc, size_t dx,
+    size_t dBnScaleBiasDesc,
+    size_t bnScaleData, size_t bnBiasData,
+    size_t dBnScaleData, size_t dBnBiasData,
+    double epsilon,
+    size_t savedMean, size_t savedInvVariance,
+    size_t activationDesc,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+cpdef size_t getBatchNormalizationBackwardExWorkspaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t xDesc,
+    size_t yDesc,
+    size_t dyDesc,
+    size_t dzDesc,
+    size_t dxDesc,
+    size_t dBnScaleBiasDesc,
+    size_t activationDesc) except? 0
+
+cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t activationDesc,
+    size_t xDesc) except? 0
 
 
 ###############################################################################
