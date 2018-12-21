@@ -1159,16 +1159,14 @@ cpdef void _call_free(intptr_t param_ptr, intptr_t free_ptr, intptr_t ptr,
 @cython.no_gc
 cdef class ExternalAllocatorMemory(BaseMemory):
 
-    def __init__(
-            self, Py_ssize_t size, intptr_t param_ptr, intptr_t malloc_ptr,
-            intptr_t free_ptr, int device_id):
+    def __init__(self, Py_ssize_t size, intptr_t param_ptr,
+                 intptr_t malloc_ptr, intptr_t free_ptr, int device_id):
         self._param_ptr = param_ptr
         self._free_ptr = free_ptr
         self.device_id = device_id
         self.ptr = 0
         if size > 0:
             self.ptr = _call_malloc(param_ptr, malloc_ptr, size, device_id)
-
 
     def __dealloc__(self):
         if self.ptr:
