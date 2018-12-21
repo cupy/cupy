@@ -1091,7 +1091,8 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
