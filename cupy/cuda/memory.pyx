@@ -1140,7 +1140,6 @@ cdef class MemoryPool(object):
         return mp.total_bytes()
 
 
-
 ctypedef void*(*malloc_func)(void*, size_t, int)
 ctypedef void(*free_func)(void*, void*, int)
 
