@@ -771,7 +771,7 @@ class _FusionHistory(object):
         if self.reduce_op is None:
             operation += ' '.join('{} = {};'.format(t, s)
                                   for s, t in zip(out_cvars, out_params))
-            kernel = core.ElementwiseKernel(
+            kernel = _kernel.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
                 return_tuple=return_tuple,
@@ -806,7 +806,7 @@ class _FusionHistory(object):
                 reduce_ctype, postmap_dtype, postmap_cast_code)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
-            kernel = core.ReductionKernel(
+            kernel = _kernel.ReductionKernel(
                 in_params_code,
                 out_params_code,
                 '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
