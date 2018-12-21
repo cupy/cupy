@@ -1140,49 +1140,74 @@ cdef class MemoryPool(object):
         return mp.total_bytes()
 
 
-ctypedef void*(*malloc_func)(void*, size_t)
-ctypedef void(*free_func)(void*, void*)
+
+ctypedef void*(*malloc_func)(void*, size_t, int)
+ctypedef void(*free_func)(void*, void*, int)
 
 
-cpdef size_t _malloc_with_memory_pool(intptr_t memory_pool, intptr_t malloc,
-                                      Py_ssize_t size):
-    return <size_t>((<malloc_func>malloc)(<void*>memory_pool, size))
+cpdef size_t _call_malloc(intptr_t param_ptr, intptr_t malloc_ptr,
+                          Py_ssize_t size, int device_id):
+    return <size_t>((<malloc_func>malloc_ptr)(<void*>param_ptr, size,
+                                              device_id))
 
 
-cpdef void _free_with_memory_pool(intptr_t memory_pool, intptr_t free,
-                                  intptr_t ptr):
-    (<free_func>free)(<void*>memory_pool, <void*>ptr)
+cpdef void _call_free(intptr_t param_ptr, intptr_t free_ptr, intptr_t ptr,
+                      int device_id):
+    (<free_func>free_ptr)(<void*>param_ptr, <void*>ptr, device_id)
 
 
 @cython.no_gc
-cdef class ExternalMemoryPoolMemory(BaseMemory):
+cdef class ExternalAllocatorMemory(BaseMemory):
 
     def __init__(
-            self, Py_ssize_t size, int device_id, intptr_t memory_pool,
-            intptr_t malloc, intptr_t free):
-        self._memory_pool = memory_pool
-        self._free = free
+            self, Py_ssize_t size, intptr_t param_ptr, intptr_t malloc_ptr,
+            intptr_t free_ptr, int device_id):
+        self._param_ptr = param_ptr
+        self._free_ptr = free_ptr
         self.device_id = device_id
         self.ptr = 0
         if size > 0:
-            self.ptr = _malloc_with_memory_pool(self._memory_pool, malloc,
-                                                size)
+            self.ptr = _call_malloc(param_ptr, malloc_ptr, size, device_id)
+
 
     def __dealloc__(self):
         if self.ptr:
-            _free_with_memory_pool(self._memory_pool, self._free, self.ptr)
+            _call_free(self._param_ptr, self._free_ptr, self.ptr,
+                       self.device_id)
 
 
-cdef class ExternalMemoryPool:
+cdef class ExternalAllocator:
 
-    def __init__(self, memory_pools, malloc, free):
-        self._memory_pools = memory_pools
-        self._malloc = malloc
-        self._free = free
+    """Allocator with function pointers to allocation routines.
+
+    This allocator keeps raw pointers to a *param* object along with functions
+    pointers to *malloc* and *free*, delegating the actual allocation to
+    external sources while only handling the timing of the resource allocation
+    and deallocation.
+
+    *malloc* should follow the signature ``void*(*malloc)(void*, size_t, int)``
+    returning the pointer to the allocated memory given the pointer to
+    *param*, the number of bytes to allocate and the device id on which the
+    allocation should take place.
+
+    Similarly, *free* should follow the signature
+    ``void(*free)(void*, void*, int)`` with no return, taking the pointer to
+    *param*, the pointer to the allocated memory and the device id on which the
+    memory was allocated.
+
+    Args:
+        param_ptr (int): Address of *param*.
+        malloc_ptr (int): Address of *malloc*.
+        free_ptr (int): Address of *free*.
+
+    """
+
+    def __init__(self, param_ptr, malloc_ptr, free_ptr):
+        self._param_ptr = param_ptr
+        self._malloc_ptr = malloc_ptr
+        self._free_ptr = free_ptr
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        device_id = device.get_device_id()
-        mem = ExternalMemoryPoolMemory(size, device_id,
-                                       self._memory_pools[device_id],
-                                       self._malloc, self._free)
+        mem = ExternalAllocatorMemory(size, self._param_ptr, self._malloc_ptr,
+                                      self._free_ptr, device.get_device_id())
         return MemoryPointer(mem, 0)
