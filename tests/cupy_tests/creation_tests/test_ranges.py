@@ -196,7 +196,8 @@ class TestRanges(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'indexing': ['xy', 'ij'],
-        'copy': [False, True]
+        'sparse': [False, True],
+        'copy': [False, True],
     })
 )
 @testing.gpu
@@ -204,21 +205,24 @@ class TestMeshgrid(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_meshgrid0(self, dtype):
-        out = cupy.meshgrid(indexing=self.indexing, copy=self.copy)
+        out = cupy.meshgrid(indexing=self.indexing, sparse=self.sparse,
+                            copy=self.copy)
         assert(out == [])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_meshgrid1(self, xp, dtype):
         x = xp.arange(2).astype(dtype)
-        return xp.meshgrid(x, indexing=self.indexing, copy=self.copy)
+        return xp.meshgrid(x, indexing=self.indexing, sparse=self.sparse,
+                           copy=self.copy)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_meshgrid2(self, xp, dtype):
         x = xp.arange(2).astype(dtype)
         y = xp.arange(3).astype(dtype)
-        return xp.meshgrid(x, y, indexing=self.indexing, copy=self.copy)
+        return xp.meshgrid(x, y, indexing=self.indexing, sparse=self.sparse,
+                           copy=self.copy)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
@@ -226,7 +230,8 @@ class TestMeshgrid(unittest.TestCase):
         x = xp.arange(2).astype(dtype)
         y = xp.arange(3).astype(dtype)
         z = xp.arange(4).astype(dtype)
-        return xp.meshgrid(x, y, z, indexing=self.indexing, copy=self.copy)
+        return xp.meshgrid(x, y, z, indexing=self.indexing, sparse=self.sparse,
+                           copy=self.copy)
 
 
 @testing.gpu

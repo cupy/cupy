@@ -20,6 +20,9 @@ cdef extern from *:
 
     ctypedef void* MatDescr 'cusparseMatDescr_t'
 
+    ctypedef void* cuComplex 'cuComplex'
+    ctypedef void* cuDoubleComplex 'cuDoubleComplex'
+
 ###############################################################################
 # Enum
 ###############################################################################
@@ -81,6 +84,10 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
+cpdef int cgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
+cpdef int zgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *
 cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
                             size_t A, int lda) except? -1
 cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
@@ -89,6 +96,10 @@ cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
 cpdef sgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo)
+cpdef cgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo)
+cpdef zgeqrf(size_t handle, int m, int n, size_t A, int lda,
              size_t tau, size_t work, int lwork, size_t devInfo)
 
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
@@ -106,6 +117,12 @@ cpdef sormqr(size_t handle, int side, int trans,
 cpdef dormqr(size_t handle, int side, int trans,
              int m, int n, int k, size_t A, int lda, size_t tau,
              size_t C, int ldc, size_t work, int lwork, size_t devInfo)
+cpdef cormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo)
+cpdef zormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo)
 
 cpdef ssytrf(size_t handle, int uplo, int n, size_t A, int lda,
              size_t ipiv, size_t work, int lwork, size_t devInfo)
@@ -121,10 +138,18 @@ cpdef dgebrd(size_t handle, int m, int n, size_t A, int lda,
 
 cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except? -1
 cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except? -1
+cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except? -1
+cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except? -1
 cpdef sgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
 cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo)
+cpdef cgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo)
+cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
 

@@ -38,6 +38,7 @@ MODULES = [
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.fusion',
             'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
@@ -117,7 +118,7 @@ MODULES = [
         'libraries': [
             'cusolver',
         ],
-        'check_method': build.check_cusolver_version,
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',

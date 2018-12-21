@@ -1,6 +1,8 @@
 Indexing Routines
 =================
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.indexing.html
+
 .. autosummary::
    :toctree: generated/
    :nosignatures:
@@ -16,4 +18,5 @@ Indexing Routines
    cupy.choose
    cupy.diag
    cupy.diagonal
+   cupy.lib.stride_tricks.as_strided
    cupy.fill_diagonal

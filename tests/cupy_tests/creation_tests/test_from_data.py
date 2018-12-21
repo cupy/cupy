@@ -135,6 +135,19 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_is_not_copied(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
+        a.fill(0)
+        testing.assert_array_equal(a, b)
+
     def test_ascontiguousarray_on_noncontiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
         b = a.transpose(2, 0, 1)
@@ -172,6 +185,23 @@ class TestFromData(unittest.TestCase):
         a = xp.zeros((2, 3, 4), order=order)
         b = xp.copy(a)
         return (b.flags.c_contiguous, b.flags.f_contiguous)
+
+
+class DummyObjectWithCudaArrayInterface():
+
+    def __init__(self, a):
+        self.a = a
+
+    @property
+    def __cuda_array_interface__(self):
+        desc = {
+            'shape': self.a.shape,
+            'typestr': self.a.dtype.str,
+            'descr': self.a.dtype.descr,
+            'data': (self.a.data.mem.ptr, False),
+            'version': 0,
+        }
+        return desc
 
 
 @testing.parameterize(

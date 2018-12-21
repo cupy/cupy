@@ -7,6 +7,8 @@ import six
 from cupy.cuda cimport cublas
 from cupy.cuda cimport cusparse
 from cupy.cuda cimport runtime
+from cupy.cuda import runtime
+from cupy import util
 
 try:
     from cupy.cuda import cusolver
@@ -63,6 +65,21 @@ cpdef str get_compute_capability():
     if ret is not None:
         return ret
     return Device().compute_capability
+
+
+@util.memoize()
+def _get_attributes(device_id):
+    """Return a dict containing all device attributes."""
+    d = {}
+    for k, v in runtime.__dict__.items():
+        if k.startswith('cudaDevAttr'):
+            try:
+                name = k.replace('cudaDevAttr', '', 1)
+                d[name] = runtime.deviceGetAttribute(v, device_id)
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.errorInvalidValue:
+                    raise
+    return d
 
 
 cdef class Device:
@@ -223,15 +240,31 @@ cdef class Device:
         with self:
             return runtime.memGetInfo()
 
-    def __richcmp__(Device self, Device other, int op):
+    @property
+    def attributes(self):
+        """A dictionary of device attributes.
+
+        Returns:
+            attributes (dict):
+                Dictionary of attribute values with the names as keys.
+                The string `cudaDevAttr` has been trimmed from the names.
+                For example, the attribute corresponding to the enumerated
+                value `cudaDevAttrMaxThreadsPerBlock` will have key
+                `MaxThreadsPerBlock`.
+        """
+        return _get_attributes(self.id)
+
+    def __richcmp__(Device self, object other, int op):
+        if op == 2:
+            return isinstance(other, Device) and self.id == other.id
+        if op == 3:
+            return not (isinstance(other, Device) and self.id == other.id)
+        if not isinstance(other, Device):
+            return NotImplemented
         if op == 0:
             return self.id < other.id
         if op == 1:
             return self.id <= other.id
-        if op == 2:
-            return self.id == other.id
-        if op == 3:
-            return self.id != other.id
         if op == 4:
             return self.id > other.id
         if op == 5:

@@ -1,3 +1,5 @@
+.. module:: cupyx
+
 CuPy-specific Functions
 =======================
 

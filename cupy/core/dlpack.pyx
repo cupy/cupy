@@ -121,7 +121,7 @@ cpdef object toDlpack(ndarray array) except +:
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
-cdef class DLPackMemory(memory.Memory):
+cdef class DLPackMemory(memory.BaseMemory):
 
     """Memory object for a dlpack tensor.
 
@@ -149,8 +149,6 @@ cdef class DLPackMemory(memory.Memory):
         cpython.PyCapsule_SetName(dltensor, 'used_dltensor')
 
     def __dealloc__(self):
-        # DLPack tensor should be managed by the original creator
-        self.ptr = 0
         self.dlm_tensor.deleter(self.dlm_tensor)
 
 
@@ -240,7 +238,6 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     for i in range(ndim):
         strides_vec.push_back(strides[i] * (bits // 8))
 
-    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
-    cupy_array._set_shape_and_strides(shape_vec, strides_vec)
+    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
     return cupy_array
