@@ -1,17 +1,17 @@
 import functools
 import six
 import string
-import threading
 import warnings
 
 import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
+from cupy.core import _kernel
 from cupy.core import core
 
 
-_thread_local = threading.local()
+_thread_local = _kernel._thread_local
 
 cdef dict _kind_score = {
     'b': 0,
