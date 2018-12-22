@@ -1359,8 +1359,8 @@ class TestFusionKernelName(unittest.TestCase):
         # Test kernel name (with mock)
         if xp is cupy:
             target = (
-                'cupy.core.core.ElementwiseKernel' if is_elementwise
-                else 'cupy.core.core.ReductionKernel')
+                'cupy.core._kernel.ElementwiseKernel' if is_elementwise
+                else 'cupy.core._kernel.ReductionKernel')
 
             with mock.patch(target) as Kernel:
                 func(a, b, c)
