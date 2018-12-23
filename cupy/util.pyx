@@ -161,3 +161,7 @@ The interface can change in the future. ...
                       'The interface can change in the future.'.format(
                           api_name),
                       FutureWarning)
+
+
+class PerformanceWarning(RuntimeWarning):
+    """Warning that indicates possible performance issues."""

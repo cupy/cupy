@@ -2431,7 +2431,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 'Using synchronous transfer as pinned memory ({} bytes) '
                 'could not be allocated. '
                 'This generally occurs because of insufficient host memory. '
-                'The original error was: {}'.format(nbytes, error))
+                'The original error was: {}'.format(nbytes, error),
+                util.PerformanceWarning)
             a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), nbytes)
 
     return a
