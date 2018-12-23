@@ -3833,7 +3833,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
 
 cdef _mat_ptrs_kernel = ElementwiseKernel(
     'T base, T stride', 'T out',
-    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs')
+    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
+    reduce_dims=False)
+
 
 cdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
@@ -3867,6 +3869,7 @@ cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except?0:
     return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
 
 
+
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """ Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
@@ -3888,10 +3891,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     .. seealso:: :func:`numpy.matmul`
 
     """
-    # ToDo: remove python object .shape
-    # ToDo: remove python object .strides
-    # ToDo: remove python object out_shape
-    # ToDo: remove python object .reshape
 
     if out is not None:
         raise NotImplementedError('The out array as input is currently not '
