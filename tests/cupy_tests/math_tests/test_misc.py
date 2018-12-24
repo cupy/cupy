@@ -1,4 +1,3 @@
-from distutils.version import StrictVersion
 import sys
 import unittest
 
