@@ -1336,21 +1336,28 @@ cpdef _Algorithm _get_algorithm_fwd(
     algo = _get_algorithm_fwd_cache.get(key, None)
     if algo is not None:
         return algo
+    cdef list ret
+    cdef bint skip
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError('No conv fwd algo available with workspace size'
                                ' less equal {}'.format(max_workspace_size))
-        if i != 0:
+        if skip:
             warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
                 'lack of workspace size ({})'.format(max_workspace_size),
                 util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_fwd(x, W, y, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1379,18 +1386,35 @@ cpdef _warn_algorithm_bwd_filter(
 cpdef _Algorithm _find_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t dy_desc, size_t conv_desc,
-        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
+    cdef _Algorithm algo
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
-           max_workspace_size)
+           max_workspace_size, deterministic)
     algo = _algorithm_bwd_filter_cache.get(key, None)
     if algo is not None:
         return algo
     workspace = memory.alloc(max_workspace_size)
     if _cudnn_version >= 7000:
-        perf = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
-            handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
-            filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+        if deterministic:
+            ret = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
+                handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+                filter_desc, dW.data.ptr, 10, workspace.ptr,
+                max_workspace_size)
+            for perf in ret:
+                if perf.determinism:
+                    break
+            else:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
+        else:
+            perf = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
+                handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+                filter_desc, dW.data.ptr, 1, workspace.ptr,
+                max_workspace_size)[0]
+        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
@@ -1405,29 +1429,39 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
 cpdef _Algorithm _get_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t gy_desc, size_t conv_desc,
-        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
            max_workspace_size)
     algo = _get_algorithm_bwd_filter_cache.get(key, None)
     if algo is not None:
         return algo
+    cdef list ret
+    cdef bint skip
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
+            if deterministic and not perf.determinism:
+                continue
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError(
                 'No conv bwd filter algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if i != 0:
+        if skip:
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
                 util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1456,20 +1490,35 @@ cpdef _warn_algorithm_bwd_data(
 cpdef _Algorithm _find_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
+    cdef _Algorithm algo
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
-           max_workspace_size)
+           max_workspace_size, deterministic)
     algo = _algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
     workspace = memory.alloc(max_workspace_size)
     if _cudnn_version >= 7000:
-        perf = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
-            handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
-            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+        if deterministic:
+            ret = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
+                handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+                y_desc, y.data.ptr, 10, workspace.ptr, max_workspace_size)
+            for perf in ret:
+                if perf.determinism:
+                    break
+            else:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
+        else:
+            perf = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
+                handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+                y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
+        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
     else:
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
@@ -1482,29 +1531,39 @@ cpdef _Algorithm _find_algorithm_bwd_data(
 cpdef _Algorithm _get_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
     algo = _algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
+    cdef list ret
+    cdef bint skip
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
+            if deterministic and not perf.determinism:
+                continue
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError(
                 'No conv bwd data algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if i != 0:
+        if skip:
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
                 util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1552,7 +1611,8 @@ def convolution_forward(
         one = <size_t>&float_one
 
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
-    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
+    cdef tuple conv_param = (
+        pad, stride, x.dtype, use_tensor_core, deterministic)
 
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
     # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
@@ -1639,7 +1699,8 @@ def convolution_backward_filter(
         one = <size_t>&float_one
 
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
-    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
+    cdef tuple conv_param = (
+        pad, stride, x.dtype, use_tensor_core, deterministic)
 
     handle = get_handle()
     x = core.ascontiguousarray(x)
@@ -1663,21 +1724,26 @@ def convolution_backward_filter(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic:
+        if deterministic and _cudnn_version < 7000:
             algo = cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, x_desc, gy_desc, conv_desc, filter_desc, algo)
             math_type = cudnn.CUDNN_DEFAULT_MATH
-            # TODO(okuta): check workspace size
+            if workspace_size > max_workspace_size:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
         else:
             if auto_tune:
                 perf = _find_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
-                    filter_desc, max_workspace_size, use_tensor_core)
+                    filter_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             else:
                 perf = _get_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
-                    filter_desc, max_workspace_size, use_tensor_core)
+                    filter_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             algo = perf.algo
             workspace_size = perf.memory
             math_type = perf.mathType
@@ -1751,21 +1817,26 @@ def convolution_backward_data(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic:
+        if deterministic and _cudnn_version < 7000:
             algo = cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
                 handle, filter_desc, x_desc, conv_desc, y_desc, algo)
             math_type = cudnn.CUDNN_DEFAULT_MATH
-            # TODO(okuta): check workspace size
+            if workspace_size > max_workspace_size:
+                raise RuntimeError(
+                    'No conv bwd data algo available with workspace size less '
+                    'equal {}'.format(max_workspace_size))
         else:
             if auto_tune:
                 perf = _find_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
-                    conv_desc, y_desc, max_workspace_size, use_tensor_core)
+                    conv_desc, y_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             else:
                 perf = _get_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
-                    conv_desc, y_desc, max_workspace_size, use_tensor_core)
+                    conv_desc, y_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             algo = perf.algo
             workspace_size = perf.memory
             math_type = perf.mathType
