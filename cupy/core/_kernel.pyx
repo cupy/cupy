@@ -1,5 +1,6 @@
 from __future__ import division
 import string
+import threading
 
 import numpy
 
@@ -23,9 +24,7 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 
 
-# We can't directly import cupy.core.fusion at module level due to cyclic
-# imports. Importing it every time at the point of use is too slow.
-_fusion_module = None
+_thread_local = threading.local()
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -57,7 +56,7 @@ cdef dict _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 
@@ -536,6 +535,11 @@ cdef class ElementwiseKernel:
             shape = size,
             is_size_specified = True
 
+        for i in range(self.nin):
+            if not (self.params[i].is_const or
+                    internal.vector_equal(args[i].shape, shape)):
+                raise ValueError('Shape is mismatched')
+
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
@@ -761,13 +765,8 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        global _fusion_module
-        if _fusion_module is None:
-            from cupy.core import fusion as _fusion_module
-
-        thread_local = _fusion_module._thread_local
-        if hasattr(thread_local, 'history'):
-            return thread_local.history.call_ufunc(self, args, kwargs)
+        if hasattr(_thread_local, 'history'):
+            return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 

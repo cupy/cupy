@@ -58,6 +58,7 @@ from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+from cupy import lib  # NOQA
 
 
 # import class and function
@@ -675,7 +676,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion.FusionVarPython)):
+                            cupy.core.fusion._FusionVarScalar,
+                            cupy.core.fusion._FusionVarArray)):
             return _cupy
     return numpy
 

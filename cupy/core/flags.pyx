@@ -8,6 +8,14 @@ class Flags(object):
         self.f_contiguous = f_contiguous
         self.owndata = owndata
 
+    @property
+    def fnc(self):
+        return self.f_contiguous and not self.c_contiguous
+
+    @property
+    def forc(self):
+        return self.f_contiguous or self.c_contiguous
+
     def __getitem__(self, name):
         if name == 'C_CONTIGUOUS':
             return self.c_contiguous

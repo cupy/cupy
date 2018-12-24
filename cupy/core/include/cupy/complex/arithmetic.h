@@ -114,6 +114,114 @@ __device__ inline complex<ValueType> operator/(const ValueType& lhs,
   return complex<ValueType>(lhs) / rhs;
 }
 
+/* --- Unary comparison with Numpy logic. This means that a + bi > c + di if either
+ * a > c or a == c and b > d. --- */
+
+template <typename ValueType>
+__device__ inline bool operator<(const complex<ValueType>& lhs,
+                                 const complex<ValueType>& rhs) {
+  if (lhs == rhs)
+  {
+      return false;
+  } else if (lhs.real() < rhs.real())
+  {
+      return true;
+  } else if (lhs.real() == rhs.real())
+  {
+      return lhs.imag() < rhs.imag();
+  } else
+  {
+      return false;
+  }
+}
+
+template <typename ValueType>
+__device__ inline bool operator<=(const complex<ValueType>& lhs,
+                                  const complex<ValueType>& rhs) {
+  if (lhs == rhs)
+  {
+      return true;
+  } else if (lhs < rhs)
+  {
+      return true;
+  } else
+  {
+      return false;
+  }
+}
+
+template <typename ValueType>
+__device__ inline bool operator>(const complex<ValueType>& lhs,
+                                 const complex<ValueType>& rhs) {
+  if (lhs == rhs)
+  {
+      return false;
+  } else
+  {
+      return !(lhs < rhs);
+  }
+}
+
+template <typename ValueType>
+__device__ inline bool operator>=(const complex<ValueType>& lhs,
+                                  const complex<ValueType>& rhs) {
+  if (lhs == rhs || lhs > rhs)
+  {
+      return true;
+  } else
+  {
+      return false;
+  }
+}
+
+template <typename ValueType>
+__device__ inline bool operator<(const ValueType& lhs,
+                                 const complex<ValueType>& rhs) {
+    return complex<ValueType>(lhs) < rhs;
+}
+
+template <typename ValueType>
+__device__ inline bool operator>(const ValueType& lhs,
+                                 const complex<ValueType>& rhs) {
+    return complex<ValueType>(lhs) > rhs;
+}
+
+template <typename ValueType>
+__device__ inline bool operator<(const complex<ValueType>& lhs,
+                                 const ValueType& rhs) {
+    return lhs < complex<ValueType>(rhs);
+}
+
+template <typename ValueType>
+__device__ inline bool operator>(const complex<ValueType>& lhs,
+                                 const ValueType& rhs) {
+    return lhs > complex<ValueType>(rhs);
+}
+
+template <typename ValueType>
+__device__ inline bool operator<=(const ValueType& lhs,
+                                  const complex<ValueType>& rhs) {
+    return complex<ValueType>(lhs) <= rhs;
+}
+
+template <typename ValueType>
+__device__ inline bool operator>=(const ValueType& lhs,
+                                  const complex<ValueType>& rhs) {
+    return complex<ValueType>(lhs) >= rhs;
+}
+
+template <typename ValueType>
+__device__ inline bool operator<=(const complex<ValueType>& lhs,
+                                  const ValueType& rhs) {
+    return lhs <= complex<ValueType>(rhs);
+}
+
+template <typename ValueType>
+__device__ inline bool operator>=(const complex<ValueType>& lhs,
+                                  const ValueType& rhs) {
+    return lhs >= complex<ValueType>(rhs);
+}
+
 /* --- Unary Arithmetic Operators --- */
 
 template <typename ValueType>

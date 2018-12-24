@@ -131,17 +131,33 @@ cpdef function.Module compile_with_cache(
     # The variable _cuda_runtime_version is declared in cupy/core/core.pyx,
     # but it might not have been set appropriately before coming here.
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     if _cuda_runtime_version >= 9000:
-        cuda_path = cuda.get_cuda_path()
-        if cuda_path is None:
-            warnings.warn('Please set the CUDA path ' +
-                          'to environment variable `CUDA_PATH`')
+        if 9020 <= _cuda_runtime_version < 9030:
+            bundled_include = 'cuda-9.2'
+        elif 10000 <= _cuda_runtime_version < 10010:
+            bundled_include = 'cuda-10.0'
         else:
-            path = os.path.join(cuda_path, 'include')
-            options += ('-I ' + path,)
+            # CUDA v9.0, v9.1 or versions not yet supported.
+            bundled_include = None
+
+        cuda_path = cuda.get_cuda_path()
+
+        if bundled_include is None and cuda_path is None:
+            raise RuntimeError(
+                'Failed to auto-detect CUDA root directory. '
+                'Please specify `CUDA_PATH` environment variable if you '
+                'are using CUDA v9.0, v9.1 or versions not yet supported by '
+                'CuPy.')
+
+        if bundled_include is not None:
+            options += ('-I ' + os.path.join(
+                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+
+        if cuda_path is not None:
+            options += ('-I ' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
                                    extra_source)

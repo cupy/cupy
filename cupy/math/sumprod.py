@@ -6,7 +6,6 @@ from cupy import core
 from cupy.core import fusion
 
 
-@fusion._reduction_wrapper(core.core._sum_auto_dtype)
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
 
@@ -24,11 +23,17 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.sum`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.sum does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(core.core._sum_auto_dtype,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.sum(axis, dtype, out, keepdims)
 
 
-@fusion._reduction_wrapper(core.core._prod_auto_dtype)
 def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the product of an array along given axes.
 
@@ -46,6 +51,13 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.prod`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.prod does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(core.core._prod_auto_dtype,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.prod(axis, dtype, out, keepdims)
 
@@ -80,6 +92,7 @@ def _proc_as_batch(proc, x, axis):
 
 
 def _cum_core(a, axis, dtype, out, kern, batch_kern):
+    a = cupy.asarray(a)
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
