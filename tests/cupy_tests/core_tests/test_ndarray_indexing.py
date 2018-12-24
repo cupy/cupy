@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -142,7 +144,9 @@ class TestArrayIndex(unittest.TestCase):
     def test_setitem_different_type(self, xp, src_type, dst_type):
         a = xp.zeros((2, 3, 4), dtype=dst_type)
         b = testing.shaped_arange((2, 3, 4), xp, src_type)
-        a[:] = b
+        with numpy.warnings.catch_warnings():
+            numpy.warnings.filterwarnings('ignore')
+            a[:] = b
         return a
 
     @testing.for_all_dtypes()

@@ -2053,19 +2053,30 @@ include "carray.pxi"
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
+cdef str _complex_cast = '''
+template<typename T, typename U>
+__device__ void cast_copy(const U& x, T& y) {y = T(x);}
+template<typename T, typename U>
+__device__ void cast_copy(const complex<U>& x, complex<T>& y) {
+    y = complex<T>(x);
+}
+template<typename T, typename U>
+__device__ void cast_copy(const complex<U>& x, T& y) {y = T(x.real());}
+'''
 
 elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = out0_type(in0)', default_casting='unsafe')
+    'cast_copy(in0, out0)', preamble=_complex_cast, default_casting='unsafe')
 # complex numbers requires out0 = complex<T>(in0)
 
 elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
-    'if (in1) out0 = in0', default_casting='unsafe')
+    'if (in1) cast_copy(in0, out0)', preamble=_complex_cast,
+    default_casting='unsafe')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
