@@ -268,7 +268,7 @@ class spmatrix(object):
             cupyx.scipy.sparse.spmatrix : The element-wise complex conjugate.
 
         """
-        if cupy.issubdtype(self.dtype, cupy.complexfloating):
+        if self.dtype.kind == 'c':
             return self.tocsr(copy=copy).conj(copy=False)
         elif copy:
             return self.copy()
