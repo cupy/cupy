@@ -3869,7 +3869,6 @@ cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except?0:
     return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
 
 
-
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """ Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
