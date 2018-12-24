@@ -46,7 +46,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ (library to accelerate deep neural network computations)
     * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3 and v7.4.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
-    * Supported Versions: v1.3.4, v2, v2.1 and v2.2.
+    * Supported Versions: v1.3.4, v2, v2.1, v2.2 and v2.3.
 
 
 Install CuPy
@@ -68,6 +68,9 @@ Package names are different depending on the CUDA version you have installed on 
 
   (For CUDA 9.2)
   $ pip install cupy-cuda92
+
+  (For CUDA 10.0)
+  $ pip install cupy-cuda100
 
 .. note::
 

@@ -58,6 +58,7 @@ from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+from cupy import lib  # NOQA
 
 
 # import class and function

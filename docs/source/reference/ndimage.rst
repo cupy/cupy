@@ -7,6 +7,7 @@ It supports a subset of :mod:`scipy.ndimage` interface.
 
 .. module:: cupyx.scipy.ndimage
 
+.. https://docs.scipy.org/doc/scipy/reference/ndimage.html
 
 Interpolation
 -------------
