@@ -1140,37 +1140,37 @@ cdef class MemoryPool(object):
         return mp.total_bytes()
 
 
-ctypedef void*(*malloc_func)(void*, size_t, int)
-ctypedef void(*free_func)(void*, void*, int)
+ctypedef void*(*malloc_func_type)(void*, size_t, int)
+ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cpdef size_t _call_malloc(intptr_t param_ptr, intptr_t malloc_ptr,
+cpdef size_t _call_malloc(intptr_t param, intptr_t malloc_func,
                           Py_ssize_t size, int device_id):
-    return <size_t>((<malloc_func>malloc_ptr)(<void*>param_ptr, size,
-                                              device_id))
+    return <size_t>((<malloc_func_type>malloc_func)(<void*>param, size,
+                                                    device_id))
 
 
-cpdef void _call_free(intptr_t param_ptr, intptr_t free_ptr, intptr_t ptr,
+cpdef void _call_free(intptr_t param, intptr_t free_func, intptr_t ptr,
                       int device_id):
-    (<free_func>free_ptr)(<void*>param_ptr, <void*>ptr, device_id)
+    (<free_func_type>free_func)(<void*>param, <void*>ptr, device_id)
 
 
 @cython.no_gc
 cdef class ExternalAllocatorMemory(BaseMemory):
 
-    def __init__(self, Py_ssize_t size, intptr_t param_ptr,
-                 intptr_t malloc_ptr, intptr_t free_ptr, int device_id):
-        self._param_ptr = param_ptr
-        self._free_ptr = free_ptr
+    def __init__(self, Py_ssize_t size, intptr_t param,
+                 intptr_t malloc_func, intptr_t free_func,
+                 int device_id):
+        self._param = param
+        self._free_func = free_func
         self.device_id = device_id
         self.ptr = 0
         if size > 0:
-            self.ptr = _call_malloc(param_ptr, malloc_ptr, size, device_id)
+            self.ptr = _call_malloc(param, malloc_func, size, device_id)
 
     def __dealloc__(self):
         if self.ptr:
-            _call_free(self._param_ptr, self._free_ptr, self.ptr,
-                       self.device_id)
+            _call_free(self._param, self._free_func, self.ptr, self.device_id)
 
 
 cdef class ExternalAllocator:
@@ -1193,18 +1193,18 @@ cdef class ExternalAllocator:
     memory was allocated.
 
     Args:
-        param_ptr (int): Address of *param*.
-        malloc_ptr (int): Address of *malloc*.
-        free_ptr (int): Address of *free*.
+        param (int): Address of *param*.
+        malloc_func (int): Address of *malloc*.
+        free_func (int): Address of *free*.
 
     """
 
-    def __init__(self, param_ptr, malloc_ptr, free_ptr):
-        self._param_ptr = param_ptr
-        self._malloc_ptr = malloc_ptr
-        self._free_ptr = free_ptr
+    def __init__(self, param, malloc_func, free_func):
+        self._param = param
+        self._malloc_func = malloc_func
+        self._free_func = free_func
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        mem = ExternalAllocatorMemory(size, self._param_ptr, self._malloc_ptr,
-                                      self._free_ptr, device.get_device_id())
+        mem = ExternalAllocatorMemory(size, self._param, self._malloc_func,
+                                      self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)

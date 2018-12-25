@@ -63,15 +63,15 @@ cdef class MemoryPool:
 cdef class ExternalAllocatorMemory(BaseMemory):
 
     cdef:
-        intptr_t _param_ptr
-        intptr_t _free_ptr
+        intptr_t _param
+        intptr_t _free_func
 
 
 cdef class ExternalAllocator:
 
     cdef:
-        intptr_t _param_ptr
-        intptr_t _malloc_ptr
-        intptr_t _free_ptr
+        intptr_t _param
+        intptr_t _malloc_func
+        intptr_t _free_func
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
