@@ -103,7 +103,7 @@ def roll(a, shift, axis=None):
         axis = _get_axis(axis, a.ndim)[0]
 
         broadcasted = numpy.broadcast(shift, axis)
-        if broadcasted.ndim > 1:
+        if broadcasted.nd > 1:
             raise ValueError(
                 "'shift' and 'axis' should be scalars or 1D sequences")
         shifts = {ax: 0 for ax in range(a.ndim)}
