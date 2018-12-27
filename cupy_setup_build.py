@@ -427,7 +427,7 @@ def make_extensions(options, compiler, use_cython):
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
-            if PLATFORM_LINUX or PLATFORM_DARWIN:
+            if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
