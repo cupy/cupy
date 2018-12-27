@@ -109,6 +109,7 @@ class TestShape(unittest.TestCase):
 @testing.gpu
 class TestReshapeOrder(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.12')
     def test_reshape_contiguity(self):
         shape_init, shape_final = self.shape_in_out
 
