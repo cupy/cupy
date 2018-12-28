@@ -163,7 +163,7 @@ def get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
             Currently only complex-to-complex transforms are supported.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
-            axes and must nclude either the first or the last axis of the
+            axes and must include either the first or the last axis of the
             array.  If `None`, it is assumed that all axes are transformed.
         order ({'C', 'F'}): Specify whether the data to be transformed has C or
             Fortran ordered data layout.
@@ -409,7 +409,7 @@ def _default_plan_type(a, s=None, axes=None):
         axes = tuple(sorted([i % ndim for i in axes]))
 
     if len(axes) == 1:
-        # use Plan1d to transform a  single axis
+        # use Plan1d to transform a single axis
         return '1d'
     if len(axes) > 3 or not (np.all(np.diff(sorted(axes)) == 1)):
         # PlanNd supports 1d, 2d or 3d transforms over contiguous axes
