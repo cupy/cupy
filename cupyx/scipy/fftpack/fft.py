@@ -3,13 +3,13 @@ from cupy.cuda import cufft
 from cupy.fft.fft import _fft, _default_fft_func, _convert_fft_type, get_cufft_plan_nd
 
 
-def get_fft_plan(a, value_type, axes=None, order='C'):
+def get_fft_plan(a, value_type='C2C', axes=None, order='C'):
     """ Generate a CUDA FFT plan for transforming up to three axes.
         This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
 
     Args:
         a (cupy.ndarray): Array to be transform.
-        value_type ('C2C', 'Z2Z'}): The FFT type to perform.
+        value_type ('C2C'): The FFT type to perform.
             Currently only complex-to-complex transforms are supported.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
