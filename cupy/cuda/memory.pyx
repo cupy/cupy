@@ -1196,13 +1196,17 @@ cdef class ExternalAllocator:
         param (int): Address of *param*.
         malloc_func (int): Address of *malloc*.
         free_func (int): Address of *free*.
+        owner (object): Reference to the owner object to keep the param and
+            the functions alive.
 
     """
 
-    def __init__(self, param, malloc_func, free_func):
+    def __init__(self, intptr_t param, intptr_t malloc_func,
+                 intptr_t free_func, object owner):
         self._param = param
         self._malloc_func = malloc_func
         self._free_func = free_func
+        self._owner = owner
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         mem = ExternalAllocatorMemory(size, self._param, self._malloc_func,

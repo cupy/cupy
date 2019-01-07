@@ -73,5 +73,6 @@ cdef class ExternalAllocator:
         intptr_t _param
         intptr_t _malloc_func
         intptr_t _free_func
+        object _owner
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
