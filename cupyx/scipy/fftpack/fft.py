@@ -1,6 +1,33 @@
 import cupy
 from cupy.cuda import cufft
-from cupy.fft.fft import _fft, _default_fft_func
+from cupy.fft.fft import _fft, _default_fft_func, _convert_fft_type, get_cufft_plan_nd
+
+
+def get_fft_plan(a, value_type, axes=None, order='C'):
+    """ Generate a CUDA FFT plan for transforming up to three axes.
+        This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
+
+    Args:
+        a (cupy.ndarray): Array to be transform.
+        value_type ('C2C', 'Z2Z'}): The FFT type to perform.
+            Currently only complex-to-complex transforms are supported.
+        axes (None or int or tuple of int):  The axes of the array to
+            transform. Currently, these must be a set of up to three adjacent
+            axes and must include either the first or the last axis of the
+            array.  If `None`, it is assumed that all axes are transformed.
+        order ({'C', 'F'}): Specify whether the data to be transformed has C or
+            Fortran ordered data layout.
+
+    Returns:
+        plan (cufft.PlanNd): The cuFFT Plan.
+    """
+    fft_type = _convert_fft_type(a, value_type)
+    if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
+        raise NotImplementedError("Only C2C and Z2Z are supported.")
+
+    plan = get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
+
+    return plan
 
 
 def fft(x, n=None, axis=-1, overwrite_x=False):
@@ -47,7 +74,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False):
                 overwrite_x=overwrite_x)
 
 
-def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
+def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     """Compute the two-dimensional FFT.
 
     Args:
@@ -65,12 +92,12 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.fft2`
     """
-    func = _default_fft_func(x, shape, axes)
-    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
+    func = _default_fft_func(x, shape, axes, plan)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD, plan=plan,
                 overwrite_x=overwrite_x)
 
 
-def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
+def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     """Compute the two-dimensional inverse FFT.
 
     Args:
@@ -88,12 +115,12 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.ifft2`
     """
-    func = _default_fft_func(x, shape, axes)
-    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
+    func = _default_fft_func(x, shape, axes, plan)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE, plan=plan,
                 overwrite_x=overwrite_x)
 
 
-def fftn(x, shape=None, axes=None, overwrite_x=False):
+def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     """Compute the N-dimensional FFT.
 
     Args:
@@ -111,12 +138,12 @@ def fftn(x, shape=None, axes=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.fftn`
     """
-    func = _default_fft_func(x, shape, axes)
-    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
+    func = _default_fft_func(x, shape, axes, plan)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD, plan=plan,
                 overwrite_x=overwrite_x)
 
 
-def ifftn(x, shape=None, axes=None, overwrite_x=False):
+def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     """Compute the N-dimensional inverse FFT.
 
     Args:
@@ -134,8 +161,8 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.ifftn`
     """
-    func = _default_fft_func(x, shape, axes)
-    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
+    func = _default_fft_func(x, shape, axes, plan)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE, plan=plan,
                 overwrite_x=overwrite_x)
 
 

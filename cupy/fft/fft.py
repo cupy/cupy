@@ -420,7 +420,10 @@ def _default_plan_type(a, s=None, axes=None):
     return 'nd'
 
 
-def _default_fft_func(a, s=None, axes=None):
+def _default_fft_func(a, s=None, axes=None, plan=None):
+    if plan is not None: # a shortcut for using _fftn
+        return _fftn
+
     plan_type = _default_plan_type(a, s, axes)
     if plan_type == 'nd':
         return _fftn
