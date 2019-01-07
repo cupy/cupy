@@ -1359,8 +1359,8 @@ class TestFusionKernelName(unittest.TestCase):
         # Test kernel name (with mock)
         if xp is cupy:
             target = (
-                'cupy.core.core.ElementwiseKernel' if is_elementwise
-                else 'cupy.core.core.ReductionKernel')
+                'cupy.core._kernel.ElementwiseKernel' if is_elementwise
+                else 'cupy.core._kernel.ReductionKernel')
 
             with mock.patch(target) as Kernel:
                 func(a, b, c)
@@ -1446,7 +1446,7 @@ class TestFusionScalar(unittest.TestCase):
 
         @cupy.fuse()
         def f(x):
-            return x * numpy.asscalar(dtype2(1))
+            return x * dtype2(1).item()
         return f(testing.shaped_arange((1,), xp, dtype1))
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
@@ -1466,7 +1466,7 @@ class TestFusionScalar(unittest.TestCase):
         def f(x, y):
             return x + y
         x = testing.shaped_arange((10,), xp, dtype1)
-        y = numpy.asscalar(dtype2(1))
+        y = dtype2(1).item()
         return f(x, y)
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))

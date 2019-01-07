@@ -3,7 +3,6 @@ from cupy.core import fusion
 from cupy.math import ufunc
 
 
-@fusion._ufunc_wrapper(core.core._round_ufunc)
 def around(a, decimals=0, out=None):
     """Rounds to the given number of decimals.
 
@@ -20,14 +19,14 @@ def around(a, decimals=0, out=None):
     .. seealso:: :func:`numpy.around`
 
     """
+    if fusion._is_fusing():
+        return fusion._call_ufunc(core.core._round_ufunc, a, decimals, out=out)
     a = core.array(a, copy=False)
-    return a.round(decimals, out)
+    return a.round(decimals, out=out)
 
 
-@fusion._ufunc_wrapper(core.core._round_ufunc)
 def round_(a, decimals=0, out=None):
-    a = core.array(a, copy=False)
-    return a.round(decimals, out)
+    return around(a, decimals, out=out)
 
 
 rint = ufunc.create_math_ufunc(

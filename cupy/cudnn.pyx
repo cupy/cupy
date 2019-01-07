@@ -12,6 +12,7 @@ from cupy.cuda cimport device
 from cupy.core cimport internal
 from cupy.cuda cimport memory
 
+from cupy import util
 from cupy.cuda import cudnn as py_cudnn
 
 
@@ -967,7 +968,7 @@ cpdef _warn_algorithm_fwd(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_fwd(
@@ -1015,7 +1016,8 @@ cpdef _Algorithm _get_algorithm_fwd(
         if i != 0:
             warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
-                'lack of workspace size ({})'.format(max_workspace_size))
+                'lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1040,7 +1042,7 @@ cpdef _warn_algorithm_bwd_filter(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'
         .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_filter(
@@ -1089,7 +1091,8 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1114,7 +1117,7 @@ cpdef _warn_algorithm_bwd_data(
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_data(
@@ -1164,7 +1167,8 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType

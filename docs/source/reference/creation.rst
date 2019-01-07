@@ -1,6 +1,8 @@
 Array Creation Routines
 =======================
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html
+
 Basic creation routines
 -----------------------
 
