@@ -4006,7 +4006,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         if orig_a_ndim == 1:
             out_view._shape.push_back(1)
             out_view._strides.push_back(0)
-        if orig_b_ndim == 1:
+        else:  # orig_b_ndim == 1
             out_view._shape.push_back(1)
             out_view._strides.push_back(0)
         assert out_view._c_contiguous
