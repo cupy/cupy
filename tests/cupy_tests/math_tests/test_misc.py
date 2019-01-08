@@ -1,4 +1,3 @@
-from distutils.version import StrictVersion
 import sys
 import unittest
 
@@ -196,13 +195,21 @@ class TestMisc(unittest.TestCase):
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
 
+    @testing.with_requires('numpy>=1.10')
     def test_nan_to_num(self):
-        no_bool = StrictVersion(numpy.version.version) < StrictVersion('1.10')
-        self.check_unary('nan_to_num', no_bool=no_bool)
+        self.check_unary('nan_to_num')
 
+    @testing.with_requires('numpy>=1.10')
     def test_nan_to_num_negative(self):
-        no_bool = StrictVersion(numpy.version.version) < StrictVersion('1.10')
-        self.check_unary_negative('nan_to_num', no_bool=no_bool)
+        self.check_unary_negative('nan_to_num')
+
+    @testing.with_requires('numpy<1.10')
+    def test_nan_to_num_for_old_numpy(self):
+        self.check_unary('nan_to_num', no_bool=True)
+
+    @testing.with_requires('numpy<1.10')
+    def test_nan_to_num_negative_for_old_numpy(self):
+        self.check_unary_negative('nan_to_num', no_bool=True)
 
     def test_nan_to_num_inf(self):
         self.check_unary_inf('nan_to_num')

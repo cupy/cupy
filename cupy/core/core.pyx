@@ -3086,7 +3086,7 @@ right_shift = _create_bit_op(
 cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
-    cdef str kind
+    cdef char kind
     cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
@@ -3108,27 +3108,29 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     advanced = False
     mask_exists = False
     for i, s in enumerate(slice_list):
-        is_list = isinstance(s, list)
-        if is_list or isinstance(s, numpy.ndarray):
+        to_gpu = True
+        if isinstance(s, list):
             # handle the case when s is an empty list
-            s = array(s)
-            if is_list and s.size == 0:
+            s = numpy.array(s)
+            if s.size == 0:
                 s = s.astype(numpy.int32)
-            slice_list[i] = s
         elif isinstance(s, bool):
-            s = array(s)
-            slice_list[i] = s
-        elif not isinstance(s, ndarray):
+            s = numpy.array(s)
+        elif isinstance(s, ndarray):
+            to_gpu = False
+        elif not isinstance(s, numpy.ndarray):
             continue
-        kind = s.dtype.kind
-        if kind == 'i' or kind == 'u':
+        kind = ord(s.dtype.kind)
+        if kind == b'i' or kind == b'u':
             advanced = True
-        elif kind == 'b':
+        elif kind == b'b':
             mask_exists = True
         else:
             raise IndexError(
                 'arrays used as indices must be of integer or boolean '
                 'type. (actual: {})'.format(s.dtype.type))
+        if to_gpu:
+            slice_list[i] = array(s)
 
     if not mask_exists and len(slice_list) > ndim + n_newaxes:
         raise IndexError('too many indices for array')
