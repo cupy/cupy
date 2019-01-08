@@ -254,14 +254,38 @@ class spmatrix(object):
         """
         return self.tocsr().astype(t).asformat(self.format)
 
-    def conj(self):
-        return self.tocsr().conj()
+    def conj(self, copy=True):
+        """Element-wise complex conjugation.
 
-    def conjugate(self):
-        return self.conj()
+        If the matrix is of non-complex data type and `copy` is False,
+        this method does nothing and the data is not copied.
+
+        Args:
+            copy (bool):
+                If True, the result is guaranteed to not share data with self.
+
+        Returns:
+            cupyx.scipy.sparse.spmatrix : The element-wise complex conjugate.
+
+        """
+        if self.dtype.kind == 'c':
+            return self.tocsr(copy=copy).conj(copy=False)
+        elif copy:
+            return self.copy()
+        else:
+            return self
+
+    def conjugate(self, copy=True):
+        return self.conj(copy=copy)
+
+    conjugate.__doc__ = conj.__doc__
 
     def copy(self):
-        """Returns a copy of this matrix."""
+        """Returns a copy of this matrix.
+
+        No data/indices will be shared between the returned value and current
+        matrix.
+        """
         return self.__class__(self, copy=True)
 
     def count_nonzero(self):

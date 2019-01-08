@@ -28,6 +28,7 @@ from cupy.cuda.runtime import CUDARuntimeError
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
@@ -66,10 +67,10 @@ except AttributeError:
 
 
 @cython.profile(False)
-cdef inline int _normalize_order(order) except? 0:
+cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
     order_char = b'C' if len(order) == 0 else ord(order[0])
-    if order_char == b'K' or order_char == b'k':
+    if allow_k and (order_char == b'K' or order_char == b'k'):
         order_char = b'K'
     elif order_char == b'A' or order_char == b'a':
         order_char = b'A'
@@ -80,6 +81,9 @@ cdef inline int _normalize_order(order) except? 0:
     else:
         raise TypeError('order not understood')
     return order_char
+
+
+cdef tuple _HANDLED_TYPES
 
 
 cdef class ndarray:
@@ -552,7 +556,7 @@ cdef class ndarray:
         newarray._set_shape_and_strides(shape, strides, False, True)
         return newarray
 
-    def reshape(self, *shape):
+    def reshape(self, *shape, order='C'):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -560,10 +564,26 @@ cdef class ndarray:
            :meth:`numpy.ndarray.reshape`
 
         """
-        # TODO(beam2d): Support ordering option
+        cdef int order_char = _normalize_order(order, False)
+
         if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
             shape = shape[0]
-        return self._reshape(shape)
+
+        if order_char == b'A':
+            if self._f_contiguous and not self._c_contiguous:
+                order_char = b'F'
+            else:
+                order_char = b'C'
+        if order_char == b'C':
+            return self._reshape(shape)
+        else:
+            # TODO(grlee77): Support order within _reshape instead
+
+            # The Fortran-ordered case is equivalent to:
+            #     1.) reverse the axes via transpose
+            #     2.) C-ordered reshape using reversed shape
+            #     3.) reverse the axes via transpose
+            return self.transpose()._reshape(shape[::-1]).transpose()
 
     # TODO(okuta): Implement resize
 
@@ -670,7 +690,7 @@ cdef class ndarray:
         newarray._f_contiguous = True
         return newarray
 
-    cpdef ndarray ravel(self):
+    cpdef ndarray ravel(self, order='C'):
         """Returns an array flattened into one dimension.
 
         .. seealso::
@@ -678,10 +698,24 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        # TODO(beam2d): Support ordering option
+        # TODO(beam2d, grlee77): Support K ordering option
+        cdef int order_char
         cdef vector.vector[Py_ssize_t] shape
         shape.push_back(self.size)
-        return self._reshape(shape)
+
+        order_char = _normalize_order(order, True)
+        if order_char == b'A':
+            if self._f_contiguous and not self._c_contiguous:
+                order_char = b'F'
+            else:
+                order_char = b'C'
+        if order_char == b'C':
+            return self._reshape(shape)
+        elif order_char == b'F':
+            return self.transpose()._reshape(shape)
+        elif order_char == b'K':
+            raise NotImplementedError(
+                "ravel with order='K' not yet implemented.")
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
@@ -1743,6 +1777,14 @@ cdef class ndarray:
         else:
             return NotImplemented
 
+    def __array_function__(self, func, types, args, kwargs):
+        if not hasattr(cupy, func.__name__):
+            return NotImplemented
+        for t in types:
+            if t not in _HANDLED_TYPES:
+                return NotImplemented
+        return getattr(cupy, func.__name__)(*args, **kwargs)
+
     # Conversion:
 
     def __int__(self):
@@ -1794,13 +1836,16 @@ cdef class ndarray:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None):
+    cpdef get(self, stream=None, order='C'):
         """Returns a copy of the array on host memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
+            order ({'C', 'F', 'A'}): The desired memory layout of the host
+                array. When ``order`` is 'A', it uses 'F' if the array is
+                fortran-contiguous and 'C' otherwise.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1809,9 +1854,21 @@ cdef class ndarray:
         if self.size == 0:
             return numpy.ndarray(self._shape, dtype=self.dtype)
 
+        order = order.upper()
+        if order == 'A':
+            if self._f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
+
         with self.device:
-            a_gpu = ascontiguousarray(self)
-        a_cpu = numpy.empty(self._shape, dtype=self.dtype)
+            if order == 'C':
+                a_gpu = ascontiguousarray(self)
+            elif order == 'F':
+                a_gpu = asfortranarray(self)
+            else:
+                raise ValueError("unsupported order: {}".format(order))
+        a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -2042,6 +2099,9 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
         strides[-i] = stride
         stride *= x.shape[-i]
     return strides
+
+
+_HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
 include "carray.pxi"
@@ -2380,6 +2440,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     cdef size_t nbytes
     if subok:
         raise NotImplementedError
+    if order is None:
+        order = 'K'
     if isinstance(obj, ndarray):
         src = obj
         if dtype is None:
@@ -3113,7 +3175,7 @@ right_shift = _create_bit_op(
 cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
-    cdef int kind
+    cdef char kind
     cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
@@ -3135,17 +3197,17 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     advanced = False
     mask_exists = False
     for i, s in enumerate(slice_list):
-        is_list = isinstance(s, list)
-        if is_list or isinstance(s, numpy.ndarray):
+        to_gpu = True
+        if isinstance(s, list):
             # handle the case when s is an empty list
-            s = array(s)
-            if is_list and s.size == 0:
+            s = numpy.array(s)
+            if s.size == 0:
                 s = s.astype(numpy.int32)
-            slice_list[i] = s
         elif isinstance(s, bool):
-            s = array(s)
-            slice_list[i] = s
-        elif not isinstance(s, ndarray):
+            s = numpy.array(s)
+        elif isinstance(s, ndarray):
+            to_gpu = False
+        elif not isinstance(s, numpy.ndarray):
             continue
         kind = ord(s.dtype.kind)
         if kind == b'i' or kind == b'u':
@@ -3156,6 +3218,8 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
             raise IndexError(
                 'arrays used as indices must be of integer or boolean '
                 'type. (actual: {})'.format(s.dtype.type))
+        if to_gpu:
+            slice_list[i] = array(s)
 
     if not mask_exists and len(slice_list) > ndim + n_newaxes:
         raise IndexError('too many indices for array')
