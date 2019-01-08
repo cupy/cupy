@@ -1,6 +1,4 @@
-cimport cpython  # NOQA
 import os
-import warnings
 
 from cupy import cuda
 from cupy.cuda cimport function
