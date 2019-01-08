@@ -4003,12 +4003,12 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
         out_view = out.view()
+        if orig_b_ndim == 1:
+            out_view._shape.push_back(1)
+            out_view._strides.push_back(0)
         if orig_a_ndim == 1:
-            out_view._shape.push_back(1)
-            out_view._strides.push_back(0)
-        else:  # orig_b_ndim == 1
-            out_view._shape.push_back(1)
-            out_view._strides.push_back(0)
+            out_view._shape.insert(out_view._shape.end() - 1, 1)
+            out_view._strides.insert(out_view._strides.end() - 1, 0)
         assert out_view._c_contiguous
         out_view._update_f_contiguity()
     else:
