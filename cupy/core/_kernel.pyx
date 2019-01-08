@@ -17,8 +17,8 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core._routines_manipulation cimport broadcast
 from cupy.core._scalar import get_typename as _get_typename
-from cupy.core.core cimport broadcast
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
