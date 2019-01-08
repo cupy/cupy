@@ -3929,11 +3929,13 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     a_ndim = a._shape.size()
     b_ndim = b._shape.size()
     if a_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
         a._set_shape_and_strides(
             (1,) * (ndim - a_ndim) + a.shape,
             (0,) * (ndim - a_ndim) + a.strides,
             True, True)
     if b_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
         b._set_shape_and_strides(
             (1,) * (ndim - b_ndim) + b.shape,
             (0,) * (ndim - b_ndim) + b.strides,
