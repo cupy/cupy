@@ -1164,6 +1164,7 @@ cdef class ExternalAllocatorMemory(BaseMemory):
         self._param = param
         self._free_func = free_func
         self.device_id = device_id
+        self.size = size
         self.ptr = 0
         if size > 0:
             self.ptr = _call_malloc(param, malloc_func, size, device_id)
