@@ -23,6 +23,11 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 
 
+# We can't directly import cupy.core.fusion at module level due to cyclic
+# imports. Importing it every time at the point of use is too slow.
+_fusion_module = None
+
+
 cpdef _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
@@ -756,9 +761,11 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        from cupy.core import fusion
+        global _fusion_module
+        if _fusion_module is None:
+            from cupy.core import fusion as _fusion_module
 
-        thread_local = fusion._thread_local
+        thread_local = _fusion_module._thread_local
         if hasattr(thread_local, 'history'):
             return thread_local.history.call_ufunc(self, args, kwargs)
 
