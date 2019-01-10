@@ -9,15 +9,14 @@ def get_fft_plan(a, value_type='C2C', axes=None):
         This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
 
     Args:
-        a (cupy.ndarray): Array to be transform.
+        a (cupy.ndarray): Array to be transform, assumed to be either C- or
+            F- contiguous.
         value_type ('C2C'): The FFT type to perform.
             Currently only complex-to-complex transforms are supported.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
             axes and must include either the first or the last axis of the
             array.  If `None`, it is assumed that all axes are transformed.
-        order ({'C', 'F'}): Specify whether the data to be transformed has C or
-            Fortran ordered data layout.
 
     Returns:
         plan (cufft.PlanNd): The cuFFT Plan.
