@@ -117,8 +117,9 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef tuple s = internal.get_size(shape)
+        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
         cdef int order_char = 'C' if order is None else _normalize_order(order)
+        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
@@ -137,7 +138,7 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(shape, strides, True, True)
+            self._set_shape_and_strides(s, strides, True, True)
         elif order_char == 'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)
         elif order_char == 'F':
@@ -1918,7 +1919,7 @@ cdef class ndarray:
         self._update_f_contiguity()
 
     cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t] & strides,
+                                 vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
