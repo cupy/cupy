@@ -93,8 +93,8 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     .. seealso:: :func:`scipy.fftpack.fft2`
     """
     func = _default_fft_func(x, shape, axes, plan)
-    return func(x, shape, axes, None, cufft.CUFFT_FORWARD, plan=plan,
-                overwrite_x=overwrite_x)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
+                overwrite_x=overwrite_x, plan=plan)
 
 
 def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
@@ -116,8 +116,8 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     .. seealso:: :func:`scipy.fftpack.ifft2`
     """
     func = _default_fft_func(x, shape, axes, plan)
-    return func(x, shape, axes, None, cufft.CUFFT_INVERSE, plan=plan,
-                overwrite_x=overwrite_x)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
+                overwrite_x=overwrite_x, plan=plan)
 
 
 def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
@@ -139,8 +139,8 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     .. seealso:: :func:`scipy.fftpack.fftn`
     """
     func = _default_fft_func(x, shape, axes, plan)
-    return func(x, shape, axes, None, cufft.CUFFT_FORWARD, plan=plan,
-                overwrite_x=overwrite_x)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD
+                overwrite_x=overwrite_x, plan=plan)
 
 
 def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
@@ -162,8 +162,8 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     .. seealso:: :func:`scipy.fftpack.ifftn`
     """
     func = _default_fft_func(x, shape, axes, plan)
-    return func(x, shape, axes, None, cufft.CUFFT_INVERSE, plan=plan,
-                overwrite_x=overwrite_x)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
+                overwrite_x=overwrite_x, plan=plan)
 
 
 def rfft(x, n=None, axis=-1, overwrite_x=False):

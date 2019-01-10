@@ -114,7 +114,10 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x):
     return a
 
 
-def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False):
+def _fft(a, s, axes, norm, direction, value_type='C2C',
+         overwrite_x=False, **kwargs):
+    kwargs=None # guard
+
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
                          % norm)
