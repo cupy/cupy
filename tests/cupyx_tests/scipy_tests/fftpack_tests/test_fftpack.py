@@ -106,6 +106,31 @@ class TestFft2(unittest.TestCase):
         return scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True)
 
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_ifft2_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes, plan=plan)
+        testing.assert_array_equal(x, x_orig)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
+
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_ifft2_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
+                                overwrite_x=True, plan=plan)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
+
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None},
@@ -142,6 +167,31 @@ class TestFftn(unittest.TestCase):
         return scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
                                 overwrite_x=True)
 
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_fftn_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
+        testing.assert_array_equal(x, x_orig)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
+
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_fftn_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
+                                overwrite_x=True, plan=plan)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
@@ -159,6 +209,31 @@ class TestFftn(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, dtype)
         return scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True)
+
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_ifftn_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes, plan=plan)
+        testing.assert_array_equal(x, x_orig)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
+
+    @testing.for_complex_dtypes()
+    # TODO: what decorator should we put here? In scipy.fftpack there is no planning,
+    # so we can't do @testing.numpy_cupy_allclose, can we?
+    def test_ifftn_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        cp.fft.config.enable_nd_planning = False # use explicit plan
+        plan = scp.fftpack.get_fft_plan(x)
+        out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
+                                overwrite_x=True, plan=plan)
+        cp.fft.config.enable_nd_planning = True # default
+        return out
 
 
 @testing.parameterize(*testing.product({
