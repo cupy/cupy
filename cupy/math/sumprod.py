@@ -241,7 +241,7 @@ def diff(a, n=1, axis=-1):
     slice1 = tuple(slice1)
     slice2 = tuple(slice2)
 
-    op = not_equal if a.dtype == numpy.bool_ else cupy.subtract
+    op = cupy.not_equal if a.dtype == numpy.bool_ else cupy.subtract
     for _ in range(n):
         a = op(a[slice1], a[slice2])
 

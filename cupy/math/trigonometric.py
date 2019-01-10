@@ -1,4 +1,8 @@
+import numpy
+
+import cupy
 from cupy import core
+from cupy.math import sumprod
 from cupy.math import ufunc
 
 
@@ -116,7 +120,7 @@ def unwrap(p, discont=numpy.pi, axis=-1):
 
     p = cupy.asarray(p)
     nd = p.ndim
-    dd = diff(p, axis=axis)
+    dd = sumprod.diff(p, axis=axis)
     slice1 = [slice(None, None)]*nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
