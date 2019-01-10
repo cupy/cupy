@@ -4,7 +4,7 @@ from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
     get_cufft_plan_nd)
 
 
-def get_fft_plan(a, value_type='C2C', axes=None, order='C'):
+def get_fft_plan(a, value_type='C2C', axes=None):
     """ Generate a CUDA FFT plan for transforming up to three axes.
         This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
 
@@ -25,6 +25,13 @@ def get_fft_plan(a, value_type='C2C', axes=None, order='C'):
     fft_type = _convert_fft_type(a, value_type)
     if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
         raise NotImplementedError("Only C2C and Z2Z are supported.")
+
+    if a.flags.c_contiguous:
+        order = 'C'
+    elif a.flags.f_contiguous:
+        order = 'F'
+    else:
+        raise ValueError("Input array a must be contiguous")
 
     plan = get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
 
