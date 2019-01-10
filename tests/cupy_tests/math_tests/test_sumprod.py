@@ -330,3 +330,37 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_numpy_array(self, xp, dtype):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         return xp.cumprod(a_numpy)
+
+
+@testing.gpu
+class TestDiff(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.diff(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_1dim_with_n(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.diff(a, n=3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_without_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.diff(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.diff(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_with_axis_and_n(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.diff(a, axis=1, n=2)
