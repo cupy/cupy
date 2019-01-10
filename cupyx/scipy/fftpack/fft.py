@@ -1,6 +1,7 @@
 import cupy
 from cupy.cuda import cufft
-from cupy.fft.fft import _fft, _default_fft_func, _convert_fft_type, get_cufft_plan_nd
+from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
+    get_cufft_plan_nd)
 
 
 def get_fft_plan(a, value_type='C2C', axes=None, order='C'):
@@ -139,7 +140,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     .. seealso:: :func:`scipy.fftpack.fftn`
     """
     func = _default_fft_func(x, shape, axes, plan)
-    return func(x, shape, axes, None, cufft.CUFFT_FORWARD
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
 
 
