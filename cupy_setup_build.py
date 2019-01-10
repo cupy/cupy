@@ -32,11 +32,13 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core._dtype',
+            'cupy.core._kernel',
             'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.fusion',
             'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
@@ -116,7 +118,7 @@ MODULES = [
         'libraries': [
             'cusolver',
         ],
-        'check_method': build.check_cusolver_version,
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
@@ -162,7 +164,7 @@ def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
     else:
-        return (file, [])
+        return file, []
 
 
 def module_extension_name(file):
@@ -394,10 +396,6 @@ def make_extensions(options, compiler, use_cython):
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
-        if compiler.compiler_type == 'unix':
-            # In mac environment, openmp is not required.
-            compile_args.append('-std=c++0x')
-            link_args.append('-std=c++0x')
 
         if module['name'] == 'cusolver':
             compile_args = s.setdefault('extra_compile_args', [])

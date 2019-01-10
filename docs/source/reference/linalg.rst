@@ -1,6 +1,8 @@
 Linear Algebra
 ==============
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
+
 Matrix and vector products
 --------------------------
 
@@ -15,6 +17,7 @@ Matrix and vector products
    cupy.matmul
    cupy.tensordot
    cupy.einsum
+   cupy.linalg.matrix_power
    cupy.kron
 
 Decompositions
@@ -64,5 +67,5 @@ Solving linear equations
    cupy.linalg.inv
    cupy.linalg.pinv
    cupy.linalg.tensorinv
-   
+
    cupyx.scipy.linalg.solve_triangular

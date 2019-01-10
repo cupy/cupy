@@ -1,4 +1,9 @@
+import numpy
+
 from cupy import core
+from cupy.core import fusion
+from cupy.core import ndarray
+from cupy.cuda import memory
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
@@ -40,7 +45,22 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     return core.array(obj, dtype, copy, order, subok, ndmin)
 
 
-def asarray(a, dtype=None):
+def _convert_object_with_cuda_array_interface(a):
+    desc = a.__cuda_array_interface__
+    shape = desc['shape']
+    dtype = numpy.dtype(desc['typestr'])
+    if 'strides' in desc:
+        strides = desc['strides']
+        nbytes = numpy.max(numpy.array(shape) * numpy.array(strides))
+    else:
+        strides = None
+        nbytes = numpy.prod(shape) * dtype.itemsize
+    mem = memory.UnownedMemory(desc['data'][0], nbytes, a)
+    memptr = memory.MemoryPointer(mem, 0)
+    return ndarray(shape, dtype=dtype, memptr=memptr, strides=strides)
+
+
+def asarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is equivalent to ``array(a, dtype, copy=False)``.
@@ -49,6 +69,11 @@ def asarray(a, dtype=None):
     Args:
         a: The source object.
         dtype: Data type specifier. It is inferred from the input by default.
+        order ({'C', 'F'}):
+            Whether to use row-major (C-style) or column-major (Fortran-style)
+            memory representation. Defaults to 'C'. ``order`` is ignored for
+            objects that are not a ``cupy.ndarray``, but have a
+            ``__cuda_array_interface__ attribute``.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
@@ -57,10 +82,12 @@ def asarray(a, dtype=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return core.array(a, dtype, False)
+    if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
+        return _convert_object_with_cuda_array_interface(a)
+    return core.array(a, dtype, False, order)
 
 
-def asanyarray(a, dtype=None):
+def asanyarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is currently equivalent to :func:`~cupy.asarray`, since there is no
@@ -71,7 +98,9 @@ def asanyarray(a, dtype=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return core.array(a, dtype, False)
+    if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
+        return _convert_object_with_cuda_array_interface(a)
+    return core.array(a, dtype, False, order)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -116,6 +145,12 @@ def copy(a, order='K'):
     See: :func:`numpy.copy`, :meth:`cupy.ndarray.copy`
 
     """
+    if fusion._is_fusing():
+        if order != 'K':
+            raise NotImplementedError(
+                'cupy.copy does not support `order` in fusion yet.')
+        return fusion._call_ufunc(core.elementwise_copy, a)
+
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the
     # contents over the devices.

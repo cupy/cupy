@@ -1,8 +1,10 @@
 Special Functions
 =================
 
-Faster versions of common Bessel Functions
-------------------------------------------
+.. https://docs.scipy.org/doc/scipy/reference/special.html
+
+Bessel Functions
+----------------
 
 .. autosummary::
    :toctree: generated/
@@ -22,11 +24,35 @@ Gamma and Related Functions
 .. autosummary::
    :toctree: generated/
    :nosignatures:
-   
+
    cupyx.scipy.special.gamma
    cupyx.scipy.special.gammaln
-   cupyx.scipy.special.digamma
    cupyx.scipy.special.polygamma
+   cupyx.scipy.special.digamma
+
+
+Raw Statistical Functions
+-------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.special.ndtr
+
+
+Error Function
+--------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.special.erf
+   cupyx.scipy.special.erfc
+   cupyx.scipy.special.erfcx
+   cupyx.scipy.special.erfinv
+   cupyx.scipy.special.erfcinv
 
 
 Other Special Functions

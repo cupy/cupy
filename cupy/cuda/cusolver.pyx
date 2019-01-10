@@ -3,12 +3,18 @@
 cimport cython  # NOQA
 
 from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
 ###############################################################################
+
+cdef extern from "cupy_cuComplex.h":
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
 
 cdef extern from 'cupy_cusolver.h' nogil:
     # Context
@@ -61,12 +67,22 @@ cdef extern from 'cupy_cusolver.h' nogil:
                                     float* A, int lda, int* lwork)
     int cusolverDnDgeqrf_bufferSize(Handle handle, int m, int n,
                                     double* A, int lda, int* lwork)
-    int cusolverDnSgeqrf(Handle handle, int m, int n, float* A, int lda,
-                         float* tau, float* work, int lwork,
-                         int* devInfo)
-    int cusolverDnDgeqrf(Handle handle, int m, int n, double* A, int lda,
-                         double* tau, double* work, int lwork,
-                         int* devInfo)
+    int cusolverDnCgeqrf_bufferSize(Handle handle, int m, int n,
+                                    cuComplex* A, int lda, int* lwork)
+    int cusolverDnZgeqrf_bufferSize(Handle handle, int m, int n,
+                                    cuDoubleComplex* A, int lda, int* lwork)
+    int cusolverDnSgeqrf(
+        Handle handle, int m, int n, float* A, int lda,
+        float* tau, float* work, int lwork, int* devInfo)
+    int cusolverDnDgeqrf(
+        Handle handle, int m, int n, double* A, int lda,
+        double* tau, double* work, int lwork, int* devInfo)
+    int cusolverDnCgeqrf(
+        Handle handle, int m, int n, cuComplex* A, int lda,
+        cuComplex* tau, cuComplex* work, int lwork, int* devInfo)
+    int cusolverDnZgeqrf(
+        Handle handle, int m, int n, cuDoubleComplex* A, int lda,
+        cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* devInfo)
 
     # The actual definition of cusolverDn(S|D)orgqr_bufferSize
     # is different from the reference
@@ -76,6 +92,12 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnDorgqr_bufferSize(Handle handle, int m, int n, int k,
                                     const double* A, int lda,
                                     const double* tau, int* lwork)
+    int cusolverDnCungqr_bufferSize(Handle handle, int m, int n, int k,
+                                    const cuComplex* A, int lda,
+                                    const cuComplex* tau, int* lwork)
+    int cusolverDnZungqr_bufferSize(Handle handle, int m, int n, int k,
+                                    const cuDoubleComplex* A, int lda,
+                                    const cuDoubleComplex* tau, int* lwork)
     int cusolverDnSorgqr(Handle handle, int m, int n, int k,
                          float* A, int lda, const float* tau,
                          float* work, int lwork, int* devInfo)
@@ -85,12 +107,22 @@ cdef extern from 'cupy_cusolver.h' nogil:
 
     int cusolverDnSormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const float* A, int lda,
-                         const float* tau, float* C, int ldc, float* work,
-                         int lwork, int* devInfo)
+                         const float* tau, float* C, int ldc,
+                         float* work, int lwork, int* devInfo)
     int cusolverDnDormqr(Handle handle, SideMode side, Operation trans,
                          int m, int n, int k, const double* A, int lda,
-                         const double* tau, double* C, int ldc, double* work,
-                         int lwork, int* devInfo)
+                         const double* tau, double* C, int ldc,
+                         double* work, int lwork, int* devInfo)
+    int cusolverDnCunmqr(
+        Handle handle, SideMode side, Operation trans, int m, int n, int k,
+        const cuComplex* A, int lda, const cuComplex* tau,
+        cuComplex* C, int ldc, cuComplex* work, int lwork,
+        int* devInfo)
+    int cusolverDnZunmqr(
+        Handle handle, SideMode side, Operation trans, int m, int n, int k,
+        const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau,
+        cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork,
+        int* devInfo)
 
     int cusolverDnSsytrf(Handle handle, FillMode uplo, int n, float* A,
                          int lda, int* ipiv, float* work, int lwork,
@@ -110,6 +142,10 @@ cdef extern from 'cupy_cusolver.h' nogil:
                                     int* lwork)
     int cusolverDnDgesvd_bufferSize(Handle handle, int m, int n,
                                     int* lwork)
+    int cusolverDnCgesvd_bufferSize(Handle handle, int m, int n,
+                                    int* lwork)
+    int cusolverDnZgesvd_bufferSize(Handle handle, int m, int n,
+                                    int* lwork)
     int cusolverDnSgesvd(Handle handle, char jobu, char jobvt, int m, int n,
                          float* A, int lda, float* S, float* U, int ldu,
                          float* VT, int ldvt, float* Work, int lwork,
@@ -118,6 +154,15 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          double* A, int lda, double* S, double* U, int ldu,
                          double* VT, int ldvt, double* Work, int lwork,
                          double* rwork, int* devInfo)
+    int cusolverDnCgesvd(Handle handle, char jobu, char jobvt, int m, int n,
+                         cuComplex* A, int lda, float* S, cuComplex* U,
+                         int ldu, cuComplex* VT, int ldvt, cuComplex* Work,
+                         int lwork, float* rwork, int* devInfo)
+    int cusolverDnZgesvd(Handle handle, char jobu, char jobvt, int m, int n,
+                         cuDoubleComplex* A, int lda, double* S,
+                         cuDoubleComplex* U, int ldu, cuDoubleComplex* VT,
+                         int ldvt, cuDoubleComplex* Work, int lwork,
+                         double* rwork, int* devInfo)
 
     int cusolverDnSsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const float* A,
@@ -125,12 +170,35 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnDsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const double* A,
         int lda, const double* W, int* lwork)
+    int cusolverDnCheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n, const cuComplex* A,
+        int lda, const float* W, int* lwork)
+    int cusolverDnZheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuDoubleComplex* A,
+        int lda, const double* W, int* lwork)
     int cusolverDnSsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, float* A, int lda,
         float* W, float* work, int lwork, int* info)
     int cusolverDnDsyevd(
         Handle handle, EigMode jobz, FillMode uplo, int n, double* A, int lda,
         double* W, double* work, int lwork, int* info)
+    int cusolverDnCheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuComplex* A,
+        int lda, float* W, cuComplex* work, int lwork, int* info)
+    int cusolverDnZheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n, cuDoubleComplex* A,
+        int lda, double* W, cuDoubleComplex* work, int lwork, int* info)
+
+    int cusolverSpScsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const float* b, float tol, int reorder, float* x, int* singularity)
+
+    int cusolverSpDcsrlsvchol(
+        SpHandle handle, int m, int nnz, const MatDescr descrA,
+        const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
+        const double* b, double tol, int reorder, double* x, int* singularity)
 
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
@@ -179,7 +247,7 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cusolverDnCreate(&handle)
@@ -187,7 +255,7 @@ cpdef size_t create() except *:
     return <size_t>handle
 
 
-cpdef size_t spCreate() except *:
+cpdef size_t spCreate() except? 0:
     cdef SpHandle handle
     with nogil:
         status = cusolverSpCreate(&handle)
@@ -195,7 +263,7 @@ cpdef size_t spCreate() except *:
     return <size_t>handle
 
 
-cpdef void destroy(size_t handle) except *:
+cpdef destroy(size_t handle):
     with nogil:
         status = cusolverDnDestroy(<Handle>handle)
     check_status(status)
@@ -210,7 +278,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
+cpdef size_t getStream(size_t handle) except? 0:
     cdef driver.Stream stream
     with nogil:
         status = cusolverDnGetStream(<Handle>handle, &stream)
@@ -237,7 +305,7 @@ cpdef size_t spGetStream(size_t handle) except *:
 ###############################################################################
 
 cpdef int spotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *:
+                            int n, size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -247,7 +315,7 @@ cpdef int spotrf_bufferSize(size_t handle, int uplo,
     return lwork
 
 cpdef int dpotrf_bufferSize(size_t handle, int uplo,
-                            int n, size_t A, int lda) except *:
+                            int n, size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -333,7 +401,7 @@ cpdef dgetrs(size_t handle, int trans, int n, int nrhs,
     check_status(status)
 
 cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -343,7 +411,7 @@ cpdef int sgetrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -353,7 +421,7 @@ cpdef int dgetrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -363,12 +431,32 @@ cpdef int sgeqrf_bufferSize(size_t handle, int m, int n,
     return lwork
 
 cpdef int dgeqrf_bufferSize(size_t handle, int m, int n,
-                            size_t A, int lda) except *:
+                            size_t A, int lda) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDgeqrf_bufferSize(
             <Handle>handle, m, n, <double*>A, lda, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int cgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgeqrf_bufferSize(
+            <Handle>handle, m, n, <cuComplex*>A, lda, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zgeqrf_bufferSize(size_t handle, int m, int n,
+                            size_t A, int lda) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgeqrf_bufferSize(
+            <Handle>handle, m, n, <cuDoubleComplex*>A, lda, &lwork)
     check_status(status)
     return lwork
 
@@ -390,8 +478,27 @@ cpdef dgeqrf(size_t handle, int m, int n, size_t A, int lda,
             <double*>tau, <double*>work, lwork, <int*>devInfo)
     check_status(status)
 
+cpdef cgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgeqrf(
+            <Handle>handle, m, n, <cuComplex*>A, lda,
+            <cuComplex*>tau, <cuComplex*>work, lwork, <int*>devInfo)
+    check_status(status)
+
+cpdef zgeqrf(size_t handle, int m, int n, size_t A, int lda,
+             size_t tau, size_t work, int lwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgeqrf(
+            <Handle>handle, m, n, <cuDoubleComplex*>A, lda,
+            <cuDoubleComplex*>tau, <cuDoubleComplex*>work, lwork,
+            <int*>devInfo)
+    check_status(status)
+
 cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *:
+                            size_t A, int lda, size_t tau) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -402,13 +509,35 @@ cpdef int sorgqr_bufferSize(size_t handle, int m, int n, int k,
     return lwork
 
 cpdef int dorgqr_bufferSize(size_t handle, int m, int n, int k,
-                            size_t A, int lda, size_t tau) except *:
+                            size_t A, int lda, size_t tau) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDorgqr_bufferSize(
             <Handle>handle, m, n, k, <double*>A, lda,
             <const double*> tau, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int cungqr_bufferSize(size_t handle, int m, int n, int k,
+                            size_t A, int lda, size_t tau) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCungqr_bufferSize(
+            <Handle>handle, m, n, k, <const cuComplex*>A, lda,
+            <const cuComplex*>tau, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zungqr_bufferSize(size_t handle, int m, int n, int k,
+                            size_t A, int lda, size_t tau) except *:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZungqr_bufferSize(
+            <Handle>handle, m, n, k, <cuDoubleComplex*>A, lda,
+            <const cuDoubleComplex*> tau, &lwork)
     check_status(status)
     return lwork
 
@@ -452,6 +581,31 @@ cpdef dormqr(size_t handle, int side, int trans,
             <double*>work, lwork, <int*>devInfo)
     check_status(status)
 
+cpdef cormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCunmqr(
+            <Handle>handle, <SideMode>side, <Operation>trans, m, n, k,
+            <const cuComplex*>A, lda, <const cuComplex*>tau,
+            <cuComplex*>C, ldc,
+            <cuComplex*>work, lwork, <int*>devInfo)
+    check_status(status)
+
+cpdef zormqr(size_t handle, int side, int trans,
+             int m, int n, int k, size_t A, int lda, size_t tau,
+             size_t C, int ldc, size_t work, int lwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+
+    with nogil:
+        status = cusolverDnZunmqr(
+            <Handle>handle, <SideMode>side, <Operation>trans, m, n, k,
+            <const cuDoubleComplex*>A, lda, <const cuDoubleComplex*>tau,
+            <cuDoubleComplex*>C, ldc,
+            <cuDoubleComplex*>work, lwork, <int*>devInfo)
+    check_status(status)
+
 cpdef ssytrf(size_t handle, int uplo, int n, size_t A, int lda,
              size_t ipiv, size_t work, int lwork, size_t devInfo):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -492,7 +646,7 @@ cpdef dgebrd(size_t handle, int m, int n, size_t A, int lda,
             <double*>Work, lwork, <int*>devInfo)
     check_status(status)
 
-cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -500,11 +654,27 @@ cpdef int sgesvd_bufferSize(size_t handle, int m, int n) except *:
     check_status(status)
     return lwork
 
-cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except *:
+cpdef int dgesvd_bufferSize(size_t handle, int m, int n) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDgesvd_bufferSize(<Handle>handle, m, n, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int cgesvd_bufferSize(size_t handle, int m, int n) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvd_bufferSize(<Handle>handle, m, n, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvd_bufferSize(size_t handle, int m, int n) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvd_bufferSize(<Handle>handle, m, n, &lwork)
     check_status(status)
     return lwork
 
@@ -530,6 +700,29 @@ cpdef dgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <double*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
+cpdef cgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvd(
+            <Handle>handle, jobu, jobvt, m, n, <cuComplex*>A,
+            lda, <float*>S, <cuComplex*>U, ldu, <cuComplex*>VT, ldvt,
+            <cuComplex*>Work, lwork, <float*>rwork, <int*>devInfo)
+    check_status(status)
+
+cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
+             int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
+             size_t Work, int lwork, size_t rwork, size_t devInfo):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvd(
+            <Handle>handle, jobu, jobvt, m, n, <cuDoubleComplex*>A,
+            lda, <double*>S, <cuDoubleComplex*>U, ldu,
+            <cuDoubleComplex*>VT, ldvt,
+            <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
+    check_status(status)
+
 cpdef int ssyevd_bufferSize(size_t handle, int jobz, int uplo, int n,
                             size_t A, int lda, size_t W):
     cdef int lwork, status
@@ -548,6 +741,30 @@ cpdef int dsyevd_bufferSize(size_t handle, int jobz, int uplo, int n,
     with nogil:
         status = cusolverDnDsyevd_bufferSize(
             <Handle>handle, <EigMode>jobz, <FillMode>uplo, n, <const double*>A,
+            lda, <const double*>W, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int cheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuComplex*>A,
+            lda, <const float*>W, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zheevd_bufferSize(size_t handle, int jobz, int uplo, int n,
+                            size_t A, int lda, size_t W):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevd_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuDoubleComplex*>A,
             lda, <const double*>W, &lwork)
     check_status(status)
     return lwork
@@ -572,9 +789,54 @@ cpdef dsyevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
             <double*>W, <double*>work, lwork, <int*>info)
     check_status(status)
 
+cpdef cheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuComplex*>A, lda,
+            <float*>W, <cuComplex*>work, lwork, <int*>info)
+    check_status(status)
+
+cpdef zheevd(size_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevd(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuDoubleComplex*>A, lda,
+            <double*>W, <cuDoubleComplex*>work, lwork, <int*>info)
+    check_status(status)
+
 ###############################################################################
 # sparse LAPACK Functions
 ###############################################################################
+cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpScsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const float*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const float*> b,
+            tol, reorder, <float*> x, <int*> singularity)
+    check_status(status)
+
+cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    with nogil:
+        status = cusolverSpDcsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr> descrA,
+            <const double*> csrValA, <const int*> csrRowPtrA,
+            <const int*> csrColIndA, <const double*> b,
+            tol, reorder, <double*> x, <int*> singularity)
+    check_status(status)
 
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,

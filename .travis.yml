@@ -12,14 +12,19 @@ python:
 install:
   - pip install -U pip wheel
   - pip install cython
-  - python setup.py sdist --cupy-no-cuda
-  - pip install autopep8 hacking==1.0.0
+  - READTHEDOCS=True travis_wait pip install -U -e .[travis]
 
 script:
   - flake8
   - flake8 --config=.flake8.cython
-  - autopep8 -r . --global-config .pep8 --diff | tee check_autopep8
+  - autopep8 -r . --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - READTHEDOCS=True python setup.py develop
+  # To workaround Travis issue (https://github.com/travis-ci/travis-ci/issues/7261),
+  # ignore DeprecationWarning raised in `site.py`.
+  - python -Werror::DeprecationWarning -Wignore::DeprecationWarning:site -m compileall -f -q cupy cupyx examples tests docs
+  - pip install scipy
+  - pushd docs
+  - make html
+  - popd
 
 sudo: false

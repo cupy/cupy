@@ -1,5 +1,10 @@
+import itertools
+
+import numpy
+
 import cupy
 from cupy import core
+from cupy.core._kernel import _get_axis
 
 
 def flip(a, axis):
@@ -20,11 +25,11 @@ def flip(a, axis):
     """
     a_ndim = a.ndim
     if a_ndim < 1:
-        raise ValueError('Input must be >= 1-d')
+        raise core.core._AxisError('Input must be >= 1-d')
 
     axis = int(axis)
     if not -a_ndim <= axis < a_ndim:
-        raise ValueError(
+        raise core.core._AxisError(
             'axis must be >= %d and < %d' % (-a_ndim, a_ndim))
 
     return _flip(a, axis)
@@ -73,12 +78,18 @@ def flipud(a):
 def roll(a, shift, axis=None):
     """Roll array elements along a given axis.
 
+    Elements that roll beyond the last position are re-introduced at the first.
+
     Args:
         a (~cupy.ndarray): Array to be rolled.
-        shift (int): The number of places by which elements are shifted.
-        axis (int or None): The axis along which elements are shifted.
-            If ``axis`` is ``None``, the array is flattened before shifting,
-            and after that it is reshaped to the original shape.
+        shift (int or tuple of int): The number of places by which elements are
+            shifted. If a tuple, then `axis` must be a tuple of the same size,
+            and each of the given axes is shifted by the corresponding number.
+            If an int while `axis` is a tuple of ints, then the same value is
+            used for all given axes.
+        axis (int or tuple of int or None): The axis along which elements are
+            shifted. By default, the array is flattened before shifting, after
+            which the original shape is restored.
 
     Returns:
         ~cupy.ndarray: Output array.
@@ -87,39 +98,32 @@ def roll(a, shift, axis=None):
 
     """
     if axis is None:
-        if a.size == 0:
-            return a
-        size = a.size
-        ra = a.ravel()
-        shift %= size
-        res = cupy.empty((size,), a.dtype)
-        res[:shift] = ra[size - shift:]
-        res[shift:] = ra[:size - shift]
-        return res.reshape(a.shape)
+        return roll(a.ravel(), shift, 0).reshape(a.shape)
     else:
-        axis = int(axis)
-        if axis < 0:
-            axis += a.ndim
-        if not 0 <= axis < a.ndim:
-            raise core.core._AxisError(
-                'axis must be >= %d and < %d' % (-a.ndim, a.ndim))
-        size = a.shape[axis]
-        if size == 0:
-            return a
-        shift %= size
-        prev = (slice(None),) * axis
-        rest = (slice(None),) * (a.ndim - axis - 1)
-        # Roll only the dimensiont at the given axis
-        # ind1 is [:, ..., size-shift:, ..., :]
-        # ind2 is [:, ..., :size-shift, ..., :]
-        ind1 = prev + (slice(size - shift, None, None),) + rest
-        ind2 = prev + (slice(None, size - shift, None),) + rest
-        r_ind1 = prev + (slice(None, shift, None),) + rest
-        r_ind2 = prev + (slice(shift, None, None),) + rest
-        res = cupy.empty_like(a)
-        res[r_ind1] = a[ind1]
-        res[r_ind2] = a[ind2]
-        return res
+        axis = _get_axis(axis, a.ndim)[0]
+
+        broadcasted = numpy.broadcast(shift, axis)
+        if broadcasted.nd > 1:
+            raise ValueError(
+                "'shift' and 'axis' should be scalars or 1D sequences")
+        shifts = {ax: 0 for ax in range(a.ndim)}
+        for sh, ax in broadcasted:
+            shifts[ax] += sh
+
+        rolls = [((slice(None), slice(None)),)] * a.ndim
+        for ax, offset in shifts.items():
+            offset %= a.shape[ax] or 1  # If `a` is empty, nothing matters.
+            if offset:
+                # (original, result), (original, result)
+                rolls[ax] = ((slice(None, -offset), slice(offset, None)),
+                             (slice(-offset, None), slice(None, offset)))
+
+        result = cupy.empty_like(a)
+        for indices in itertools.product(*rolls):
+            arr_index, res_index = zip(*indices)
+            result[res_index] = a[arr_index]
+
+        return result
 
 
 def rot90(a, k=1, axes=(0, 1)):

@@ -22,6 +22,17 @@ def _make(xp, sp, dtype):
     return sp.dia_matrix((data, offsets), shape=(3, 4))
 
 
+def _make_complex(xp, sp, dtype):
+    data = xp.array([[0, 1, 2], [3, 4, 5]], dtype)
+    if dtype in [numpy.complex64, numpy.complex128]:
+        data = data - 1j
+    offsets = xp.array([0, -1], 'i')
+    # 0, 0, 0, 0
+    # 3 - 1j, 1 - 1j, 0, 0
+    # 0, 4 - 1j, 2 - 1j, 0
+    return sp.dia_matrix((data, offsets), shape=(3, 4))
+
+
 def _make_empty(xp, sp, dtype):
     data = xp.array([[]], 'f')
     offsets = xp.array([0], 'i')
@@ -57,6 +68,14 @@ class TestDiaMatrix(unittest.TestCase):
 
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 5)
+
+    def test_conj(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
+
+    def test_conjugate(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_str(self):
@@ -125,6 +144,11 @@ class TestDiaMatrixInit(unittest.TestCase):
         sp.dia_matrix(
             (self.data(xp), offsets), shape=self.shape)
 
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_conj(self, xp, sp):
+        n = _make_complex(xp, sp, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
+
 
 @testing.parameterize(*testing.product({
     'make_method': ['_make', '_make_empty'],
@@ -175,43 +199,43 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocoo().toarray()
+        return m.tocoo()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.tocsc().toarray()
+        return m.tocsc()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsr().toarray()
+        return m.tocsr()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.transpose().toarray()
+        return m.transpose()
 
 
 @testing.parameterize(*testing.product({

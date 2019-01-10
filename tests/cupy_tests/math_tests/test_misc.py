@@ -37,6 +37,46 @@ class TestMisc(unittest.TestCase):
         return getattr(xp, name)(a)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_inf(self, name, xp, dtype):
+        inf = numpy.inf
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -inf, inf]
+                          for y in [0, -1, 1, -inf, inf]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_nan(self, name, xp, dtype):
+        nan = numpy.nan
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -nan, nan]
+                          for y in [0, -1, 1, -nan, nan]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_inf_nan(self, name, xp, dtype):
+        inf = numpy.inf
+        nan = numpy.nan
+        if numpy.dtype(dtype).kind != 'c':
+            a = xp.array([0, -1, 1, -inf, inf, -nan, nan], dtype=dtype)
+        else:
+            a = xp.array([complex(x, y)
+                          for x in [0, -1, 1, -inf, inf, -nan, nan]
+                          for y in [0, -1, 1, -inf, inf, -nan, nan]],
+                         dtype=dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
         a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
@@ -109,6 +149,13 @@ class TestMisc(unittest.TestCase):
         # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_cbrt(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.cbrt(a)
+
     def test_square(self):
         self.check_unary('square')
 
@@ -147,3 +194,28 @@ class TestMisc(unittest.TestCase):
 
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
+
+    @testing.with_requires('numpy>=1.10')
+    def test_nan_to_num(self):
+        self.check_unary('nan_to_num')
+
+    @testing.with_requires('numpy>=1.10')
+    def test_nan_to_num_negative(self):
+        self.check_unary_negative('nan_to_num')
+
+    @testing.with_requires('numpy<1.10')
+    def test_nan_to_num_for_old_numpy(self):
+        self.check_unary('nan_to_num', no_bool=True)
+
+    @testing.with_requires('numpy<1.10')
+    def test_nan_to_num_negative_for_old_numpy(self):
+        self.check_unary_negative('nan_to_num', no_bool=True)
+
+    def test_nan_to_num_inf(self):
+        self.check_unary_inf('nan_to_num')
+
+    def test_nan_to_num_nan(self):
+        self.check_unary_nan('nan_to_num')
+
+    def test_nan_to_num_inf_nan(self):
+        self.check_unary_inf_nan('nan_to_num')

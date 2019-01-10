@@ -2,6 +2,7 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import fusion
 from cupy.logic import content
 
 
@@ -28,6 +29,13 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amin`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amin does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(core.core._amin,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
@@ -55,6 +63,13 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amax`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amax does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(core.core._amax,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 

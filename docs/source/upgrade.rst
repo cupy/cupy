@@ -8,6 +8,29 @@ This is a list of changes introduced in each release that users should be aware 
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
 
+CuPy v5
+=======
+
+``cupyx.scipy`` Namespace
+-------------------------
+
+:mod:`cupyx.scipy` namespace has been introduced to provide CUDA-enabled SciPy functions.
+:mod:`cupy.sparse` module has been renamed to :mod:`cupyx.scipy.sparse`; :mod:`cupy.sparse` will be kept as an alias for backward compatibility.
+
+Dropped Support for CUDA 7.0 / 7.5
+----------------------------------
+
+CuPy v5 no longer supports CUDA 7.0 / 7.5.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
+
+To use these images, you may need to upgrade the NVIDIA driver on your host.
+See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
+
+
 CuPy v4
 =======
 
@@ -74,6 +97,15 @@ As CUDA Stream is fully supported in CuPy v4, ``cupy.cuda.RandomState.set_stream
 Please use :func:`cupy.cuda.Stream.use` instead.
 
 See the discussion in `#306 <https://github.com/cupy/cupy/pull/306>`_ for more details.
+
+``cupyx`` Namespace
+-------------------
+
+``cupyx`` namespace has been introduced to provide features specific to CuPy (i.e., features not provided in NumPy) while avoiding collision in future.
+See :doc:`reference/ext` for the list of such functions.
+
+For this rule, :func:`cupy.scatter_add` has been moved to :func:`cupyx.scatter_add`.
+:func:`cupy.scatter_add` is still available as an alias, but it is encouraged to use :func:`cupyx.scatter_add` instead.
 
 Update of Docker Images
 -----------------------

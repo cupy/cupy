@@ -232,6 +232,7 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
 
 
 typedef enum {} cudnnBatchNormMode_t;
+typedef enum {} cudnnBatchNormOps_t;
 typedef enum {} cudnnNanPropagation_t;
 
 
@@ -264,6 +265,26 @@ cudnnStatus_t cudnnBatchNormalizationForwardInference(...) {
 
 cudnnStatus_t cudnnBatchNormalizationBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnBatchNormalizationForwardTrainingEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnBatchNormalizationBackwardEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationBackwardExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
 }
 
 cudnnStatus_t cudnnSetPooling2dDescriptor_v4(...) {
@@ -381,18 +402,7 @@ typedef struct {
   int reserved[3];
 } cudnnConvolutionBwdDataAlgoPerf_v7_t;
 
-} // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Definitions are for compatibility with cuDNN v4, v5 and v6.
-///////////////////////////////////////////////////////////////////////////////
-
-extern "C" {
-
-#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 // ***_v3 functions are not declared in cuDNN v2, v3 and v4.
 // Following definitions are for compatibility with cuDNN v5.
 
@@ -554,8 +564,16 @@ cudnnStatus_t cudnnOpTensor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
-#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
+} // extern "C"
 
+#endif // #ifdef CUPY_NO_CUDA
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Definitions are for compatibility with cuDNN v5 and v6.
+///////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
 
 #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
 
@@ -616,7 +634,7 @@ cudnnStatus_t cudnnReduceTensor(...) {
 #endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 6000)
 
 
-#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
+#if !defined(CUPY_NO_CUDA)
 // Some functions are renamed in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
 
@@ -625,8 +643,7 @@ cudnnStatus_t cudnnReduceTensor(...) {
 #define cudnnConvolutionBackwardFilter_v3 cudnnConvolutionBackwardFilter
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
 
-#endif // #if !defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
-
+#endif // #if !defined(CUPY_NO_CUDA)
 
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 6000)
 
@@ -652,12 +669,7 @@ cudnnStatus_t cudnnReduceTensor(...) {
 
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
 
-#if (CUDNN_VERSION >= 5000)
-
 #define cudnnSetRNNDescriptor_v5 cudnnSetRNNDescriptor
-
-#endif // #if (CUDNN_VERSION >= 5000)
-
 
 typedef enum {} cudnnMathType_t;
 
@@ -769,6 +781,55 @@ typedef struct {
 #endif // #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 7000)
 
 
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
+
+typedef void* cudnnRNNDataDescriptor_t;
+
+typedef enum {} cudnnRNNDataLayout_t;
+typedef enum {} cudnnRNNPaddingMode_t;
+  
+cudnnStatus_t cudnnSetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNPaddingMode(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetRNNDataDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardInferenceEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNForwardTrainingEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardDataEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnRNNBackwardWeightsEx(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 7200)
+
 #if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 8000)
 // TODO: check function names when cuDNN 8 is released.
 
@@ -789,6 +850,32 @@ cudnnStatus_t cudnnQueryRuntimeError(...) {
 }
 
 #endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
+
+typedef enum {} cudnnBatchNormOps_t;
+
+cudnnStatus_t cudnnBatchNormalizationForwardTrainingEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnBatchNormalizationBackwardEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationBackwardExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
 
 } // extern "C"
 

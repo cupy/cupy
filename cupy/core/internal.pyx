@@ -2,15 +2,7 @@
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
-
-
-ctypedef unsigned short uint16_t
-ctypedef unsigned int uint32_t
-
-
-cdef union float32_int:
-    uint32_t n
-    float f
+from libc.stdint cimport uint32_t
 
 
 cdef extern from "halffloat.h":
@@ -19,7 +11,7 @@ cdef extern from "halffloat.h":
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
+cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
     cdef Py_ssize_t arg
     for arg in args:
         init *= arg
@@ -43,7 +35,7 @@ cpdef inline tuple get_size(object size):
         return tuple(size)
     if isinstance(size, int):
         return size,
-    raise ValueError('size should be None, collections.Sequence, or int')
+    raise ValueError('size should be None, collections.abc.Sequence, or int')
 
 
 @cython.profile(False)
@@ -101,30 +93,41 @@ cdef void get_reduced_dims(
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous) except *:
+        bint is_c_contiguous):
     cdef vector.vector[Py_ssize_t] strides
-    cdef Py_ssize_t st, sh
-    cdef int i
-    cdef Py_ssize_t idx
-    strides.resize(shape.size(), 0)
-    st = itemsize
+    set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
+    return strides
 
-    for i in range(<int>shape.size()):
+
+@cython.profile(False)
+cdef inline Py_ssize_t set_contiguous_strides(
+        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+        Py_ssize_t itemsize, bint is_c_contiguous):
+    cdef Py_ssize_t st, sh
+    cdef Py_ssize_t is_nonzero_size = 1
+    cdef int i, ndim = shape.size()
+    cdef Py_ssize_t idx
+    strides.resize(ndim, 0)
+    st = 1
+
+    for i in range(ndim):
         if is_c_contiguous:
-            idx = shape.size() - 1 - i
+            idx = ndim - 1 - i
         else:
             idx = i
-        strides[idx] = st
+        strides[idx] = st * itemsize
         sh = shape[idx]
         if sh > 1:
             st *= sh
-    return strides
+        elif sh == 0:
+            is_nonzero_size = 0
+    return st * is_nonzero_size
 
 
 @cython.profile(False)
 cpdef inline bint get_c_contiguity(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
-        Py_ssize_t itemsize) except *:
+        Py_ssize_t itemsize):
     cdef vector.vector[Py_ssize_t] r_shape, r_strides
     cpdef Py_ssize_t ndim
     ndim = strides.size()
@@ -157,7 +160,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t _extract_slice_element(x) except *:
+cpdef inline Py_ssize_t _extract_slice_element(x) except? 0:
     try:
         return x.__index__()
     except AttributeError:
@@ -250,13 +253,8 @@ cpdef size_t clp2(size_t x):
     return x + 1
 
 
-ctypedef unsigned short u16
-ctypedef unsigned int u32
-ctypedef unsigned long long _uint64_t
-
-
 cdef union float32_int:
-    u32 n
+    uint32_t n
     float f
 
 

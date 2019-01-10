@@ -22,6 +22,18 @@ def _make(xp, sp, dtype):
     return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_complex(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    if dtype in [numpy.complex64, numpy.complex128]:
+        data = data - 1j
+    indices = xp.array([0, 1, 3, 2], 'i')
+    indptr = xp.array([0, 2, 3, 4], 'i')
+    # 0, 1 - 1j, 0, 0
+    # 0, 0, 0, 2 - 1j
+    # 0, 0, 3 - 1j, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make2(xp, sp, dtype):
     data = xp.array([2, 1, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -203,6 +215,10 @@ class TestCscMatrix(unittest.TestCase):
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 4)
 
+    def test_conj(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
+
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
         m = self.m.get()
@@ -288,7 +304,7 @@ class TestCscMatrixInit(unittest.TestCase):
         self.assertEqual(s.shape, self.shape)
         self.assertEqual(s.dtype, 'd')
         self.assertEqual(s.size, 0)
-        return s.toarray()
+        return s
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_init_with_shape_and_dtype(self, xp, sp):
@@ -296,7 +312,7 @@ class TestCscMatrixInit(unittest.TestCase):
         self.assertEqual(s.shape, self.shape)
         self.assertEqual(s.dtype, self.dtype)
         self.assertEqual(s.size, 0)
-        return s.toarray()
+        return s
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):
@@ -354,6 +370,11 @@ class TestCscMatrixInit(unittest.TestCase):
                 (self.data(cupy), self.indices(cupy), self.indptr(cupy)),
                 shape=self.shape, dtype='i')
 
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_conj(self, xp, sp):
+        n = _make_complex(xp, sp, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
+
 
 @testing.parameterize(*testing.product({
     'make_method': [
@@ -376,13 +397,14 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.asfptype().toarray()
+        return m.asfptype()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         a = m.toarray()
-        self.assertTrue(a.flags.c_contiguous)
+        if sp is sparse:
+            self.assertTrue(a.flags.c_contiguous)
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -404,7 +426,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.toarray(order='#')
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.A
@@ -412,19 +434,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocoo().toarray()
+        return m.tocoo()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         self.assertIsNot(m.data, n.data)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsc().toarray()
+        return m.tocsc()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
@@ -433,12 +455,12 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         self.assertIsNot(m.data, n.data)
         self.assertIsNot(m.indices, n.indices)
         self.assertIsNot(m.indptr, n.indptr)
-        return n.toarray()
+        return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsr().toarray()
+        return m.tocsr()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
@@ -447,24 +469,24 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         self.assertIsNot(m.data, n.data)
         self.assertIsNot(m.indices, n.indices)
         self.assertIsNot(m.indptr, n.indptr)
-        return n.toarray()
+        return n
 
     # dot
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.dot(2.0).toarray()
+        return m.dot(2.0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_numpy_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+        return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
-        return m.dot(x).toarray()
+        return m.dot(x)
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_dot_csr_invalid_shape(self, xp, sp):
@@ -476,19 +498,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_dot_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
-        return m.dot(x).toarray()
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_sparse(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocoo()
-        return m.dot(x).toarray()
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_zero_dim(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
-        return m.dot(x).toarray()
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -529,7 +551,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_zero(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (m + 0).toarray()
+        return m + 0
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_add_scalar(self, xp, sp):
@@ -540,15 +562,15 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_add_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype)
-        return (m + n).toarray()
+        return m + n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_coo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype).tocoo()
-        return (m + n).toarray()
+        return m + n
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_add_dense(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = xp.arange(12).reshape(3, 4)
@@ -558,14 +580,14 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_radd_zero(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (0 + m).toarray()
+        return 0 + m
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_radd_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         1 + m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_radd_dense(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = xp.arange(12).reshape(3, 4)
@@ -575,7 +597,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sub_zero(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (m - 0).toarray()
+        return m - 0
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_sub_scalar(self, xp, sp):
@@ -586,13 +608,13 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_sub_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype)
-        return (m - n).toarray()
+        return m - n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sub_coo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = _make2(xp, sp, self.dtype).tocoo()
-        return (m - n).toarray()
+        return m - n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sub_dense(self, xp, sp):
@@ -604,7 +626,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rsub_zero(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (0 - m).toarray()
+        return 0 - m
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_rsub_scalar(self, xp, sp):
@@ -621,36 +643,36 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (m * 2.0).toarray()
+        return m * 2.0
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_numpy_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (m * numpy.dtype(self.dtype).type(2.0)).toarray()
+        return m * numpy.dtype(self.dtype).type(2.0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
-        return (m * x).toarray()
+        return m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
-        return (m * x).toarray()
+        return m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_sparse(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocoo()
-        return (m * x).toarray()
+        return m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_zero_dim(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
-        return (m * x).toarray()
+        return m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_dense_vector(self, xp, sp):
@@ -679,36 +701,36 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (2.0 * m).toarray()
+        return 2.0 * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_numpy_scalar(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return (numpy.dtype(self.dtype).type(2.0) * m).toarray()
+        return numpy.dtype(self.dtype).type(2.0) * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
-        return (x * m).toarray()
+        return x * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
-        return (x * m).toarray()
+        return x * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_sparse(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocoo()
-        return (x * m).toarray()
+        return x * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rmul_zero_dim(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
-        return (x * m).toarray()
+        return x * m
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
@@ -735,7 +757,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_sort_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.sort_indices()
-        return m.toarray()
+        return m
 
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_sum_tuple_axis(self, xp, sp):
@@ -752,12 +774,12 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
-        return m.toarray()
+        return m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.transpose().toarray()
+        return m.transpose()
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_transpose_axes_int(self, xp, sp):
@@ -768,7 +790,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_eliminate_zeros(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
-        return m.toarray()
+        return m
 
     @testing.numpy_cupy_equal(sp_name='sp')
     @unittest.skipIf(
@@ -838,12 +860,12 @@ class TestCscMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_abs(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return abs(m).toarray()
+        return abs(m)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_neg(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return (-m).toarray()
+        return (-m)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_astype(self, xp, sp):
@@ -852,7 +874,7 @@ class TestCscMatrixData(unittest.TestCase):
             t = 'D'
         else:
             t = 'd'
-        return m.astype(t).toarray()
+        return m.astype(t)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_count_nonzero(self, xp, sp):
@@ -862,7 +884,7 @@ class TestCscMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_power(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.power(2).toarray()
+        return m.power(2)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_power_with_dtype(self, xp, sp):
@@ -871,7 +893,7 @@ class TestCscMatrixData(unittest.TestCase):
             t = 'D'
         else:
             t = 'd'
-        return m.power(2, t).toarray()
+        return m.power(2, t)
 
 
 @testing.parameterize(*testing.product({
@@ -897,7 +919,7 @@ class TestUfunc(unittest.TestCase):
                 func()
             return numpy.array(0)
         else:
-            return func().toarray()
+            return func()
 
 
 class TestIsspmatrixCsc(unittest.TestCase):
@@ -955,11 +977,11 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_int(self, xp, sp):
-        return _make(xp, sp, self.dtype)[:, 1].toarray()
+        return _make(xp, sp, self.dtype)[:, 1]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_negative_int(self, xp, sp):
-        return _make(xp, sp, self.dtype)[:, -1].toarray()
+        return _make(xp, sp, self.dtype)[:, -1]
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
     def test_getitem_int_too_small(self, xp, sp):
@@ -971,27 +993,11 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice(self, xp, sp):
-        return _make(xp, sp, self.dtype)[:, 1:3].toarray()
+        return _make(xp, sp, self.dtype)[:, 1:3]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_negative(self, xp, sp):
-        return _make(xp, sp, self.dtype)[:, -2:-1].toarray()
-
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
-    def test_getitem_slice_start_too_small(self, xp, sp):
-        _make(xp, sp, self.dtype)[:, -5:None]
-
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
-    def test_getitem_slice_start_too_large(self, xp, sp):
-        _make(xp, sp, self.dtype)[:, 5:None]
-
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
-    def test_getitem_slice_stop_too_small(self, xp, sp):
-        _make(xp, sp, self.dtype)[:, None:-5]
-
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
-    def test_getitem_slice_stop_too_large(self, xp, sp):
-        _make(xp, sp, self.dtype)[:, None:5]
+        return _make(xp, sp, self.dtype)[:, -2:-1]
 
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
@@ -1000,3 +1006,26 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_step_2(self):
         with self.assertRaises(ValueError):
             _make(cupy, sparse, self.dtype)[:, 0::2]
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
+@testing.with_requires('scipy>=1.0')
+class TestCsrMatrixGetitem2(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_start_too_small(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, -5:None]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_start_too_large(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, 5:None]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_stop_too_small(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, None:-5]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_slice_stop_too_large(self, xp, sp):
+        return _make(xp, sp, self.dtype)[:, None:5]

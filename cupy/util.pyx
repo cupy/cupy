@@ -1,11 +1,20 @@
 # distutils: language = c++
 
 import atexit
+import collections
 import functools
 import warnings
 
 import cupy
 from cupy.cuda cimport device
+
+
+# TODO(kmaehashi) remove this when `six.moves.collections_abc` is implemented.
+# See: https://github.com/chainer/chainer/issues/5097
+try:
+    collections_abc = collections.abc
+except AttributeError:  # python <3.3
+    collections_abc = collections
 
 
 cdef list _memos = []
@@ -152,3 +161,7 @@ The interface can change in the future. ...
                       'The interface can change in the future.'.format(
                           api_name),
                       FutureWarning)
+
+
+class PerformanceWarning(RuntimeWarning):
+    """Warning that indicates possible performance issues."""

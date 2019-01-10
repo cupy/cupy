@@ -7,6 +7,8 @@ import six
 from cupy.cuda cimport cublas
 from cupy.cuda cimport cusparse
 from cupy.cuda cimport runtime
+from cupy.cuda import runtime
+from cupy import util
 
 try:
     from cupy.cuda import cusolver
@@ -15,7 +17,7 @@ except ImportError:
     cusolver_enabled = False
 
 
-cpdef int get_device_id() except *:
+cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
@@ -26,7 +28,7 @@ cdef dict _cusparse_handles = {}
 cdef dict _compute_capabilities = {}
 
 
-cpdef size_t get_cublas_handle() except *:
+cpdef size_t get_cublas_handle() except? 0:
     dev_id = get_device_id()
     ret = _cublas_handles.get(dev_id, None)
     if ret is not None:
@@ -34,7 +36,7 @@ cpdef size_t get_cublas_handle() except *:
     return Device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except *:
+cpdef size_t get_cusolver_handle() except? 0:
     dev_id = get_device_id()
     ret = _cusolver_handles.get(dev_id, None)
     if ret is not None:
@@ -49,7 +51,7 @@ cpdef get_cusolver_sp_handle():
     return Device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except *:
+cpdef size_t get_cusparse_handle() except? 0:
     dev_id = get_device_id()
     ret = _cusparse_handles.get(dev_id, None)
     if ret is not None:
@@ -63,6 +65,21 @@ cpdef str get_compute_capability():
     if ret is not None:
         return ret
     return Device().compute_capability
+
+
+@util.memoize()
+def _get_attributes(device_id):
+    """Return a dict containing all device attributes."""
+    d = {}
+    for k, v in runtime.__dict__.items():
+        if k.startswith('cudaDevAttr'):
+            try:
+                name = k.replace('cudaDevAttr', '', 1)
+                d[name] = runtime.deviceGetAttribute(v, device_id)
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.errorInvalidValue:
+                    raise
+    return d
 
 
 cdef class Device:
@@ -212,15 +229,42 @@ cdef class Device:
             _cusparse_handles[self.id] = handle
             return handle
 
-    def __richcmp__(Device self, Device other, int op):
+    @property
+    def mem_info(self):
+        """The device memory info.
+
+        Returns:
+            free: The amount of free memory, in bytes.
+            total: The total amount of memory, in bytes.
+        """
+        with self:
+            return runtime.memGetInfo()
+
+    @property
+    def attributes(self):
+        """A dictionary of device attributes.
+
+        Returns:
+            attributes (dict):
+                Dictionary of attribute values with the names as keys.
+                The string `cudaDevAttr` has been trimmed from the names.
+                For example, the attribute corresponding to the enumerated
+                value `cudaDevAttrMaxThreadsPerBlock` will have key
+                `MaxThreadsPerBlock`.
+        """
+        return _get_attributes(self.id)
+
+    def __richcmp__(Device self, object other, int op):
+        if op == 2:
+            return isinstance(other, Device) and self.id == other.id
+        if op == 3:
+            return not (isinstance(other, Device) and self.id == other.id)
+        if not isinstance(other, Device):
+            return NotImplemented
         if op == 0:
             return self.id < other.id
         if op == 1:
             return self.id <= other.id
-        if op == 2:
-            return self.id == other.id
-        if op == 3:
-            return self.id != other.id
         if op == 4:
             return self.id > other.id
         if op == 5:

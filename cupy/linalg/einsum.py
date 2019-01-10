@@ -6,6 +6,7 @@ import warnings
 import six.moves
 
 import cupy
+from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
 
@@ -38,7 +39,8 @@ def _transpose_ex(a, axeses):
         stride = sum(a.strides[axis] for axis in axes)
         strides.append(stride)
     a = a.view()
-    a._set_shape_and_strides(shape, strides)
+    # TODO(niboshi): Confirm update_x_contiguity flags
+    a._set_shape_and_strides(shape, strides, True, True)
     return a
 
 
@@ -500,11 +502,11 @@ def einsum(*operands, **kwargs):
                 axis=sum_axes, dtype=result_dtype)
 
     if returns_view:
-        operands = [arr.view() for arr in operands]
+        operands = [a.view() for a in operands]
     else:
         operands = [
-            arr.astype(result_dtype, copy=False, **casting_kwargs)
-            for arr in operands
+            a.astype(result_dtype, copy=False, **casting_kwargs)
+            for a in operands
         ]
 
     # no more casts
@@ -532,8 +534,9 @@ def einsum(*operands, **kwargs):
         output_set = set(output_subscript)
         path = algo(input_sets, output_set, dimension_dict, memory_limit)
         if any(len(indices) > 2 for indices in path):
-            warnings.warn(RuntimeWarning(
-                "memory efficient einsum is not supported yet"))
+            warnings.warn(
+                'memory efficient einsum is not supported yet',
+                util.PerformanceWarning)
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum

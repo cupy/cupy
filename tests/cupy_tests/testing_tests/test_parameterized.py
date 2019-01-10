@@ -3,6 +3,12 @@ import unittest
 from cupy import testing
 
 
+class TestParameterize(unittest.TestCase):
+    def test_skip(self):
+        # Skipping the test case should not report error.
+        self.skipTest('skip')
+
+
 @testing.parameterize(
     {'actual': {'a': [1, 2], 'b': [3, 4, 5]},
      'expect': [{'a': 1, 'b': 3}, {'a': 1, 'b': 4}, {'a': 1, 'b': 5},

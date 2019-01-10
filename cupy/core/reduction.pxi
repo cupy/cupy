@@ -1,4 +1,5 @@
 from cpython cimport sequence
+from libc.stdint cimport int32_t
 
 import string
 
@@ -15,82 +16,62 @@ cpdef _get_simple_reduction_kernel(
     if identity is None:
         identity = ''
     module_code = string.Template('''
-    ${type_preamble}
-    ${preamble}
-    #define REDUCE(a, b) (${reduce_expr})
-    #define POST_MAP(a) (${post_map_expr})
-    #define _REDUCE(_offset) if (_tid < _offset) { \
-      _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
-      _sdata[_tid] = REDUCE(_a, _b); \
+${type_preamble}
+${preamble}
+#define REDUCE(a, b) (${reduce_expr})
+#define POST_MAP(a) (${post_map_expr})
+#define _REDUCE(_offset) if (_tid < _offset) { \
+  _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
+  _sdata[_tid] = REDUCE(_a, _b); \
+}
+
+typedef ${reduce_type} _type_reduce;
+extern "C" __global__ void ${name}(${params}) {
+  __shared__ char _sdata_raw[${block_size} * sizeof(_type_reduce)];
+  _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
+  unsigned int _tid = threadIdx.x;
+
+  int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
+  ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
+  int _J_stride = ${block_size} >> __popc(_block_stride - 1);
+  ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
+
+  for (ptrdiff_t _i_base = (ptrdiff_t)blockIdx.x * _block_stride;
+       _i_base < _out_ind.size();
+       _i_base += (ptrdiff_t)gridDim.x * _block_stride) {
+    _type_reduce _s = _type_reduce(${identity});
+    ptrdiff_t _i =
+        _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
+    int _J = _J_offset;
+    for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
+         _j += _j_stride, _J += _J_stride) {
+      _in_ind.set(_j);
+      ${input_expr}
+      _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
+      _s = REDUCE(_s, _a);
     }
-
-    typedef ${reduce_type} _type_reduce;
-    extern "C" __global__ void ${name}(${params}) {
-      extern __shared__ _type_reduce _sdata_raw[];
-      _type_reduce *_sdata = _sdata_raw;
-      unsigned int _tid = threadIdx.x;
-
-      int _J_offset = _tid / _block_stride;
-      int _j_offset = _J_offset * _out_ind.size();
-      int _J_stride = ${block_size} / _block_stride;
-      long long _j_stride = (long long)_J_stride * _out_ind.size();
-
-      for (int _i_base = blockIdx.x * _block_stride;
-           _i_base < _out_ind.size();
-           _i_base += gridDim.x * _block_stride) {
-        _type_reduce _s = _type_reduce(${identity});
-        int _i = _i_base + _tid % _block_stride;
-        int _J = _J_offset;
-        for (long long _j = _i + _j_offset; _j < _in_ind.size();
-             _j += _j_stride, _J += _J_stride) {
-          _in_ind.set(_j);
-          ${input_expr}
-          _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
-          _s = REDUCE(_s, _a);
+    if (_block_stride < ${block_size}) {
+      _sdata[_tid] = _s;
+      __syncthreads();
+      for (unsigned int _block = ${block_size} / 2;
+           _block >= _block_stride; _block >>= 1) {
+        if (_tid < _block) {
+          _REDUCE(_block);
         }
-        if (_block_stride < ${block_size}) {
-          _sdata[_tid] = _s;
-          __syncthreads();
-          if (_block_stride <= 256) {
-            _REDUCE(256);
-            __syncthreads();
-            if (_block_stride <= 128) {
-              _REDUCE(128);
-              __syncthreads();
-              if (_block_stride <= 64) {
-                _REDUCE(64);
-                __syncthreads();
-                if (_block_stride <= 32) {
-                  _REDUCE(32);
-                  if (_block_stride <= 16) {
-                    _REDUCE(16);
-                    if (_block_stride <= 8) {
-                      _REDUCE(8);
-                      if (_block_stride <= 4) {
-                        _REDUCE(4);
-                        if (_block_stride <= 2) {
-                          _REDUCE(2);
-                          if (_block_stride <= 1) {
-                            _REDUCE(1);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          _s = _sdata[_tid];
-          __syncthreads();
-        }
-        if (_J_offset == 0 && _i < _out_ind.size()) {
-          _out_ind.set(_i);
-          ${output_expr}
-          POST_MAP(_s);
-        }
+        __syncthreads();
       }
-    }''').substitute(
+      if (_tid < _block_stride) {
+        _s = _sdata[_tid];
+      }
+      __syncthreads();
+    }
+    if (_tid < _block_stride && _i < _out_ind.size()) {
+      _out_ind.set(static_cast<ptrdiff_t>(_i));
+      ${output_expr}
+      POST_MAP(_s);
+    }
+  }
+}''').substitute(
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
@@ -118,48 +99,53 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
     for dim in axis:
         if dim < -ndim or dim >= ndim:
-            raise ValueError('Axis overrun')
-    axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in range(ndim) if dim not in axis])
-    return axis, raxis
+            from cupy.core.core import _AxisError
+            raise _AxisError('Axis overrun')
+    reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
+    out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
+    return reduce_axis, out_axis
 
 
 cpdef tuple _get_out_shape(
-        tuple shape, tuple axis, tuple raxis, bint keepdims):
+        tuple shape, tuple reduce_axis, tuple out_axis, bint keepdims):
     if keepdims:
         out_shape = list(shape)
-        for i in axis:
+        for i in reduce_axis:
             out_shape[i] = 1
         return tuple(out_shape)
-    return tuple([shape[i] for i in raxis])
+    return tuple([shape[i] for i in out_axis])
 
 
-cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+cpdef tuple _get_permuted_args(
+        list args, tuple axis_permutes, tuple shape, tuple params):
     cdef ParameterInfo p
-    if trans == tuple(range(len(shape))):
+    if axis_permutes == tuple(range(len(shape))):
         return args, shape
     if params is not None:
         for p in params:
             if p.raw:
                 raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(trans) if isinstance(a, ndarray) else a
+    args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
             for a in args]
-    shape = tuple([shape[i] for i in trans])
+    shape = tuple([shape[i] for i in axis_permutes])
+
     return args, shape
 
 
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
-        object out_clp2_size, tuple params, bint reduce_dims):
+        Py_ssize_t block_stride, tuple params, bint reduce_dims):
     if reduce_dims:
         in_shape = _reduce_dims(in_args, params, in_indexer.shape)
         out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    args = in_args + out_args + [in_indexer, out_indexer,
-                                 numpy.int32(out_clp2_size)]
-    return args
+    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
+    (<int32_t *>s.ptr)[0] = block_stride
+    s.kind = 'i'
+    s.size = 4
+    return in_args + out_args + [in_indexer, out_indexer, s]
 
 
 @util.memoize(for_each_device=True)
@@ -205,7 +191,9 @@ class simple_reduction_function(object):
     def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
         cdef list in_args, out_args
-        cdef tuple in_sahpe, laxis, raxis
+        cdef tuple in_sahpe, reduce_axis, out_axis
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
+        cdef Py_ssize_t out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -221,9 +209,9 @@ class simple_reduction_function(object):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        laxis, raxis = _get_axis(axis, a._shape.size())
+        reduce_axis, out_axis = _get_axis(axis, a._shape.size())
         del axis  # to avoid bug
-        out_shape = _get_out_shape(a_shape, laxis, raxis, keepdims)
+        out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
         ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
         if (<ndarray>out_args[0]).size == 0:
@@ -232,14 +220,15 @@ class simple_reduction_function(object):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args, in_shape = _get_trans_args(
-            in_args, laxis + raxis, a_shape, None)
+        in_args, in_shape = _get_permuted_args(
+            in_args, reduce_axis + out_axis, a_shape, None)
 
         block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // clp2_count)
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -252,33 +241,36 @@ class simple_reduction_function(object):
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
-        # TODO(okuta) set actual size
-        shared_mem = 32 * block_size
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
-            inout_args, shared_mem, block_size)
-
+            out_block_num * block_size, inout_args, 0, block_size)
         return ret
 
 
 @util.memoize(for_each_device=True)
 def _get_reduction_kernel(
-        params, args_info, types,
+        nin, nout, params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
     kernel_params = _get_kernel_params(params, args_info)
-    arrays = [p for p, a in zip(params, args_info)
-              if not p.raw and a[0] is ndarray]
+    params = params[:nin + nout]
+    args_info = args_info[:nin + nout]
+    in_arrays = [p for p, a in zip(params[:nin], args_info[:nin])
+                 if not p.raw and a[0] is ndarray]
+    out_arrays = [p for p, a in zip(params[nin:], args_info[nin:])
+                  if not p.raw and a[0] is ndarray]
     type_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
-        ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-         for p in arrays if p.is_const])
+        [(('const {0} {1}' if p.is_const else '{0}& {1}') +
+          ' = _raw_{1}[_in_ind.get()];').format(p.ctype, p.name)
+         for p in in_arrays])
     output_expr = '\n'.join(
-        ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
-         for p in arrays if not p.is_const])
+        ['{0} &{1} = _raw_{1}[_out_ind.get()];'.format(p.ctype, p.name)
+         for p in out_arrays if not p.is_const])
 
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, kernel_params, identity,
@@ -367,6 +359,8 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
+        cdef Py_ssize_t block_size, reduce_block_size, block_stride
+        cdef Py_ssize_t out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -406,24 +400,27 @@ class ReductionKernel(object):
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
-        axis, raxis = _get_axis(axis, len(broad_shape))
-        out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
+        reduce_axis, out_axis = _get_axis(axis, len(broad_shape))
+        out_shape = _get_out_shape(
+            broad_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
         ret = out_args[0]
         if 0 in out_shape:
             return ret
 
-        in_args = [x if isinstance(x, ndarray) else t(x)
+        in_args = [x if isinstance(x, ndarray) else
+                   _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, broad_shape, self.in_params)
+        in_args, in_shape = _get_permuted_args(
+            in_args, reduce_axis + out_axis, broad_shape, self.in_params)
 
         block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        clp2_count = max(1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // clp2_count)
+        reduce_block_size = max(
+            1, internal.clp2(in_indexer.size // out_indexer.size))
+        block_stride = max(1, block_size // reduce_block_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -431,17 +428,16 @@ class ReductionKernel(object):
         args_info = _get_args_info(inout_args)
 
         kern = _get_reduction_kernel(
-            self.params, args_info, types,
+            self.nin, self.nout, self.params, args_info, types,
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
 
-        # TODO(okuta) set actual size
-        shared_mem = 32 * block_size
+        out_block_num = (
+            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
-            (out_indexer.size + block_stride - 1) // block_stride * block_size,
-            inout_args, shared_mem, block_size, stream)
+            out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
 
