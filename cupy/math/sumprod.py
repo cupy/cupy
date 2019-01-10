@@ -208,67 +208,44 @@ def cumprod(a, axis=None, dtype=None, out=None):
     """
     return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
 
+
 def diff(a, n=1, axis=-1):
-  """Calculate the n-th discrete difference along the given axis.
-  Args:
-      a (cupy.ndarray): Input array.
-      n (int): The number of times values are differenced. If zero, the input
-                  is returned as-is.
-      axis (int): The axis along which the difference is taken, default is the
-                    last axis.
-  Returns:
-      cupy.ndarray: The result array.
-  .. seealso:: :func:`numpy.diff`
-  """
-  
-  if n == 0:
-      return a
-  if n < 0:
-      raise ValueError(
-          "order must be non-negative but got " + repr(n))
+    """Calculate the n-th discrete difference along the given axis.
 
-  a = cupy.asanyarray(a)
-  nd = a.ndim
-  
-  slice1 = [slice(None)] * nd
-  slice2 = [slice(None)] * nd
-  slice1[axis] = slice(1, None)
-  slice2[axis] = slice(None, -1)
-  slice1 = tuple(slice1)
-  slice2 = tuple(slice2)
+    Args:
+        a (cupy.ndarray): Input array.
+        n (int): The number of times values are differenced. If zero, the input
+            is returned as-is.
+        axis (int): The axis along which the difference is taken, default is
+            the last axis.
 
-  op = not_equal if a.dtype == numpy.bool_ else cupy.subtract
-  for _ in range(n):
-      a = op(a[slice1], a[slice2])
+    Returns:
+        cupy.ndarray: The result array.
 
-  return a
+    .. seealso:: :func:`numpy.diff`
+    """
 
-def unwrap(p, discont=numpy.pi, axis=-1):
-  """Unwrap by changing deltas between values to 2*pi complement.
-  Args:
-      p (cupy.ndarray): Input array.
-      discont (float): Maximum discontinuity between values, default is ``pi``.
-      axis (int): Axis along which unwrap will operate, default is the last axis.
-  Returns:
-      cupy.ndarray: The result array.
-  .. seealso:: :func:`numpy.unwrap`
-  """
-  
-  p = cupy.asarray(p)
-  nd = p.ndim
-  dd = diff(p, axis=axis)
-  slice1 = [slice(None, None)]*nd     # full slices
-  slice1[axis] = slice(1, None)
-  slice1 = tuple(slice1)
-  ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
-  cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
-  ph_correct = ddmod - dd
-  cupy.copyto(ph_correct, 0, where=cupy.abs(dd) < discont)
-  up = cupy.array(p, copy=True, dtype='d')
-  up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
-  return up
+    if n == 0:
+        return a
+    if n < 0:
+        raise ValueError(
+            "order must be non-negative but got " + repr(n))
 
-# TODO(okuta): Implement diff
+    a = cupy.asanyarray(a)
+    nd = a.ndim
+
+    slice1 = [slice(None)] * nd
+    slice2 = [slice(None)] * nd
+    slice1[axis] = slice(1, None)
+    slice2[axis] = slice(None, -1)
+    slice1 = tuple(slice1)
+    slice2 = tuple(slice2)
+
+    op = not_equal if a.dtype == numpy.bool_ else cupy.subtract
+    for _ in range(n):
+        a = op(a[slice1], a[slice2])
+
+    return a
 
 
 # TODO(okuta): Implement ediff1d
