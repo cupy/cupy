@@ -54,3 +54,37 @@ class TestTrigonometric(unittest.TestCase):
 
     def test_rad2deg(self):
         self.check_unary('rad2deg')
+
+
+@testing.gpu
+class TestUnwrap(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_1dim(self, xp, dtype):
+        a = testing.shaped_random((5,), xp, dtype)
+        return xp.unwrap(a)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_1dim_with_discont(self, xp, dtype):
+        a = testing.shaped_random((5,), xp, dtype)
+        return xp.unwrap(a, discont=1.0)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_2dim_without_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.unwrap(a)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.unwrap(a, axis=1)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_2dim_with_discont(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.unwrap(a, discont=0.37, axis=1)
