@@ -2436,7 +2436,7 @@ _round_ufunc = create_ufunc(
 cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
-    cdef Py_ssize_t nvidem
+    cdef Py_ssize_t ndim
     cdef ndarray a, src
     cdef size_t nbytes
     if subok:
