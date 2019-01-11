@@ -1,7 +1,7 @@
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
-    get_cufft_plan_nd)
+                          get_cufft_plan_nd)
 
 
 def get_fft_plan(a, axes=None, value_type='C2C'):

@@ -426,7 +426,7 @@ def _default_plan_type(a, s=None, axes=None):
 
 
 def _default_fft_func(a, s=None, axes=None, plan=None):
-    if isinstance(plan, cufft.PlanNd): # a shortcut for using _fftn
+    if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
         return _fftn
 
     plan_type = _default_plan_type(a, s, axes)
