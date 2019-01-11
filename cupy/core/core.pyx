@@ -121,9 +121,9 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef tuple s = internal.get_size(shape)
-        cdef int order_char
-        order_char = b'C' if order is None else _normalize_order(order)
+        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
+        cdef int order_char = b'C' if order is None else _normalize_order(order)
+        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
@@ -142,7 +142,7 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(shape, strides, True, True)
+            self._set_shape_and_strides(s, strides, True, True)
         elif order_char == b'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)
         elif order_char == b'F':
@@ -1972,7 +1972,7 @@ cdef class ndarray:
         self._update_f_contiguity()
 
     cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t] & strides,
+                                 vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -3897,47 +3897,42 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
-cpdef ndarray _get_all_addresses(size_t start_adr,
-                                 vector.vector[size_t] & shape,
-                                 vector.vector[size_t] & strides):
-    idx = numpy.array([start_adr])
-    for sh_, st_ in zip(shape, strides):
-        idx = (idx[:, None] + (numpy.arange(sh_) * st_)[None, :]).ravel()
-    idx = idx.astype(numpy.uintp)
-
-    ret = ndarray((idx.size,), dtype=numpy.uintp)
-    ret.set(idx)
-    return ret
+cdef _mat_ptrs_kernel = ElementwiseKernel(
+    'T base, T stride', 'T out',
+    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
+    reduce_dims=False)
 
 
 cdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
-           shape: () -> one ptr
-           shape: (A) -> one ptr to mat o size (A)
-           shape: (A, B) -> one ptr to mat o size (A, B)
            shape: (A, B, C) -> A ptrs to mat o size (B, C)
            shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
                   size (B, C)
     Returns:
         GPU array of pointers to matrices.
     """
-    cdef Py_ssize_t stride, ptr, pointer, i
-    cdef ndarray ret
-    if a.ndim <= 2:
-        ret = ndarray((1,), dtype=numpy.uintp)
-        ret.fill(a.data.ptr)
-        return ret
-    else:
-        return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    cdef Py_ssize_t sh_, st_
+    cdef ndarray idx
+    idx = _mat_ptrs_kernel(
+        a.data.ptr, a._strides[0],
+        cupy.ndarray((a._shape[0],), dtype=numpy.uintp))
+
+    for i in range(1, ndim - 2):
+        idx = _mat_ptrs_kernel(
+            idx[:, None], a._strides[i],
+            cupy.ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+        idx = idx.ravel()
+    return idx
 
 
-cpdef int _get_stride_for_strided_batched_gemm(ndarray a):
-    if a.ndim > 2:
-        return a.strides[-3] // a.itemsize
-    else:
-        return a.shape[-2] * a.shape[-1]
+cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except?0:
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
 
 
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
@@ -3961,139 +3956,129 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     .. seealso:: :func:`numpy.matmul`
 
     """
-    # ToDo: remove python object .shape
-    # ToDo: remove python object .strides
-    # ToDo: remove python object out_shape
-    # ToDo: remove python object .reshape
+
     if out is not None:
         raise NotImplementedError('The out array as input is currently not '
                                   'supported')
 
-    cdef Py_ssize_t i, n, m, ka, kb
-    cdef Py_ssize_t batchCount
-    cdef ndarray ap, bp, outp
+    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
+    cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
+    cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
+    cdef ndarray ap, bp, outp, out_view
+    cdef bint use_broadcast
 
-    orig_a_shape = a.shape
-    orig_b_shape = b.shape
-    if len(orig_a_shape) == 0 or len(orig_b_shape) == 0:
+    orig_a_ndim = a._shape.size()
+    orig_b_ndim = b._shape.size()
+    if orig_a_ndim == 0 or orig_b_ndim == 0:
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
+
+    ndim = max(orig_a_ndim, orig_b_ndim)
+    if ndim <= 2:
+        return dot(a, b, out)
+
+    orig_a = a
+    orig_b = b
+    a_part_outshape = b_part_outshape = 0
+    if orig_a_ndim == 1:
+        a = a._reshape((1, a.size))
+    else:
+        a = a.view()
+        a_part_outshape = a._shape[orig_a_ndim - 2]
+    if orig_b_ndim == 1:
+        b = b._reshape((b.size, 1))
+        ldout = 1
+    else:
+        b = b.view()
+        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
+
+    # expand dims
+    a_ndim = a._shape.size()
+    b_ndim = b._shape.size()
+    if a_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        a._set_shape_and_strides(
+            (1,) * (ndim - a_ndim) + a.shape,
+            (0,) * (ndim - a_ndim) + a.strides,
+            True, True)
+    if b_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        b._set_shape_and_strides(
+            (1,) * (ndim - b_ndim) + b.shape,
+            (0,) * (ndim - b_ndim) + b.strides,
+            True, True)
 
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
     dtype = numpy.find_common_type((ret_dtype, 'f'), ())
 
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
-    if a.ndim == 1:
-        a = a.reshape(1, len(a))
-        a_part_outshape = ()
-    else:
-        a_part_outshape = (a.shape[-2],)
-    if b.ndim == 1:
-        b = b.reshape(len(b), 1)
-        b_part_outshape = ()
-        ldout = 1
-    else:
-        b_part_outshape = b.shape[-1:]
-        ldout = b.shape[-1]
-
-    # expand dims
-    if a.ndim < b.ndim:
-        view = a.view()
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        view._set_shape_and_strides(
-            (1,) * (b.ndim - a.ndim) + a.shape,
-            (0,) * (b.ndim - a.ndim) + a.strides,
-            True, True)
-        a = view
-    elif a.ndim > b.ndim:
-        view = b.view()
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        view._set_shape_and_strides(
-            (1,) * (a.ndim - b.ndim) + b.shape,
-            (0,) * (a.ndim - b.ndim) + b.strides,
-            True, True)
-        b = view
-
-    broadcast_pre_shape = numpy.maximum(
-        numpy.array(a.shape[:-2], numpy.uint64) - 1,
-        numpy.array(b.shape[:-2], numpy.uint64) - 1
-    ) + 1
-
-    out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
-
-    a = ascontiguousarray(a, dtype=dtype)
-    b = ascontiguousarray(b, dtype=dtype)
+    a = ascontiguousarray(a, dtype)
+    b = ascontiguousarray(b, dtype)
 
     # broadcast
-    a_strides = list(a.strides)
-    a_shape = list(a.shape)
-    b_strides = list(b.strides)
-    b_shape = list(b.shape)
+    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
+    out_shape = []
     use_broadcast = False
-    for i in range(len(a_strides) - 2):
-        if a_shape[i] == 1 and broadcast_pre_shape[i] > 1:
-            a_strides[i] = 0
-            a_shape[i] = broadcast_pre_shape[i]
-            use_broadcast = True
-    for i in range(len(b_strides) - 2):
-        if b_shape[i] == 1 and broadcast_pre_shape[i] > 1:
-            b_strides[i] = 0
-            b_shape[i] = broadcast_pre_shape[i]
-            use_broadcast = True
-
-    view = a.view()
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    view._set_shape_and_strides(a_shape, a_strides, True, True)
-    a = view
-    view = b.view()
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    view._set_shape_and_strides(b_shape, b_strides, True, True)
-    b = view
-
-    out = ndarray(out_shape, dtype=dtype)
-    out.data.memset_async(0, out.nbytes)
-
-    out_view = out.view()
-    out_view_shape = out.shape
-    out_view_strides = out.strides
-    if a_part_outshape == ():
-        out_view_shape += (1,)
-        out_view_strides += (0,)
-    if b_part_outshape == ():
-        out_view_shape += (1,)
-        out_view_strides += (0,)
-
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    out_view._set_shape_and_strides(
-        out_view_shape, out_view_strides, True, True)
-
-    # (A B)^T = B^T A^T
-    a, b = b, a
-
-    lda = a.shape[-1]
-    ldb = b.shape[-1]
-
-    *la, ka, n = a.shape
-    *lb, m, kb = b.shape
-
-    if ka != kb:
-        raise ValueError(
-            'shapes ({}) and ({}) not aligned'.format(
-                ','.join([str(_) for _ in orig_a_shape]),
-                ','.join([str(_) for _ in orig_b_shape])))
-    for la_, lb_ in zip(la, lb):
-        if not (la_ == lb_ or la_ == 1 or lb_ == 1):
+    for i in range(0, ndim - 2):
+        a_sh = a._shape[i]
+        b_sh = b._shape[i]
+        if a_sh != b_sh and a_sh != 1 and b_sh != 1:
             raise ValueError(
                 'operands could not be broadcast together with '
                 'remapped shapes')
 
+        if a_sh == 0 or b_sh == 0:
+            c_sh = 0
+        else:
+            c_sh = max(a_sh, b_sh)
+        batchCount *= c_sh
+        out_shape.append(c_sh)
+        if a_sh == 1 and c_sh > 1:
+            a._strides[i] = 0
+            a._shape[i] = c_sh
+            a._c_contiguous = a._f_contiguous = False
+            use_broadcast = True
+
+        if b_sh == 1 and c_sh > 1:
+            b._strides[i] = 0
+            b._shape[i] = c_sh
+            b._c_contiguous = b._f_contiguous = False
+            use_broadcast = True
+
+    if orig_a_ndim != 1:
+        out_shape.append(a_part_outshape)
+    if orig_b_ndim != 1:
+        out_shape.append(b_part_outshape)
+
+    # (A B)^T = B^T A^T
+    a, b = b, a
+
+    ka = a._shape[ndim - 2]
+    lda = n = a._shape[ndim - 1]
+    m = b._shape[ndim - 2]
+    ldb = kb = b._shape[ndim - 1]
+
+    if ka != kb:
+        raise ValueError(
+            'shapes ({}) and ({}) not aligned'.format(
+                ','.join([str(_) for _ in orig_a.shape]),
+                ','.join([str(_) for _ in orig_b.shape])))
+
     if a.size == 0 or b.size == 0:
         return cupy.zeros(out_shape, ret_dtype)
 
-    batchCount = 1  # batchCount = numpy.prod(la)
-    for i in la:
-        batchCount *= i
+    out = ndarray(out_shape, dtype=dtype)
+
+    if orig_a_ndim == 1 or orig_b_ndim == 1:
+        out_view = out.view()
+        if orig_b_ndim == 1:
+            out_view._shape.push_back(1)
+            out_view._strides.push_back(0)
+        if orig_a_ndim == 1:
+            out_view._shape.insert(out_view._shape.end() - 1, 1)
+            out_view._strides.insert(out_view._strides.end() - 1, 0)
+        assert out_view._c_contiguous
+        out_view._update_f_contiguity()
+    else:
+        out_view = out
 
     global _cuda_runtime_version
     if _cuda_runtime_version < 0:
