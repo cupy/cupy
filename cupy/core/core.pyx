@@ -122,7 +122,8 @@ cdef class ndarray:
                  order='C'):
         cdef Py_ssize_t x, itemsize
         cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
-        cdef int order_char = b'C' if order is None else _normalize_order(order)
+        cdef int order_char = \
+            b'C' if order is None else _normalize_order(order)
         del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
