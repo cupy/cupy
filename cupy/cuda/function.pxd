@@ -17,10 +17,10 @@ cdef class Module:
     cdef:
         public size_t ptr
 
-    cpdef load_file(self, str filename)
+    cpdef load_file(self, filename)
     cpdef load(self, bytes cubin)
-    cpdef get_global_var(self, str name)
-    cpdef get_function(self, str name)
+    cpdef get_global_var(self, name)
+    cpdef get_function(self, name)
 
 
 cdef class LinkState:

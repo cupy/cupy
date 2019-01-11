@@ -562,7 +562,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, verbose=True,
+        extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
 
 

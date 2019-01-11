@@ -143,7 +143,7 @@ cpdef list _get_inout_args(
         out_indexer.shape = out_shape
     cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
     (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = 'i'
+    s.kind = b'i'
     s.size = 4
     return in_args + out_args + [in_indexer, out_indexer, s]
 

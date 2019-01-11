@@ -69,15 +69,15 @@ except AttributeError:
 @cython.profile(False)
 cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
-    order_char = 'C' if len(order) == 0 else ord(order[0])
-    if allow_k and (order_char == 'K' or order_char == 'k'):
-        order_char = 'K'
-    elif order_char == 'A' or order_char == 'a':
-        order_char = 'A'
-    elif order_char == 'C' or order_char == 'c':
-        order_char = 'C'
-    elif order_char == 'F' or order_char == 'f':
-        order_char = 'F'
+    order_char = b'C' if len(order) == 0 else ord(order[0])
+    if allow_k and (order_char == b'K' or order_char == b'k'):
+        order_char = b'K'
+    elif order_char == b'A' or order_char == b'a':
+        order_char = b'A'
+    elif order_char == b'C' or order_char == b'c':
+        order_char = b'C'
+    elif order_char == b'F' or order_char == b'f':
+        order_char = b'F'
     else:
         raise TypeError('order not understood')
     return order_char
@@ -122,13 +122,14 @@ cdef class ndarray:
                  order='C'):
         cdef Py_ssize_t x, itemsize
         cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
-        cdef int order_char = 'C' if order is None else _normalize_order(order)
+        cdef int order_char = \
+            b'C' if order is None else _normalize_order(order)
         del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
-        if order_char not in ('C', 'F'):
-            raise TypeError('order not understood. order={}'.format(order))
+        if order_char != b'C' and order_char != b'F':
+            raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         for x in s:
@@ -143,9 +144,9 @@ cdef class ndarray:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
             self._set_shape_and_strides(s, strides, True, True)
-        elif order_char == 'C':
+        elif order_char == b'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)
-        elif order_char == 'F':
+        elif order_char == b'F':
             self._set_shape_and_contiguous_strides(s, itemsize, False)
         else:
             assert False
@@ -388,16 +389,16 @@ cdef class ndarray:
         dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
-                    order_char == 'K' or
-                    order_char == 'A' and (self._c_contiguous or
-                                           self._f_contiguous) or
-                    order_char == 'C' and self._c_contiguous or
-                    order_char == 'F' and self._f_contiguous):
+                    order_char == b'K' or
+                    order_char == b'A' and (self._c_contiguous or
+                                            self._f_contiguous) or
+                    order_char == b'C' and self._c_contiguous or
+                    order_char == b'F' and self._f_contiguous):
                 return self
 
         order_char = _update_order_char(self, order_char)
 
-        if order_char == 'K':
+        if order_char == b'K':
             strides = _get_strides_for_order_K(self, dtype)
             newarray = ndarray(self.shape, dtype=dtype)
             # TODO(niboshi): Confirm update_x_contiguity flags
@@ -569,12 +570,12 @@ cdef class ndarray:
         if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
             shape = shape[0]
 
-        if order_char == 'A':
+        if order_char == b'A':
             if self._f_contiguous and not self._c_contiguous:
-                order_char = 'F'
+                order_char = b'F'
             else:
-                order_char = 'C'
-        if order_char == 'C':
+                order_char = b'C'
+        if order_char == b'C':
             return self._reshape(shape)
         else:
             # TODO(grlee77): Support order within _reshape instead
@@ -704,16 +705,16 @@ cdef class ndarray:
         shape.push_back(self.size)
 
         order_char = _normalize_order(order, True)
-        if order_char == 'A':
+        if order_char == b'A':
             if self._f_contiguous and not self._c_contiguous:
-                order_char = 'F'
+                order_char = b'F'
             else:
-                order_char = 'C'
-        if order_char == 'C':
+                order_char = b'C'
+        if order_char == b'C':
             return self._reshape(shape)
-        elif order_char == 'F':
+        elif order_char == b'F':
             return self.transpose()._reshape(shape)
-        elif order_char == 'K':
+        elif order_char == b'K':
             raise NotImplementedError(
                 "ravel with order='K' not yet implemented.")
 
@@ -2074,16 +2075,16 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
 
 cpdef int _update_order_char(ndarray x, int order_char):
     # update order_char based on array contiguity
-    if order_char == 'A':
+    if order_char == b'A':
         if x._f_contiguous:
-            order_char = 'F'
+            order_char = b'F'
         else:
-            order_char = 'C'
-    elif order_char == 'K':
+            order_char = b'C'
+    elif order_char == b'K':
         if x._f_contiguous:
-            order_char = 'F'
+            order_char = b'F'
         elif x._c_contiguous:
-            order_char = 'C'
+            order_char = b'C'
     return order_char
 
 
@@ -2432,7 +2433,7 @@ _round_ufunc = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
+cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t nvidem
@@ -4197,7 +4198,6 @@ cpdef ndarray tensordot_core(
     cdef vector.vector[Py_ssize_t] shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
-    cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
