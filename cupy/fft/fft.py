@@ -114,9 +114,11 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x):
     return a
 
 
-def _fft(a, s, axes, norm, direction, value_type='C2C',
-         overwrite_x=False, **kwargs):
-    kwargs=None # guard
+def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
+         plan=None):
+    if plan is not None:
+        raise NotImplementedError("Use of a pre-existing plan is not currently"
+                                  " supported for 1D transforms.")
 
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
@@ -424,7 +426,7 @@ def _default_plan_type(a, s=None, axes=None):
 
 
 def _default_fft_func(a, s=None, axes=None, plan=None):
-    if plan is not None: # a shortcut for using _fftn
+    if isinstance(plan, cufft.PlanNd): # a shortcut for using _fftn
         return _fftn
 
     plan_type = _default_plan_type(a, s, axes)
