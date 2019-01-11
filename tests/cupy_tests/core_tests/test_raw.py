@@ -78,6 +78,14 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+_test_source4 = r'''
+extern "C" __global__
+void test_sub(const float* x1, const float* x2, float* y) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    y[tid] = x1[tid] - x2[tid];
+}
+'''
+
 
 class TestRaw(unittest.TestCase):
 
@@ -158,3 +166,12 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex)
+
+    def test_backends(self):
+        for backend in ("nvrtc", "nvcc"):
+            kern = cupy.RawKernel(_test_source4, 'test_sum', backend=backend)
+            x1 = cupy.arange(100, dtype=cupy.float32).reshape(10, 10)
+            x2 = cupy.ones((10, 10), dtype=cupy.float32)
+            y = cupy.zeros((10, 10), dtype=cupy.float32)
+            kern((10,), (10,), (x1, x2, y))
+            assert (y == x1 - x2).all()

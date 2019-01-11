@@ -5,6 +5,7 @@ cdef class RawKernel:
         readonly str name
         readonly tuple options
         object _kernel
+        readonly str backend
 
 
 cdef class RawModule:

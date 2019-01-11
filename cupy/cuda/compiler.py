@@ -11,6 +11,7 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
+from cupy.cuda.nvcc import compile_using_nvcc
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
@@ -117,7 +118,7 @@ _empty_file_preprocess_cache = {}
 
 
 def compile_with_cache(source, options=(), arch=None, cache_dir=None,
-                       extra_source=None):
+                       extra_source=None, backend="nvrtc"):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -125,9 +126,14 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     if arch is None:
         arch = _get_arch()
 
-    options += ('-ftz=true',)
-    if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
-        options += ('--device-debug', '--generate-line-info')
+    if backend == "nvrtc":
+        options += ('-ftz=true',)
+        if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
+            options += ('--device-debug', '--generate-line-info')
+    elif backend == "nvcc":
+        options += ('--generate-line-info',)
+    else:
+        raise ValueError("Invalid backend %s" % backend)
 
     env = (arch, options, _get_nvrtc_version())
     base = _empty_file_preprocess_cache.get(env, None)
@@ -162,10 +168,16 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
                 mod.load(cubin)
                 return mod
 
-    ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
-    ls = function.LinkState()
-    ls.add_ptr_data(ptx, u'cupy.ptx')
-    cubin = ls.complete()
+    if backend == "nvrtc":
+        ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
+        ls = function.LinkState()
+        ls.add_ptr_data(ptx, u'cupy.ptx')
+        cubin = ls.complete()
+    elif backend == "nvcc":
+        cubin = compile_using_nvcc(source, options, arch, name + '.cu')
+    else:
+        raise ValueError("Invalid backend %s" % backend)
+
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
     # shutil.move is not atomic operation, so it could result in a corrupted
