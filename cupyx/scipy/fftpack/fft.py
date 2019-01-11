@@ -4,22 +4,22 @@ from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
     get_cufft_plan_nd)
 
 
-def get_fft_plan(a, value_type='C2C', axes=None):
+def get_fft_plan(a, axes=None, value_type='C2C'):
     """ Generate a CUDA FFT plan for transforming up to three axes.
         This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
 
     Args:
         a (cupy.ndarray): Array to be transform, assumed to be either C- or
             F- contiguous.
-        value_type ('C2C'): The FFT type to perform.
-            Currently only complex-to-complex transforms are supported.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
             axes and must include either the first or the last axis of the
             array.  If `None`, it is assumed that all axes are transformed.
+        value_type ('C2C'): The FFT type to perform.
+            Currently only complex-to-complex transforms are supported.
 
     Returns:
-        plan (cufft.PlanNd): The cuFFT Plan.
+        plan (cupy.cuda.cufft.PlanNd): The cuFFT Plan.
     """
     fft_type = _convert_fft_type(a, value_type)
     if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
@@ -91,6 +91,15 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
+            over ``axes``, which can be obtained using
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
@@ -114,6 +123,15 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
+            over ``axes``, which can be obtained using
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
@@ -137,6 +155,15 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
+            over ``axes``, which can be obtained using
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
@@ -160,6 +187,15 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
+            over ``axes``, which can be obtained using
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
