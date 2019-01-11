@@ -6,6 +6,7 @@ import warnings
 
 import numpy
 
+from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
 from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
@@ -1274,7 +1275,7 @@ def convolution_forward(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = core.ascontiguousarray(b)._reshape(b_shape)
+            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc,
                                b.data.ptr, one, y_desc, y.data.ptr)
@@ -1452,7 +1453,7 @@ def convolution_backward_data(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = core.ascontiguousarray(b)._reshape(b_shape)
+            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
                                y.data.ptr)

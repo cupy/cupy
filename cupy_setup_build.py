@@ -33,6 +33,7 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._routines_manipulation',
             'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',

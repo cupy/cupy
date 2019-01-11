@@ -1,3 +1,4 @@
+from libcpp cimport bool as cpp_bool
 from libcpp cimport vector
 from libc.stdint cimport uint16_t
 
@@ -45,3 +46,5 @@ ctypedef unsigned short _float16
 cpdef uint16_t to_float16(float f)
 
 cpdef float from_float16(uint16_t v)
+
+cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0

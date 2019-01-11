@@ -112,7 +112,7 @@ def _cum_core(a, axis, dtype, out, kern, batch_kern):
     if axis is None:
         out = out.ravel()
     elif not (-a.ndim <= axis < a.ndim):
-        raise core.core._AxisError('axis(={}) out of bounds'.format(axis))
+        raise core._AxisError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(batch_kern, out, axis=axis)
 

@@ -2,6 +2,7 @@
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
+from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 
@@ -268,3 +269,20 @@ cpdef float from_float16(uint16_t v):
     cdef float32_int c
     c.n = npy_halfbits_to_floatbits(v)
     return c.f
+
+
+@cython.profile(False)
+cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
+    cdef int order_char
+    order_char = b'C' if len(order) == 0 else ord(order[0])
+    if allow_k and (order_char == b'K' or order_char == b'k'):
+        order_char = b'K'
+    elif order_char == b'A' or order_char == b'a':
+        order_char = b'A'
+    elif order_char == b'C' or order_char == b'c':
+        order_char = b'C'
+    elif order_char == b'F' or order_char == b'f':
+        order_char = b'F'
+    else:
+        raise TypeError('order not understood')
+    return order_char

@@ -3,24 +3,28 @@ from cupy.core import internal  # NOQA
 
 
 # import class and function
+from cupy.core._errors import _AxisError  # NOQA
 from cupy.core._kernel import create_reduction_func  # NOQA
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
 from cupy.core._kernel import ReductionKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA
+from cupy.core._routines_manipulation import array_split  # NOQA
+from cupy.core._routines_manipulation import broadcast  # NOQA
+from cupy.core._routines_manipulation import broadcast_to  # NOQA
+from cupy.core._routines_manipulation import concatenate_method  # NOQA
+from cupy.core._routines_manipulation import moveaxis  # NOQA
+from cupy.core._routines_manipulation import rollaxis  # NOQA
+from cupy.core._routines_manipulation import size  # NOQA'
 from cupy.core.core import absolute  # NOQA
 from cupy.core.core import add  # NOQA
 from cupy.core.core import angle  # NOQA
 from cupy.core.core import array  # NOQA
-from cupy.core.core import array_split  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
 from cupy.core.core import asfortranarray  # NOQA
 from cupy.core.core import bitwise_and  # NOQA
 from cupy.core.core import bitwise_or  # NOQA
 from cupy.core.core import bitwise_xor  # NOQA
-from cupy.core.core import broadcast  # NOQA
-from cupy.core.core import broadcast_to  # NOQA
-from cupy.core.core import concatenate_method  # NOQA
 from cupy.core.core import conj  # NOQA
 from cupy.core.core import create_comparison  # NOQA
 from cupy.core.core import divide  # NOQA
@@ -38,20 +42,16 @@ from cupy.core.core import left_shift  # NOQA
 from cupy.core.core import less  # NOQA
 from cupy.core.core import less_equal  # NOQA
 from cupy.core.core import matmul  # NOQA
-from cupy.core.core import moveaxis  # NOQA
 from cupy.core.core import multiply  # NOQA
 from cupy.core.core import nanmax  # NOQA
 from cupy.core.core import nanmin  # NOQA
 from cupy.core.core import ndarray  # NOQA
 from cupy.core.core import negative  # NOQA
-from cupy.core.core import normalize_axis_tuple  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import power  # NOQA
 from cupy.core.core import real  # NOQA
 from cupy.core.core import remainder  # NOQA
 from cupy.core.core import right_shift  # NOQA
-from cupy.core.core import rollaxis  # NOQA
-from cupy.core.core import size  # NOQA'
 from cupy.core.core import sqrt  # NOQA
 from cupy.core.core import subtract  # NOQA
 from cupy.core.core import tensordot_core  # NOQA
