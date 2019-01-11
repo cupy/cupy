@@ -94,11 +94,12 @@ class TestFft2(unittest.TestCase):
     def test_fft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes)
         return out
 
@@ -108,12 +109,13 @@ class TestFft2(unittest.TestCase):
     def test_fft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             scp.fftpack.fft2(x, shape=self.s, axes=self.axes,
                              overwrite_x=True, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             scp.fftpack.fft2(x, shape=self.s, axes=self.axes,
                              overwrite_x=True)
         return x
@@ -142,11 +144,12 @@ class TestFft2(unittest.TestCase):
     def test_ifft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes)
         return out
 
@@ -156,12 +159,13 @@ class TestFft2(unittest.TestCase):
     def test_ifft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                               overwrite_x=True, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                               overwrite_x=True)
         return x
@@ -208,11 +212,12 @@ class TestFftn(unittest.TestCase):
     def test_fftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes)
         return out
 
@@ -222,12 +227,13 @@ class TestFftn(unittest.TestCase):
     def test_fftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
                              overwrite_x=True, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
                              overwrite_x=True)
         return x
@@ -256,11 +262,12 @@ class TestFftn(unittest.TestCase):
     def test_ifftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes)
         return out
 
@@ -270,12 +277,13 @@ class TestFftn(unittest.TestCase):
     def test_ifftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if isinstance(scp, cupyx.scipy):
-            cp.fft.config.enable_nd_planning = False # use explicit plan
+            import cupy.fft.config as config
+            config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x)
             scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                               overwrite_x=True, plan=plan)
-            cp.fft.config.enable_nd_planning = True # default
-        else: # scipy.fftpack
+            config.enable_nd_planning = True  # default
+        else:  # scipy
             scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                               overwrite_x=True)
         return x
