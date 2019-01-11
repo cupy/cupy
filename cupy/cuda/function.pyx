@@ -174,7 +174,9 @@ cdef class Module:
             driver.moduleUnload(self.ptr)
             self.ptr = 0
 
-    cpdef load_file(self, str filename):
+    cpdef load_file(self, filename):
+        if isinstance(filename, six.binary_type):
+            filename = six.u(filename)
         runtime._ensure_context()
         self.ptr = driver.moduleLoad(filename)
 
@@ -182,10 +184,14 @@ cdef class Module:
         runtime._ensure_context()
         self.ptr = driver.moduleLoadData(cubin)
 
-    cpdef get_global_var(self, str name):
+    cpdef get_global_var(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
         return driver.moduleGetGlobal(self.ptr, name)
 
-    cpdef get_function(self, str name):
+    cpdef get_function(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
         return Function(self, name)
 
 

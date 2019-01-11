@@ -28,6 +28,7 @@ from cupy.cuda.runtime import CUDARuntimeError
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
@@ -66,20 +67,23 @@ except AttributeError:
 
 
 @cython.profile(False)
-cdef inline int _normalize_order(order) except? 0:
+cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
-    order_char = 'C' if len(order) == 0 else ord(order[0])
-    if order_char == 'K' or order_char == 'k':
-        order_char = 'K'
-    elif order_char == 'A' or order_char == 'a':
-        order_char = 'A'
-    elif order_char == 'C' or order_char == 'c':
-        order_char = 'C'
-    elif order_char == 'F' or order_char == 'f':
-        order_char = 'F'
+    order_char = b'C' if len(order) == 0 else ord(order[0])
+    if allow_k and (order_char == b'K' or order_char == b'k'):
+        order_char = b'K'
+    elif order_char == b'A' or order_char == b'a':
+        order_char = b'A'
+    elif order_char == b'C' or order_char == b'c':
+        order_char = b'C'
+    elif order_char == b'F' or order_char == b'f':
+        order_char = b'F'
     else:
         raise TypeError('order not understood')
     return order_char
+
+
+cdef tuple _HANDLED_TYPES
 
 
 cdef class ndarray:
@@ -117,13 +121,15 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef tuple s = internal.get_size(shape)
-        cdef int order_char = 'C' if order is None else _normalize_order(order)
+        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
+        cdef int order_char = \
+            b'C' if order is None else _normalize_order(order)
+        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
-        if order_char not in ('C', 'F'):
-            raise TypeError('order not understood. order={}'.format(order))
+        if order_char != b'C' and order_char != b'F':
+            raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         for x in s:
@@ -137,10 +143,10 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(shape, strides, True, True)
-        elif order_char == 'C':
+            self._set_shape_and_strides(s, strides, True, True)
+        elif order_char == b'C':
             self._set_shape_and_contiguous_strides(s, itemsize, True)
-        elif order_char == 'F':
+        elif order_char == b'F':
             self._set_shape_and_contiguous_strides(s, itemsize, False)
         else:
             assert False
@@ -383,33 +389,17 @@ cdef class ndarray:
         dtype = get_dtype(dtype)
         if dtype == self.dtype:
             if not copy and (
-                    order_char == 'K' or
-                    order_char == 'A' and (self._c_contiguous or
-                                           self._f_contiguous) or
-                    order_char == 'C' and self._c_contiguous or
-                    order_char == 'F' and self._f_contiguous):
+                    order_char == b'K' or
+                    order_char == b'A' and (self._c_contiguous or
+                                            self._f_contiguous) or
+                    order_char == b'C' and self._c_contiguous or
+                    order_char == b'F' and self._f_contiguous):
                 return self
 
-        if order_char == 'A':
-            if self._f_contiguous:
-                order_char = 'F'
-            else:
-                order_char = 'C'
-        elif order_char == 'K':
-            if self._f_contiguous:
-                order_char = 'F'
-            elif self._c_contiguous:
-                order_char = 'C'
+        order_char = _update_order_char(self, order_char)
 
-        if order_char == 'K':
-            stride_and_index = [
-                (abs(s), -i) for i, s in enumerate(self._strides)]
-            stride_and_index.sort()
-            strides.resize(self.ndim)
-            stride = dtype.itemsize
-            for s, i in stride_and_index:
-                strides[-i] = stride
-                stride *= self._shape[-i]
+        if order_char == b'K':
+            strides = _get_strides_for_order_K(self, dtype)
             newarray = ndarray(self.shape, dtype=dtype)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
@@ -567,7 +557,7 @@ cdef class ndarray:
         newarray._set_shape_and_strides(shape, strides, False, True)
         return newarray
 
-    def reshape(self, *shape):
+    def reshape(self, *shape, order='C'):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -575,10 +565,26 @@ cdef class ndarray:
            :meth:`numpy.ndarray.reshape`
 
         """
-        # TODO(beam2d): Support ordering option
+        cdef int order_char = _normalize_order(order, False)
+
         if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
             shape = shape[0]
-        return self._reshape(shape)
+
+        if order_char == b'A':
+            if self._f_contiguous and not self._c_contiguous:
+                order_char = b'F'
+            else:
+                order_char = b'C'
+        if order_char == b'C':
+            return self._reshape(shape)
+        else:
+            # TODO(grlee77): Support order within _reshape instead
+
+            # The Fortran-ordered case is equivalent to:
+            #     1.) reverse the axes via transpose
+            #     2.) C-ordered reshape using reversed shape
+            #     3.) reverse the axes via transpose
+            return self.transpose()._reshape(shape[::-1]).transpose()
 
     # TODO(okuta): Implement resize
 
@@ -685,7 +691,7 @@ cdef class ndarray:
         newarray._f_contiguous = True
         return newarray
 
-    cpdef ndarray ravel(self):
+    cpdef ndarray ravel(self, order='C'):
         """Returns an array flattened into one dimension.
 
         .. seealso::
@@ -693,10 +699,24 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        # TODO(beam2d): Support ordering option
+        # TODO(beam2d, grlee77): Support K ordering option
+        cdef int order_char
         cdef vector.vector[Py_ssize_t] shape
         shape.push_back(self.size)
-        return self._reshape(shape)
+
+        order_char = _normalize_order(order, True)
+        if order_char == b'A':
+            if self._f_contiguous and not self._c_contiguous:
+                order_char = b'F'
+            else:
+                order_char = b'C'
+        if order_char == b'C':
+            return self._reshape(shape)
+        elif order_char == b'F':
+            return self.transpose()._reshape(shape)
+        elif order_char == b'K':
+            raise NotImplementedError(
+                "ravel with order='K' not yet implemented.")
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
@@ -1758,6 +1778,14 @@ cdef class ndarray:
         else:
             return NotImplemented
 
+    def __array_function__(self, func, types, args, kwargs):
+        if not hasattr(cupy, func.__name__):
+            return NotImplemented
+        for t in types:
+            if t not in _HANDLED_TYPES:
+                return NotImplemented
+        return getattr(cupy, func.__name__)(*args, **kwargs)
+
     # Conversion:
 
     def __int__(self):
@@ -1809,13 +1837,16 @@ cdef class ndarray:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None):
+    cpdef get(self, stream=None, order='C'):
         """Returns a copy of the array on host memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
+            order ({'C', 'F', 'A'}): The desired memory layout of the host
+                array. When ``order`` is 'A', it uses 'F' if the array is
+                fortran-contiguous and 'C' otherwise.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1824,9 +1855,21 @@ cdef class ndarray:
         if self.size == 0:
             return numpy.ndarray(self._shape, dtype=self.dtype)
 
+        order = order.upper()
+        if order == 'A':
+            if self._f_contiguous:
+                order = 'F'
+            else:
+                order = 'C'
+
         with self.device:
-            a_gpu = ascontiguousarray(self)
-        a_cpu = numpy.empty(self._shape, dtype=self.dtype)
+            if order == 'C':
+                a_gpu = ascontiguousarray(self)
+            elif order == 'F':
+                a_gpu = asfortranarray(self)
+            else:
+                raise ValueError("unsupported order: {}".format(order))
+        a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1930,7 +1973,7 @@ cdef class ndarray:
         self._update_f_contiguity()
 
     cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t] & strides,
+                                 vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -2028,6 +2071,38 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
         if shape[dim] == 1:
             dim += 1
     return newstrides
+
+
+cpdef int _update_order_char(ndarray x, int order_char):
+    # update order_char based on array contiguity
+    if order_char == b'A':
+        if x._f_contiguous:
+            order_char = b'F'
+        else:
+            order_char = b'C'
+    elif order_char == b'K':
+        if x._f_contiguous:
+            order_char = b'F'
+        elif x._c_contiguous:
+            order_char = b'C'
+    return order_char
+
+
+cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
+    cdef vector.vector[Py_ssize_t] strides
+    # strides used when order='K' for astype, empty_like, etc.
+    stride_and_index = [
+        (abs(s), -i) for i, s in enumerate(x.strides)]
+    stride_and_index.sort()
+    strides.resize(x.ndim)
+    stride = dtype.itemsize
+    for s, i in stride_and_index:
+        strides[-i] = stride
+        stride *= x.shape[-i]
+    return strides
+
+
+_HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
 include "carray.pxi"
@@ -2358,14 +2433,16 @@ _round_ufunc = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
+cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
-    cdef Py_ssize_t nvidem
+    cdef Py_ssize_t ndim
     cdef ndarray a, src
     cdef size_t nbytes
     if subok:
         raise NotImplementedError
+    if order is None:
+        order = 'K'
     if isinstance(obj, ndarray):
         src = obj
         if dtype is None:
@@ -2418,7 +2495,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, str order='K',
                 'Using synchronous transfer as pinned memory ({} bytes) '
                 'could not be allocated. '
                 'This generally occurs because of insufficient host memory. '
-                'The original error was: {}'.format(nbytes, error))
+                'The original error was: {}'.format(nbytes, error),
+                util.PerformanceWarning)
             a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), nbytes)
 
     return a
@@ -2682,7 +2760,11 @@ cdef class broadcast:
                 if a_sh == r_shape[i]:
                     r_strides[i] = a._strides[a_ndim - i - 1]
                 elif a_sh != 1:
-                    raise ValueError('Broadcasting failed')
+                    raise ValueError(
+                        'operands could not be broadcast together with shapes '
+                        '{}'.format(
+                            ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                       else '()' for x in arrays])))
 
             strides.assign(r_strides.rbegin(), r_strides.rend())
             view = a.view()
@@ -2716,7 +2798,9 @@ cpdef ndarray broadcast_to(ndarray array, shape):
         if sh == a_sh:
             strides[j] = array._strides[i]
         elif a_sh != 1:
-            raise ValueError('Broadcasting failed')
+            raise ValueError(
+                'operands could not be broadcast together with shape {} and '
+                'requested shape {}'.format(array.shape, shape))
 
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
@@ -3092,7 +3176,7 @@ right_shift = _create_bit_op(
 cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
-    cdef str kind
+    cdef char kind
     cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
@@ -3114,27 +3198,29 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     advanced = False
     mask_exists = False
     for i, s in enumerate(slice_list):
-        is_list = isinstance(s, list)
-        if is_list or isinstance(s, numpy.ndarray):
+        to_gpu = True
+        if isinstance(s, list):
             # handle the case when s is an empty list
-            s = array(s)
-            if is_list and s.size == 0:
+            s = numpy.array(s)
+            if s.size == 0:
                 s = s.astype(numpy.int32)
-            slice_list[i] = s
         elif isinstance(s, bool):
-            s = array(s)
-            slice_list[i] = s
-        elif not isinstance(s, ndarray):
+            s = numpy.array(s)
+        elif isinstance(s, ndarray):
+            to_gpu = False
+        elif not isinstance(s, numpy.ndarray):
             continue
-        kind = s.dtype.kind
-        if kind == 'i' or kind == 'u':
+        kind = ord(s.dtype.kind)
+        if kind == b'i' or kind == b'u':
             advanced = True
-        elif kind == 'b':
+        elif kind == b'b':
             mask_exists = True
         else:
             raise IndexError(
                 'arrays used as indices must be of integer or boolean '
                 'type. (actual: {})'.format(s.dtype.type))
+        if to_gpu:
+            slice_list[i] = array(s)
 
     if not mask_exists and len(slice_list) > ndim + n_newaxes:
         raise IndexError('too many indices for array')
@@ -3812,47 +3898,42 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
-cpdef ndarray _get_all_addresses(size_t start_adr,
-                                 vector.vector[size_t] & shape,
-                                 vector.vector[size_t] & strides):
-    idx = numpy.array([start_adr])
-    for sh_, st_ in zip(shape, strides):
-        idx = (idx[:, None] + (numpy.arange(sh_) * st_)[None, :]).ravel()
-    idx = idx.astype(numpy.uintp)
-
-    ret = ndarray((idx.size,), dtype=numpy.uintp)
-    ret.set(idx)
-    return ret
+cdef _mat_ptrs_kernel = ElementwiseKernel(
+    'T base, T stride', 'T out',
+    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
+    reduce_dims=False)
 
 
 cdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
-           shape: () -> one ptr
-           shape: (A) -> one ptr to mat o size (A)
-           shape: (A, B) -> one ptr to mat o size (A, B)
            shape: (A, B, C) -> A ptrs to mat o size (B, C)
            shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
                   size (B, C)
     Returns:
         GPU array of pointers to matrices.
     """
-    cdef Py_ssize_t stride, ptr, pointer, i
-    cdef ndarray ret
-    if a.ndim <= 2:
-        ret = ndarray((1,), dtype=numpy.uintp)
-        ret.fill(a.data.ptr)
-        return ret
-    else:
-        return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    cdef Py_ssize_t sh_, st_
+    cdef ndarray idx
+    idx = _mat_ptrs_kernel(
+        a.data.ptr, a._strides[0],
+        cupy.ndarray((a._shape[0],), dtype=numpy.uintp))
+
+    for i in range(1, ndim - 2):
+        idx = _mat_ptrs_kernel(
+            idx[:, None], a._strides[i],
+            cupy.ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+        idx = idx.ravel()
+    return idx
 
 
-cpdef int _get_stride_for_strided_batched_gemm(ndarray a):
-    if a.ndim > 2:
-        return a.strides[-3] / a.itemsize
-    else:
-        return a.shape[-2] * a.shape[-1]
+cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except?0:
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
 
 
 cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
@@ -3876,145 +3957,135 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     .. seealso:: :func:`numpy.matmul`
 
     """
-    # ToDo: remove python object .shape
-    # ToDo: remove python object .strides
-    # ToDo: remove python object out_shape
-    # ToDo: remove python object .reshape
+
     if out is not None:
         raise NotImplementedError('The out array as input is currently not '
                                   'supported')
 
-    cdef Py_ssize_t i, n, m, ka, kb
-    cdef Py_ssize_t batchCount
-    cdef ndarray ap, bp, outp
+    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
+    cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
+    cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
+    cdef ndarray ap, bp, outp, out_view
+    cdef bint use_broadcast
 
-    orig_a_shape = a.shape
-    orig_b_shape = b.shape
-    if len(orig_a_shape) == 0 or len(orig_b_shape) == 0:
+    orig_a_ndim = a._shape.size()
+    orig_b_ndim = b._shape.size()
+    if orig_a_ndim == 0 or orig_b_ndim == 0:
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
+
+    ndim = max(orig_a_ndim, orig_b_ndim)
+    if ndim <= 2:
+        return dot(a, b, out)
+
+    orig_a = a
+    orig_b = b
+    a_part_outshape = b_part_outshape = 0
+    if orig_a_ndim == 1:
+        a = a._reshape((1, a.size))
+    else:
+        a = a.view()
+        a_part_outshape = a._shape[orig_a_ndim - 2]
+    if orig_b_ndim == 1:
+        b = b._reshape((b.size, 1))
+        ldout = 1
+    else:
+        b = b.view()
+        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
+
+    # expand dims
+    a_ndim = a._shape.size()
+    b_ndim = b._shape.size()
+    if a_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        a._set_shape_and_strides(
+            (1,) * (ndim - a_ndim) + a.shape,
+            (0,) * (ndim - a_ndim) + a.strides,
+            True, True)
+    if b_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        b._set_shape_and_strides(
+            (1,) * (ndim - b_ndim) + b.shape,
+            (0,) * (ndim - b_ndim) + b.strides,
+            True, True)
 
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
     dtype = numpy.find_common_type((ret_dtype, 'f'), ())
 
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
-    if a.ndim == 1:
-        a = a.reshape(1, len(a))
-        a_part_outshape = ()
-    else:
-        a_part_outshape = (a.shape[-2],)
-    if b.ndim == 1:
-        b = b.reshape(len(b), 1)
-        b_part_outshape = ()
-        ldout = 1
-    else:
-        b_part_outshape = b.shape[-1:]
-        ldout = b.shape[-1]
-
-    # expand dims
-    if a.ndim < b.ndim:
-        view = a.view()
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        view._set_shape_and_strides(
-            (1,) * (b.ndim - a.ndim) + a.shape,
-            (0,) * (b.ndim - a.ndim) + a.strides,
-            True, True)
-        a = view
-    elif a.ndim > b.ndim:
-        view = b.view()
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        view._set_shape_and_strides(
-            (1,) * (a.ndim - b.ndim) + b.shape,
-            (0,) * (a.ndim - b.ndim) + b.strides,
-            True, True)
-        b = view
-
-    broadcast_pre_shape = numpy.maximum(
-        numpy.array(a.shape[:-2], numpy.uint64) - 1,
-        numpy.array(b.shape[:-2], numpy.uint64) - 1
-    ) + 1
-
-    out_shape = (*broadcast_pre_shape, *a_part_outshape, *b_part_outshape)
-
-    a = ascontiguousarray(a, dtype=dtype)
-    b = ascontiguousarray(b, dtype=dtype)
+    a = ascontiguousarray(a, dtype)
+    b = ascontiguousarray(b, dtype)
 
     # broadcast
-    a_strides = list(a.strides)
-    a_shape = list(a.shape)
-    b_strides = list(b.strides)
-    b_shape = list(b.shape)
+    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
+    out_shape = []
     use_broadcast = False
-    for i in range(len(a_strides) - 2):
-        if a_shape[i] == 1 and broadcast_pre_shape[i] > 1:
-            a_strides[i] = 0
-            a_shape[i] = broadcast_pre_shape[i]
-            use_broadcast = True
-    for i in range(len(b_strides) - 2):
-        if b_shape[i] == 1 and broadcast_pre_shape[i] > 1:
-            b_strides[i] = 0
-            b_shape[i] = broadcast_pre_shape[i]
-            use_broadcast = True
-
-    view = a.view()
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    view._set_shape_and_strides(a_shape, a_strides, True, True)
-    a = view
-    view = b.view()
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    view._set_shape_and_strides(b_shape, b_strides, True, True)
-    b = view
-
-    out = ndarray(out_shape, dtype=dtype)
-    out.data.memset_async(0, out.nbytes)
-
-    out_view = out.view()
-    out_view_shape = out.shape
-    out_view_strides = out.strides
-    if a_part_outshape == ():
-        out_view_shape += (1,)
-        out_view_strides += (0,)
-    if b_part_outshape == ():
-        out_view_shape += (1,)
-        out_view_strides += (0,)
-
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    out_view._set_shape_and_strides(
-        out_view_shape, out_view_strides, True, True)
-
-    # (A B)^T = B^T A^T
-    a, b = b, a
-
-    lda = a.shape[-1]
-    ldb = b.shape[-1]
-
-    *la, ka, n = a.shape
-    *lb, m, kb = b.shape
-
-    if ka != kb:
-        raise ValueError(
-            'shapes ({}) and ({}) not aligned'.format(
-                ','.join([str(_) for _ in orig_a_shape]),
-                ','.join([str(_) for _ in orig_b_shape])))
-    for la_, lb_ in zip(la, lb):
-        if not (la_ == lb_ or la_ == 1 or lb_ == 1):
+    for i in range(0, ndim - 2):
+        a_sh = a._shape[i]
+        b_sh = b._shape[i]
+        if a_sh != b_sh and a_sh != 1 and b_sh != 1:
             raise ValueError(
                 'operands could not be broadcast together with '
                 'remapped shapes')
 
+        if a_sh == 0 or b_sh == 0:
+            c_sh = 0
+        else:
+            c_sh = max(a_sh, b_sh)
+        batchCount *= c_sh
+        out_shape.append(c_sh)
+        if a_sh == 1 and c_sh > 1:
+            a._strides[i] = 0
+            a._shape[i] = c_sh
+            a._c_contiguous = a._f_contiguous = False
+            use_broadcast = True
+
+        if b_sh == 1 and c_sh > 1:
+            b._strides[i] = 0
+            b._shape[i] = c_sh
+            b._c_contiguous = b._f_contiguous = False
+            use_broadcast = True
+
+    if orig_a_ndim != 1:
+        out_shape.append(a_part_outshape)
+    if orig_b_ndim != 1:
+        out_shape.append(b_part_outshape)
+
+    # (A B)^T = B^T A^T
+    a, b = b, a
+
+    ka = a._shape[ndim - 2]
+    lda = n = a._shape[ndim - 1]
+    m = b._shape[ndim - 2]
+    ldb = kb = b._shape[ndim - 1]
+
+    if ka != kb:
+        raise ValueError(
+            'shapes ({}) and ({}) not aligned'.format(
+                ','.join([str(_) for _ in orig_a.shape]),
+                ','.join([str(_) for _ in orig_b.shape])))
+
     if a.size == 0 or b.size == 0:
         return cupy.zeros(out_shape, ret_dtype)
 
-    batchCount = 1  # batchCount = numpy.prod(la)
-    for i in la:
-        batchCount *= i
+    out = ndarray(out_shape, dtype=dtype)
+
+    if orig_a_ndim == 1 or orig_b_ndim == 1:
+        out_view = out.view()
+        if orig_b_ndim == 1:
+            out_view._shape.push_back(1)
+            out_view._strides.push_back(0)
+        if orig_a_ndim == 1:
+            out_view._shape.insert(out_view._shape.end() - 1, 1)
+            out_view._strides.insert(out_view._strides.end() - 1, 0)
+        assert out_view._c_contiguous
+        out_view._update_f_contiguity()
+    else:
+        out_view = out
 
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    handle = cuda.get_cublas_handle()
+    handle = device.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
@@ -4022,7 +4093,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(out_view)
         if dtype == numpy.float32:
-            cuda.cublas.sgemmStridedBatched(
+            cublas.sgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4032,7 +4103,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.float64:
-            cuda.cublas.dgemmStridedBatched(
+            cublas.dgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4042,7 +4113,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0.0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex64:
-            cuda.cublas.cgemmStridedBatched(
+            cublas.cgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4052,7 +4123,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 0, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex128:
-            cuda.cublas.zgemmStridedBatched(
+            cublas.zgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4068,7 +4139,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         bp = _mat_ptrs(b)
         outp = _mat_ptrs(out_view)
         if dtype == numpy.float32:
-            cuda.cublas.sgemmBatched(
+            cublas.sgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4077,7 +4148,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
-            cuda.cublas.dgemmBatched(
+            cublas.dgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4086,7 +4157,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0.0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
-            cuda.cublas.cgemmBatched(
+            cublas.cgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4095,7 +4166,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 bp.data.ptr, ldb,
                 0, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
-            cuda.cublas.zgemmBatched(
+            cublas.zgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
@@ -4114,7 +4185,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         return ret
 
 
-cdef _cuda_runtime_version = None
+cdef int _cuda_runtime_version = -1
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
@@ -4127,7 +4198,6 @@ cpdef ndarray tensordot_core(
     cdef vector.vector[Py_ssize_t] shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
-    cdef str dtype, ret_dtype
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
@@ -4141,7 +4211,7 @@ cpdef ndarray tensordot_core(
         return out
 
     global _cuda_runtime_version
-    if _cuda_runtime_version is None:
+    if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     use_sgemmEx = (a.dtype == 'e' and b.dtype == 'e' and

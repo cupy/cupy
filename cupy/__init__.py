@@ -58,6 +58,7 @@ from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+from cupy import lib  # NOQA
 
 
 # import class and function
@@ -627,7 +628,7 @@ from cupy.core import fromDlpack  # NOQA
 from cupy.ext.scatter import scatter_add  # NOQA
 
 
-def asnumpy(a, stream=None):
+def asnumpy(a, stream=None, order='C'):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
@@ -636,15 +637,17 @@ def asnumpy(a, stream=None):
             the device-to-host copy runs asynchronously. Otherwise, the copy is
             synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
-
+        order ({'C', 'F', 'A'}): The desired memory layout of the host
+            array. When ``order`` is 'A', it uses 'F' if ``a`` is
+            fortran-contiguous and 'C' otherwise.
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream)
+        return a.get(stream=stream, order=order)
     else:
-        return numpy.asarray(a)
+        return numpy.asarray(a, order=order)
 
 
 _cupy = sys.modules[__name__]

@@ -19,7 +19,7 @@ class _data_matrix(base.spmatrix):
         """Data type of the matrix."""
         return self.data.dtype
 
-    def _with_data(self, data):
+    def _with_data(self, data, copy=True):
         raise NotImplementedError
 
     def __abs__(self):
@@ -41,6 +41,21 @@ class _data_matrix(base.spmatrix):
 
         """
         return self._with_data(self.data.astype(t))
+
+    def conj(self, copy=True):
+        if cupy.issubdtype(self.dtype, cupy.complexfloating):
+            return self._with_data(self.data.conj(), copy=copy)
+        elif copy:
+            return self.copy()
+        else:
+            return self
+
+    conj.__doc__ = base.spmatrix.conj.__doc__
+
+    def copy(self):
+        return self._with_data(self.data.copy(), copy=True)
+
+    copy.__doc__ = base.spmatrix.copy.__doc__
 
     def count_nonzero(self):
         """Returns number of non-zero entries.

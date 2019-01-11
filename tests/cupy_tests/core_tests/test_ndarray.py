@@ -49,7 +49,13 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_int(self):
         a = cupy.ndarray(3)
-        assert a.shape == (3, )
+        assert a.shape == (3,)
+
+    def test_shape_int_with_strides(self):
+        dummy = cupy.ndarray(3)
+        a = cupy.ndarray(3, strides=(0,), memptr=dummy.data)
+        assert a.shape == (3,)
+        assert a.strides == (0,)
 
     def test_memptr(self):
         a = cupy.arange(6).astype(numpy.float32).reshape((2, 3))

@@ -6,6 +6,7 @@ import warnings
 import six.moves
 
 import cupy
+from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
 
@@ -533,8 +534,9 @@ def einsum(*operands, **kwargs):
         output_set = set(output_subscript)
         path = algo(input_sets, output_set, dimension_dict, memory_limit)
         if any(len(indices) > 2 for indices in path):
-            warnings.warn(RuntimeWarning(
-                "memory efficient einsum is not supported yet"))
+            warnings.warn(
+                'memory efficient einsum is not supported yet',
+                util.PerformanceWarning)
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum

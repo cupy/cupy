@@ -12,6 +12,7 @@ from cpython cimport pythread
 from cython.operator cimport dereference
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
+from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
 
 from cupy.cuda import runtime
@@ -1137,3 +1138,78 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
+
+
+ctypedef void*(*malloc_func_type)(void*, size_t, int)
+ctypedef void(*free_func_type)(void*, void*, int)
+
+
+cpdef size_t _call_malloc(intptr_t param, intptr_t malloc_func,
+                          Py_ssize_t size, int device_id):
+    return <size_t>((<malloc_func_type>malloc_func)(<void*>param, size,
+                                                    device_id))
+
+
+cpdef void _call_free(intptr_t param, intptr_t free_func, intptr_t ptr,
+                      int device_id):
+    (<free_func_type>free_func)(<void*>param, <void*>ptr, device_id)
+
+
+@cython.no_gc
+cdef class ExternalAllocatorMemory(BaseMemory):
+
+    def __init__(self, Py_ssize_t size, intptr_t param,
+                 intptr_t malloc_func, intptr_t free_func,
+                 int device_id):
+        self._param = param
+        self._free_func = free_func
+        self.device_id = device_id
+        self.size = size
+        self.ptr = 0
+        if size > 0:
+            self.ptr = _call_malloc(param, malloc_func, size, device_id)
+
+    def __dealloc__(self):
+        if self.ptr:
+            _call_free(self._param, self._free_func, self.ptr, self.device_id)
+
+
+cdef class ExternalAllocator:
+
+    """Allocator with function pointers to allocation routines.
+
+    This allocator keeps raw pointers to a *param* object along with functions
+    pointers to *malloc* and *free*, delegating the actual allocation to
+    external sources while only handling the timing of the resource allocation
+    and deallocation.
+
+    *malloc* should follow the signature ``void*(*malloc)(void*, size_t, int)``
+    returning the pointer to the allocated memory given the pointer to
+    *param*, the number of bytes to allocate and the device id on which the
+    allocation should take place.
+
+    Similarly, *free* should follow the signature
+    ``void(*free)(void*, void*, int)`` with no return, taking the pointer to
+    *param*, the pointer to the allocated memory and the device id on which the
+    memory was allocated.
+
+    Args:
+        param (int): Address of *param*.
+        malloc_func (int): Address of *malloc*.
+        free_func (int): Address of *free*.
+        owner (object): Reference to the owner object to keep the param and
+            the functions alive.
+
+    """
+
+    def __init__(self, intptr_t param, intptr_t malloc_func,
+                 intptr_t free_func, object owner):
+        self._param = param
+        self._malloc_func = malloc_func
+        self._free_func = free_func
+        self._owner = owner
+
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        mem = ExternalAllocatorMemory(size, self._param, self._malloc_func,
+                                      self._free_func, device.get_device_id())
+        return MemoryPointer(mem, 0)

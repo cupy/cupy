@@ -1,7 +1,9 @@
 from __future__ import division
 import string
+import threading
 
 import numpy
+import six
 
 from cupy.cuda import compiler
 from cupy import util
@@ -23,9 +25,7 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 
 
-# We can't directly import cupy.core.fusion at module level due to cyclic
-# imports. Importing it every time at the point of use is too slow.
-_fusion_module = None
+_thread_local = threading.local()
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -329,7 +329,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
-                        str casting):
+                        casting):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -377,8 +377,8 @@ cdef list _get_out_args_with_params(
 
 
 cdef function.Function _get_elementwise_kernel(
-        tuple args_info, tuple types, tuple params, str operation, str name,
-        str preamble, dict kwargs):
+        tuple args_info, tuple types, tuple params, operation, name,
+        preamble, dict kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -446,10 +446,10 @@ cdef class ElementwiseKernel:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly tuple params
-        readonly str operation
-        readonly str name
+        readonly object operation
+        readonly object name
         readonly bint reduce_dims
-        readonly str preamble
+        readonly object preamble
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
@@ -668,7 +668,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
+cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
@@ -766,13 +766,8 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        global _fusion_module
-        if _fusion_module is None:
-            from cupy.core import fusion as _fusion_module
-
-        thread_local = _fusion_module._thread_local
-        if hasattr(thread_local, 'history'):
-            return thread_local.history.call_ufunc(self, args, kwargs)
+        if hasattr(_thread_local, 'history'):
+            return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 
