@@ -1765,7 +1765,7 @@ cdef class ndarray:
             self, vector.vector[Py_ssize_t]& shape,
             Py_ssize_t itemsize, bint is_c_contiguous):
 
-        self.size = internal.set_contiguous_strides(
+        self.size = internal.get_contiguous_strides_inplace(
             shape, self._strides, itemsize, is_c_contiguous)
         self._shape = shape
         if is_c_contiguous:
