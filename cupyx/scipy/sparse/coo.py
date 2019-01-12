@@ -139,7 +139,9 @@ class coo_matrix(sparse_data._data_matrix):
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        self._shape = shape
+        if not util.isshape(shape):
+            raise ValueError('invalid shape (must be a 2-tuple of int)')
+        self._shape = int(shape[0]), int(shape[1])
         self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data, copy=True):
