@@ -1,11 +1,46 @@
 from cupy.cuda import runtime
-from cpython cimport pythread
 import threading
 import weakref
 
 
 cdef object _thread_local = threading.local()
-cdef int _current_stream_key = pythread.PyThread_create_key()
+
+
+cdef class _StreamThreadLocal(object):
+    cdef void* current_stream
+    cdef object current_stream_ref
+    cdef list prev_stream_ref_stack
+
+    @staticmethod
+    cdef _StreamThreadLocal get():
+        tls = getattr(_thread_local, 'tls', None)
+        if tls is None:
+            c_tls = _StreamThreadLocal()
+            _thread_local.tls = c_tls
+            return c_tls
+        return <_StreamThreadLocal>tls
+
+    cdef set_current_stream(self, stream):
+        cdef void* stream_ptr
+        if stream is None:
+            stream = Stream.null
+            stream_ptr = <void*>0
+        else:
+            stream_ptr = <void*><size_t>stream.ptr
+
+        self.current_stream = stream_ptr
+        self.current_stream_ref = weakref.ref(stream)
+
+    cdef get_current_stream(self):
+        if self.current_stream_ref is None:
+            self.current_stream_ref = weakref.ref(Stream.null)
+        return self.current_stream_ref()
+
+    cdef void* get_current_stream_ptr(self):
+        # Returns nullptr if not set, which is equivalent to the default
+        # stream.
+        return self.current_stream
+
 
 cdef size_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
@@ -13,9 +48,8 @@ cdef size_t get_current_stream_ptr():
     Returns:
         size_t: The current CUDA stream pointer.
     """
-    # PyThread_get_key_value returns NULL if a key is not set,
-    # which is equivalent with default stream pointer (0)
-    return <size_t>pythread.PyThread_get_key_value(_current_stream_key)
+    tls = _StreamThreadLocal.get()
+    return <size_t>tls.get_current_stream_ptr()
 
 
 cpdef get_current_stream():
@@ -24,26 +58,8 @@ cpdef get_current_stream():
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
-    if not hasattr(_thread_local, 'current_stream_ref'):
-        _thread_local.current_stream_ref = weakref.ref(Stream.null)
-    return _thread_local.current_stream_ref()
-
-
-cpdef _set_current_stream(stream):
-    """Sets current CUDA stream.
-
-    Args:
-        cupy.cuda.Stream: The current CUDA stream.
-    """
-    cdef size_t stream_ptr
-    if stream is None:
-        stream = Stream.null
-        stream_ptr = 0
-    else:
-        stream_ptr = stream.ptr
-    pythread.PyThread_delete_key_value(_current_stream_key)
-    pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
-    _thread_local.current_stream_ref = weakref.ref(stream)
+    tls = _StreamThreadLocal.get()
+    return tls.get_current_stream()
 
 
 class Event(object):
@@ -159,9 +175,10 @@ class Stream(object):
 
     def __del__(self):
         if self.ptr:
-            current_ptr = get_current_stream_ptr()
-            if self.ptr == current_ptr:
-                _set_current_stream(self.null)
+            tls = _StreamThreadLocal.get()
+            current_ptr = tls.get_current_stream_ptr()
+            if self.ptr == <size_t>current_ptr:
+                tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
@@ -173,16 +190,18 @@ class Stream(object):
         return self.ptr == other.ptr
 
     def __enter__(self):
-        if not hasattr(_thread_local, 'prev_stream_ref_stack'):
-            _thread_local.prev_stream_ref_stack = []
-        prev_stream_ref = weakref.ref(get_current_stream())
-        _thread_local.prev_stream_ref_stack.append(prev_stream_ref)
-        _set_current_stream(self)
+        tls = _StreamThreadLocal.get()
+        if tls.prev_stream_ref_stack is None:
+            tls.prev_stream_ref_stack = []
+        prev_stream_ref = weakref.ref(tls.get_current_stream())
+        tls.prev_stream_ref_stack.append(prev_stream_ref)
+        tls.set_current_stream(self)
         return self
 
     def __exit__(self, *args):
-        prev_stream_ref = _thread_local.prev_stream_ref_stack.pop()
-        _set_current_stream(prev_stream_ref())
+        tls = _StreamThreadLocal.get()
+        prev_stream_ref = tls.prev_stream_ref_stack.pop()
+        tls.set_current_stream(prev_stream_ref())
         pass
 
     def use(self):
@@ -190,7 +209,8 @@ class Stream(object):
 
         If you want to switch a stream temporarily, use the *with* statement.
         """
-        _set_current_stream(self)
+        tls = _StreamThreadLocal.get()
+        tls.set_current_stream(self)
         return self
 
     @property
