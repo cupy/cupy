@@ -11,6 +11,7 @@ cimport cython  # NOQA
 cimport cpython  # NOQA
 from libcpp cimport vector
 
+from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport core
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -636,7 +637,7 @@ cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        elementwise_copy(a, core._simple_getitem(ret, slice_list))
+        elementwise_copy(a, _indexing._simple_getitem(ret, slice_list))
         i += aw
     return ret
 
