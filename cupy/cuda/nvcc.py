@@ -491,7 +491,7 @@ def compile_using_nvcc(source, options=None, arch=None, filename='kern.cu'):
     if arch is None:
         cuda_info = get_cuda_info()
         arch = min([dev['major']*10 + dev['minor']
-                   for dev in cuda_info['devices']])
+                    for dev in cuda_info['devices']])
 
     cc = get_compiler()
     settings = get_compiler_setting()
