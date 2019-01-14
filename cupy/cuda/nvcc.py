@@ -14,14 +14,10 @@ import tempfile
 from os.path import join as pjoin
 from pkg_resources import resource_filename
 
-import distutils
-from distutils import ccompiler
+from distutils import util
 from distutils import errors
 from distutils import msvccompiler
-from distutils import sysconfig
 from distutils import unixccompiler
-
-import cupy
 
 
 def print_warning(*lines):
@@ -105,7 +101,7 @@ def get_cuda_path():
 def get_nvcc_path():
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
-        return distutil.split_quoted(nvcc)
+        return util.split_quoted(nvcc)
 
     cuda_path = get_cuda_path()
     if cuda_path is None:
@@ -287,7 +283,6 @@ def _get_cuda_info():
             stderr=subprocess.PIPE)
 
         stdoutdata, stderrdata = proc.communicate()
-        stderrlines = stderrdata.split(b'\n')
 
         if proc.returncode != 0:
             raise RuntimeError("Cannot determine "
@@ -382,7 +377,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             base_opts = get_compiler_base_options()
             self.set_executable('compiler_so', nvcc_path)
 
-            cuda_version = get_cuda_version()
+            cuda_version = get_cuda_version()  # noqa
             postargs = get_gencode_options() + [
                 '-O2', '--compiler-options="-fPIC"']
             postargs += extra_postargs
@@ -411,7 +406,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
         compiler_so = get_nvcc_path()
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
-        cuda_version = get_cuda_version()
+        cuda_version = get_cuda_version()  # noqa
         postargs = get_gencode_options() + ['-O2']
         postargs += ['-Xcompiler', '/MD']
         postargs += extra_postargs
@@ -528,7 +523,7 @@ def compile_using_nvcc(source, options=None, arch=None, filename='kern.cu'):
 
             # Format source with line numbers
             formatted_source = ["%-5d %s" % (i, l) for i, l
-                                in enumerate(code.split('\n'), 1)]
+                                in enumerate(source.split('\n'), 1)]
 
             lines = ["The following source code",
                      formatted_source,
