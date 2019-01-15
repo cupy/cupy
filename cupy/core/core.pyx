@@ -1647,7 +1647,7 @@ cdef class ndarray:
 
         if arr is not None:
             if not isinstance(arr, numpy.ndarray):
-                raise TypeError('Only numpy.ndarray can be got from'
+                raise TypeError('Only numpy.ndarray can be obtained from'
                                 'cupy.ndarray')
             if self.dtype != arr.dtype:
                 raise TypeError('{} array cannot be got from {} array'.format(
