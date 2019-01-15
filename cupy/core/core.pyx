@@ -1612,7 +1612,7 @@ cdef class ndarray:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None, order='C', arr=None):
+    cpdef get(self, stream=None, order='C', out=None):
         """Returns a copy of the array on host memory.
 
         Args:
@@ -1645,25 +1645,25 @@ cdef class ndarray:
             else:
                 raise ValueError("unsupported order: {}".format(order))
 
-        if arr is not None:
-            if not isinstance(arr, numpy.ndarray):
+        if out is not None:
+            if not isinstance(out, numpy.ndarray):
                 raise TypeError('Only numpy.ndarray can be obtained from'
                                 'cupy.ndarray')
-            if self.dtype != arr.dtype:
+            if self.dtype != out.dtype:
                 raise TypeError('{} array cannot be obtained from {} array'.format(
-                    arr.dtype, self.dtype))
-            if self.shape != arr.shape:
+                    out.dtype, self.dtype))
+            if self.shape != out.shape:
                 raise ValueError(
                     'Shape mismatch. Expected shape: {}, actual shape: {}'.format(
-                        self.shape, arr.shape))
+                        self.shape, out.shape))
             if self._c_contiguous:
-                arr = numpy.ascontiguousarray(arr)
+                out = numpy.ascontiguousarray(out)
             elif self._f_contiguous:
-                arr = numpy.asfortranarray(arr)
+                out = numpy.asfortranarray(out)
             else:
                 raise RuntimeError('Cannot set to non-contiguous array')
 
-            a_cpu = arr
+            a_cpu = out
         else:
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = a_cpu.ctypes.get_as_parameter()
