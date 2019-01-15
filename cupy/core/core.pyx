@@ -35,7 +35,9 @@ from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
 from cupy.core._kernel cimport create_reduction_func
 from cupy.core._kernel cimport create_ufunc
+from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport _routines_manipulation as _manipulation
+from cupy.core cimport _routines_math as _math
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core cimport dlpack
 from cupy.core cimport internal
@@ -579,10 +581,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.take`
 
         """
-        if axis is None:
-            return _take(self, indices, 0, self._shape.size() - 1, out)
-        else:
-            return _take(self, indices, axis, axis, out)
+        return _indexing._ndarray_take(self, indices, axis, out)
 
     # TODO(okuta): Implement put
 
@@ -597,35 +596,8 @@ cdef class ndarray:
         return _manipulation._ndarray_repeat(self, repeats, axis)
 
     cpdef choose(self, choices, out=None, mode='raise'):
-        a = self
-        n = choices.shape[0]
-
-        # broadcast `a` and `choices[i]` for all i
-        if a.ndim < choices.ndim - 1:
-            for i in range(choices.ndim - 1 - a.ndim):
-                a = a[None, ...]
-        elif a.ndim > choices.ndim - 1:
-            for i in range(a.ndim + 1 - choices.ndim):
-                choices = choices[:, None, ...]
-        ba, bcs = _manipulation.broadcast(a, choices).values
-
-        if out is None:
-            out = ndarray(ba.shape[1:], choices.dtype)
-
-        n_channel = numpy.prod(bcs[0].shape)
-        if mode == 'raise':
-            if not ((a < n).all() and (0 <= a).all()):
-                raise ValueError('invalid entry in choice array')
-            _choose_kernel(ba[0], bcs, n_channel, out)
-        elif mode == 'wrap':
-            ba = ba[0] % n
-            _choose_kernel(ba, bcs, n_channel, out)
-        elif mode == 'clip':
-            _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
-        else:
-            raise TypeError('clipmode not understood')
-
-        return out
+        # TODO(niboshi): Write docstring
+        return _indexing._ndarray_choose(self, choices, out, mode)
 
     cpdef sort(self, int axis=-1):
         """Sort an array, in-place with a stable sorting algorithm.
@@ -916,30 +888,7 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
-        cdef Py_ssize_t count_nonzero, ndim
-        dtype = numpy.int64
-        if self.size == 0:
-            count_nonzero = 0
-        else:
-            r = self.ravel()
-            nonzero = not_equal(r, 0, ndarray(r.shape, dtype))
-            del r
-            scan_index = scan(nonzero)
-            count_nonzero = int(scan_index[-1])
-        ndim = max(self._shape.size(), 1)
-        if count_nonzero == 0:
-            return (ndarray((0,), dtype=dtype),) * ndim
-
-        if ndim <= 1:
-            dst = ndarray((count_nonzero,), dtype=dtype)
-            _nonzero_kernel_1d(nonzero, scan_index, dst)
-            return dst,
-        else:
-            nonzero.shape = self.shape
-            scan_index.shape = self.shape
-            dst = ndarray((ndim, count_nonzero), dtype=dtype)
-            _nonzero_kernel(nonzero, scan_index, dst)
-            return tuple([dst[i] for i in range(ndim)])
+        return _indexing._ndarray_nonzero(self)
 
     # TODO(okuta): Implement compress
 
@@ -951,7 +900,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.diagonal`
 
         """
-        return _diagonal(self, offset, axis1, axis2)
+        return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
 
     # -------------------------------------------------------------------------
     # Calculation
@@ -1012,20 +961,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.clip`
 
         """
-        if a_min is None and a_max is None:
-            raise ValueError('array_clip: must set either max or min')
-        kind = self.dtype.kind
-        if a_min is None:
-            if kind == 'f':
-                a_min = self.dtype.type('-inf')
-            elif kind in 'iu':
-                a_min = numpy.iinfo(self.dtype.type).min
-        if a_max is None:
-            if kind == 'f':
-                a_max = self.dtype.type('inf')
-            elif kind in 'iu':
-                a_max = numpy.iinfo(self.dtype.type).max
-        return _clip(self, a_min, a_max, out=out)
+        return _math._ndarray_clip(self, a_min, a_max, out)
 
     cpdef ndarray round(self, decimals=0, out=None):
         """Returns an array with values rounded to the given number of decimals.
@@ -1057,10 +993,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.sum`
 
         """
-        if dtype is None:
-            return _sum_auto_dtype(self, axis, dtype, out, keepdims)
-        else:
-            return _sum_keep_dtype(self, axis, dtype, out, keepdims)
+        return _math._ndarray_sum(self, axis, dtype, out, keepdims)
 
     cpdef ndarray cumsum(self, axis=None, dtype=None, out=None):
         """Returns the cumulative sum of an array along a given axis.
@@ -1070,7 +1003,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.cumsum`
 
         """
-        return cupy.cumsum(self, axis, dtype, out)
+        return _math._ndarray_cumsum(self, axis, dtype, out)
 
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
@@ -1114,12 +1047,9 @@ cdef class ndarray:
            :meth:`numpy.ndarray.prod`
 
         """
-        if dtype is None:
-            return _prod_auto_dtype(self, axis, dtype, out, keepdims)
-        else:
-            return _prod_keep_dtype(self, axis, dtype, out, keepdims)
+        return _math._ndarray_prod(self, axis, dtype, out, keepdims)
 
-    cpdef ndarray cumprod(a, axis=None, dtype=None, out=None):
+    cpdef ndarray cumprod(self, axis=None, dtype=None, out=None):
         """Returns the cumulative product of an array along a given axis.
 
         .. seealso::
@@ -1127,7 +1057,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.cumprod`
 
         """
-        return cupy.cumprod(a, axis, dtype, out)
+        return _math._ndarray_cumprod(self, axis, dtype, out)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         return _all(self, axis=axis, out=out, keepdims=keepdims)
@@ -1172,13 +1102,13 @@ cdef class ndarray:
     # Unary operations:
 
     def __neg__(self):
-        return negative(self)
+        return _math._negative(self)
 
     def __pos__(self):
         return self
 
     def __abs__(self):
-        return absolute(self)
+        return _math._absolute(self)
 
     def __invert__(self):
         return invert(self)
@@ -1189,19 +1119,19 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__radd__(x)
         else:
-            return add(x, y)
+            return _math._add(x, y)
 
     def __sub__(x, y):
         if _should_use_rop(x, y):
             return y.__rsub__(x)
         else:
-            return subtract(x, y)
+            return _math._subtract(x, y)
 
     def __mul__(x, y):
         if _should_use_rop(x, y):
             return y.__rmul__(x)
         else:
-            return multiply(x, y)
+            return _math._multiply(x, y)
 
     def __matmul__(x, y):
         if _should_use_rop(x, y):
@@ -1213,25 +1143,25 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__rdiv__(x)
         else:
-            return divide(x, y)
+            return _math._divide(x, y)
 
     def __truediv__(x, y):
         if _should_use_rop(x, y):
             return y.__rtruediv__(x)
         else:
-            return true_divide(x, y)
+            return _math._true_divide(x, y)
 
     def __floordiv__(x, y):
         if _should_use_rop(x, y):
             return y.__rfloordiv__(x)
         else:
-            return floor_divide(x, y)
+            return _math._floor_divide(x, y)
 
     def __mod__(x, y):
         if _should_use_rop(x, y):
             return y.__rmod__(x)
         else:
-            return remainder(x, y)
+            return _math._remainder(x, y)
 
     def __divmod__(x, y):
         if _should_use_rop(x, y):
@@ -1244,7 +1174,7 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__rpow__(x)
         else:
-            return power(x, y)
+            return _math._power(x, y)
 
     def __lshift__(x, y):
         if _should_use_rop(x, y):
@@ -1279,28 +1209,28 @@ cdef class ndarray:
     # Arithmetic, in-place:
 
     def __iadd__(self, other):
-        return add(self, other, self)
+        return _math._add(self, other, self)
 
     def __isub__(self, other):
-        return subtract(self, other, self)
+        return _math._subtract(self, other, self)
 
     def __imul__(self, other):
-        return multiply(self, other, self)
+        return _math._multiply(self, other, self)
 
     def __idiv__(self, other):
-        return divide(self, other, self)
+        return _math._divide(self, other, self)
 
     def __itruediv__(self, other):
-        return true_divide(self, other, self)
+        return _math._true_divide(self, other, self)
 
     def __ifloordiv__(self, other):
-        return floor_divide(self, other, self)
+        return _math._floor_divide(self, other, self)
 
     def __imod__(self, other):
-        return remainder(self, other, self)
+        return _math._remainder(self, other, self)
 
     def __ipow__(self, other):
-        return power(self, other, self)
+        return _math._power(self, other, self)
 
     def __ilshift__(self, other):
         return left_shift(self, other, self)
@@ -1318,47 +1248,23 @@ cdef class ndarray:
         return bitwise_xor(self, other, self)
 
     cpdef ndarray conj(self):
-        if self.dtype.kind == 'c':
-            return conj(self)
-        else:
-            return self
+        return _math._ndarray_conj(self)
 
     @property
     def real(self):
-        if self.dtype.kind == 'c':
-            view = ndarray(
-                shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-                memptr=self.data, strides=self._strides)
-            view.base = self.base if self.base is not None else self
-            return view
-        return self
+        return _math._ndarray_real_getter(self)
 
     @real.setter
     def real(self, value):
-        if self.dtype.kind == 'c':
-            _real_setter(value, self)
-        else:
-            elementwise_copy(value, self)
+        _math._ndarray_real_setter(self, value)
 
     @property
     def imag(self):
-        if self.dtype.kind == 'c':
-            view = ndarray(
-                shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-                memptr=self.data + self.dtype.itemsize // 2,
-                strides=self._strides)
-            view.base = self.base if self.base is not None else self
-            return view
-        new_array = ndarray(self.shape, dtype=self.dtype)
-        new_array.fill(0)
-        return new_array
+        return _math._ndarray_imag_getter(self)
 
     @imag.setter
     def imag(self, value):
-        if self.dtype.kind == 'c':
-            _imag_setter(value, self)
-        else:
-            raise TypeError('cupy.ndarray does not have imaginary part to set')
+        _math._ndarray_imag_setter(self, value)
 
     # -------------------------------------------------------------------------
     # Special methods
@@ -1421,28 +1327,7 @@ cdef class ndarray:
             array([1, 0])
 
         """
-        # supports basic indexing (by slices, ints or Ellipsis) and
-        # some parts of advanced indexing by integer or boolean arrays.
-        # TODO(beam2d): Support the advanced indexing of NumPy.
-        cdef Py_ssize_t mask_i
-        cdef list slice_list, adv_mask, adv_slices
-        cdef bint advanced, mask_exists
-
-        slice_list, advanced, mask_exists = _prepare_slice_list(
-            slices, self._shape.size())
-
-        if mask_exists:
-            mask_i = _get_mask_index(slice_list)
-            return _getitem_mask_single(self, slice_list[mask_i], mask_i)
-        if advanced:
-            a, adv_slices, adv_mask = _prepare_advanced_indexing(
-                self, slice_list)
-            if sum(adv_mask) == 1:
-                axis = adv_mask.index(True)
-                return a.take(adv_slices[axis], axis)
-            return _getitem_multiple(a, adv_slices)
-
-        return _simple_getitem(self, slice_list)
+        return _indexing._ndarray_getitem(self, slices)
 
     def __setitem__(self, slices, value):
         """x.__setitem__(slices, y) <==> x[slices] = y
@@ -1492,7 +1377,7 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        _scatter_op(self, slices, value, 'update')
+        _indexing._ndarray_setitem(self, slices, value)
 
     def scatter_add(self, slices, value):
         """Adds given values to specified elements of an array.
@@ -1501,7 +1386,7 @@ cdef class ndarray:
             :func:`cupyx.scatter_add` for full documentation.
 
         """
-        _scatter_op(self, slices, value, 'add')
+        _indexing._ndarray_scatter_add(self, slices, value)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
@@ -2370,677 +2255,6 @@ right_shift = _create_bit_op(
 
     ''')
 
-# -----------------------------------------------------------------------------
-# Indexing routines
-# -----------------------------------------------------------------------------
-
-cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
-    cdef Py_ssize_t i, n_newaxes, axis
-    cdef list slice_list
-    cdef char kind
-    cdef bint advanced, mask_exists
-
-    if isinstance(slices, tuple):
-        slice_list = list(slices)
-    elif isinstance(slices, list):
-        slice_list = list(slices)  # copy list
-        for s in slice_list:
-            if not isinstance(s, int):
-                break
-        else:
-            slice_list = [slice_list]
-    else:
-        slice_list = [slices]
-
-    slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
-
-    # Check if advanced is true,
-    # and convert list/NumPy arrays to cupy.ndarray
-    advanced = False
-    mask_exists = False
-    for i, s in enumerate(slice_list):
-        to_gpu = True
-        if isinstance(s, list):
-            # handle the case when s is an empty list
-            s = numpy.array(s)
-            if s.size == 0:
-                s = s.astype(numpy.int32)
-        elif isinstance(s, bool):
-            s = numpy.array(s)
-        elif isinstance(s, ndarray):
-            to_gpu = False
-        elif not isinstance(s, numpy.ndarray):
-            continue
-        kind = ord(s.dtype.kind)
-        if kind == b'i' or kind == b'u':
-            advanced = True
-        elif kind == b'b':
-            mask_exists = True
-        else:
-            raise IndexError(
-                'arrays used as indices must be of integer or boolean '
-                'type. (actual: {})'.format(s.dtype.type))
-        if to_gpu:
-            slice_list[i] = array(s)
-
-    if not mask_exists and len(slice_list) > ndim + n_newaxes:
-        raise IndexError('too many indices for array')
-    return slice_list, advanced, mask_exists
-
-
-cdef Py_ssize_t _get_mask_index(list slice_list) except *:
-    cdef Py_ssize_t i, n_not_slice_none, mask_i
-    cdef slice none_slice = slice(None)
-    n_not_slice_none = 0
-    mask_i = -1
-    for i, s in enumerate(slice_list):
-        if not isinstance(s, slice) or s != none_slice:
-            n_not_slice_none += 1
-            if isinstance(s, ndarray) and s.dtype == numpy.bool_:
-                mask_i = i
-    if n_not_slice_none != 1 or mask_i == -1:
-        raise ValueError('currently, CuPy only supports slices that '
-                         'consist of one boolean array.')
-    return mask_i
-
-
-cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
-    cdef slice none_slice = slice(None)
-
-    # split slices that can be handled by basic-indexing
-    cdef list basic_slices = []
-    cdef list adv_slices = []
-    cdef list adv_mask = []
-    cdef bint use_basic_indexing = False
-    for i, s in enumerate(slice_list):
-        if s is None:
-            basic_slices.append(None)
-            adv_slices.append(none_slice)
-            adv_mask.append(False)
-            use_basic_indexing = True
-        elif isinstance(s, slice):
-            basic_slices.append(s)
-            adv_slices.append(none_slice)
-            adv_mask.append(False)
-            use_basic_indexing |= s != none_slice
-        elif isinstance(s, ndarray):
-            kind = s.dtype.kind
-            assert kind == 'i' or kind == 'u'
-            basic_slices.append(none_slice)
-            adv_slices.append(s)
-            adv_mask.append(True)
-        elif isinstance(s, int):
-            basic_slices.append(none_slice)
-            scalar_array = ndarray((), dtype=numpy.int64)
-            scalar_array.fill(s)
-            adv_slices.append(scalar_array)
-            adv_mask.append(True)
-        else:
-            raise IndexError(
-                'only integers, slices (`:`), ellipsis (`...`),'
-                'numpy.newaxis (`None`) and integer or '
-                'boolean arrays are valid indices')
-
-    # check if this is a combination of basic and advanced indexing
-    if use_basic_indexing:
-        a = _simple_getitem(a, basic_slices)
-
-    return a, adv_slices, adv_mask
-
-cdef ndarray _simple_getitem(ndarray a, list slice_list):
-    cdef vector.vector[Py_ssize_t] shape, strides
-    cdef ndarray v
-    cdef Py_ssize_t i, j, offset, ndim
-    cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
-    cdef slice ss
-
-    # Create new shape and stride
-    j = 0
-    offset = 0
-    ndim = a._shape.size()
-    for i, s in enumerate(slice_list):
-        if s is None:
-            shape.push_back(1)
-            if j < ndim:
-                strides.push_back(a._strides[j])
-            elif ndim > 0:
-                strides.push_back(a._strides[ndim - 1])
-            else:
-                strides.push_back(a.itemsize)
-        elif ndim <= j:
-            raise IndexError("too many indices for array")
-        elif isinstance(s, slice):
-            ss = internal.complete_slice(s, a._shape[j])
-            s_start = ss.start
-            s_stop = ss.stop
-            s_step = ss.step
-            if s_step > 0:
-                dim = (s_stop - s_start - 1) // s_step + 1
-            else:
-                dim = (s_stop - s_start + 1) // s_step + 1
-
-            if dim == 0:
-                strides.push_back(a._strides[j])
-            else:
-                strides.push_back(a._strides[j] * s_step)
-
-            if s_start > 0:
-                offset += a._strides[j] * s_start
-            shape.push_back(dim)
-            j += 1
-        elif numpy.isscalar(s):
-            ind = int(s)
-            if ind < 0:
-                ind += a._shape[j]
-            if not (0 <= ind < a._shape[j]):
-                msg = ('Index %s is out of bounds for axis %s with '
-                       'size %s' % (s, j, a._shape[j]))
-                raise IndexError(msg)
-            offset += ind * a._strides[j]
-            j += 1
-        else:
-            raise TypeError('Invalid index type: %s' % type(slice_list[i]))
-
-    v = a.view()
-    if a.size != 0:
-        v.data = a.data + offset
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    v._set_shape_and_strides(shape, strides, True, True)
-    return v
-
-cdef _take_kernel_core = '''
-ptrdiff_t out_i = indices % index_range;
-if (out_i < 0) out_i += index_range;
-if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
-if (rdim != 1) out_i = out_i * rdim + i % rdim;
-out = a[out_i];
-'''
-
-cdef _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
-    'T out', _take_kernel_core, 'cupy_take')
-
-cdef _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, uint32 ldim, uint32 cdim, uint32 rdim, '
-    'int64 index_range',
-    'T out', _take_kernel_core, 'cupy_take_scalar')
-
-
-cdef _choose_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel',
-    'T y',
-    'y = choices[i + n_channel * a]',
-    'cupy_choose')
-
-
-cdef _choose_clip_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel, int32 n',
-    'T y',
-    '''
-      S x = a;
-      if (a < 0) {
-        x = 0;
-      } else if (a >= n) {
-        x = n - 1;
-      }
-      y = choices[i + n_channel * x];
-    ''',
-    'cupy_choose_clip')
-
-
-cdef _scatter_update_kernel = ElementwiseKernel(
-    'T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      a[(li * adim + wrap_indices) * rdim + ri] = v;
-    ''',
-    'cupy_scatter_update')
-
-
-cdef _scatter_add_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_add')
-
-
-cdef _scatter_update_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = v[mask_scanned - 1]',
-    'cupy_scatter_update_mask')
-
-
-cdef _scatter_add_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = a + v[mask_scanned - 1]',
-    'cupy_scatter_add_mask')
-
-
-cdef _getitem_mask_kernel = ElementwiseKernel(
-    'T a, bool mask, S mask_scanned',
-    'raw T out',
-    'if (mask) out[mask_scanned - 1] = a',
-    'cupy_getitem_mask')
-
-
-cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
-    cdef ndarray mask_scanned, mask_br, mask_br_scanned
-    cdef int n_true
-    cdef tuple lshape, rshape, out_shape
-
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask._shape.size():]
-
-    if mask.size == 0:
-        masked_shape = lshape + (0,) + rshape
-        mask_br = _manipulation._reshape(mask, masked_shape)
-        return mask_br, mask_br, masked_shape
-
-    for i, s in enumerate(mask._shape):
-        if a.shape[axis + i] != s:
-            raise IndexError('boolean index did not match')
-
-    # Get number of True in the mask to determine the shape of the array
-    # after masking.
-    if mask.size <= 2 ** 31 - 1:
-        mask_type = numpy.int32
-    else:
-        mask_type = numpy.int64
-    mask_scanned = scan(mask.astype(mask_type).ravel())  # starts with 1
-    n_true = int(mask_scanned[-1])
-    masked_shape = lshape + (n_true,) + rshape
-
-    # When mask covers the entire array, broadcasting is not necessary.
-    if mask._shape.size() == a._shape.size() and axis == 0:
-        return (
-            mask,
-            _manipulation._reshape(mask_scanned, mask._shape),
-            masked_shape)
-    mask_scanned = None
-
-    # The scan of the broadcasted array is used to index on kernel.
-    mask = _manipulation._reshape(
-        mask,
-        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    if mask._shape.size() > a._shape.size():
-        raise IndexError('too many indices for array')
-
-    mask = _manipulation.broadcast_to(mask, a.shape)
-    if mask.size <= 2 ** 31 - 1:
-        mask_type = numpy.int32
-    else:
-        mask_type = numpy.int64
-    mask_scanned = _manipulation._reshape(
-        scan(mask.astype(mask_type).ravel()),
-        mask._shape)
-    return mask, mask_scanned, masked_shape
-
-
-cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
-    cdef ndarray mask_scanned
-    cdef tuple masked_shape
-
-    mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
-        a, mask, axis)
-    out = ndarray(masked_shape, dtype=a.dtype)
-    if out.size == 0:
-        return out
-    return _getitem_mask_kernel(a, mask, mask_scanned, out)
-
-
-cpdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
-    # When li + 1 == ri this function behaves similarly to np.take
-    cdef tuple out_shape, ind_shape, indices_shape
-    cdef int i, ndim = a._shape.size()
-    cdef Py_ssize_t ldim, cdim, rdim, index_range
-    if ndim == 0:
-        a = a.ravel()
-        ndim = 1
-
-    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise _errors._AxisError('Axis overrun')
-
-    if ndim == 1:
-        li = ri = 0
-    else:
-        li %= ndim
-        ri %= ndim
-        assert 0 <= li <= ri
-
-    if numpy.isscalar(indices):
-        indices_shape = ()
-        cdim = 1
-    else:
-        if not isinstance(indices, ndarray):
-            indices = array(indices, dtype=int)
-        indices_shape = indices.shape
-        cdim = indices.size
-
-    ldim = rdim = 1
-    if ndim == 1:
-        out_shape = indices_shape
-        index_range = a.size
-    else:
-        a_shape = a.shape
-        out_shape = a_shape[:li] + indices_shape + a_shape[ri + 1:]
-        if len(indices_shape) != 0:
-            indices = _manipulation._reshape(
-                indices,
-                (1,) * li + indices_shape + (1,) * (ndim - (ri + 1)))
-        for i in range(li):
-            ldim *= a._shape[i]
-        for i in range(ri + 1, ndim):
-            rdim *= a._shape[i]
-        index_range = a.size // (ldim * rdim)
-
-    if out is None:
-        out = ndarray(out_shape, dtype=a.dtype)
-    else:
-        if out.dtype != a.dtype:
-            raise TypeError('Output dtype mismatch')
-        if out.shape != out_shape:
-            raise ValueError('Output shape mismatch')
-    if a.size == 0 and out.size != 0:
-        raise IndexError('cannot do a non-empty take from an empty axes.')
-
-    if isinstance(indices, ndarray):
-        return _take_kernel(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
-    else:
-        return _take_kernel_scalar(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
-
-
-cpdef _scatter_op_single(ndarray a, ndarray indices, v,
-                         Py_ssize_t li=0, Py_ssize_t ri=0, op=''):
-    # When op == 'update', this function behaves similarly to
-    # a code below using NumPy under the condition that a = a._reshape(shape)
-    # does not invoke copy.
-    #
-    # shape = a[:li] +\
-    #     (numpy.prod(a[li:ri+1]),) + a[ri+1:]
-    # a = a._reshape(shape)
-    # slices = (slice(None),) * li + indices +\
-    #     (slice(None),) * (a.ndim - indices.ndim - ri)
-    # a[slices] = v
-    cdef Py_ssize_t ndim, adim, cdim, rdim
-    cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
-
-    ndim = a._shape.size()
-
-    if ndim == 0:
-        raise ValueError("requires a.ndim >= 1")
-    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise ValueError('Axis overrun')
-
-    if not isinstance(v, ndarray):
-        v = array(v, dtype=a.dtype)
-    else:
-        v = v.astype(a.dtype, copy=False)
-
-    a_shape = a.shape
-    li %= ndim
-    ri %= ndim
-
-    lshape = a_shape[:li]
-    rshape = a_shape[ri + 1:]
-    adim = internal.prod(a_shape[li:ri + 1])
-
-    indices_shape = indices.shape
-    v_shape = lshape + indices_shape + rshape
-    v = _manipulation.broadcast_to(v, v_shape)
-
-    cdim = indices.size
-    rdim = internal.prod(rshape)
-    indices = _manipulation._reshape(
-        indices,
-        (1,) * len(lshape) + indices_shape + (1,) * len(rshape))
-    indices = _manipulation.broadcast_to(indices, v_shape)
-
-    if op == 'update':
-        _scatter_update_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
-    elif op == 'add':
-        # There is constraints on types because atomicAdd() in CUDA 7.5
-        # only supports int32, uint32, uint64, and float32.
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float16, numpy.float32,
-                           numpy.float64, numpy.uint32, numpy.uint64,
-                           numpy.ulonglong)):
-            raise TypeError(
-                'scatter_add only supports int32, float16, float32, float64, '
-                'uint32, uint64, as data type')
-        _scatter_add_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
-    else:
-        raise ValueError('provided op is not supported')
-
-
-cpdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
-    cdef ndarray mask_scanned, src
-    cdef tuple masked_shape
-
-    mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
-        a, mask, axis)
-    if internal.prod(masked_shape) == 0:
-        return
-
-    if not isinstance(v, ndarray):
-        src = array(v, dtype=a.dtype)
-    else:
-        src = v
-        src = src.astype(a.dtype, copy=False)
-    # broadcast src to shape determined by the mask
-    src = _manipulation.broadcast_to(src, masked_shape)
-
-    if op == 'update':
-        _scatter_update_mask_kernel(src, mask, mask_scanned, a)
-    elif op == 'add':
-        _scatter_add_mask_kernel(src, mask, mask_scanned, a)
-    else:
-        raise ValueError('provided op is not supported')
-
-
-cpdef _scatter_op(ndarray a, slices, value, op):
-    cdef Py_ssize_t i, li, ri
-    cdef ndarray v, x, y, a_interm, reduced_idx
-    cdef list slice_list, adv_mask, adv_slices
-    cdef bint advanced, mask_exists
-
-    slice_list, advanced, mask_exists = _prepare_slice_list(
-        slices, a._shape.size())
-
-    if mask_exists:
-        mask_i = _get_mask_index(slice_list)
-        _scatter_op_mask_single(a, slice_list[mask_i], value, mask_i, op)
-        return
-
-    if advanced:
-        a, adv_slices, adv_mask = _prepare_advanced_indexing(a, slice_list)
-        if sum(adv_mask) == 1:
-            axis = adv_mask.index(True)
-            _scatter_op_single(a, adv_slices[axis], value, axis, axis, op)
-            return
-
-        # scatter_op with multiple integer arrays
-        a_interm, reduced_idx, li, ri =\
-            _prepare_multiple_array_indexing(a, adv_slices)
-        _scatter_op_single(a_interm, reduced_idx, value, li, ri, op)
-        return
-
-    y = _simple_getitem(a, slice_list)
-    if op == 'update':
-        if not isinstance(value, ndarray):
-            y.fill(value)
-            return
-        x = value
-        if (internal.vector_equal(y._shape, x._shape) and
-                internal.vector_equal(y._strides, x._strides)):
-            if y.data.ptr == x.data.ptr:
-                return  # Skip since x and y are the same array
-            elif y._c_contiguous and x.dtype == y.dtype:
-                y.data.copy_from_device_async(x.data, x.nbytes)
-                return
-        elementwise_copy(x, y)
-        return
-    if op == 'add':
-        add(y, value, y)
-        return
-    raise ValueError('this op is not supported')
-
-
-cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
-                        Py_ssize_t axis2=1):
-    cdef Py_ssize_t ndim = a.ndim
-    if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise _errors._AxisError(
-            'axis1(={0}) and axis2(={1}) must be within range '
-            '(ndim={2})'.format(axis1, axis2, ndim))
-
-    axis1 %= ndim
-    axis2 %= ndim
-    if axis1 < axis2:
-        min_axis, max_axis = axis1, axis2
-    else:
-        min_axis, max_axis = axis2, axis1
-
-    tr = list(range(ndim))
-    del tr[max_axis]
-    del tr[min_axis]
-    if offset >= 0:
-        a = _manipulation._transpose(a, tr + [axis1, axis2])
-    else:
-        a = _manipulation._transpose(a, tr + [axis2, axis1])
-        offset = -offset
-
-    diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))
-    ret_shape = a.shape[:-2] + (diag_size,)
-    if diag_size == 0:
-        return ndarray(ret_shape, dtype=a.dtype)
-
-    a = a[..., :diag_size, offset:offset + diag_size]
-
-    ret = a.view()
-    # TODO(niboshi): Confirm update_x_contiguity flags
-    ret._set_shape_and_strides(
-        a.shape[:-2] + (diag_size,),
-        a.strides[:-2] + (a.strides[-1] + a.strides[-2],),
-        True, True)
-    return ret
-
-
-cpdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
-    # slices consist of either slice(None) or ndarray
-    cdef Py_ssize_t i, p, li, ri, max_index
-    cdef ndarray take_idx, input_flat, out_flat, ret
-    cdef tuple a_shape
-
-    br = _manipulation.broadcast(*slices)
-    slices = list(br.values)
-
-    # check if transpose is necessasry
-    # li:  index of the leftmost array in slices
-    # ri:  index of the rightmost array in slices
-    do_transpose = False
-    prev_arr_i = None
-    li = 0
-    ri = 0
-    for i, s in enumerate(slices):
-        if isinstance(s, ndarray):
-            if prev_arr_i is None:
-                prev_arr_i = i
-                li = i
-            elif prev_arr_i is not None and i - prev_arr_i > 1:
-                do_transpose = True
-            else:
-                prev_arr_i = i
-                ri = i
-
-    if do_transpose:
-        transp_a = []
-        transp_b = []
-        slices_a = []
-        slices_b = []
-
-        for i, s in enumerate(slices):
-            if isinstance(s, ndarray):
-                transp_a.append(i)
-                slices_a.append(s)
-            else:
-                transp_b.append(i)
-                slices_b.append(s)
-        a = _manipulation._transpose(a, transp_a + transp_b)
-        slices = slices_a + slices_b
-        li = 0
-        ri = len(transp_a) - 1
-
-    a_interm_shape = a.shape
-    a_interm = a
-
-    # build the strides
-    strides = [1]
-    for s in a.shape[ri:li:-1]:
-        strides.insert(0, s * strides[0])
-
-    flattened_indexes = []
-    for stride, s, a_interm_shape_i in zip(
-            strides, slices[li:ri + 1], a_interm_shape[li:ri + 1]):
-        max_index = stride * (a_interm_shape_i - 1)
-        # cast to appropriate dtype if the linearized index can
-        # exceed the range of the original dtype.
-        dtype = None
-        if max_index >= 2**31 and issubclass(
-                s.dtype.type, (numpy.int8, numpy.int16, numpy.int32)):
-            dtype = numpy.int64
-        elif max_index >= 2**15 and issubclass(
-                s.dtype.type, (numpy.int8, numpy.int16)):
-            dtype = numpy.int32
-        elif max_index >= 2**7 and issubclass(s.dtype.type, numpy.int8):
-            dtype = numpy.int16
-
-        if max_index >= 2**32 and issubclass(
-                s.dtype.type, (numpy.uint8, numpy.uint16, numpy.uint32)):
-            dtype = numpy.uint64
-        elif max_index >= 2**16 and issubclass(
-                s.dtype.type, (numpy.uint8, numpy.uint16)):
-            dtype = numpy.uint32
-        elif max_index >= 2**8 and issubclass(s.dtype.type, numpy.uint8):
-            dtype = numpy.uint16
-
-        if dtype is not None:
-            s = s.astype(dtype)
-        # wrap all out-of-bound indices
-        flattened_indexes.append(stride * (s % a_interm_shape_i))
-
-    # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
-    concat_shape = (len(flattened_indexes),) + br.shape
-    flattened_indexes = _manipulation._concatenate(
-        [
-            _manipulation._reshape(index, (1,) + index.shape)
-            for index in flattened_indexes],
-        axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
-
-    reduced_idx = _sum_auto_dtype(flattened_indexes, axis=0)
-
-    return a_interm, reduced_idx, li, ri
-
-
-cpdef ndarray _getitem_multiple(ndarray a, list slices):
-    a, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
-    return _take(a, reduced_idx, li, ri)
-
 
 # -----------------------------------------------------------------------------
 # Linear algebra
@@ -3059,7 +2273,7 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         raise ValueError('Not supported dtype combination.')
 
     if a_ndim == 0 or b_ndim == 0:
-        return multiply(a, b, out=out)
+        return _math._multiply(a, b, out=out)
 
     input_a_is_vec = a_ndim == 1
     input_b_is_vec = b_ndim == 1
@@ -3647,281 +2861,6 @@ _any = create_reduction_func(
 
 
 # -----------------------------------------------------------------------------
-# Mathematical functions
-# -----------------------------------------------------------------------------
-
-_sum_auto_dtype = create_reduction_func(
-    'cupy_sum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
-
-
-_sum_keep_dtype = create_reduction_func(
-    'cupy_sum_with_dtype',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
-
-
-_prod_auto_dtype = create_reduction_func(
-    'cupy_prod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
-
-
-_prod_keep_dtype = create_reduction_func(
-    'cupy_prod_with_dtype',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
-
-
-cdef create_arithmetic(name, op, boolop, doc):
-    return create_ufunc(
-        'cupy_' + name,
-        (('??->?', 'out0 = in0 %s in1' % boolop),
-         'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
-         'DD->D'),
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-add = create_arithmetic(
-    'add', '+', '|',
-    '''Adds two arrays elementwise.
-
-    .. seealso:: :data:`numpy.add`
-
-    ''')
-
-
-conj = create_ufunc(
-    'cupy_conj',
-    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->F', 'out0 = conj(in0)'),
-     ('D->D', 'out0 = conj(in0)')),
-    'out0 = in0',
-    doc='''Returns the complex conjugate, element-wise.
-
-    .. seealso:: :data:`numpy.conj`
-
-    ''')
-
-
-angle = create_ufunc(
-    'cupy_angle',
-    ('?->d', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = arg(in0)'),
-     ('D->d', 'out0 = arg(in0)')),
-    'out0 = in0 >= 0 ? 0 : M_PI',
-    doc='''Returns the angle of the complex argument.
-
-    .. seealso:: :func:`numpy.angle`
-
-    ''')
-
-
-real = create_ufunc(
-    'cupy_real',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.real()'),
-     ('D->d', 'out0 = in0.real()')),
-    'out0 = in0',
-    doc='''Returns the real part of the elements of the array.
-
-    .. seealso:: :func:`numpy.real`
-
-    ''')
-
-_real_setter = create_ufunc(
-    'cupy_real_setter',
-    ('f->F', 'd->D'),
-    'out0.real(in0)',
-    doc='''Sets the real part of the elements of the array.
-    ''')
-
-
-imag = create_ufunc(
-    'cupy_imag',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.imag()'),
-     ('D->d', 'out0 = in0.imag()')),
-    'out0 = 0',
-    doc='''Returns the imaginary part of the elements of the array.
-
-    .. seealso:: :func:`numpy.imag`
-
-    ''')
-
-
-_imag_setter = create_ufunc(
-    'cupy_imag_setter',
-    ('f->F', 'd->D'),
-    'out0.imag(in0)',
-    doc='''Sets the imaginary part of the elements of the array.
-    ''')
-
-
-negative = create_ufunc(
-    'cupy_negative',
-    (('?->?', 'out0 = !in0'),
-     'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = -in0',
-    doc='''Takes numerical negative elementwise.
-
-    .. seealso:: :data:`numpy.negative`
-
-    ''')
-
-
-multiply = create_arithmetic(
-    'multiply', '*', '&',
-    '''Multiplies two arrays elementwise.
-
-    .. seealso:: :data:`numpy.multiply`
-
-    ''')
-
-
-divide = create_ufunc(
-    'cupy_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 / in1'),
-     ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1'),
-     ('FF->F', 'out0 = in0 / in1'),
-     ('DD->D', 'out0 = in0 / in1')),
-    'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
-    doc='''Divides arguments elementwise.
-
-    .. seealso:: :data:`numpy.divide`
-
-    ''')
-
-
-power = create_ufunc(
-    'cupy_power',
-    ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = powf(in0, in1)'),
-     ('ff->f', 'out0 = powf(in0, in1)'),
-     ('dd->d', 'out0 = pow(in0, in1)'),
-     ('FF->F', 'out0 = pow(in0, in1)'),
-     ('DD->D', 'out0 = pow(in0, in1)')),
-    'out0 = rint(pow((double)in0, (double)in1))',
-    doc='''Computes ``x1 ** x2`` elementwise.
-
-    .. seealso:: :data:`numpy.power`
-
-    ''')
-
-
-subtract = create_arithmetic(
-    'subtract', '-', '^',
-    '''Subtracts arguments elementwise.
-
-    .. seealso:: :data:`numpy.subtract`
-
-    ''')
-
-
-true_divide = create_ufunc(
-    'cupy_true_divide',
-    ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
-    doc='''Elementwise true division (i.e. division as floating values).
-
-    .. seealso:: :data:`numpy.true_divide`
-
-    ''')
-
-
-if six.PY3:
-    divide = true_divide
-
-
-floor_divide = create_ufunc(
-    'cupy_floor_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
-    'out0 = _floor_divide(in0, in1)',
-    doc='''Elementwise floor division (i.e. integer quotient).
-
-    .. seealso:: :data:`numpy.floor_divide`
-
-    ''')
-
-
-remainder = create_ufunc(
-    'cupy_remainder',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
-     ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
-     ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
-    'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
-    doc='''Computes the remainder of Python division elementwise.
-
-    .. seealso:: :data:`numpy.remainder`
-
-    ''')
-
-
-absolute = create_ufunc(
-    'cupy_absolute',
-    (('?->?', 'out0 = in0'),
-     'b->b', ('B->B', 'out0 = in0'), 'h->h', ('H->H', 'out0 = in0'),
-     'i->i', ('I->I', 'out0 = in0'), 'l->l', ('L->L', 'out0 = in0'),
-     'q->q', ('Q->Q', 'out0 = in0'),
-     ('e->e', 'out0 = fabsf(in0)'),
-     ('f->f', 'out0 = fabsf(in0)'),
-     ('d->d', 'out0 = fabs(in0)'),
-     ('F->f', 'out0 = abs(in0)'),
-     ('D->d', 'out0 = abs(in0)')),
-    'out0 = in0 > 0 ? in0 : -in0',
-    doc='''Elementwise absolute value function.
-
-    .. seealso:: :data:`numpy.absolute`
-
-    ''')
-
-
-sqrt = create_ufunc(
-    'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = sqrt(in0)',
-    doc='''Elementwise square root function.
-
-    .. seealso:: :data:`numpy.sqrt`
-
-    ''')
-
-
-_clip = create_ufunc(
-    'cupy_clip',
-    ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
-     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
-    'out0 = in0 < in1 ? in1 : (in0 > in2 ? in2 : in0)')
-
-
-# -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
 
@@ -3953,7 +2892,7 @@ cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
 
 cpdef _std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     ret = _var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
-    return sqrt(ret, dtype=dtype, out=out)
+    return _math._sqrt(ret, dtype=dtype, out=out)
 
 
 cdef _var_core = ReductionKernel(
@@ -3975,155 +2914,6 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
-
-
-# -----------------------------------------------------------------------------
-# scan
-# -----------------------------------------------------------------------------
-
-@util.memoize(for_each_device=True)
-def _inclusive_scan_kernel(dtype, block_size):
-    """return Prefix Sum(Scan) cuda kernel
-
-    e.g
-    if blocksize * 2 >= len(src)
-    src [1, 2, 3, 4]
-    dst [1, 3, 6, 10]
-
-    if blocksize * 2 < len(src)
-    block_size: 2
-    src [1, 2, 3, 4, 5, 6]
-    dst [1, 3, 6, 10, 5, 11]
-
-    Args:
-        dtype: src, dst array type
-        block_size: block_size
-
-    Returns:
-         cupy.cuda.Function: cuda function
-    """
-
-    name = "inclusive_scan_kernel"
-    dtype = _get_typename(dtype)
-    source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
-        CArray<${dtype}, 1> dst){
-        long long n = src.size();
-        extern __shared__ ${dtype} temp[];
-        unsigned int thid = threadIdx.x;
-        unsigned int block = 2 * blockIdx.x * blockDim.x;
-
-        unsigned int idx0 = thid + block;
-        unsigned int idx1 = thid + blockDim.x + block;
-
-        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype})0;
-        temp[thid + blockDim.x] = (idx1 < n) ? src[idx1] : (${dtype})0;
-        __syncthreads();
-
-        for(int i = 1; i <= ${block_size}; i <<= 1){
-            int index = (threadIdx.x + 1) * i * 2 - 1;
-            if (index < (${block_size} << 1)){
-                temp[index] = temp[index] + temp[index - i];
-            }
-            __syncthreads();
-        }
-
-        for(int i = ${block_size} >> 1; i > 0; i >>= 1){
-            int index = (threadIdx.x + 1) * i * 2 - 1;
-            if(index + i < (${block_size} << 1)){
-                temp[index + i] = temp[index + i] + temp[index];
-            }
-            __syncthreads();
-        }
-
-        if(idx0 < n){
-            dst[idx0] = temp[thid];
-        }
-        if(idx1 < n){
-            dst[idx1] = temp[thid + blockDim.x];
-        }
-    }
-    """).substitute(name=name, dtype=dtype, block_size=block_size)
-    module = compile_with_cache(source)
-    return module.get_function(name)
-
-
-@util.memoize(for_each_device=True)
-def _add_scan_blocked_sum_kernel(dtype):
-    name = "add_scan_blocked_sum_kernel"
-    dtype = _get_typename(dtype)
-    source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
-        long long n = src_dst.size();
-        unsigned int idxBase = (blockDim.x + 1) * (blockIdx.x + 1);
-        unsigned int idxAdded = idxBase + threadIdx.x;
-        unsigned int idxAdd = idxBase - 1;
-
-        if(idxAdded < n){
-            src_dst[idxAdded] += src_dst[idxAdd];
-        }
-    }
-    """).substitute(name=name, dtype=dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name)
-
-
-cdef _nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
-    'if (src != 0) dst[index - 1] = i',
-    'nonzero_kernel_1d')
-
-
-cdef _nonzero_kernel = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
-    '''
-    if (src != 0){
-        for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {j, index - 1};
-            dst[ind] = _ind.get()[j];
-        }
-    }''',
-    'nonzero_kernel',
-    reduce_dims=False)
-
-
-cpdef ndarray scan(ndarray a, ndarray out=None):
-    """Return the prefix sum(scan) of the elements.
-
-    Args:
-        a (cupy.ndarray): input array.
-        out (cupy.ndarray): Alternative output array in which to place
-         the result. The same size and same type as the input array(a).
-
-    Returns:
-        cupy.ndarray: A new array holding the result is returned.
-
-    """
-    if a._shape.size() != 1:
-        raise TypeError("Input array should be 1D array.")
-
-    cdef Py_ssize_t block_size = 256
-
-    if out is None:
-        out = ndarray(a.shape, dtype=a.dtype)
-    else:
-        if a.size != out.size:
-            raise ValueError("Provided out is the wrong size")
-
-    kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
-    kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
-              block=(block_size,),
-              args=(a, out),
-              shared_mem=a.itemsize * block_size * 2)
-
-    if (a.size - 1) // (block_size * 2) > 0:
-        blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
-        scan(blocked_sum, blocked_sum)
-        kern_add = _add_scan_blocked_sum_kernel(out.dtype)
-        kern_add(grid=((a.size - 1) // (2 * block_size),),
-                 block=(2 * block_size - 1,),
-                 args=(out,))
-    return out
 
 
 # -----------------------------------------------------------------------------

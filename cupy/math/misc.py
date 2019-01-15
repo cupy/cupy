@@ -1,5 +1,5 @@
 from cupy import core
-import cupy.core.core
+from cupy.core import _routines_math as _math
 from cupy.core import fusion
 
 # TODO(okuta): Implement convolve
@@ -26,7 +26,7 @@ def clip(a, a_min=None, a_max=None, out=None):
 
     """
     if fusion._is_fusing():
-        return fusion._call_ufunc(cupy.core.core._clip,
+        return fusion._call_ufunc(_math.clip,
                                   a, a_min, a_max, out=out)
 
     # TODO(okuta): check type

@@ -60,7 +60,7 @@ cdef class ndarray:
     cpdef ndarray std(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
-    cpdef ndarray cumprod(a, axis=*, dtype=*, out=*)
+    cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
 
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
@@ -95,6 +95,6 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)
 
 
+# TODO(niboshi): Move to _routines_creation.pyx
 cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
-cdef ndarray _simple_getitem(ndarray a, list slice_list)
