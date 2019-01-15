@@ -1156,7 +1156,7 @@ cpdef void _call_free(intptr_t param, intptr_t free_func, intptr_t ptr,
 
 
 @cython.no_gc
-cdef class ExternalAllocatorMemory(BaseMemory):
+cdef class CFunctionAllocatorMemory(BaseMemory):
 
     def __init__(self, Py_ssize_t size, intptr_t param,
                  intptr_t malloc_func, intptr_t free_func,
@@ -1174,9 +1174,9 @@ cdef class ExternalAllocatorMemory(BaseMemory):
             _call_free(self._param, self._free_func, self.ptr, self.device_id)
 
 
-cdef class ExternalAllocator:
+cdef class CFunctionAllocator:
 
-    """Allocator with function pointers to allocation routines.
+    """Allocator with C function pointers to allocation routines.
 
     This allocator keeps raw pointers to a *param* object along with functions
     pointers to *malloc* and *free*, delegating the actual allocation to
@@ -1210,6 +1210,6 @@ cdef class ExternalAllocator:
         self._owner = owner
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
-        mem = ExternalAllocatorMemory(size, self._param, self._malloc_func,
-                                      self._free_func, device.get_device_id())
+        mem = CFunctionAllocatorMemory(size, self._param, self._malloc_func,
+                                       self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)
