@@ -60,14 +60,14 @@ cdef class MemoryPool:
 
 
 @cython.no_gc
-cdef class ExternalAllocatorMemory(BaseMemory):
+cdef class CFunctionAllocatorMemory(BaseMemory):
 
     cdef:
         intptr_t _param
         intptr_t _free_func
 
 
-cdef class ExternalAllocator:
+cdef class CFunctionAllocator:
 
     cdef:
         intptr_t _param
