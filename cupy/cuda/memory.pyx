@@ -290,7 +290,7 @@ cdef class MemoryPointer:
         else:
             self = <MemoryPointer?>y
             offset = <ptrdiff_t?>x
-        assert self.ptr > 0 or offset == 0
+         assert self.ptr != 0 or offset == 0
         return MemoryPointer(self.mem,
                              self.ptr - self.mem.ptr + offset)
 
