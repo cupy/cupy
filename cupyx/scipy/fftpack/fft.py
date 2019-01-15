@@ -1,12 +1,12 @@
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
-                          get_cufft_plan_nd)
+                          _get_cufft_plan_nd)
 
 
 def get_fft_plan(a, axes=None, value_type='C2C'):
     """ Generate a CUDA FFT plan for transforming up to three axes.
-        This is a convenient handle to cupy.fft.fft.get_cufft_plan_nd.
+        This is a convenient handle to cupy.fft.fft._get_cufft_plan_nd.
 
     Args:
         a (cupy.ndarray): Array to be transform, assumed to be either C- or
@@ -32,7 +32,7 @@ def get_fft_plan(a, axes=None, value_type='C2C'):
     else:
         raise ValueError("Input array a must be contiguous")
 
-    plan = get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
+    plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
 
     return plan
 
