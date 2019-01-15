@@ -65,7 +65,7 @@ cdef class ndarray:
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
-    cpdef get(self, stream=*, order=*, arr=*)
+    cpdef get(self, stream=*, order=*, out=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)
     cpdef _update_c_contiguity(self)
