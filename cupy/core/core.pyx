@@ -1657,9 +1657,11 @@ cdef class ndarray:
                     'Shape mismatch. Expected shape: {}, actual shape: {}'.format(
                         self.shape, out.shape))
             if self._c_contiguous:
-                out = numpy.ascontiguousarray(out)
+                if not out.flags.c_contiguous:
+                    raise RuntimeError('`out` is not c contiguous array')
             elif self._f_contiguous:
-                out = numpy.asfortranarray(out)
+                if not out.flags.f_contiguous:
+                    raise RuntimeError('`out` is not f contiguous array')
             else:
                 raise RuntimeError('Cannot set to non-contiguous array')
 
