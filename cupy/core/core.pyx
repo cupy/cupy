@@ -1654,7 +1654,7 @@ cdef class ndarray:
                     arr.dtype, self.dtype))
             if self.shape != arr.shape:
                 raise ValueError(
-                    'Shape mismatch. Old shape: {}, new shape: {}'.format(
+                    'Shape mismatch. Expected shape: {}, actual shape: {}'.format(
                         self.shape, arr.shape))
             if self._c_contiguous:
                 arr = numpy.ascontiguousarray(arr)
