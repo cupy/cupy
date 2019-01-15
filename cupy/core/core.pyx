@@ -1650,7 +1650,7 @@ cdef class ndarray:
                 raise TypeError('Only numpy.ndarray can be obtained from'
                                 'cupy.ndarray')
             if self.dtype != arr.dtype:
-                raise TypeError('{} array cannot be got from {} array'.format(
+                raise TypeError('{} array cannot be obtained from {} array'.format(
                     arr.dtype, self.dtype))
             if self.shape != arr.shape:
                 raise ValueError(
