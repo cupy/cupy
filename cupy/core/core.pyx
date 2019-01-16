@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 from __future__ import division
-import string
 import sys
 
 import ctypes
@@ -10,7 +9,6 @@ import six
 
 import cupy
 from cupy.core import _errors
-from cupy.core._kernel import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ReductionKernel
@@ -20,10 +18,6 @@ from cupy.core import flags
 from cupy.cuda import device
 
 
-try:
-    from cupy.cuda import thrust
-except ImportError:
-    pass
 from cupy import util
 from cupy.cuda.runtime import CUDARuntimeError
 
@@ -33,12 +27,13 @@ from libcpp cimport vector
 
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
-from cupy.core._kernel cimport create_reduction_func
 from cupy.core._kernel cimport create_ufunc
 from cupy.core cimport _routines_indexing as _indexing
+from cupy.core cimport _routines_logic as _logic
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _routines_math as _math
-from cupy.core._scalar import get_typename as _get_typename
+from cupy.core cimport _routines_sorting as _sorting
+from cupy.core cimport _routines_statistics as _statistics
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
@@ -616,48 +611,8 @@ cdef class ndarray:
             :meth:`numpy.ndarray.sort`
 
         """
-
         # TODO(takagi): Support kind argument.
-
-        cdef int ndim = self._shape.size()
-        cdef ndarray data
-
-        if not cupy.cuda.thrust_enabled:
-            raise RuntimeError('Thrust is needed to use cupy.sort. Please '
-                               'install CUDA Toolkit with Thrust then '
-                               'reinstall CuPy after uninstalling it.')
-
-        if ndim == 0:
-            raise ValueError('Sorting arrays with the rank of zero is not '
-                             'supported')  # as numpy.sort() raises
-
-        # TODO(takagi): Support sorting views
-        if not self._c_contiguous:
-            raise NotImplementedError('Sorting non-contiguous array is not '
-                                      'supported.')
-
-        if axis < 0:
-            axis += ndim
-        if not (0 <= axis < ndim):
-            raise _errors._AxisError('Axis out of range')
-
-        if axis == ndim - 1:
-            data = self
-        else:
-            data = _manipulation.rollaxis(self, axis, ndim).copy()
-
-        if ndim == 1:
-            thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
-        else:
-            keys_array = ndarray(data.shape, dtype=numpy.intp)
-            thrust.sort(
-                self.dtype, data.data.ptr, keys_array.data.ptr, data.shape)
-
-        if axis == ndim - 1:
-            pass
-        else:
-            data = _manipulation.rollaxis(data, -1, axis)
-            elementwise_copy(data, self)
+        _sorting._ndarray_sort(self, axis)
 
     cpdef ndarray argsort(self, axis=-1):
         """Returns the indices that would sort an array with stable sorting
@@ -675,53 +630,8 @@ cdef class ndarray:
             :meth:`numpy.ndarray.argsort`
 
         """
-
         # TODO(takagi): Support kind argument.
-
-        cdef int _axis, ndim = self._shape.size()
-        cdef ndarray data
-
-        if not cupy.cuda.thrust_enabled:
-            raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
-                               'install CUDA Toolkit with Thrust then '
-                               'reinstall CuPy after uninstalling it.')
-
-        if ndim == 0:
-            raise ValueError('Sorting arrays with the rank of zero is not '
-                             'supported')  # as numpy.argsort() raises
-
-        if axis is None:
-            data = self.ravel()
-            _axis = -1
-        else:
-            data = self
-            _axis = axis
-
-        if _axis < 0:
-            _axis += ndim
-        if not (0 <= _axis < ndim):
-            raise _errors._AxisError('Axis out of range')
-
-        if _axis == ndim - 1:
-            data = data.copy()
-        else:
-            data = _manipulation.rollaxis(data, _axis, ndim).copy()
-        shape = data.shape
-
-        idx_array = ndarray(shape, dtype=numpy.intp)
-
-        if ndim == 1:
-            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
-                           shape)
-        else:
-            keys_array = ndarray(shape, dtype=numpy.intp)
-            thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
-                           keys_array.data.ptr, shape)
-
-        if _axis == ndim - 1:
-            return idx_array
-        else:
-            return _manipulation.rollaxis(idx_array, -1, _axis)
+        return _sorting._ndarray_argsort(self, axis)
 
     cpdef partition(self, kth, int axis=-1):
         """Partitions an array.
@@ -739,88 +649,7 @@ cdef class ndarray:
             :meth:`numpy.ndarray.partition`
 
         """
-
-        if self.dtype.kind == 'c':
-            raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
-                                      'not supported'.format(self.dtype))
-
-        cdef int ndim = self._shape.size()
-        cdef Py_ssize_t k, max_k, length, s, sz, t
-        cdef ndarray data
-
-        if ndim == 0:
-            raise ValueError('Sorting arrays with the rank of zero is not '
-                             'supported')
-
-        if not self._c_contiguous:
-            raise NotImplementedError('Sorting non-contiguous array is not '
-                                      'supported.')
-
-        if axis < 0:
-            axis += ndim
-        if not (0 <= axis < ndim):
-            raise _errors._AxisError('Axis out of range')
-
-        if axis == ndim - 1:
-            data = self
-        else:
-            data = _manipulation.rollaxis(self, axis, ndim).copy()
-
-        length = self._shape[axis]
-        if isinstance(kth, int):
-            kth = kth,
-        max_k = 0
-        for k in kth:
-            if k < 0:
-                k += length
-            if not (0 <= k < length):
-                raise ValueError('kth(={}) out of bounds {}'.format(k, length))
-            if max_k < k:
-                max_k = k
-
-        # For simplicity, max_k is round up to the power of 2. If max_k is
-        # already the power of 2, it is round up to the next power of 2 because
-        # we need to collect the first max(kth)+1 elements.
-        max_k = max(32, 1 << max_k.bit_length())
-
-        # The parameter t is the length of the list that stores elements to be
-        # selected for each thread. We divide the array into sz subarrays.
-        # These parameters are determined from the measurement on TITAN X.
-        t = 4
-        sz = 512
-        while sz > 0 and length // sz < max_k + 32 * t:
-            sz //= 2
-        sz *= self.size // length
-
-        # If the array size is small or k is large, we simply sort the array.
-        if length < 32 or sz <= 32 or max_k >= 1024:
-            # kth is ignored.
-            data.sort(axis=-1)
-        else:
-            shape = data.shape
-            data = data.ravel()
-
-            # For each subarray, we collect first k elements to the head.
-            kern, merge_kern = _partition_kernel(self.dtype)
-            block_size = 32
-            grid_size = sz
-            kern(grid=(grid_size,), block=(block_size,), args=(
-                data, max_k, self.size, t, sz))
-
-            # Merge heads of subarrays.
-            s = 1
-            while s < sz // (self.size // length):
-                block_size = 32
-                grid_size = sz // s // 2
-                merge_kern(grid=(grid_size,), block=(block_size,), args=(
-                    data, max_k, self.size, sz, s))
-                s *= 2
-
-            data = data.reshape(shape)
-
-        if axis != ndim - 1:
-            data = _manipulation.rollaxis(data, -1, axis)
-            elementwise_copy(data, self)
+        _sorting._ndarray_partition(self, kth, axis)
 
     cpdef ndarray argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
@@ -841,37 +670,7 @@ cdef class ndarray:
             :meth:`numpy.ndarray.argpartition`
 
         """
-        cdef int _axis, ndim
-        cdef Py_ssize_t k, length
-        cdef ndarray data
-        if axis is None:
-            data = self.ravel()
-            _axis = -1
-        else:
-            data = self
-            _axis = axis
-
-        ndim = data._shape.size()
-        if _axis < 0:
-            _axis += ndim
-        if not (0 <= _axis < ndim):
-            raise _errors._AxisError('Axis out of range')
-
-        length = data._shape[_axis]
-        if isinstance(kth, int):
-            kth = kth,
-        for k in kth:
-            if k < 0:
-                k += length
-            if not (0 <= k < length):
-                raise ValueError('kth(={}) out of bounds {}'.format(k, length))
-
-        # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
-        # currently performs full argsort with Thrust's efficient radix sort
-        # algoritm.
-
-        # kth is ignored.
-        return data.argsort(_axis)
+        return _sorting._ndarray_argpartition(self, kth, axis)
 
     # TODO(okuta): Implement searchsorted
 
@@ -913,8 +712,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.max`
 
         """
-        return _amax(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+        return _statistics._ndarray_max(self, axis, out, dtype, keepdims)
 
     cpdef ndarray argmax(self, axis=None, out=None, dtype=None,
                          keepdims=False):
@@ -925,8 +723,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.argmax`
 
         """
-        return _argmax(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+        return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
     cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the minimum along a given axis.
@@ -936,8 +733,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.min`
 
         """
-        return _amin(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+        return _statistics._ndarray_min(self, axis, out, dtype, keepdims)
 
     cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
                          keepdims=False):
@@ -948,8 +744,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.argmin`
 
         """
-        return _argmin(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+        return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
     # TODO(okuta): Implement ptp
 
@@ -1013,7 +808,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.mean`
 
         """
-        return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
 
     cpdef ndarray var(self, axis=None, dtype=None, out=None, ddof=0,
                       keepdims=False):
@@ -1024,8 +819,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.var`
 
         """
-        return _var(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
-                    keepdims=keepdims)
+        return _statistics._ndarray_var(
+            self, axis, dtype, out, ddof, keepdims)
 
     cpdef ndarray std(self, axis=None, dtype=None, out=None, ddof=0,
                       keepdims=False):
@@ -1036,8 +831,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.std`
 
         """
-        return _std(self, axis=axis, dtype=dtype, out=out, ddof=ddof,
-                    keepdims=keepdims)
+        return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
 
     cpdef ndarray prod(self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
@@ -1060,10 +854,12 @@ cdef class ndarray:
         return _math._ndarray_cumprod(self, axis, dtype, out)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
-        return _all(self, axis=axis, out=out, keepdims=keepdims)
+        # TODO(niboshi): Write docstring
+        return _logic._ndarray_all(self, axis, out, keepdims)
 
     cpdef ndarray any(self, axis=None, out=None, keepdims=False):
-        return _any(self, axis=axis, out=out, keepdims=keepdims)
+        # TODO(niboshi): Write docstring
+        return _logic._ndarray_any(self, axis, out, keepdims)
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -1768,222 +1564,6 @@ divmod = create_ufunc(
         out0 = a;
         out1 = in0 - a * in1;
     }''')
-
-
-cdef _min_max_preamble = '''
-template <typename T>
-struct min_max_st{
-    T value;
-    int index;
-    __device__ min_max_st() : index(-1) { }
-    __device__ min_max_st(T v) : value(v), index(0) { }
-    __device__ min_max_st(T v, int i) : value(v), index(i) { }
-};
-
-template <typename T>
-inline __device__ bool is_nan(T x) {
-    return x != x;
-}
-
-template <typename T>
-__device__ min_max_st<T> my_min(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    return min_max_st<T>(min(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_min_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(min(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_min_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
-    return min_max_st<T>(min(a.value, b.value));
-}
-
-template <typename T>
-__device__ min_max_st<T> my_max(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    return min_max_st<T>(max(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_max_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(max(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_max_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
-    return min_max_st<T>(max(a.value, b.value));
-}
-
-template <typename T>
-__device__ min_max_st<T> my_argmin(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    return (a.value <= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmin_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return (a.value <= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmin_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
-    return (a.value <= b.value) ? a : b;
-}
-
-template <typename T>
-__device__ min_max_st<T> my_argmax(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    return (a.value >= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmax_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return (a.value >= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmax_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
-    return (a.value >= b.value) ? a : b;
-}
-'''
-
-
-_amin = create_reduction_func(
-    'cupy_min',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, 'my_min_float(a, b)', None, None)),
-     ('f->f', (None, 'my_min_float(a, b)', None, None)),
-     ('d->d', (None, 'my_min_float(a, b)', None, None)),
-     ('F->F', (None, 'my_min_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_min_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
-
-
-_amax = create_reduction_func(
-    'cupy_max',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, 'my_max_float(a, b)', None, None)),
-     ('f->f', (None, 'my_max_float(a, b)', None, None)),
-     ('d->d', (None, 'my_max_float(a, b)', None, None)),
-     ('F->F', (None, 'my_max_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_max_complex(a, b)', None, None)),
-     ),
-    ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
-
-
-nanmin = create_reduction_func(
-    'cupy_nanmin',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
-
-
-nanmax = create_reduction_func(
-    'cupy_nanmax',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
-
-
-cdef _argmin = create_reduction_func(
-    'cupy_argmin',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
-
-
-cdef _argmax = create_reduction_func(
-    'cupy_argmax',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
-     'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
 
 
 cdef _round_preamble = '''
@@ -2842,192 +2422,3 @@ not_equal = create_comparison(
 
     ''',
     no_complex_dtype=False)
-
-
-_all = create_reduction_func(
-    'cupy_all',
-    ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
-    ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'),
-    'true', '')
-
-
-_any = create_reduction_func(
-    'cupy_any',
-    ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
-    ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'),
-    'false', '')
-
-
-# -----------------------------------------------------------------------------
-# Statistics
-# -----------------------------------------------------------------------------
-
-cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
-                   keepdims=False):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
-    if axis is None:
-        axis = tuple(range(a.ndim))
-    if not isinstance(axis, tuple):
-        axis = (axis,)
-
-    if dtype is None and a.dtype.kind in 'biu':
-        dtype = 'd'
-
-    shape = a.shape
-    items = 1
-    for ax in axis:
-        items *= shape[ax]
-    alpha = 1. / max(items - ddof, 0)
-    arrmean = a.mean(axis=axis, dtype=dtype, keepdims=True)
-    if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
-    else:
-        return _var_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
-
-
-cpdef _std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    ret = _var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
-    return _math._sqrt(ret, dtype=dtype, out=out)
-
-
-cdef _var_core = ReductionKernel(
-    'S x, T mean, T alpha', 'T out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
-
-cdef _var_core_out = ReductionKernel(
-    'S x, T mean, T alpha', 'U out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
-
-# TODO(okuta) needs cast
-cdef _mean = create_reduction_func(
-    'cupy_mean',
-    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
-     'q->d', 'Q->d',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b',
-     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
-
-
-# -----------------------------------------------------------------------------
-# partition
-# -----------------------------------------------------------------------------
-
-@util.memoize(for_each_device=True)
-def _partition_kernel(dtype):
-    name = 'partition_kernel'
-    merge_kernel = 'partition_merge_kernel'
-    dtype = _get_typename(dtype)
-    source = string.Template('''
-    template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
-            ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
-        for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
-            ptrdiff_t n = j + (j & -w);
-            T v = a[n + x], u = a[n + w + x];
-            if (n & s ? v < u : v > u) {
-                a[n + x] = u;
-                a[n + w + x] = v;
-            }
-        }
-    }
-
-    // Sort a[x:y].
-    template<typename T>
-    __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
-        for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
-            for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step<T>(a, x, y, i, s, w);
-            }
-        }
-    }
-
-    // Merge first k elements and the next 32 times t elements.
-    template<typename T>
-    __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
-        for (int s = i; s < u; s += 32) {
-            if (a[x + k - s - 1] > a[z + s]) {
-                T tmp = a[x + k - s - 1];
-                a[x + k - s - 1] = a[z + s];
-                a[z + s] = tmp;
-            }
-        }
-
-        // After merge step, the first k elements are already bitonic.
-        // Therefore, we do not need to fully sort.
-        for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step<T>(a, x, k + x, i, k, w);
-        }
-    }
-
-    extern "C" {
-    // In this function, 32 threads handle one subarray. This number equals to
-    // the warp size. The first k elements are always sorted and the next 32
-    // times t elements stored values that have possibilities to be selected.
-    __global__ void ${name}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
-
-        // This thread handles a[z:m].
-        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
-            + threadIdx.x;
-        ptrdiff_t z = i / 32 * n / sz;
-        ptrdiff_t m = (i / 32 + 1) * n / sz;
-        int id = i % 32;
-        int x = 0;
-
-        bitonic_sort<${dtype}>(a, z, k + z, id);
-        ptrdiff_t j;
-        for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
-            if (a[j] < a[k - 1 + z]) {
-                ${dtype} tmp = a[k + 32 * x + id + z];
-                a[k + 32 * x + id + z] = a[j];
-                a[j] = tmp;
-                ++x;
-            }
-
-            // If at least one thread in the warp has found t values that
-            // can be selected, we update the first k elements.
-    #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
-    #else
-            if (__any(x >= t)) {
-    #endif
-                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
-                x = 0;
-            }
-        }
-        if (j < m && a[j] < a[k - 1 + z]) {
-            ${dtype} tmp = a[k + 32 * x + id + z];
-            a[k + 32 * x + id + z] = a[j];
-            a[j] = tmp;
-        }
-
-        // Finally, we merge the first k elements and the remainders to be
-        // stored.
-        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
-    }
-
-    __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
-        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
-            + threadIdx.x;
-        ptrdiff_t z = i / 32 * 2 * s * n / sz;
-        ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
-        int id = i % 32;
-        merge<${dtype}>(a, k, id, z, m, k);
-    }
-    }
-    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name), module.get_function(merge_kernel)
