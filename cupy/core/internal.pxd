@@ -2,10 +2,7 @@ from libcpp cimport vector
 from libc.stdint cimport uint16_t
 
 
-cpdef Py_ssize_t prod(args, Py_ssize_t init=*) except? -1
-
-cpdef Py_ssize_t prod_ssize_t(
-    vector.vector[Py_ssize_t]& arr, Py_ssize_t init=*)
+cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
 cpdef tuple get_size(object size)
 

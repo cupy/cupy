@@ -1926,7 +1926,7 @@ cdef class ndarray:
             raise ValueError('len(shape) != len(strides)')
         self._shape = shape
         self._strides = strides
-        self.size = internal.prod_ssize_t(shape)
+        self.size = internal.prod(shape)
         if update_c_contiguity:
             self._update_c_contiguity()
         if update_f_contiguity:
@@ -1988,7 +1988,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_nocopy_reshape(
     cdef vector.vector[Py_ssize_t] newstrides
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
     size = a.size
-    if size != internal.prod_ssize_t(newshape):
+    if size != internal.prod(newshape):
         return newstrides
 
     itemsize = a.itemsize
@@ -2652,7 +2652,7 @@ cdef class broadcast:
 
         shape.assign(r_shape.rbegin(), r_shape.rend())
         self.shape = tuple(shape)
-        self.size = internal.prod_ssize_t(shape)
+        self.size = internal.prod(shape)
 
         broadcasted = []
         for x in arrays:
@@ -2903,7 +2903,7 @@ cpdef ndarray _concatenate_single_kernel(
 
     ret = ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
-        base = internal.prod_ssize_t(shape[axis:]) // len(arrays)
+        base = internal.prod(shape[axis:]) // len(arrays)
         _concatenate_kernel_same_size(x, base, ret)
         return ret
 
