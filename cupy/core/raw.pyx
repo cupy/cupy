@@ -23,7 +23,7 @@ cdef class RawKernel:
         name (str): Name of the kernel function.
         options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
-        backend (str): {"nvrtc", "nvcc"}. Defaults to "nvcc"
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
 
     """
 
