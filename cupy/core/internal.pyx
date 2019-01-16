@@ -11,20 +11,11 @@ cdef extern from "halffloat.h":
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
-    cdef Py_ssize_t arg
-    for arg in args:
-        init *= arg
-    return init
-
-
-@cython.profile(False)
-cpdef inline Py_ssize_t prod_ssize_t(
-        vector.vector[Py_ssize_t]& arr, Py_ssize_t init=1):
-    cdef Py_ssize_t a
-    for a in arr:
-        init *= a
-    return init
+cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
+    cdef Py_ssize_t n = 1
+    for i in range(args.size()):
+        n *= args[i]
+    return n
 
 
 @cython.profile(False)
