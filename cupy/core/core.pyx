@@ -1640,7 +1640,7 @@ cdef class ndarray:
             raise ValueError('len(shape) != len(strides)')
         self._shape = shape
         self._strides = strides
-        self.size = internal.prod_ssize_t(shape)
+        self.size = internal.prod(shape)
         if update_c_contiguity:
             self._update_c_contiguity()
         if update_f_contiguity:
