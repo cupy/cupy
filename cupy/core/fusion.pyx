@@ -735,7 +735,7 @@ class _FusionHistory(object):
 
         Args:
             func (function): The function to be fused.
-            in_types (list of dtypes): The list of dtypes of input parameters.
+            args (tuple): The tuple of arguments.
             name (str): The name of the kernel.
 
         Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
@@ -836,16 +836,6 @@ class _FusionHistory(object):
             return kernel, self.reduce_kwargs
 
 
-cdef inline tuple _get_param_info(arg):
-    if isinstance(arg, core.ndarray):
-        return (arg.dtype, arg.ndim)
-    if isinstance(arg, numpy.generic):
-        return (arg.dtype, -1)
-    if arg is None:
-        return (None, -1)
-    return (numpy.dtype(type(arg)), -1)
-
-
 class Fusion(object):
 
     """Function class.
@@ -866,16 +856,18 @@ class Fusion(object):
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
-    def _is_cupy_data(self, a):
-        return isinstance(a, (core.ndarray, numpy.generic))
-
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
         if _is_fusing():
             return self.func(*args)
 
-        # No cupy ndarray exists in the arguments
-        if cupy.get_array_module(*args) is not cupy:
+        exec_cupy = False
+        for a in args:
+            if isinstance(a, core.ndarray):
+                exec_cupy = True
+                break
+        if not exec_cupy:
+            # No cupy ndarray exists in the arguments
             return self.func(*args)
 
         # Invalid argument types
@@ -886,16 +878,35 @@ class Fusion(object):
                 raise TypeError(mes.format(self.name, arg_types))
 
         # Cache the result of execution path analysis
-        cdef tuple params_info = tuple([_get_param_info(arg) for arg in args])
+        cdef list params_info = []
+        for arg in args:
+            if isinstance(arg, core.ndarray):
+                params_info.append(arg.dtype.char)
+                params_info.append(arg.ndim)
+            elif isinstance(arg, numpy.generic):
+                params_info.append(arg.dtype.char)
+            elif arg is None:
+                params_info.append(None)
+            elif isinstance(arg, float):
+                params_info.append('d')
+            elif isinstance(arg, six.integer_types):
+                params_info.append('l')
+            elif isinstance(arg, bool):
+                params_info.append('?')
+            elif isinstance(arg, complex):
+                params_info.append('D')
+            else:
+                assert False
 
-        if params_info not in self._memo:
+        cdef tuple key = tuple(params_info)
+        if key not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
-                self._memo[params_info] = _thread_local.history.get_fusion(
+                self._memo[key] = _thread_local.history.get_fusion(
                     self.func, args, self.name)
             finally:
                 del _thread_local.history
-        kernel, kwargs = self._memo[params_info]
+        kernel, kwargs = self._memo[key]
 
         return kernel(
             *[a for a in args if a is not None],
