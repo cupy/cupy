@@ -42,7 +42,8 @@ cdef dict _dtype_to_ctype = {
 cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 cdef tuple _acceptable_types = six.integer_types + (
-    core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
+    core.ndarray, numpy.ndarray, numpy.generic,
+    float, complex, bool, type(None))
 
 
 cpdef inline _is_fusing():
@@ -714,7 +715,19 @@ class _FusionHistory(object):
             operation=operation)
         return module_code
 
-    def get_fusion(self, func, in_params_info, name):
+    def _gen_abstracted_args(self, a):
+        if isinstance(a, core.ndarray):
+            cuda_var = self._fresh_premap_param(a.dtype)
+            python_var = _FusionVarArray(cuda_var, a.ndim, False)
+        elif a is None:
+            cuda_var = None
+            python_var = None
+        else:
+            cuda_var = self._fresh_premap_param(numpy.dtype(type(a)))
+            python_var = _FusionVarScalar(cuda_var, -1, False)
+        return cuda_var, python_var
+
+    def get_fusion(self, func, args, name):
         """This generates CUDA kernel from the given function and dtypes.
 
         This function generates ElementwiseKernel or ReductioKernel from the
@@ -729,15 +742,17 @@ class _FusionHistory(object):
             The second element of return values is kwargs that will give into
             the elementwise kernel or reduction kernel.
         """
-        in_dtypes = [t for t, d in in_params_info]
-        in_ndims = [d for t, d in in_params_info]
-        self.ndim = max(in_ndims)
-        in_params = [self._fresh_premap_param(t) for t in in_dtypes]
-        in_pvars = [_FusionVarScalar(v, d, False)
-                    if d == -1
-                    else _FusionVarArray(v, d, False)
-                    for v, d in zip(in_params, in_ndims)]
-        return_value = func(*in_pvars)
+        self.ndim = max([a.ndim for a in args if isinstance(a, core.ndarray)])
+
+        in_params = []
+        function_args = []
+        for a in args:
+            cuda_var, python_var = self._gen_abstracted_args(a)
+            if cuda_var is not None:
+                in_params.append(cuda_var)
+            function_args.append(python_var)
+
+        return_value = func(*function_args)
 
         if isinstance(return_value, tuple):
             return_tuple = True
@@ -824,8 +839,10 @@ class _FusionHistory(object):
 cdef inline tuple _get_param_info(arg):
     if isinstance(arg, core.ndarray):
         return (arg.dtype, arg.ndim)
-    elif isinstance(arg, numpy.generic):
+    if isinstance(arg, numpy.generic):
         return (arg.dtype, -1)
+    if arg is None:
+        return (None, -1)
     return (numpy.dtype(type(arg)), -1)
 
 
@@ -875,11 +892,14 @@ class Fusion(object):
             try:
                 _thread_local.history = _FusionHistory()
                 self._memo[params_info] = _thread_local.history.get_fusion(
-                    self.func, params_info, self.name)
+                    self.func, args, self.name)
             finally:
                 del _thread_local.history
         kernel, kwargs = self._memo[params_info]
-        return kernel(*args, **kwargs)
+
+        return kernel(
+            *[a for a in args if a is not None],
+            **kwargs)
 
     def clear_cache(self):
         self._memo = {}
