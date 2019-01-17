@@ -21,20 +21,23 @@ cdef class _StreamThreadLocal(object):
         return <_StreamThreadLocal>tls
 
     cdef set_current_stream(self, stream):
-        cdef void* stream_ptr
-        if stream is None:
-            stream = Stream.null
-            stream_ptr = <void*>0
-        else:
-            stream_ptr = <void*><size_t>stream.ptr
-
-        self.current_stream = stream_ptr
+        self.current_stream = <void*><size_t>stream.ptr
         self.current_stream_ref = weakref.ref(stream)
+
+    cdef set_current_stream_ref(self, stream_ref):
+        self.current_stream = <void*><size_t>stream_ref().ptr
+        self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
         if self.current_stream_ref is None:
             self.current_stream_ref = weakref.ref(Stream.null)
+            return Stream.null
         return self.current_stream_ref()
+
+    cdef get_current_stream_ref(self):
+        if self.current_stream_ref is None:
+            self.current_stream_ref = weakref.ref(Stream.null)
+        return self.current_stream_ref
 
     cdef void* get_current_stream_ptr(self):
         # Returns nullptr if not set, which is equivalent to the default
@@ -193,7 +196,7 @@ class Stream(object):
         tls = _StreamThreadLocal.get()
         if tls.prev_stream_ref_stack is None:
             tls.prev_stream_ref_stack = []
-        prev_stream_ref = weakref.ref(tls.get_current_stream())
+        prev_stream_ref = tls.get_current_stream_ref()
         tls.prev_stream_ref_stack.append(prev_stream_ref)
         tls.set_current_stream(self)
         return self
@@ -201,7 +204,7 @@ class Stream(object):
     def __exit__(self, *args):
         tls = _StreamThreadLocal.get()
         prev_stream_ref = tls.prev_stream_ref_stack.pop()
-        tls.set_current_stream(prev_stream_ref())
+        tls.set_current_stream_ref(prev_stream_ref)
         pass
 
     def use(self):
