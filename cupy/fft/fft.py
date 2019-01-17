@@ -66,7 +66,7 @@ def _exec_fft(a, direction, value_type, norm, axis, out_size=None):
     if axis % a.ndim != a.ndim - 1:
         a = a.swapaxes(axis, -1)
 
-    if a.base is not None:
+    if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
 
     plan = cufft.Plan1d(a.shape[-1] if out_size is None else out_size,
