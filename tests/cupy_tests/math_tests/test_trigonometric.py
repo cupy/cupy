@@ -87,4 +87,4 @@ class TestUnwrap(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_with_discont(self, xp, dtype):
         a = testing.shaped_random((4, 5), xp, dtype)
-        return xp.unwrap(a, discont=0.37, axis=1)
+        return xp.unwrap(a, discont=5.0, axis=1)
