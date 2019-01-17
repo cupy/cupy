@@ -76,7 +76,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     if axis % a.ndim != a.ndim - 1:
         a = a.swapaxes(axis, -1)
 
-    if a.base is not None:
+    if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
 
     if out_size is None:
