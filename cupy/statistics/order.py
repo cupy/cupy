@@ -2,6 +2,7 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import _routines_statistics as _statistics
 from cupy.core import fusion
 from cupy.logic import content
 
@@ -33,7 +34,7 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
         if keepdims:
             raise NotImplementedError(
                 'cupy.amin does not support `keepdims` in fusion yet.')
-        return fusion._call_reduction(core.core._amin,
+        return fusion._call_reduction(_statistics.amin,
                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
@@ -67,7 +68,7 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
         if keepdims:
             raise NotImplementedError(
                 'cupy.amax does not support `keepdims` in fusion yet.')
-        return fusion._call_reduction(core.core._amax,
+        return fusion._call_reduction(_statistics.amax,
                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type

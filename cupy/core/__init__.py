@@ -31,6 +31,8 @@ from cupy.core._routines_math import remainder  # NOQA
 from cupy.core._routines_math import sqrt  # NOQA
 from cupy.core._routines_math import subtract  # NOQA
 from cupy.core._routines_math import true_divide  # NOQA
+from cupy.core._routines_statistics import nanmax  # NOQA
+from cupy.core._routines_statistics import nanmin  # NOQA
 from cupy.core.core import array  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
 from cupy.core.core import asfortranarray  # NOQA
@@ -50,8 +52,6 @@ from cupy.core.core import left_shift  # NOQA
 from cupy.core.core import less  # NOQA
 from cupy.core.core import less_equal  # NOQA
 from cupy.core.core import matmul  # NOQA
-from cupy.core.core import nanmax  # NOQA
-from cupy.core.core import nanmin  # NOQA
 from cupy.core.core import ndarray  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import right_shift  # NOQA
