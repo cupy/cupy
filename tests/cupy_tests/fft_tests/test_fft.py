@@ -43,6 +43,45 @@ class TestFft(unittest.TestCase):
         return out
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(10, 10), (10, 5, 10)],
+    'data_order': ['F', 'C'],
+    'axis': [0, 1, -1],
+}))
+@testing.gpu
+@testing.with_requires('numpy>=1.10.0')
+class TestFftOrder(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.data_order == 'F':
+            a = xp.asfortranarray(a)
+        out = xp.fft.fft(a, axis=self.axis)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.data_order == 'F':
+            a = xp.asfortranarray(a)
+        out = xp.fft.ifft(a, axis=self.axis)
+
+        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.complex64)
+
+        return out
+
+
 @testing.gpu
 @testing.slow
 class TestFftAllocate(unittest.TestCase):
