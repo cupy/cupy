@@ -1022,7 +1022,7 @@ cpdef _Algorithm _get_algorithm_fwd(
                 'The best algo of conv fwd might not be selected due to '
                 'lack of workspace size ({})'.format(max_workspace_size),
                 util.PerformanceWarning)
-        if perf.math_type != cudnn.CUDNN_TENSOR_OP_MATH:
+        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_fwd(x, W, y, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
