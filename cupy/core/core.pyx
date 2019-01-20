@@ -1623,7 +1623,7 @@ cdef class ndarray:
                 array. When ``order`` is 'A', it uses 'F' if the array is
                 fortran-contiguous and 'C' otherwise. The ``order`` will be 
                 ignored if ``out`` is specified.
-            out Output array. it should be a pinned memory to enable
+            out Output array. It should be a pinned memory to enable
                 asynchronous copy
 
         Returns:
