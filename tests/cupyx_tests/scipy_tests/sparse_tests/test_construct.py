@@ -133,9 +133,10 @@ class TestRandomInvalidArgument(unittest.TestCase):
     def test_too_large_density(self, xp, sp):
         sp.random(3, 4, density=1.1)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
-    def test_invalid_dtype(self, xp, sp):
-        sp.random(3, 4, dtype='i')
+    def test_invalid_dtype(self):
+        # Note: SciPy 1.12+ accepts integer.
+        with self.assertRaises(NotImplementedError):
+            sparse.random(3, 4, dtype='i')
 
 
 @testing.parameterize(*testing.product({
