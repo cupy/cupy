@@ -1621,7 +1621,7 @@ cdef class ndarray:
                 The default uses CUDA stream object of the current context.
             order ({'C', 'F', 'A'}): The desired memory layout of the host
                 array. When ``order`` is 'A', it uses 'F' if the array is
-                fortran-contiguous and 'C' otherwise. The ``order`` will be 
+                fortran-contiguous and 'C' otherwise. The ``order`` will be
                 ignored if ``out`` is specified.
             out Output array. It should be a pinned memory to enable
                 asynchronous copy
@@ -1635,20 +1635,26 @@ cdef class ndarray:
                 raise TypeError('Only numpy.ndarray can be obtained from'
                                 'cupy.ndarray')
             if self.dtype != out.dtype:
-                raise TypeError('{} array cannot be obtained from {} array'.format(
-                    out.dtype, self.dtype))
+                raise TypeError(
+                    '{} array cannot be obtained from {} array'.format(
+                        out.dtype, self.dtype))
             if self.shape != out.shape:
                 raise ValueError(
-                    'Shape mismatch. Expected shape: {}, actual shape: {}'.format(
-                        self.shape, out.shape))
-            with self.device:
-                if out.flags.c_contiguous:
-                    a_gpu = ascontiguousarray(self)
-                elif out.flags.f_contiguous:
-                    a_gpu = asfortranarray(self)
-                else:
-                    raise RuntimeError('`out` cannot be specified when copying to '
-                                    'non-contiguous ndarray')
+                    'Shape mismatch. Expected shape: {}, '
+                    'actual shape: {}'.format(self.shape, out.shape))
+            if not (out.flags.c_contiguous and self._c_contiguous or
+                    out.flags.f_contiguous and self._f_contiguous):
+                with self.device:
+                    if out.flags.c_contiguous:
+                        a_gpu = ascontiguousarray(self)
+                    elif out.flags.f_contiguous:
+                        a_gpu = asfortranarray(self)
+                    else:
+                        raise RuntimeError(
+                            '`out` cannot be specified when copying to '
+                            'non-contiguous ndarray')
+            else:
+                a_gpu = self
             a_cpu = out
         else:
             if self.size == 0:
@@ -1660,14 +1666,17 @@ cdef class ndarray:
                     order = 'F'
                 else:
                     order = 'C'
-
-            with self.device:
-                if order == 'C':
-                    a_gpu = ascontiguousarray(self)
-                elif order == 'F':
-                    a_gpu = asfortranarray(self)
-                else:
-                    raise ValueError("unsupported order: {}".format(order))
+            if not (order == 'C' and self._c_contiguous or
+                    order == 'F' and self._f_contiguous):
+                with self.device:
+                    if order == 'C':
+                        a_gpu = ascontiguousarray(self)
+                    elif order == 'F':
+                        a_gpu = asfortranarray(self)
+                    else:
+                        raise ValueError("unsupported order: {}".format(order))
+            else:
+                a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = a_cpu.ctypes.get_as_parameter()
         if stream is not None:
