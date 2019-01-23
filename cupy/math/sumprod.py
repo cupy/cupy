@@ -209,7 +209,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
 
 
-def diff(a, n=1, axis=-1):
+def diff(a, n=1, axis=-1, prepend=numpy._NoValue, append=numpy._NoValue):
     """Calculate the n-th discrete difference along the given axis.
 
     Args:
@@ -218,6 +218,8 @@ def diff(a, n=1, axis=-1):
             is returned as-is.
         axis (int): The axis along which the difference is taken, default is
             the last axis.
+        prepend (int, float, cupy.ndarray): Value to prepend to ``a``.
+        append (int, float, cupy.ndarray): Value to append to ``a``.
 
     Returns:
         cupy.ndarray: The result array.
@@ -233,6 +235,29 @@ def diff(a, n=1, axis=-1):
 
     a = cupy.asanyarray(a)
     nd = a.ndim
+
+    combined = []
+
+    if prepend is not numpy._NoValue:
+        prepend = cupy.asanyarray(prepend)
+        if prepend.ndim == 0:
+            shape = list(a.shape)
+            shape[axis] = 1
+            prepend = cupy.broadcast_to(prepend, tuple(shape))
+        combined.append(prepend)
+
+    combined.append(a)
+
+    if append is not numpy._NoValue:
+        append = cupy.asanyarray(append)
+        if append.ndim == 0:
+            shape = list(a.shape)
+            shape[axis] = 1
+            append = cupy.broadcast_to(append, tuple(shape))
+        combined.append(append)
+
+    if len(combined) > 1:
+        a = cupy.concatenate(combined, axis)
 
     slice1 = [slice(None)] * nd
     slice2 = [slice(None)] * nd
