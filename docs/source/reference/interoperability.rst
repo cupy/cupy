@@ -8,6 +8,7 @@ NumPy
 
 :class:`cupy.ndarray` implements ``__array_ufunc__`` interface (see `NEP 13 — A Mechanism for Overriding Ufuncs <http://www.numpy.org/neps/nep-0013-ufunc-overrides.html>`_ for details).
 This enables NumPy ufuncs to be directly operated on CuPy arrays.
+``__array_ufunc__`` feature requires NumPy 1.13 or later.
 
 .. code:: python
 
@@ -17,6 +18,10 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
     arr = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
     result = numpy.sum(arr)
     print(type(result))  # => <class 'cupy.core.core.ndarray'>
+
+:class:`cupy.ndarray` also implements ``__array_function__`` interface (see `NEP 18 — A dispatch mechanism for NumPy’s high level array functions <http://www.numpy.org/neps/nep-0018-array-function-protocol.html>`_ for details).
+This enables code using NumPy to be directly operated on CuPy arrays.
+``__array_function__`` feature requires NumPy 1.16 or later; note that this is currently defined as an experimental feature of NumPy and you need to specify the environment variable to enable it.
 
 Numba
 -----
