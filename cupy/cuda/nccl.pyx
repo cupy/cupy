@@ -24,10 +24,13 @@ cdef extern from "cupy_nccl.h":
 
     const char* ncclGetErrorString(ncclResult_t result)
     ncclResult_t ncclGetVersion(int* version)
+    ncclResult_t ncclCommGetAsyncError(ncclComm_t comm,
+                                       ncclResult_t *asyncError) nogil
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank)
     void ncclCommDestroy(ncclComm_t comm)
+    void ncclCommAbort(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
     ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
     ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
@@ -147,6 +150,14 @@ cdef class NcclCommunicator:
             ncclCommDestroy(self._comm)
             self._comm = <ncclComm_t>0
 
+    cpdef abort(self):
+        if NCCL_VERSION_CODE < 2400:
+            raise ValueError("ncclCommAbort is not available"
+                             " in this version")
+        if self._comm:
+            ncclCommAbort(self._comm)
+            self._comm = <ncclComm_t>0
+
     def device_id(self):
         cdef int device_id
         status = ncclCommCuDevice(self._comm, &device_id)
@@ -201,3 +212,13 @@ cdef class NcclCommunicator:
                                     count, <ncclDataType_t>datatype,
                                     self._comm, <driver.Stream>stream)
         check_status(status)
+
+    def check_async_error(self):
+        if NCCL_VERSION_CODE < 2400:
+            raise ValueError("ncclCommGetAsyncError is not available"
+                             " in this version")
+        cdef ncclResult_t asyncError = ncclSuccess
+        with nogil:
+            result = ncclCommGetAsyncError(self._comm, &asyncError)
+        check_status(asyncError)
+        check_status(result)

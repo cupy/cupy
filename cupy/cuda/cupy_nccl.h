@@ -50,6 +50,10 @@ const char* ncclGetErrorString(...) {
     return "";
 }
 
+ncclResult_t  ncclCommGetAsyncError(...) {
+    return ncclSuccess;
+}
+
 ncclResult_t ncclGetUniqueId(...) {
     return ncclSuccess;
 }
@@ -59,6 +63,9 @@ ncclResult_t ncclCommInitRank(...) {
 }
 
 void ncclCommDestroy(...) {
+}
+
+void ncclCommAbort(...) {
 }
 
 ncclResult_t ncclCommCuDevice(...) {
@@ -192,5 +199,15 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
     return ncclAllGather(sendbuff, sendcount, _datatype, recvbuff, comm, stream);
 #endif // #if (NCCL_VERSION_CODE < 2000)
 }
+
+#if (NCCL_VERSION_CODE < 2400)
+// New functions in 2.4
+ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
+  return ncclSuccess;
+}
+
+void ncclCommAbort(ncclComm_t comm) {
+}
+#endif
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_NCCL_H
