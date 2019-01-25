@@ -38,6 +38,9 @@ $ pip install cupy-cuda91
 (Binary Package for CUDA 9.2)
 $ pip install cupy-cuda92
 
+(Binary Package for CUDA 10.0)
+$ pip install cupy-cuda100
+
 (Source Package)
 $ pip install cupy
 ```
