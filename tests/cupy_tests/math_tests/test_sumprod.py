@@ -358,10 +358,33 @@ class TestDiff(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_diff_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.diff(a, axis=1)
+        return xp.diff(a, axis=-2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_diff_2dim_with_axis_and_n(self, xp, dtype):
+    def test_diff_2dim_with_n_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.diff(a, axis=1, n=2)
+        return xp.diff(a, 2, 1)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_with_prepend(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        b = testing.shaped_arange((4, 1), xp, dtype)
+        return xp.diff(a, axis=-1, prepend=b)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_with_append(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        b = testing.shaped_arange((1, 5), xp, dtype)
+        return xp.diff(a, axis=0, append=b, n=2)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_diff_2dim_with_scalar_append(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.diff(a, prepend=1, append=0)
