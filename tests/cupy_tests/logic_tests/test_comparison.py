@@ -77,7 +77,7 @@ class TestComparisonOperator(unittest.TestCase):
 class TestAllclose(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_finite(self, xp, dtype):
         a = xp.array([0.9e-5, 1.1e-5, 1000 + 1e-4, 1000 - 1e-4], dtype=dtype)
@@ -85,7 +85,7 @@ class TestAllclose(unittest.TestCase):
         return xp.allclose(a, b)
 
     @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_min_int(self, xp, dtype):
         a = xp.array([0], dtype=dtype)
@@ -113,7 +113,7 @@ class TestAllclose(unittest.TestCase):
         b = xp.array([0, nan, inf, ninf], dtype=dtype)
         return xp.allclose(a, b, equal_nan=True)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_array_scalar(self, xp, dtype):
         a = xp.array([0.9e-5, 1.1e-5], dtype=dtype)
