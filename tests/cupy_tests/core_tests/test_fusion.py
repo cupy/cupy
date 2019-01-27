@@ -862,21 +862,37 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.fmax, 2, self.random_real)
         self.check(cupy.fmin, 2, self.random_real)
 
-    def test_special(self):
+    def test_where(self):
         self.check(cupy.where, 3,
                    (self.random_bool,
                     lambda *args: self.random_int(*args, seed=0),
                     lambda *args: self.random_int(*args, seed=1)),
                    ((), (0, 100), (0, 100)))
+
+    def test_clip(self):
         self.check(cupy.clip, 3,
                    (lambda *args: self.random_real(*args, seed=0),
                     lambda *args: self.random_real(*args, seed=1),
                     lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
+
+    def test_around(self):
         self.check(cupy.around, 2,
                    (self.random_bool,
                     self.random_int,
                     self.random_real))
+
+    def test_copyto(self):
+        self.check(cupy.copyto, 2,
+                   (self.random_int, self.random_int))
+
+    def test_copyto_with_where(self):
+        @cupy.fuse()
+        def f(src, dst, where):
+            return cupy.copyto(src, dst, where=where)
+
+        self.check(f, 3,
+                   (self.random_int, self.random_int, self.random_bool))
 
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
