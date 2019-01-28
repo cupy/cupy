@@ -1623,8 +1623,8 @@ cdef class ndarray:
                 array. When ``order`` is 'A', it uses 'F' if the array is
                 fortran-contiguous and 'C' otherwise. The ``order`` will be
                 ignored if ``out`` is specified.
-            out Output array. It should be a pinned memory to enable
-                asynchronous copy
+            out (numpy.ndarray): Output array. In order to enable asynchronous
+                copy, the underlying memory should be a pinned memory.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
