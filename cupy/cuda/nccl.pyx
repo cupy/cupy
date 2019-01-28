@@ -23,6 +23,7 @@ cdef extern from "cupy_nccl.h":
         pass
 
     const char* ncclGetErrorString(ncclResult_t result)
+    ncclResult_t ncclGetVersion(int* version)
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank)
@@ -49,7 +50,7 @@ cdef extern from "cupy_nccl.h":
                                 ncclComm_t comm, driver.Stream stream) nogil
 
     # Build-time version
-    int NCCL_VERSION
+    int NCCL_VERSION_CODE
 
 
 cdef dict ERROR1 = {
@@ -85,7 +86,7 @@ class NcclError(RuntimeError):
     def __init__(self, int status):
         self.status = status
         cdef msg = ncclGetErrorString(<ncclResult_t>status)
-        if NCCL_VERSION < 2000:
+        if NCCL_VERSION_CODE < 2000:
             s = ERROR1[status]
         else:
             s = ERROR2[status]
@@ -99,8 +100,15 @@ cpdef inline check_status(ncclResult_t status):
         raise NcclError(status)
 
 
+def get_build_version():
+    return NCCL_VERSION_CODE
+
+
 def get_version():
-    return NCCL_VERSION
+    cdef int version
+    status = ncclGetVersion(&version)
+    check_status(status)
+    return version
 
 
 def get_unique_id():
