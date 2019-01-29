@@ -70,7 +70,7 @@ def _convert_fft_type(a, value_type):
 
 
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
-              out_size=None, out=None):
+              out_size=None, out=None, plan=None):
     fft_type = _convert_fft_type(a, value_type)
 
     if axis % a.ndim != a.ndim - 1:
@@ -82,8 +82,15 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     if out_size is None:
         out_size = a.shape[-1]
 
-    batch = a.size // a.shape[-1]
-    plan = cufft.Plan1d(out_size, fft_type, batch)
+    if plan is None:
+        batch = a.size // a.shape[-1]
+        plan = cufft.Plan1d(out_size, fft_type, batch)
+    else:
+        # check plan validity
+        if out_size != plan.nx:
+            raise RuntimeError("Input array and plan mismatch.")
+        # this is enough because we already checked the rest in _fft()
+
     if overwrite_x and value_type == 'C2C':
         out = a
     elif out is not None:
@@ -91,6 +98,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         plan.check_output_array(a, out)
     else:
         out = plan.get_output_array(a)
+
     plan.fft(a, out, direction)
 
     sz = out.shape[-1]
@@ -116,10 +124,6 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x):
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
-    if plan is not None:
-        raise NotImplementedError("Use of a pre-existing plan is not currently"
-                                  " supported for 1D transforms.")
-
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
                          % norm)
@@ -142,10 +146,18 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         axes = [i for i in six.moves.range(-dim, 0)]
     a = _cook_shape(a, s, axes, value_type)
 
+    if plan is not None:
+        # check plan validity
+        if not isinstance(plan, cufft.Plan1d):
+            raise ValueError("expected plan to have type cufft.Plan1d")
+        if fft_type != plan.fft_type:
+            raise ValueError("CUFFT plan dtype mismatch.")
+
     if value_type == 'C2C':
-        a = _fft_c2c(a, direction, norm, axes, overwrite_x)
+        a = _fft_c2c(a, direction, norm, axes, overwrite_x, plan=plan)
     elif value_type == 'R2C':
-        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
+        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
+                      plan=plan)
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
     else:
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
@@ -154,7 +166,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         else:
             out_size = s[-1]
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
-                      out_size)
+                      out_size, plan=plan)
 
     return a
 
@@ -428,6 +440,8 @@ def _default_plan_type(a, s=None, axes=None):
 def _default_fft_func(a, s=None, axes=None, plan=None):
     if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
         return _fftn
+    elif isinstance(plan, cufft.Plan1d):  # a shortcut for using _fft
+        return _fft
 
     plan_type = _default_plan_type(a, s, axes)
     if plan_type == 'nd':
