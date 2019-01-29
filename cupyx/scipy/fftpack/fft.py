@@ -14,15 +14,23 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
         axes (None or int or tuple of int):  The axes of the array to
-            transform. Currently, these must be a set of up to three adjacent
-            axes and must include either the first or the last axis of the
-            array.  If `None`, it is assumed that all axes are transformed.
+            transform. If `None`, it is assumed that all axes are transformed.
+
+            Currently, for performing N-D transform these must be a set of up
+            to three adjacent axes, and must include either the first or the
+            last axis of the array.
         value_type ('C2C'): The FFT type to perform.
             Currently only complex-to-complex transforms are supported.
 
     Returns:
-        plan (cupy.cuda.cufft.PlanNd): The cuFFT Plan.
+        plan: a cuFFT plan for either 1D transform (cupy.cuda.cufft.Plan1d)
+            or N-D transform (cupy.cuda.cufft.PlanNd).
     """
+    # check value_type
+    fft_type = _convert_fft_type(a, value_type)
+    if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
+        raise NotImplementedError("Only C2C and Z2Z are supported.")
+
     # check input array
     if a.flags.c_contiguous:
         order = 'C'

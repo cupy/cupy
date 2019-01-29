@@ -82,14 +82,19 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     if out_size is None:
         out_size = a.shape[-1]
 
+    batch = a.size // a.shape[-1]
     if plan is None:
-        batch = a.size // a.shape[-1]
         plan = cufft.Plan1d(out_size, fft_type, batch)
     else:
         # check plan validity
+        if not isinstance(plan, cufft.Plan1d):
+            raise ValueError("expected plan to have type cufft.Plan1d")
+        if fft_type != plan.fft_type:
+            raise ValueError("CUFFT plan dtype mismatch.")
         if out_size != plan.nx:
-            raise RuntimeError("Input array and plan mismatch.")
-        # this is enough because we already checked the rest in _fft()
+            raise ValueError("Target array size mismatches the plan.")
+        if batch != plan.batch:
+            raise ValueError("Batch size mismatches the plan.")
 
     if overwrite_x and value_type == 'C2C':
         out = a
@@ -116,9 +121,9 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     return out
 
 
-def _fft_c2c(a, direction, norm, axes, overwrite_x):
+def _fft_c2c(a, direction, norm, axes, overwrite_x, plan):
     for axis in axes:
-        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x)
+        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x, plan=plan)
     return a
 
 
@@ -146,18 +151,10 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         axes = [i for i in six.moves.range(-dim, 0)]
     a = _cook_shape(a, s, axes, value_type)
 
-    if plan is not None:
-        # check plan validity
-        if not isinstance(plan, cufft.Plan1d):
-            raise ValueError("expected plan to have type cufft.Plan1d")
-        if fft_type != plan.fft_type:
-            raise ValueError("CUFFT plan dtype mismatch.")
-
     if value_type == 'C2C':
         a = _fft_c2c(a, direction, norm, axes, overwrite_x, plan=plan)
     elif value_type == 'R2C':
-        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
-                      plan=plan)
+        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
     else:
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
@@ -166,7 +163,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         else:
             out_size = s[-1]
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
-                      out_size, plan=plan)
+                      out_size)
 
     return a
 

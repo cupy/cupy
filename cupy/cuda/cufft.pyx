@@ -108,6 +108,7 @@ class Plan1d(object):
         self.fft_type = fft_type
         self.plan = plan
         self.work_area = work_area
+        self.batch = batch
 
     def __del__(self):
         cdef Handle plan = self.plan
@@ -236,6 +237,7 @@ class PlanNd(object):
         self.fft_type = fft_type
         self.plan = plan
         self.work_area = work_area
+        self.batch = batch
 
     def __del__(self):
         cdef Handle plan = self.plan
