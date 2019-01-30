@@ -57,6 +57,11 @@ class TestTypeTestingFunctions(unittest.TestCase):
     def test(self, xp, dtype):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_scalar(self, xp, dtype):
+        return getattr(xp, self.func)(dtype(3))
+
 
 @testing.parameterize(
     {'func': 'iscomplexobj'},
@@ -68,3 +73,8 @@ class TestTypeTestingObjFunctions(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test(self, xp, dtype):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_scalar(self, xp, dtype):
+        return getattr(xp, self.func)(dtype(3))
