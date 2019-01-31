@@ -33,6 +33,12 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._routines_indexing',
+            'cupy.core._routines_logic',
+            'cupy.core._routines_manipulation',
+            'cupy.core._routines_math',
+            'cupy.core._routines_sorting',
+            'cupy.core._routines_statistics',
             'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',
@@ -562,7 +568,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, verbose=True,
+        extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
 
 

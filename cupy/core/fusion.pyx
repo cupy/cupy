@@ -7,6 +7,7 @@ import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
+from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core import core
 
@@ -41,7 +42,8 @@ cdef dict _dtype_to_ctype = {
 cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
 cdef tuple _acceptable_types = six.integer_types + (
-    core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
+    core.ndarray, numpy.ndarray, numpy.generic,
+    float, complex, bool, type(None))
 
 
 cpdef inline _is_fusing():
@@ -713,7 +715,19 @@ class _FusionHistory(object):
             operation=operation)
         return module_code
 
-    def get_fusion(self, func, in_params_info, name):
+    def _gen_abstracted_args(self, a):
+        if isinstance(a, core.ndarray):
+            cuda_var = self._fresh_premap_param(a.dtype)
+            python_var = _FusionVarArray(cuda_var, a.ndim, False)
+        elif a is None:
+            cuda_var = None
+            python_var = None
+        else:
+            cuda_var = self._fresh_premap_param(numpy.dtype(type(a)))
+            python_var = _FusionVarScalar(cuda_var, -1, False)
+        return cuda_var, python_var
+
+    def get_fusion(self, func, args, name):
         """This generates CUDA kernel from the given function and dtypes.
 
         This function generates ElementwiseKernel or ReductioKernel from the
@@ -721,22 +735,24 @@ class _FusionHistory(object):
 
         Args:
             func (function): The function to be fused.
-            in_types (list of dtypes): The list of dtypes of input parameters.
+            args (tuple): The tuple of arguments.
             name (str): The name of the kernel.
 
         Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
             The second element of return values is kwargs that will give into
             the elementwise kernel or reduction kernel.
         """
-        in_dtypes = [t for t, d in in_params_info]
-        in_ndims = [d for t, d in in_params_info]
-        self.ndim = max(in_ndims)
-        in_params = [self._fresh_premap_param(t) for t in in_dtypes]
-        in_pvars = [_FusionVarScalar(v, d, False)
-                    if d == -1
-                    else _FusionVarArray(v, d, False)
-                    for v, d in zip(in_params, in_ndims)]
-        return_value = func(*in_pvars)
+        self.ndim = max([a.ndim for a in args if isinstance(a, core.ndarray)])
+
+        in_params = []
+        function_args = []
+        for a in args:
+            cuda_var, python_var = self._gen_abstracted_args(a)
+            if cuda_var is not None:
+                in_params.append(cuda_var)
+            function_args.append(python_var)
+
+        return_value = func(*function_args)
 
         if isinstance(return_value, tuple):
             return_tuple = True
@@ -820,14 +836,6 @@ class _FusionHistory(object):
             return kernel, self.reduce_kwargs
 
 
-cdef inline tuple _get_param_info(arg):
-    if isinstance(arg, core.ndarray):
-        return (arg.dtype, arg.ndim)
-    elif isinstance(arg, numpy.generic):
-        return (arg.dtype, -1)
-    return (numpy.dtype(type(arg)), -1)
-
-
 class Fusion(object):
 
     """Function class.
@@ -848,16 +856,18 @@ class Fusion(object):
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
-    def _is_cupy_data(self, a):
-        return isinstance(a, (core.ndarray, numpy.generic))
-
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
         if _is_fusing():
             return self.func(*args)
 
-        # No cupy ndarray exists in the arguments
-        if cupy.get_array_module(*args) is not cupy:
+        exec_cupy = False
+        for a in args:
+            if isinstance(a, core.ndarray):
+                exec_cupy = True
+                break
+        if not exec_cupy:
+            # No cupy ndarray exists in the arguments
             return self.func(*args)
 
         # Invalid argument types
@@ -868,17 +878,39 @@ class Fusion(object):
                 raise TypeError(mes.format(self.name, arg_types))
 
         # Cache the result of execution path analysis
-        cdef tuple params_info = tuple([_get_param_info(arg) for arg in args])
+        cdef list params_info = []
+        for arg in args:
+            if isinstance(arg, core.ndarray):
+                params_info.append(arg.dtype.char)
+                params_info.append(arg.ndim)
+            elif isinstance(arg, numpy.generic):
+                params_info.append(arg.dtype.char)
+            elif arg is None:
+                params_info.append(None)
+            elif isinstance(arg, float):
+                params_info.append('d')
+            elif isinstance(arg, six.integer_types):
+                params_info.append('l')
+            elif isinstance(arg, bool):
+                params_info.append('?')
+            elif isinstance(arg, complex):
+                params_info.append('D')
+            else:
+                assert False
 
-        if params_info not in self._memo:
+        cdef tuple key = tuple(params_info)
+        if key not in self._memo:
             try:
                 _thread_local.history = _FusionHistory()
-                self._memo[params_info] = _thread_local.history.get_fusion(
-                    self.func, params_info, self.name)
+                self._memo[key] = _thread_local.history.get_fusion(
+                    self.func, args, self.name)
             finally:
                 del _thread_local.history
-        kernel, kwargs = self._memo[params_info]
-        return kernel(*args, **kwargs)
+        kernel, kwargs = self._memo[key]
+
+        return kernel(
+            *[a for a in args if a is not None],
+            **kwargs)
 
     def clear_cache(self):
         self._memo = {}
@@ -943,7 +975,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
         ndim = 0
     if ndim < 0:
         mes = 'axis {} is out of bounds for array of dimension {}'
-        raise core._AxisError(mes.format(axis, src_ndim))
+        raise _errors._AxisError(mes.format(axis, src_ndim))
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:

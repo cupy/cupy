@@ -5,6 +5,7 @@ import string
 
 import numpy
 
+from cupy.core import _errors
 from cupy.cuda import compiler
 from cupy import util
 
@@ -99,8 +100,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
     for dim in axis:
         if dim < -ndim or dim >= ndim:
-            from cupy.core.core import _AxisError
-            raise _AxisError('Axis overrun')
+            raise _errors._AxisError('Axis overrun')
     reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
     out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
     return reduce_axis, out_axis
@@ -143,7 +143,7 @@ cpdef list _get_inout_args(
         out_indexer.shape = out_shape
     cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
     (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = 'i'
+    s.kind = b'i'
     s.size = 4
     return in_args + out_args + [in_indexer, out_indexer, s]
 

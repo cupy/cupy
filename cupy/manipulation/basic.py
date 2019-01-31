@@ -2,6 +2,7 @@ import numpy
 import six
 
 from cupy import core
+from cupy.core import fusion
 
 
 def copyto(dst, src, casting='same_kind', where=None):
@@ -36,6 +37,13 @@ def copyto(dst, src, casting='same_kind', where=None):
     if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
+    if fusion._is_fusing():
+        if where is None:
+            core.elementwise_copy(src, dst)
+        else:
+            core.elementwise_copy_where(src, where, dst)
+        return
+
     if dst.size == 0:
         return
 

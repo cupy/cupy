@@ -25,11 +25,11 @@ def flip(a, axis):
     """
     a_ndim = a.ndim
     if a_ndim < 1:
-        raise core.core._AxisError('Input must be >= 1-d')
+        raise core._AxisError('Input must be >= 1-d')
 
     axis = int(axis)
     if not -a_ndim <= axis < a_ndim:
-        raise core.core._AxisError(
+        raise core._AxisError(
             'axis must be >= %d and < %d' % (-a_ndim, a_ndim))
 
     return _flip(a, axis)
