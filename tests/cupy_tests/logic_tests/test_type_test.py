@@ -86,7 +86,7 @@ class TestTypeTestingObjFunctions(unittest.TestCase):
         return getattr(xp, self.func)(dtype(3))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_list(self, xp, dtype):
         return getattr(xp, self.func)(
             testing.shaped_arange((2, 3), xp, dtype).tolist())
