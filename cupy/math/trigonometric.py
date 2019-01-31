@@ -108,7 +108,7 @@ def _unwrap_correct(dd, discont):
     ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
     cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
     ph_correct = ddmod - dd
-    cupy.copyto(ph_correct, 0, where=cupy.abs(dd) < discont)
+    cupy.copyto(ph_correct, 0., where=cupy.abs(dd) < discont)
     return ph_correct
 
 
