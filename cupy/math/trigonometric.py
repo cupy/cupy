@@ -104,8 +104,12 @@ rad2deg = core.create_ufunc(
 
 
 @core.fusion.fuse()
-def _normalize_angle(angle):
-    return cupy.mod(angle + numpy.pi, 2*numpy.pi) - numpy.pi
+def _unwrap_correct(dd, discont):
+    ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
+    cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
+    ph_correct = ddmod - dd
+    cupy.copyto(ph_correct, 0, where=cupy.abs(dd) < discont)
+    return ph_correct
 
 
 def unwrap(p, discont=numpy.pi, axis=-1):
@@ -129,10 +133,7 @@ def unwrap(p, discont=numpy.pi, axis=-1):
     slice1 = [slice(None, None)]*nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
-    ddmod = _normalize_angle(dd)
-    cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
-    ph_correct = ddmod - dd
-    cupy.copyto(ph_correct, 0, where=cupy.abs(dd) < discont)
+    ph_correct = _unwrap_correct(dd, discont)
     up = cupy.array(p, copy=True, dtype='d')
     up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
     return up
