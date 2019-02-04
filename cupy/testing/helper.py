@@ -29,6 +29,9 @@ def _call_func(self, impl, args, kw):
         error = None
         tb = None
     except Exception as e:
+        if e.__traceback__.tb_next is None:
+            # failed before impl is called, e.g. invalid kw
+            raise e
         result = None
         error = e
         tb = traceback.format_exc()
