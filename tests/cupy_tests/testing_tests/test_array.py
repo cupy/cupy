@@ -39,10 +39,15 @@ def _convert_array(xs, array_module):
     if array_module == 'all_numpy':
         return xs
     elif array_module == 'all_cupy':
-        return cupy.asarray(xs)
+        return [
+            cupy.asarray(x)
+            for x in xs
+        ]
     else:
-        return [cupy.asarray(x) if numpy.random.randint(0, 2)
-                else x for x in xs]
+        return [
+            cupy.asarray(x) if numpy.random.randint(0, 2) else x
+            for x in xs
+        ]
 
 
 @testing.parameterize(
