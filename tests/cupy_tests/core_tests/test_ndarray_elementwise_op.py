@@ -159,7 +159,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_array_op(self, op, xp, x_type, y_type, no_bool=False):
+    def check_array_array_op(self, op, xp, x_type, y_type,
+                             no_complex=False, no_bool=False):
+        if no_complex:
+            if numpy.dtype(x_type).kind == 'c' \
+                    or numpy.dtype(y_type).kind == 'c':
+                return xp.array(True)
         if no_bool and (numpy.dtype(x_type) == '?' and
                         numpy.dtype(y_type) == '?'):
             return xp.array(True)
