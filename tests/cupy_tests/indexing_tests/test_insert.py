@@ -12,6 +12,9 @@ from cupy import testing
 @testing.gpu
 class TestPlace(unittest.TestCase):
 
+    # NumPy 1.9 don't wraps values.
+    # https://github.com/numpy/numpy/pull/5821
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_place(self, xp, dtype):
@@ -31,6 +34,9 @@ class TestPlace(unittest.TestCase):
 @testing.gpu
 class TestPlaceRaises(unittest.TestCase):
 
+    # NumPy 1.9 performs illegal memory access.
+    # https://github.com/numpy/numpy/pull/5821
+    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_place_empty_value_error(self, xp, dtype):
@@ -39,6 +45,9 @@ class TestPlaceRaises(unittest.TestCase):
         vals = testing.shaped_random((0,), xp, dtype)
         xp.place(a, mask, vals)
 
+    # Before NumPy 1.12 it was TypeError.
+    # https://github.com/numpy/numpy/pull/7003
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_place_shape_unmatch_error(self, xp, dtype):
