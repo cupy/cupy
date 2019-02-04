@@ -75,8 +75,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_input(self, xp, dtype, order):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        a = xp.asfortranarray(a)
+        a = testing.shaped_arange((2, 3, 4), xp, dtype, order='F')
         b = xp.array(a, copy=False, order=order)
         return b
 
@@ -135,6 +134,61 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_with_order(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.asarray(a, order=order)
+        if order in ['F', 'f']:
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_preserves_numpy_array_order(self, xp, dtype, order):
+        a_numpy = testing.shaped_arange((2, 3, 4), numpy, dtype, order)
+        b = xp.asarray(a_numpy)
+        assert b.flags.f_contiguous == a_numpy.flags.f_contiguous
+        assert b.flags.c_contiguous == a_numpy.flags.c_contiguous
+        return b
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asanyarray_with_order(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.asanyarray(a, order=order)
+        if order in ['F', 'f']:
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_from_numpy(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = xp.asarray(a, order=order)
+        if order in ['F', 'f']:
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_with_order_copy_behavior(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.asarray(a, order=order)
+        a.fill(0)
+        return b
+
     @testing.for_all_dtypes()
     def test_asarray_cuda_array_interface(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
@@ -146,6 +200,13 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
         a.fill(0)
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_ignores_order(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a), order='F')
+        self.assertTrue(b.flags.c_contiguous)
         testing.assert_array_equal(a, b)
 
     def test_ascontiguousarray_on_noncontiguous_array(self):

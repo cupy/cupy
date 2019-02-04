@@ -1,6 +1,6 @@
 import cupy
 from cupy.cuda import cufft
-from cupy.fft.fft import _fft
+from cupy.fft.fft import _fft, _default_fft_func
 
 
 def fft(x, n=None, axis=-1, overwrite_x=False):
@@ -65,7 +65,8 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.fft2`
     """
-    return _fft(x, shape, axes, None, cufft.CUFFT_FORWARD,
+    func = _default_fft_func(x, shape, axes)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x)
 
 
@@ -87,7 +88,8 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.ifft2`
     """
-    return _fft(x, shape, axes, None, cufft.CUFFT_INVERSE,
+    func = _default_fft_func(x, shape, axes)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x)
 
 
@@ -109,7 +111,8 @@ def fftn(x, shape=None, axes=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.fftn`
     """
-    return _fft(x, shape, axes, None, cufft.CUFFT_FORWARD,
+    func = _default_fft_func(x, shape, axes)
+    return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x)
 
 
@@ -131,7 +134,8 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fftpack.ifftn`
     """
-    return _fft(x, shape, axes, None, cufft.CUFFT_INVERSE,
+    func = _default_fft_func(x, shape, axes)
+    return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x)
 
 

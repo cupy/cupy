@@ -556,6 +556,8 @@ class RandomState(object):
         """  # NOQA
         if size is None:
             return self._interval(mx, 1).reshape(())
+        elif size == 0:
+            return cupy.array(())
         elif isinstance(size, int):
             size = (size, )
 

@@ -3,6 +3,7 @@ import string
 import threading
 
 import numpy
+import six
 
 from cupy.cuda import compiler
 from cupy import util
@@ -16,8 +17,8 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core._routines_manipulation cimport broadcast
 from cupy.core._scalar import get_typename as _get_typename
-from cupy.core.core cimport broadcast
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
@@ -328,7 +329,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
-                        str casting):
+                        casting):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -376,8 +377,8 @@ cdef list _get_out_args_with_params(
 
 
 cdef function.Function _get_elementwise_kernel(
-        tuple args_info, tuple types, tuple params, str operation, str name,
-        str preamble, dict kwargs):
+        tuple args_info, tuple types, tuple params, operation, name,
+        preamble, dict kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -445,10 +446,10 @@ cdef class ElementwiseKernel:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly tuple params
-        readonly str operation
-        readonly str name
+        readonly object operation
+        readonly object name
         readonly bint reduce_dims
-        readonly str preamble
+        readonly object preamble
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
@@ -667,7 +668,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
+cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
