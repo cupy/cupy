@@ -32,6 +32,7 @@ cdef class ndarray:
     cpdef ndarray ravel(self, order=*)
     cpdef ndarray squeeze(self, axis=*)
     cpdef ndarray take(self, indices, axis=*, out=*)
+    cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
     cpdef sort(self, int axis=*)
