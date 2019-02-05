@@ -1,6 +1,7 @@
+import numpy
+
+import cupy
 from cupy import core
-from cupy.creation.from_data import asanyarray
-from numpy import complex64, complex128
 
 
 _is_close = core.create_ufunc(
@@ -90,10 +91,10 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
     .. seealso:: :func:`numpy.isclose`
 
     """
-    a = asanyarray(a)
-    b = asanyarray(b)
-    if (a.dtype in [complex64, complex128]) or \
-       (b.dtype in [complex64, complex128]):
+    a = cupy.asanyarray(a)
+    b = cupy.asanyarray(b)
+    if (a.dtype in [numpy.complex64, numpy.complex128]) or \
+       (b.dtype in [numpy.complex64, numpy.complex128]):
         return _is_close_complex(a, b, rtol, atol, equal_nan)
     else:
         return _is_close(a, b, rtol, atol, equal_nan)
