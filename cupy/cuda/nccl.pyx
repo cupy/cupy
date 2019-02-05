@@ -105,6 +105,11 @@ def get_build_version():
 
 
 def get_version():
+    """Returns the runtime version of NCCL.
+
+    This function will return 0 when built with NCCL version earlier than
+    2.3.4, which does not support ``ncclGetVersion`` API.
+    """
     cdef int version
     status = ncclGetVersion(&version)
     check_status(status)

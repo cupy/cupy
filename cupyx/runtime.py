@@ -54,7 +54,10 @@ class _RuntimeInfo(object):
 
         if nccl is not None:
             self.nccl_build_version = nccl.get_build_version()
-            self.nccl_runtime_version = nccl.get_version()
+            nccl_runtime_version = nccl.get_version()
+            if nccl_runtime_version == 0:
+                nccl_runtime_version = '(unknown)'
+            self.nccl_runtime_version = nccl_runtime_version
 
     def __str__(self):
         records = [
