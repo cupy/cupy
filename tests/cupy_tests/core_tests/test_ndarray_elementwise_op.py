@@ -161,10 +161,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_array_op(self, op, xp, x_type, y_type,
                              no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return xp.array(True)
+        if no_complex and (numpy.dtype(x_type).kind == 'c' or
+                           numpy.dtype(y_type).kind == 'c'):
+            return xp.array(True)
         if no_bool and (numpy.dtype(x_type) == '?' and
                         numpy.dtype(y_type) == '?'):
             return xp.array(True)
@@ -268,10 +267,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_broadcasted_op(self, op, xp, x_type, y_type,
                                    no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return xp.array(True)
+        if no_complex and (numpy.dtype(x_type).kind == 'c' or
+                           numpy.dtype(y_type).kind == 'c'):
+            return xp.array(True)
         if no_bool and (numpy.dtype(x_type) == '?' and
                         numpy.dtype(y_type) == '?'):
             return xp.array(True)
@@ -381,10 +379,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
                                           no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return x_type(True)
+        if no_complex and (numpy.dtype(x_type).kind == 'c' or
+                           numpy.dtype(y_type).kind == 'c'):
+            return x_type(True)
         if no_bool and (numpy.dtype(x_type) == '?' and
                         numpy.dtype(y_type) == '?'):
             return x_type(True)
