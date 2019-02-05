@@ -7,6 +7,7 @@ import inspect
 import os
 import pkg_resources
 import random
+import sys
 import traceback
 import unittest
 import warnings
@@ -27,16 +28,17 @@ def _call_func(self, impl, args, kw):
         result = impl(self, *args, **kw)
         self.assertIsNotNone(result)
         error = None
-        tb = None
+        tb_str = None
     except Exception as e:
-        if e.__traceback__.tb_next is None:
+        _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
+        if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
             raise e
         result = None
         error = e
-        tb = traceback.format_exc()
+        tb_str = traceback.format_exc()
 
-    return result, error, tb
+    return result, error, tb_str
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
