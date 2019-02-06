@@ -51,20 +51,17 @@ extern "C" __global__ void ${name}(${params}) {
       _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
       _s = REDUCE(_s, _a);
     }
-    if (_block_stride < ${block_size}) {
-      _sdata[_tid] = _s;
-      __syncthreads();
-      for (unsigned int _block = ${block_size} / 2;
-           _block >= _block_stride; _block >>= 1) {
-        if (_tid < _block) {
-          _REDUCE(_block);
-        }
-        __syncthreads();
-      }
-      if (_tid < _block_stride) {
-        _s = _sdata[_tid];
+    _sdata[_tid] = _s;
+    __syncthreads();
+    for (unsigned int _block = ${block_size} / 2;
+         _block >= _block_stride; _block >>= 1) {
+      if (_tid < _block) {
+        _REDUCE(_block);
       }
       __syncthreads();
+    }
+    if (_tid < _block_stride) {
+      _s = _sdata[_tid];
     }
     if (_tid < _block_stride && _i < _out_ind.size()) {
       _out_ind.set(static_cast<ptrdiff_t>(_i));
