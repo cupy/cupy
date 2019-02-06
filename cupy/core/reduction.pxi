@@ -129,6 +129,19 @@ cpdef tuple _get_permuted_args(
     return args, shape
 
 
+cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+        Indexer in_indexer, Indexer out_indexer):
+    cdef Py_ssize_t block_size, reduce_block_size, block_stride, out_block_num
+    block_size = 512
+
+    reduce_block_size = max(
+        1, internal.clp2(in_indexer.size // out_indexer.size))
+    block_stride = max(1, block_size // reduce_block_size)
+    out_block_num = (out_indexer.size + block_stride - 1) // block_stride
+
+    return block_size, block_stride, out_block_num
+
+
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         Py_ssize_t block_stride, tuple params, bint reduce_dims):
@@ -166,8 +179,6 @@ def _get_simple_reduction_function(
 
 class simple_reduction_function(object):
 
-    _block_size = 512
-
     def __init__(self, name, ops, identity, preamble):
         self.name = name
         self._ops = ops
@@ -189,8 +200,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t block_size, reduce_block_size, block_stride
-        cdef Py_ssize_t out_block_num
+        cdef Py_ssize_t block_size, block_stride, out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -220,12 +230,10 @@ class simple_reduction_function(object):
         in_args, in_shape = _get_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, None)
 
-        block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(
-            1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // reduce_block_size)
+        block_size, block_stride, out_block_num = _get_block_specs(
+            in_indexer, out_indexer)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -237,10 +245,6 @@ class simple_reduction_function(object):
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
-
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size)
         return ret
@@ -356,8 +360,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, reduce_block_size, block_stride
-        cdef Py_ssize_t out_block_num
+        cdef Py_ssize_t block_size, block_stride, out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -412,12 +415,10 @@ class ReductionKernel(object):
         in_args, in_shape = _get_permuted_args(
             in_args, reduce_axis + out_axis, broad_shape, self.in_params)
 
-        block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(
-            1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // reduce_block_size)
+        block_size, block_stride, out_block_num = _get_block_specs(
+            in_indexer, out_indexer)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -429,10 +430,6 @@ class ReductionKernel(object):
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
-
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
