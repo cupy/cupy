@@ -1,11 +1,10 @@
 from cupy import core
-import cupy.core.core
+from cupy.core import _routines_math as _math
 from cupy.core import fusion
 
 # TODO(okuta): Implement convolve
 
 
-@fusion._ufunc_wrapper(cupy.core.core._clip)
 def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
 
@@ -26,6 +25,10 @@ def clip(a, a_min=None, a_max=None, out=None):
     .. seealso:: :func:`numpy.clip`
 
     """
+    if fusion._is_fusing():
+        return fusion._call_ufunc(_math.clip,
+                                  a, a_min, a_max, out=out)
+
     # TODO(okuta): check type
     return a.clip(a_min, a_max, out=out)
 

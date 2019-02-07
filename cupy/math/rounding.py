@@ -1,11 +1,32 @@
 from cupy import core
+from cupy.core import fusion
 from cupy.math import ufunc
 
-# TODO(okuta): Implement around
+
+def around(a, decimals=0, out=None):
+    """Rounds to the given number of decimals.
+
+    Args:
+        a (cupy.ndarray): The source array.
+        decimals (int): umber of decimal places to round to (default: 0).
+            If decimals is negative, it specifies the number of positions to
+            the left of the decimal point.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: Rounded array.
+
+    .. seealso:: :func:`numpy.around`
+
+    """
+    if fusion._is_fusing():
+        return fusion._call_ufunc(core.core._round_ufunc, a, decimals, out=out)
+    a = core.array(a, copy=False)
+    return a.round(decimals, out=out)
 
 
-# TODO(beam2d): Implement it
-# round_ = around
+def round_(a, decimals=0, out=None):
+    return around(a, decimals, out=out)
 
 
 rint = ufunc.create_math_ufunc(

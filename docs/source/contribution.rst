@@ -209,9 +209,10 @@ We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenSt
 
 You can use ``autopep8`` and ``flake8`` commands to check your code.
 
-Install them with the following command::
+In order to avoid confusion from using different tool versions, we pin the versions of those tools.
+Install them with the following command (from within the top directory of CuPy repository)::
 
-  $ pip install autopep8
+  $ pip install -e '.[stylecheck]'
 
 And check your code with::
 

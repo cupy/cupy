@@ -133,6 +133,61 @@ class TestRandomInvalidArgument(unittest.TestCase):
     def test_too_large_density(self, xp, sp):
         sp.random(3, 4, density=1.1)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
-    def test_invalid_dtype(self, xp, sp):
-        sp.random(3, 4, dtype='i')
+    def test_invalid_dtype(self):
+        # Note: SciPy 1.12+ accepts integer.
+        with self.assertRaises(NotImplementedError):
+            sparse.random(3, 4, dtype='i')
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'format': ['dia', 'csr', 'csc', 'coo'],
+}))
+@testing.with_requires('scipy')
+class TestDiags(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_diags_scalar_offset(self, xp, sp):
+        x = sp.diags(
+            xp.arange(16), offsets=0, dtype=self.dtype, format=self.format)
+        self.assertIsInstance(x, sp.spmatrix)
+        self.assertEqual(x.format, self.format)
+        return x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_diags_single_element_lists(self, xp, sp):
+        x = sp.diags(
+            [xp.arange(16)], offsets=[0], dtype=self.dtype, format=self.format)
+        self.assertIsInstance(x, sp.spmatrix)
+        self.assertEqual(x.format, self.format)
+        return x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_diags_multiple(self, xp, sp):
+        x = sp.diags(
+            [xp.arange(15), xp.arange(16), xp.arange(15), xp.arange(13)],
+            offsets=[-1, 0, 1, 3],
+            dtype=self.dtype, format=self.format)
+        self.assertIsInstance(x, sp.spmatrix)
+        self.assertEqual(x.format, self.format)
+        return x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_diags_offsets_as_array(self, xp, sp):
+        x = sp.diags(
+            [xp.arange(15), xp.arange(16), xp.arange(15), xp.arange(13)],
+            offsets=xp.array([-1, 0, 1, 3]),
+            dtype=self.dtype, format=self.format)
+        self.assertIsInstance(x, sp.spmatrix)
+        self.assertEqual(x.format, self.format)
+        return x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_diags_non_square(self, xp, sp):
+        x = sp.diags(
+            [xp.arange(5), xp.arange(3)],
+            offsets=[0, -2], shape=(5, 10),
+            dtype=self.dtype, format=self.format)
+        self.assertIsInstance(x, sp.spmatrix)
+        self.assertEqual(x.format, self.format)
+        return x

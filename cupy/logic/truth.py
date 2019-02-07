@@ -1,9 +1,8 @@
 import cupy
-from cupy.core import core
+from cupy.core import _routines_logic as _logic
 from cupy.core import fusion
 
 
-@fusion._reduction_wrapper(core._all)
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -21,11 +20,17 @@ def all(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.all`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.all does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(
+            _logic.all, a, axis=axis, out=out)
+
     assert isinstance(a, cupy.ndarray)
     return a.all(axis=axis, out=out, keepdims=keepdims)
 
 
-@fusion._reduction_wrapper(core._any)
 def any(a, axis=None, out=None, keepdims=False):
     """Tests whether any array elements along a given axis evaluate to True.
 
@@ -43,5 +48,12 @@ def any(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.any`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.any does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(
+            _logic.any, a, axis=axis, out=out)
+
     assert isinstance(a, cupy.ndarray)
     return a.any(axis=axis, out=out, keepdims=keepdims)

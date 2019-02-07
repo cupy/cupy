@@ -1,9 +1,11 @@
 import atexit
 import binascii
 import functools
+import hashlib
 import operator
 import os
 import time
+import warnings
 
 import numpy
 import six
@@ -14,6 +16,7 @@ from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
+from cupy import util
 
 
 class RandomState(object):
@@ -142,8 +145,14 @@ class RandomState(object):
             :func:`cupy.random.exponential` for full documentation,
             :meth:`numpy.random.RandomState.exponential`
         """
+        scale = cupy.asarray(scale, dtype)
+        if (scale < 0).any():
+            raise ValueError('scale < 0')
+        if size is None:
+            size = scale.shape
         x = self.standard_exponential(size, dtype)
-        return cupy.multiply(scale, x, out=x)
+        x *= scale
+        return x
 
     def f(self, dfnum, dfden, size=None, dtype=float):
         """Returns an array of samples drawn from the f distribution.
@@ -191,6 +200,22 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size)
         return y
 
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+        """Returns an array of samples drawn from the hypergeometric distribution.
+
+        .. seealso::
+            :func:`cupy.random.hypergeometric` for full documentation,
+            :meth:`numpy.random.RandomState.hypergeometric`
+        """
+        ngood, nbad, nsample = \
+            cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
+        if size is None:
+            size = cupy.broadcast(ngood, nbad, nsample).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     _laplace_kernel = core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
@@ -211,6 +236,25 @@ class RandomState(object):
         RandomState._laplace_kernel(x, loc, scale, x)
         return x
 
+    def logistic(self, loc=0.0, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from the logistic distribution.
+
+        .. seealso::
+            :func:`cupy.random.logistic` for full documentation,
+            :meth:`numpy.random.RandomState.logistic`
+        """
+        loc, scale = cupy.asarray(loc), cupy.asarray(scale)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = cupy.empty(shape=size, dtype=dtype)
+        _kernels.open_uniform_kernel(self.rk_seed, x)
+        self.rk_seed += numpy.prod(size)
+        x = (1.0 - x) / x
+        cupy.log(x, out=x)
+        cupy.multiply(x, scale, out=x)
+        cupy.add(x, loc, out=x)
+        return x
+
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a log normal distribution.
 
@@ -225,6 +269,96 @@ class RandomState(object):
         else:
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
+
+    def logseries(self, p, size=None, dtype=int):
+        """Returns an array of samples drawn from a log series distribution.
+
+        .. seealso::
+            :func:`cupy.random.logseries` for full documentation,
+            :meth:`numpy.random.RandomState.logseries`
+
+        """
+        p = cupy.asarray(p)
+        if cupy.any(p <= 0):
+            raise ValueError('p <= 0.0')
+        if cupy.any(p >= 1):
+            raise ValueError('p >= 1.0')
+        if size is None:
+            size = p.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.logseries_kernel(p, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
+                            tol=1e-8, dtype=float):
+        """(experimental) Returns an array of samples drawn from the
+        multivariate normal distribution.
+
+        .. seealso::
+            :func:`cupy.random.multivariate_normal` for full documentation,
+            :meth:`numpy.random.RandomState.multivariate_normal`
+        """
+        util.experimental('cupy.random.RandomState.multivariate_normal')
+        mean = cupy.asarray(mean, dtype=dtype)
+        cov = cupy.asarray(cov, dtype=dtype)
+        if size is None:
+            shape = ()
+        elif isinstance(size, cupy.util.collections_abc.Sequence):
+            shape = tuple(size)
+        else:
+            shape = size,
+
+        if mean.ndim != 1:
+            raise ValueError("mean must be 1 dimensional")
+        if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
+            raise ValueError("cov must be 2 dimensional and square")
+        if len(mean) != len(cov):
+            raise ValueError("mean and cov must have same length")
+        shape += (len(mean),)
+
+        x = self.standard_normal(size=shape, dtype=dtype)
+
+        u, s, v = cupy.linalg.svd(cov)
+
+        if check_valid != 'ignore':
+            if check_valid != 'warn' and check_valid != 'raise':
+                raise ValueError(
+                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+
+            a = cupy.dot(v.T * s, v)
+            b = cov
+            psd = cupy.all(cupy.abs(a-b) <= tol*(1+cupy.abs(b)))
+            if not psd:
+                if check_valid == 'warn':
+                    warnings.warn(
+                        "covariance is not symmetric positive-semidefinite.",
+                        RuntimeWarning)
+                else:
+                    raise ValueError(
+                        "covariance is not symmetric positive-semidefinite.")
+
+        x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
+        x += mean
+        return x
+
+    def negative_binomial(self, n, p, size=None, dtype=int):
+        """Returns an array of samples drawn from the negative binomial distribution.
+
+        .. seealso::
+            :func:`cupy.random.negative_binomial` for full documentation,
+            :meth:`numpy.random.RandomState.negative_binomial`
+        """
+        n = cupy.asarray(n)
+        p = cupy.asarray(p)
+        if cupy.any(n <= 0):
+            raise ValueError("n <= 0")
+        if cupy.any(p < 0):
+            raise ValueError("p < 0")
+        if cupy.any(p > 1):
+            raise ValueError("p > 1")
+        y = self.gamma(n, (1-p)/p, size)
+        return self.poisson(y, dtype=dtype)
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
@@ -254,6 +388,48 @@ class RandomState(object):
         cupy.exp(-x/a, out=x)
         return x - 1
 
+    def noncentral_chisquare(self, df, nonc, size=None, dtype=float):
+        """Returns an array of samples drawn from the noncentral chi-square
+        distribution.
+
+        .. seealso::
+            :func:`cupy.random.noncentral_chisquare` for full documentation,
+            :meth:`numpy.random.RandomState.noncentral_chisquare`
+        """
+        df, nonc = cupy.asarray(df), cupy.asarray(nonc)
+        if cupy.any(df <= 0):
+            raise ValueError("df <= 0")
+        if cupy.any(nonc < 0):
+            raise ValueError("nonc < 0")
+        if size is None:
+            size = cupy.broadcast(df, nonc).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.noncentral_chisquare_kernel(df, nonc, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
+        """Returns an array of samples drawn from the noncentral F distribution.
+
+        .. seealso::
+            :func:`cupy.random.noncentral_f` for full documentation,
+            :meth:`numpy.random.RandomState.noncentral_f`
+        """
+        dfnum, dfden, nonc = \
+            cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
+        if cupy.any(dfnum <= 0):
+            raise ValueError("dfnum <= 0")
+        if cupy.any(dfden <= 0):
+            raise ValueError("dfden <= 0")
+        if cupy.any(nonc < 0):
+            raise ValueError("nonc < 0")
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden, nonc).shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
     def poisson(self, lam=1.0, size=None, dtype=int):
         """Returns an array of samples drawn from the poisson distribution.
 
@@ -268,6 +444,24 @@ class RandomState(object):
         _kernels.poisson_kernel(lam, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
+
+    def power(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the power distribution.
+
+        .. seealso::
+            :func:`cupy.random.power` for full documentation,
+            :meth:`numpy.random.RandomState.power`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a < 0):
+            raise ValueError('a < 0')
+        if size is None:
+            size = a.shape
+        x = self.standard_exponential(size=size, dtype=dtype)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
@@ -297,8 +491,8 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _1m_kernel = core.ElementwiseKernel(
-        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
+    _mod1_kernel = core.ElementwiseKernel(
+        '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
@@ -319,8 +513,27 @@ class RandomState(object):
 
         """
         out = self._random_sample_raw(size, dtype)
-        RandomState._1m_kernel(out)
+        RandomState._mod1_kernel(out)
         return out
+
+    def rayleigh(self, scale=1.0, size=None, dtype=float):
+        """Returns an array of samples drawn from a rayleigh distribution.
+
+        .. seealso::
+            :func:`cupy.random.rayleigh` for full documentation,
+            :meth:`numpy.random.RandomState.rayleigh`
+        """
+        scale = cupy.asarray(scale)
+        if size is None:
+            size = scale.shape
+        if cupy.any(scale < 0):
+            raise ValueError('scale < 0')
+        x = self._random_sample_raw(size, dtype)
+        x = cupy.log(x, out=x)
+        x = cupy.multiply(x, -2., out=x)
+        x = cupy.sqrt(x, out=x)
+        x = cupy.multiply(x, scale, out=x)
+        return x
 
     def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
@@ -343,6 +556,8 @@ class RandomState(object):
         """  # NOQA
         if size is None:
             return self._interval(mx, 1).reshape(())
+        elif size == 0:
+            return cupy.array(())
         elif isinstance(size, int):
             size = (size, )
 
@@ -408,6 +623,8 @@ class RandomState(object):
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
+            if isinstance(seed, numpy.ndarray):
+                seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
@@ -500,6 +717,48 @@ class RandomState(object):
         sample &= cupy.iinfo(cupy.int_).max
         return sample
 
+    _triangular_kernel = core.ElementwiseKernel(
+        'L left, M mode, R right', 'T x',
+        """
+        T base, leftbase, ratio, leftprod, rightprod;
+
+        base = right - left;
+        leftbase = mode - left;
+        ratio = leftbase / base;
+        leftprod = leftbase*base;
+        rightprod = (right - mode)*base;
+
+        if (x <= ratio)
+        {
+            x = left + sqrt(x*leftprod);
+        } else
+        {
+            x = right - sqrt((1.0 - x) * rightprod);
+        }
+        """,
+        'triangular_kernel'
+    )
+
+    def triangular(self, left, mode, right, size=None, dtype=float):
+        """Returns an array of samples drawn from the triangular distribution.
+
+        .. seealso::
+            :func:`cupy.random.triangular` for full documentation,
+            :meth:`numpy.random.RandomState.triangular`
+        """
+        left, mode, right = \
+            cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
+        if cupy.any(left > mode):
+            raise ValueError("left > mode")
+        if cupy.any(mode > right):
+            raise ValueError("mode > right")
+        if cupy.any(left == right):
+            raise ValueError("left == right")
+        if size is None:
+            size = cupy.broadcast(left, mode, right).shape
+        x = self.random_sample(size=size, dtype=dtype)
+        return RandomState._triangular_kernel(left, mode, right, x)
+
     _scale_kernel = core.ElementwiseKernel(
         'T low, T high', 'T x',
         'x = T(low) + x * T(high - low)',
@@ -533,6 +792,67 @@ class RandomState(object):
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
+        self.rk_seed += numpy.prod(size)
+        return y
+
+    _wald_kernel = core.ElementwiseKernel(
+        'T mean, T scale, T U', 'T X',
+        """
+            T mu_2l;
+            T Y;
+            mu_2l = mean / (2*scale);
+            Y = mean*X*X;
+            X = mean + mu_2l*(Y - sqrt(4*scale*Y + Y*Y));
+            if (U > mean/(mean+X))
+            {
+                X = mean*mean/X;
+            }
+        """,
+        'wald_scale')
+
+    def wald(self, mean, scale, size=None, dtype=float):
+        """Returns an array of samples drawn from the Wald distribution.
+
+         .. seealso::
+            :func:`cupy.random.wald` for full documentation,
+            :meth:`numpy.random.RandomState.wald`
+        """
+        mean, scale = \
+            cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
+        if size is None:
+            size = cupy.broadcast(mean, scale).shape
+        x = self.normal(size=size, dtype=dtype)
+        u = self.random_sample(size=size, dtype=dtype)
+        return RandomState._wald_kernel(mean, scale, u, x)
+
+    def weibull(self, a, size=None, dtype=float):
+        """Returns an array of samples drawn from the weibull distribution.
+
+        .. seealso::
+            :func:`cupy.random.weibull` for full documentation,
+            :meth:`numpy.random.RandomState.weibull`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a < 0):
+            raise ValueError("a < 0")
+        x = self.standard_exponential(size, dtype)
+        cupy.power(x, 1./a, out=x)
+        return x
+
+    def zipf(self, a, size=None, dtype=int):
+        """Returns an array of samples drawn from the Zipf distribution.
+
+        .. seealso::
+            :func:`cupy.random.zipf` for full documentation,
+            :meth:`numpy.random.RandomState.zipf`
+        """
+        a = cupy.asarray(a)
+        if cupy.any(a <= 1.0):
+            raise ValueError("'a' must be a valid float > 1.0")
+        if size is None:
+            size = a.shape
+        y = cupy.empty(shape=size, dtype=dtype)
+        _kernels.zipf_kernel(a, self.rk_seed, y)
         self.rk_seed += numpy.prod(size)
         return y
 

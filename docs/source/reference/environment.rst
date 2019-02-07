@@ -5,6 +5,13 @@ Here are the environment variables CuPy uses.
 
 
 +------------------------------------+----------------------------------------------------+
+| ``CUDA_PATH``                      | Path to the directory containing CUDA.             |
+|                                    | The parent of the directory containing ``nvcc`` is |
+|                                    | used as default.                                   |
+|                                    | When ``nvcc`` is not found, ``/usr/local/cuda`` is |
+|                                    | used.                                              |
+|                                    | See :ref:`install_cuda` for details.               |
++------------------------------------+----------------------------------------------------+
 | ``CUPY_CACHE_DIR``                 | Path to the directory to store kernel cache.       |
 |                                    | ``${HOME}/.cupy/kernel_cache`` is used by default. |
 |                                    | See :ref:`overview` for details.                   |
@@ -19,6 +26,11 @@ Here are the environment variables CuPy uses.
 |                                    | CuPy dumps CUDA kernel code to standard error.     |
 |                                    | It is disabled by default.                         |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_CUDA_COMPILE_WITH_DEBUG``   | If set to 1, CUDA kernel will be compiled with     |
+|                                    | debug information (``--device-debug`` and          |
+|                                    | ``--generate-line-info``).                         |
+|                                    | It is disabled by default.                         |
++------------------------------------+----------------------------------------------------+
 
 
 For install
@@ -27,10 +39,7 @@ For install
 These environment variables are only used during installation.
 
 +---------------+---------------------------------------------------------------------+
-| ``CUDA_PATH`` | Path to the directory containing CUDA.                              |
-|               | The parent of the directory containing ``nvcc`` is used as default. |
-|               | When ``nvcc`` is not found, ``/usr/local/cuda`` is used.            |
-|               | See :ref:`install_cuda` for details.                                |
+| ``CUDA_PATH`` | See the description above.                                          |
 +---------------+---------------------------------------------------------------------+
 | ``NVCC``      | Define the compiler to use when compiling CUDA files.               |
 +---------------+---------------------------------------------------------------------+

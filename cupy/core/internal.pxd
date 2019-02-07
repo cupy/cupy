@@ -1,11 +1,9 @@
+from libcpp cimport bool as cpp_bool
 from libcpp cimport vector
 from libc.stdint cimport uint16_t
 
 
-cpdef Py_ssize_t prod(args, Py_ssize_t init=*) except? -1
-
-cpdef Py_ssize_t prod_ssize_t(
-    vector.vector[Py_ssize_t]& arr, Py_ssize_t init=*)
+cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
 cpdef tuple get_size(object size)
 
@@ -21,7 +19,9 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
     vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
     bint is_c_contiguous)
 
-cdef set_contiguous_strides(
+# Computes the contiguous strides given a shape and itemsize.
+# Returns the size (total number of elements).
+cdef Py_ssize_t set_contiguous_strides(
     vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
     Py_ssize_t itemsize, bint is_c_contiguous)
 
@@ -43,3 +43,5 @@ ctypedef unsigned short _float16
 cpdef uint16_t to_float16(float f)
 
 cpdef float from_float16(uint16_t v)
+
+cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0

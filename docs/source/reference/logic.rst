@@ -1,6 +1,8 @@
 Logic Functions
 ===============
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.logic.html
+
 Truth value testing
 -------------------
 
@@ -31,12 +33,12 @@ Array type testing
    :toctree: generated/
    :nosignatures:
 
-   cupy.isscalar
    cupy.iscomplex
    cupy.iscomplexobj
    cupy.isfortran
    cupy.isreal
    cupy.isrealobj
+   cupy.isscalar
 
 
 Logic operations
@@ -52,8 +54,8 @@ Logic operations
    cupy.logical_xor
 
 
-Comparison operations
----------------------
+Comparison
+----------
 
 .. autosummary::
    :toctree: generated/

@@ -106,6 +106,7 @@ cpdef enum:
     CUDNN_ACTIVATION_TANH = 2
     CUDNN_ACTIVATION_CLIPPED_RELU = 3
     CUDNN_ACTIVATION_ELU = 4
+    CUDNN_ACTIVATION_IDENTITY = 5
 
     CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
 
@@ -114,6 +115,10 @@ cpdef enum:
     CUDNN_BATCHNORM_PER_ACTIVATION = 0
     CUDNN_BATCHNORM_SPATIAL = 1
     CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
+
+    CUDNN_BATCHNORM_OPS_BN = 0
+    CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1
+    CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION = 2
 
     CUDNN_RNN_RELU = 0
     CUDNN_RNN_TANH = 1
@@ -148,6 +153,21 @@ cpdef enum:
     CUDNN_ERRQUERY_NONBLOCKING = 1
     CUDNN_ERRQUERY_BLOCKING = 2
 
+
+###############################################################################
+# Class
+###############################################################################
+
+cdef class CuDNNAlgoPerf:
+    cdef:
+        int algo
+        int status
+        float time
+        size_t memory
+        int determinism
+        int mathType
+
+
 ###############################################################################
 # Version
 ###############################################################################
@@ -179,6 +199,7 @@ cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
                               int n, int c, int h, int w, int nStride,
                               int cStride, int hStride, int wStride)
+cpdef tuple getTensor4dDescriptor(size_t tensorDesc)
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
@@ -263,18 +284,18 @@ cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef findConvolutionForwardAlgorithm(
     size_t handle, size_t xDesc, size_t wDesc, size_t convDesc, size_t yDesc,
     int requestedAlgoCount)
-cpdef findConvolutionForwardAlgorithmEx(
+cpdef list findConvolutionForwardAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
     size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionForwardAlgorithmEx_v7(
+cpdef list findConvolutionForwardAlgorithmEx_v7(
     size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
     size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int preference, size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionForwardAlgorithm_v7(
+cpdef list getConvolutionForwardAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionForwardWorkspaceSize(
@@ -291,18 +312,18 @@ cpdef convolutionBackwardBias(
 cpdef findConvolutionBackwardFilterAlgorithm(
     size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc, size_t dwDesc,
     int requestedAlgoCount)
-cpdef findConvolutionBackwardFilterAlgorithmEx(
+cpdef list findConvolutionBackwardFilterAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
+cpdef list findConvolutionBackwardFilterAlgorithmEx_v7(
     size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, int preference, size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionBackwardFilterAlgorithm_v7(
+cpdef list getConvolutionBackwardFilterAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionBackwardFilterWorkspaceSize(
@@ -316,11 +337,11 @@ cpdef convolutionBackwardFilter_v3(
 cpdef findConvolutionBackwardDataAlgorithm(
     size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
     int requestedAlgoCount)
-cpdef findConvolutionBackwardDataAlgorithmEx(
+cpdef list findConvolutionBackwardDataAlgorithmEx(
     size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
     int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionBackwardDataAlgorithmEx_v7(
+cpdef list findConvolutionBackwardDataAlgorithmEx_v7(
     size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
     int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
@@ -328,7 +349,7 @@ cpdef int getConvolutionBackwardDataAlgorithm_v6(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, size_t preference,
     size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionBackwardDataAlgorithm_v7(
+cpdef list getConvolutionBackwardDataAlgorithm_v7(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionBackwardDataWorkspaceSize(
@@ -396,6 +417,62 @@ cpdef batchNormalizationBackward(
     size_t dBnScaleBiasDesc, size_t bnScale,
     size_t dBnScaleResult, size_t dBnBiasResult,
     double epsilon, size_t savedMean, size_t savedInvVariance)
+
+cpdef batchNormalizationForwardTrainingEx(
+    size_t handle, int mode, int bnOps,
+    size_t alpha, size_t beta,
+    size_t xDesc, size_t x,
+    size_t zDesc, size_t z,
+    size_t yDesc, size_t y,
+    size_t bnScaleBiasMeanVarDesc,
+    size_t bnScale, size_t bnBias,
+    double exponentialAverageFactor,
+    size_t resultRunningMean, size_t resultRunningVariance,
+    double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance,
+    size_t activationDesc,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+cpdef size_t getBatchNormalizationForwardTrainingExWorkspaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t xDesc,
+    size_t zDesc,
+    size_t yDesc,
+    size_t bnScaleBiasMeanVarDesc,
+    size_t activationDesc) except? 0
+
+cpdef batchNormalizationBackwardEx(
+    size_t handle, int mode, int bnops,
+    size_t alphaDataDiff, size_t betaDataDiff,
+    size_t alphaParamDiff, size_t betaParamDiff,
+    size_t xDesc, size_t x,
+    size_t yDesc, size_t y,
+    size_t dyDesc, size_t dy,
+    size_t dzDesc, size_t dz,
+    size_t dxDesc, size_t dx,
+    size_t dBnScaleBiasDesc,
+    size_t bnScaleData, size_t bnBiasData,
+    size_t dBnScaleData, size_t dBnBiasData,
+    double epsilon,
+    size_t savedMean, size_t savedInvVariance,
+    size_t activationDesc,
+    size_t workSpace, size_t workSpaceSizeInBytes,
+    size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+cpdef size_t getBatchNormalizationBackwardExWorkspaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t xDesc,
+    size_t yDesc,
+    size_t dyDesc,
+    size_t dzDesc,
+    size_t dxDesc,
+    size_t dBnScaleBiasDesc,
+    size_t activationDesc) except? 0
+
+cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
+    size_t handle, int mode, int bnOps,
+    size_t activationDesc,
+    size_t xDesc) except? 0
 
 
 ###############################################################################

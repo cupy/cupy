@@ -14,13 +14,9 @@ PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 7000
-minimum_cudnn_version = 4000
+minimum_cuda_version = 8000
+minimum_cudnn_version = 5000
 maximum_cudnn_version = 7999
-# Although cuda 7.0 includes cusolver,
-# we tentatively support cusolver in cuda 8.0 only because
-# provided functions are insufficient to implement cupy.linalg
-minimum_cusolver_cuda_version = 8000
 
 _cuda_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
@@ -294,13 +290,15 @@ def check_nccl_version(compiler, settings):
         #include <nccl.h>
         #include <stdio.h>
         #ifdef NCCL_MAJOR
-        #  define NCCL_VERSION \
+        #ifndef NCCL_VERSION_CODE
+        #  define NCCL_VERSION_CODE \
                 (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+        #endif
         #else
-        #  define NCCL_VERSION 0
+        #  define NCCL_VERSION_CODE 0
         #endif
         int main(int argc, char* argv[]) {
-          printf("%d", NCCL_VERSION);
+          printf("%d", NCCL_VERSION_CODE);
           return 0;
         }
         ''', include_dirs=settings['include_dirs'])
@@ -325,31 +323,6 @@ def get_nccl_version(formatted=False):
             return '1.x'
         return _format_cuda_version(_nccl_version)
     return _nccl_version
-
-
-def check_cusolver_version(compiler, settings):
-    # As an initial cusolver does not have cusolverGetProperty,
-    # we use CUDA_VERSION instead.
-    try:
-        out = build_and_run(compiler, '''
-        #include <cuda.h>
-        #include <stdio.h>
-        int main(int argc, char* argv[]) {
-          printf("%d", CUDA_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        utils.print_warning('Cannot check CUDA version', str(e))
-        return False
-
-    cuda_version = int(out)
-
-    if cuda_version < minimum_cusolver_cuda_version:
-        return False
-
-    return True
 
 
 def check_nvtx(compiler, settings):

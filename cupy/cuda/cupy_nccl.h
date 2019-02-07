@@ -46,21 +46,52 @@ typedef enum {
     ncclUint64     = 6,
     nccl_NUM_TYPES = 7 } ncclDataType_t;
 
-const char* ncclGetErrorString(...);
-ncclResult_t ncclGetUniqueId(...);
-ncclResult_t ncclCommInitRank(...);
-void ncclCommDestroy(...);
-ncclResult_t ncclCommCuDevice(...);
-ncclResult_t ncclCommUserRank(...);
-ncclResult_t ncclAllReduce(...);
-ncclResult_t ncclReduce(...);
-ncclResult_t ncclBcast(...);
-ncclResult_t ncclReduceScatter(...);
-ncclResult_t ncclAllGather(...);
+const char* ncclGetErrorString(...) {
+    return "";
+}
+
+ncclResult_t ncclGetUniqueId(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommInitRank(...) {
+    return ncclSuccess;
+}
+
+void ncclCommDestroy(...) {
+}
+
+ncclResult_t ncclCommCuDevice(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommUserRank(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclAllReduce(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclReduce(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclBcast(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclReduceScatter(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclAllGather(...) {
+    return ncclSuccess;
+}
 
 typedef struct CUstream_st *cudaStream_t;
 
-}
+}  // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
 
@@ -70,16 +101,18 @@ typedef struct CUstream_st *cudaStream_t;
 #define NCCL_PATCH 0
 #endif
 
-#define NCCL_VERSION  (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+#ifndef NCCL_VERSION_CODE
+#define NCCL_VERSION_CODE (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+#endif
 
 
-#if (NCCL_VERSION >= 2000)
+#if (NCCL_VERSION_CODE >= 2000)
 
 ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return datatype;
 }
 
-#else // #if (NCCL_VERSION >= 2000)
+#else // #if (NCCL_VERSION_CODE >= 2000)
 
 #define NCCL_CHAR_V1 ncclChar
 #define NCCL_INT_V1 ncclInt
@@ -106,7 +139,16 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return TYPE2TYPE_V1[datatype];
 }
 
-#endif // #if (NCCL_VERSION < 2000)
+#endif // #if (NCCL_VERSION_CODE < 2000)
+
+#if (NCCL_VERSION_CODE < 2304)
+
+ncclResult_t ncclGetVersion(int *version) {
+    version = 0;
+    return ncclSuccess;
+}
+
+#endif // #if (NCCL_VERSION_CODE < 2304)
 
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
@@ -144,12 +186,11 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
                             ncclDataType_t datatype, ncclComm_t comm,
                             cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
-#if (NCCL_VERSION >= 2000)
+#if (NCCL_VERSION_CODE >= 2000)
     return ncclAllGather(sendbuff, recvbuff, sendcount, _datatype, comm, stream);
 #else
     return ncclAllGather(sendbuff, sendcount, _datatype, recvbuff, comm, stream);
-#endif // #if (NCCL_VERSION < 2000)
+#endif // #if (NCCL_VERSION_CODE < 2000)
 }
-
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_NCCL_H

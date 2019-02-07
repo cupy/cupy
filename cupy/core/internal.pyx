@@ -2,6 +2,7 @@
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
+from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 
@@ -11,20 +12,11 @@ cdef extern from "halffloat.h":
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
-    cdef Py_ssize_t arg
-    for arg in args:
-        init *= arg
-    return init
-
-
-@cython.profile(False)
-cpdef inline Py_ssize_t prod_ssize_t(
-        vector.vector[Py_ssize_t]& arr, Py_ssize_t init=1):
-    cdef Py_ssize_t a
-    for a in arr:
-        init *= a
-    return init
+cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
+    cdef Py_ssize_t n = 1
+    for i in range(args.size()):
+        n *= args[i]
+    return n
 
 
 @cython.profile(False)
@@ -100,24 +92,28 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
 
 
 @cython.profile(False)
-cdef inline set_contiguous_strides(
+cdef inline Py_ssize_t set_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
+    cdef Py_ssize_t is_nonzero_size = 1
     cdef int i, ndim = shape.size()
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
-    st = itemsize
+    st = 1
 
     for i in range(ndim):
         if is_c_contiguous:
             idx = ndim - 1 - i
         else:
             idx = i
-        strides[idx] = st
+        strides[idx] = st * itemsize
         sh = shape[idx]
         if sh > 1:
             st *= sh
+        elif sh == 0:
+            is_nonzero_size = 0
+    return st * is_nonzero_size
 
 
 @cython.profile(False)
@@ -264,3 +260,20 @@ cpdef float from_float16(uint16_t v):
     cdef float32_int c
     c.n = npy_halfbits_to_floatbits(v)
     return c.f
+
+
+@cython.profile(False)
+cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
+    cdef int order_char
+    order_char = b'C' if len(order) == 0 else ord(order[0])
+    if allow_k and (order_char == b'K' or order_char == b'k'):
+        order_char = b'K'
+    elif order_char == b'A' or order_char == b'a':
+        order_char = b'A'
+    elif order_char == b'C' or order_char == b'c':
+        order_char = b'C'
+    elif order_char == b'F' or order_char == b'f':
+        order_char = b'F'
+    else:
+        raise TypeError('order not understood')
+    return order_char

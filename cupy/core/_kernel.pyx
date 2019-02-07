@@ -1,7 +1,9 @@
 from __future__ import division
 import string
+import threading
 
 import numpy
+import six
 
 from cupy.cuda import compiler
 from cupy import util
@@ -15,12 +17,15 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core._routines_manipulation cimport broadcast
 from cupy.core._scalar import get_typename as _get_typename
-from cupy.core.core cimport broadcast
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+
+
+_thread_local = threading.local()
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -52,7 +57,7 @@ cdef dict _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
-    'c': 3,
+    'c': 2,
 }
 
 
@@ -149,7 +154,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             arr = args[i]
             arr = arr.view()
             newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
-            arr._set_shape_and_strides(newshape, newstrides, False)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            arr._set_shape_and_strides(newshape, newstrides, False, True)
             args[i] = arr
         return total_size,
 
@@ -181,7 +187,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newstrides.clear()
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
-        arr._set_shape_and_strides(newshape, newstrides, False)
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        arr._set_shape_and_strides(newshape, newstrides, False, True)
         args[i] = arr
     return tuple(newshape)
 
@@ -322,7 +329,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
-                        str casting):
+                        casting):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -370,8 +377,8 @@ cdef list _get_out_args_with_params(
 
 
 cdef function.Function _get_elementwise_kernel(
-        tuple args_info, tuple types, tuple params, str operation, str name,
-        str preamble, dict kwargs):
+        tuple args_info, tuple types, tuple params, operation, name,
+        preamble, dict kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -439,10 +446,10 @@ cdef class ElementwiseKernel:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly tuple params
-        readonly str operation
-        readonly str name
+        readonly object operation
+        readonly object name
         readonly bint reduce_dims
-        readonly str preamble
+        readonly object preamble
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
@@ -528,6 +535,11 @@ cdef class ElementwiseKernel:
         if size != -1:
             shape = size,
             is_size_specified = True
+
+        for i in range(self.nin):
+            if not (self.params[i].is_const or
+                    internal.vector_equal(args[i].shape, shape)):
+                raise ValueError('Shape is mismatched')
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
@@ -656,7 +668,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
+cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
@@ -754,11 +766,8 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        from cupy.core import fusion
-
-        thread_local = fusion._thread_local
-        if hasattr(thread_local, 'history'):
-            return thread_local.history.call_ufunc(self, args, kwargs)
+        if hasattr(_thread_local, 'history'):
+            return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
 

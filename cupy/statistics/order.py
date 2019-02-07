@@ -2,11 +2,11 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import _routines_statistics as _statistics
 from cupy.core import fusion
 from cupy.logic import content
 
 
-@fusion._reduction_wrapper(core.core._amin)
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -30,11 +30,17 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amin`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amin does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_statistics.amin,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-@fusion._reduction_wrapper(core.core._amax)
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the maximum of an array or the maximum along an axis.
 
@@ -58,6 +64,13 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amax`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amax does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_statistics.amax,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 

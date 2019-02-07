@@ -7,6 +7,7 @@ import inspect
 import os
 import pkg_resources
 import random
+import sys
 import traceback
 import unittest
 import warnings
@@ -27,13 +28,17 @@ def _call_func(self, impl, args, kw):
         result = impl(self, *args, **kw)
         self.assertIsNotNone(result)
         error = None
-        tb = None
+        tb_str = None
     except Exception as e:
+        _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
+        if tb.tb_next is None:
+            # failed before impl is called, e.g. invalid kw
+            raise e
         result = None
         error = e
-        tb = traceback.format_exc()
+        tb_str = traceback.format_exc()
 
-    return result, error, tb
+    return result, error, tb_str
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
@@ -585,6 +590,8 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
+                except unittest.SkipTest as e:
+                    print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
                     raise
@@ -998,13 +1005,14 @@ def numpy_satisfies(version_range):
     return True
 
 
-def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
+def shaped_arange(shape, xp=cupy, dtype=numpy.float32, order='C'):
     """Returns an array with given shape, array module, and dtype.
 
     Args:
          shape(tuple of int): Shape of returned ndarray.
          xp(numpy or cupy): Array module to use.
          dtype(dtype): Dtype of returned ndarray.
+         order({'C', 'F'}): Order of returned ndarray.
 
     Returns:
          numpy.ndarray or cupy.ndarray:
@@ -1021,7 +1029,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
         a = a % 2 == 0
     elif dtype.kind == 'c':
         a = a + a * 1j
-    return xp.array(a.astype(dtype).reshape(shape))
+    return xp.array(a.astype(dtype).reshape(shape), order=order)
 
 
 def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
