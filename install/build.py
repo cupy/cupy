@@ -290,13 +290,15 @@ def check_nccl_version(compiler, settings):
         #include <nccl.h>
         #include <stdio.h>
         #ifdef NCCL_MAJOR
-        #  define NCCL_VERSION \
+        #ifndef NCCL_VERSION_CODE
+        #  define NCCL_VERSION_CODE \
                 (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+        #endif
         #else
-        #  define NCCL_VERSION 0
+        #  define NCCL_VERSION_CODE 0
         #endif
         int main(int argc, char* argv[]) {
-          printf("%d", NCCL_VERSION);
+          printf("%d", NCCL_VERSION_CODE);
           return 0;
         }
         ''', include_dirs=settings['include_dirs'])
