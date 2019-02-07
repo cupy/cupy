@@ -33,6 +33,7 @@ class _RuntimeInfo(object):
     cudnn_build_version = None
     cudnn_version = None
     nccl_build_version = None
+    nccl_runtime_version = None
 
     def __init__(self):
         self.cupy_version = cupy.__version__
@@ -52,7 +53,11 @@ class _RuntimeInfo(object):
                 cudnn.getVersion, cudnn.CuDNNError)
 
         if nccl is not None:
-            self.nccl_build_version = nccl.get_version()
+            self.nccl_build_version = nccl.get_build_version()
+            nccl_runtime_version = nccl.get_version()
+            if nccl_runtime_version == 0:
+                nccl_runtime_version = '(unknown)'
+            self.nccl_runtime_version = nccl_runtime_version
 
     def __str__(self):
         records = [
@@ -64,6 +69,7 @@ class _RuntimeInfo(object):
             ('cuDNN Build Version', self.cudnn_build_version),
             ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
+            ('NCCL Runtime Version', self.nccl_runtime_version),
         ]
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
