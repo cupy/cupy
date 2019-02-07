@@ -593,35 +593,38 @@ class _FusionHistory(object):
                 return _FusionVarArray(var, ndim, self._has_reduction())
 
         # Make FusionVar list
-        var_list = [self._get_fusion_var(_) for _ in args]
-        if 'out' in kwargs:
-            out = kwargs.pop('out')
-            if out is not None:
-                var_list.append(self._get_fusion_var(out))
-        if kwargs:
-            raise TypeError('Wrong arguments {}'.format(kwargs))
-
-        assert nin <= len(var_list) <= nin + nout
+        var_list = [self._get_fusion_var(arg) for arg in args]
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
-
-        if not all(isinstance(_, _FusionVarArray) for _ in out_vars):
+        if 'out' in kwargs:
+            out = kwargs.pop('out')
+            if len(out_vars) > 0:
+                raise ValueError('cannot specify \'out\' as both a positional '
+                                 'and keyword argument')
+            if isinstance(out, _FusionVarArray):
+                out_vars.append(self._get_fusion_var(out))
+            elif out is not None:
+                raise ValueError('The \'out\' tuple must have exactly one '
+                                 'entry per ufunc output')
+        if kwargs:
+            raise TypeError('Wrong arguments {}'.format(kwargs))
+        if len(in_vars) != nin or len(out_vars) > nout:
+            raise ValueError('invalid number of arguments')
+        if not all([isinstance(v, _FusionVarArray) for v in out_vars]):
             raise TypeError('return arrays must be of ArrayType')
+        var_list = in_vars + out_vars
 
         # Broadcast
-        if max(v.ndim for v in in_vars) < self.ndim:
-            # TODO(imanishi): warning message
-            warnings.warn("warning")
-        ndim = max(v.ndim for v in var_list)
-        if len(out_vars) >= 1 and min(v.ndim for v in out_vars) < ndim:
+        ndim = max([v.ndim for v in in_vars])
+        if any([v.ndim < ndim for v in out_vars]):
             raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
-        can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
+        can_cast = can_cast1 if _should_use_min_scalar(var_list) else can_cast2
         for in_dtypes, out_dtypes, op in ufunc._ops:
             in_dtypes = [numpy.dtype(t) for t in in_dtypes]
             out_dtypes = [numpy.dtype(t) for t in out_dtypes]
-            if can_cast(in_vars, in_dtypes):
+            if can_cast(var_list, in_dtypes):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
