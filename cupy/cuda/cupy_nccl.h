@@ -144,7 +144,7 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
 #if (NCCL_VERSION_CODE < 2304)
 
 ncclResult_t ncclGetVersion(int *version) {
-    version = 0;
+    *version = 0;
     return ncclSuccess;
 }
 
