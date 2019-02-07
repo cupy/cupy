@@ -598,7 +598,7 @@ class _FusionHistory(object):
         out_vars = var_list[nin:]
         if 'out' in kwargs:
             out = kwargs.pop('out')
-            if len(out_vars) > 0:
+            if out_vars:
                 raise ValueError('cannot specify \'out\' as both a positional '
                                  'and keyword argument')
             if isinstance(out, _FusionVarArray):
