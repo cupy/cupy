@@ -4120,7 +4120,7 @@ cdef _tensordot_core_mul_sum = ReductionKernel(
 
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
+        Py_ssize_t k, const vector.vector[Py_ssize_t]& ret_shape):
     cdef vector.vector[Py_ssize_t] shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
