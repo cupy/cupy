@@ -34,6 +34,7 @@ cdef _init_dtype_dict():
         dtype = numpy.dtype(i)
         item = (dtype, dtype.itemsize)
         _dtype_dict[i] = item
+        _dtype_dict[dtype] = item
         _dtype_dict[dtype.type] = item
     for i in {str(numpy.dtype(i)) for i in all_type_chars}:
         dtype = numpy.dtype(i)
@@ -45,8 +46,6 @@ _init_dtype_dict()
 
 @cython.profile(False)
 cpdef get_dtype(t):
-    if isinstance(t, numpy.dtype):
-        return t
     ret = _dtype_dict.get(t, None)
     if ret is None:
         return numpy.dtype(t)
@@ -55,8 +54,6 @@ cpdef get_dtype(t):
 
 @cython.profile(False)
 cpdef tuple get_dtype_with_itemsize(t):
-    if isinstance(t, numpy.dtype):
-        return t, t.itemsize
     ret = _dtype_dict.get(t, None)
     if ret is None:
         t = numpy.dtype(t)
