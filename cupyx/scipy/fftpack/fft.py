@@ -4,13 +4,16 @@ from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
                           _get_cufft_plan_nd)
 
 
-def get_fft_plan(a, axes=None, value_type='C2C'):
+def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     """ Generate a CUDA FFT plan for transforming up to three axes.
         This is a convenient handle to cupy.fft.fft._get_cufft_plan_nd.
 
     Args:
         a (cupy.ndarray): Array to be transform, assumed to be either C- or
             F- contiguous.
+        shape (None or tuple of ints): Shape of the transformed axes of the
+            output. If ``shape`` is not given, the lengths of the input along
+            the axes specified by ``axes`` are used.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
             axes and must include either the first or the last axis of the
@@ -32,7 +35,25 @@ def get_fft_plan(a, axes=None, value_type='C2C'):
     else:
         raise ValueError("Input array a must be contiguous")
 
-    plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
+    if (shape is not None) and (axes is not None) and len(shape) != len(axes):
+        raise ValueError("Shape and axes have different lengths.")
+    if (shape is not None) and (axes is None) and len(shape) != a.ndim:
+        raise ValueError("Shape and axes have different lengths.")
+    if (shape is None) and (axes is not None) and (len(axes) > a.ndim):
+        raise ValueError("The number of axes exceeds a.ndim.")
+    # let _get_cufft_plan_nd() check (shape is None and axes is None)
+
+    # Note that "shape" here refers to the shape along trasformed axes, not
+    # the shape of the output array, and we need to convert it to the latter.
+    # The result is as if "a=_cook_shape(a); return a.shape" is called.
+    transformed_shape = shape
+    shape = list(a.shape)
+    if transformed_shape is not None:
+        for s, axis in zip(transformed_shape, axes):
+            shape[axis] = s
+    shape = tuple(shape)
+
+    plan = _get_cufft_plan_nd(shape, fft_type, axes=axes, order=order)
 
     return plan
 
