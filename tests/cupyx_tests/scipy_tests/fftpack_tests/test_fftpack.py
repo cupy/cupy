@@ -93,7 +93,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_fft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -111,7 +111,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_fft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -149,7 +149,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_ifft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -167,7 +167,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_ifft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -223,7 +223,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_fftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -241,7 +241,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_fftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -279,7 +279,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_ifftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
@@ -297,7 +297,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False, scipy_name='scp')
     def test_ifftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        # hack: avoid testing the cases in which getting a cuFFT plan is impossible
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if (len(self.shape) > 3) and (self.axes is None):
             return x
         if scp is cupyx.scipy:
