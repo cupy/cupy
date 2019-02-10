@@ -70,14 +70,13 @@ cdef inline int get_kind_score(int kind):
     return -1
 
 
-cpdef list _preprocess_args(args, bint use_c_scalar=False):
+cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
     - Converts Python scalars into NumPy scalars
     """
     cdef list ret = []
-    cdef int dev_id = device.get_device_id()
     cdef type typ
 
     for arg in args:
@@ -521,7 +520,8 @@ cdef class ElementwiseKernel:
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        args = _preprocess_args(args, True)
+        dev_id = device.get_device_id()
+        args = _preprocess_args(dev_id, args, True)
 
         values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
@@ -568,7 +568,7 @@ cdef class ElementwiseKernel:
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
-        kern = self._get_elementwise_kernel(args_info, types)
+        kern = self._get_elementwise_kernel(dev_id, args_info, types)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=128, stream=stream)
         return ret
@@ -585,9 +585,8 @@ cdef class ElementwiseKernel:
         return ret
 
     cpdef function.Function _get_elementwise_kernel(
-            self, tuple args_info, tuple types):
-        id = device.get_device_id()
-        key = (id, args_info, types)
+            self, int dev_id, tuple args_info, tuple types):
+        key = (dev_id, args_info, types)
         kern = self._kernel_memo.get(key, None)
         if kern is not None:
             return kern
@@ -807,7 +806,8 @@ cdef class ufunc:
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
-        args = _preprocess_args(args)
+        dev_id = device.get_device_id()
+        args = _preprocess_args(dev_id, args, False)
         if out is None:
             in_args = args[:self.nin]
             out_args = args[self.nin:]
@@ -819,7 +819,7 @@ cdef class ufunc:
                                  "a positional and keyword argument")
 
             in_args = list(args)
-            out_args = _preprocess_args((out,))
+            out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
         broad_values, shape = _broadcast_core(args)
@@ -847,15 +847,15 @@ cdef class ufunc:
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
 
-        kern = self._get_ufunc_kernel(op, args_info)
+        kern = self._get_ufunc_kernel(dev_id, op, args_info)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
-    cdef function.Function _get_ufunc_kernel(self, tuple op, tuple args_info):
+    cdef function.Function _get_ufunc_kernel(
+            self, int dev_id, tuple op, tuple args_info):
         cdef function.Function kern
-        id = device.get_device_id()
-        key = (id, op, args_info)
+        key = (dev_id, op, args_info)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
             in_types, out_types, routine = op
