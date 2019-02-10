@@ -41,10 +41,12 @@ def memoize(bint for_each_device=False):
             cdef dict m = memo
             if for_each_device:
                 id = device.get_device_id()
-            arg_key = (id, args, frozenset(kwargs.items()))
-            if arg_key in m:
-                result = m[arg_key]
+            if len(kwargs):
+                arg_key = (id, args)
             else:
+                arg_key = (id, args, frozenset(kwargs.items()))
+            result = m.get(arg_key, m)
+            if result is m:
                 result = f(*args, **kwargs)
                 m[arg_key] = result
             return result
