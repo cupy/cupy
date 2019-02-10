@@ -821,7 +821,7 @@ cdef class SingleDeviceMemoryPool:
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
 
-    cpdef list _arena(self, size_t stream_ptr):
+    cdef inline list _arena(self, size_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
 
         All free chunks in the stream belong to one of the bin in the arena.
@@ -846,7 +846,7 @@ cdef class SingleDeviceMemoryPool:
         """
         return &self._index[stream_ptr]
 
-    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
+    cdef inline vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
         """Returns appropriate arena used flag list of a given stream.
 
         Caller is responsible to acquire `_free_lock`.
