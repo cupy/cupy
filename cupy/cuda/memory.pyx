@@ -9,6 +9,7 @@ import warnings
 import weakref
 
 from cpython cimport pythread
+from cpython cimport weakref
 from cython.operator cimport dereference
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
@@ -563,11 +564,13 @@ cdef class PooledMemory(BaseMemory):
 
         """
         cdef intptr_t ptr
+        cdef SingleDeviceMemoryPool pool
         ptr = self.ptr
         if ptr == 0:
             return
         self.ptr = 0
-        pool = self.pool()
+        pool = <SingleDeviceMemoryPool>weakref.PyWeakref_GetObject(self.pool)
+
         if pool is None:
             return
 
@@ -586,7 +589,7 @@ cdef class PooledMemory(BaseMemory):
                                          mem_ptr=ptr,
                                          pmem_id=pmem_id)
                 try:
-                    (<SingleDeviceMemoryPool>pool).free(ptr, size)
+                    pool.free(ptr, size)
                 finally:
                     for hook in hooks_values:
                         hook.free_postprocess(device_id=device_id,
@@ -594,7 +597,7 @@ cdef class PooledMemory(BaseMemory):
                                               mem_ptr=ptr,
                                               pmem_id=pmem_id)
                 return
-        (<SingleDeviceMemoryPool>pool).free(ptr, size)
+        pool.free(ptr, size)
 
     def __dealloc__(self):
         if _exit_mode:
