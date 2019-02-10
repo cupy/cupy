@@ -672,7 +672,8 @@ cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
-            in_types = tuple(in_args)
+            in_types = tuple([i.dtype if isinstance(i, ndarray) else i
+                              for i in in_args])
             op = ()
         else:
             in_types = tuple([i.dtype.type for i in in_args])
