@@ -36,7 +36,7 @@ cpdef inline bint _is_fusing() except? -1:
     return False
 
 
-cpdef _get_simple_elementwise_kernel(
+cpdef function.Function _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
     module_code = string.Template('''
@@ -596,10 +596,9 @@ cdef class ElementwiseKernel:
         return kern
 
 
-@util.memoize(for_each_device=True)
-def _get_ufunc_kernel(
-        in_types, out_types, routine, args_info, params, name, preamble,
-        loop_prep):
+cdef function.Function _get_ufunc_kernel(
+        tuple in_types, tuple out_types, routine, tuple args_info, params,
+        name, preamble, loop_prep):
     kernel_params = _get_kernel_params(params, args_info)
 
     types = []
@@ -699,7 +698,7 @@ cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
                     (dtype, name))
 
 
-class ufunc(object):
+cdef class ufunc:
 
     """Universal function.
 
@@ -710,6 +709,21 @@ class ufunc(object):
         nargs (int): Number of all arguments.
 
     """
+
+    cdef:
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
+        readonly object name
+        readonly list _ops
+        readonly object _preamble
+        readonly object _loop_prep
+        readonly object _default_casting
+        readonly tuple _params
+        readonly dict _routine_cache
+        readonly dict _kernel_memo
+        object __doc__
+        object __name__
 
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
@@ -735,6 +749,7 @@ class ufunc(object):
         self._params = _in_params + _out_params + (
             ParameterInfo('CIndexer _ind', False),)
         self._routine_cache = {}
+        self._kernel_memo = {}
 
     def __repr__(self):
         return "<ufunc '%s'>" % self.name
@@ -806,9 +821,9 @@ class ufunc(object):
 
         broad_values, shape = _broadcast_core(args)
 
-        in_types, out_types, routine = _guess_routine(
+        op = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
-
+        in_types, out_types, routine = op
         out_args = _get_out_args(out_args, out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
@@ -829,12 +844,23 @@ class ufunc(object):
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
 
-        kern = _get_ufunc_kernel(
-            in_types, out_types, routine, args_info,
-            self._params, self.name, self._preamble, self._loop_prep)
+        kern = self._get_ufunc_kernel(op, args_info)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
+
+    cdef function.Function _get_ufunc_kernel(self, tuple op, tuple args_info):
+        cdef function.Function kern
+        id = device.get_device_id()
+        key = (id, op, args_info)
+        kern = self._kernel_memo.get(key, None)
+        if kern is None:
+            in_types, out_types, routine = op
+            kern = _get_ufunc_kernel(
+                in_types, out_types, routine, args_info,
+                self._params, self.name, self._preamble, self._loop_prep)
+            self._kernel_memo[key] = kern
+        return kern
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
