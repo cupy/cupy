@@ -1468,8 +1468,8 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -1481,6 +1481,20 @@ cdef class ndarray:
             self._update_c_contiguity()
         if update_f_contiguity:
             self._update_f_contiguity()
+
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity):
+        cdef ndarray v
+        v = ndarray.__new__(ndarray)
+        v.data = self.data
+        v.base = self.base if self.base is not None else self
+        v.dtype = self.dtype
+        self._set_shape_and_strides(
+            shape, strides, update_c_contiguity, update_f_contiguity)
+        return v
+
 
     cpdef _set_shape_and_contiguous_strides(
             self, vector.vector[Py_ssize_t]& shape,
