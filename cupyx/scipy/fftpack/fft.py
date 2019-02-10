@@ -49,6 +49,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     transformed_shape = shape
     shape = list(a.shape)
     if transformed_shape is not None:
+        if axes is None:
+            axes = [i for i in range(a.ndim)]
         for s, axis in zip(transformed_shape, axes):
             shape[axis] = s
     shape = tuple(shape)
