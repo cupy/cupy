@@ -1495,7 +1495,6 @@ cdef class ndarray:
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
 
-
     cpdef _set_shape_and_contiguous_strides(
             self, vector.vector[Py_ssize_t]& shape,
             Py_ssize_t itemsize, bint is_c_contiguous):
