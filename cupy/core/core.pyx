@@ -1242,12 +1242,14 @@ cdef class ndarray:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not hasattr(cupy, func.__name__):
+        module_list = '.'.join(func.__module__.split('.')[1:])
+        cupy_module = eval('cupy.' + module_list if module_list else 'cupy')
+        if not hasattr(cupy_module, func.__name__):
             return NotImplemented
         for t in types:
             if t not in _HANDLED_TYPES:
                 return NotImplemented
-        return getattr(cupy, func.__name__)(*args, **kwargs)
+        return getattr(cupy_module, func.__name__)(*args, **kwargs)
 
     # Conversion:
 
