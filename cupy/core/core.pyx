@@ -1491,7 +1491,9 @@ cdef class ndarray:
         v.data = self.data
         v.base = self.base if self.base is not None else self
         v.dtype = self.dtype
-        self._set_shape_and_strides(
+        v._c_contiguous = self._c_contiguous
+        v._f_contiguous = self._f_contiguous
+        v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
 
