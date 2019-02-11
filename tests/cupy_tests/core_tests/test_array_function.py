@@ -4,8 +4,8 @@ import numpy
 import six
 
 import cupy
-from cupy.core import core
 from cupy import testing
+
 
 @testing.gpu
 class TestArrayFunction(unittest.TestCase):
