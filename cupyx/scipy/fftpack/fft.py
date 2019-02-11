@@ -1,3 +1,4 @@
+from numpy import prod
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
@@ -62,6 +63,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             raise ValueError("Only up to three axes is supported")
 
     # check shape
+    if isinstance(shape, int):
+        shape = (shape,)
     if (shape is not None) and len(shape) != n:
         raise ValueError("Shape and axes have different lengths.")
     # Note that "shape" here refers to the shape along trasformed axes, not
@@ -85,7 +88,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         plan = _get_cufft_plan_nd(shape, fft_type, axes=axes, order=order)
     else:  # 1D transform
         out_size = shape[axis1D]
-        batch = np.prod(shape) // out_size
+        batch = prod(shape) // out_size
         plan = cufft.Plan1d(out_size, fft_type, batch)
 
     return plan

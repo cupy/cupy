@@ -121,7 +121,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     return out
 
 
-def _fft_c2c(a, direction, norm, axes, overwrite_x, plan):
+def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
     for axis in axes:
         a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x, plan=plan)
     return a
