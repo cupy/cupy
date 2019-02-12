@@ -28,6 +28,14 @@ from cupy.core cimport internal
 _thread_local = threading.local()
 
 
+cpdef inline bint _is_fusing() except? -1:
+    try:
+        return _thread_local.history is not None
+    except AttributeError:
+        _thread_local.history = None
+    return False
+
+
 cpdef _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
@@ -766,7 +774,7 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        if hasattr(_thread_local, 'history'):
+        if _is_fusing():
             return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
