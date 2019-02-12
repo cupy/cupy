@@ -51,20 +51,17 @@ extern "C" __global__ void ${name}(${params}) {
       _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
       _s = REDUCE(_s, _a);
     }
-    if (_block_stride < ${block_size}) {
-      _sdata[_tid] = _s;
-      __syncthreads();
-      for (unsigned int _block = ${block_size} / 2;
-           _block >= _block_stride; _block >>= 1) {
-        if (_tid < _block) {
-          _REDUCE(_block);
-        }
-        __syncthreads();
-      }
-      if (_tid < _block_stride) {
-        _s = _sdata[_tid];
+    _sdata[_tid] = _s;
+    __syncthreads();
+    for (unsigned int _block = ${block_size} / 2;
+         _block >= _block_stride; _block >>= 1) {
+      if (_tid < _block) {
+        _REDUCE(_block);
       }
       __syncthreads();
+    }
+    if (_tid < _block_stride) {
+      _s = _sdata[_tid];
     }
     if (_tid < _block_stride && _i < _out_ind.size()) {
       _out_ind.set(static_cast<ptrdiff_t>(_i));
@@ -117,19 +114,46 @@ cpdef tuple _get_out_shape(
 
 
 cpdef tuple _get_permuted_args(
-        list args, tuple axis_permutes, tuple shape, tuple params):
+        list args, tuple axis_permutes, tuple shape, tuple params,
+        Py_ssize_t out_ndim):
     cdef ParameterInfo p
-    if axis_permutes == tuple(range(len(shape))):
-        return args, shape
-    if params is not None:
-        for p in params:
-            if p.raw:
-                raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
-            for a in args]
-    shape = tuple([shape[i] for i in axis_permutes])
+    cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
 
-    return args, shape
+    if axis_permutes != tuple(range(len(shape))):
+        if params is not None:
+            for p in params:
+                if p.raw:
+                    raise NotImplementedError('Illegal conditions')
+        args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
+                for a in args]
+        shape = tuple([shape[i] for i in axis_permutes])
+
+    contiguous_size = 1
+    for a in args:
+        if not isinstance(a, ndarray):
+            continue
+        tmp_contiguous_size = 1
+        itemsize = a.dtype.itemsize
+        for i in range(out_ndim):
+            if a.strides[-i-1] != tmp_contiguous_size * itemsize:
+                break
+            tmp_contiguous_size *= a.shape[-i-1]
+        contiguous_size = max(contiguous_size, tmp_contiguous_size)
+    return args, shape, contiguous_size
+
+
+cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+        Indexer in_indexer, Indexer out_indexer, Py_ssize_t contiguous_size):
+    cdef Py_ssize_t block_size, reduce_block_size, block_stride, out_block_num
+    block_size = 512
+
+    reduce_block_size = max(1, in_indexer.size // out_indexer.size)
+    contiguous_size = min(contiguous_size, 32)
+    block_stride = max(contiguous_size, block_size // reduce_block_size)
+    block_stride = internal.clp2(block_stride // 2 + 1)  # floor
+    out_block_num = (out_indexer.size + block_stride - 1) // block_stride
+
+    return block_size, block_stride, out_block_num
 
 
 cpdef list _get_inout_args(
@@ -169,8 +193,6 @@ def _get_simple_reduction_function(
 
 class simple_reduction_function(object):
 
-    _block_size = 512
-
     def __init__(self, name, ops, identity, preamble):
         self.name = name
         self._ops = ops
@@ -192,8 +214,8 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t block_size, reduce_block_size, block_stride
-        cdef Py_ssize_t out_block_num
+        cdef Py_ssize_t contiguous_size
+        cdef Py_ssize_t block_size, block_stride, out_block_num
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -220,15 +242,13 @@ class simple_reduction_function(object):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args, in_shape = _get_permuted_args(
-            in_args, reduce_axis + out_axis, a_shape, None)
+        in_args, in_shape, contiguous_size = _get_permuted_args(
+            in_args, reduce_axis + out_axis, a_shape, None, len(out_axis))
 
-        block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(
-            1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // reduce_block_size)
+        block_size, block_stride, out_block_num = _get_block_specs(
+            in_indexer, out_indexer, contiguous_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -240,10 +260,6 @@ class simple_reduction_function(object):
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
-
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size)
         return ret
@@ -359,8 +375,8 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, reduce_block_size, block_stride
-        cdef Py_ssize_t out_block_num
+        cdef Py_ssize_t contiguous_size
+        cdef Py_ssize_t block_size, block_stride, out_block_num
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -412,15 +428,14 @@ class ReductionKernel(object):
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_args, in_shape = _get_permuted_args(
-            in_args, reduce_axis + out_axis, broad_shape, self.in_params)
+        in_args, in_shape, contiguous_size = _get_permuted_args(
+            in_args, reduce_axis + out_axis, broad_shape, self.in_params,
+            len(out_axis))
 
-        block_size = 512
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
-        reduce_block_size = max(
-            1, internal.clp2(in_indexer.size // out_indexer.size))
-        block_stride = max(1, block_size // reduce_block_size)
+        block_size, block_stride, out_block_num = _get_block_specs(
+            in_indexer, out_indexer, contiguous_size)
 
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, block_stride,
@@ -432,10 +447,6 @@ class ReductionKernel(object):
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
-
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
