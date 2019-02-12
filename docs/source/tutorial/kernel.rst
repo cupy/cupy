@@ -196,6 +196,46 @@ In other words, you have control over grid size, block size, shared memory size 
           [20., 22., 24., 26., 28.],
           [30., 32., 34., 36., 38.],
           [40., 42., 44., 46., 48.]], dtype=float32)
+          
+Alternatively, you may load and compile an existing ``.cu`` file, and select the needed kernel from the returned module.
+
+.. doctest::
+
+   >>> loaded_from_source = r'''
+	... extern "C"{
+	... 
+	... __global__ void test_sum(const float* x1, const float* x2, float* y, \
+	...                          unsigned int N)
+	... {
+	...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+	...     if (tid < N)
+	...     {
+	...         y[tid] = x1[tid] + x2[tid];
+	...     }
+	... }
+	... 
+	... __global__ void test_multiply(const float* x1, const float* x2, float* y, \
+	...                               unsigned int N)
+	... {
+	...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+	...     if (tid < N)
+	...     {
+	...         y[tid] = x1[tid] * x2[tid];
+	...     }
+	... }
+	... 
+	... }
+	... '''
+   >>> ker = cupy.RawKernel(loaded_from_source, None)
+	>>> module = ker.compile()
+	>>> ker_sum = module.get_function('test_sum')
+	>>> ker_times = module.get_function('test_multiply')
+	>>> N = 10
+	>>> x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
+	>>> x2 = cupy.ones((N, N), dtype=cupy.float32)
+	>>> y = cupy.zeros((N, N), dtype=cupy.float32)
+	>>> ker_sum((N,), (N,), (x1, x2, y, N**2))   # y = x1 + x2
+	>>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
 
 .. note::
     The kernel does not have return values.
