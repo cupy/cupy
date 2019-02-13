@@ -499,8 +499,7 @@ cdef class ElementwiseKernel:
 
         """
         cdef function.Function kern
-        cdef Py_ssize_t size
-        cdef int i
+        cdef Py_ssize_t size, i
         cdef list in_args, out_args
         cdef tuple in_types, out_types, types, shape
 
