@@ -1242,7 +1242,7 @@ cdef class ndarray:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        import cupy as module
+        module = cupy
         for submodule in func.__module__.split('.')[1:]:
             try:
                 module = getattr(module, submodule)
