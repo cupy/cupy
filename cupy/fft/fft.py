@@ -114,7 +114,12 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x):
     return a
 
 
-def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False):
+def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
+         plan=None):
+    if plan is not None:
+        raise NotImplementedError("Use of a pre-existing plan is not currently"
+                                  " supported for 1D transforms.")
+
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
                          % norm)
@@ -154,7 +159,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False):
     return a
 
 
-def get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
+def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
     """Generate a CUDA FFT plan for transforming up to three axes.
 
     Args:
@@ -315,7 +320,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
 
     if plan is None:
         # generate a plan
-        plan = get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
+        plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError("expected plan to have type cufft.PlanNd")
@@ -420,7 +425,10 @@ def _default_plan_type(a, s=None, axes=None):
     return 'nd'
 
 
-def _default_fft_func(a, s=None, axes=None):
+def _default_fft_func(a, s=None, axes=None, plan=None):
+    if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
+        return _fftn
+
     plan_type = _default_plan_type(a, s, axes)
     if plan_type == 'nd':
         return _fftn

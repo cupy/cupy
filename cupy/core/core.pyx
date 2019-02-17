@@ -92,10 +92,11 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
+        cdef tuple s = internal.get_size(shape)
+        del shape
+
         cdef int order_char = (
             b'C' if order is None else internal._normalize_order(order))
-        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
@@ -103,9 +104,12 @@ cdef class ndarray:
             raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        self._shape.reserve(len(s))
         for x in s:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
+            self._shape.push_back(x)
+        del s
 
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
@@ -114,11 +118,11 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(s, strides, True, True)
+            self._set_shape_and_strides(self._shape, strides, True, True)
         elif order_char == b'C':
-            self._set_shape_and_contiguous_strides(s, itemsize, True)
+            self._set_contiguous_strides(itemsize, True)
         elif order_char == b'F':
-            self._set_shape_and_contiguous_strides(s, itemsize, False)
+            self._set_contiguous_strides(itemsize, False)
         else:
             assert False
 
@@ -1497,13 +1501,10 @@ cdef class ndarray:
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
 
-    cpdef _set_shape_and_contiguous_strides(
-            self, vector.vector[Py_ssize_t]& shape,
-            Py_ssize_t itemsize, bint is_c_contiguous):
-
+    cpdef _set_contiguous_strides(
+            self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.set_contiguous_strides(
-            shape, self._strides, itemsize, is_c_contiguous)
-        self._shape = shape
+            self._shape, self._strides, itemsize, is_c_contiguous)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()

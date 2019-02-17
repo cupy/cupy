@@ -84,7 +84,7 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+        const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
         bint is_c_contiguous):
     cdef vector.vector[Py_ssize_t] strides
     set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
@@ -93,7 +93,8 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
 
 @cython.profile(False)
 cdef inline Py_ssize_t set_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+        const vector.vector[Py_ssize_t]& shape,
+        vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1

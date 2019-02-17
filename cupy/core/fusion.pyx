@@ -10,6 +10,7 @@ from cupy.core._dtype import get_dtype
 from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core import core
+from cupy.core._kernel import _is_fusing
 
 
 _thread_local = _kernel._thread_local
@@ -44,10 +45,6 @@ cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 cdef tuple _acceptable_types = six.integer_types + (
     core.ndarray, numpy.ndarray, numpy.generic,
     float, complex, bool, type(None))
-
-
-cpdef inline _is_fusing():
-    return hasattr(_thread_local, 'history')
 
 
 class _Submodule(object):
@@ -904,11 +901,12 @@ class Fusion(object):
         cdef tuple key = tuple(params_info)
         if key not in self._memo:
             try:
-                _thread_local.history = _FusionHistory()
-                self._memo[key] = _thread_local.history.get_fusion(
+                history = _FusionHistory()
+                _thread_local.history = history
+                self._memo[key] = history.get_fusion(
                     self.func, args, self.name)
             finally:
-                del _thread_local.history
+                _thread_local.history = None
         kernel, kwargs = self._memo[key]
 
         return kernel(

@@ -28,6 +28,14 @@ from cupy.core cimport internal
 _thread_local = threading.local()
 
 
+cpdef inline bint _is_fusing() except? -1:
+    try:
+        return _thread_local.history is not None
+    except AttributeError:
+        _thread_local.history = None
+    return False
+
+
 cpdef _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
@@ -52,13 +60,14 @@ cpdef _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef dict _kind_score = {
-    'b': 0,
-    'u': 1,
-    'i': 1,
-    'f': 2,
-    'c': 2,
-}
+cdef inline int get_kind_score(int kind):
+    if b'b' == kind:
+        return 0
+    if b'u' == kind or b'i' == kind:
+        return 1
+    if b'f' == kind or b'c' == kind:
+        return 2
+    return -1
 
 
 cpdef list _preprocess_args(args, bint use_c_scalar=False):
@@ -651,7 +660,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     max_array_kind = -1
     max_scalar_kind = -1
     for i in in_args:
-        kind = _kind_score[i.dtype.kind]
+        kind = get_kind_score(ord(i.dtype.kind))
         if isinstance(i, ndarray):
             all_scalars = False
             max_array_kind = max(max_array_kind, kind)
@@ -760,7 +769,7 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        if hasattr(_thread_local, 'history'):
+        if _is_fusing():
             return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
