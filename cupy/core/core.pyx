@@ -443,19 +443,10 @@ cdef class ndarray:
 
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef ndarray v
         cdef Py_ssize_t ndim
         cdef int self_is, v_is
-        v = ndarray.__new__(ndarray)
-        v._c_contiguous = self._c_contiguous
-        v._f_contiguous = self._f_contiguous
-        v.data = self.data
-        v.base = self.base if self.base is not None else self
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
-            v.dtype = self.dtype
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
