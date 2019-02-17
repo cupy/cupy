@@ -1592,7 +1592,7 @@ def batch_normalization_forward_training(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             running_mean_tmp = running_mean.astype(dtype_param)
@@ -1664,7 +1664,7 @@ def batch_normalization_forward_inference(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             mean = mean.astype(dtype_param)
@@ -1710,7 +1710,7 @@ def batch_normalization_backward(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        need_cast = dtype_param != dtype
+        need_cast = gamma.dtype != dtype_param
         if need_cast:
             gamma = gamma.astype(dtype_param)
         else:
