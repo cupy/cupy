@@ -42,9 +42,9 @@ def memoize(bint for_each_device=False):
             if for_each_device:
                 id = device.get_device_id()
             if len(kwargs):
-                arg_key = (id, args)
-            else:
                 arg_key = (id, args, frozenset(kwargs.items()))
+            else:
+                arg_key = (id, args)
             result = m.get(arg_key, m)
             if result is m:
                 result = f(*args, **kwargs)
