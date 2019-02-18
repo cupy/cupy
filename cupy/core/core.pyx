@@ -236,7 +236,7 @@ cdef class ndarray:
         if self.ndim < 2:
             return self
         else:
-            return _manipulation._transpose(self, vector.vector[Py_ssize_t]())
+            return _manipulation._T(self)
 
     __array_priority__ = 100
 

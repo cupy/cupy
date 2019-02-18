@@ -1,6 +1,8 @@
 from cpython cimport sequence
 from libc.stdint cimport int32_t
 
+from cupy.core cimport _routines_manipulation as _manipulation
+
 import string
 
 import numpy
@@ -124,8 +126,8 @@ cpdef tuple _get_permuted_args(
             for p in params:
                 if p.raw:
                     raise NotImplementedError('Illegal conditions')
-        args = [a.transpose(axis_permutes) if isinstance(a, ndarray) else a
-                for a in args]
+        args = [_manipulation._transpose(a, axis_permutes)
+                if isinstance(a, ndarray) else a for a in args]
         shape = tuple([shape[i] for i in axis_permutes])
 
     contiguous_size = 1

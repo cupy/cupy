@@ -30,7 +30,7 @@ cpdef bint get_c_contiguity(
     Py_ssize_t itemsize)
 
 cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
-    vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *
+    const vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *
 
 cpdef slice complete_slice(slice slc, Py_ssize_t dim)
 
