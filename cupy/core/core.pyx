@@ -443,19 +443,10 @@ cdef class ndarray:
 
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef ndarray v
         cdef Py_ssize_t ndim
         cdef int self_is, v_is
-        v = ndarray.__new__(ndarray)
-        v._c_contiguous = self._c_contiguous
-        v._f_contiguous = self._f_contiguous
-        v.data = self.data
-        v.base = self.base if self.base is not None else self
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
-            v.dtype = self.dtype
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
@@ -1472,8 +1463,8 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -1485,6 +1476,21 @@ cdef class ndarray:
             self._update_c_contiguity()
         if update_f_contiguity:
             self._update_f_contiguity()
+
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity):
+        cdef ndarray v
+        v = ndarray.__new__(ndarray)
+        v.data = self.data
+        v.base = self.base if self.base is not None else self
+        v.dtype = self.dtype
+        v._c_contiguous = self._c_contiguous
+        v._f_contiguous = self._f_contiguous
+        v._set_shape_and_strides(
+            shape, strides, update_c_contiguity, update_f_contiguity)
+        return v
 
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):

@@ -19,6 +19,63 @@ from cupy.core cimport internal
 
 cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
 
+cdef tuple _broadcast_core(arrays):
+    cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
+    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef ndarray a
+    cdef list ret
+
+    ret = list(arrays)
+    nd = 0
+    for i, x in enumerate(ret):
+        if not isinstance(x, ndarray):
+            ret[i] = None
+            continue
+        a = x
+        nd = max(nd, <Py_ssize_t>a._shape.size())
+
+    shape.reserve(nd)
+    for i in range(nd):
+        smin = PY_SSIZE_T_MAX
+        smax = 0
+        for a in ret:
+            if a is None:
+                continue
+            a_ndim = <Py_ssize_t>a._shape.size()
+            if i >= nd - a_ndim:
+                s = a._shape[i - (nd - a_ndim)]
+                smin = min(smin, s)
+                smax = max(smax, s)
+        if smin == 0 and smax > 1:
+            raise ValueError(
+                'shape mismatch: objects cannot be broadcast to a '
+                'single shape')
+        shape.push_back(0 if smin == 0 else smax)
+
+    for i, a in enumerate(ret):
+        if a is None:
+            ret[i] = arrays[i]
+            continue
+        if internal.vector_equal(a._shape, shape):
+            continue
+
+        strides.assign(nd, <Py_ssize_t>0)
+        a_ndim = <Py_ssize_t>a._shape.size()
+        for j in range(a_ndim):
+            a_sh = a._shape[j]
+            if a_sh == shape[j + nd - a_ndim]:
+                strides[j + nd - a_ndim] = a._strides[j]
+            elif a_sh != 1:
+                raise ValueError(
+                    'operands could not be broadcast together with shapes '
+                    '{}'.format(
+                        ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                   else '()' for x in arrays])))
+
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        ret[i] = a._view(shape, strides, True, True)
+    return ret, tuple(shape)
+
 
 @cython.final
 cdef class broadcast:
@@ -41,70 +98,14 @@ cdef class broadcast:
     """
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh
-        cdef vector.vector[Py_ssize_t] shape, strides, r_shape, r_strides
-        cdef vector.vector[vector.vector[Py_ssize_t]] shape_arr
-        cdef ndarray a, view
-        cdef slice rev = slice(None, None, -1)
-
-        self.nd = 0
-        for x in arrays:
-            if not isinstance(x, ndarray):
-                continue
-            a = x
-            self.nd = max(self.nd, <Py_ssize_t>a._shape.size())
-            r_shape.assign(a._shape.rbegin(), a._shape.rend())
-            shape_arr.push_back(r_shape)
-
-        r_shape.clear()
-        for i in range(self.nd):
-            smin = PY_SSIZE_T_MAX
-            smax = 0
-            for j in range(<Py_ssize_t>shape_arr.size()):
-                if i < <Py_ssize_t>shape_arr[j].size():
-                    s = shape_arr[j][i]
-                    smin = min(smin, s)
-                    smax = max(smax, s)
-            if smin == 0 and smax > 1:
-                raise ValueError(
-                    'shape mismatch: objects cannot be broadcast to a '
-                    'single shape')
-            r_shape.push_back(0 if smin == 0 else smax)
-
-        shape.assign(r_shape.rbegin(), r_shape.rend())
-        self.shape = tuple(shape)
-        self.size = internal.prod(shape)
-
-        broadcasted = []
-        for x in arrays:
-            if not isinstance(x, ndarray):
-                broadcasted.append(x)
-                continue
-            a = x
-            if internal.vector_equal(a._shape, shape):
-                broadcasted.append(a)
-                continue
-
-            r_strides.assign(self.nd, <Py_ssize_t>0)
-            a_ndim = a._shape.size()
-            for i in range(a_ndim):
-                a_sh = a._shape[a_ndim - i - 1]
-                if a_sh == r_shape[i]:
-                    r_strides[i] = a._strides[a_ndim - i - 1]
-                elif a_sh != 1:
-                    raise ValueError(
-                        'operands could not be broadcast together with shapes '
-                        '{}'.format(
-                            ', '.join([str(x.shape) if isinstance(x, ndarray)
-                                       else '()' for x in arrays])))
-
-            strides.assign(r_strides.rbegin(), r_strides.rend())
-            view = a.view()
-            # TODO(niboshi): Confirm update_x_contiguity flags
-            view._set_shape_and_strides(shape, strides, True, True)
-            broadcasted.append(view)
-
-        self.values = tuple(broadcasted)
+        cdef Py_ssize_t x
+        values, shape = _broadcast_core(arrays)
+        self.values = tuple(values)
+        self.shape = shape
+        self.nd = len(shape)
+        self.size = 1
+        for x in shape:
+            self.size *= x
 
 
 # ndarray members

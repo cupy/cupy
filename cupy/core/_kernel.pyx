@@ -17,7 +17,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
-from cupy.core._routines_manipulation cimport broadcast
+from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
@@ -161,11 +161,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newshape.assign(<Py_ssize_t>1, total_size)
         for i in array_indexes:
             arr = args[i]
-            arr = arr.view()
             newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
             # TODO(niboshi): Confirm update_x_contiguity flags
-            arr._set_shape_and_strides(newshape, newstrides, False, True)
-            args[i] = arr
+            args[i] = arr._view(newshape, newstrides, False, True)
         return total_size,
 
     vecshape = shape
@@ -192,13 +190,11 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         newshape.push_back(vecshape[ax])
     for i in array_indexes:
         arr = args[i]
-        arr = arr.view()
         newstrides.clear()
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arr._set_shape_and_strides(newshape, newstrides, False, True)
-        args[i] = arr
+        args[i] = arr._view(newshape, newstrides, False, True)
     return tuple(newshape)
 
 
@@ -327,14 +323,11 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
-    brod = broadcast(*value)
-    value = []
-    for i in range(len(args)):
-        a = brod.values[i]
+    value, shape = _broadcast_core(value)
+    for i, a in enumerate(value):
         if a is None:
-            a = args[i]
-        value.append(a)
-    return value, brod.shape
+            value[i] = args[i]
+    return value, shape
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
@@ -515,7 +508,9 @@ cdef class ElementwiseKernel:
 
         """
         cdef function.Function kern
-        cdef Py_ssize_t size
+        cdef Py_ssize_t size, i
+        cdef list in_args, out_args
+        cdef tuple in_types, out_types, types, shape
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -546,8 +541,7 @@ cdef class ElementwiseKernel:
             is_size_specified = True
 
         for i in range(self.nin):
-            if not (self.params[i].is_const or
-                    internal.vector_equal(args[i].shape, shape)):
+            if not (self.params[i].is_const or args[i].shape == shape):
                 raise ValueError('Shape is mismatched')
 
         out_args = _get_out_args_with_params(
@@ -779,6 +773,8 @@ class ufunc(object):
             return _thread_local.history.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
+        cdef list broad_values
+        cdef tuple shape
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
@@ -808,8 +804,7 @@ class ufunc(object):
             out_args = _preprocess_args((out,))
             args += out_args
 
-        broad = broadcast(*args)
-        shape = broad.shape
+        broad_values, shape = _broadcast_core(args)
 
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
@@ -820,12 +815,12 @@ class ufunc(object):
         else:
             ret = tuple(out_args)
 
-        if broad.size == 0:
+        if 0 in shape:
             return ret
 
         inout_args = []
         for i, t in enumerate(in_types):
-            x = broad.values[i]
+            x = broad_values[i]
             inout_args.append(x if isinstance(x, ndarray) else
                               _scalar.get_scalar_from_numpy(x, t))
         inout_args.extend(out_args)
