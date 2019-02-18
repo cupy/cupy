@@ -722,8 +722,8 @@ cdef class ufunc:
         readonly tuple _params
         readonly dict _routine_cache
         readonly dict _kernel_memo
-        object __doc__
-        object __name__
+        readonly object __doc__
+        readonly object __name__
 
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
                  default_casting=None):
