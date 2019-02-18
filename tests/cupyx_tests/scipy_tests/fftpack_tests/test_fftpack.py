@@ -118,10 +118,10 @@ class TestFft(unittest.TestCase):
         if scp is cupyx.scipy:
             plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
             x = scp.fftpack.ifft(x, n=self.n, axis=self.axis,
-                             overwrite_x=True, plan=plan)
+                                 overwrite_x=True, plan=plan)
         else:  # scipy
             x = scp.fftpack.ifft(x, n=self.n, axis=self.axis,
-                             overwrite_x=True)
+                                 overwrite_x=True)
         return x
 
 

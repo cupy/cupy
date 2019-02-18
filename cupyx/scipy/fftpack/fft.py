@@ -79,12 +79,12 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
 
     # check value_type
     fft_type = _convert_fft_type(a, value_type)
-    if n>1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
+    if n > 1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
         raise NotImplementedError("Only C2C and Z2Z are supported for N-dim"
                                   " transform.")
 
     # generate plan
-    if n>1:  # ND transform
+    if n > 1:  # ND transform
         plan = _get_cufft_plan_nd(shape, fft_type, axes=axes, order=order)
     else:  # 1D transform
         out_size = shape[axis1D]
