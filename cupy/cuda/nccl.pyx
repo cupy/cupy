@@ -152,8 +152,8 @@ cdef class NcclCommunicator:
 
     cpdef abort(self):
         if NCCL_VERSION_CODE < 2400:
-            raise ValueError("ncclCommAbort is not available"
-                             " in this version")
+            raise RuntimeError("ncclCommAbort is not available"
+                               " in this version")
         if self._comm:
             ncclCommAbort(self._comm)
             self._comm = <ncclComm_t>0
@@ -215,8 +215,8 @@ cdef class NcclCommunicator:
 
     def check_async_error(self):
         if NCCL_VERSION_CODE < 2400:
-            raise ValueError("ncclCommGetAsyncError is not available"
-                             " in this version")
+            raise RuntimeError("ncclCommGetAsyncError is not available"
+                               " in this version")
         cdef ncclResult_t asyncError = ncclSuccess
         with nogil:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
