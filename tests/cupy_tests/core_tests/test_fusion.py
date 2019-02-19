@@ -1,8 +1,10 @@
+import copy
+import threading
+import unittest
+
 import mock
 import numpy
 import six
-import threading
-import unittest
 
 import cupy
 from cupy import testing
@@ -604,7 +606,7 @@ class TestFusionUfunc(unittest.TestCase):
         if not isinstance(gen, tuple):
             gen = (gen,) * n
         data0 = tuple([g(*a) for g, a in zip(gen, args)])
-        data1 = tuple([_.copy() for _ in data0])
+        data1 = tuple([copy.copy(_) for _ in data0])
 
         # Invoke non-fused function
         try:
@@ -658,7 +660,7 @@ class TestFusionUfunc(unittest.TestCase):
 
             # Test they have same values
             for nf, f in zip(arrs0, arrs1):
-                numpy.testing.assert_array_almost_equal(nf.get(), f.get())
+                testing.assert_array_almost_equal(nf, f)
 
         return err0 is not None, (arrs0, arrs1)
 
@@ -883,14 +885,20 @@ class TestFusionUfunc(unittest.TestCase):
                     self.random_real))
 
     def test_copyto(self):
-        self.check(cupy.copyto, 2,
-                   (self.random_int, self.random_int))
+        def f(dst, src):
+            cupy.copyto(dst, src)
+            return dst
+
+        self.check(f, 2, (self.random_int, self.random_int))
+        self.check(f, 2, (self.random_real, lambda *args: 0))
 
     def test_copyto_with_where(self):
-        @cupy.fuse()
-        def f(src, dst, where):
-            return cupy.copyto(src, dst, where=where)
+        def f(dst, src, where):
+            cupy.copyto(dst, src, where=where)
+            return dst
 
+        self.check(f, 3,
+                   (self.random_real, lambda *args: 0, self.random_bool))
         self.check(f, 3,
                    (self.random_int, self.random_int, self.random_bool))
 

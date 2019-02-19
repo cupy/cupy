@@ -3,6 +3,7 @@ import six
 
 from cupy import core
 from cupy.core import fusion
+from cupy.sorting import search
 
 
 def copyto(dst, src, casting='same_kind', where=None):
@@ -26,7 +27,8 @@ def copyto(dst, src, casting='same_kind', where=None):
 
     src_type = type(src)
     src_is_python_scalar = (src_type in six.integer_types or
-                            src_type in (bool, float, complex))
+                            src_type in (bool, float, complex) or
+                            src_type is fusion._FusionVarScalar)
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
         can_cast = numpy.can_cast(src, dst.dtype, casting)
@@ -41,7 +43,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         if where is None:
             core.elementwise_copy(src, dst)
         else:
-            core.elementwise_copy_where(src, where, dst)
+            fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
 
     if dst.size == 0:
