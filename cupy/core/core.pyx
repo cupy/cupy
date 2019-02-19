@@ -1361,7 +1361,7 @@ cdef class ndarray:
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
-        ptr = a_cpu.ctypes.get_as_parameter()
+        ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
         if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
         else:
