@@ -1,4 +1,5 @@
 from numpy import prod
+
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
@@ -52,9 +53,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         axis1D = axes
         axes = (axes,)
         if axis1D >= a.ndim or axis1D < -a.ndim:
-            raise ValueError("Invalid input: a has dimension {0} but you "
-                             "choose the axis {1} to be transformed."
-                             .format(a.ndim, axis1D))
+            raise ValueError("The chosen axis ({0}) exceeds the number of "
+                             "dimensions of a ({1})".format(axis1D, a.ndim))
     else:  # axes is a tuple
         n = len(axes)
         if n == 1:
@@ -105,7 +105,7 @@ def fft(x, n=None, axis=-1, overwrite_x=False, plan=None):
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.Plan1d): a cuFFT plan for transforming ``x``
-            over ``axis``, which can be obtained using
+            over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axis)
 
@@ -134,7 +134,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False, plan=None):
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.Plan1d): a cuFFT plan for transforming ``x``
-            over ``axis``, which can be obtained using
+            over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axis)
 
@@ -163,7 +163,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using
+            over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -195,7 +195,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using
+            over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -227,7 +227,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using
+            over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -259,7 +259,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using
+            over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 

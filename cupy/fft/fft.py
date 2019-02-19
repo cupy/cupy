@@ -92,9 +92,9 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if fft_type != plan.fft_type:
             raise ValueError("CUFFT plan dtype mismatch.")
         if out_size != plan.nx:
-            raise ValueError("Target array size mismatches the plan.")
+            raise ValueError("Target array size does not match the plan.")
         if batch != plan.batch:
-            raise ValueError("Batch size mismatches the plan.")
+            raise ValueError("Batch size does not match the plan.")
 
     if overwrite_x and value_type == 'C2C':
         out = a
