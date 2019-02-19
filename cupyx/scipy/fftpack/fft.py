@@ -28,11 +28,6 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         plan: a cuFFT plan for either 1D transform (cupy.cuda.cufft.Plan1d)
             or N-D transform (cupy.cuda.cufft.PlanNd).
     """
-    # check value_type
-    fft_type = _convert_fft_type(a, value_type)
-    if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
-        raise NotImplementedError("Only C2C and Z2Z are supported.")
-
     # check input array
     if a.flags.c_contiguous:
         order = 'C'
