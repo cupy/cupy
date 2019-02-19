@@ -576,8 +576,9 @@ cdef class ElementwiseKernel:
     cpdef tuple _decide_params_type(
             self, tuple in_args_dtype, tuple out_args_dtype):
         key = (in_args_dtype, out_args_dtype)
-        if key in self._params_type_memo:
-            return self._params_type_memo[key]
+        ret = self._params_type_memo.get(key, None)
+        if ret is not None:
+            return ret
         ret = _decide_params_type_core(
             self.in_params, self.out_params, in_args_dtype, out_args_dtype)
         self._params_type_memo[key] = ret
@@ -587,8 +588,9 @@ cdef class ElementwiseKernel:
             self, tuple args_info, tuple types):
         id = device.get_device_id()
         key = (id, args_info, types)
-        if key in self._kernel_memo:
-            return self._kernel_memo[key]
+        kern = self._kernel_memo.get(key, None)
+        if kern is not None:
+            return kern
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
