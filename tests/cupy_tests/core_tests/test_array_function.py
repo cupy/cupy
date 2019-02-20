@@ -10,6 +10,7 @@ from cupy import testing
 @testing.gpu
 class TestArrayFunction(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.17.0')
     def test_array_function(self):
         a = numpy.random.randn(100, 100)
         a_cpu = numpy.asarray(a)
