@@ -1398,7 +1398,7 @@ cdef class ndarray:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        ptr = arr.ctypes.get_as_parameter()
+        ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
         if stream is not None:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
         else:
@@ -1741,7 +1741,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 'This generally occurs because of insufficient host memory. '
                 'The original error was: {}'.format(nbytes, error),
                 util.PerformanceWarning)
-            a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), nbytes)
+            a.data.copy_from_host(
+                ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
 
