@@ -663,7 +663,7 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_standard_t_definition]
 standard_t_kernel = core.ElementwiseKernel(
-    'S df, uint32 seed', 'Y y',
+    'S df, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_standard_t(&internal_state, df);
@@ -678,7 +678,7 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = core.ElementwiseKernel(
-    'T df, uint32 seed', 'Y y',
+    'T df, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_chisquare(&internal_state, df);
@@ -693,7 +693,7 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition, rk_f_definition]
 f_kernel = core.ElementwiseKernel(
-    'S dfnum, T dfden, uint32 seed', 'Y y',
+    'S dfnum, T dfden, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_f(&internal_state, dfnum, dfden);
@@ -707,7 +707,7 @@ definitions = \
     [rk_basic_difinition, rk_geometric_search_definition,
      rk_geometric_inversion_definition, rk_geometric_definition]
 geometric_kernel = core.ElementwiseKernel(
-    'T p, uint32 seed', 'Y y',
+    'T p, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_geometric(&internal_state, p);
@@ -722,7 +722,7 @@ definitions = \
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = core.ElementwiseKernel(
-    'T lam, uint32 seed', 'Y y',
+    'T lam, uint64 seed', 'Y y',
     '''
     rk_seed(seed + i, &internal_state);
     y = rk_poisson(&internal_state, lam);
