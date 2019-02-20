@@ -221,11 +221,12 @@ class simple_reduction_function(object):
 
         in_args = [a]
         a_shape = a.shape
+        dev_id = device.get_device_id()
         if out is None:
-            _preprocess_args((a,))
+            _preprocess_args(dev_id, (a,), False)
             out_args = []
         else:
-            _preprocess_args((a, out))
+            _preprocess_args(dev_id, (a, out), False)
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
@@ -398,8 +399,9 @@ class ReductionKernel(object):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        in_args = _preprocess_args(args[:self.nin])
-        out_args = _preprocess_args(out_args)
+        dev_id = device.get_device_id()
+        in_args = _preprocess_args(dev_id, args[:self.nin], False)
+        out_args = _preprocess_args(dev_id, out_args, False)
         in_args, broad_shape = _broadcast(in_args, self.in_params, False)
 
         if self.identity is None and 0 in broad_shape:
