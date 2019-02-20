@@ -33,6 +33,12 @@ try:
 except ImportError:
     thrust_enabled = False
 
+try:
+    from cupy.cuda import nccl  # NOQA
+    nccl_enabled = True
+except ImportError:
+    nccl_enabled = False
+
 
 def is_available():
     global _available
