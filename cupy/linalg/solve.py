@@ -201,7 +201,7 @@ def inv(a):
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=dtype)
 
-    ipiv = cupy.empty((a.shape[0], 1), dtype=dtype)
+    ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
 
     if dtype == 'f':
         getrf = cusolver.sgetrf
