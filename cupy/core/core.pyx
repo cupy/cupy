@@ -92,10 +92,11 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
+        cdef tuple s = internal.get_size(shape)
+        del shape
+
         cdef int order_char = (
             b'C' if order is None else internal._normalize_order(order))
-        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
@@ -103,9 +104,12 @@ cdef class ndarray:
             raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        self._shape.reserve(len(s))
         for x in s:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
+            self._shape.push_back(x)
+        del s
 
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
@@ -114,11 +118,11 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(s, strides, True, True)
+            self._set_shape_and_strides(self._shape, strides, True, True)
         elif order_char == b'C':
-            self._set_shape_and_contiguous_strides(s, itemsize, True)
+            self._set_contiguous_strides(itemsize, True)
         elif order_char == b'F':
-            self._set_shape_and_contiguous_strides(s, itemsize, False)
+            self._set_contiguous_strides(itemsize, False)
         else:
             assert False
 
@@ -439,19 +443,10 @@ cdef class ndarray:
 
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef ndarray v
         cdef Py_ssize_t ndim
         cdef int self_is, v_is
-        v = ndarray.__new__(ndarray)
-        v._c_contiguous = self._c_contiguous
-        v._f_contiguous = self._f_contiguous
-        v.data = self.data
-        v.base = self.base if self.base is not None else self
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
-            v.dtype = self.dtype
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
@@ -1250,10 +1245,14 @@ cdef class ndarray:
                 return NotImplemented
         if not hasattr(module, func.__name__):
             return NotImplemented
+        cupy_func = getattr(module, func.__name__)
+        if cupy_func is func:
+            # avoid NumPy func
+            return NotImplemented
         for t in types:
             if t not in _HANDLED_TYPES:
                 return NotImplemented
-        return getattr(module, func.__name__)(*args, **kwargs)
+        return cupy_func(*args, **kwargs)
 
     # Conversion:
 
@@ -1474,8 +1473,8 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -1488,13 +1487,25 @@ cdef class ndarray:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cpdef _set_shape_and_contiguous_strides(
-            self, vector.vector[Py_ssize_t]& shape,
-            Py_ssize_t itemsize, bint is_c_contiguous):
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity):
+        cdef ndarray v
+        v = ndarray.__new__(ndarray)
+        v.data = self.data
+        v.base = self.base if self.base is not None else self
+        v.dtype = self.dtype
+        v._c_contiguous = self._c_contiguous
+        v._f_contiguous = self._f_contiguous
+        v._set_shape_and_strides(
+            shape, strides, update_c_contiguity, update_f_contiguity)
+        return v
 
+    cpdef _set_contiguous_strides(
+            self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.set_contiguous_strides(
-            shape, self._strides, itemsize, is_c_contiguous)
-        self._shape = shape
+            self._shape, self._strides, itemsize, is_c_contiguous)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()

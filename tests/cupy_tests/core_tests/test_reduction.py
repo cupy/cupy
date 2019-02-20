@@ -49,7 +49,8 @@ class SimpleReductionFunction(unittest.TestCase):
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
 
     def test_shape5(self):
-        size = ((2 << 32) // self.my_int8_sum._block_size)
+        block_size = 512
+        size = ((2 << 32) // block_size)
         self.check_int8_sum((size, 1), axis=1)
         self.check_int8_sum((size, 1), axis=0)
 

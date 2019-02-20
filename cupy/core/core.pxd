@@ -72,13 +72,16 @@ cdef class ndarray:
     cpdef _update_c_contiguity(self)
     cpdef _update_f_contiguity(self)
     cpdef _update_contiguity(self)
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity)
-    cpdef _set_shape_and_contiguous_strides(
-        self, vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous)
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity)
+    cpdef _set_contiguous_strides(
+        self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
 
