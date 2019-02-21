@@ -70,6 +70,6 @@ Code compatibility features
 FFT functions of NumPy alway return numpy.ndarray which type is ``numpy.complex128`` or ``numpy.float64``.
 CuPy functions do not follow the behavior, they will return ``numpy.complex64`` or ``numpy.float32`` if the type of the input is ``numpy.float16``, ``numpy.float32``, or ``numpy.complex64``.
 
-In addition, when transforming over more than 1 axis ``cupy.fft`` will attempt to generate a *cuFFT plan* internally (see the `cuFFT documentation`_ for detail) to accelarate the computation. This is enabled by default but can be turned off by setting ``cupy.fft.config.enable_nd_planning = False``. This feature is a deviation from NumPy which has no planning.
+Internally, ``cupy.fft`` always generates a *cuFFT plan* (see the `cuFFT documentation`_ for detail) corresponding to the desired transform. When possible, an n-dimensional plan will be used, as opposed to applying separate 1D plans for each axis to be transformed. Using n-dimensional planning can provide better performance for multidimensional transforms, but requires more GPU memory than separable 1D planning. The user can disable n-dimensional planning by setting ``cupy.fft.config.enable_nd_planning = False``. This ability to adjust the planning type is a deviation from the NumPy API, which does not use precomputed FFT plans.
 
 .. _cuFFT documentation: https://docs.nvidia.com/cuda/cufft/index.html
