@@ -248,19 +248,11 @@ At the first function call, the fused function analyzes the original function ba
    ... def sum_of_products(x, y)
    ...     return cupy.sum(x * y, axis = -1)
 
-We can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
+You can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
 
 .. doctest::
 
    >>> @cp.fuse(kernel_name='squared_diff')
-   ... def squared_diff(x, y):
-   ...     return (x - y) * (x - y)
-
-Compile time constants can be set by `const_params` parameter.
-
-.. doctest::
-
-   >>> @cp.fuse(const_params={})
    ... def squared_diff(x, y):
    ...     return (x - y) * (x - y)
 
