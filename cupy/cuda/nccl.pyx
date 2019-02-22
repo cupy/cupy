@@ -152,8 +152,8 @@ cdef class NcclCommunicator:
 
     cpdef abort(self):
         if NCCL_VERSION_CODE < 2400:
-            raise RuntimeError("ncclCommAbort is not available"
-                               " in this version")
+            raise RuntimeError('ncclCommAbort is not available'
+                               ' in this version')
         if self._comm:
             ncclCommAbort(self._comm)
             self._comm = <ncclComm_t>0
@@ -215,8 +215,8 @@ cdef class NcclCommunicator:
 
     def check_async_error(self):
         if NCCL_VERSION_CODE < 2400:
-            raise RuntimeError("ncclCommGetAsyncError is not available"
-                               " in this version")
+            raise RuntimeError('ncclCommGetAsyncError is not available'
+                               ' in this version')
         cdef ncclResult_t asyncError = ncclSuccess
         # Releasing GIL as the function *might* block in future and
         # this won't be a hot code path. At least in NCCL 2.4 it does

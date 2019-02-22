@@ -16,7 +16,7 @@ class TestNCCL(unittest.TestCase):
 
     @attr.gpu
     @unittest.skipUnless(cuda.nccl_enabled and
-                         cuda.nccl.get_version() >= 2400, "Using old NCCL")
+                         cuda.nccl.get_version() >= 2400, 'Using old NCCL')
     def test_abort(self):
         id = cuda.nccl.get_unique_id()
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
@@ -24,7 +24,7 @@ class TestNCCL(unittest.TestCase):
 
     @attr.gpu
     @unittest.skipUnless(cuda.nccl_enabled and
-                         cuda.nccl.get_version() >= 2400, "Using old NCCL")
+                         cuda.nccl.get_version() >= 2400, 'Using old NCCL')
     def test_check_async_error(self):
         id = cuda.nccl.get_unique_id()
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
