@@ -218,6 +218,9 @@ cdef class NcclCommunicator:
             raise RuntimeError("ncclCommGetAsyncError is not available"
                                " in this version")
         cdef ncclResult_t asyncError = ncclSuccess
+        # Releasing GIL as the function *might* block in future and
+        # this won't be a hot code path. At least in NCCL 2.4 it does
+        # not block so far.
         with nogil:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
         check_status(asyncError)
