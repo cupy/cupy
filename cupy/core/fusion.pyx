@@ -918,12 +918,15 @@ class Fusion(object):
 
 
 def fuse(*args, **kwargs):
-    """Function fusing decorator.
+    """Decorator that fuses a function.
 
     This decorator can be used to define an elementwise or reduction kernel
-    more easily than `ElementwiseKernel` class or `ReductionKernel` class.
+    more easily than :class:`~cupy.ElementwiseKernel` or
+    :class:`~cupy.ReductionKernel`.
 
-    This decorator makes `Fusion` class from the given function.
+    Since the fused kernels are cached and reused, it is recommended to reuse
+    the same decorated functions instead of e.g. decorating local functions
+    that are defined multiple times.
 
     Args:
         kernel_name (str): Name of the fused kernel function.
@@ -933,6 +936,16 @@ def fuse(*args, **kwargs):
        This API is currently experimental and the interface may be changed in
        the future version.
 
+    Example:
+
+        >>> @cupy.fuse(kernel_name='squared_diff')
+        ... def squared_diff(x, y):
+        ...     return (x - y) * (x - y)
+        ...
+        >>> x = cupy.arange(10)
+        >>> y = cupy.arange(10)[::-1]
+        >>> squared_diff(x, y)
+        array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
     """
 
     def wrapper(f, kernel_name=None):
