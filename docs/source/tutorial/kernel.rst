@@ -257,4 +257,4 @@ You can specify the kernel name by using the ``kernel_name`` keyword argument as
    ...     return (x - y) * (x - y)
 
 .. note::
-   Currently, :func:`cupy.fuse` can generate only simple elementwise and reduction kernels as a fused kernel.  Most routines (e.g. :func:`cupy.matmul`, :func:`cupy.reshape`) are not supported in the fused function.
+   Currently, :func:`cupy.fuse` can fuse only simple elementwise and reduction operations.  Most other routines (e.g. :func:`cupy.matmul`, :func:`cupy.reshape`) are not supported.
