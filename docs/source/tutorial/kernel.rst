@@ -245,7 +245,7 @@ At the first function call, the fused function analyzes the original function ba
 .. doctest::
 
    >>> @cp.fuse()
-   ... def sum_of_products(x, y)
+   ... def sum_of_products(x, y):
    ...     return cupy.sum(x * y, axis = -1)
 
 You can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
