@@ -18,7 +18,7 @@ def get_array_module(*args):
     """Returns the array module for arguments.
 
     This function is used to implement CPU/GPU generic code. If at least one of
-    the arguments is a :class:`cupy.ndarray` object, the :mod:`cupy` module is
+    the arguments is a :class:`cupy.ndarray` object, the :mod:`cupyx.scipy` module is
     returned.
 
     Args:
