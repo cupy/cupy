@@ -42,7 +42,7 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
-    util._assert_cupy_array(a)
+    a = cupy.asarray(a)
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
