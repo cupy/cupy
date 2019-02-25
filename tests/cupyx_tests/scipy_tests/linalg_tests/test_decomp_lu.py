@@ -27,6 +27,7 @@ class TestLUFactor(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
+        self.assertEqual(len(result_cpu), len(result_gpu))
         self.assertEqual(result_cpu[0].dtype, result_gpu[0].dtype)
         self.assertEqual(result_cpu[1].dtype, result_gpu[1].dtype)
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
