@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import atexit
+import threading
 
 import six
 
@@ -17,15 +18,35 @@ except ImportError:
     cusolver_enabled = False
 
 
+cdef object _thread_local = threading.local()
+
+cdef dict _devices = {}
+cdef dict _cublas_handles = {}
+cdef dict _cusolver_sp_handles = {}
+cdef dict _cusparse_handles = {}
+cdef dict _compute_capabilities = {}
+
+
 cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
-cdef dict _cublas_handles = {}
-cdef dict _cusolver_handles = {}
-cdef dict _cusolver_sp_handles = {}
-cdef dict _cusparse_handles = {}
-cdef dict _compute_capabilities = {}
+cpdef Device get_device():
+    dev_id = runtime.getDevice()
+    ret = _devices.get(dev_id, None)
+    if ret is None:
+        ret = Device()
+        _devices[dev_id] = ret
+    return ret
+
+
+cdef class Handle:
+    def __init__(self, handle, destroy_func):
+        self.handle = handle
+        self._destroy_func = destroy_func
+
+    def __dealloc__(self):
+        self._destroy_func(self.handle)
 
 
 cpdef size_t get_cublas_handle() except? 0:
@@ -37,11 +58,7 @@ cpdef size_t get_cublas_handle() except? 0:
 
 
 cpdef size_t get_cusolver_handle() except? 0:
-    dev_id = get_device_id()
-    ret = _cusolver_handles.get(dev_id, None)
-    if ret is not None:
-        return ret
-    return Device().cusolver_handle
+    return get_device().cusolver_handle
 
 
 cpdef get_cusolver_sp_handle():
@@ -189,11 +206,16 @@ cdef class Device:
         if not cusolver_enabled:
             raise RuntimeError(
                 'Current cupy only supports cusolver in CUDA 8.0')
-        if self.id in _cusolver_handles:
-            return _cusolver_handles[self.id]
+
+        _cusolver_handles = getattr(_thread_local, '_cusolver_handles', None)
+        if _cusolver_handles is None:
+            _cusolver_handles = {}
+            setattr(_thread_local, '_cusolver_handles', _cusolver_handles)
+        elif self.id in _cusolver_handles:
+            return _cusolver_handles[self.id].handle
         with self:
             handle = cusolver.create()
-            _cusolver_handles[self.id] = handle
+            _cusolver_handles[self.id] = Handle(handle, cusolver.destroy)
             return handle
 
     @property
