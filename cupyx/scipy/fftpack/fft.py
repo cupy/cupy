@@ -130,6 +130,10 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.fft2`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
@@ -162,6 +166,10 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.ifft2`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
@@ -194,6 +202,10 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.fftn`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
@@ -226,6 +238,10 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             type will convert to complex if that of the input is another.
 
     .. seealso:: :func:`scipy.fftpack.ifftn`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
