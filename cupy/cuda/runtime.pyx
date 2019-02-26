@@ -74,7 +74,6 @@ cdef extern from "cupy_cuda.h" nogil:
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
     int cudaMemGetInfo(size_t* free, size_t* total)
-    int cudaMalloc(void** devPtr, size_t size) nogil
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind)
     int cudaMemcpyAsync(void* dst, const void* src, size_t count,
