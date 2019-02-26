@@ -42,14 +42,14 @@ def average(a, axis=None, weights=None, returned=False):
         if a.shape != wgt.shape:
             if axis is None:
                 raise TypeError(
-                    "Axis must be specified when shapes of a and weights "
-                    "differ.")
+                    'Axis must be specified when shapes of a and weights '
+                    'differ.')
             if wgt.ndim != 1:
                 raise TypeError(
-                    "1D weights expected when shapes of a and weights differ.")
+                    '1D weights expected when shapes of a and weights differ.')
             if wgt.shape[0] != a.shape[axis]:
                 raise ValueError(
-                    "Length of weights not compatible with specified axis.")
+                    'Length of weights not compatible with specified axis.')
 
             # setup wgt to broadcast along axis
             wgt = cupy.broadcast_to(wgt, (a.ndim - 1) * (1,) + wgt.shape)
@@ -58,7 +58,7 @@ def average(a, axis=None, weights=None, returned=False):
         scl = wgt.sum(axis=axis, dtype=result_dtype)
         if cupy.any(scl == 0.0):
             raise ZeroDivisionError(
-                "Weights sum to zero, can't be normalized")
+                'Weights sum to zero, can\'t be normalized')
 
         avg = cupy.multiply(a, wgt, dtype=result_dtype).sum(axis) / scl
 

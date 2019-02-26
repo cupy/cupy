@@ -9,7 +9,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuComplex.h":
+cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 

@@ -6,7 +6,7 @@ from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 
-cdef extern from "halffloat.h":
+cdef extern from 'halffloat.h':
     uint16_t npy_floatbits_to_halfbits(uint32_t f)
     uint32_t npy_halfbits_to_floatbits(uint16_t h)
 

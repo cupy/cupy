@@ -220,7 +220,7 @@ class CompileException(Exception):
 
 class _NVRTCProgram(object):
 
-    def __init__(self, src, name="default_program", headers=(),
+    def __init__(self, src, name='default_program', headers=(),
                  include_names=()):
         self.ptr = None
 

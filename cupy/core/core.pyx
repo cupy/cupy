@@ -457,12 +457,12 @@ cdef class ndarray:
         ndim = self._shape.size()
         if ndim == 0:
             raise ValueError(
-                "Changing the dtype of a 0d array is only supported if "
-                "the itemsize is unchanged")
+                'Changing the dtype of a 0d array is only supported if '
+                'the itemsize is unchanged')
         if not self._c_contiguous:
             raise ValueError(
-                "To change to a dtype of a different size, the array must "
-                "be C-contiguous")
+                'To change to a dtype of a different size, the array must '
+                'be C-contiguous')
         v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
         v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
         v.size = v.size * self_is // v_is
@@ -1204,8 +1204,8 @@ cdef class ndarray:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
-                raise ValueError("The 'out' parameter must have exactly one "
-                                 "array value")
+                raise ValueError('The \'out\' parameter must have exactly one '
+                                 'array value')
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1367,7 +1367,7 @@ cdef class ndarray:
                     elif order == 'F':
                         a_gpu = asfortranarray(self)
                     else:
-                        raise ValueError("unsupported order: {}".format(order))
+                        raise ValueError('unsupported order: {}'.format(order))
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
@@ -1582,7 +1582,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
-include "carray.pxi"
+include 'carray.pxi'
 
 
 # =============================================================================

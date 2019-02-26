@@ -494,7 +494,7 @@ class TestEinSumLarge(unittest.TestCase):
             if xp is not numpy and \
                     isinstance(self.opt, tuple):  # with memory limit
                 for w in ws:
-                    self.assertIn("memory", str(w.message))
+                    self.assertIn('memory', str(w.message))
             else:
                 self.assertEqual(len(ws), 0)
         return out
