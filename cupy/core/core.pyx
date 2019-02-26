@@ -1237,9 +1237,15 @@ cdef class ndarray:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not hasattr(cupy, func.__name__):
+        module = cupy
+        for submodule in func.__module__.split('.')[1:]:
+            try:
+                module = getattr(module, submodule)
+            except AttributeError:
+                return NotImplemented
+        if not hasattr(module, func.__name__):
             return NotImplemented
-        cupy_func = getattr(cupy, func.__name__)
+        cupy_func = getattr(module, func.__name__)
         if cupy_func is func:
             # avoid NumPy func
             return NotImplemented
