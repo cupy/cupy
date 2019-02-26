@@ -24,7 +24,7 @@ Fast Fourier Transforms
 
 Code compatibility features
 ---------------------------
-1. The ``get_fft_plan`` function has no counterpart in ``scipy.fftpack``. It returns a cuFFT plan that can be passed to the FFT functions in this module (using the argument ``plan``) to accelarate the computation.
+1. The ``get_fft_plan`` function has no counterpart in ``scipy.fftpack``. It returns a cuFFT plan that can be passed to the FFT functions in this module (using the argument ``plan``) to accelarate the computation. The argument ``plan`` is currently experimental and the interface may be changed in the future version.
 
 2. The boolean switch ``cupy.fft.config.enable_nd_planning`` also affects the FFT functions in this module, see :doc:`./fft`. This switch is neglected when planning manually using ``get_fft_plan``.
 
