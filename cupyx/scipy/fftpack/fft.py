@@ -112,6 +112,10 @@ def fft(x, n=None, axis=-1, overwrite_x=False, plan=None):
             The transformed array which shape is specified by ``n`` and type
             will convert to complex if that of the input is another.
 
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
+
     .. seealso:: :func:`scipy.fftpack.fft`
     """
     return _fft(x, (n,), (axis,), None, cufft.CUFFT_FORWARD,
@@ -140,6 +144,10 @@ def ifft(x, n=None, axis=-1, overwrite_x=False, plan=None):
         cupy.ndarray:
             The transformed array which shape is specified by ``n`` and type
             will convert to complex if that of the input is another.
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
 
     .. seealso:: :func:`scipy.fftpack.ifft`
     """
