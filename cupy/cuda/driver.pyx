@@ -14,24 +14,6 @@ There are four differences compared to the original C API.
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 
-cdef class FuncAttributes:
-
-    def __init__(self, size_t sharedSizeBytes, size_t constSizeBytes,
-                 size_t localSizeBytes, int maxThreadsPerBlock, int numRegs,
-                 int ptxVersion, int binaryVersion, int cacheModeCA,
-                 int maxDynamicSharedSizeBytes, int preferredShmemCarveout):
-        self.sharedSizeBytes = sharedSizeBytes
-        self.constSizeBytes = constSizeBytes
-        self.localSizeBytes = localSizeBytes
-        self.maxThreadsPerBlock = maxThreadsPerBlock
-        self.numRegs = numRegs
-        self.ptxVersion = ptxVersion
-        self.binaryVersion = binaryVersion
-        self.cacheModeCA = cacheModeCA
-        self.maxDynamicSharedSizeBytes = maxDynamicSharedSizeBytes
-        self.preferredShmemCarveout = preferredShmemCarveout
-
-
 ###############################################################################
 # Extern
 ###############################################################################
@@ -259,7 +241,7 @@ cpdef launchKernel(
     check_status(status)
 
 
-cpdef FuncAttributes funcGetAttributes(size_t func):
+cpdef dict funcGetAttributes(size_t func):
     cdef:
         int sharedSizeBytes, constSizeBytes, localSizeBytes
         int maxThreadsPerBlock, numRegs, ptxVersion, binaryVersion
@@ -325,8 +307,13 @@ cpdef FuncAttributes funcGetAttributes(size_t func):
         <Function> func)
     check_attribute_status(status, &preferredShmemCarveout)
 
-    return FuncAttributes(
-        <size_t> sharedSizeBytes, <size_t> constSizeBytes,
-        <size_t> localSizeBytes, maxThreadsPerBlock, numRegs, ptxVersion,
-        binaryVersion, cacheModeCA, maxDynamicSharedSizeBytes,
-        preferredShmemCarveout)
+    return dict(sharedSizeBytes=sharedSizeBytes,
+                constSizeBytes=constSizeBytes,
+                localSizeBytes=localSizeBytes,
+                maxThreadsPerBlock=maxThreadsPerBlock,
+                numRegs=numRegs,
+                ptxVersion=ptxVersion,
+                binaryVersion=binaryVersion,
+                cacheModeCA=cacheModeCA,
+                maxDynamicSharedSizeBytes=maxDynamicSharedSizeBytes,
+                preferredShmemCarveout=preferredShmemCarveout)

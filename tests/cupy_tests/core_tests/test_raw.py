@@ -13,25 +13,32 @@ void test_sum(const float* x1, const float* x2, float* y) {
 
 
 class TestRaw(unittest.TestCase):
+
+    def setUp(self):
+        self.kern = cupy.RawKernel(_test_source, 'test_sum')
+
     def test_basic(self):
-        kern = cupy.RawKernel(_test_source, 'test_sum')
         x1 = cupy.arange(100, dtype=cupy.float32).reshape(10, 10)
         x2 = cupy.ones((10, 10), dtype=cupy.float32)
         y = cupy.zeros((10, 10), dtype=cupy.float32)
-        kern((10,), (10,), (x1, x2, y))
+        self.kern((10,), (10,), (x1, x2, y))
         assert (y == x1 + x2).all()
 
-        attributes = kern.attributes
-        assert hasattr(attributes, 'binaryVersion')
-        assert hasattr(attributes, 'cacheModeCA')
-        assert hasattr(attributes, 'constSizeBytes')
-        assert hasattr(attributes, 'localSizeBytes')
-        assert hasattr(attributes, 'maxDynamicSharedSizeBytes')
-        assert hasattr(attributes, 'maxThreadsPerBlock')
-        assert hasattr(attributes, 'numRegs')
-        assert hasattr(attributes, 'preferredShmemCarveout')
-        assert hasattr(attributes, 'ptxVersion')
-        assert hasattr(attributes, 'sharedSizeBytes')
-        assert attributes.numRegs > 0
-        assert attributes.maxThreadsPerBlock > 0
-        assert attributes.sharedSizeBytes == 0
+    def test_kernel_attributes(self):
+        attributes = self.kern.attributes
+
+        for key in ['binaryVersion',
+                    'cacheModeCA',
+                    'constSizeBytes',
+                    'localSizeBytes',
+                    'maxDynamicSharedSizeBytes',
+                    'maxThreadsPerBlock',
+                    'numRegs',
+                    'preferredShmemCarveout',
+                    'ptxVersion',
+                    'sharedSizeBytes']:
+            assert key in attributes
+
+        assert attributes['numRegs'] > 0
+        assert attributes['maxThreadsPerBlock'] > 0
+        assert attributes['sharedSizeBytes'] == 0
