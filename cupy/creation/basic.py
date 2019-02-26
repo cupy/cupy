@@ -22,7 +22,7 @@ def empty(shape, dtype=float, order='C'):
     return cupy.ndarray(shape, dtype, order=order)
 
 
-def _new_like_order_and_strides(a, dtype, order):
+def _new_like_order_and_strides(a, dtype, order, shape=None):
     """
     Determine order and strides as in NumPy's PyArray_NewLikeArray.
 
@@ -34,7 +34,7 @@ def _new_like_order_and_strides(a, dtype, order):
 
     order = chr(_update_order_char(a, ord(order)))
 
-    if order == 'K':
+    if order == 'K' and shape is None:
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype))
         order = 'C'
         memptr = cupy.empty(a.size, dtype=dtype).data
@@ -43,7 +43,7 @@ def _new_like_order_and_strides(a, dtype, order):
         return order, None, None
 
 
-def empty_like(a, dtype=None, order='K'):
+def empty_like(a, dtype=None, order='K', shape=None):
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -66,8 +66,9 @@ def empty_like(a, dtype=None, order='K'):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
-    return cupy.ndarray(a.shape, dtype, memptr, strides, order)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
+    shape = a.shape if shape is None else shape
+    return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
 def eye(N, M=None, k=0, dtype=float):
@@ -134,7 +135,7 @@ def ones(shape, dtype=float):
     return a
 
 
-def ones_like(a, dtype=None, order='K'):
+def ones_like(a, dtype=None, order='K', shape=None):
     """Returns an array of ones with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -155,8 +156,10 @@ def ones_like(a, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
+
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
+    shape = a.shape if shape is None else shape
+    a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.fill(1)
     return a
 
@@ -181,7 +184,7 @@ def zeros(shape, dtype=float, order='C'):
     return a
 
 
-def zeros_like(a, dtype=None, order='K'):
+def zeros_like(a, dtype=None, order='K', shape=None):
     """Returns an array of zeros with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -202,8 +205,10 @@ def zeros_like(a, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
+
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
+    shape = a.shape if shape is None else shape
+    a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.data.memset_async(0, a.nbytes)
     return a
 
@@ -235,7 +240,7 @@ def full(shape, fill_value, dtype=None):
     return a
 
 
-def full_like(a, fill_value, dtype=None, order='K'):
+def full_like(a, fill_value, dtype=None, order='K', shape=None):
     """Returns a full array with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -257,7 +262,9 @@ def full_like(a, fill_value, dtype=None, order='K'):
     """
     if dtype is None:
         dtype = a.dtype
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
-    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
+
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
+    shape = a.shape if shape is None else shape
+    a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.fill(fill_value)
     return a
