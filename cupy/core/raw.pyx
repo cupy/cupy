@@ -1,5 +1,6 @@
 import cupy
 from cupy import util
+from cupy.cuda cimport driver
 
 import six
 
@@ -61,7 +62,7 @@ cdef class RawKernel:
                 corresponds to the number of registers used by the kernel.
         """
         kern = _get_raw_kernel(self.code, self.name, self.options)
-        return _get_func_attributes(kern)
+        return _get_func_attributes(kern.ptr)
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -72,5 +73,40 @@ def _get_raw_kernel(code, name, options=()):
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_func_attributes(kernel):
-    return cupy.cuda.driver.funcGetAttributes(kernel.ptr)
+def _get_func_attributes(func):
+    cdef:
+        int sharedSizeBytes, constSizeBytes, localSizeBytes
+        int maxThreadsPerBlock, numRegs, ptxVersion, binaryVersion
+        int cacheModeCA, maxDynamicSharedSizeBytes, preferredShmemCarveout
+
+    sharedSizeBytes = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, func)
+    constSizeBytes = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES, func)
+    localSizeBytes = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, func)
+    maxThreadsPerBlock = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, func)
+    numRegs = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_NUM_REGS, func)
+    ptxVersion = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_PTX_VERSION, func)
+    binaryVersion = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_BINARY_VERSION, func)
+    cacheModeCA = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_CACHE_MODE_CA, func)
+    maxDynamicSharedSizeBytes = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, func)
+    preferredShmemCarveout = driver.funcGetAttribute(
+        driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT, func)
+
+    return dict(sharedSizeBytes=sharedSizeBytes,
+                constSizeBytes=constSizeBytes,
+                localSizeBytes=localSizeBytes,
+                maxThreadsPerBlock=maxThreadsPerBlock,
+                numRegs=numRegs,
+                ptxVersion=ptxVersion,
+                binaryVersion=binaryVersion,
+                cacheModeCA=cacheModeCA,
+                maxDynamicSharedSizeBytes=maxDynamicSharedSizeBytes,
+                preferredShmemCarveout=preferredShmemCarveout)

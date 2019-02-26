@@ -82,4 +82,4 @@ cpdef launchKernel(
 # Kernel attributes
 ###############################################################################
 
-cpdef dict funcGetAttributes(size_t func)
+cpdef int funcGetAttribute(int attribute, intptr_t func)
