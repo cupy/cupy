@@ -1,5 +1,3 @@
-import numpy
-
 from cupy import core
 from cupy.core import fusion
 
