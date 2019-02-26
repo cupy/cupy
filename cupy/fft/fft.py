@@ -70,7 +70,7 @@ def _convert_fft_type(a, value_type):
 
 
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
-              out_size=None, out=None):
+              out_size=None, out=None, plan=None):
     fft_type = _convert_fft_type(a, value_type)
 
     if axis % a.ndim != a.ndim - 1:
@@ -83,7 +83,19 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         out_size = a.shape[-1]
 
     batch = a.size // a.shape[-1]
-    plan = cufft.Plan1d(out_size, fft_type, batch)
+    if plan is None:
+        plan = cufft.Plan1d(out_size, fft_type, batch)
+    else:
+        # check plan validity
+        if not isinstance(plan, cufft.Plan1d):
+            raise ValueError("expected plan to have type cufft.Plan1d")
+        if fft_type != plan.fft_type:
+            raise ValueError("CUFFT plan dtype mismatch.")
+        if out_size != plan.nx:
+            raise ValueError("Target array size does not match the plan.")
+        if batch != plan.batch:
+            raise ValueError("Batch size does not match the plan.")
+
     if overwrite_x and value_type == 'C2C':
         out = a
     elif out is not None:
@@ -91,6 +103,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         plan.check_output_array(a, out)
     else:
         out = plan.get_output_array(a)
+
     plan.fft(a, out, direction)
 
     sz = out.shape[-1]
@@ -108,18 +121,14 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     return out
 
 
-def _fft_c2c(a, direction, norm, axes, overwrite_x):
+def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
     for axis in axes:
-        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x)
+        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x, plan=plan)
     return a
 
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
-    if plan is not None:
-        raise NotImplementedError("Use of a pre-existing plan is not currently"
-                                  " supported for 1D transforms.")
-
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or \"ortho\".'
                          % norm)
@@ -143,7 +152,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     a = _cook_shape(a, s, axes, value_type)
 
     if value_type == 'C2C':
-        a = _fft_c2c(a, direction, norm, axes, overwrite_x)
+        a = _fft_c2c(a, direction, norm, axes, overwrite_x, plan=plan)
     elif value_type == 'R2C':
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
@@ -428,6 +437,8 @@ def _default_plan_type(a, s=None, axes=None):
 def _default_fft_func(a, s=None, axes=None, plan=None):
     if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
         return _fftn
+    elif isinstance(plan, cufft.Plan1d):  # a shortcut for using _fft
+        return _fft
 
     plan_type = _default_plan_type(a, s, axes)
     if plan_type == 'nd':
