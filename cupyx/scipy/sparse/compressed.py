@@ -33,9 +33,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         'compress_getitem_complex')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
-        if shape is not None and len(shape) != 2:
-            raise ValueError(
-                'Only two-dimensional sparse arrays are supported.')
+        if shape is not None:
+            if not util.isshape(shape):
+                raise ValueError('invalid shape (must be a 2-tuple of int)')
+            shape = int(shape[0]), int(shape[1])
 
         if base.issparse(arg1):
             x = arg1.asformat(self.format)
@@ -130,9 +131,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
                              % (len(indptr), major + 1))
 
         self._descr = cusparse.MatDescriptor.create()
-        if not util.isshape(shape):
-            raise ValueError('invalid shape (must be a 2-tuple of int)')
-        self._shape = int(shape[0]), int(shape[1])
+        self._shape = shape
         self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data, copy=True):
