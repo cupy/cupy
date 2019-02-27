@@ -243,9 +243,10 @@ cpdef launchKernel(
 
 cpdef int funcGetAttribute(int attribute, intptr_t func):
     cdef int pi
-    status = cuFuncGetAttribute(
-        &pi,
-        <CUfunction_attribute> attribute,
-        <Function> func)
+    with nogil:
+        status = cuFuncGetAttribute(
+            &pi,
+            <CUfunction_attribute> attribute,
+            <Function> func)
     check_attribute_status(status, &pi)
     return pi
