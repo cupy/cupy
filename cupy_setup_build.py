@@ -415,6 +415,7 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('/openmp')
 
         for f in module['file']:
+            s = s.copy()
             name = module_extension_name(f)
 
             rpath = []
@@ -438,8 +439,7 @@ def make_extensions(options, compiler, use_cython):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
-                ldflag += ','.join('-rpath,' + p
-                                   for p in s['library_dirs'])
+                ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
