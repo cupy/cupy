@@ -414,20 +414,8 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
-        if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
-            ldflag = '-Wl,'
-            if PLATFORM_LINUX:
-                ldflag += '--disable-new-dtags,'
-            ldflag += ','.join('-rpath,' + p
-                               for p in s['library_dirs'])
-            args = s.setdefault('extra_link_args', [])
-            args.append(ldflag)
-            if PLATFORM_DARWIN:
-                # -rpath is only supported when targetting Mac OS X 10.5 or
-                # later
-                args.append('-mmacosx-version-min=10.5')
-
         for f in module['file']:
+            s = s.copy()
             name = module_extension_name(f)
 
             rpath = []
@@ -447,6 +435,17 @@ def make_extensions(options, compiler, use_cython):
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
+            if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
+                ldflag = '-Wl,'
+                if PLATFORM_LINUX:
+                    ldflag += '--disable-new-dtags,'
+                ldflag += ','.join('-rpath,' + p for p in rpath)
+                args = s.setdefault('extra_link_args', [])
+                args.append(ldflag)
+                if PLATFORM_DARWIN:
+                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # later
+                    args.append('-mmacosx-version-min=10.5')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
