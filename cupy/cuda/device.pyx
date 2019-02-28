@@ -31,7 +31,7 @@ cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
-cpdef Device get_device():
+cpdef Device _get_device():
     dev_id = runtime.getDevice()
     ret = _devices.get(dev_id, None)
     if ret is None:
@@ -58,7 +58,7 @@ cpdef size_t get_cublas_handle() except? 0:
 
 
 cpdef size_t get_cusolver_handle() except? 0:
-    return get_device().cusolver_handle
+    return _get_device().cusolver_handle
 
 
 cpdef get_cusolver_sp_handle():
