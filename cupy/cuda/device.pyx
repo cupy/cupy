@@ -211,7 +211,9 @@ cdef class Device:
         if _cusolver_handles is None:
             _cusolver_handles = {}
             setattr(_thread_local, '_cusolver_handles', _cusolver_handles)
-        elif self.id in _cusolver_handles:
+        handle = _cusolver_handles.get(self.id, None)
+        if handle is not None:
+            return handle.handle
             return _cusolver_handles[self.id].handle
         with self:
             handle = cusolver.create()
