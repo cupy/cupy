@@ -207,17 +207,17 @@ cdef class Device:
             raise RuntimeError(
                 'Current cupy only supports cusolver in CUDA 8.0')
 
-        _cusolver_handles = getattr(_thread_local, '_cusolver_handles', None)
-        if _cusolver_handles is None:
-            _cusolver_handles = {}
-            setattr(_thread_local, '_cusolver_handles', _cusolver_handles)
-        handle = _cusolver_handles.get(self.id, None)
+        handles = getattr(_thread_local, 'cusolver_handles', None)
+        if handles is None:
+            handles = {}
+            setattr(_thread_local, 'cusolver_handles', handles)
+        handle = handles.get(self.id, None)
         if handle is not None:
             return handle.handle
-            return _cusolver_handles[self.id].handle
+            return handles[self.id].handle
         with self:
             handle = cusolver.create()
-            _cusolver_handles[self.id] = Handle(handle, cusolver.destroy)
+            handles[self.id] = Handle(handle, cusolver.destroy)
             return handle
 
     @property
