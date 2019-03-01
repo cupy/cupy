@@ -198,9 +198,6 @@ cdef class Device:
         itself is different.
 
         """
-        if not cusolver_enabled:
-            raise RuntimeError(
-                'Current cupy only supports cusolver in CUDA 8.0')
         return self._get_handle(
             'cusolver_handles', cusolver.create, cusolver.destroy)
 
@@ -212,9 +209,6 @@ cdef class Device:
         itself is different.
 
         """
-        if not cusolver_enabled:
-            raise RuntimeError(
-                'Current cupy only supports cusolver in CUDA 8.0')
         return self._get_handle(
             'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
 
