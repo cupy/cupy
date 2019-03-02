@@ -140,7 +140,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     elif trans == 1:
         trans = cublas.CUBLAS_OP_T
     elif trans == 2:
-        trans = cublas.CUBLAS_OP_H
+        trans = cublas.CUBLAS_OP_C
     else:
         raise ValueError("unknown trans")
 

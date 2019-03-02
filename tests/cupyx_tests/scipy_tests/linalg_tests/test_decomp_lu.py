@@ -47,6 +47,7 @@ class TestLUFactor(unittest.TestCase):
 @testing.parameterize(
     {'trans': 0},
     {'trans': 1},
+    {'trans': 2},
 )
 @testing.fix_random()
 class TestLUSolve(unittest.TestCase):
