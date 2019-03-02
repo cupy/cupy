@@ -39,6 +39,30 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
             permutation matrix ``P``.
 
     .. seealso:: :func:`scipy.linalg.lu_factor`
+
+    .. note::
+
+        Current implementation returns result different from SciPy when the
+        matrix singular. SciPy returns an array containing ``0.`` while the
+        current implementation returns an array containing ``nan``.
+
+        >>> import numpy as np
+        >>> import scipy.linalg
+        >>> scipy.linalg.lu_factor(np.array([[0, 1], [0, 0]], \
+dtype=np.float32))
+        __main__:1: LinAlgWarning: Diagonal number 1 is exactly zero. \
+Singular matrix.
+        (array([[0., 1.],
+               [0., 0.]], dtype=float32), array([0, 1], dtype=int32))
+
+        >>> import cupy as cp
+        >>> import cupyx.scipy.linalg
+        >>> cupyx.scipy.linalg.lu_factor(cp.array([[0, 1], [0, 0]], \
+dtype=cp.float32))
+        __main__:1: RuntimeWarning: Diagonal number 1 is exactly zero. \
+Singular matrix.
+        (array([[ 0.,  1.],
+               [nan, nan]], dtype=float32), array([0, 1], dtype=int32))
     """
 
     if not cuda.cusolver_enabled:
