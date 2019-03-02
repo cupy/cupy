@@ -202,7 +202,7 @@ cdef ndarray _ndarray_ravel(ndarray self, order):
         return _reshape(self.transpose(), shape)
     elif order_char == b'K':
         raise NotImplementedError(
-            "ravel with order='K' not yet implemented.")
+            'ravel with order=\'K\' not yet implemented.')
 
 
 cdef ndarray _ndarray_squeeze(ndarray self, axis):
@@ -227,10 +227,10 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
                 _axis += ndim
             if _axis < 0 or _axis >= ndim:
                 raise _errors._AxisError(
-                    "'axis' entry %d is out of bounds [-%d, %d)" %
+                    '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             if axis_flags[_axis] == 1:
-                raise ValueError("duplicate value in 'axis'")
+                raise ValueError('duplicate value in \'axis\'')
             axis_flags[_axis] = 1
     else:
         _axis = <Py_ssize_t>axis
@@ -244,7 +244,7 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
         else:
             if _axis < 0 or _axis >= ndim:
                 raise _errors._AxisError(
-                    "'axis' entry %d is out of bounds [-%d, %d)" %
+                    '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             axis_flags[_axis] = 1
 
@@ -501,20 +501,20 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
              numpy.issubdtype(repeats, numpy.integer))):
         if repeats < 0:
             raise ValueError(
-                "'repeats' should not be negative: {}".format(repeats))
+                '\'repeats\' should not be negative: {}'.format(repeats))
         broadcast = True
         repeats = [repeats]
     elif cpython.PySequence_Check(repeats):
         for rep in repeats:
             if rep < 0:
                 raise ValueError(
-                    "all elements of 'repeats' should not be negative: {}"
+                    'all elements of \'repeats\' should not be negative: {}'
                     .format(repeats))
         if len(repeats) == 1:
             broadcast = True
     else:
         raise ValueError(
-            "'repeats' should be int or sequence: {}".format(repeats))
+            '\'repeats\' should be int or sequence: {}'.format(repeats))
 
     if axis is None:
         if broadcast:
@@ -535,7 +535,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
         repeats = repeats * a._shape[axis % a._shape.size()]
     elif a.shape[axis] != len(repeats):
         raise ValueError(
-            "'repeats' and 'axis' of 'a' should be same length: {} != {}"
+            '\'repeats\' and \'axis\' of \'a\' should be same length: {} != {}'
             .format(a.shape[axis], len(repeats)))
 
     if axis < 0:

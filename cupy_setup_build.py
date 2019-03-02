@@ -526,14 +526,14 @@ def prepare_wheel_libs():
         # Clean up existing libraries.
         libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
         for libfile in libfiles:
-            print("Removing file: {}".format(libfile))
+            print('Removing file: {}'.format(libfile))
             os.remove(libfile)
     else:
         libdirname = '_lib'
         # Clean up the library directory.
         libdir = 'cupy/{}'.format(libdirname)
         if os.path.exists(libdir):
-            print("Removing directory: {}".format(libdir))
+            print('Removing directory: {}'.format(libdir))
             shutil.rmtree(libdir)
         os.mkdir(libdir)
 
@@ -541,7 +541,7 @@ def prepare_wheel_libs():
     libs = []
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
-        print("Copying library for wheel: {}".format(lib))
+        print('Copying library for wheel: {}'.format(lib))
         libname = path.basename(lib)
         libpath = 'cupy/{}/{}'.format(libdirname, libname)
         shutil.copy2(lib, libpath)

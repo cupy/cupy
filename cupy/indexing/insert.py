@@ -29,14 +29,14 @@ def place(arr, mask, vals):
     """
     mask = cupy.asarray(mask)
     if arr.size != mask.size:
-        raise ValueError("Mask and data must be the same size.")
+        raise ValueError('Mask and data must be the same size.')
     vals = cupy.asarray(vals)
 
     mask_indices = mask.ravel().nonzero()[0]
     if mask_indices.size == 0:
         return
     if vals.size == 0:
-        raise ValueError("Cannot insert from an empty array.")
+        raise ValueError('Cannot insert from an empty array.')
     arr.put(mask_indices, vals, mode='wrap')
 
 

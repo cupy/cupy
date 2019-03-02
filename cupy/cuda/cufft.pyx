@@ -7,7 +7,7 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
-cdef extern from "cupy_cufft.h" nogil:
+cdef extern from 'cupy_cufft.h' nogil:
     ctypedef struct Complex 'cufftComplex':
         float x, y
 
@@ -167,10 +167,10 @@ class Plan1d(object):
         shape, dtype = self._output_dtype_and_shape(a)
         if out.shape != shape:
             raise ValueError(
-                ("out must have shape {}.").format(shape))
+                ('out must have shape {}.').format(shape))
         if out.dtype != dtype:
             raise ValueError(
-                "out dtype mismatch: found {}, expected {}".format(
+                'out dtype mismatch: found {}, expected {}'.format(
                     out.dtype, a.dtype))
 
 
@@ -250,7 +250,7 @@ class PlanNd(object):
         elif self.fft_type == CUFFT_Z2Z:
             execZ2Z(self.plan, a.data, out.data, direction)
         else:
-            raise NotImplementedError("only C2C and Z2Z implemented")
+            raise NotImplementedError('only C2C and Z2Z implemented')
 
     def get_output_array(self, a, order='C'):
         shape = list(a.shape)
@@ -259,18 +259,18 @@ class PlanNd(object):
         elif self.fft_type == CUFFT_Z2Z:
             return cupy.empty(shape, numpy.complex128, order=order)
         else:
-            raise NotImplementedError("only C2C and Z2Z implemented")
+            raise NotImplementedError('only C2C and Z2Z implemented')
 
     def check_output_array(self, a, out):
         if out is a:
             return
         if out.dtype != a.dtype:
-            raise ValueError("output dtype mismatch")
+            raise ValueError('output dtype mismatch')
         if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
                 (out.flags.c_contiguous == a.flags.c_contiguous)):
-            raise ValueError("output contiguity mismatch")
+            raise ValueError('output contiguity mismatch')
         if out.shape != a.shape:
-            raise ValueError("output shape mismatch")
+            raise ValueError('output shape mismatch')
 
 
 cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):

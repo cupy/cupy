@@ -7,7 +7,7 @@ cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 
-cdef extern from "cupy_nccl.h":
+cdef extern from 'cupy_nccl.h':
     ctypedef struct ncclComm:
         pass
     ctypedef ncclComm* ncclComm_t

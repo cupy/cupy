@@ -19,7 +19,7 @@ from libcpp cimport vector
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_nvrtc.h" nogil:
+cdef extern from 'cupy_nvrtc.h' nogil:
     const char *nvrtcGetErrorString(Result result)
     int nvrtcVersion(int *major, int *minor)
     int nvrtcCreateProgram(
