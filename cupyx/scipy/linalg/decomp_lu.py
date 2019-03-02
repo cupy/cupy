@@ -46,10 +46,16 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype.char
+    dtype = a.dtype
+
+    if dtype == 'f':
+        getrf = cusolver.sgetrf
+        getrf_bufferSize = cusolver.sgetrf_bufferSize
+    elif dtype.char == 'd':
+        getrf = cusolver.dgetrf
+        getrf_bufferSize = cusolver.dgetrf_bufferSize
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        raise NotImplementedError('Only float32 and float64 are supported.')
 
     a = a.astype(dtype, order='F', copy=(not overwrite_a))
 
@@ -62,13 +68,6 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     dev_info = cupy.empty(1, dtype=numpy.intc)
 
     ipiv = cupy.empty((a.shape[0],), dtype=numpy.intc)
-
-    if dtype == 'f':
-        getrf = cusolver.sgetrf
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-    else:  # dtype == 'd'
-        getrf = cusolver.dgetrf
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
 
     m = a.shape[0]
 
@@ -128,10 +127,13 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     if m != b.shape[0]:
         raise ValueError("incompatible dimensions.")
 
-    if lu.dtype.char == 'f' or lu.dtype.char == 'd':
-        dtype = lu.dtype.char
+    dtype = lu.dtype
+    if dtype == 'f':
+        getrs = cusolver.sgetrs
+    elif dtype.char == 'd':
+        getrs = cusolver.dgetrs
     else:
-        dtype = numpy.find_common_type((lu.dtype.char, 'f'), ()).char
+        raise NotImplementedError('Only float32 and float64 are supported.')
 
     if trans == 0:
         trans = cublas.CUBLAS_OP_N
@@ -159,11 +161,6 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     n = 1 if b.ndim == 1 else b.shape[1]
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.intc)
-
-    if dtype == 'f':
-        getrs = cusolver.sgetrs
-    else:  # dtype == 'd'
-        getrs = cusolver.dgetrs
 
     # solve for the inverse
     getrs(cusolver_handle,
