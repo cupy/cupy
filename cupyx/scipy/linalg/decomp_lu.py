@@ -126,6 +126,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
         b (cupy.ndarray): The matrix with dimension ``(M,)`` or
             ``(M, N)``.
         trans ({0, 1, 2}): Type of system to solve:
+
             ========  =========
             trans     system
             ========  =========
