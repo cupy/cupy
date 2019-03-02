@@ -1570,7 +1570,7 @@ cdef _get_dtype_of_tensor_descriptor(size_t desc):
 def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
-        double eps, double decay,
+        mean, inv_std, codouble eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
     x = core.ascontiguousarray(x)
     dtype = x.dtype
@@ -1601,8 +1601,12 @@ def batch_normalization_forward_training(
             running_var_tmp = running_var
             gamma = core.ascontiguousarray(gamma)
             beta = core.ascontiguousarray(beta)
-        save_mean = core.ndarray(gamma.shape, dtype_param)
-        save_inv_std = core.ndarray(gamma.shape, dtype_param)
+        if mean is None:
+            save_mean = core.ndarray(gamma.shape, dtype_param)
+            save_inv_std = core.ndarray(gamma.shape, dtype_param)
+        else:
+            save_mean = mean
+            save_inv_std = inv_std
 
         # Factor used in the moving average
         factor = 1.0 - decay
@@ -1639,7 +1643,10 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    return y, save_mean, save_inv_std
+    if mean is None:
+        return y, save_mean, save_inv_std
+    else:
+        return y
 
 
 def batch_normalization_forward_inference(
