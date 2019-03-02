@@ -44,22 +44,18 @@ class TestLUFactor(unittest.TestCase):
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
-@testing.parameterize(
-    {'trans': 0},
-    {'trans': 1},
-    {'trans': 2},
-)
+@testing.parameterize(*testing.product({
+    'trans': [0, 1, 2],
+    'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],
+}))
 @testing.fix_random()
 class TestLUSolve(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    def check_x(self, a_shape, b_shape, trans, xp, scp, dtype):
+    def test_solve(self, xp, scp, dtype):
+        a_shape, b_shape = self.shapes
         A = testing.shaped_random(a_shape, xp, dtype=dtype)
         b = testing.shaped_random(b_shape, xp, dtype=dtype)
         lu = scp.linalg.lu_factor(A)
-        return scp.linalg.lu_solve(lu, b, trans=trans)
-
-    def test_solve(self):
-        self.check_x((4, 4), (4,), trans=self.trans)
-        self.check_x((5, 5), (5, 2), trans=self.trans)
+        return scp.linalg.lu_solve(lu, b, trans=self.trans)
