@@ -133,9 +133,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         self._shape = shape
         self._has_canonical_format = has_canonical_format
 
-    def _with_data(self, data):
-        return self.__class__(
-            (data, self.indices.copy(), self.indptr.copy()), shape=self.shape)
+    def _with_data(self, data, copy=True):
+        if copy:
+            return self.__class__(
+                (data, self.indices.copy(), self.indptr.copy()),
+                shape=self.shape,
+                dtype=data.dtype)
+        else:
+            return self.__class__(
+                (data, self.indices, self.indptr),
+                shape=self.shape,
+                dtype=data.dtype)
 
     def _convert_dense(self, x):
         raise NotImplementedError

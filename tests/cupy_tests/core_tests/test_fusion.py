@@ -1537,6 +1537,25 @@ class TestFusionScalar(unittest.TestCase):
 
 
 @testing.gpu
+class TestFusionNone(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_python_none_parameter(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y, z):
+            if y is None:
+                return x * z
+            return x + y + z
+
+        x = testing.shaped_arange((10,), xp, dtype)
+        y = testing.shaped_arange((10,), xp, dtype)
+        z = testing.shaped_arange((10,), xp, dtype)
+        return f(x, None, z) + f(x, y, z)
+
+
+@testing.gpu
 class TestFusionReturnsConstantValue(unittest.TestCase):
 
     @testing.for_all_dtypes()

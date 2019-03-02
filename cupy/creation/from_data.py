@@ -60,7 +60,7 @@ def _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype=dtype, memptr=memptr, strides=strides)
 
 
-def asarray(a, dtype=None):
+def asarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is equivalent to ``array(a, dtype, copy=False)``.
@@ -69,6 +69,11 @@ def asarray(a, dtype=None):
     Args:
         a: The source object.
         dtype: Data type specifier. It is inferred from the input by default.
+        order ({'C', 'F'}):
+            Whether to use row-major (C-style) or column-major (Fortran-style)
+            memory representation. Defaults to 'C'. ``order`` is ignored for
+            objects that are not a ``cupy.ndarray``, but have a
+            ``__cuda_array_interface__ attribute``.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
@@ -79,10 +84,10 @@ def asarray(a, dtype=None):
     """
     if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
         return _convert_object_with_cuda_array_interface(a)
-    return core.array(a, dtype, False)
+    return core.array(a, dtype, False, order)
 
 
-def asanyarray(a, dtype=None):
+def asanyarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is currently equivalent to :func:`~cupy.asarray`, since there is no
@@ -95,7 +100,7 @@ def asanyarray(a, dtype=None):
     """
     if not isinstance(a, ndarray) and hasattr(a, '__cuda_array_interface__'):
         return _convert_object_with_cuda_array_interface(a)
-    return core.array(a, dtype, False)
+    return core.array(a, dtype, False, order)
 
 
 def ascontiguousarray(a, dtype=None):

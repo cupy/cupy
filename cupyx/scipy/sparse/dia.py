@@ -66,8 +66,14 @@ class dia_matrix(data._data_matrix):
         self.offsets = offsets
         self._shape = shape
 
-    def _with_data(self, data):
-        return dia_matrix((data, self.offsets), shape=self.shape)
+    def _with_data(self, data, copy=True):
+        """Returns a matrix with the same sparsity structure as self,
+        but with different data.  By default the structure arrays are copied.
+        """
+        if copy:
+            return dia_matrix((data, self.offsets.copy()), shape=self.shape)
+        else:
+            return dia_matrix((data, self.offsets), shape=self.shape)
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.

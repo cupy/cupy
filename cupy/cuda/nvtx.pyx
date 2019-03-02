@@ -66,7 +66,7 @@ colors[8] = 0xFFFF7F00
 colors[9] = 0xFF7F7F7F
 
 
-cdef nvtxEventAttributes_t make_event_attributes(str message, color):
+cdef nvtxEventAttributes_t make_event_attributes(message, color):
     cdef bytes b_message
     cdef nvtxEventAttributes_t attrib
 
@@ -90,7 +90,7 @@ cdef nvtxEventAttributes_t make_event_attributes(str message, color):
     return attrib
 
 
-cpdef MarkC(str message, uint32_t color=0):
+cpdef MarkC(message, uint32_t color=0):
     """
     Marks an instantaneous event (marker) in the application.
 
@@ -118,7 +118,7 @@ cpdef MarkC(str message, uint32_t color=0):
     nvtxMarkEx(&attrib)
 
 
-cpdef Mark(str message, int id_color=-1):
+cpdef Mark(message, int id_color=-1):
     """
     Marks an instantaneous event (marker) in the application.
 
@@ -138,7 +138,7 @@ cpdef Mark(str message, int id_color=-1):
     MarkC(message, color)
 
 
-cpdef RangePushC(str message, uint32_t color=0):
+cpdef RangePushC(message, uint32_t color=0):
     """
     Starts a nested range.
 
@@ -167,7 +167,7 @@ cpdef RangePushC(str message, uint32_t color=0):
     nvtxRangePushEx(&attrib)
 
 
-cpdef RangePush(str message, int id_color=-1):
+cpdef RangePush(message, int id_color=-1):
     """
     Starts a nested range.
 
@@ -199,7 +199,7 @@ cpdef RangePop():
     nvtxRangePop()
 
 
-cpdef unsigned long long RangeStart(str message, color) except? 0:
+cpdef unsigned long long RangeStart(message, color) except? 0:
     cdef nvtxEventAttributes_t attrib = make_event_attributes(message, color)
     return nvtxRangeStartEx(&attrib)
 

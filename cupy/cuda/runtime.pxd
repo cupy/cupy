@@ -1,3 +1,6 @@
+from libc.stdint cimport intptr_t
+
+
 ###############################################################################
 # Types
 ###############################################################################
@@ -202,26 +205,26 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 # Memory management
 ###############################################################################
 
-cpdef size_t malloc(size_t size) except? 0
-cpdef size_t mallocManaged(size_t size, unsigned int flags=*) except? 0
-cpdef size_t hostAlloc(size_t size, unsigned int flags) except? 0
-cpdef free(size_t ptr)
-cpdef freeHost(size_t ptr)
+cpdef intptr_t malloc(size_t size) except? 0
+cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
+cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
+cpdef free(intptr_t ptr)
+cpdef freeHost(intptr_t ptr)
 cpdef memGetInfo()
-cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
-cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
+cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
+cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
                   size_t stream)
-cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
+cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
                  size_t size)
-cpdef memcpyPeerAsync(size_t dst, int dstDevice,
-                      size_t src, int srcDevice,
+cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
+                      intptr_t src, int srcDevice,
                       size_t size, size_t stream)
-cpdef memset(size_t ptr, int value, size_t size)
-cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream)
-cpdef memPrefetchAsync(size_t devPtr, size_t count, int dstDevice,
+cpdef memset(intptr_t ptr, int value, size_t size)
+cpdef memsetAsync(intptr_t ptr, int value, size_t size, size_t stream)
+cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        size_t stream)
-cpdef memAdvise(size_t devPtr, int count, int advice, int device)
-cpdef PointerAttributes pointerGetAttributes(size_t ptr)
+cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
+cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 
 
 ###############################################################################
@@ -232,7 +235,7 @@ cpdef size_t streamCreate() except? 0
 cpdef size_t streamCreateWithFlags(unsigned int flags) except? 0
 cpdef streamDestroy(size_t stream)
 cpdef streamSynchronize(size_t stream)
-cpdef streamAddCallback(size_t stream, callback, size_t arg,
+cpdef streamAddCallback(size_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
 cpdef streamQuery(size_t stream)
 cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=*)

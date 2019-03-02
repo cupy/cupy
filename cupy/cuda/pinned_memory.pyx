@@ -22,7 +22,7 @@ class PinnedMemory(object):
 
     """
 
-    def __init__(self, Py_ssize_t size, unsigned int flags=0):
+    def __init__(self, size_t size, unsigned int flags=0):
         self.size = size
         self.ptr = 0
         if size > 0:
@@ -54,7 +54,7 @@ cdef class PinnedMemoryPointer:
         ~PinnedMemoryPointer.ptr (int): Pointer to the place within the buffer.
     """
 
-    def __init__(self, mem, Py_ssize_t offset):
+    def __init__(self, mem, ptrdiff_t offset):
         self.mem = mem
         self.ptr = mem.ptr + offset
 
@@ -65,17 +65,17 @@ cdef class PinnedMemoryPointer:
     def __add__(x, y):
         """Adds an offset to the pointer."""
         cdef PinnedMemoryPointer self
-        cdef Py_ssize_t offset
+        cdef ptrdiff_t offset
         if isinstance(x, PinnedMemoryPointer):
             self = x
-            offset = <Py_ssize_t?>y
+            offset = <ptrdiff_t?>y
         else:
             self = <PinnedMemoryPointer?>y
-            offset = <Py_ssize_t?>x
+            offset = <ptrdiff_t?>x
         return PinnedMemoryPointer(
             self.mem, self.ptr - self.mem.ptr + offset)
 
-    def __iadd__(self, Py_ssize_t offset):
+    def __iadd__(self, ptrdiff_t offset):
         """Adds an offset to the pointer in place."""
         self.ptr += offset
         return self
@@ -84,11 +84,11 @@ cdef class PinnedMemoryPointer:
         """Subtracts an offset from the pointer."""
         return self + -offset
 
-    def __isub__(self, Py_ssize_t offset):
+    def __isub__(self, ptrdiff_t offset):
         """Subtracts an offset from the pointer in place."""
         return self.__iadd__(-offset)
 
-    cpdef Py_ssize_t size(self):
+    cpdef size_t size(self):
         return self.mem.size - (self.ptr - self.mem.ptr)
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
@@ -174,7 +174,7 @@ cdef class _EventWatcher:
             del self.events[0]
 
 
-cpdef PinnedMemoryPointer _malloc(Py_ssize_t size):
+cpdef PinnedMemoryPointer _malloc(size_t size):
     mem = PinnedMemory(size, runtime.hostAllocPortable)
     return PinnedMemoryPointer(mem, 0)
 
@@ -195,7 +195,7 @@ cpdef _add_to_watch_list(event, obj):
     _watcher.add(event, obj)
 
 
-cpdef PinnedMemoryPointer alloc_pinned_memory(Py_ssize_t size):
+cpdef PinnedMemoryPointer alloc_pinned_memory(size_t size):
     """Calls the current allocator.
 
     Use :func:`~cupy.cuda.set_pinned_memory_allocator` to change the current
@@ -283,9 +283,9 @@ cdef class PinnedMemoryPool:
         self._lock = rlock.create_fastrlock()
         self._allocation_unit_size = 512
 
-    cpdef PinnedMemoryPointer malloc(self, Py_ssize_t size):
+    cpdef PinnedMemoryPointer malloc(self, size_t size):
         cdef list free
-        cdef Py_ssize_t unit
+        cdef size_t unit
 
         if size == 0:
             return PinnedMemoryPointer(PinnedMemory(0), 0)
@@ -313,7 +313,7 @@ cdef class PinnedMemoryPool:
         pmem = PooledPinnedMemory(mem, self._weakref)
         return PinnedMemoryPointer(pmem, 0)
 
-    cpdef free(self, size_t ptr, Py_ssize_t size):
+    cpdef free(self, intptr_t ptr, size_t size):
         cdef list free
         rlock.lock_fastrlock(self._lock, -1, True)
         try:

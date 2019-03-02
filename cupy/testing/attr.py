@@ -28,8 +28,11 @@ def get_error():
 if _error is None:
     _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
 
-    cudnn = pytest.mark.cudnn
-    slow = pytest.mark.slow
+    def cudnn(*args, **kwargs):
+        return pytest.mark.cudnn(*args, **kwargs)
+
+    def slow(*args, **kwargs):
+        return pytest.mark.slow(*args, **kwargs)
 
 else:
     def _dummy_callable(*args, **kwargs):

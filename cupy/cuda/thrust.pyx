@@ -57,7 +57,7 @@ cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
 ###############################################################################
 
 cpdef sort(dtype, size_t data_start, size_t keys_start,
-           vector.vector[ptrdiff_t]& shape) except +:
+           const vector.vector[ptrdiff_t]& shape) except +:
 
     cdef void *_data_start
     cdef size_t *_keys_start
@@ -133,7 +133,7 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
 
 
 cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
-              vector.vector[ptrdiff_t]& shape) except +:
+              const vector.vector[ptrdiff_t]& shape) except +:
     cdef size_t *_idx_start
     cdef size_t *_keys_start
     cdef void *_data_start

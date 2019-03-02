@@ -22,6 +22,18 @@ def _make(xp, sp, dtype):
     return sp.coo_matrix((data, (row, col)), shape=(3, 4))
 
 
+def _make_complex(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    if dtype in [numpy.complex64, numpy.complex128]:
+        data = data - 1j
+    row = xp.array([0, 0, 1, 2], 'i')
+    col = xp.array([0, 1, 3, 2], 'i')
+    # 0, 1 - 1j, 0, 0
+    # 0, 0, 0, 2 - 1j
+    # 0, 0, 3 - 1j, 0
+    return sp.coo_matrix((data, (row, col)), shape=(3, 4))
+
+
 def _make2(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     row = xp.array([0, 1, 1, 2], 'i')
@@ -150,6 +162,10 @@ class TestCooMatrix(unittest.TestCase):
 
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 4)
+
+    def test_conj(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
     def test_has_canonical_format(self):
         self.assertFalse(self.m.has_canonical_format)
@@ -331,6 +347,11 @@ class TestCooMatrixInit(unittest.TestCase):
             sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), self.col(cupy))),
                 shape=self.shape, dtype='i')
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_conj(self, xp, sp):
+        n = _make_complex(xp, sp, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
 
 @testing.parameterize(*testing.product({
