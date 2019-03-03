@@ -1758,16 +1758,22 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
+    cdef bint same_dtype = False
+    zero_dim = a._shape.size() == 0
     if dtype is None:
-        if a._c_contiguous:
-            return a
+        same_dtype = True
         dtype = a.dtype
     else:
         dtype = get_dtype(dtype)
-        if a._c_contiguous and dtype == a.dtype:
-            return a
+        same_dtype = dtype == a.dtype
 
-    newarray = ndarray(a.shape, dtype)
+    if same_dtype and a._c_contiguous:
+        if zero_dim:
+            return _manipulation._ndarray_ravel(a, 'C')
+        return a
+
+    shape = (1,) if zero_dim else a.shape
+    newarray = ndarray(shape, dtype)
     elementwise_copy(a, newarray)
     return newarray
 

@@ -221,6 +221,16 @@ class TestFromData(unittest.TestCase):
         b = cupy.ascontiguousarray(a)
         self.assertIs(a, b)
 
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_cuda_array_zero_dim(self, xp):
+        a = xp.ones(())
+        return xp.ascontiguousarray(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_cuda_array_zero_dim_dtype(self, xp):
+        a = xp.ones((), dtype=numpy.float64)
+        return xp.ascontiguousarray(a, dtype=numpy.int64)
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
