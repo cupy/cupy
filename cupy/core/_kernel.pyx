@@ -706,7 +706,7 @@ cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
 
 cdef tuple _guess_routine_from_dtype(list ops, object dtype):
     cdef tuple op, op_types
-    for op in ops:
+    for op in ops[::-1]:  # the trick to avoid using small type
         op_types = op[1]
         for t in op_types:
             if t != dtype:
