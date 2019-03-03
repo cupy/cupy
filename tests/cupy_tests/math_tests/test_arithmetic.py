@@ -137,6 +137,7 @@ class TestComplex(unittest.TestCase):
                  for d in all_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
         'name': ['add', 'multiply', 'power', 'subtract'],
+        'dtype': [None],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_types
@@ -145,12 +146,14 @@ class TestComplex(unittest.TestCase):
                  for d in negative_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
         'name': ['divide', 'true_divide', 'subtract'],
+        'dtype': [numpy.complex64],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
         'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
         'name': ['power', 'true_divide', 'subtract'],
+        'dtype': [numpy.float64],
     }) + testing.product({
         'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
                  for d in no_complex_types
@@ -159,6 +162,7 @@ class TestComplex(unittest.TestCase):
                  for d in no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
+        'dtype': [numpy.float64],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_no_complex_types
@@ -167,12 +171,13 @@ class TestComplex(unittest.TestCase):
                  for d in negative_no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
+        'dtype': [numpy.float64],
     })
 ))
 class TestArithmeticBinary(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(atol=1e-4)
-    def test_binary(self, xp):
+    def check_binary(self, xp):
         arg1 = self.arg1
         arg2 = self.arg2
         np1 = numpy.asarray(arg1)
@@ -217,7 +222,10 @@ class TestArithmeticBinary(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             with numpy.warnings.catch_warnings():
                 numpy.warnings.filterwarnings('ignore')
-                y = func(arg1, arg2)
+                if self.use_dtype:
+                    y = func(arg1, arg2, dtype=self.dtype)
+                else:
+                    y = func(arg1, arg2)
 
         # TODO(niboshi): Fix this. If rhs is a Python complex,
         #    numpy returns complex64
@@ -237,6 +245,17 @@ class TestArithmeticBinary(unittest.TestCase):
                 y[y == -numpy.inf] = numpy.nan
 
         return y
+
+    def test_binary(self):
+        self.use_dtype = False
+        self.check_binary()
+
+    def test_binary_with_dtype(self):
+        if self.dtype is None:
+            self.skipTest('dtype is None')
+            return
+        self.use_dtype = True
+        self.check_binary()
 
 
 class TestArithmeticModf(unittest.TestCase):
