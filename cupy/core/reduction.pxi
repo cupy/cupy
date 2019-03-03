@@ -244,7 +244,7 @@ class simple_reduction_function(object):
             _preprocess_args(dev_id, (arr, out), False)
             out_args = [out]
 
-        in_types, out_types, routine = _guess_routine(
+        _, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
