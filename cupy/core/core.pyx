@@ -1175,10 +1175,12 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if slices == slice(None, None, None) and isinstance(value, numpy.ndarray):
+        if (slices == slice(None, None, None) and
+                isinstance(value, numpy.ndarray)):
             device_array = array(value)
             self.dtype = get_dtype(device_array.dtype)
-            self._set_shape_and_strides(device_array._shape, device_array._strides, True, True)
+            self._set_shape_and_strides(device_array._shape,
+                                        device_array._strides, True, True)
             self.data = device_array.data
         else:
             _indexing._ndarray_setitem(self, slices, value)
