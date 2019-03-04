@@ -1,8 +1,10 @@
+import copy
+import threading
+import unittest
+
 import mock
 import numpy
 import six
-import threading
-import unittest
 
 import cupy
 from cupy import testing
@@ -604,7 +606,7 @@ class TestFusionUfunc(unittest.TestCase):
         if not isinstance(gen, tuple):
             gen = (gen,) * n
         data0 = tuple([g(*a) for g, a in zip(gen, args)])
-        data1 = tuple([_.copy() for _ in data0])
+        data1 = tuple([copy.copy(_) for _ in data0])
 
         # Invoke non-fused function
         try:
@@ -658,7 +660,7 @@ class TestFusionUfunc(unittest.TestCase):
 
             # Test they have same values
             for nf, f in zip(arrs0, arrs1):
-                numpy.testing.assert_array_almost_equal(nf.get(), f.get())
+                testing.assert_array_almost_equal(nf, f)
 
         return err0 is not None, (arrs0, arrs1)
 
@@ -862,21 +864,43 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.fmax, 2, self.random_real)
         self.check(cupy.fmin, 2, self.random_real)
 
-    def test_special(self):
+    def test_where(self):
         self.check(cupy.where, 3,
                    (self.random_bool,
                     lambda *args: self.random_int(*args, seed=0),
                     lambda *args: self.random_int(*args, seed=1)),
                    ((), (0, 100), (0, 100)))
+
+    def test_clip(self):
         self.check(cupy.clip, 3,
                    (lambda *args: self.random_real(*args, seed=0),
                     lambda *args: self.random_real(*args, seed=1),
                     lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
+
+    def test_around(self):
         self.check(cupy.around, 2,
                    (self.random_bool,
                     self.random_int,
                     self.random_real))
+
+    def test_copyto(self):
+        def f(dst, src):
+            cupy.copyto(dst, src)
+            return dst
+
+        self.check(f, 2, (self.random_int, self.random_int))
+        self.check(f, 2, (self.random_real, lambda *args: 0))
+
+    def test_copyto_with_where(self):
+        def f(dst, src, where):
+            cupy.copyto(dst, src, where=where)
+            return dst
+
+        self.check(f, 3,
+                   (self.random_real, lambda *args: 0, self.random_bool))
+        self.check(f, 3,
+                   (self.random_int, self.random_int, self.random_bool))
 
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
