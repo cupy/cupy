@@ -74,7 +74,7 @@ Singular matrix.
 
     dtype = a.dtype
 
-    if dtype == 'f':
+    if dtype.char == 'f':
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
     elif dtype.char == 'd':
@@ -162,7 +162,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
         raise ValueError('incompatible dimensions.')
 
     dtype = lu.dtype
-    if dtype == 'f':
+    if dtype.char == 'f':
         getrs = cusolver.sgetrs
     elif dtype.char == 'd':
         getrs = cusolver.dgetrs
