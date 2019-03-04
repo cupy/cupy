@@ -1,17 +1,12 @@
 import unittest
 
 import numpy
-try:
-    import scipy.linalg
-
-    scipy_available = True
-except ImportError:
-    scipy_available = False
-
 import cupy
 from cupy import cuda
 from cupy import testing
 import cupyx.scipy.linalg
+if cupyx.scipy._scipy_available:
+    import scipy.linalg
 
 
 @testing.gpu
