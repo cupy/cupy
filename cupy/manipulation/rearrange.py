@@ -105,7 +105,7 @@ def roll(a, shift, axis=None):
         broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.nd > 1:
             raise ValueError(
-                "'shift' and 'axis' should be scalars or 1D sequences")
+                '\'shift\' and \'axis\' should be scalars or 1D sequences')
         shifts = {ax: 0 for ax in range(a.ndim)}
         for sh, ax in broadcasted:
             shifts[ax] += sh

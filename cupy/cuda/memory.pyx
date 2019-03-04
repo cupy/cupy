@@ -687,6 +687,7 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
             if e.status != runtime.errorMemoryAllocation:
                 raise
             gc.collect()
+            pool.free_all_blocks()
             try:
                 return pool._alloc(size).mem
             except runtime.CUDARuntimeError as e:

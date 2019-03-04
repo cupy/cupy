@@ -16,13 +16,13 @@ cdef void get_reduced_dims(
     vector.vector[Py_ssize_t]& reduced_strides)
 
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-    vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+    const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
     bint is_c_contiguous)
 
 # Computes the contiguous strides given a shape and itemsize.
 # Returns the size (total number of elements).
 cdef Py_ssize_t set_contiguous_strides(
-    vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+    const vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
     Py_ssize_t itemsize, bint is_c_contiguous)
 
 cpdef bint get_c_contiguity(

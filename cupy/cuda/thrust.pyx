@@ -44,7 +44,7 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 # Extern
 ###############################################################################
 
-cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
+cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, size_t,
                   void *)
     void _lexsort[T](size_t *, void *, size_t, size_t, size_t, void *)
@@ -57,7 +57,7 @@ cdef extern from "../cuda/cupy_thrust.h" namespace "cupy::thrust":
 ###############################################################################
 
 cpdef sort(dtype, size_t data_start, size_t keys_start,
-           vector.vector[ptrdiff_t]& shape) except +:
+           const vector.vector[ptrdiff_t]& shape) except +:
 
     cdef void *_data_start
     cdef size_t *_keys_start
@@ -133,7 +133,7 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
 
 
 cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
-              vector.vector[ptrdiff_t]& shape) except +:
+              const vector.vector[ptrdiff_t]& shape) except +:
     cdef size_t *_idx_start
     cdef size_t *_keys_start
     cdef void *_data_start

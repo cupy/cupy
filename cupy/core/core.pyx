@@ -92,10 +92,11 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  order='C'):
         cdef Py_ssize_t x, itemsize
-        cdef vector.vector[Py_ssize_t] s = internal.get_size(shape)
+        cdef tuple s = internal.get_size(shape)
+        del shape
+
         cdef int order_char = (
             b'C' if order is None else internal._normalize_order(order))
-        del shape
 
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
@@ -103,9 +104,12 @@ cdef class ndarray:
             raise TypeError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        self._shape.reserve(len(s))
         for x in s:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
+            self._shape.push_back(x)
+        del s
 
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
@@ -114,11 +118,11 @@ cdef class ndarray:
         if strides is not None:
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
-            self._set_shape_and_strides(s, strides, True, True)
+            self._set_shape_and_strides(self._shape, strides, True, True)
         elif order_char == b'C':
-            self._set_shape_and_contiguous_strides(s, itemsize, True)
+            self._set_contiguous_strides(itemsize, True)
         elif order_char == b'F':
-            self._set_shape_and_contiguous_strides(s, itemsize, False)
+            self._set_contiguous_strides(itemsize, False)
         else:
             assert False
 
@@ -439,19 +443,10 @@ cdef class ndarray:
 
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef ndarray v
         cdef Py_ssize_t ndim
         cdef int self_is, v_is
-        v = ndarray.__new__(ndarray)
-        v._c_contiguous = self._c_contiguous
-        v._f_contiguous = self._f_contiguous
-        v.data = self.data
-        v.base = self.base if self.base is not None else self
-        v.size = self.size
-        v._shape = self._shape
-        v._strides = self._strides
+        v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
-            v.dtype = self.dtype
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
@@ -462,12 +457,12 @@ cdef class ndarray:
         ndim = self._shape.size()
         if ndim == 0:
             raise ValueError(
-                "Changing the dtype of a 0d array is only supported if "
-                "the itemsize is unchanged")
+                'Changing the dtype of a 0d array is only supported if '
+                'the itemsize is unchanged')
         if not self._c_contiguous:
             raise ValueError(
-                "To change to a dtype of a different size, the array must "
-                "be C-contiguous")
+                'To change to a dtype of a different size, the array must '
+                'be C-contiguous')
         v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
         v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
         v.size = v.size * self_is // v_is
@@ -578,7 +573,14 @@ cdef class ndarray:
         """
         return _indexing._ndarray_take(self, indices, axis, out)
 
-    # TODO(okuta): Implement put
+    cpdef put(self, indices, values, mode='wrap'):
+        """Replaces specified elements of an array with given values.
+
+        .. seealso::
+           :func:`cupy.put` for full documentation,
+           :meth:`numpy.ndarray.put`
+        """
+        return _indexing._ndarray_put(self, indices, values, mode)
 
     cpdef repeat(self, repeats, axis=None):
         """Returns an array with repeated arrays along an axis.
@@ -1202,8 +1204,8 @@ cdef class ndarray:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
-                raise ValueError("The 'out' parameter must have exactly one "
-                                 "array value")
+                raise ValueError('The \'out\' parameter must have exactly one '
+                                 'array value')
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1235,12 +1237,22 @@ cdef class ndarray:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not hasattr(cupy, func.__name__):
+        module = cupy
+        for submodule in func.__module__.split('.')[1:]:
+            try:
+                module = getattr(module, submodule)
+            except AttributeError:
+                return NotImplemented
+        if not hasattr(module, func.__name__):
+            return NotImplemented
+        cupy_func = getattr(module, func.__name__)
+        if cupy_func is func:
+            # avoid NumPy func
             return NotImplemented
         for t in types:
             if t not in _HANDLED_TYPES:
                 return NotImplemented
-        return getattr(cupy, func.__name__)(*args, **kwargs)
+        return cupy_func(*args, **kwargs)
 
     # Conversion:
 
@@ -1293,7 +1305,7 @@ cdef class ndarray:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None, order='C'):
+    cpdef get(self, stream=None, order='C', out=None):
         """Returns a copy of the array on host memory.
 
         Args:
@@ -1302,31 +1314,64 @@ cdef class ndarray:
                 The default uses CUDA stream object of the current context.
             order ({'C', 'F', 'A'}): The desired memory layout of the host
                 array. When ``order`` is 'A', it uses 'F' if the array is
-                fortran-contiguous and 'C' otherwise.
+                fortran-contiguous and 'C' otherwise. The ``order`` will be
+                ignored if ``out`` is specified.
+            out (numpy.ndarray): Output array. In order to enable asynchronous
+                copy, the underlying memory should be a pinned memory.
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
 
         """
-        if self.size == 0:
-            return numpy.ndarray(self._shape, dtype=self.dtype)
-
-        order = order.upper()
-        if order == 'A':
-            if self._f_contiguous:
-                order = 'F'
+        if out is not None:
+            if not isinstance(out, numpy.ndarray):
+                raise TypeError('Only numpy.ndarray can be obtained from'
+                                'cupy.ndarray')
+            if self.dtype != out.dtype:
+                raise TypeError(
+                    '{} array cannot be obtained from {} array'.format(
+                        out.dtype, self.dtype))
+            if self.shape != out.shape:
+                raise ValueError(
+                    'Shape mismatch. Expected shape: {}, '
+                    'actual shape: {}'.format(self.shape, out.shape))
+            if not (out.flags.c_contiguous and self._c_contiguous or
+                    out.flags.f_contiguous and self._f_contiguous):
+                with self.device:
+                    if out.flags.c_contiguous:
+                        a_gpu = ascontiguousarray(self)
+                    elif out.flags.f_contiguous:
+                        a_gpu = asfortranarray(self)
+                    else:
+                        raise RuntimeError(
+                            '`out` cannot be specified when copying to '
+                            'non-contiguous ndarray')
             else:
-                order = 'C'
+                a_gpu = self
+            a_cpu = out
+        else:
+            if self.size == 0:
+                return numpy.ndarray(self._shape, dtype=self.dtype)
 
-        with self.device:
-            if order == 'C':
-                a_gpu = ascontiguousarray(self)
-            elif order == 'F':
-                a_gpu = asfortranarray(self)
+            order = order.upper()
+            if order == 'A':
+                if self._f_contiguous:
+                    order = 'F'
+                else:
+                    order = 'C'
+            if not (order == 'C' and self._c_contiguous or
+                    order == 'F' and self._f_contiguous):
+                with self.device:
+                    if order == 'C':
+                        a_gpu = ascontiguousarray(self)
+                    elif order == 'F':
+                        a_gpu = asfortranarray(self)
+                    else:
+                        raise ValueError('unsupported order: {}'.format(order))
             else:
-                raise ValueError("unsupported order: {}".format(order))
-        a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
-        ptr = a_cpu.ctypes.get_as_parameter()
+                a_gpu = self
+            a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
+        ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
         if stream is not None:
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
         else:
@@ -1363,7 +1408,7 @@ cdef class ndarray:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        ptr = arr.ctypes.get_as_parameter()
+        ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
         if stream is not None:
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
         else:
@@ -1428,8 +1473,8 @@ cdef class ndarray:
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
@@ -1442,13 +1487,25 @@ cdef class ndarray:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cpdef _set_shape_and_contiguous_strides(
-            self, vector.vector[Py_ssize_t]& shape,
-            Py_ssize_t itemsize, bint is_c_contiguous):
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity):
+        cdef ndarray v
+        v = ndarray.__new__(ndarray)
+        v.data = self.data
+        v.base = self.base if self.base is not None else self
+        v.dtype = self.dtype
+        v._c_contiguous = self._c_contiguous
+        v._f_contiguous = self._f_contiguous
+        v._set_shape_and_strides(
+            shape, strides, update_c_contiguity, update_f_contiguity)
+        return v
 
+    cpdef _set_contiguous_strides(
+            self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.set_contiguous_strides(
-            shape, self._strides, itemsize, is_c_contiguous)
-        self._shape = shape
+            self._shape, self._strides, itemsize, is_c_contiguous)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()
@@ -1525,7 +1582,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
-include "carray.pxi"
+include 'carray.pxi'
 
 
 # =============================================================================
@@ -1694,7 +1751,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 'This generally occurs because of insufficient host memory. '
                 'The original error was: {}'.format(nbytes, error),
                 util.PerformanceWarning)
-            a.data.copy_from_host(a_cpu.ctypes.get_as_parameter(), nbytes)
+            a.data.copy_from_host(
+                ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
 
@@ -2200,7 +2258,7 @@ cdef _tensordot_core_mul_sum = ReductionKernel(
 
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
+        Py_ssize_t k, const vector.vector[Py_ssize_t]& ret_shape):
     cdef vector.vector[Py_ssize_t] shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle

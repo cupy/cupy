@@ -10,7 +10,7 @@ cdef class broadcast:
         readonly Py_ssize_t size
         readonly Py_ssize_t nd
 
-
+cdef tuple _broadcast_core(arrays)
 cdef _ndarray_shape_setter(ndarray self, newshape)
 cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order)
 cdef ndarray _ndarray_transpose(ndarray self, tuple axes)

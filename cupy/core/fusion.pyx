@@ -10,6 +10,7 @@ from cupy.core._dtype import get_dtype
 from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core import core
+from cupy.core._kernel import _is_fusing
 
 
 _thread_local = _kernel._thread_local
@@ -44,10 +45,6 @@ cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 cdef tuple _acceptable_types = six.integer_types + (
     core.ndarray, numpy.ndarray, numpy.generic,
     float, complex, bool, type(None))
-
-
-cpdef inline _is_fusing():
-    return hasattr(_thread_local, 'history')
 
 
 class _Submodule(object):
@@ -593,35 +590,38 @@ class _FusionHistory(object):
                 return _FusionVarArray(var, ndim, self._has_reduction())
 
         # Make FusionVar list
-        var_list = [self._get_fusion_var(_) for _ in args]
-        if 'out' in kwargs:
-            out = kwargs.pop('out')
-            if out is not None:
-                var_list.append(self._get_fusion_var(out))
-        if kwargs:
-            raise TypeError('Wrong arguments {}'.format(kwargs))
-
-        assert nin <= len(var_list) <= nin + nout
+        var_list = [self._get_fusion_var(arg) for arg in args]
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
-
-        if not all(isinstance(_, _FusionVarArray) for _ in out_vars):
+        if 'out' in kwargs:
+            out = kwargs.pop('out')
+            if out_vars:
+                raise ValueError('cannot specify \'out\' as both a positional '
+                                 'and keyword argument')
+            if isinstance(out, _FusionVarArray):
+                out_vars.append(self._get_fusion_var(out))
+            elif out is not None:
+                raise ValueError('The \'out\' tuple must have exactly one '
+                                 'entry per ufunc output')
+        if kwargs:
+            raise TypeError('Wrong arguments {}'.format(kwargs))
+        if len(in_vars) != nin or len(out_vars) > nout:
+            raise ValueError('invalid number of arguments')
+        if not all([isinstance(v, _FusionVarArray) for v in out_vars]):
             raise TypeError('return arrays must be of ArrayType')
+        var_list = in_vars + out_vars
 
         # Broadcast
-        if max(v.ndim for v in in_vars) < self.ndim:
-            # TODO(imanishi): warning message
-            warnings.warn("warning")
-        ndim = max(v.ndim for v in var_list)
-        if len(out_vars) >= 1 and min(v.ndim for v in out_vars) < ndim:
+        ndim = max([v.ndim for v in in_vars])
+        if any([v.ndim < ndim for v in out_vars]):
             raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
-        can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
+        can_cast = can_cast1 if _should_use_min_scalar(var_list) else can_cast2
         for in_dtypes, out_dtypes, op in ufunc._ops:
             in_dtypes = [numpy.dtype(t) for t in in_dtypes]
             out_dtypes = [numpy.dtype(t) for t in out_dtypes]
-            if can_cast(in_vars, in_dtypes):
+            if can_cast(var_list, in_dtypes):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
@@ -901,11 +901,12 @@ class Fusion(object):
         cdef tuple key = tuple(params_info)
         if key not in self._memo:
             try:
-                _thread_local.history = _FusionHistory()
-                self._memo[key] = _thread_local.history.get_fusion(
+                history = _FusionHistory()
+                _thread_local.history = history
+                self._memo[key] = history.get_fusion(
                     self.func, args, self.name)
             finally:
-                del _thread_local.history
+                _thread_local.history = None
         kernel, kwargs = self._memo[key]
 
         return kernel(
@@ -917,21 +918,30 @@ class Fusion(object):
 
 
 def fuse(*args, **kwargs):
-    """Function fusing decorator.
+    """Decorator that fuses a function.
 
     This decorator can be used to define an elementwise or reduction kernel
-    more easily than `ElementwiseKernel` class or `ReductionKernel` class.
+    more easily than :class:`~cupy.ElementwiseKernel` or
+    :class:`~cupy.ReductionKernel`.
 
-    This decorator makes `Fusion` class from the given function.
+    Since the fused kernels are cached and reused, it is recommended to reuse
+    the same decorated functions instead of e.g. decorating local functions
+    that are defined multiple times.
 
     Args:
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
 
-    .. note::
-       This API is currently experimental and the interface may be changed in
-       the future version.
+    Example:
 
+        >>> @cupy.fuse(kernel_name='squared_diff')
+        ... def squared_diff(x, y):
+        ...     return (x - y) * (x - y)
+        ...
+        >>> x = cupy.arange(10)
+        >>> y = cupy.arange(10)[::-1]
+        >>> squared_diff(x, y)
+        array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
     """
 
     def wrapper(f, kernel_name=None):

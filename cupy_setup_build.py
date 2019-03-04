@@ -415,6 +415,7 @@ def make_extensions(options, compiler, use_cython):
                 compile_args.append('/openmp')
 
         for f in module['file']:
+            s = s.copy()
             name = module_extension_name(f)
 
             rpath = []
@@ -432,16 +433,19 @@ def make_extensions(options, compiler, use_cython):
                 depth = name.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32:
+            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
-            if PLATFORM_DARWIN:
+            if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
+                ldflag = '-Wl,'
+                if PLATFORM_LINUX:
+                    ldflag += '--disable-new-dtags,'
+                ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s.setdefault('extra_link_args', [])
-                args.append(
-                    '-Wl,' + ','.join('-rpath,' + p
-                                      for p in s['library_dirs']))
-                # -rpath is only supported when targetting Mac OS X 10.5 or
-                # later
-                args.append('-mmacosx-version-min=10.5')
+                args.append(ldflag)
+                if PLATFORM_DARWIN:
+                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # later
+                    args.append('-mmacosx-version-min=10.5')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
@@ -522,14 +526,14 @@ def prepare_wheel_libs():
         # Clean up existing libraries.
         libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
         for libfile in libfiles:
-            print("Removing file: {}".format(libfile))
+            print('Removing file: {}'.format(libfile))
             os.remove(libfile)
     else:
         libdirname = '_lib'
         # Clean up the library directory.
         libdir = 'cupy/{}'.format(libdirname)
         if os.path.exists(libdir):
-            print("Removing directory: {}".format(libdir))
+            print('Removing directory: {}'.format(libdir))
             shutil.rmtree(libdir)
         os.mkdir(libdir)
 
@@ -537,7 +541,7 @@ def prepare_wheel_libs():
     libs = []
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
-        print("Copying library for wheel: {}".format(lib))
+        print('Copying library for wheel: {}'.format(lib))
         libname = path.basename(lib)
         libpath = 'cupy/{}/{}'.format(libdirname, libname)
         shutil.copy2(lib, libpath)

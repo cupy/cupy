@@ -87,7 +87,7 @@ cdef class Descriptor:
         self.value = descriptor
         self.destroy = destroyer
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.value:
             self.destroy(self.value)
             self.value = 0
@@ -532,7 +532,7 @@ cdef class _DescriptorArray:
     def __init__(self, destroyer):
         self._destroy = destroyer
 
-    def __del__(self):
+    def __dealloc__(self):
         for desc in self._value:
             self._destroy(desc)
 
@@ -1570,7 +1570,6 @@ cdef _get_dtype_of_tensor_descriptor(size_t desc):
 def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
-        core.ndarray mean, core.ndarray inv_std,
         double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
     x = core.ascontiguousarray(x)
@@ -1592,7 +1591,7 @@ def batch_normalization_forward_training(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             running_mean_tmp = running_mean.astype(dtype_param)
@@ -1602,6 +1601,8 @@ def batch_normalization_forward_training(
             running_var_tmp = running_var
             gamma = core.ascontiguousarray(gamma)
             beta = core.ascontiguousarray(beta)
+        save_mean = core.ndarray(gamma.shape, dtype_param)
+        save_inv_std = core.ndarray(gamma.shape, dtype_param)
 
         # Factor used in the moving average
         factor = 1.0 - decay
@@ -1619,7 +1620,7 @@ def batch_normalization_forward_training(
             derivedBnDesc, gamma.data.ptr,
             beta.data.ptr, factor, running_mean_tmp.data.ptr,
             running_var_tmp.data.ptr, eps,
-            mean.data.ptr, inv_std.data.ptr)
+            save_mean.data.ptr, save_inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
@@ -1638,7 +1639,7 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    return y
+    return y, save_mean, save_inv_std
 
 
 def batch_normalization_forward_inference(
@@ -1664,7 +1665,7 @@ def batch_normalization_forward_inference(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             mean = mean.astype(dtype_param)
@@ -1710,7 +1711,7 @@ def batch_normalization_backward(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        need_cast = dtype_param != dtype
+        need_cast = gamma.dtype != dtype_param
         if need_cast:
             gamma = gamma.astype(dtype_param)
         else:

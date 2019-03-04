@@ -87,6 +87,31 @@ cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
         return _take(self, indices, axis, axis, out)
 
 
+cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
+    if mode not in ('raise', 'wrap', 'clip'):
+        raise TypeError('clipmode not understood')
+
+    n = self.size
+    if not isinstance(indices, ndarray):
+        indices = ndarray(indices)
+    indices = indices.ravel()
+
+    if not isinstance(values, ndarray):
+        values = ndarray(values, dtype=self.dtype)
+    if values.size == 0:
+        return
+
+    if mode == 'raise':
+        err = cupy.zeros((), dtype=numpy.bool_)
+        _put_raise_kernel(indices, values, values.size, n, self, err)
+        if err:
+            raise IndexError('invalid entry in indices array')
+    elif mode == 'wrap':
+        _put_wrap_kernel(indices, values, values.size, n, self)
+    elif mode == 'clip':
+        _put_clip_kernel(indices, values, values.size, n, self)
+
+
 cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     a = self
     n = choices.shape[0]
@@ -260,7 +285,7 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
             else:
                 strides.push_back(a.itemsize)
         elif ndim <= j:
-            raise IndexError("too many indices for array")
+            raise IndexError('too many indices for array')
         elif isinstance(s, slice):
             ss = internal.complete_slice(s, a._shape[j])
             s_start = ss.start
@@ -360,6 +385,48 @@ _choose_clip_kernel = ElementwiseKernel(
       y = choices[i + n_channel * x];
     ''',
     'cupy_choose_clip')
+
+
+cdef _put_raise_kernel = ElementwiseKernel(
+    'S ind, raw T vals, int64 n_vals, int64 n',
+    'raw U data, raw bool err',
+    '''
+      ptrdiff_t ind_ = ind;
+      if (!(-n <= ind_ && ind_ < n)) {
+        err[0] = 1;
+      } else {
+        if (ind_ < 0) ind_ += n;
+        data[ind_] = (U)(vals[i % n_vals]);
+      }
+    ''',
+    'cupy_put_raise')
+
+
+cdef _put_wrap_kernel = ElementwiseKernel(
+    'S ind, raw T vals, int64 n_vals, int64 n',
+    'raw U data',
+    '''
+      ptrdiff_t ind_ = ind;
+      ind_ %= n;
+      if (ind_ < 0) ind_ += n;
+      data[ind_] = (U)(vals[i % n_vals]);
+    ''',
+    'cupy_put_wrap')
+
+
+cdef _put_clip_kernel = ElementwiseKernel(
+    'S ind, raw T vals, int64 n_vals, int64 n',
+    'raw U data',
+    '''
+      ptrdiff_t ind_ = ind;
+      if (ind_ < 0) {
+        ind_ = 0;
+      } else if (ind_ >= n) {
+        ind_ = n - 1;
+      }
+      data[ind_] = (U)(vals[i % n_vals]);
+    ''',
+    'cupy_put_clip')
 
 
 _scatter_update_kernel = ElementwiseKernel(
@@ -556,7 +623,7 @@ cdef _scatter_op_single(
     ndim = a._shape.size()
 
     if ndim == 0:
-        raise ValueError("requires a.ndim >= 1")
+        raise ValueError('requires a.ndim >= 1')
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
         raise ValueError('Axis overrun')
 

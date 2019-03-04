@@ -35,7 +35,7 @@ class TestGetSize(unittest.TestCase):
 
 def wrap_take(array, *args, **kwargs):
     if get_array_module(array) == numpy:
-        kwargs["mode"] = "wrap"
+        kwargs['mode'] = 'wrap'
 
     return array.take(*args, **kwargs)
 
@@ -291,8 +291,8 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2,), "axis": 3},
-    {"shape": (), "indices": (0,), "axis": 2}
+    {'shape': (3, 4, 5), 'indices': (2,), 'axis': 3},
+    {'shape': (), 'indices': (0,), 'axis': 2}
 )
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
@@ -310,8 +310,8 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 4)},
-    {"shape": (), "indices": 0, "out_shape": (1,)}
+    {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 4)},
+    {'shape': (), 'indices': 0, 'out_shape': (1,)}
 )
 @testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
@@ -325,8 +325,8 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 3)},
-    {"shape": (), "indices": 0, "out_shape": ()}
+    {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
+    {'shape': (), 'indices': 0, 'out_shape': ()}
 )
 @testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
@@ -340,8 +340,8 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (0,), "indices": (0,)},
-    {"shape": (0,), "indices": (0, 1)},
+    {'shape': (0,), 'indices': (0,)},
+    {'shape': (0,), 'indices': (0, 1)},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -354,8 +354,8 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (0,), "indices": (1,)},
-    {"shape": (0,), "indices": (1, 1)},
+    {'shape': (0,), 'indices': (1,)},
+    {'shape': (0,), 'indices': (1, 1)},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):

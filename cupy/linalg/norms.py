@@ -58,7 +58,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             axis = int(axis)
         except Exception:
             raise TypeError(
-                "'axis' must be None, an integer or a tuple of integers")
+                '\'axis\' must be None, an integer or a tuple of integers')
         axis = (axis,)
 
     if len(axis) == 1:
@@ -82,7 +82,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             try:
                 float(ord)
             except TypeError:
-                raise ValueError("Invalid norm order for vectors.")
+                raise ValueError('Invalid norm order for vectors.')
 
             absx = abs(x)
             absx **= ord
@@ -124,7 +124,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             else:
                 ret = cupy.sqrt((x ** 2).sum(axis=axis))
         else:
-            raise ValueError("Invalid norm order for matrices.")
+            raise ValueError('Invalid norm order for matrices.')
         if keepdims:
             ret_shape = list(x.shape)
             ret_shape[axis[0]] = 1
@@ -132,7 +132,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             ret = ret.reshape(ret_shape)
         return ret
     else:
-        raise ValueError("Improper number of dimensions to norm.")
+        raise ValueError('Improper number of dimensions to norm.')
 
 
 # TODO(okuta): Implement cond

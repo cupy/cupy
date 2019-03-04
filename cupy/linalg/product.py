@@ -210,9 +210,9 @@ def matrix_power(M, n):
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
     if M.ndim != 2 or M.shape[0] != M.shape[1]:
-        raise ValueError("input must be a square array")
+        raise ValueError('input must be a square array')
     if not isinstance(n, six.integer_types):
-        raise TypeError("exponent must be an integer")
+        raise TypeError('exponent must be an integer')
 
     if n == 0:
         return cupy.identity(M.shape[0], dtype=M.dtype)
