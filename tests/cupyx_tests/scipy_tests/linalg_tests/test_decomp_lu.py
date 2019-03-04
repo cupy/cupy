@@ -18,6 +18,9 @@ import cupyx.scipy.linalg
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
+@testing.parameterize(*testing.product({
+    'shape': [(1, 1), (2, 2), (3, 3), (5, 5)],
+}))
 @testing.fix_random()
 class TestLUFactor(unittest.TestCase):
 
@@ -34,10 +37,7 @@ class TestLUFactor(unittest.TestCase):
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
     def test_lu_factor(self):
-        self.check_x(numpy.random.randn(1, 1))
-        self.check_x(numpy.random.randn(2, 2))
-        self.check_x(numpy.random.randn(3, 3))
-        self.check_x(numpy.random.randn(5, 5))
+        self.check_x(numpy.random.randn(*self.shape))
 
 
 @unittest.skipUnless(
