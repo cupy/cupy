@@ -88,7 +88,7 @@ Singular matrix.
     if check_finite:
         if a.dtype.kind == 'f' and not cupy.isfinite(a).all():
             raise ValueError(
-                "array must not contain infs or NaNs")
+                'array must not contain infs or NaNs')
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.intc)
@@ -108,7 +108,7 @@ Singular matrix.
         raise ValueError('illegal value in %d-th argument of '
                          'internal getrf (lu_factor)' % -dev_info[0])
     elif dev_info[0] > 0:
-        warn("Diagonal number %d is exactly zero. Singular matrix."
+        warn('Diagonal number %d is exactly zero. Singular matrix.'
              % dev_info[0], RuntimeWarning, stacklevel=2)
 
     # cuSolver uses 1-origin while SciPy uses 0-origin
@@ -159,7 +159,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     m = lu.shape[0]
     if m != b.shape[0]:
-        raise ValueError("incompatible dimensions.")
+        raise ValueError('incompatible dimensions.')
 
     dtype = lu.dtype
     if dtype == 'f':
@@ -176,7 +176,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     elif trans == 2:
         trans = cublas.CUBLAS_OP_C
     else:
-        raise ValueError("unknown trans")
+        raise ValueError('unknown trans')
 
     lu = lu.astype(dtype, order='F', copy=False)
     ipiv = ipiv.astype(ipiv.dtype, order='F', copy=True)
@@ -187,10 +187,10 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     if check_finite:
         if lu.dtype.kind == 'f' and not cupy.isfinite(lu).all():
             raise ValueError(
-                "array must not contain infs or NaNs")
+                'array must not contain infs or NaNs')
         if b.dtype.kind == 'f' and not cupy.isfinite(b).all():
             raise ValueError(
-                "array must not contain infs or NaNs")
+                'array must not contain infs or NaNs')
 
     n = 1 if b.ndim == 1 else b.shape[1]
     cusolver_handle = device.get_cusolver_handle()
