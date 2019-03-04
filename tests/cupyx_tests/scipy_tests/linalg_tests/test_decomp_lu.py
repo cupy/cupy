@@ -16,12 +16,12 @@ import cupyx.scipy.linalg
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
-@unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5)],
 }))
 @testing.fix_random()
+@testing.with_requires('scipy')
 class TestLUFactor(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
@@ -40,13 +40,13 @@ class TestLUFactor(unittest.TestCase):
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
-@unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
 @testing.parameterize(*testing.product({
     'trans': [0, 1, 2],
     'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],
 }))
 @testing.fix_random()
+@testing.with_requires('scipy')
 class TestLUSolve(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
