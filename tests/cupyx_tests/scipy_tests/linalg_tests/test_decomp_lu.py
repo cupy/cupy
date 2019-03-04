@@ -25,7 +25,8 @@ import cupyx.scipy.linalg
 class TestLUFactor(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
-    def check_x(self, array, dtype):
+    def test_lu_factor(self, dtype):
+        array = numpy.random.randn(*self.shape)
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
@@ -35,9 +36,6 @@ class TestLUFactor(unittest.TestCase):
         self.assertEqual(result_cpu[1].dtype, result_gpu[1].dtype)
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
-
-    def test_lu_factor(self):
-        self.check_x(numpy.random.randn(*self.shape))
 
 
 @unittest.skipUnless(
@@ -53,7 +51,7 @@ class TestLUSolve(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    def test_solve(self, xp, scp, dtype):
+    def test_lu_solve(self, xp, scp, dtype):
         a_shape, b_shape = self.shapes
         A = testing.shaped_random(a_shape, xp, dtype=dtype)
         b = testing.shaped_random(b_shape, xp, dtype=dtype)
