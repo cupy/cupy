@@ -14,13 +14,13 @@ from cupy import testing
 import cupyx.scipy.linalg
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5)],
 }))
 @testing.fix_random()
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUFactor(unittest.TestCase):
 
@@ -38,14 +38,14 @@ class TestLUFactor(unittest.TestCase):
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 @testing.parameterize(*testing.product({
     'trans': [0, 1, 2],
     'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],
 }))
 @testing.fix_random()
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUSolve(unittest.TestCase):
 
