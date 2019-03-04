@@ -5,6 +5,7 @@ import sys
 
 import ctypes
 import numpy
+cimport numpy
 import six
 
 import cupy
@@ -1692,6 +1693,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t ndim
     cdef ndarray a, src
+    cdef list a_list = []
     cdef size_t nbytes
     if subok:
         raise NotImplementedError
@@ -1706,13 +1708,47 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         else:
             a = src.copy(order=order).astype(dtype, copy=False)
 
-        ndim = a._shape.size()
+        ndim = len(a._shape)
         if ndmin > ndim:
             if a is obj:
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-    else:
+    elif isinstance(obj, list):
+        if len(obj) > 0:
+            head = obj[0]  # assumes that all other elements are same type
+            if dtype is None:
+                dtype = head.dtype
+            if isinstance(head, numpy.ndarray):  # obj is List[numpy.ndarray]
+                # TODO(okapies): implement an optimized algorithm
+                pass
+            elif isinstance(head, ndarray):  # obj is List[cupy.ndarray]
+                device_id = device.get_device_id()
+                for e in obj:
+                    if e.data.device_id == device_id:
+                        e_ = e.astype(dtype, order=order, copy=copy)
+                    else:
+                        e_ = e.copy(order=order).astype(dtype, copy=False)
+                    ndim = len(e_._shape)
+                    if ndmin > ndim:
+                        if e_ is obj:
+                            # When `copy` is False, `a` is same as `obj`.
+                            e_ = e_.view()
+                        e_.shape = (1,) * (ndmin - ndim) + e_.shape
+                    a_list.append(e_)
+                shape = (len(obj),) + a_list[0].shape
+                a = _manipulation._concatenate(a_list, axis=0, shape=shape,
+                                               dtype=dtype)
+            else:  # assumes obj is a list of built-in type
+                if (order is not None and len(order) >= 1 and
+                    order[0] in 'KAka'):
+                    order = 'C'
+                a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                                    ndmin=ndmin)
+                a = _copy_from_host(a_cpu, order)
+        else:
+            a = ndarray((0,), dtype=dtype)  # empty
+    else:  # obj is scalar or numpy.ndarray
         if order is not None and len(order) >= 1 and order[0] in 'KAka':
             if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
                 order = 'F'
@@ -1720,39 +1756,47 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 order = 'C'
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                             ndmin=ndmin)
-        a_dtype = a_cpu.dtype
-        if a_dtype.char not in '?bhilqBHILQefdFD':
-            raise ValueError('Unsupported dtype %s' % a_dtype)
-        a = ndarray(a_cpu.shape, dtype=a_dtype, order=order)
-        if a_cpu.ndim == 0:
-            a.fill(a_cpu[()])
-            return a
-        nbytes = a.nbytes
-        stream = stream_module.get_current_stream()
+        a = _copy_from_host(a_cpu, order)
 
-        mem = None
-        error = None
-        try:
-            mem = pinned_memory.alloc_pinned_memory(nbytes)
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
-                raise
-            error = e
+    return a
 
-        if mem is not None:
-            src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
-            a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
-            pinned_memory._add_to_watch_list(stream.record(), mem)
-        else:
-            warnings.warn(
-                'Using synchronous transfer as pinned memory ({} bytes) '
-                'could not be allocated. '
-                'This generally occurs because of insufficient host memory. '
-                'The original error was: {}'.format(nbytes, error),
-                util.PerformanceWarning)
-            a.data.copy_from_host(
-                ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+
+cdef ndarray _copy_from_host(numpy.ndarray a_cpu, str order):
+    cdef a_dtype = a_cpu.dtype
+    if a_dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_dtype)
+    cdef vector.vector[Py_ssize_t] a_shape = (<object>a_cpu).shape
+    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
+    if a_cpu.ndim == 0:
+        a.fill(a_cpu[()])
+        return a
+
+    nbytes = a.nbytes
+    stream = stream_module.get_current_stream()
+
+    mem = None
+    error = None
+    try:
+        mem = pinned_memory.alloc_pinned_memory(nbytes)
+    except CUDARuntimeError as e:
+        if e.status != runtime.errorMemoryAllocation:
+            raise
+        error = e
+
+    if mem is not None:
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[:] = a_cpu.ravel(order)
+        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    else:
+        warnings.warn(
+            'Using synchronous transfer as pinned memory ({} bytes) '
+            'could not be allocated. '
+            'This generally occurs because of insufficient host memory. '
+            'The original error was: {}'.format(nbytes, error),
+            util.PerformanceWarning)
+        a.data.copy_from_host(
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
 
