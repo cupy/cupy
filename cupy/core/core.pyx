@@ -1177,11 +1177,20 @@ cdef class ndarray:
         """
         if (slices == slice(None, None, None) and
                 isinstance(value, numpy.ndarray)):
-            device_array = array(value)
-            self.dtype = get_dtype(device_array.dtype)
-            self._set_shape_and_strides(device_array._shape,
-                                        device_array._strides, True, True)
-            self.data = device_array.data
+            if (self.dtype == value.dtype and
+                    self.shape == value.shape and
+                    self.strides == value.strides):
+                ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    self.data.copy_from_host(ptr, self.nbytes)
+                else:
+                    self.data.copy_from_host_async(ptr, self.nbytes)
+            else:
+                raise ValueError(
+                    "copying a numpy.ndarray to a cupy.ndarray by empty slice "
+                    "assignment must ensure arrays exact same shape, strides "
+                    "and dtype")
         else:
             _indexing._ndarray_setitem(self, slices, value)
 
