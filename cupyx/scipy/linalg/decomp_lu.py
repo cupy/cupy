@@ -187,7 +187,10 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     if check_finite:
         if lu.dtype.kind == 'f' and not cupy.isfinite(lu).all():
             raise ValueError(
-                'array must not contain infs or NaNs')
+                'array must not contain infs or NaNs.\n'
+                'Note that when a singular matrix is given, unlike '
+                'scipy.linalg.lu_factor, cupyx.scipy.linalg.lu_factor '
+                'returns an array containing NaN.')
         if b.dtype.kind == 'f' and not cupy.isfinite(b).all():
             raise ValueError(
                 'array must not contain infs or NaNs')
