@@ -1570,7 +1570,7 @@ cdef _get_dtype_of_tensor_descriptor(size_t desc):
 def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
-        mean, inv_std, codouble eps, double decay,
+        mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
     x = core.ascontiguousarray(x)
     dtype = x.dtype
