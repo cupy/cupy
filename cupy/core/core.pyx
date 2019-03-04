@@ -14,6 +14,7 @@ from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ReductionKernel
 from cupy.core._kernel import ufunc  # NOQA
 from cupy.core._ufuncs import elementwise_copy
+from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
 from cupy.cuda import device
 
@@ -1592,12 +1593,6 @@ include 'carray.pxi'
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
-
-elementwise_copy_where = create_ufunc(
-    'cupy_copy_where',
-    ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
-     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
-    'if (in1) out0 = in0', default_casting='unsafe')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
