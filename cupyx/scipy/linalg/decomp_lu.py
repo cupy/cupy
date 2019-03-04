@@ -19,7 +19,8 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     where ``P`` is a permutation matrix,  ``L`` lower-triangular with
     unit diagonal elements, and ``U`` upper-triangular matrix.
     Note that in the current implementation ``a`` must be
-    a real matrix, and only float32 and float64 are supported.
+    a real matrix, and only :class:`numpy.float32` and :class:`numpy.float64`
+    are supported.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(N, N)``
