@@ -51,8 +51,6 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
         >>> import scipy.linalg
         >>> scipy.linalg.lu_factor(np.array([[0, 1], [0, 0]], \
 dtype=np.float32))
-        __main__:1: LinAlgWarning: Diagonal number 1 is exactly zero. \
-Singular matrix.
         (array([[0., 1.],
                [0., 0.]], dtype=float32), array([0, 1], dtype=int32))
 
@@ -60,8 +58,6 @@ Singular matrix.
         >>> import cupyx.scipy.linalg
         >>> cupyx.scipy.linalg.lu_factor(cp.array([[0, 1], [0, 0]], \
 dtype=cp.float32))
-        __main__:1: RuntimeWarning: Diagonal number 1 is exactly zero. \
-Singular matrix.
         (array([[ 0.,  1.],
                [nan, nan]], dtype=float32), array([0, 1], dtype=int32))
     """
