@@ -166,3 +166,31 @@ class TestArrayCopyAndView(unittest.TestCase):
     def test_diagonal2(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
+
+    @testing.for_orders('CF')
+    @testing.for_dtypes([numpy.int16, numpy.int64,
+                         numpy.float16, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_copy(self, xp, dtype, order):
+        a = numpy.arange(100, dtype=dtype).reshape(10, 10, order=order)
+        b = xp.empty(a.shape, dtype=dtype, order=order)
+        b[:] = a
+        return b
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_isinstance_numpy_copy_wrong_dtype(self, xp):
+        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+        b = cupy.empty(a.shape, dtype=numpy.int32)
+        b[:] = a
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_isinstance_numpy_copy_wrong_shape(self, xp):
+        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+        b = cupy.empty(100, dtype=a.dtype)
+        b[:] = a
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_isinstance_numpy_copy_wrong_order(self, xp):
+        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10, order='C')
+        b = cupy.empty(a.shape, dtype=a.dtype, order='F')
+        b[:] = a
