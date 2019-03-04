@@ -1,4 +1,7 @@
 import unittest
+import warnings
+
+import numpy
 
 from cupy import testing
 
@@ -135,6 +138,16 @@ class TestArrayIndex(unittest.TestCase):
         a = xp.zeros((2, 3, 4), dtype=dtype)
         b = testing.shaped_arange((2, 3, 4), xp, dtype)
         a[:] = b
+        return a
+
+    @testing.for_all_dtypes_combination(('src_type', 'dst_type'))
+    @testing.numpy_cupy_array_equal()
+    def test_setitem_different_type(self, xp, src_type, dst_type):
+        a = xp.zeros((2, 3, 4), dtype=dst_type)
+        b = testing.shaped_arange((2, 3, 4), xp, src_type)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            a[:] = b
         return a
 
     @testing.for_all_dtypes()
