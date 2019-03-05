@@ -339,7 +339,7 @@ def rnn_forward_inference_ex(
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
-    cdef int n_units = hx.shape[2]
+    cdef int n_units = hx._shape[2]
 
     cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
     cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
@@ -467,7 +467,7 @@ def rnn_backward_data_ex(
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
-    cdef int n_units = hx.shape[2]
+    cdef int n_units = hx._shape[2]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
@@ -534,7 +534,7 @@ def rnn_backward_weights_ex(
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
-    cdef int n_units = hx.shape[2]
+    cdef int n_units = hx._shape[2]
 
     cdef size_t handle = get_handle()
     cdef Descriptor rnn_desc = create_rnn_descriptor(
@@ -556,7 +556,7 @@ def rnn_backward_weights_ex(
         rnn_desc, length, xs_descs)
 
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
-    dw[...] = 0
+    dw.fill(0)
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
 
     cudnn.RNNBackwardWeightsEx(
