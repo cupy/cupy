@@ -24,7 +24,7 @@ script:
   - python -Werror::DeprecationWarning -Wignore::DeprecationWarning:site -m compileall -f -q cupy cupyx examples tests docs
   - pip install scipy
   - pushd docs
-  - make html
+  - SPHINXOPTS=-W make html
   - popd
 
 sudo: false
