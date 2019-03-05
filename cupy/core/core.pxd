@@ -1,5 +1,3 @@
-cimport numpy
-
 from libcpp cimport vector
 from cupy.cuda cimport memory
 
@@ -96,7 +94,9 @@ cdef class Indexer:
     cdef CPointer get_pointer(self)
 
 
-cdef ndarray _copy_from_host(numpy.ndarray a_cpu, str order)
+cdef tuple _get_head_and_concat_shape(object obj)
+cdef list _flatten_list(object obj)
+cpdef ndarray _copy_from_host(a_cpu, str order)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)

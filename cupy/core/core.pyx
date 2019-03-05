@@ -5,7 +5,6 @@ import sys
 
 import ctypes
 import numpy
-cimport numpy
 import six
 
 import cupy
@@ -1693,7 +1692,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     # TODO(beam2d): Support subok options
     cdef Py_ssize_t ndim
     cdef ndarray a, src
-    cdef list a_list = []
+    cdef list a_list
     cdef size_t nbytes
     if subok:
         raise NotImplementedError
@@ -1714,32 +1713,28 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-    elif isinstance(obj, list):
-        if len(obj) > 0:
-            head = obj[0]  # assumes that all other elements are same type
-            if dtype is None:
-                dtype = head.dtype
-            if isinstance(head, numpy.ndarray):  # obj is List[numpy.ndarray]
-                # TODO(okapies): implement an optimized algorithm
-                pass
-            elif isinstance(head, ndarray):  # obj is List[cupy.ndarray]
-                device_id = device.get_device_id()
-                for e in obj:
-                    if e.data.device_id == device_id:
-                        e_ = e.astype(dtype, order=order, copy=copy)
-                    else:
-                        e_ = e.copy(order=order).astype(dtype, copy=False)
-                    ndim = len(e_._shape)
-                    if ndmin > ndim:
-                        if e_ is obj:
-                            # When `copy` is False, `a` is same as `obj`.
-                            e_ = e_.view()
-                        e_.shape = (1,) * (ndmin - ndim) + e_.shape
-                    a_list.append(e_)
-                shape = (len(obj),) + a_list[0].shape
-                a = _manipulation._concatenate(a_list, axis=0, shape=shape,
-                                               dtype=dtype)
-            else:  # assumes obj is a list of built-in type
+    else:  # obj is sequence, scalar or numpy.ndarray
+        head, concat_shape = _get_head_and_concat_shape(obj)
+        if concat_shape is not None and concat_shape[-1] != 0:
+            # obj is non-empty sequence and all elements have same shape
+            if isinstance(head, numpy.ndarray):  # obj is Seq[numpy.ndarray]
+                if dtype is None:
+                    dtype = head.dtype
+                if (order is not None and len(order) >= 1 and
+                    order[0] in 'KAka'):
+                    order = 'F' if head.flags.f_contiguous else 'C'
+                a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                                ndmin=ndmin)
+                a = _copy_from_host(a_cpu, order)
+            elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
+                if dtype is None:
+                    dtype = head.dtype
+                a = _manipulation.concatenate_method(
+                    _flatten_list(obj), 0).reshape(concat_shape)
+                ndim = len(a._shape)
+                if ndmin > ndim:
+                    a.shape = (1,) * (ndmin - ndim) + a.shape
+            else:  # obj is a sequence of values like scalar
                 if (order is not None and len(order) >= 1 and
                     order[0] in 'KAka'):
                     order = 'C'
@@ -1747,21 +1742,66 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                                     ndmin=ndmin)
                 a = _copy_from_host(a_cpu, order)
         else:
-            a = ndarray((0,), dtype=dtype)  # empty
-    else:  # obj is scalar or numpy.ndarray
-        if order is not None and len(order) >= 1 and order[0] in 'KAka':
-            if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
-                order = 'F'
-            else:
-                order = 'C'
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
-                            ndmin=ndmin)
-        a = _copy_from_host(a_cpu, order)
+            # obj is:
+            # - scalar
+            # - numpy.ndarray
+            # - empty sequence
+            # - sequence with elements whose shapes are unmatched
+            # - the other type of object
+            if order is not None and len(order) >= 1 and order[0] in 'KAka':
+                if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+                    order = 'F'
+                else:
+                    order = 'C'
+            a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                                ndmin=ndmin)
+            a = _copy_from_host(a_cpu, order)
 
     return a
 
 
-cdef ndarray _copy_from_host(numpy.ndarray a_cpu, str order):
+cdef tuple _get_head_and_concat_shape(object obj):
+    # Returns a tuple of first element in the object or the object itself and
+    # an overall shape if it can be converted to a single CuPy array by just
+    # concatenating it (i.e., the object is a NumPy/CuPy array or a (nested)
+    # sequence only containing NumPy/CuPy array(s)). Returns None as a shape
+    # otherwise.
+    if isinstance(obj, (numpy.ndarray, ndarray)):
+        return (obj, obj.shape)
+    elif isinstance(obj, (list, tuple)):
+        head = None
+        shape = None
+        for elem in obj:
+            # Find the head recursively if obj is a nested built-in list
+            elem_head, elem_shape = _get_head_and_concat_shape(elem)
+
+            # Use shape of the first element as the common shape.
+            if shape is None:
+                head = elem_head
+                shape = elem_shape
+
+            # `elem` is not concatable or the shape does not match with
+            # siblings.
+            if elem_shape is None or shape != elem_shape:
+                return (head, None)
+
+        return (
+            head,
+            (len(obj),) + shape if shape is not None else (len(obj),))
+    else:  # scalar or object
+        return (obj, None)
+
+
+cdef list _flatten_list(object obj):
+    ret = []
+    if isinstance(obj, (list, tuple)):
+        for elem in obj:
+            ret += _flatten_list(elem)
+        return ret
+    return [obj]
+
+
+cpdef ndarray _copy_from_host(a_cpu, str order):
     cdef a_dtype = a_cpu.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
