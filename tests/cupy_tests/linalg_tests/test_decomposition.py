@@ -24,8 +24,9 @@ class TestCholeskyDecomposition(unittest.TestCase):
 
     def test_decomposition(self):
         # A normal positive definite matrix
-        A = numpy.random.randint(0, 100, size=(5, 5))
-        A = numpy.dot(A, A.transpose())
+        a0 = numpy.random.randint(0, 100, size=(5, 5))
+        a1 = numpy.random.randint(0, 100, size=(5, 5))
+        A = a0.dot(a0.T) + a1.dot(a1.T)
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
         self.check_L(numpy.array([[1, 2], [1, 9]]))
