@@ -1723,9 +1723,10 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 if (order is not None and len(order) >= 1 and
                     order[0] in 'KAka'):
                     order = 'F' if head.flags.f_contiguous else 'C'
+
                 a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                 ndmin=ndmin)
-                a = _copy_from_host(a_cpu, order)
+                a = _copy_from_numpy_array(a_cpu, order)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
                 if dtype is None:
                     dtype = head.dtype
@@ -1740,7 +1741,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     order = 'C'
                 a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                     ndmin=ndmin)
-                a = _copy_from_host(a_cpu, order)
+                a = _copy_from_numpy_array(a_cpu, order)
         else:
             # obj is:
             # - scalar
@@ -1755,7 +1756,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     order = 'C'
             a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                 ndmin=ndmin)
-            a = _copy_from_host(a_cpu, order)
+            a = _copy_from_numpy_array(a_cpu, order)
 
     return a
 
@@ -1801,7 +1802,7 @@ cdef list _flatten_list(object obj):
     return [obj]
 
 
-cpdef ndarray _copy_from_host(a_cpu, str order):
+cpdef ndarray _copy_from_numpy_array(a_cpu, str order):
     cdef a_dtype = a_cpu.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -1811,34 +1812,61 @@ cpdef ndarray _copy_from_host(a_cpu, str order):
         a.fill(a_cpu[()])
         return a
 
-    nbytes = a.nbytes
+    cdef Py_ssize_t nbytes = _calc_nbytes(a_dtype, a_shape)
     stream = stream_module.get_current_stream()
-
-    mem = None
-    error = None
-    try:
-        mem = pinned_memory.alloc_pinned_memory(nbytes)
-    except CUDARuntimeError as e:
-        if e.status != runtime.errorMemoryAllocation:
-            raise
-        error = e
-
+    mem = _alloc_pinned_memory(nbytes)
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        warnings.warn(
-            'Using synchronous transfer as pinned memory ({} bytes) '
-            'could not be allocated. '
-            'This generally occurs because of insufficient host memory. '
-            'The original error was: {}'.format(nbytes, error),
-            util.PerformanceWarning)
         a.data.copy_from_host(
             ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
+
+
+cpdef ndarray _copy_from_numpy_array_list(
+    arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order):
+    return None
+    """
+    cdef ndarray a = ndarray(shape, dtype=a_dtype, order=order)
+    stream = stream_module.get_current_stream()
+
+    src_cpu = _alloc_pinned_memory(dtype, shape)
+    if src_cpu is not None:
+        src_cpu[:] = a_cpu.ravel(order)
+        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    else:
+        a.data.copy_from_host(
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+
+    return a
+"""
+
+
+cpdef inline Py_ssize_t _calc_nbytes(
+        dtype, const vector.vector[Py_ssize_t]& shape):
+    return internal.prod(shape) * get_dtype(dtype).itemsize
+
+
+cpdef inline _alloc_pinned_memory(Py_ssize_t nbytes):
+    mem = None
+    try:
+        return pinned_memory.alloc_pinned_memory(nbytes)
+    except CUDARuntimeError as e:
+        if e.status != runtime.errorMemoryAllocation:
+            raise
+        warnings.warn(
+            'Using synchronous transfer as pinned memory ({} bytes) '
+            'could not be allocated. '
+            'This generally occurs because of insufficient host memory. '
+            'The original error was: {}'.format(nbytes, e),
+            util.PerformanceWarning)
+
+    return None
 
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):

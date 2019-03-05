@@ -96,7 +96,11 @@ cdef class Indexer:
 
 cdef tuple _get_head_and_concat_shape(object obj)
 cdef list _flatten_list(object obj)
-cpdef ndarray _copy_from_host(a_cpu, str order)
+cpdef ndarray _copy_from_numpy_array(a_cpu, str order)
+cpdef ndarray _copy_from_numpy_array_list(
+    arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order)
+cpdef Py_ssize_t _calc_nbytes(dtype, const vector.vector[Py_ssize_t]& shape)
+cpdef _alloc_pinned_memory(Py_ssize_t size)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)
