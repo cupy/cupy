@@ -507,8 +507,6 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError(unittest.TestCase):
      'value': numpy.array([1, 2, 3, 4])},
     {'shape': (2, 3, 4), 'indexes': (slice(None), [0, -1]),
      'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [[0, 1], [2, 0]]),
-     'value': numpy.arange(2 * 2 * 2 * 4).reshape(2, 2, 2, 4)},
     # mask
     {'shape': (2, 3, 4), 'indexes': numpy.random.choice([False, True], (2, 3)),
      'value': numpy.arange(4)},
