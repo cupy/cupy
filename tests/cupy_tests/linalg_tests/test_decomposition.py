@@ -23,10 +23,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
         return xp.linalg.cholesky(a)
 
     def test_decomposition(self):
-        # A positive semidefinite matrix
+        # A positive definite matrix
         a0 = numpy.random.randint(0, 100, size=(5, 5))
         a1 = numpy.random.randint(0, 100, size=(5, 5))
-        A = a0.dot(a0.T) + a1.dot(a1.T)
+        A = a0.dot(a0.T) + a1.dot(a1.T) + numpy.identity(n=5, dtype=int)
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
         self.check_L(numpy.array([[1, 2], [1, 9]]))
