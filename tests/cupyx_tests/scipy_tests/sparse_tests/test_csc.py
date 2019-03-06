@@ -314,6 +314,15 @@ class TestCscMatrixInit(unittest.TestCase):
         self.assertEqual(s.size, 0)
         return s
 
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
+    def test_intlike_shape(self, xp, sp):
+        s = sp.csc_matrix((self.data(xp), self.indices(xp), self.indptr(xp)),
+                          shape=(xp.array(self.shape[0]),
+                                 xp.int32(self.shape[1])))
+        assert isinstance(s.shape[0], int)
+        assert isinstance(s.shape[1], int)
+        return s
+
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):
         sp.csc_matrix(
