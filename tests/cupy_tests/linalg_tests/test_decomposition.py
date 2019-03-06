@@ -23,7 +23,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
         return xp.linalg.cholesky(a)
 
     def test_decomposition(self):
-        # A normal positive definite matrix
+        # A positive semidefinite matrix
         a0 = numpy.random.randint(0, 100, size=(5, 5))
         a1 = numpy.random.randint(0, 100, size=(5, 5))
         A = a0.dot(a0.T) + a1.dot(a1.T)
