@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import copy
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -414,8 +415,9 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        original_s = s
         for f in module['file']:
-            s = s.copy()
+            s = copy.deepcopy(original_s)
             name = module_extension_name(f)
 
             rpath = []
