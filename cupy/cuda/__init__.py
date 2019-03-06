@@ -34,6 +34,12 @@ except ImportError:
     thrust_enabled = False
 
 try:
+    from cupy.cuda import cub  # NOQA
+    cub_enabled = True
+except ImportError:
+    cub_enabled = False
+
+try:
     from cupy.cuda import nccl  # NOQA
     nccl_enabled = True
 except ImportError:

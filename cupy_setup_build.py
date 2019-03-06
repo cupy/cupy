@@ -162,7 +162,20 @@ MODULES = [
             'cudart',
         ],
         'check_method': build.check_cuda_version,
-    }
+    },
+    {
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'cub/util_namespace.cuh', # dummy
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
+    },
 ]
 
 
@@ -287,6 +300,10 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
+        elif module['name'] == 'cub' and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
