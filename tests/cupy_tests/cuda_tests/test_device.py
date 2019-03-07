@@ -94,10 +94,12 @@ class TestDeviceAttributes(unittest.TestCase):
             # try to retrieve attributes from a non-existent device
             cuda.device.Device(cuda.runtime.getDeviceCount()).attributes
 
+
 @testing.gpu
 class TestDeviceHandles(unittest.TestCase):
     def _check_handle(self, func):
         handles = [func(), None, None]
+
         def _subthread():
             handles[1] = func()
             handles[2] = func()
