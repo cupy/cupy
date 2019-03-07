@@ -169,7 +169,7 @@ MODULES = [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
         'include': [
-            'cub/util_namespace.cuh', # dummy
+            'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
             'cudart',

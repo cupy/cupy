@@ -4,10 +4,11 @@
 
 import numpy
 
-cimport cython
-
 from cupy.core cimport core
 from cupy.cuda cimport common
+
+cimport cython
+
 
 ###############################################################################
 # Extern
@@ -20,6 +21,7 @@ cdef extern from 'cupy_cub.h' namespace 'cupy::cub':
     size_t _reduce_sum_get_workspace_size[T](void *, void *, int)
     size_t _reduce_min_get_workspace_size[T](void *, void *, int)
     size_t _reduce_max_get_workspace_size[T](void *, void *, int)
+
 
 ###############################################################################
 # Python interface
@@ -103,6 +105,7 @@ def reduce_sum(core.ndarray x, out=None):
         raise TypeError('Unsupported dtype: {}'.format(x.dtype))
     return y
 
+
 def can_use_reduce_sum(dtype):
     ret = True
     if dtype is not None:
@@ -112,6 +115,7 @@ def can_use_reduce_sum(dtype):
         if dtype not in support_dtype:
             ret = False
     return ret
+
 
 def reduce_min(core.ndarray x, out=None):
     cdef core.ndarray y
@@ -191,6 +195,7 @@ def reduce_min(core.ndarray x, out=None):
         raise TypeError('Unsupported dtype: {}'.format(x.dtype))
     return y
 
+
 def can_use_reduce_min(dtype):
     ret = True
     if dtype is not None:
@@ -200,6 +205,7 @@ def can_use_reduce_min(dtype):
         if dtype not in support_dtype:
             ret = False
     return ret
+
 
 def reduce_max(core.ndarray x, out=None):
     cdef core.ndarray y
@@ -278,6 +284,7 @@ def reduce_max(core.ndarray x, out=None):
     else:
         raise TypeError('Unsupported dtype: {}'.format(x.dtype))
     return y
+
 
 def can_use_reduce_max(dtype):
     ret = True
