@@ -9,27 +9,48 @@ from cupy import testing
 from cupy.testing import condition
 
 
+def random_matrix(shape, dtype, scale, sym=False):
+    m, n = shape[-2:]
+    dtype = numpy.dtype(dtype)
+    assert dtype.kind in 'ifc'
+    low_s, high_s = scale
+    if dtype.kind == 'i':
+        err = 0.5 * numpy.sqrt(m * n)
+        low_s += err
+        high_s -= err
+    assert low_s <= high_s
+    a = numpy.random.standard_normal(shape)
+    u, s, vh = numpy.linalg.svd(a)
+    new_s = numpy.random.uniform(low_s, high_s, s.shape)
+    if sym:
+        assert m == n
+        new_a = numpy.einsum('...ij,...j,...kj', u, new_s, u)
+    else:
+        new_a = numpy.einsum('...ij,...j,...jk', u, new_s, vh)
+    if dtype.kind == 'i':
+        new_a = numpy.rint(new_a)
+    return new_a.astype(dtype)
+
+
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
-    @testing.for_dtypes([
-        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
-        numpy.float32, numpy.float64])
     @testing.numpy_cupy_allclose(atol=1e-3)
-    def check_L(self, array, xp, dtype):
-        a = xp.asarray(array, dtype=dtype)
+    def check_L(self, array, xp):
+        a = xp.asarray(array)
         return xp.linalg.cholesky(a)
 
-    def test_decomposition(self):
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64,  # numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64])
+    def test_decomposition(self, dtype):
         # A positive definite matrix
-        a0 = numpy.random.randint(0, 100, size=(5, 5))
-        a1 = numpy.random.randint(0, 100, size=(5, 5))
-        A = a0.dot(a0.T) + a1.dot(a1.T) + numpy.identity(n=5, dtype=int)
+        A = random_matrix((5, 5), dtype, scale=(10, 10000), sym=True)
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
-        self.check_L(numpy.array([[1, 2], [1, 9]]))
+        self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
 
 
 @testing.parameterize(*testing.product({
