@@ -12,12 +12,18 @@ from cupy.testing import condition
 def random_matrix(shape, dtype, scale, sym=False):
     m, n = shape[-2:]
     dtype = numpy.dtype(dtype)
-    assert dtype.kind in 'ifc'
+    assert dtype.kind in 'iufc'
     low_s, high_s = scale
-    if dtype.kind == 'i':
-        err = 0.5 * numpy.sqrt(m * n)
+    bias = None
+    if dtype.kind in 'iu':
+        # For an m \times n matrix M whose element is in [-0.5, 0.5], it holds
+        # (singular value of M) <= \sqrt{mn} / 2
+        err = numpy.sqrt(m * n) / 2.
         low_s += err
         high_s -= err
+        if dtype.kind in 'u':
+            # (singular value of numpy.ones((m, n))) <= \sqrt{mn}
+            high_s = bias = high_s / (1 + numpy.sqrt(m * n))
     assert low_s <= high_s
     a = numpy.random.standard_normal(shape)
     u, s, vh = numpy.linalg.svd(a)
@@ -27,7 +33,9 @@ def random_matrix(shape, dtype, scale, sym=False):
         new_a = numpy.einsum('...ij,...j,...kj', u, new_s, u)
     else:
         new_a = numpy.einsum('...ij,...j,...jk', u, new_s, vh)
-    if dtype.kind == 'i':
+    if bias is not None:
+        new_a += bias
+    if dtype.kind in 'iu':
         new_a = numpy.rint(new_a)
     return new_a.astype(dtype)
 
@@ -43,7 +51,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
         return xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
-        numpy.int32, numpy.int64,  # numpy.uint32, numpy.uint64,
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64])
     def test_decomposition(self, dtype):
         # A positive definite matrix
