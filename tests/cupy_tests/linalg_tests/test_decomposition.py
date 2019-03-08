@@ -22,6 +22,9 @@ def random_matrix(shape, dtype, scale, sym=False):
         low_s += err
         high_s -= err
         if dtype.kind in 'u':
+            assert sym, (
+                'generating nonsymmetric matrix with uint cells is not'
+                ' supported')
             # (singular value of numpy.ones((m, n))) <= \sqrt{mn}
             high_s = bias = high_s / (1 + numpy.sqrt(m * n))
     assert low_s <= high_s
