@@ -106,15 +106,15 @@ def reduce_sum(core.ndarray x, out=None):
     return y
 
 
-def can_use_reduce_sum(dtype):
-    ret = True
-    if dtype is not None:
-        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.unit16,
-                         numpy.int32, numpy.unit32, numpy.int64, numpy.unit64,
-                         numpy.float32, numpy.float64]
-        if dtype not in support_dtype:
-            ret = False
-    return ret
+def can_use_reduce_sum(x_dtype, y_dtype=None):
+    if y_dtype is not None and y_dtype != x_dtype:
+        return False
+    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                     numpy.float32, numpy.float64]
+    if x_dtype not in support_dtype:
+        return False
+    return True
 
 
 def reduce_min(core.ndarray x, out=None):
@@ -196,15 +196,15 @@ def reduce_min(core.ndarray x, out=None):
     return y
 
 
-def can_use_reduce_min(dtype):
-    ret = True
-    if dtype is not None:
-        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.unit16,
-                         numpy.int32, numpy.unit32, numpy.int64, numpy.unit64,
-                         numpy.float32, numpy.float64]
-        if dtype not in support_dtype:
-            ret = False
-    return ret
+def can_use_reduce_min(x_dtype, y_dtype=None):
+    if y_dtype is not None and y_dtype != x_dtype:
+        return False
+    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                     numpy.float32, numpy.float64]
+    if x_dtype not in support_dtype:
+        return False
+    return True
 
 
 def reduce_max(core.ndarray x, out=None):
@@ -286,12 +286,12 @@ def reduce_max(core.ndarray x, out=None):
     return y
 
 
-def can_use_reduce_max(dtype):
-    ret = True
-    if dtype is not None:
-        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.unit16,
-                         numpy.int32, numpy.unit32, numpy.int64, numpy.unit64,
-                         numpy.float32, numpy.float64]
-        if dtype not in support_dtype:
-            ret = False
-    return ret
+def can_use_reduce_max(x_dtype, y_dtype=None):
+    if y_dtype is not None and y_dtype != x_dtype:
+        return False
+    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                     numpy.float32, numpy.float64]
+    if x_dtype not in support_dtype:
+        return False
+    return True
