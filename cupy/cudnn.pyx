@@ -1572,6 +1572,12 @@ def batch_normalization_forward_training(
         core.ndarray running_mean, core.ndarray running_var,
         mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
+    # Usually supply None to mean and inv_std, which are left for backward
+    # compatibility. See cupy#2060 and cupy#2070.
+    if (mean is None and inv_std is not None or
+        inv_std is None and mean is not None):
+        raise ValueError('Both mean and inv_std must be None if one is.')
+
     x = core.ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
