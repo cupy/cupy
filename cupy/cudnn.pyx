@@ -1575,7 +1575,7 @@ def batch_normalization_forward_training(
     # Usually supply None to mean and inv_std, which are left for backward
     # compatibility. See cupy#2060 and cupy#2070.
     if (mean is None and inv_std is not None or
-        inv_std is None and mean is not None):
+            inv_std is None and mean is not None):
         raise ValueError('Both mean and inv_std must be None if one is.')
 
     x = core.ascontiguousarray(x)
