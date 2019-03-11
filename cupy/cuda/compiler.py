@@ -17,6 +17,30 @@ _nvrtc_version = None
 _nvrtc_max_compute_capability = None
 
 
+class NVCCException(Exception):
+    pass
+
+
+def _run_nvcc(cmd, cwd):
+    try:
+        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        msg = ('`nvcc` command returns non-zero exit status. \n'
+               'command: {0}\n'
+               'return-code: {1}\n'
+               'stdout/stderr: \n'
+               '{2}'.format(e.cmd,
+                            e.returncode,
+                            e.output.decode(encoding='UTF-8',
+                                            errors='replace')))
+        raise NVCCException(msg)
+    except OSError as e:
+        msg = 'Failed to run `nvcc` command. ' \
+              'Check PATH environment variable: ' \
+              + str(e)
+        raise OSError(msg)
+
+
 def _get_nvrtc_version():
     global _nvrtc_version
     if _nvrtc_version is None:
@@ -88,6 +112,40 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
             raise
 
         return ptx
+
+
+def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
+    if not arch:
+        arch = _get_arch()
+
+    cmd = ['nvcc', '--cubin', '-arch', arch] + list(options)
+
+    with TemporaryDirectory() as root_dir:
+        first_part = filename.split(".")[0]
+
+        path = os.path.join(root_dir, first_part)
+        cu_path = '%s.cu' % path
+        cubin_path = '%s.cubin' % path
+
+        with open(cu_path, 'w') as cu_file:
+            cu_file.write(source)
+
+        cmd.append(cu_path)
+
+        try:
+            _run_nvcc(cmd, root_dir)
+        except NVCCException as e:
+            cex = CompileException(e.message, source, cu_path, options)
+
+            dump = _get_bool_env_variable(
+                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+            if dump:
+                cex.dump(sys.stderr)
+
+            raise cex
+
+        with open(cubin_path, 'rb') as bin_file:
+            return bin_file.read()
 
 
 def _preprocess(source, options, arch):
