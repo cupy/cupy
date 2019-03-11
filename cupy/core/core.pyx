@@ -5,6 +5,7 @@ import sys
 
 import ctypes
 import numpy
+cimport numpy
 import six
 
 import cupy
@@ -1716,32 +1717,36 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     else:  # obj is sequence, scalar or numpy.ndarray
         head, concat_shape = _get_head_and_concat_shape(obj)
         if concat_shape is not None and concat_shape[-1] != 0:
+            ndim = len(concat_shape)
+            if ndmin > ndim:
+                concat_shape = (1,) * (ndmin - ndim) + concat_shape
+
             # obj is non-empty sequence and all elements have same shape
             if isinstance(head, numpy.ndarray):  # obj is Seq[numpy.ndarray]
+                a_list = obj
                 if dtype is None:
                     dtype = head.dtype
                 if (order is not None and len(order) >= 1 and
                     order[0] in 'KAka'):
                     order = 'F' if head.flags.f_contiguous else 'C'
 
-                a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
-                                ndmin=ndmin)
-                a = _copy_from_numpy_array(a_cpu, order)
+                #a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                #                ndmin=ndmin)
+                #a = _copy_numpy_array_to_pinned_memory(a_cpu, order)
+                a = _copy_numpy_array_list_to_pinned_memory(
+                    a_list, dtype, concat_shape, order)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
                 if dtype is None:
                     dtype = head.dtype
                 a = _manipulation.concatenate_method(
                     _flatten_list(obj), 0).reshape(concat_shape)
-                ndim = len(a._shape)
-                if ndmin > ndim:
-                    a.shape = (1,) * (ndmin - ndim) + a.shape
             else:  # obj is a sequence of values like scalar
                 if (order is not None and len(order) >= 1 and
                     order[0] in 'KAka'):
                     order = 'C'
                 a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                     ndmin=ndmin)
-                a = _copy_from_numpy_array(a_cpu, order)
+                a = _copy_numpy_array_to_pinned_memory(a_cpu, order)
         else:
             # obj is:
             # - scalar
@@ -1756,7 +1761,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     order = 'C'
             a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                 ndmin=ndmin)
-            a = _copy_from_numpy_array(a_cpu, order)
+            a = _copy_numpy_array_to_pinned_memory(a_cpu, order)
 
     return a
 
@@ -1802,7 +1807,7 @@ cdef list _flatten_list(object obj):
     return [obj]
 
 
-cpdef ndarray _copy_from_numpy_array(a_cpu, str order):
+cdef ndarray _copy_numpy_array_to_pinned_memory(a_cpu, str order):
     cdef a_dtype = a_cpu.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -1812,9 +1817,11 @@ cpdef ndarray _copy_from_numpy_array(a_cpu, str order):
         a.fill(a_cpu[()])
         return a
 
-    cdef Py_ssize_t nbytes = _calc_nbytes(a_dtype, a_shape)
+    cdef Py_ssize_t itemcount = internal.prod(a_shape)
+    cdef Py_ssize_t itemsize = get_dtype(a_dtype).itemsize
+    cdef Py_ssize_t nbytes = itemcount * itemsize
     stream = stream_module.get_current_stream()
-    mem = _alloc_pinned_memory(nbytes)
+    cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
@@ -1827,33 +1834,37 @@ cpdef ndarray _copy_from_numpy_array(a_cpu, str order):
     return a
 
 
-cpdef ndarray _copy_from_numpy_array_list(
-    arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order):
-    return None
-    """
-    cdef ndarray a = ndarray(shape, dtype=a_dtype, order=order)
-    stream = stream_module.get_current_stream()
+cdef ndarray _copy_numpy_array_list_to_pinned_memory(
+    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order):
+    cdef ndarray a = ndarray(shape, dtype=dtype, order=order)
+    cdef size_t itemcount = internal.prod(shape)
+    cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
 
-    src_cpu = _alloc_pinned_memory(dtype, shape)
-    if src_cpu is not None:
-        src_cpu[:] = a_cpu.ravel(order)
+    stream = stream_module.get_current_stream()
+    cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
+    cdef char[:] mem_view
+    cdef numpy.ndarray src_cpu
+    cdef size_t offset, length
+    if mem is not None:
+        mem_view = mem  # convert to a typed memoryview
+        offset = 0
+        for elem in arrays:
+            length = elem.nbytes
+            src_cpu = numpy.frombuffer(
+                mem_view[offset:offset+length], dtype, elem.size)
+            src_cpu[:] = elem.ravel(order)
+            offset += length
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+        pass
+        #a.data.copy_from_host(
+        #    ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
-"""
-
-
-cpdef inline Py_ssize_t _calc_nbytes(
-        dtype, const vector.vector[Py_ssize_t]& shape):
-    return internal.prod(shape) * get_dtype(dtype).itemsize
 
 
 cpdef inline _alloc_pinned_memory(Py_ssize_t nbytes):
-    mem = None
     try:
         return pinned_memory.alloc_pinned_memory(nbytes)
     except CUDARuntimeError as e:
