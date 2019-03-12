@@ -3,6 +3,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -60,8 +61,9 @@ def _get_arch():
         else:
             # CUDA 9.0 / 9.1
             _nvrtc_max_compute_capability = '70'
-    cc = min(device.Device().compute_capability, _nvrtc_max_compute_capability)
-    return 'compute_%s' % cc
+
+    return min(device.Device().compute_capability,
+               _nvrtc_max_compute_capability)
 
 
 class TemporaryDirectory(object):
@@ -92,7 +94,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch={}'.format(arch),)
+    options += ('-arch=compute_{}'.format(arch),)
 
     with TemporaryDirectory() as root_dir:
         cu_path = os.path.join(root_dir, filename)
@@ -117,7 +119,8 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
     if not arch:
         arch = _get_arch()
 
-    cmd = ['nvcc', '--cubin', '-arch', arch] + list(options)
+    arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
+    cmd = ['nvcc', '--cubin', arch_str] + list(options)
 
     with TemporaryDirectory() as root_dir:
         first_part = filename.split(".")[0]
@@ -134,7 +137,7 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
         try:
             _run_nvcc(cmd, root_dir)
         except NVCCException as e:
-            cex = CompileException(e.message, source, cu_path, options)
+            cex = CompileException(str(e), source, cu_path, options)
 
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -148,7 +151,7 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
 
 
 def _preprocess(source, options, arch):
-    options += ('-arch={}'.format(arch),)
+    options += ('-arch=compute_{}'.format(arch),)
 
     prog = _NVRTCProgram(source, '')
     try:
