@@ -11,7 +11,6 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
-from cupy.cuda.nvcc import compile_using_nvcc
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
