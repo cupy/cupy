@@ -186,14 +186,10 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     if arch is None:
         arch = _get_arch()
 
-    if backend == "nvrtc":
-        options += ('-ftz=true',)
-        if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
-            options += ('--device-debug', '--generate-line-info')
-    elif backend == "nvcc":
-        options += ('--generate-line-info',)
-    else:
-        raise ValueError("Invalid backend %s" % backend)
+    options += ('-ftz=true',)
+
+    if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
+        options += ('--device-debug', '--generate-line-info')
 
     env = (arch, options, _get_nvrtc_version())
     base = _empty_file_preprocess_cache.get(env, None)
