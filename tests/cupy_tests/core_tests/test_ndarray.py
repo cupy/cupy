@@ -125,7 +125,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayDeepCopy(unittest.TestCase):
 
     def _check_deepcopy(self, arr, arr2):
         assert arr.data is not arr2.data
@@ -147,6 +147,27 @@ class TestNdarrayCopy(unittest.TestCase):
             arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
         assert arr2.device == arr.device
+
+
+@testing.gpu
+class TestNdarrayCopy(unittest.TestCase):
+
+    @testing.multi_gpu(2)
+    @testing.for_orders('CFA')
+    def test_copy_multi_device_non_contiguous(self, order):
+        arr = core.ndarray((20,))[::2]
+        dev1 = cuda.Device(1)
+        with dev1:
+            arr2 = arr.copy(order)
+        assert arr2.device == dev1
+        testing.assert_array_equal(arr, arr2)
+
+    @testing.multi_gpu(2)
+    def test_copy_multi_device_non_contiguous_K(self):
+        arr = core.ndarray((20,))[::2]
+        with cuda.Device(1):
+            with self.assertRaises(NotImplementedError):
+                arr.copy('K')
 
 
 @testing.gpu
