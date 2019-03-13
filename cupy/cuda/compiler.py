@@ -150,18 +150,31 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
             return bin_file.read()
 
 
-def _preprocess(source, options, arch):
-    options += ('-arch=compute_{}'.format(arch),)
+def _preprocess(source, options, arch, backend):
+    if backend == 'nvrtc':
+        options += ('-arch=compute_{}'.format(arch),)
 
-    prog = _NVRTCProgram(source, '')
-    try:
-        result = prog.compile(options)
-    except CompileException as e:
-        dump = _get_bool_env_variable(
-            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
-        if dump:
-            e.dump(sys.stderr)
-        raise
+        prog = _NVRTCProgram(source, '')
+        try:
+            result = prog.compile(options)
+        except CompileException as e:
+            dump = _get_bool_env_variable(
+                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+            if dump:
+                e.dump(sys.stderr)
+            raise
+
+    elif backend == 'nvcc':
+        try:
+            result = compile_using_nvcc(source, options, arch, 'preprocess.cu')
+        except CompileException as e:
+            dump = _get_bool_env_variable(
+                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+            if dump:
+                e.dump(sys.stderr)
+            raise
+    else:
+        raise ValueError("Invalid backend %s" % backend)
 
     assert isinstance(result, six.text_type)
     return result
@@ -191,11 +204,11 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
 
-    env = (arch, options, _get_nvrtc_version())
+    env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
-        base = _preprocess('', options, arch)
+        base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
