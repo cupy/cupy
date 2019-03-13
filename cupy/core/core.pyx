@@ -5,7 +5,6 @@ import sys
 
 import ctypes
 import numpy
-cimport numpy
 import six
 
 import cupy
@@ -1715,17 +1714,18 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
     else:  # obj is sequence, scalar or numpy.ndarray
-        head, concat_shape = _get_head_and_concat_shape(obj)
+        head, elem_dtype, concat_shape = _get_concat_shape(obj)
         if concat_shape is not None and concat_shape[-1] != 0:
+            # obj is a non-empty sequence and all elements have same shape
+            # and dtype
             ndim = len(concat_shape)
             if ndmin > ndim:
                 concat_shape = (1,) * (ndmin - ndim) + concat_shape
 
-            # obj is non-empty sequence and all elements have same shape
             if isinstance(head, numpy.ndarray):  # obj is Seq[numpy.ndarray]
-                a_list = obj
+                # all elements are numpy array with same shape and dtype
                 if dtype is None:
-                    dtype = head.dtype
+                    dtype = elem_dtype
                 if (order is not None and len(order) >= 1 and
                     order[0] in 'KAka'):
                     order = 'F' if head.flags.f_contiguous else 'C'
@@ -1733,11 +1733,16 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 #a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                 #                ndmin=ndmin)
                 #a = _copy_numpy_array_to_pinned_memory(a_cpu, order)
+                a_list = obj
                 a = _copy_numpy_array_list_to_pinned_memory(
                     a_list, dtype, concat_shape, order)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
+                # all elements are cupy array with same shape and dtype
                 if dtype is None:
-                    dtype = head.dtype
+                    dtype = elem_dtype
+                if (order is not None and len(order) >= 1 and
+                    order[0] in 'KAka'):
+                    order = 'F' if head.flags.f_contiguous else 'C'
                 a = _manipulation.concatenate_method(
                     _flatten_list(obj), 0).reshape(concat_shape)
             else:  # obj is a sequence of values like scalar
@@ -1752,13 +1757,14 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
             # - scalar
             # - numpy.ndarray
             # - empty sequence
-            # - sequence with elements whose shapes are unmatched
+            # - sequence with elements whose shapes or dtypes are unmatched
             # - the other type of object
             if order is not None and len(order) >= 1 and order[0] in 'KAka':
                 if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
                     order = 'F'
                 else:
                     order = 'C'
+            # fallback to numpy
             a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                                 ndmin=ndmin)
             a = _copy_numpy_array_to_pinned_memory(a_cpu, order)
@@ -1766,36 +1772,41 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     return a
 
 
-cdef tuple _get_head_and_concat_shape(object obj):
+cdef tuple _get_concat_shape(object obj):
     # Returns a tuple of first element in the object or the object itself and
     # an overall shape if it can be converted to a single CuPy array by just
     # concatenating it (i.e., the object is a NumPy/CuPy array or a (nested)
-    # sequence only containing NumPy/CuPy array(s)). Returns None as a shape
-    # otherwise.
+    # sequence only containing NumPy/CuPy array(s) with same shape and dtype).
+    # Returns None as a shape otherwise.
     if isinstance(obj, (numpy.ndarray, ndarray)):
-        return (obj, obj.shape)
+        return (obj, obj.dtype, obj.shape)
     elif isinstance(obj, (list, tuple)):
         head = None
+        dtype = None
         shape = None
         for elem in obj:
             # Find the head recursively if obj is a nested built-in list
-            elem_head, elem_shape = _get_head_and_concat_shape(elem)
+            elem_head, elem_dtype, elem_shape = _get_concat_shape(elem)
 
             # Use shape of the first element as the common shape.
             if shape is None:
                 head = elem_head
+                dtype = elem_dtype
                 shape = elem_shape
 
             # `elem` is not concatable or the shape does not match with
             # siblings.
-            if elem_shape is None or shape != elem_shape:
-                return (head, None)
+            if (elem_shape is None or
+                dtype != elem_dtype or
+                shape != elem_shape):
+                return (head, None, None)
 
         return (
             head,
+            dtype,
             (len(obj),) + shape if shape is not None else (len(obj),))
     else:  # scalar or object
-        return (obj, None)
+        return (obj, None, None)
 
 
 cdef list _flatten_list(object obj):
@@ -1843,7 +1854,6 @@ cdef ndarray _copy_numpy_array_list_to_pinned_memory(
     stream = stream_module.get_current_stream()
     cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
     cdef char[:] mem_view
-    cdef numpy.ndarray src_cpu
     cdef size_t offset, length
     if mem is not None:
         mem_view = mem  # convert to a typed memoryview

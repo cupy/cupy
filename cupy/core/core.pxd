@@ -94,7 +94,7 @@ cdef class Indexer:
     cdef CPointer get_pointer(self)
 
 
-cdef tuple _get_head_and_concat_shape(object obj)
+cdef tuple _get_concat_shape(object obj)
 cdef list _flatten_list(object obj)
 cdef ndarray _copy_numpy_array_to_pinned_memory(a_cpu, str order)
 cdef ndarray _copy_numpy_array_list_to_pinned_memory(
