@@ -95,10 +95,12 @@ cdef class Indexer:
 
 
 cdef tuple _get_concat_shape(object obj)
+cdef tuple _get_concat_shape_impl(object obj)
 cdef list _flatten_list(object obj)
-cdef ndarray _copy_numpy_array_to_pinned_memory(a_cpu, str order)
-cdef ndarray _copy_numpy_array_list_to_pinned_memory(
-    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order)
+cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin)
+cdef ndarray _send_numpy_array_list_to_gpu(
+    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order,
+    Py_ssize_t ndmin)
 cpdef _alloc_pinned_memory(Py_ssize_t size)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
