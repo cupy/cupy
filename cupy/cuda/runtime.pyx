@@ -71,6 +71,8 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaMalloc(void** devPtr, size_t size)
     int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
+    int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
+    int cudaHostUnregister(void *ptr)
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
     int cudaMemGetInfo(size_t* free, size_t* total)
@@ -229,6 +231,18 @@ cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
         status = cudaHostAlloc(&ptr, size, flags)
     check_status(status)
     return <intptr_t>ptr
+
+
+cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags):
+    with nogil:
+        status = cudaHostRegister(<void*>ptr, size, flags)
+    check_status(status)
+
+
+cpdef hostUnregister(intptr_t ptr):
+    with nogil:
+        status = cudaHostUnregister(<void*>ptr)
+    check_status(status)
 
 
 cpdef free(intptr_t ptr):

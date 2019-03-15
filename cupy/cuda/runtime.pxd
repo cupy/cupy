@@ -208,6 +208,8 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
+cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
+cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
 cpdef memGetInfo()
