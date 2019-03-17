@@ -326,10 +326,10 @@ cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=0):
 
 
 cpdef ndarray _reshape(ndarray self,
-                       const vector.vector[Py_ssize_t] &orig_shape):
+                       const vector.vector[Py_ssize_t] &shape_spec):
     cdef vector.vector[Py_ssize_t] shape, strides
     cdef ndarray newarray
-    shape = internal.infer_unknown_dimension(orig_shape, self.size)
+    shape = internal.infer_unknown_dimension(shape_spec, self.size)
     if internal.vector_equal(shape, self._shape):
         return self.view()
 

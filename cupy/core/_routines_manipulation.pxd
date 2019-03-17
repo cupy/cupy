@@ -25,7 +25,7 @@ cpdef ndarray moveaxis(ndarray a, source, destination)
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=*)
 cpdef ndarray broadcast_to(ndarray array, shape)
 cpdef ndarray _reshape(ndarray self,
-                       const vector.vector[Py_ssize_t] &orig_shape)
+                       const vector.vector[Py_ssize_t] &shape_spec)
 cpdef ndarray _T(ndarray self)
 cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes)
 cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype)
