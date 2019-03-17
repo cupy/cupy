@@ -46,6 +46,31 @@ class TestArrayUfunc(unittest.TestCase):
 
 
 @testing.gpu
+class TestElementwiseKernel(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination()
+    @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError,
+                                 contiguous_check=False)
+    def check_array_scalar_op(self, op, xp, dtyes, trans=False):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtyes)
+        if trans:
+            a = a.T
+
+        if xp is cupy:
+            a = DummyObjectWithCudaArrayInterface(a)
+            f = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
+            return f(a, dtyes(3))
+        else:
+            return a + dtyes(3)
+
+    def test_add_scalar(self):
+        self.check_array_scalar_op('add')
+
+    def test_add_scalar_with_strides(self):
+        self.check_array_scalar_op('add', trans=True)
+
+
+@testing.gpu
 class SimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
