@@ -234,13 +234,10 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     shape_vec.assign(shape, shape + ndim)
 
     if mem.dlm_tensor.dl_tensor.strides is NULL:
-        strides_vec = None
-    else:
-        cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
-        cdef vector[Py_ssize_t] strides_vec
-        for i in range(ndim):
-            strides_vec.push_back(strides[i] * (bits // 8))
+        return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
+    cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
+    cdef vector[Py_ssize_t] strides_vec
+    for i in range(ndim):
+        strides_vec.push_back(strides[i] * (bits // 8))
 
-    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
-
-    return cupy_array
+    return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
