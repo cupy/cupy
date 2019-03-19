@@ -1738,9 +1738,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     obj, dtype, shape, order, ndmin)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
                 a = _manipulation.concatenate_method(
-                    _flatten_list(obj), 0).reshape(shape)
+                    _flatten_list(obj), 0).reshape(shape, order=order)
             else:  # should not be reached here
-                raise ValueError("obj is a list of invalid type elements")
+                raise ValueError("The elements of obj are unsupported type(s)")
         else:
             # obj is:
             # - numpy array
@@ -1805,7 +1805,8 @@ cdef list _flatten_list(object obj):
         for elem in obj:
             ret += _flatten_list(elem)
         return ret
-    return [obj]
+    else:
+        return [obj]
 
 
 cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
@@ -1843,23 +1844,17 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
 cdef ndarray _send_numpy_array_list_to_gpu(
     list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order,
     Py_ssize_t ndmin):
-    cdef ndarray a
+    cdef ndarray a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
     cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
 
     stream = stream_module.get_current_stream()
     cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
-    cdef char[:] mem_view
     cdef size_t offset, length
     if mem is not None:
-        mem_view = mem  # convert to a typed memoryview
-        offset = 0
-        for elem in arrays:
-            length = elem.nbytes
-            src_cpu = numpy.frombuffer(
-                mem_view[offset:offset+length], dtype, elem.size)
-            src_cpu[:] = elem.ravel(order)
-            offset += length
+        # write concatenated arrays to the pinned memory directly
+        src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(shape, order=order)
+        numpy.concatenate([e[None] for e in arrays], 0, src_cpu)
         a = ndarray(shape, dtype=dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
