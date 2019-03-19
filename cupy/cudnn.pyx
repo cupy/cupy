@@ -750,7 +750,6 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
 def get_rnn_lin_layer_matrix_params(
         handle, rnn_desc, layer, x_desc, w_desc, core.ndarray w, lin_layer_id):
     cdef size_t ptr = 0
-    w_data_ptr = w.data.ptr
     mat_desc = cudnn.createFilterDescriptor()
     try:
         cudnn.getRNNLinLayerMatrixParams(
@@ -762,7 +761,7 @@ def get_rnn_lin_layer_matrix_params(
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
-    mat = w[offset: offset + size]
+    mat = w[offset:offset + size]
     return mat
 
 
@@ -780,7 +779,7 @@ def get_rnn_lin_layer_bias_params(
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
-    bias = w[offset: offset + size]
+    bias = w[offset:offset + size]
     return bias
 
 
