@@ -1737,10 +1737,11 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 a = _send_numpy_array_list_to_gpu(
                     obj, dtype, shape, order, ndmin)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
-                a = _manipulation.concatenate_method(
-                    _flatten_list(obj), 0).reshape(shape, order=order)
+                a = _manipulation.concatenate_method(_flatten_list(obj),
+                    0).reshape(shape).astype(dtype, order=order, copy=False)
             else:  # should not be reached here
-                raise ValueError("The elements of obj are unsupported type(s)")
+                raise ValueError(
+                    "The elements of obj are unsupported type(s)")
         else:
             # obj is:
             # - numpy array
