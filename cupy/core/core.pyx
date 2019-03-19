@@ -17,6 +17,7 @@ from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
 from cupy.cuda import device
+from cupy.cuda import memory as memory_module
 
 
 from cupy import util
@@ -1713,6 +1714,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
+    elif hasattr(obj, '__cuda_array_interface__'):
+        return array(_convert_object_with_cuda_array_interface(obj),
+                     dtype, copy, order, subok, ndmin)
     else:
         if order is not None and len(order) >= 1 and order[0] in 'KAka':
             if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
@@ -2481,3 +2485,21 @@ not_equal = create_comparison(
 
     ''',
     no_complex_dtype=False)
+
+
+cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    cdef Py_ssize_t sh, st
+    desc = a.__cuda_array_interface__
+    shape = desc['shape']
+    dtype = numpy.dtype(desc['typestr'])
+    if 'strides' in desc:
+        strides = desc['strides']
+        nbytes = 0
+        for sh, st in zip(shape, strides):
+            nbytes = max(nbytes, abs(sh * st))
+    else:
+        strides = None
+        nbytes = internal.prod(shape) * dtype.itemsize
+    mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
+    memptr = memory.MemoryPointer(mem, 0)
+    return ndarray(shape, dtype, memptr, strides)

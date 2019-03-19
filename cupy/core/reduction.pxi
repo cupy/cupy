@@ -212,36 +212,46 @@ class simple_reduction_function(object):
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
 
-    def __call__(self, ndarray a, axis=None, dtype=None, ndarray out=None,
+    def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef ndarray arr
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
-        in_args = [a]
-        a_shape = a.shape
+        if isinstance(a, ndarray):
+            arr = a
+        elif hasattr(a, '__cuda_array_interface__'):
+            arr = _convert_object_with_cuda_array_interface(a)
+        else:
+            raise TypeError(
+                'Argument \'a\' has incorrect type (expected %s, got %s)' %
+                (ndarray, type(a)))
+        del a
+        in_args = [arr]
+        a_shape = arr.shape
         dev_id = device.get_device_id()
         if out is None:
-            _preprocess_args(dev_id, (a,), False)
+            _preprocess_args(dev_id, (arr,), False)
             out_args = []
         else:
-            _preprocess_args(dev_id, (a, out), False)
+            _preprocess_args(dev_id, (arr, out), False)
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        reduce_axis, out_axis = _get_axis(axis, a._shape.size())
+        reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
         ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
         if (<ndarray>out_args[0]).size == 0:
             return ret
-        if a.size == 0 and self.identity is None:
+        if arr.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
