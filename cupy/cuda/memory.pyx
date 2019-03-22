@@ -5,6 +5,7 @@ import atexit
 import collections
 import ctypes
 import gc
+import os
 import warnings
 import weakref
 
@@ -34,9 +35,14 @@ def _exit():
 
 class OutOfMemoryError(MemoryError):
 
-    def __init__(self, size, total):
-        msg = 'out of memory to allocate %d bytes ' \
-              '(total %d bytes)' % (size, total)
+    def __init__(self, size, total, limit=0):
+        if limit == 0:
+            msg = ('out of memory to allocate {} bytes '
+                   '(total {} bytes)'.format(size, total))
+        else:
+            msg = ('out of memory to allocate {} bytes '
+                   '(total {} bytes, limit set to {} bytes)'.format(
+                       size, total, limit))
         super(OutOfMemoryError, self).__init__(msg)
 
 
@@ -675,26 +681,46 @@ cdef object _get_chunk(SingleDeviceMemoryPool pool, size_t size,
 
 
 cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
+    # Be optimistic to avoid locking the entire malloc section.
+    total = pool._total_bytes + size
+    if pool._total_bytes_limit != 0 and pool._total_bytes_limit < total:
+        raise OutOfMemoryError(size, total, pool._total_bytes_limit)
+
+    mem = None
     try:
-        return pool._alloc(size).mem
+        mem = pool._alloc(size).mem
     except runtime.CUDARuntimeError as e:
         if e.status != runtime.errorMemoryAllocation:
             raise
         pool.free_all_blocks()
         try:
-            return pool._alloc(size).mem
+            mem = pool._alloc(size).mem
         except runtime.CUDARuntimeError as e:
             if e.status != runtime.errorMemoryAllocation:
                 raise
             gc.collect()
             pool.free_all_blocks()
             try:
-                return pool._alloc(size).mem
+                mem = pool._alloc(size).mem
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
-    total = size + pool.total_bytes()
-    raise OutOfMemoryError(size, total)
+
+    if mem is None:
+        raise OutOfMemoryError(size, total)
+
+    rlock.lock_fastrlock(pool._total_bytes_lock, -1, True)
+    try:
+        total = pool._total_bytes + size
+        if pool._total_bytes_limit != 0 and pool._total_bytes_limit < total:
+            del mem
+            raise OutOfMemoryError(size, total, pool._total_bytes_limit)
+        pool._total_bytes = total
+    finally:
+        rlock.unlock_fastrlock(pool._total_bytes_lock)
+
+    return mem
+
 
 
 cdef _append_to_free_list(list arena, vector.vector[size_t]* a_index,
@@ -752,6 +778,20 @@ cdef bint _remove_from_free_list(list arena, vector.vector[size_t]* a_index,
             dereference(a_flag)[index] = 0
         return True
     return False
+
+
+cpdef dict _parse_limit_string(limit=None):
+    if limit is None:
+        limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
+
+    size = None
+    fraction = None
+    if limit is not None:
+        if limit.endswith('%'):
+            fraction = float(limit[:-1]) / 100.0
+        else:
+            size = int(limit)
+    return {'size': size, 'fraction': fraction}
 
 
 # cudaMalloc() is aligned to at least 512 bytes
@@ -823,10 +863,18 @@ cdef class SingleDeviceMemoryPool:
         # `_free_lock` must be acquired to access.
         dict _free
 
+        # Number of total bytes actually allocated on GPU.
+        # `_total_bytes_lock` must be acquired to modify.
+        size_t _total_bytes
+
+        # Upper limit of the amount to be allocated by this pool.
+        size_t _total_bytes_limit
+
         object __weakref__
         object _weakref
         object _free_lock
         object _in_use_lock
+        object _total_bytes_lock
         readonly int _device_id
 
         # Map from stream pointer to its arena index.
@@ -842,6 +890,9 @@ cdef class SingleDeviceMemoryPool:
         self._device_id = device.get_device_id()
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
+        self._total_bytes_lock = rlock.create_fastrlock()
+
+        self.set_limit(**(_parse_limit_string()))
 
     cpdef list _arena(self, size_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
@@ -1042,7 +1093,33 @@ cdef class SingleDeviceMemoryPool:
         return size
 
     cpdef size_t total_bytes(self):
-        return self.used_bytes() + self.free_bytes()
+        return self._total_bytes
+
+    cpdef set_limit(self, size=None, fraction=None):
+        limit = None
+        if size is None:
+            if fraction is None:
+                limit = 0
+            else:
+                if not 0 <= fraction <= 1:
+                    raise ValueError(
+                        'memory limit fraction out of range: {}'.format(
+                        fraction))
+                _, total = runtime.memGetInfo()
+                limit = total * fraction
+        else:
+            if fraction is None:
+                if size < 0:
+                    raise ValueError(
+                        'memory limit size out of range: {}'.format(size))
+                limit = size
+            else:
+                raise ValueError('size and fraction cannot be specified at '
+                                 'one time')
+        self._total_bytes_limit = limit
+
+    cpdef size_t get_limit(self):
+        return self._total_bytes_limit
 
 
 cdef class MemoryPool(object):
@@ -1153,6 +1230,46 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
+
+    cpdef set_limit(self, size=None, fraction=None):
+        """Set the upper limit to the amount of memory acquired by the pool.
+
+        When `fraction` is specified, the size will become a fraction of the
+        amount of memory installed on the GPU.
+        For example, if you have a GPU with 2 GiB memory, you can either use
+        `set_limit(fraction=0.5)` or `set_limit(size=1024**3)` to limit the
+        memory size to 1 GiB.
+
+        `size` and `fraction` cannot be specified at one time.
+        If both of them are **not** specified or ``0`` is specified, the
+        limit will be disabled.
+
+        .. note::
+            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
+            environment variable.
+            See the reference for the details.
+            Limit set by this method supersedes the value specified in by
+            the environment variable.
+
+            Also note that this method only changes the limit for the current
+            device, whereas the environment variable sets the default limit for
+            all devices.
+
+        Args:
+            size (int): Limit size in bytes.
+            fraction (float): Fraction in range of ``[0,1]``.
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp.set_limit(size, fraction)
+
+    cpdef size_t get_limit(self):
+        """Get the upper limit of memory allocation.
+
+        Returns:
+            int: The number of bytes
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.get_limit()
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)
