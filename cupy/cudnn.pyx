@@ -1597,9 +1597,13 @@ cdef _get_dtype_of_tensor_descriptor(size_t desc):
 def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
-        core.ndarray mean, core.ndarray inv_std,
-        double eps, double decay,
+        mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
+    # Usually supply None to mean and inv_std, which are left for backward
+    # compatibility. See cupy#2060 and cupy#2070.
+    if (mean is None) != (inv_std is None):
+        raise ValueError('Both mean and inv_std must be None if one is.')
+
     x = core.ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
@@ -1629,6 +1633,12 @@ def batch_normalization_forward_training(
             running_var_tmp = running_var
             gamma = core.ascontiguousarray(gamma)
             beta = core.ascontiguousarray(beta)
+        if mean is None:
+            save_mean = core.ndarray(gamma.shape, dtype_param)
+            save_inv_std = core.ndarray(gamma.shape, dtype_param)
+        else:
+            save_mean = mean
+            save_inv_std = inv_std
 
         # Factor used in the moving average
         factor = 1.0 - decay
@@ -1646,7 +1656,7 @@ def batch_normalization_forward_training(
             derivedBnDesc, gamma.data.ptr,
             beta.data.ptr, factor, running_mean_tmp.data.ptr,
             running_var_tmp.data.ptr, eps,
-            mean.data.ptr, inv_std.data.ptr)
+            save_mean.data.ptr, save_inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
@@ -1665,7 +1675,10 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    return y
+    if mean is None:
+        return y, save_mean, save_inv_std
+    else:
+        return y
 
 
 def batch_normalization_forward_inference(
