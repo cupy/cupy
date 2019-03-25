@@ -769,6 +769,31 @@ cpdef int _bin_index_from_size(Py_ssize_t size):
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
+cdef class LockAndNoGc:
+    """A context manager that ensures single-thread execution
+    and no garbage collection in the wrapped code.
+    The purpose of disabling GC is to prevent unexpected recursion.
+    See gh-2074 for details.
+    """
+
+    cdef object _lock
+    cdef bint _gc
+
+    def __cinit__(self, lock):
+        self._lock = lock
+
+    def __enter__(self):
+        rlock.lock_fastrlock(self._lock, -1, True)
+        if gc.isenabled():
+            self._gc = True
+            gc.disable()
+
+    def __exit__(self, t, v, tb):
+        if self._gc:
+            gc.enable()
+        rlock.unlock_fastrlock(self._lock)
+
+
 @cython.final
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
@@ -901,21 +926,15 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef MemoryPointer _malloc(self, Py_ssize_t size):
         cdef _Chunk chunk
-        cdef long current_thread
         cdef BaseMemory mem
-        cdef MemoryPointer ret
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        current_thread = pythread.PyThread_get_thread_ident()
         stream_ptr = stream_module.get_current_stream_ptr()
 
         # find best-fit, or a smallest larger allocation
-        rlock.lock_fastrlock(self._free_lock, current_thread, True)
-        try:
+        with LockAndNoGc(self._free_lock):
             chunk = _get_chunk(self, size, stream_ptr)
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is None:
             mem = _try_malloc(self, size)
@@ -923,7 +942,7 @@ cdef class SingleDeviceMemoryPool:
             # cudaMalloc if a cache is not found
             chunk._init(mem, 0, size, stream_ptr)
 
-        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             self._in_use[chunk.ptr()] = chunk
         finally:
@@ -933,9 +952,8 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
         cdef _Chunk chunk, c
-        cdef long current_thread = pythread.PyThread_get_thread_ident()
 
-        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             chunk = self._in_use.pop(ptr)
         except KeyError:
@@ -944,8 +962,7 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._in_use_lock)
         stream_ptr = chunk.stream_ptr
 
-        rlock.lock_fastrlock(self._free_lock, current_thread, True)
-        try:
+        with LockAndNoGc(self._free_lock):
             arena = self._arena(stream_ptr)
             a_index = self._arena_index(stream_ptr)
             a_flag = self._arena_flag(stream_ptr)
@@ -962,23 +979,18 @@ cdef class SingleDeviceMemoryPool:
                 chunk = c
 
             _append_to_free_list(arena, a_index, a_flag, chunk)
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
         cdef size_t stream_ptr
 
-        rlock.lock_fastrlock(self._free_lock, -1, True)
-        try:
+        with LockAndNoGc(self._free_lock):
             # free blocks in all arenas
             if stream is None:
                 for stream_ptr in list(self._free.iterkeys()):
                     _compact_index(self, stream_ptr, True)
             else:
                 _compact_index(self, stream.ptr, True)
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
 
     cpdef free_all_free(self):
         warnings.warn(
@@ -988,7 +1000,6 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
-        cdef set free_list
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
             for arena in self._free.itervalues():
