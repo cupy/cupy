@@ -1,3 +1,4 @@
+import ctypes
 import numpy.testing
 
 import cupy
@@ -126,6 +127,64 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
         numpy.testing.assert_array_equal(
             cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
             verbose=verbose)
+
+
+def _get_underlying_bytes(a):
+    if isinstance(a, cupy.ndarray):
+        # copy the array to host memory while preserving order
+        buf = ctypes.create_string_buffer(a.nbytes)
+        a.data.copy_to_host(ctypes.c_void_p(ctypes.addressof(buf)), a.nbytes)
+
+        return buf.raw
+    else:
+        return ctypes.string_at(a.ctypes.data, a.nbytes)
+
+
+def assert_underlying_array_equal(x, y, err_msg='', verbose=True):
+    """Raises an AssertionError if two underlying bytes of array_like objects
+    are not same.
+
+    Args:
+         x(numpy.ndarray or cupy.ndarray): The actual object to check.
+         y(numpy.ndarray or cupy.ndarray): The desired, expected object.
+         err_msg(str): The error message to be printed in case of failure.
+         verbose(bool): If ``True``, the conflicting values
+             are appended to the error message.
+    """
+    xbytes = _get_underlying_bytes(x)
+    ybytes = _get_underlying_bytes(y)
+    if xbytes != ybytes:
+        msg = ["Underlying arrays are not same:"]
+        if err_msg:
+            msg = [msg[0] + ' ' + err_msg]
+        if verbose:
+            msg.append(" x: {}".format(xbytes))
+            msg.append(" y: {}".format(ybytes))
+        raise AssertionError('\n'.join(msg))
+    if x.strides != y.strides:
+        msg = ["Strides are not equal:"]
+        if err_msg:
+            msg = [msg[0] + ' ' + err_msg]
+        if verbose:
+            msg.append(" x: {}".format(x.strides))
+            msg.append(" y: {}".format(y.strides))
+        raise AssertionError('\n'.join(msg))
+    if x.flags.c_contiguous != y.flags.c_contiguous:
+        msg = ["c_contiguous are not equal:"]
+        if err_msg:
+            msg = [msg[0] + ' ' + err_msg]
+        if verbose:
+            msg.append(" x: {}".format(x.c_contiguous))
+            msg.append(" y: {}".format(y.c_contiguous))
+        raise AssertionError('\n'.join(msg))
+    if x.flags.f_contiguous != y.flags.f_contiguous:
+        msg = ["f_contiguous are not equal:"]
+        if err_msg:
+            msg = [msg[0] + ' ' + err_msg]
+        if verbose:
+            msg.append(" x: {}".format(x.f_contiguous))
+            msg.append(" y: {}".format(y.f_contiguous))
+        raise AssertionError('\n'.join(msg))
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
