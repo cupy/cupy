@@ -210,7 +210,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
 
 
-def diff(a, n=1, axis=-1, prepend=numpy._NoValue, append=numpy._NoValue):
+def diff(a, n=1, axis=-1, prepend=None, append=None):
     """Calculate the n-th discrete difference along the given axis.
 
     Args:
@@ -239,7 +239,7 @@ def diff(a, n=1, axis=-1, prepend=numpy._NoValue, append=numpy._NoValue):
 
     combined = []
 
-    if prepend is not numpy._NoValue:
+    if prepend is not None:
         prepend = cupy.asanyarray(prepend)
         if prepend.ndim == 0:
             shape = list(a.shape)
@@ -249,7 +249,7 @@ def diff(a, n=1, axis=-1, prepend=numpy._NoValue, append=numpy._NoValue):
 
     combined.append(a)
 
-    if append is not numpy._NoValue:
+    if append is not None:
         append = cupy.asanyarray(append)
         if append.ndim == 0:
             shape = list(a.shape)
