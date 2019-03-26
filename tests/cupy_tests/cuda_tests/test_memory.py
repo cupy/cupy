@@ -1,7 +1,10 @@
 import ctypes
+import gc
 import sys
 import threading
 import unittest
+
+import fastrlock
 
 import cupy.cuda
 from cupy.cuda import device
@@ -598,3 +601,20 @@ class TestMemInfo(unittest.TestCase):
         assert len(mem_info) == 2
         assert all(isinstance(m, int) for m in mem_info)
         assert all(m > 0 for m in mem_info)
+
+
+@testing.gpu
+class TestLockAndNoGc(unittest.TestCase):
+
+    def test(self):
+        lock = fastrlock.rlock.FastRLock()
+        ctx = memory.LockAndNoGc(lock)
+
+        assert gc.isenabled()
+        self.assertRaises(Exception, lock.release)
+        with ctx:
+            assert not gc.isenabled()
+            lock.release()
+            lock.acquire()
+        assert gc.isenabled()
+        self.assertRaises(Exception, lock.release)
