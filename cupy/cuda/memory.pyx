@@ -788,7 +788,12 @@ cdef class LockAndNoGc:
 
     def __enter__(self):
         rlock.lock_fastrlock(self._lock, -1, True)
-        if gc.isenabled():
+
+        # This method may be called from the context of finalizer
+        # (e.g., `__dealloc__` of PooledMemory class).
+        # If the process is going to be terminated, the module itself may
+        # already been unavailable.
+        if gc is not None and gc.isenabled():
             self._gc = True
             gc.disable()
 
