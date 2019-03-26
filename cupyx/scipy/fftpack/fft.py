@@ -34,7 +34,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     elif a.flags.f_contiguous:
         order = 'F'
     else:
-        raise ValueError("Input array a must be contiguous")
+        raise ValueError('Input array a must be contiguous')
 
     # check axes
     # n=1: 1d (need axis1D); n>1: Nd
@@ -48,20 +48,20 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         axis1D = axes
         axes = (axes,)
         if axis1D >= a.ndim or axis1D < -a.ndim:
-            raise ValueError("The chosen axis ({0}) exceeds the number of "
-                             "dimensions of a ({1})".format(axis1D, a.ndim))
+            raise ValueError('The chosen axis ({0}) exceeds the number of '
+                             'dimensions of a ({1})'.format(axis1D, a.ndim))
     else:  # axes is a tuple
         n = len(axes)
         if n == 1:
             axis1D = axes[0]
         elif n > 3:
-            raise ValueError("Only up to three axes is supported")
+            raise ValueError('Only up to three axes is supported')
 
     # check shape
     if isinstance(shape, int):
         shape = (shape,)
     if (shape is not None) and len(shape) != n:
-        raise ValueError("Shape and axes have different lengths.")
+        raise ValueError('Shape and axes have different lengths.')
     # Note that "shape" here refers to the shape along trasformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
@@ -75,8 +75,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     # check value_type
     fft_type = _convert_fft_type(a, value_type)
     if n > 1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
-        raise NotImplementedError("Only C2C and Z2Z are supported for N-dim"
-                                  " transform.")
+        raise NotImplementedError('Only C2C and Z2Z are supported for N-dim'
+                                  ' transform.')
 
     # generate plan
     if n > 1:  # ND transform

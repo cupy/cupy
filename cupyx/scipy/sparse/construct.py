@@ -214,7 +214,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         if len(diagonals) == 0 or isscalarlike(diagonals[0]):
             diagonals = [cupy.atleast_1d(diagonals)]
         else:
-            raise ValueError("Different number of diagonals and offsets.")
+            raise ValueError('Different number of diagonals and offsets.')
     else:
         diagonals = list(map(cupy.atleast_1d, diagonals))
 
@@ -224,7 +224,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
 
     # Basic check
     if len(diagonals) != len(offsets):
-        raise ValueError("Different number of diagonals and offsets.")
+        raise ValueError('Different number of diagonals and offsets.')
 
     # Determine shape, if omitted
     if shape is None:
@@ -251,14 +251,14 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         length = min(m + offset, n - offset, K)
         if length < 0:
             raise ValueError(
-                "Offset %d (index %d) out of bounds" % (offset, j))
+                'Offset %d (index %d) out of bounds' % (offset, j))
         try:
             data_arr[j, k:k+length] = diagonal[..., :length]
         except ValueError:
             if len(diagonal) != length and len(diagonal) != 1:
                 raise ValueError(
-                    "Diagonal length (index %d: %d at offset %d) does not "
-                    "agree with matrix size (%d, %d)." % (
+                    'Diagonal length (index %d: %d at offset %d) does not '
+                    'agree with matrix size (%d, %d).' % (
                         j, len(diagonal), offset, m, n))
             raise
 

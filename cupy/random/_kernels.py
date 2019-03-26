@@ -819,7 +819,7 @@ beta_kernel = core.ElementwiseKernel(
     ''',
     'beta_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -832,7 +832,7 @@ binomial_kernel = core.ElementwiseKernel(
     ''',
     'binomial_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -847,7 +847,7 @@ standard_t_kernel = core.ElementwiseKernel(
     ''',
     'standard_t_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -862,7 +862,7 @@ chisquare_kernel = core.ElementwiseKernel(
     ''',
     'chisquare_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -877,7 +877,7 @@ f_kernel = core.ElementwiseKernel(
     ''',
     'f_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -890,7 +890,7 @@ geometric_kernel = core.ElementwiseKernel(
     ''',
     'geometric_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -904,7 +904,7 @@ hypergeometric_kernel = core.ElementwiseKernel(
     ''',
     'hypergeometric_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -917,7 +917,7 @@ logseries_kernel = core.ElementwiseKernel(
     ''',
     'logseries_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -934,7 +934,7 @@ noncentral_chisquare_kernel = core.ElementwiseKernel(
     ''',
     'noncentral_chisquare_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -951,7 +951,7 @@ noncentral_f_kernel = core.ElementwiseKernel(
     ''',
     'noncentral_f_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = \
@@ -966,7 +966,7 @@ poisson_kernel = core.ElementwiseKernel(
     ''',
     'poisson_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -980,7 +980,7 @@ standard_gamma_kernel = core.ElementwiseKernel(
     ''',
     'standard_gamma_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -993,7 +993,7 @@ vonmises_kernel = core.ElementwiseKernel(
     ''',
     'vonmises_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -1006,7 +1006,7 @@ zipf_kernel = core.ElementwiseKernel(
     ''',
     'zipf_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )
 
 definitions = [
@@ -1019,5 +1019,5 @@ open_uniform_kernel = core.ElementwiseKernel(
     ''',
     'open_uniform_kernel',
     preamble=''.join(definitions),
-    loop_prep="rk_state internal_state;"
+    loop_prep='rk_state internal_state;'
 )

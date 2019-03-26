@@ -9,18 +9,18 @@ class TestNVTX(unittest.TestCase):
 
     @attr.gpu
     def test_Mark(self):
-        cuda.nvtx.Mark("test:Mark", 0)
+        cuda.nvtx.Mark('test:Mark', 0)
 
     @attr.gpu
     def test_MarkC(self):
-        cuda.nvtx.MarkC("test:MarkC", 0xFF000000)
+        cuda.nvtx.MarkC('test:MarkC', 0xFF000000)
 
     @attr.gpu
     def test_RangePush(self):
-        cuda.nvtx.RangePush("test:RangePush", 1)
+        cuda.nvtx.RangePush('test:RangePush', 1)
         cuda.nvtx.RangePop()
 
     @attr.gpu
     def test_RangePushC(self):
-        cuda.nvtx.RangePushC("test:RangePushC", 0xFF000000)
+        cuda.nvtx.RangePushC('test:RangePushC', 0xFF000000)
         cuda.nvtx.RangePop()

@@ -10,7 +10,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)

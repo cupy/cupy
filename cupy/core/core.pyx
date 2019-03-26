@@ -14,8 +14,10 @@ from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ReductionKernel
 from cupy.core._kernel import ufunc  # NOQA
 from cupy.core._ufuncs import elementwise_copy
+from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
 from cupy.cuda import device
+from cupy.cuda import memory as memory_module
 
 
 from cupy import util
@@ -69,6 +71,7 @@ cdef class ndarray:
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
+        strides (tuple of ints or None): Strides of data in memory.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -236,7 +239,7 @@ cdef class ndarray:
         if self.ndim < 2:
             return self
         else:
-            return _manipulation._transpose(self, vector.vector[Py_ssize_t]())
+            return _manipulation._T(self)
 
     __array_priority__ = 100
 
@@ -422,8 +425,13 @@ cdef class ndarray:
         finally:
             runtime.setDevice(dev_id)
         newarray = ndarray(x.shape, dtype=x.dtype)
+        if not x._c_contiguous and not x._f_contiguous:
+            raise NotImplementedError(
+                'CuPy cannot copy non-contiguous array between devices.')
         # TODO(niboshi): Confirm update_x_contiguity flags
-        newarray._set_shape_and_strides(x._shape, x._strides, True, True)
+        newarray._strides = x._strides
+        newarray._c_contiguous = x._c_contiguous
+        newarray._f_contiguous = x._f_contiguous
         newarray.data.copy_from_device(x.data, x.nbytes)
         return newarray
 
@@ -457,12 +465,12 @@ cdef class ndarray:
         ndim = self._shape.size()
         if ndim == 0:
             raise ValueError(
-                "Changing the dtype of a 0d array is only supported if "
-                "the itemsize is unchanged")
+                'Changing the dtype of a 0d array is only supported if '
+                'the itemsize is unchanged')
         if not self._c_contiguous:
             raise ValueError(
-                "To change to a dtype of a different size, the array must "
-                "be C-contiguous")
+                'To change to a dtype of a different size, the array must '
+                'be C-contiguous')
         v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
         v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
         v.size = v.size * self_is // v_is
@@ -1204,8 +1212,8 @@ cdef class ndarray:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
-                raise ValueError("The 'out' parameter must have exactly one "
-                                 "array value")
+                raise ValueError('The \'out\' parameter must have exactly one '
+                                 'array value')
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1367,7 +1375,7 @@ cdef class ndarray:
                     elif order == 'F':
                         a_gpu = asfortranarray(self)
                     else:
-                        raise ValueError("unsupported order: {}".format(order))
+                        raise ValueError('unsupported order: {}'.format(order))
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
@@ -1582,7 +1590,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
-include "carray.pxi"
+include 'carray.pxi'
 
 
 # =============================================================================
@@ -1592,12 +1600,6 @@ include "carray.pxi"
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
-
-elementwise_copy_where = create_ufunc(
-    'cupy_copy_where',
-    ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
-     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
-    'if (in1) out0 = in0', default_casting='unsafe')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
@@ -1714,6 +1716,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
+    elif hasattr(obj, '__cuda_array_interface__'):
+        return array(_convert_object_with_cuda_array_interface(obj),
+                     dtype, copy, order, subok, ndmin)
     else:  # obj is sequence, numpy array, scalar or the other type of object
         shape, elem_dtype, head = _get_concat_shape(obj)
         if shape is not None and shape[-1] != 0:
@@ -2605,3 +2610,21 @@ not_equal = create_comparison(
 
     ''',
     no_complex_dtype=False)
+
+
+cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    cdef Py_ssize_t sh, st
+    desc = a.__cuda_array_interface__
+    shape = desc['shape']
+    dtype = numpy.dtype(desc['typestr'])
+    if 'strides' in desc:
+        strides = desc['strides']
+        nbytes = 0
+        for sh, st in zip(shape, strides):
+            nbytes = max(nbytes, abs(sh * st))
+    else:
+        strides = None
+        nbytes = internal.prod(shape) * dtype.itemsize
+    mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
+    memptr = memory.MemoryPointer(mem, 0)
+    return ndarray(shape, dtype, memptr, strides)

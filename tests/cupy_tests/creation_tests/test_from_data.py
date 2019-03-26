@@ -102,7 +102,7 @@ class TestFromData(unittest.TestCase):
     def test_array_f_contiguous_output(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.array(a, copy=False, order='F')
-        self.assertTrue(b.flags.f_contiguous)
+        assert b.flags.f_contiguous
         return b
 
     @testing.multi_gpu(2)
@@ -111,10 +111,10 @@ class TestFromData(unittest.TestCase):
             x = testing.shaped_arange((2, 3, 4), cupy, dtype='f')
         with cuda.Device(1):
             y = cupy.array(x)
-        self.assertIsInstance(y, cupy.ndarray)
-        self.assertIsNot(x, y)  # Do copy
-        self.assertEqual(int(x.device), 0)
-        self.assertEqual(int(y.device), 1)
+        assert isinstance(y, cupy.ndarray)
+        assert x is not y  # Do copy
+        assert int(x.device) == 0
+        assert int(y.device) == 1
         testing.assert_array_equal(x, y)
 
     @testing.multi_gpu(2)
@@ -123,8 +123,8 @@ class TestFromData(unittest.TestCase):
             x = testing.shaped_arange((0,), cupy, dtype='f')
         with cuda.Device(1):
             y = cupy.array(x)
-        self.assertIsInstance(y, cupy.ndarray)
-        self.assertIsNot(x, y)  # Do copy
+        assert isinstance(y, cupy.ndarray)
+        assert x is not y  # Do copy
         assert x.device.id == 0
         assert y.device.id == 1
         testing.assert_array_equal(x, y)
@@ -134,7 +134,7 @@ class TestFromData(unittest.TestCase):
     def test_array_no_copy_ndmin(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.array(a, copy=False, ndmin=5)
-        self.assertEqual(a.shape, (2, 3, 4))
+        assert a.shape == (2, 3, 4)
         a.fill(0)
         return b
 
@@ -159,9 +159,9 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.asarray(a, order=order)
         if order in ['F', 'f']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         return b
 
     @testing.for_CF_orders()
@@ -181,9 +181,9 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.asanyarray(a, order=order)
         if order in ['F', 'f']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         return b
 
     @testing.for_CF_orders()
@@ -193,9 +193,9 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
         b = xp.asarray(a, order=order)
         if order in ['F', 'f']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         return b
 
     @testing.for_CF_orders()
@@ -221,23 +221,30 @@ class TestFromData(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_ignores_order(self, dtype):
+    def test_asarray_cuda_array_interface_order(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a), order='F')
-        self.assertTrue(b.flags.c_contiguous)
+        assert b.flags.f_contiguous
         testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_with_strdies(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, True))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
 
     def test_ascontiguousarray_on_noncontiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
         b = a.transpose(2, 0, 1)
         c = cupy.ascontiguousarray(b)
-        self.assertTrue(c.flags.c_contiguous)
+        assert c.flags.c_contiguous
         testing.assert_array_equal(b, c)
 
     def test_ascontiguousarray_on_contiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
         b = cupy.ascontiguousarray(a)
-        self.assertIs(a, b)
+        assert a is b
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -266,10 +273,11 @@ class TestFromData(unittest.TestCase):
         return (b.flags.c_contiguous, b.flags.f_contiguous)
 
 
-class DummyObjectWithCudaArrayInterface():
+class DummyObjectWithCudaArrayInterface(object):
 
-    def __init__(self, a):
+    def __init__(self, a, has_strides=False):
         self.a = a
+        self.has_strides = has_strides
 
     @property
     def __cuda_array_interface__(self):
@@ -280,6 +288,8 @@ class DummyObjectWithCudaArrayInterface():
             'data': (self.a.data.mem.ptr, False),
             'version': 0,
         }
+        if self.has_strides:
+            desc['strides'] = self.a.strides
         return desc
 
 
@@ -300,7 +310,7 @@ class TestArrayPreservationOfShape(unittest.TestCase):
 
         # Check if cupy.ndarray does not alter
         # the shape of the original array.
-        self.assertEqual(a.shape, shape)
+        assert a.shape == shape
 
 
 @testing.parameterize(
@@ -321,7 +331,7 @@ class TestArrayCopy(unittest.TestCase):
         # TODO(Kenta Oono): Better determination of copy.
         is_copied = not ((actual is a) or (actual.base is a) or
                          (actual.base is a.base and a.base is not None))
-        self.assertEqual(should_copy, is_copied)
+        assert should_copy == is_copied
 
 
 class TestArrayInvalidObject(unittest.TestCase):

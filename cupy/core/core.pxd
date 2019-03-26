@@ -110,3 +110,4 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
 # TODO(niboshi): Move to _routines_creation.pyx
 cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
+cpdef ndarray _convert_object_with_cuda_array_interface(a)
