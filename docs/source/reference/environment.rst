@@ -31,6 +31,14 @@ Here are the environment variables CuPy uses.
 |                                    | ``--generate-line-info``).                         |
 |                                    | It is disabled by default.                         |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_GPU_MEMORY_LIMIT``          | The amount of memory that can be allocated for     |
+|                                    | each device.                                       |
+|                                    | The value can be specified in absolute bytes or    |
+|                                    | fraction (e.g., ``"90%"``) of the total memory of  |
+|                                    | each GPU.                                          |
+|                                    | See :doc:`memory` for details.                     |
+|                                    | ``0`` (unlimited) is used by default.              |
++------------------------------------+----------------------------------------------------+
 
 
 For install

@@ -68,6 +68,47 @@ See the example code below for details:
    print(mempool.total_bytes())             # 0
    print(pinned_mempool.n_free_blocks())    # 0
 
+See :class:`cupy.cuda.MemoryPool` and :class:`cupy.cuda.PinnedMemoryPool` for details.
+
+Limitting GPU Memory Usage
+--------------------------
+
+You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`environment` for details).
+
+.. code-block:: py
+
+   # Set the hard-limit to 1 GiB:
+   #   $ export CUPY_GPU_MEMORY_LIMIT="1073741824"
+
+   # You can also specify the limit in fraction of the total amount of memory
+   # on the GPU. If you have a GPU with 2 GiB memory, the following is
+   # equivalent to the above configuration.
+   #   $ export CUPY_GPU_MEMORY_LIMIT="50%"
+
+   import cupy
+   print(cupy.get_default_memory_pool().get_limit())  # 1073741824
+
+You can also set the limit (or override the value specified via the environment variable) using :meth:`cupy.cuda.MemoryPool.set_limit()`.
+In this way, you can use different limit for each GPU device.
+
+.. code-block:: py
+
+   import cupy
+
+   mempool = cupy.get_default_memory_pool()
+
+   with cupy.cuda.Device(0):
+       mempool.set_limit(size=1024**3)  # 1 GiB
+
+   with cupy.cuda.Device(1):
+       mempool.set_limit(size=2*1024**3)  # 2 GiB
+
+.. note::
+
+   Due to the limitation of CUDA, some memory area (CUDA context, library handles, etc.) will be allocated from outside of the memory pool.
+   Depending on the use-case, such area will take one to few hundred MiB of GPU memory.
+   Such areas will not be counted to the limit.
+
 Changing Memory Pool
 --------------------
 
