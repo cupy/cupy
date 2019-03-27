@@ -1082,27 +1082,27 @@ cdef class SingleDeviceMemoryPool:
         return self._total_bytes
 
     cpdef set_limit(self, size=None, fraction=None):
-        limit = None
         if size is None:
             if fraction is None:
-                limit = 0
+                size = 0
             else:
                 if not 0 <= fraction <= 1:
                     raise ValueError(
                         'memory limit fraction out of range: {}'.format(
                         fraction))
                 _, total = runtime.memGetInfo()
-                limit = total * fraction
-        else:
-            if fraction is None:
-                if size < 0:
-                    raise ValueError(
-                        'memory limit size out of range: {}'.format(size))
-                limit = size
-            else:
-                raise ValueError('size and fraction cannot be specified at '
-                                 'one time')
-        self._total_bytes_limit = limit
+                size = fraction * total
+            self.set_limit(size=size)
+            return
+
+        if fraction is not None:
+            raise ValueError('size and fraction cannot be specified at '
+                             'one time')
+        if size < 0:
+            raise ValueError(
+                'memory limit size out of range: {}'.format(size))
+
+        self._total_bytes_limit = size
 
     cpdef size_t get_limit(self):
         return self._total_bytes_limit
