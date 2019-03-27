@@ -1245,7 +1245,7 @@ cdef class MemoryPool(object):
         .. note::
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
             environment variable.
-            See the reference for the details.
+            See Environment Variables section in the reference for the details.
             The limit set by this method supersedes the value specified in```
             the environment variable.
 
