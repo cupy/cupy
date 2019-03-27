@@ -408,10 +408,10 @@ def numpy_cupy_array_exactly_equal(err_msg='', verbose=True, name='xp',
              the modules.
 
     Decorated test fixture is required to return the same arrays
-    in the sense of :func:`numpy_cupy_array_same`
+    in the sense of :func:`numpy_cupy_array_exactly_equal`
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`cupy.testing.assert_array_same`
+    .. seealso:: :func:`cupy.testing.numpy_cupy_array_exactly_equal`
     """
     def check_func(x, y):
         if sp_name is not None:
