@@ -499,7 +499,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
             self.pool.set_limit(fraction=1.1)
 
     def test_parse_limit_string(self):
-        parse_limit_string = cupy.cuda.memory._parse_limit_string
+        parse_limit_string = self.pool._parse_limit_string
 
         # size
         param = parse_limit_string('0')
