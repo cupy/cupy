@@ -780,20 +780,6 @@ cdef bint _remove_from_free_list(list arena, vector.vector[size_t]* a_index,
     return False
 
 
-cpdef dict _parse_limit_string(limit=None):
-    if limit is None:
-        limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
-
-    size = None
-    fraction = None
-    if limit is not None:
-        if limit.endswith('%'):
-            fraction = float(limit[:-1]) / 100.0
-        else:
-            size = int(limit)
-    return {'size': size, 'fraction': fraction}
-
-
 # cudaMalloc() is aligned to at least 512 bytes
 # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
 DEF ALLOCATION_UNIT_SIZE = 512
@@ -892,7 +878,7 @@ cdef class SingleDeviceMemoryPool:
         self._in_use_lock = rlock.create_fastrlock()
         self._total_bytes_lock = rlock.create_fastrlock()
 
-        self.set_limit(**(_parse_limit_string()))
+        self.set_limit(**(self._parse_limit_string()))
 
     cpdef list _arena(self, size_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
@@ -1120,6 +1106,18 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef size_t get_limit(self):
         return self._total_bytes_limit
+
+    cpdef dict _parse_limit_string(sefl, limit=None):
+        if limit is None:
+            limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
+        size = None
+        fraction = None
+        if limit is not None:
+            if limit.endswith('%'):
+                fraction = float(limit[:-1]) / 100.0
+            else:
+                size = int(limit)
+        return {'size': size, 'fraction': fraction}
 
 
 cdef class MemoryPool(object):
