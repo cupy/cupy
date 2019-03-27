@@ -1176,7 +1176,7 @@ cdef class MemoryPool(object):
         return mp.malloc(size)
 
     cpdef free_all_blocks(self, stream=None):
-        """Release free blocks.
+        """Releases free blocks.
 
         Args:
             stream (cupy.cuda.Stream): Release free blocks in the arena
@@ -1194,7 +1194,7 @@ cdef class MemoryPool(object):
         self.free_all_blocks()
 
     cpdef size_t n_free_blocks(self):
-        """Count the total number of free blocks.
+        """Counts the total number of free blocks.
 
         Returns:
             int: The total number of free blocks.
@@ -1203,7 +1203,7 @@ cdef class MemoryPool(object):
         return mp.n_free_blocks()
 
     cpdef size_t used_bytes(self):
-        """Get the total number of bytes used.
+        """Gets the total number of bytes used.
 
         Returns:
             int: The total number of bytes used.
@@ -1212,7 +1212,7 @@ cdef class MemoryPool(object):
         return mp.used_bytes()
 
     cpdef size_t free_bytes(self):
-        """Get the total number of bytes acquired but not used in the pool.
+        """Gets the total number of bytes acquired but not used in the pool.
 
         Returns:
             int: The total number of bytes acquired but not used in the pool.
@@ -1221,7 +1221,7 @@ cdef class MemoryPool(object):
         return mp.free_bytes()
 
     cpdef size_t total_bytes(self):
-        """Get the total number of bytes acquired in the pool.
+        """Gets the total number of bytes acquired in the pool.
 
         Returns:
             int: The total number of bytes acquired in the pool.
@@ -1230,7 +1230,7 @@ cdef class MemoryPool(object):
         return mp.total_bytes()
 
     cpdef set_limit(self, size=None, fraction=None):
-        """Set the upper limit of memory allocation of the current device.
+        """Sets the upper limit of memory allocation of the current device.
 
         When `fraction` is specified, its value will become a fraction of the
         amount of GPU memory that is available for allocation.
@@ -1261,7 +1261,7 @@ cdef class MemoryPool(object):
         mp.set_limit(size, fraction)
 
     cpdef size_t get_limit(self):
-        """Get the upper limit of memory allocation of the current device.
+        """Gets the upper limit of memory allocation of the current device.
 
         Returns:
             int: The number of bytes
