@@ -134,8 +134,9 @@ def _get_underlying_bytes(a):
         # copy the array to host memory while preserving order
         buf = ctypes.create_string_buffer(a.nbytes)
         a.data.copy_to_host(ctypes.c_void_p(ctypes.addressof(buf)), a.nbytes)
-
-        return buf.raw
+        arr = bytearray(a.nbytes)
+        arr[:] = buf.raw
+        return arr
     else:
         return ctypes.string_at(a.ctypes.data, a.nbytes)
 
