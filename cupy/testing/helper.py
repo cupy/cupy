@@ -382,8 +382,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
 
 def numpy_cupy_array_exactly_equal(err_msg='', verbose=True, name='xp',
-                                   type_check=True, accept_error=False, sp_name=None,
-                                   scipy_name=None):
+                                   type_check=True, accept_error=False,
+                                   sp_name=None, scipy_name=None):
     """Decorator that checks NumPy results and CuPy ones are equal in the
     sense of its underlying memory layout.
 

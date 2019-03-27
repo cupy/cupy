@@ -1727,7 +1727,8 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
 
             # resulting array is C order unless 'F' is explicitly specified
             # (i.e., it ignores order of element arrays in the sequence)
-            order = ('F'
+            order = (
+                'F'
                 if order is not None and len(order) >= 1 and order[0] in 'Ff'
                 else 'C')
             if elem_dtype.char not in '?bhilqBHILQefdFD':
@@ -1742,8 +1743,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 a = _send_numpy_array_list_to_gpu(
                     obj, dtype, shape, order, ndmin)
             elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
-                a = _manipulation.concatenate_method(_flatten_list(obj),
-                    0).reshape(shape).astype(dtype, order=order, copy=False)
+                a = (_manipulation.concatenate_method(_flatten_list(obj), 0)
+                                  .reshape(shape)
+                                  .astype(dtype, order=order, copy=False))
             else:  # should not be reached here
                 raise ValueError(
                     "The elements of obj are unsupported type(s)")
@@ -1793,8 +1795,8 @@ cdef tuple _get_concat_shape_impl(object obj):
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
             if (elem_shape is None or
-                dtype != elem_dtype or
-                shape != elem_shape):
+                    shape != elem_shape or
+                    dtype != elem_dtype):
                 return (None, None, obj)
 
         return (
@@ -1849,7 +1851,7 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
 
 cdef ndarray _send_numpy_array_list_to_gpu(
     list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order,
-    Py_ssize_t ndmin):
+        Py_ssize_t ndmin):
     cdef ndarray a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
     cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
@@ -1859,7 +1861,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
-        src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(shape, order=order)
+        src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(
+            shape, order=order)
         numpy.concatenate([e[None] for e in arrays], 0, src_cpu)
         a = ndarray(shape, dtype=dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
