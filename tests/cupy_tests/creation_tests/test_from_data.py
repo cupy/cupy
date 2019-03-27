@@ -31,23 +31,29 @@ class TestFromData(unittest.TestCase):
         a = numpy.broadcast_to(a, (2, 3, 4))
         return xp.array(a, order=order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_underlying_array_equal()
-    def test_array_from_list_of_array(self, xp, dtype, order):
-        # compares numpy.array(<list of numpy.ndarray>) with
-        # cupy.array(<list of cupy.ndarray>)
-        a = [testing.shaped_arange((3, 4), xp, dtype) for _ in range(2)]
-        return xp.array(a, order=order)
-
-    @testing.for_orders('CFAK')
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_underlying_array_equal()
-    def test_array_from_list_of_numpy(self, xp, dtype, order):
+    @testing.numpy_cupy_array_exactly_equal()
+    def test_array_from_list_of_numpy(self, xp, dtype, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of numpy.ndarray>)
-        a = [testing.shaped_arange((3, 4), numpy, dtype) for _ in range(2)]
-        return xp.array(a, order=order)
+        a = [
+            testing.shaped_arange((3, 4), numpy, dtype, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_exactly_equal()
+    def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()

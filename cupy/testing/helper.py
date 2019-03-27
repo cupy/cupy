@@ -381,11 +381,11 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
                            scipy_name)
 
 
-def numpy_cupy_underlying_array_equal(err_msg='', verbose=True, name='xp',
-                          type_check=True, accept_error=False, sp_name=None,
-                          scipy_name=None):
-    """Decorator that checks underlying bytes of NumPy results and CuPy ones
-    are equal.
+def numpy_cupy_array_exactly_equal(err_msg='', verbose=True, name='xp',
+                                   type_check=True, accept_error=False, sp_name=None,
+                                   scipy_name=None):
+    """Decorator that checks NumPy results and CuPy ones are equal in the
+    sense of its underlying memory layout.
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
@@ -421,7 +421,7 @@ def numpy_cupy_underlying_array_equal(err_msg='', verbose=True, name='xp',
             if scipy.sparse.issparse(y):
                 y = y.A
 
-        array.assert_underlying_array_equal(x, y, err_msg, verbose)
+        array.assert_array_exactly_equal(x, y, err_msg, verbose)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
                            scipy_name)

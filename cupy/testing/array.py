@@ -140,9 +140,9 @@ def _get_underlying_bytes(a):
         return ctypes.string_at(a.ctypes.data, a.nbytes)
 
 
-def assert_underlying_array_equal(x, y, err_msg='', verbose=True):
-    """Raises an AssertionError if two underlying bytes of array_like objects
-    are not same.
+def assert_array_exactly_equal(x, y, err_msg='', verbose=True):
+    """Raises an AssertionError if two array_like objects are not equal in the
+    sense of its underlying memory layout.
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The actual object to check.
@@ -151,6 +151,11 @@ def assert_underlying_array_equal(x, y, err_msg='', verbose=True):
          verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
     """
+    # checks an equality of the representation of two arrays
+    numpy.testing.assert_array_equal(
+        cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+        verbose=verbose)
+
     xbytes = _get_underlying_bytes(x)
     ybytes = _get_underlying_bytes(y)
     if xbytes != ybytes:

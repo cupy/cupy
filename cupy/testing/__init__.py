@@ -33,7 +33,7 @@ from cupy.testing.helper import numpy_cupy_allclose  # NOQA
 from cupy.testing.helper import numpy_cupy_array_almost_equal  # NOQA
 from cupy.testing.helper import numpy_cupy_array_almost_equal_nulp  # NOQA
 from cupy.testing.helper import numpy_cupy_array_equal  # NOQA
-from cupy.testing.helper import numpy_cupy_underlying_array_equal  # NOQA
+from cupy.testing.helper import numpy_cupy_array_exactly_equal  # NOQA
 from cupy.testing.helper import numpy_cupy_array_less  # NOQA
 from cupy.testing.helper import numpy_cupy_array_list_equal  # NOQA
 from cupy.testing.helper import numpy_cupy_array_max_ulp  # NOQA
