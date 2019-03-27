@@ -1232,10 +1232,10 @@ cdef class MemoryPool(object):
         return mp.total_bytes()
 
     cpdef set_limit(self, size=None, fraction=None):
-        """Set the upper limit to the amount of memory acquired by the pool.
+        """Set the upper limit of memory allocation of the current device.
 
-        When `fraction` is specified, the size will become a fraction of the
-        amount of memory installed on the GPU.
+        When `fraction` is specified, its value will become a fraction of the
+        amount of GPU memory that is available for allocation.
         For example, if you have a GPU with 2 GiB memory, you can either use
         `set_limit(fraction=0.5)` or `set_limit(size=1024**3)` to limit the
         memory size to 1 GiB.
@@ -1248,7 +1248,7 @@ cdef class MemoryPool(object):
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
             environment variable.
             See the reference for the details.
-            Limit set by this method supersedes the value specified in by
+            The limit set by this method supersedes the value specified in```
             the environment variable.
 
             Also note that this method only changes the limit for the current
@@ -1257,13 +1257,13 @@ cdef class MemoryPool(object):
 
         Args:
             size (int): Limit size in bytes.
-            fraction (float): Fraction in range of ``[0,1]``.
+            fraction (float): Fraction in the range of ``[0, 1]``.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         mp.set_limit(size, fraction)
 
     cpdef size_t get_limit(self):
-        """Get the upper limit of memory allocation.
+        """Get the upper limit of memory allocation of the current device.
 
         Returns:
             int: The number of bytes
