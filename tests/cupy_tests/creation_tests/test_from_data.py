@@ -47,11 +47,43 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_exactly_equal()
+    def test_array_from_list_of_numpy_view(self, xp, dtype, src_order,
+                                           dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+
+        # create a list of view of ndarrays
+        a = [
+            (testing.shaped_arange((3, 8), numpy,
+                                   dtype, src_order) + (24 * i))[:, ::2]
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_exactly_equal()
     def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of cupy.ndarray>)
         a = [
             testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_exactly_equal()
+    def test_array_from_list_of_cupy_view(self, xp, dtype, src_order,
+                                          dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+
+        # create a list of view of ndarrays
+        a = [
+            (testing.shaped_arange((3, 8), xp,
+                                   dtype, src_order) + (24 * i))[:, ::2]
             for i in range(2)]
         return xp.array(a, order=dst_order)
 
